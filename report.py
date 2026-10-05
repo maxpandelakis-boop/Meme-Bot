@@ -252,7 +252,8 @@ def collect(d, now):
     ever_addrs = {r["p"].get("addr") for r in rows}
     w, winfo = M.blended_weights(d)
     weights = sorted(w.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16]
-    return {"now": now, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), None)
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -442,6 +443,8 @@ section { display:grid; gap:12px }
 .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px }
 .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-width:0; display:grid; gap:8px }
 .card .top { display:flex; justify-content:space-between; gap:12px; align-items:baseline; flex-wrap:wrap }
+.card.rec { grid-template-rows:auto } .embed { width:100%; height:360px; border:0; border-radius:6px; background:var(--chip) }
+.cards:has(.rec) { grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr)) }
 .card .sym { font-size:18px; font-weight:600 } .name { color:var(--fg2); font-size:12px; margin-left:6px }
 .chip { display:inline-block; font-size:11px; font-weight:500; padding:2px 8px; border-radius:999px; background:var(--chip); color:var(--fg2); white-space:nowrap }
 .chip.good { background:color-mix(in srgb,var(--good-mark) 16%,var(--surface)); color:var(--good) } .chip.bad { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
@@ -541,6 +544,40 @@ def position_card(r, now):
         E(p.get("sym")), E(p.get("name")), pnl_html, r["kind"], E(r["status"]),
         "".join('<div><div class="k">%s</div><div class="v%s">%s</div></div>' % (E(k), " wrap" if k == "sells" else "", E(v)) for k, v in kv),
         E(p.get("safety") or ""), E((p.get("why") or "").split("; RugCheck")[0]), links(p), E(p.get("addr")))
+
+
+def rec_card(c, now, embed):
+    """A recommended coin: the same facts as a position card, plus the embedded DexScreener chart on the local page."""
+    kv = [("price", fmt_px(c.get("px"))), ("market cap", fmt_money(c.get("mc"))), ("liquidity", fmt_money(c.get("liq"))), ("24h volume", fmt_money(c.get("vol"))),
+          ("score", "%.0f (rank %s)" % (M.num(c.get("score")) or 0, c.get("rank") or "?")), ("age", fmt_age((now - (M.num((c.get("f") or {}).get("ageH")) or 0) * 3_600_000), now) if (c.get("f") or {}).get("ageH") is not None else "–"),
+          ("holders", ("%d" % (c.get("f") or {}).get("rc.holders")) if (c.get("f") or {}).get("rc.holders") else "–"), ("top 10 hold", pct((c.get("f") or {}).get("rc.top10")) if (c.get("f") or {}).get("rc.top10") is not None else "–"),
+          ("24h change", ("%+.0f%%" % (c.get("f") or {}).get("c24")) if (c.get("f") or {}).get("c24") is not None else "–"), ("6h change", ("%+.0f%%" % (c.get("f") or {}).get("c6")) if (c.get("f") or {}).get("c6") is not None else "–")]
+    chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
+    src = ", ".join(SRC.get(t.split(":", 1)[0], "%s") % t.split(":", 1)[-1] for t in (c.get("src") or [])[:4])
+    return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span><span class="name">%s</span></div><span class="chip good">recommended</span></div>%s'
+            '<div class="kv">%s</div><p class="safety">%s</p><p class="why">%s</p><p class="why">seen on: %s</p>%s<div class="addr">%s</div></article>') % (
+        E(c.get("sym")), E(c.get("name")), chart, "".join('<div><div class="k">%s</div><div class="v">%s</div></div>' % (E(k), E(v)) for k, v in kv),
+        E(c.get("safety") or ""), E(c.get("why") or ""), E(src), links(c), E(c.get("addr")))
+
+
+def rec_section(D, embed):
+    rc = D.get("rec")
+    if not rc:
+        return ""
+    picks = rc.get("picks") or []
+    head = "%s · %s coins scanned, %s passed the gates · fake money only, nothing is bought" % (fmt_dt(rc.get("t")), rc.get("scanned") or "–", rc.get("passed") or "–")
+    if picks:
+        body = '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed) for c in picks)
+    else:
+        body = '<div class="empty">No recommendation this time: %s</div>' % ("no top coin had a clean safety report." if rc.get("passed") else "nothing passed the gates.")
+    runners = [c for c in (rc.get("runnersUp") or []) if isinstance(c, dict)]
+    if runners:
+        tr = "".join('<tr><td class="n">%s</td><td><strong>%s</strong><span class="name">%s</span></td><td class="n">%.0f</td><td class="n">%s</td><td class="n">%s</td><td class="n">%s</td><td><span class="chip %s">%s</span></td><td><a href="https://dexscreener.com/solana/%s" target="_blank" rel="noopener">chart</a></td></tr>' % (
+            E(c.get("rank") or "?"), E(c.get("sym")), E(c.get("name")), M.num(c.get("score")) or 0, fmt_money(c.get("mc")), fmt_money(c.get("liq")), fmt_money(c.get("vol")),
+            "good" if c.get("ok") else ("bad" if c.get("ok") is False else ""), "clean" if c.get("ok") else ("flagged: " + str(c.get("safety") or "").replace("RugCheck", "").strip(": ") if c.get("ok") is False else "no safety report"),
+            E(c.get("pair") or c.get("addr"))) for c in runners)
+        body += '<details><summary>Runners-up</summary><div class="tbl"><table><thead><tr><th class="n">rank</th><th>coin</th><th class="n">score</th><th class="n">market cap</th><th class="n">liquidity</th><th class="n">24h volume</th><th>safety</th><th></th></tr></thead><tbody>%s</tbody></table></div></details>' % tr
+    return '<section><div class="sec-head"><h2>Two recommendations</h2><p>%s</p></div>%s</section>' % (E(head), body)
 
 
 def closed_table(rows):
@@ -699,7 +736,10 @@ def render(data, fragment=False):
     head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real</div><h1>%s</h1></div>'
             '<div class="meta"><span>last run %s</span><span>%s run%s</span><span>%s</span><span>rule %s</span></div></header>') % (
         E(TITLE), E(fmt_dt(last_run)), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s", scan_txt, E(st.get("rule") or M.RULE))
-    body = [head, safe("hero", hero)]
+    body = [head]
+    if D.get("rec"):
+        body.append(safe("recommendations", lambda: rec_section(D, embed=not fragment)))
+    body.append(safe("hero", hero))
     if st.get("note"):
         body.append('<section><div class="eyebrow">Last run</div><p class="note">%s</p></section>' % E(st["note"]))
     body.append(safe("equity curve", curve))

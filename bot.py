@@ -13,6 +13,7 @@ A cycle:
 Usage:
   python3 bot.py cycle   [--dir mb] [--force] [--offline]   one cycle (--force: pick now even inside the 3h gap; --offline: reuse the files in --dir)
   python3 bot.py cycle --rescan                             full scan of the whole universe now, saved for the big test (buys only if a slot is free)
+  python3 bot.py loop --every 60 --recommend --push         never buy: each cycle rescans everything and puts the two best clean coins on the page
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
   python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
   python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
@@ -71,9 +72,9 @@ def chunk_addrs(g):
     return [a for a in out if a]
 
 
-def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False):
+def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False):
     os.makedirs(d, exist_ok=True)
-    extra = (["--force"] if force else []) + (["--snapshot"] if rescan else [])
+    extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else [])
     mode = run(["memebot.py", "mode"] + extra, d, now)
     log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
     fetch = lambda args, expect_json=True: run(["fetch.py"] + args + (["--mock", mock] if mock else []), d, expect_json=expect_json)
@@ -106,7 +107,7 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
         log("report failed: %s" % e)
     print(r["note"])
     for p in r["picks"]:
-        print("  BUY  %-10s %-6s score %5.1f  %s" % (p["sym"], p["grp"], p["score"], p.get("addr")))
+        print("  %s %-10s %-6s score %5.1f  %s" % ("RECOMMEND" if p["grp"] == "recommend" else "BUY ", p["sym"], p["grp"], p["score"], p.get("addr")))
         if p.get("why"):
             print("       " + p["why"])
     for e in r["exits"]:
@@ -260,6 +261,7 @@ def main():
     ap.add_argument("--coin", default="", help="sell: the symbol of the one position to close")
     ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
     ap.add_argument("--rescan", action="store_true", help="cycle: scan the whole universe now and save it for the big test, even if the last full scan is recent")
+    ap.add_argument("--recommend", action="store_true", help="cycle/loop: never buy; write the two best clean coins of each full scan to the page")
     ap.add_argument("--remote", default=None, help="git URL for sync/--push (default: this repository's origin)")
     ap.add_argument("--branch", default="results", help="branch for sync/--push")
     ap.add_argument("--dir", default="mb")
@@ -288,11 +290,11 @@ def main():
         if a.push:
             sync(a.dir, a.remote, a.branch)
     elif a.cmd == "cycle":
-        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch, a.rescan)
+        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch, a.rescan, a.recommend)
     else:
         while True:
             try:
-                cycle(a.dir, a.force, a.offline, a.mock, push=a.push, remote=a.remote, branch=a.branch)
+                cycle(a.dir, a.force, a.offline, a.mock, push=a.push, remote=a.remote, branch=a.branch, recommend=a.recommend)
             except SystemExit as e:
                 log("cycle failed: %s" % e)
             log("next cycle in %.0f minutes" % a.every)

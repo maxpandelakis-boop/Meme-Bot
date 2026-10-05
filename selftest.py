@@ -284,6 +284,16 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", empty], capture_output=True, text=True)
     check(r.returncode == 0 and "No open positions" in open(os.path.join(empty, "report.html")).read(), "page renders for an empty db")
     shutil.rmtree(empty, ignore_errors=True)
+    print("== recommend mode: a fresh db, full scan, two recommendations, no positions")
+    rd = tempfile.mkdtemp(prefix="memebot-rec-")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--mock", url, "--now", str(T0), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
+    check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
+    check(not os.path.isdir(os.path.join(rd, "db", "memepos")), "recommend mode opened no position")
+    page = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
+    check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
+    shutil.rmtree(rd, ignore_errors=True)
+
     print("== sync: page and small docs to a results branch")
     bare = tempfile.mkdtemp(prefix="memebot-bare-")
     subprocess.run(["git", "init", "-q", "--bare", bare], check=True)

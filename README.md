@@ -16,6 +16,7 @@ python3 bot.py status               # bankroll, open positions, closed trades
 python3 bot.py report               # render mb/report.html, the analysis page
 python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to stop)
 python3 bot.py loop --every 30 --push   # the same, and push the results to the repository's results branch after each cycle
+python3 bot.py loop --every 60 --recommend --push   # recommend mode: never buy, each cycle rescans and puts the two best clean coins on the page
 python3 bot.py cycle --force        # pick now, ignoring the 3-hour gap and the daily cap (the bankroll still caps it)
 python3 bot.py cycle --rescan       # scan the whole universe now and save it for the big test (buys only if a slot is free)
 python3 bot.py sell --all           # close every open position by hand at the last price (or --coin SYMBOL); the money returns to the bankroll
@@ -81,6 +82,13 @@ insider wallets and at least 300 holders. No report means no buy.
 | Pace | at most one pick run every ~3 h and 4 picks per day |
 
 Money from a sale returns to the bankroll and frees a slot for the next pick run.
+
+## Recommend mode
+
+`--recommend` turns the bot into a scanner: every cycle it rescans the whole universe, applies the same gates and safety
+check, and writes the two best coins to the top of the page with embedded DexScreener charts, the facts and the links,
+plus the runners-up. Nothing is bought or held. The big test (snapshots scored 24 hours later) keeps running, so the
+weights keep learning.
 
 ## The analysis page
 

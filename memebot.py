@@ -259,10 +259,10 @@ def snap_due(d, now):
     return now - last >= SNAP_GAP_H * 3_600_000
 
 
-def cmd_mode(d, now, force=False, snapshot=False):
+def cmd_mode(d, now, force=False, snapshot=False, recommend=False):
     pos = positions(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
-    room, why = pick_room(state, pos, now, force)
+    room, why = (PICKS_PER_RUN, "recommend mode: no buys, the two best coins are written to the page") if recommend else pick_room(state, pos, now, force)
     sd = snap_due(d, now) or snapshot
     due = due_snaps(d, now)
     print(json.dumps({"pick": room > 0, "room": room, "why": why, "scan": "full" if sd else ("light" if room > 0 else "none"), "bigTestSaveDue": sd,
@@ -1040,10 +1040,10 @@ def risk_doc(r):
     return doc
 
 
-def cmd_shortlist(d, now, force=False, snapshot=False):
+def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     pos, pairs = positions(d), load_pairs(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
-    room = pick_room(state, pos, now, force)[0]
+    room = PICKS_PER_RUN if recommend else pick_room(state, pos, now, force)[0]
     w, _ = blended_weights(d)
     rows, _, held, recent, risk = scan(d, pos, pairs, now, w)
     cands = [r for r in rows if r["ok"] and r["a"] not in held and r["a"] not in recent and r["a"] not in risk]
@@ -1152,7 +1152,7 @@ def curve_point(pos_docs, exit_docs, px, t):
 
 
 # ---------------------------------------------------------------- the run
-def cmd_run(d, mode, now, force=False, snapshot=False):
+def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     out_dir = os.path.join(d, "out")
     os.makedirs(out_dir, exist_ok=True)
     for old in glob.glob(os.path.join(out_dir, "*.json")):
@@ -1162,7 +1162,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False):
     marks = load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}
     miss = dict(marks.get("miss") or {})
     asked = mode
-    room = pick_room(state, pos, now, force)[0] if mode == "pick" else 0   # --force: a manual pick run (the bankroll still caps it)
+    if recommend:                       # recommend mode: scan and rank as for a pick, but write recommendations instead of positions
+        mode, room = "pick", PICKS_PER_RUN
+    else:
+        room = pick_room(state, pos, now, force)[0] if mode == "pick" else 0   # --force: a manual pick run (the bankroll still caps it)
     if mode == "pick" and room <= 0:
         mode = "check"
     n_open = sum(1 for p in pos.values() if p["_left"] > 1e-9)
@@ -1242,6 +1245,23 @@ def cmd_run(d, mode, now, force=False, snapshot=False):
                 chosen.append((r, rtxt))
                 if len(chosen) >= room:
                     break
+        if recommend:
+            # no positions: the two best clean coins and the runners-up go to memebot/recommend for the page
+            def rec(r, rtxt, ok):
+                pr = r["pr"]
+                return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
+                        "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
+                        "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"]))}
+            runners = []
+            for r in gated[:12]:
+                if r["a"] in {c[0]["a"] for c in chosen}:
+                    continue
+                ok_r, rtxt = risk_view(risk.get(r["a"]))
+                runners.append(rec(r, rtxt, ok_r))
+            emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
+                                          "runnersUp": runners[:8], "flagged": flagged[:8]})
+            picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "why": why_text(r) + "; " + rtxt, "score": r["sc"]} for r, rtxt in chosen]
+            chosen = []
         for i, (r, rtxt) in enumerate(chosen):
             pr, a = r["pr"], r["a"]
             ticket_i = tickets[i] if i < len(tickets) else TICKET
@@ -1311,8 +1331,13 @@ def cmd_run(d, mode, now, force=False, snapshot=False):
         if flagged:
             parts.append("RugCheck flagged %s, so %s skipped." % (", ".join("%s (%s)" % (x["sym"], re.sub(r"^RugCheck( danger| warning)?: ", "", x["risk"])) for x in flagged[:3]),
                                                                   "it was" if len(flagged) == 1 else "they were"))
+        rs = [x for x in picks_done if x["grp"] == "recommend"]
         ps = [x for x in picks_done if x["grp"] == "pick"]
-        if ps:
+        if rs:
+            parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + "; nothing bought (recommend mode).")
+        elif recommend:
+            parts.append("No recommendation: no top coin had a clean safety report." if gated else "No recommendation: nothing passed the gates.")
+        elif ps:
             parts.append("Picked " + ", ".join("%s (score %.0f, %.2f)" % (x["sym"], x["score"], x.get("ticket", TICKET)) for x in ps) +
                          (", plus %d random coin%s from the same pool to compare." % (CONTROL_PICKS, "" if CONTROL_PICKS == 1 else "s") if any(x["grp"] == "rand" for x in picks_done) else "."))
         elif unchecked and not risk:
@@ -1418,14 +1443,15 @@ def main():
     ap.add_argument("--now", type=float, default=None)
     ap.add_argument("--force", action="store_true", help="manual run: pick even inside the 3-hour gap or the daily cap (the bankroll still caps it)")
     ap.add_argument("--snapshot", action="store_true", help="manual rescan: save a big-test snapshot of this scan even if the last one is recent")
+    ap.add_argument("--recommend", action="store_true", help="no buys: write the two best clean coins to memebot/recommend instead of opening positions")
     a = ap.parse_args()
     now = int(a.now if a.now else time.time() * 1000)
     if a.cmd == "mode":
-        cmd_mode(a.dir, now, a.force, a.snapshot)
+        cmd_mode(a.dir, now, a.force, a.snapshot, a.recommend)
     elif a.cmd == "gather":
         cmd_gather(a.dir, now)
     elif a.cmd == "shortlist":
-        cmd_shortlist(a.dir, now, a.force, a.snapshot)
+        cmd_shortlist(a.dir, now, a.force, a.snapshot, a.recommend)
     elif a.cmd == "learn":
         cmd_learn(a.dir)
     elif a.cmd == "analyze":
@@ -1435,7 +1461,7 @@ def main():
     elif a.cmd == "cash":
         cmd_cash(a.dir)
     else:
-        cmd_run(a.dir, a.mode, now, a.force, a.snapshot)
+        cmd_run(a.dir, a.mode, now, a.force, a.snapshot, a.recommend)
 
 
 if __name__ == "__main__":
