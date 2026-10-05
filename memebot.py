@@ -78,9 +78,10 @@ fields is skipped, "null" means unknown):
 """
 import argparse, glob, json, math, os, random, re, sys, time, datetime as dt
 
-RULE = "m8"
+RULE = "m9"
 BUDGET = 40.0            # the whole fake bankroll; bot positions are paid out of it and sales flow back into it
 TICKET = 20.0            # fake units per position -> BUDGET / TICKET = 2 coins held at once
+MIN_TICKET = 15.0        # below 40 free, the bot still buys two coins of free/2 each as long as each is at least this
 FEE_PCT, FEE_MIN = 0.005, 0.81
 PICKS_PER_RUN = 2        # the two best coins per pick run (as far as the bankroll allows)
 CONTROL_PICKS = 0        # random control coins per pick run (0 = off; they would spend fake money outside the budget)
@@ -93,7 +94,15 @@ GATE_MIN_LIQ = 20_000
 GATE_MC = (100_000, 50_000_000)
 GATE_MIN_VOL24 = 20_000
 GATE_MIN_AGE_H = 1.0
+GATE_CRASH = {"chgH1": -40.0, "chgH6": -50.0, "chgH24": -70.0}   # a coin that fell this much is a dump, not a dip
+GATE_SPIKE = {"chgH1": 150.0, "chgH6": 400.0}                     # and one that rose this much is the top
+GATE_MAX_VOLMC = 8.0     # 24h volume more than 8x the market cap is wash trading, not interest
+PAID_LISTS = ("boostTop", "boostLatest", "ads")                   # DexScreener lists that cost money; a coin seen only there is not "found"
 MIN_LP_LOCKED = 50.0
+MAX_TOP1 = 20.0          # holder checks (RugCheck): the biggest wallet, the top 10 together, insider wallets, holder count
+MAX_TOP10 = 50.0
+MAX_INSIDERS = 15
+MIN_HOLDERS = 300
 RISK_WARN_BLOCK = re.compile(r"holder|ownership|unlocked|creator|copycat|rug", re.I)
 SHORTLIST = 12           # best candidates that get a RugCheck report in a pick run
 RC_BIG = 120             # more coins (by score) that get a RugCheck report when a snapshot is due
@@ -107,8 +116,11 @@ EUR_CLIP = (-20.0, 60.0) # a 24h result is clipped to this range before learning
 DAY = 86_400_000
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 # prior weights (sign = direction). Used fully until coins are scored, then blended out.
-PRIOR = {"liqMc": 0.35, "volMc": 0.25, "buyShare": 0.2, "buyRatio1h": 0.2, "c6": -0.1, "c1": -0.1, "srcN": 0.15,
-         "soc.eng": 0.1, "x": 0.1, "rc.lp": 0.1, "rc.top10": -0.1,
+PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6": -0.2, "c1": -0.15, "c24": -0.1, "srcN": 0.25, "kwN": 0.1,
+         "boosts": -0.15, "nDex": 0.1, "soc.eng": 0.1, "x": 0.1, "web": 0.05,
+         # holders: many holders, spread out, growing; few insiders and whales
+         "rc.lp": 0.1, "rc.top10": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.15, "jup.holders": 0.1, "jup.holderChg24": 0.1,
+         "jup.top10Pct": -0.1, "jup.organic": 0.1, "jup.netBuyers24": 0.1,
          # v3 knowledge: news, narrative heat, distinct buyers (GeckoTerminal), CoinGecko trending, smart wallets
          "news.hits": 0.1, "news.narr": 0.1, "news.fresh": 0.05, "gt.buyerRatio": 0.1, "cg.trend": 0.05, "sw.avg": 0.15, "sw.n": 0.05,
          # v4 traders: GMGN smart money, top buyers, leaderboard wallets
@@ -183,6 +195,20 @@ def positions(d):
     return pos
 
 
+def tickets_for(free):
+    """How the free bankroll is split into buys: two of TICKET when 40 is free; below that still two of free/2 as long as each
+    is at least MIN_TICKET; otherwise one of what is left (if at least MIN_TICKET); otherwise nothing."""
+    free = math.floor(free * 100) / 100.0
+    if free >= 2 * TICKET:
+        return [TICKET, TICKET]
+    if free >= 2 * MIN_TICKET:
+        half = math.floor(free / 2 * 100) / 100.0
+        return [half, half]
+    if free >= MIN_TICKET:
+        return [free]
+    return []
+
+
 def bankroll(pos):
     """The fake bankroll: BUDGET minus every bot ticket ever paid, plus every bot sale that came back.
     Open positions are counted at their ticket (what was paid), not at their current value."""
@@ -191,8 +217,9 @@ def bankroll(pos):
     n_open = sum(1 for p in pos.values() if p.get("grp") in BOT_GROUPS and p["_left"] > 1e-9)
     deployed = sum((num(p.get("ticket")) or TICKET) * p["_left"] for p in pos.values() if p.get("grp") in BOT_GROUPS if p["_left"] > 1e-9)
     free = BUDGET - spent + back
+    tickets = tickets_for(free + 1e-9)
     return {"budget": BUDGET, "ticket": TICKET, "spent": round(spent, 2), "back": round(back, 2), "free": round(free, 2),
-            "open": n_open, "deployed": round(deployed, 2), "slots": max(0, int((free + 1e-9) // TICKET))}
+            "open": n_open, "deployed": round(deployed, 2), "slots": len(tickets), "tickets": tickets}
 
 
 def due_snaps(d, now):
@@ -223,7 +250,8 @@ def pick_room(state, pos, now, force=False):
     if not force and done >= DAILY_MAX:
         return 0, "already %d picks today, this run only checks exits" % done
     room = min(PICKS_PER_RUN, slots) if force else min(PICKS_PER_RUN, DAILY_MAX - done, slots)
-    return room, "%d picks today, %d free slot%s of %.0f" % (done, slots, "" if slots == 1 else "s", TICKET)
+    tk = bankroll(pos)["tickets"]
+    return room, "%d picks today, %d free slot%s of %s" % (done, slots, "" if slots == 1 else "s", "/".join("%.2f" % t for t in tk))
 
 
 def snap_due(d, now):
@@ -837,11 +865,19 @@ def gates(pr, basic, sym_mc):
     if not vol24 or vol24 < GATE_MIN_VOL24: fails.append("vol")
     s = str(pr.get("symbol") or "").upper()
     if mc and mc * 3 <= sym_mc.get(s, 0): fails.append("copy")
+    chg = {k: num(pr.get(k)) for k in ("chgH1", "chgH6", "chgH24")}
+    if any(chg[k] is not None and chg[k] <= v for k, v in GATE_CRASH.items()): fails.append("crash")
+    if any(chg[k] is not None and chg[k] >= v for k, v in GATE_SPIKE.items()): fails.append("spike")
+    if vol24 and mc and vol24 / mc > GATE_MAX_VOLMC: fails.append("wash")
+    tags = pr.get("tags") or []
+    if tags and all(t.startswith("list:") and t[5:] in PAID_LISTS for t in tags): fails.append("paid")
     return fails
 
 
 FAIL_TEXT = {"price": "no price", "curve": "still on its launch curve", "nodex": "no DEX pair data (Jupiter, GeckoTerminal or GMGN list only)", "honeypot": "flagged as a honeypot (GMGN)", "notmeme": "not a meme coin (stock, wrapped or staked asset, stablecoin)", "young": "under an hour old", "liq": "liquidity under $20k",
-             "mc": "market cap outside $100k-$50M", "vol": "under $20k traded in 24h", "copy": "copycat of a bigger coin with the same name"}
+             "mc": "market cap outside $100k-$50M", "vol": "under $20k traded in 24h", "copy": "copycat of a bigger coin with the same name",
+             "crash": "crashed (down 40%+ in 1h, 50%+ in 6h or 70%+ in 24h)", "spike": "spiked (up 150%+ in 1h or 400%+ in 6h)",
+             "wash": "24h volume over 8x the market cap (wash trading)", "paid": "seen only on paid DexScreener lists (boosts, ads)"}
 
 
 # ---------------------------------------------------------------- learning the weights
@@ -982,9 +1018,17 @@ def risk_view(r):
     lp = num(r.get("lpLocked"))
     if lp is None or lp < MIN_LP_LOCKED:
         return False, "RugCheck: only %s%% of liquidity locked" % ("?" if lp is None else round(lp))
-    top10 = num(r.get("top10Pct"))
+    top1, top10, ins, hold = num(r.get("top1Pct")), num(r.get("top10Pct")), num(r.get("insiders")), num(r.get("holders"))
+    if top1 is not None and top1 > MAX_TOP1:
+        return False, "RugCheck: one wallet holds %d%%" % round(top1)
+    if top10 is not None and top10 > MAX_TOP10:
+        return False, "RugCheck: top 10 wallets hold %d%%" % round(top10)
+    if ins is not None and ins > MAX_INSIDERS:
+        return False, "RugCheck: %d insider wallets" % ins
+    if hold is not None and hold < MIN_HOLDERS:
+        return False, "RugCheck: only %d holders" % hold
     return True, "RugCheck: no danger flags, %d%% of liquidity locked" % round(lp) + (", top 10 wallets hold %d%%" % round(top10) if top10 is not None else "") + \
-        (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "")
+        (", %d holders" % hold if hold is not None else "") + (", %d insiders" % ins if ins else "") + (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "")
 
 
 def risk_doc(r):
@@ -1182,6 +1226,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False):
     gated = [r for r in rows if r["ok"]]
     flagged, unchecked, chosen = [], 0, []
     day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
+    tickets = bankroll(pos)["tickets"]
     if mode == "pick":
         for r in gated:
             if r["a"] in held or r["a"] in recent:
@@ -1197,16 +1242,17 @@ def cmd_run(d, mode, now, force=False, snapshot=False):
                 chosen.append((r, rtxt))
                 if len(chosen) >= room:
                     break
-        for r, rtxt in chosen:
+        for i, (r, rtxt) in enumerate(chosen):
             pr, a = r["pr"], r["a"]
+            ticket_i = tickets[i] if i < len(tickets) else TICKET
             pid = "%s-p-%s-%s" % (day, slug(pr.get("symbol")), a[:6])
             emit("memepos", pid, {"grp": "pick", "addr": a, "sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48],
                                   "pair": pr.get("pairAddress"), "dex": pr.get("dexId"), "t": now, "px": r["basic"]["price"], "mc": r["basic"]["mc"],
                                   "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
                                   "why": why_text(r) + "; " + rtxt, "safety": rtxt, "x": x_link(pr), "xKnown": True, "f": pos_factors(r["f"]),
-                                  "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(a)), "ticket": TICKET, "rule": RULE,
+                                  "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(a)), "ticket": ticket_i, "rule": RULE,
                                   "weights": {k: v for k, v in sorted(w.items(), key=lambda kv: -abs(kv[1]))[:12]}})
-            picks_done.append({"grp": "pick", "sym": pr.get("symbol"), "name": pr.get("name"), "addr": a, "why": why_text(r) + "; " + rtxt, "score": r["sc"]})
+            picks_done.append({"grp": "pick", "sym": pr.get("symbol"), "name": pr.get("name"), "addr": a, "why": why_text(r) + "; " + rtxt, "score": r["sc"], "ticket": ticket_i})
             new_marks["px"][pid] = r["basic"]["price"]; new_marks["liq"][pid] = r["basic"]["liq"]
         # control group (off by default): random coins from the same gated pool, outside the bankroll
         rng = random.Random("%s-%s" % (RULE, run_id))
@@ -1267,7 +1313,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False):
                                                                   "it was" if len(flagged) == 1 else "they were"))
         ps = [x for x in picks_done if x["grp"] == "pick"]
         if ps:
-            parts.append("Picked " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in ps) + " at %.0f each" % TICKET +
+            parts.append("Picked " + ", ".join("%s (score %.0f, %.2f)" % (x["sym"], x["score"], x.get("ticket", TICKET)) for x in ps) +
                          (", plus %d random coin%s from the same pool to compare." % (CONTROL_PICKS, "" if CONTROL_PICKS == 1 else "s") if any(x["grp"] == "rand" for x in picks_done) else "."))
         elif unchecked and not risk:
             parts.append("No RugCheck reports came back, so no fake buys this time.")

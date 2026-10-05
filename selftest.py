@@ -94,8 +94,9 @@ class Mock:
                     if a in self.by_a and not self.by_a[a]["gone"]:
                         out.append(self.pair(self.by_a[a]))
                 return 200, out
-        if path.startswith("/api.rugcheck.xyz/v1/stats/new_tokens"):
-            return 200, [{"mint": c["a"]} for c in self.coins[150:200]]
+        if path.startswith("/api.rugcheck.xyz/v1/stats/"):
+            off = {"new_tokens": 150, "trending": 1000, "recent": 1030}.get(path.rsplit("/", 1)[1], 150)
+            return 200, [{"mint": c["a"]} for c in self.coins[off:off + 50]]
         m = re.match(r"^/api\.rugcheck\.xyz/v1/tokens/([^/]+)/report$", path)
         if m and m.group(1) in self.by_a:
             c = self.by_a[m.group(1)]
@@ -117,7 +118,7 @@ class Mock:
                           "is_currently_live": False, "complete": True, "created_timestamp": T0 - 5 * H, "twitter": "https://x.com/a", "website": None, "telegram": None}
                          for c in self.coins[base + off:base + off + 50]]
         if path.startswith("/lite-api.jup.ag/tokens/v2/"):
-            off = {"toptrending": 800, "toporganicscore": 850, "recent": 900}[path.split("/")[4]]
+            off = {"toptrending": 800, "toporganicscore": 850, "recent": 900, "toptraded": 950}[path.split("/")[4]]
             return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["name"], "usdPrice": c["px"], "mcap": c["mc"], "fdv": c["mc"], "liquidity": c["liq"], "holderCount": 900,
                           "organicScore": 55.5, "audit": {"topHoldersPercentage": 22.0}, "isVerified": False, "firstPool": {"createdAt": "2025-03-01T00:00:00Z"},
                           "stats1h": {"priceChange": 1.0, "numBuys": 10, "numSells": 5, "numNetBuyers": 3}, "stats6h": {"priceChange": 2.0},

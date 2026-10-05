@@ -40,7 +40,10 @@ GM = "https://gmgn.ai/defi/quotation/v1"
 LC = "https://lunarcrush.com/api4/public"
 KEYWORDS = """dog cat pepe frog elon trump musk ai agent moon inu wif bonk chad wojak doge shib baby meme giga sigma based degen ape monkey
 bear bull penguin pengu hat rocket lambo fart poop gm wen ser anon pnut squirrel goat duck bird fish whale shark cow pig chill guy girl
-king queen god alien ufo mars pixel retro game punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot""".split()
+king queen god alien ufo mars pixel retro game punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot
+cult coin shiba floki wojak mfer neko kitty puppy hamster capybara raccoon sloth otter seal llama donkey horse unicorn dragon wizard knight
+robot cyber matrix quantum nuke bomb rocketman banana cookie pizza taco burger beer coffee tea sushi noodle hotdog candy chocolate bacon
+mommy daddy uncle grandma karen chad stacy giga gm bro bruh lol lmao based cringe ratio cope seethe vibe dank yolo hodl wagmi ngmi""".split()
 NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb")
@@ -228,11 +231,15 @@ def ds_tokens(http, d, addrs, start=0):
 
 
 # ---------------------------------------------------------------- RugCheck
-def rc_new(http):
-    data = http.get(RC + "/stats/new_tokens")
+def rc_list(http, what):
+    data = http.get(RC + "/stats/" + what)
     addrs = [a for a in (addr_of(it.get("mint")) for it in (data if isinstance(data, list) else []) if isinstance(it, dict)) if a]
-    http.log("  rugcheck new tokens %d" % len(addrs))
+    http.log("  rugcheck %s %d" % (what, len(addrs)))
     return addrs
+
+
+def rc_new(http):
+    return rc_list(http, "new_tokens")
 
 
 def rc_row(mint, rep):
@@ -354,7 +361,7 @@ def pf_coins(http, d, light=False):
 
 def jup_tokens(http, d):
     total = 0
-    for name, path in (("trending", "/toptrending/24h"), ("organic", "/toporganicscore/24h"), ("recent", "/recent")):
+    for name, path in (("trending", "/toptrending/24h"), ("trending1h", "/toptrending/1h"), ("traded", "/toptraded/24h"), ("organic", "/toporganicscore/24h"), ("recent", "/recent")):
         data = http.get(JUP + path)
         rows = []
         for t in data if isinstance(data, list) else []:
@@ -474,9 +481,11 @@ def cmd_sources(http, d, light=False):
     http.log("sources (%s):" % ("light" if light else "full"))
     lists = ds_lists(http)
     lists["rcNew"] = rc_new(http)
+    lists["rcTrending"] = rc_list(http, "trending")
+    lists["rcRecent"] = rc_list(http, "recent")
     write_json(d, "lists.json", lists)
-    ds_search(http, d, KEYWORDS[:35] if light else KEYWORDS)
-    gt_pools(http, d, pages=2 if light else 5)
+    ds_search(http, d, KEYWORDS[:60] if light else KEYWORDS)
+    gt_pools(http, d, pages=3 if light else 8)
     cg_trending(http, d)
     jup_tokens(http, d)
     news(http, d)

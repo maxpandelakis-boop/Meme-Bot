@@ -46,7 +46,9 @@ Everything lives in `./mb` (`--dir` changes it): the fetched source files, `pair
 
 price known · not on a launch curve (pump.fun, launchlab, …) · has a real DEX pair · not a GMGN honeypot · not a
 tokenized stock / wrapped asset / stablecoin · at least 1 hour old · liquidity ≥ $20k · market cap $100k–$50M ·
-≥ $20k traded in 24 h · not a copycat of a bigger coin with the same ticker.
+≥ $20k traded in 24 h · not a copycat of a bigger coin with the same ticker · not crashed (−40% in 1 h, −50% in 6 h or
+−70% in 24 h) · not spiked (+150% in 1 h or +400% in 6 h) · 24 h volume at most 8× the market cap · seen on at least one
+source that is not a paid DexScreener list.
 
 ### Score
 
@@ -61,14 +63,15 @@ what has been learned so far.
 ### Safety check before a buy
 
 A coin is only bought when its RugCheck report has no danger flag, no holder / ownership / creator / copycat / rug
-warning and at least 50% of the liquidity locked. No report means no buy.
+warning, at least 50% of the liquidity locked, no single wallet above 20%, the top 10 wallets below 50%, at most 15
+insider wallets and at least 300 holders. No report means no buy.
 
 ### Bankroll and sell rules
 
 | Rule | Value |
 |---|---|
 | Bankroll | 40 (fake), never more deployed than that |
-| Per position | 20, so at most 2 coins at once |
+| Per position | 20 when 40 is free; below that, two coins of half the free money (at least 15 each), else one |
 | Fees (simulated) | 0.5%, minimum 0.81 per trade |
 | Take profit | sell half at 2×, sell the rest if it falls back to entry |
 | Stop loss | sell everything at −50% |
