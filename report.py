@@ -503,14 +503,21 @@ def tile(label, value, sub="", lead=False, delta=None):
     return '<div class="tile%s"><div class="label">%s</div><div class="value">%s%s</div>%s</div>' % (" lead" if lead else "", E(label), E(value), d, ('<div class="sub">%s</div>' % E(sub)) if sub else "")
 
 
+def coin_links(a, pair=None, x=None):
+    """(label, url) for the chart, safety and trading sites that take a Solana mint address in the URL."""
+    a = str(a or "")
+    out = [("DexScreener", "https://dexscreener.com/solana/%s" % (pair or a)), ("RugCheck", "https://rugcheck.xyz/tokens/%s" % a),
+           ("Jupiter", "https://jup.ag/swap/SOL-%s" % a), ("GMGN", "https://gmgn.ai/sol/token/%s" % a),
+           ("Birdeye", "https://birdeye.so/token/%s?chain=solana" % a), ("Solscan", "https://solscan.io/token/%s" % a)]
+    if a.endswith("pump"):
+        out.append(("pump.fun", "https://pump.fun/coin/%s" % a))
+    if str(x or "").startswith("https://"):
+        out.append(("X", str(x)))
+    return out
+
+
 def links(p):
-    a, pair = p.get("addr"), p.get("pair")
-    out = ['<a href="https://dexscreener.com/solana/%s" target="_blank" rel="noopener">DexScreener</a>' % E(pair or a),
-           '<a href="https://rugcheck.xyz/tokens/%s" target="_blank" rel="noopener">RugCheck</a>' % E(a)]
-    x = str(p.get("x") or "")
-    if x.startswith("https://"):
-        out.append('<a href="%s" target="_blank" rel="noopener">X</a>' % E(x))
-    return '<div class="links">%s</div>' % "".join(out)
+    return '<div class="links">%s</div>' % "".join('<a href="%s" target="_blank" rel="noopener">%s</a>' % (E(u), E(n)) for n, u in coin_links(p.get("addr"), p.get("pair"), p.get("x")))
 
 
 def position_card(r, now):

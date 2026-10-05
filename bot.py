@@ -15,6 +15,9 @@ Usage:
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
   python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
   python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
+  python3 bot.py sync    [--remote URL] [--branch results]  push mb/report.html and the small db docs to a git branch (default:
+                                                            the "results" branch of this repository's origin), so the page and
+                                                            the picks can be read elsewhere; cycle/loop --push does it after each cycle
   python3 bot.py reset                                      wipe db/ (positions, history, learned weights) and start again with 40
 """
 import argparse, glob, json, os, shutil, subprocess, sys, time, datetime as dt
@@ -66,7 +69,7 @@ def chunk_addrs(g):
     return [a for a in out if a]
 
 
-def cycle(d, force=False, offline=False, mock="", now=None):
+def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results"):
     os.makedirs(d, exist_ok=True)
     mode = run(["memebot.py", "mode"] + (["--force"] if force else []), d, now)
     log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
@@ -107,7 +110,74 @@ def cycle(d, force=False, offline=False, mock="", now=None):
         print("  SELL %-10s %-6s %-14s %.0f%% at %.2fx -> %.2f back" % (e["sym"], e["grp"], e["why"], 100 * e["frac"], e["mult"], e["eur"]))
     if r["top5"]:
         print("  top 5 gated: " + ", ".join("%s %.0f" % (t["sym"], t["score"]) for t in r["top5"]))
+    if push:
+        try:
+            sync(d, remote, branch)
+        except SystemExit as e:   # a failed push must not stop the loop
+            log("sync failed: %s" % e)
     return r
+
+
+SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs travel; the big snapshots stay local
+*
+!.gitignore
+!report.html
+!db/
+!db/memepos/
+!db/memepos/**
+!db/memeexit/
+!db/memeexit/**
+!db/memecurve/
+!db/memecurve/**
+!db/memeruns/
+!db/memeruns/**
+!db/memeweights/
+!db/memeweights/**
+!db/memebot/
+!db/memebot/**
+"""
+
+
+def sync(d, remote=None, branch="results"):
+    """mb/ keeps its own small git repository (the bot's code repo ignores mb/). Each sync commits report.html and the small
+    docs and pushes them to <remote> on <branch>; the default remote is this code repository's origin."""
+    mb = os.path.abspath(d)
+    os.makedirs(mb, exist_ok=True)
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+
+    def git(*a, check=False):
+        p = subprocess.run(["git", "-C", mb] + list(a), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+        if check and p.returncode != 0:
+            raise SystemExit("git %s failed: %s" % (a[0], (p.stderr or p.stdout).strip()[-800:]))
+        return p
+
+    if not os.path.isdir(os.path.join(mb, ".git")):
+        git("init", "-q", check=True)
+        git("symbolic-ref", "HEAD", "refs/heads/" + branch, check=True)
+    if not remote:
+        p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        remote = p.stdout.strip()
+        if p.returncode != 0 or not remote:
+            raise SystemExit("no --remote given and this folder has no git origin to reuse")
+    if git("remote", "get-url", "origin").returncode != 0:
+        git("remote", "add", "origin", remote, check=True)
+    else:
+        git("remote", "set-url", "origin", remote, check=True)
+    with open(os.path.join(mb, ".gitignore"), "w", encoding="utf-8") as f:
+        f.write(SYNC_IGNORE)
+    git("add", "-A", check=True)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    c = git("-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "commit", "-q", "-m", "results " + stamp)
+    changed = c.returncode == 0
+    p = git("push", "-q", "-u", "origin", "HEAD:" + branch)
+    if p.returncode != 0:
+        # another machine pushed to the same branch: take the remote history and put this state on top of it
+        git("fetch", "-q", "origin", branch)
+        git("-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "merge", "-q", "-s", "ours", "--allow-unrelated-histories", "-m", "merge results", "FETCH_HEAD")
+        git("push", "-q", "-u", "origin", "HEAD:" + branch, check=True)
+    head = git("rev-parse", "--short", "HEAD").stdout.strip()
+    log("sync: %s -> %s %s (%s)" % ("new commit" if changed else "nothing new", remote, branch, head))
+    return head
 
 
 def status(d):
@@ -145,7 +215,10 @@ def status(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report"])
+    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync"])
+    ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
+    ap.add_argument("--remote", default=None, help="git URL for sync/--push (default: this repository's origin)")
+    ap.add_argument("--branch", default="results", help="branch for sync/--push")
     ap.add_argument("--dir", default="mb")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--offline", action="store_true")
@@ -163,12 +236,14 @@ def main():
         shutil.rmtree(os.path.join(a.dir, "db"), ignore_errors=True)
         shutil.rmtree(os.path.join(a.dir, "out"), ignore_errors=True)
         print("db/ wiped: fresh bankroll")
+    elif a.cmd == "sync":
+        print(sync(a.dir, a.remote, a.branch))
     elif a.cmd == "cycle":
-        cycle(a.dir, a.force, a.offline, a.mock, a.now)
+        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch)
     else:
         while True:
             try:
-                cycle(a.dir, a.force, a.offline, a.mock)
+                cycle(a.dir, a.force, a.offline, a.mock, push=a.push, remote=a.remote, branch=a.branch)
             except SystemExit as e:
                 log("cycle failed: %s" % e)
             log("next cycle in %.0f minutes" % a.every)

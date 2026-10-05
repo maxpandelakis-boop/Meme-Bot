@@ -15,6 +15,7 @@ python3 bot.py cycle                # one real cycle: fetch ~1000 coins, score, 
 python3 bot.py status               # bankroll, open positions, closed trades
 python3 bot.py report               # render mb/report.html, the analysis page
 python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to stop)
+python3 bot.py loop --every 30 --push   # the same, and push the results to the repository's results branch after each cycle
 python3 bot.py cycle --force        # pick now, ignoring the 3-hour gap and the daily cap (the bankroll still caps it)
 python3 bot.py reset                # wipe the history and start again with 40
 ```
@@ -84,6 +85,14 @@ bot's reasons, the closed trades with their result, the 24-hour big test per sca
 the factor weights in use with a glossary, the top candidates of the last full scan and why they were not bought, and the
 run log. Light and dark theme, phone-friendly, times in Europe/Berlin. To read it on a phone, serve the folder from the
 machine that runs the bot (`cd mb && python3 -m http.server 8000`) and open `http://<that machine>:8000/report.html`.
+
+## Sending the results somewhere else
+
+`python3 bot.py loop --every 30 --push` pushes `mb/report.html` and the small result docs (positions, exits, equity curve,
+run log, weights, state) after every cycle to the `results` branch of this repository (the big scan snapshots stay local).
+`python3 bot.py sync` does the same once. The `mb/` folder keeps its own small git repository for that, so the code checkout is
+never touched. Anyone with access to the repository can then read the page from that branch, and a Claude session can fetch it
+to show the picks, the charts and the links in chat.
 
 ## Files
 
