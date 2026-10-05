@@ -8,11 +8,13 @@ A cycle:
   4. memebot.py shortlist RugCheck reports (and GMGN top buyers) for the best candidates
   5. memebot.py run       exits on the open positions, then the 2 best clean coins at 20 each out of the 40 bankroll
   6. apply out/*.json into db/ (positions, exits, snapshots, learned weights, state)
+  7. report.py        renders mb/report.html, the analysis page (open it in a browser)
 
 Usage:
   python3 bot.py cycle   [--dir mb] [--force] [--offline]   one cycle (--force: pick now even inside the 3h gap; --offline: reuse the files in --dir)
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
   python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
+  python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
   python3 bot.py reset                                      wipe db/ (positions, history, learned weights) and start again with 40
 """
 import argparse, glob, json, os, shutil, subprocess, sys, time, datetime as dt
@@ -90,6 +92,11 @@ def cycle(d, force=False, offline=False, mock="", now=None):
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + (["--force"] if force else []), d, now)
     n = apply_out(d)
     log("saved %d docs" % n)
+    try:
+        import report as R
+        log("report: %s" % R.build(d, now=now))
+    except Exception as e:   # the page must never break a cycle
+        log("report failed: %s" % e)
     print(r["note"])
     for p in r["picks"]:
         print("  BUY  %-10s %-6s score %5.1f  %s" % (p["sym"], p["grp"], p["score"], p.get("addr")))
@@ -137,7 +144,7 @@ def status(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset"])
+    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report"])
     ap.add_argument("--dir", default="mb")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--offline", action="store_true")
@@ -147,6 +154,10 @@ def main():
     a = ap.parse_args()
     if a.cmd == "status":
         status(a.dir)
+        print("page: %s" % os.path.abspath(os.path.join(a.dir, "report.html")))
+    elif a.cmd == "report":
+        import report as R
+        print(R.build(a.dir, now=a.now))
     elif a.cmd == "reset":
         shutil.rmtree(os.path.join(a.dir, "db"), ignore_errors=True)
         shutil.rmtree(os.path.join(a.dir, "out"), ignore_errors=True)

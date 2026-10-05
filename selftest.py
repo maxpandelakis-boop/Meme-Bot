@@ -238,6 +238,20 @@ def main():
     print(st.stdout.rstrip())
     check(st.returncode == 0 and "bankroll" in st.stdout, "status prints")
 
+    print("== report page")
+    page = open(os.path.join(d, "report.html")).read()
+    check(len(page) > 20000 and "<title>" in page, "report.html written by the cycle (%d bytes)" % len(page))
+    check(all(p["sym"] in page for p in picks) and "Closed trades" in page and "Big test" in page, "page names the bought coins and the results")
+    check(("%.2f" % c["free"]) in page, "page shows the bankroll (%.2f)" % c["free"])
+    check("<svg" in page and "data-pts" in page and "Factor weights" in page, "equity curve, tooltips and weights rendered")
+    empty = tempfile.mkdtemp(prefix="memebot-empty-")
+    r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", empty], capture_output=True, text=True)
+    check(r.returncode == 0 and "No open positions" in open(os.path.join(empty, "report.html")).read(), "page renders for an empty db")
+    shutil.rmtree(empty, ignore_errors=True)
+    keep = os.environ.get("MEMEBOT_KEEP")
+    if keep:
+        shutil.rmtree(keep, ignore_errors=True); shutil.copytree(os.path.join(d, "db"), os.path.join(keep, "db")); print("kept db in " + keep)
+
     shutil.rmtree(d, ignore_errors=True)
     srv.shutdown()
     print("\n%d checks failed" % len(fails) if fails else "\nALL PASS")
