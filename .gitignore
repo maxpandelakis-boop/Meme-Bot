@@ -1,0 +1,17 @@
+# written by bot.py sync: only the page and the small docs travel; the big snapshots stay local
+*
+!.gitignore
+!report.html
+!db/
+!db/memepos/
+!db/memepos/**
+!db/memeexit/
+!db/memeexit/**
+!db/memecurve/
+!db/memecurve/**
+!db/memeruns/
+!db/memeruns/**
+!db/memeweights/
+!db/memeweights/**
+!db/memebot/
+!db/memebot/**
