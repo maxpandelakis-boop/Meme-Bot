@@ -12,6 +12,7 @@ A cycle:
 
 Usage:
   python3 bot.py cycle   [--dir mb] [--force] [--offline]   one cycle (--force: pick now even inside the 3h gap; --offline: reuse the files in --dir)
+  python3 bot.py cycle --rescan                             full scan of the whole universe now, saved for the big test (buys only if a slot is free)
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
   python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
   python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
@@ -69,9 +70,10 @@ def chunk_addrs(g):
     return [a for a in out if a]
 
 
-def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results"):
+def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False):
     os.makedirs(d, exist_ok=True)
-    mode = run(["memebot.py", "mode"] + (["--force"] if force else []), d, now)
+    extra = (["--force"] if force else []) + (["--snapshot"] if rescan else [])
+    mode = run(["memebot.py", "mode"] + extra, d, now)
     log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
     fetch = lambda args, expect_json=True: run(["fetch.py"] + args + (["--mock", mock] if mock else []), d, expect_json=expect_json)
     if not offline:
@@ -89,11 +91,11 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
         g = run(["memebot.py", "gather"], d, now)
     log("gather: %d coins (%d with full DEX data), coverage %.0f%%, lists %s" % (g["coins"], g["fullData"], 100 * g["coverage"], g["lists"]))
     if mode["pick"] or mode["bigTestSaveDue"]:
-        s = run(["memebot.py", "shortlist"] + (["--force"] if force else []), d, now)
+        s = run(["memebot.py", "shortlist"] + extra, d, now)
         log("shortlist: %d of %d gated coins get a RugCheck report; best: %s" % (s["n"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
         if s["shortlist"] and not offline:
             fetch(["risk", "--addrs", ",".join(s["shortlist"])])
-    r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + (["--force"] if force else []), d, now)
+    r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     n = apply_out(d)
     log("saved %d docs" % n)
     try:
@@ -217,6 +219,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync"])
     ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
+    ap.add_argument("--rescan", action="store_true", help="cycle: scan the whole universe now and save it for the big test, even if the last full scan is recent")
     ap.add_argument("--remote", default=None, help="git URL for sync/--push (default: this repository's origin)")
     ap.add_argument("--branch", default="results", help="branch for sync/--push")
     ap.add_argument("--dir", default="mb")
@@ -239,7 +242,7 @@ def main():
     elif a.cmd == "sync":
         print(sync(a.dir, a.remote, a.branch))
     elif a.cmd == "cycle":
-        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch)
+        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch, a.rescan)
     else:
         while True:
             try:

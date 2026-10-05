@@ -162,8 +162,8 @@ def main():
         if not ok:
             fails.append(what)
 
-    def cycle(now, force=False):
-        cmd = [PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(now)] + (["--force"] if force else [])
+    def cycle(now, force=False, rescan=False):
+        cmd = [PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(now)] + (["--force"] if force else []) + (["--rescan"] if rescan else [])
         p = subprocess.run(cmd, capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
         print(p.stdout.rstrip())
         if p.returncode != 0:
@@ -221,6 +221,12 @@ def main():
     check(any(e["why"] == "stop" for e in ex.values()), "coin B hit the -50% stop")
     c = cash()
     check(c["free"] < 20, "bankroll after the third buy: free %.2f" % c["free"])
+
+    print("== rescan (+5h): a forced full scan is saved although the last snapshot is recent, and nothing is bought")
+    n_snap = len(docs("memesnap"))
+    out, err = cycle(T0 + 5 * H, rescan=True)
+    check(len(docs("memesnap")) > n_snap and '"scan": "full"' in err, "rescan saved a new snapshot")
+    check(len(docs("memepos")) == 3, "rescan did not buy (no free slot)")
 
     print("== cycle 4 (+25h): big test scores yesterday's snapshot and learns weights")
     out, err = cycle(T0 + 25 * H)

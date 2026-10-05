@@ -231,11 +231,11 @@ def snap_due(d, now):
     return now - last >= SNAP_GAP_H * 3_600_000
 
 
-def cmd_mode(d, now, force=False):
+def cmd_mode(d, now, force=False, snapshot=False):
     pos = positions(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
     room, why = pick_room(state, pos, now, force)
-    sd = snap_due(d, now)
+    sd = snap_due(d, now) or snapshot
     due = due_snaps(d, now)
     print(json.dumps({"pick": room > 0, "room": room, "why": why, "scan": "full" if sd else ("light" if room > 0 else "none"), "bigTestSaveDue": sd,
                       "bigTestDue": len(due), "bigTestDueCoins": sum(len(sn["coins"]) for sn in due.values()),
@@ -996,7 +996,7 @@ def risk_doc(r):
     return doc
 
 
-def cmd_shortlist(d, now, force=False):
+def cmd_shortlist(d, now, force=False, snapshot=False):
     pos, pairs = positions(d), load_pairs(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
     room = pick_room(state, pos, now, force)[0]
@@ -1004,7 +1004,7 @@ def cmd_shortlist(d, now, force=False):
     rows, _, held, recent, risk = scan(d, pos, pairs, now, w)
     cands = [r for r in rows if r["ok"] and r["a"] not in held and r["a"] not in recent and r["a"] not in risk]
     short = cands[:SHORTLIST] if room > 0 else []
-    more = cands[len(short):len(short) + RC_BIG] if snap_due(d, now) else []
+    more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
     print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short],
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
@@ -1108,7 +1108,7 @@ def curve_point(pos_docs, exit_docs, px, t):
 
 
 # ---------------------------------------------------------------- the run
-def cmd_run(d, mode, now, force=False):
+def cmd_run(d, mode, now, force=False, snapshot=False):
     out_dir = os.path.join(d, "out")
     os.makedirs(out_dir, exist_ok=True)
     for old in glob.glob(os.path.join(out_dir, "*.json")):
@@ -1228,7 +1228,7 @@ def cmd_run(d, mode, now, force=False):
 
     # ---------- big test: snapshot every scanned coin (in chunks), price older snapshots again after 24 hours ----------
     snap_n, big, scored_n = 0, [], 0
-    if rows and snap_due(d, now):
+    if rows and (snap_due(d, now) or snapshot):
         coins = [snap_coin(r, risk.get(r["a"])) for r in rows if r["basic"]["price"]]
         for k in range(0, len(coins), SNAP_CHUNK):
             part = coins[k:k + SNAP_CHUNK]
@@ -1371,14 +1371,15 @@ def main():
     ap.add_argument("--mode", choices=["pick", "check"], default="check")
     ap.add_argument("--now", type=float, default=None)
     ap.add_argument("--force", action="store_true", help="manual run: pick even inside the 3-hour gap or the daily cap (the bankroll still caps it)")
+    ap.add_argument("--snapshot", action="store_true", help="manual rescan: save a big-test snapshot of this scan even if the last one is recent")
     a = ap.parse_args()
     now = int(a.now if a.now else time.time() * 1000)
     if a.cmd == "mode":
-        cmd_mode(a.dir, now, a.force)
+        cmd_mode(a.dir, now, a.force, a.snapshot)
     elif a.cmd == "gather":
         cmd_gather(a.dir, now)
     elif a.cmd == "shortlist":
-        cmd_shortlist(a.dir, now, a.force)
+        cmd_shortlist(a.dir, now, a.force, a.snapshot)
     elif a.cmd == "learn":
         cmd_learn(a.dir)
     elif a.cmd == "analyze":
@@ -1388,7 +1389,7 @@ def main():
     elif a.cmd == "cash":
         cmd_cash(a.dir)
     else:
-        cmd_run(a.dir, a.mode, now, a.force)
+        cmd_run(a.dir, a.mode, now, a.force, a.snapshot)
 
 
 if __name__ == "__main__":
