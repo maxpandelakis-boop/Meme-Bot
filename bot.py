@@ -16,6 +16,7 @@ Usage:
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
   python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
   python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
+  python3 bot.py sell --all | --coin SYMBOL [--push]        close positions by hand at the last known price; the money returns to the bankroll
   python3 bot.py sync    [--remote URL] [--branch results]  push mb/report.html and the small db docs to a git branch (default:
                                                             the "results" branch of this repository's origin), so the page and
                                                             the picks can be read elsewhere; cycle/loop --push does it after each cycle
@@ -182,6 +183,43 @@ def sync(d, remote=None, branch="results"):
     return head
 
 
+def sell(d, which, now=None):
+    """Close open positions by hand at their last known price (fake money): --all or a coin symbol. The money returns to the
+    bankroll, so the next pick run can buy again."""
+    sys.path.insert(0, HERE)
+    import memebot as M
+    now = int(now or time.time() * 1000)
+    pos = M.positions(d)
+    marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}
+    done = []
+    for pid, p in sorted(pos.items()):
+        if p["_left"] <= 1e-9:
+            continue
+        if which != "all" and str(p.get("sym", "")).lower() != which.lower():
+            continue
+        ticket, entry = M.num(p.get("ticket")) or M.TICKET, M.num(p.get("px"))
+        last = M.num((marks.get("px") or {}).get(pid))
+        if not last or not entry:
+            log("%s: no price known yet, run a cycle first" % p.get("sym"))
+            continue
+        gross = (ticket - M.fee(ticket)) * p["_left"] * last / entry
+        cash = max(0.0, gross - M.fee(gross))
+        doc = {"pos": pid, "t": now, "px": last, "frac": round(p["_left"], 6), "why": "manual", "eur": round(cash, 2), "grp": p.get("grp"), "rule": M.RULE}
+        os.makedirs(os.path.join(d, "db", "memeexit"), exist_ok=True)
+        with open(os.path.join(d, "db", "memeexit", "%s-%d.json" % (pid, len(p["_exits"]) + 1)), "w", encoding="utf-8") as f:
+            json.dump(doc, f, separators=(",", ":"))
+        done.append((p.get("sym"), last / entry, cash))
+        print("  SOLD %-10s %.0f%% at %.2fx -> %.2f back" % (p.get("sym"), 100 * p["_left"], last / entry, cash))
+    if not done:
+        print("nothing sold" + ("" if which == "all" else " (no open position called %s)" % which))
+    try:
+        import report as R
+        R.build(d)
+    except Exception as e:
+        log("report failed: %s" % e)
+    return done
+
+
 def status(d):
     sys.path.insert(0, HERE)
     import memebot as M
@@ -217,7 +255,9 @@ def status(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync"])
+    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync", "sell"])
+    ap.add_argument("--all", action="store_true", help="sell: close every open position")
+    ap.add_argument("--coin", default="", help="sell: the symbol of the one position to close")
     ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
     ap.add_argument("--rescan", action="store_true", help="cycle: scan the whole universe now and save it for the big test, even if the last full scan is recent")
     ap.add_argument("--remote", default=None, help="git URL for sync/--push (default: this repository's origin)")
@@ -241,6 +281,12 @@ def main():
         print("db/ wiped: fresh bankroll")
     elif a.cmd == "sync":
         print(sync(a.dir, a.remote, a.branch))
+    elif a.cmd == "sell":
+        if not a.all and not a.coin:
+            raise SystemExit("say what to sell: --all or --coin SYMBOL")
+        sell(a.dir, "all" if a.all else a.coin, a.now)
+        if a.push:
+            sync(a.dir, a.remote, a.branch)
     elif a.cmd == "cycle":
         cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch, a.rescan)
     else:

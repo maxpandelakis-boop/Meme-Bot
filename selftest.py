@@ -228,6 +228,14 @@ def main():
     check(len(docs("memesnap")) > n_snap and '"scan": "full"' in err, "rescan saved a new snapshot")
     check(len(docs("memepos")) == 3, "rescan did not buy (no free slot)")
 
+    print("== sell by hand (+6h): closes the open positions at the last price, money comes back, next forced cycle buys again")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "sell", "--dir", d, "--all", "--now", str(T0 + 6 * H)], capture_output=True, text=True)
+    check(r.returncode == 0 and r.stdout.count("SOLD") == 2, "sell --all closed 2 positions: %s" % r.stdout.strip().replace("\n", " | ")[:120])
+    c = cash()
+    check(c["open"] == 0 and c["slots"] >= 1, "bankroll after the manual sale: free %.2f, %d slots" % (c["free"], c["slots"]))
+    out, err = cycle(T0 + 6 * H + 60000, force=True)
+    check(len([p for p in docs("memepos").values()]) >= 4, "a forced cycle after the sale bought again (%d positions)" % len(docs("memepos")))
+
     print("== cycle 4 (+25h): big test scores yesterday's snapshot and learns weights")
     out, err = cycle(T0 + 25 * H)
     res = docs("memesnapres")
@@ -241,9 +249,9 @@ def main():
     open_left = [p for p in pos.values()]
     sys.path.insert(0, HERE); import memebot as M
     P = M.positions(d)
-    check(all(p["_left"] <= 1e-9 for p in P.values() if p["t"] <= T0 + 4 * H), "every old position is closed (%s)" % sorted(e["why"] for e in ex.values()))
+    check(all(p["_left"] <= 1e-9 for p in P.values() if p["t"] <= T0 + 6 * H), "every old position is closed (%s)" % sorted(e["why"] for e in ex.values()))
     c = cash()
-    check(c["free"] > 20 and c["open"] <= 2, "bankroll recovered: free %.2f, %d open" % (c["free"], c["open"]))
+    check(c["free"] + c["deployed"] > 20 and c["open"] <= 2, "bankroll recovered: free %.2f, %d open" % (c["free"], c["open"]))
     tot = sum(1 for p in P.values() if p["grp"] == "pick")
     check(all(p["grp"] == "pick" for p in P.values()), "no control-group positions were opened (%d bot picks)" % tot)
 

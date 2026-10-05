@@ -18,6 +18,7 @@ python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to s
 python3 bot.py loop --every 30 --push   # the same, and push the results to the repository's results branch after each cycle
 python3 bot.py cycle --force        # pick now, ignoring the 3-hour gap and the daily cap (the bankroll still caps it)
 python3 bot.py cycle --rescan       # scan the whole universe now and save it for the big test (buys only if a slot is free)
+python3 bot.py sell --all           # close every open position by hand at the last price (or --coin SYMBOL); the money returns to the bankroll
 python3 bot.py reset                # wipe the history and start again with 40
 ```
 
