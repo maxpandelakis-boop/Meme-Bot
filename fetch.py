@@ -55,6 +55,7 @@ class Http:
 
     def __init__(self, mock=None, pause=0.25, log=None):
         self.mock, self.pause, self.dead, self.fails, self.n = (mock or "").rstrip("/"), pause, set(), {}, 0
+        self.cooldown, self.limited = {}, 0
         self.log = log or (lambda s: print(s, file=sys.stderr, flush=True))
 
     def url(self, u):
@@ -63,7 +64,7 @@ class Http:
         p = urllib.parse.urlsplit(u)
         return "%s/%s%s%s" % (self.mock, p.netloc, p.path, ("?" + p.query) if p.query else "")
 
-    def get(self, u, kind="json", headers=None, tries=3):
+    def get(self, u, kind="json", headers=None, tries=4):
         host = urllib.parse.urlsplit(u).netloc
         if host in self.dead:
             return None
@@ -71,6 +72,8 @@ class Http:
         hdr.update(headers or {})
         wait = 1.0
         for i in range(tries):
+            if self.cooldown.get(host, 0) > time.time():      # a rate limit hit a moment ago: wait it out instead of hammering
+                time.sleep(max(0.0, self.cooldown[host] - time.time()))
             try:
                 self.n += 1
                 with urllib.request.urlopen(urllib.request.Request(self.url(u), headers=hdr), timeout=TIMEOUT) as r:
@@ -85,7 +88,11 @@ class Http:
                 return raw.decode("utf-8", "replace")
             except urllib.error.HTTPError as e:
                 if e.code == 429 and i + 1 < tries:
-                    time.sleep(wait); wait *= 3
+                    pause = (10, 30, 60)[min(i, 2)]               # DexScreener's limits are per minute: back off for real
+                    self.log("  ! 429 rate limited by %s, waiting %ds" % (host, pause))
+                    self.cooldown[host] = time.time() + pause
+                    self.limited += 1
+                    time.sleep(pause)
                     continue
                 self.log("  ! %s %s" % (e.code, u[:110]))
                 if e.code in (401, 403, 404, 410, 451):
@@ -494,7 +501,7 @@ def cmd_sources(http, d, light=False):
         pf_coins(http, d)
         gm_rank(http, d)
         gm_wallets(http, d)
-    http.log("  %d requests, hosts skipped: %s" % (http.n, ", ".join(sorted(http.dead)) or "none"))
+    http.log("  %d requests, %d rate-limit waits, hosts skipped: %s" % (http.n, http.limited, ", ".join(sorted(http.dead)) or "none"))
 
 
 def cmd_tokens(http, d, addrs):
@@ -528,7 +535,7 @@ def main():
     ap.add_argument("--addrs", default="")
     ap.add_argument("--from-gather", default="", help="a gather/shortlist JSON file whose chunks/shortlist give the addresses")
     ap.add_argument("--mock", default=os.environ.get("MEMEBOT_MOCK", ""))
-    ap.add_argument("--pause", type=float, default=float(os.environ.get("MEMEBOT_PAUSE", "0.25")))
+    ap.add_argument("--pause", type=float, default=float(os.environ.get("MEMEBOT_PAUSE", "0.3")))
     a = ap.parse_args()
     http = Http(a.mock, a.pause)
     os.makedirs(a.dir, exist_ok=True)

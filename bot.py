@@ -107,6 +107,8 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
         log("report failed: %s" % e)
     print(r["note"])
     for p in r["picks"]:
+        if p["grp"] == "skipped":
+            print("  SKIPPED  " + p["why"]); continue
         print("  %s %-10s %-6s score %5.1f  %s" % ("RECOMMEND" if p["grp"] == "recommend" else "BUY ", p["sym"], p["grp"], p["score"], p.get("addr")))
         if p.get("why"):
             print("       " + p["why"])

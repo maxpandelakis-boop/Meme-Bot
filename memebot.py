@@ -135,6 +135,7 @@ NEWS_STOP = set("""the a an and or of to in on for with from by at is are was be
 memecoins crypto cryptocurrency solana sol pump fun pumpfun dex trading trade price market cap mcap launch launches launched inu dog cat ai
 official community cto up down today news live here now just one all you your our we they what why how when who will can get got""".split())
 SW_MIN_COINS = 2         # a wallet needs this many scored coins before its record counts
+MIN_SCAN_FOR_REC = 300   # recommend mode: a scan smaller than this is a broken fetch, not a universe
 BOT_GROUPS = ("pick", "early")   # position groups paid out of the bankroll
 
 
@@ -1245,7 +1246,12 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 chosen.append((r, rtxt))
                 if len(chosen) >= room:
                     break
-        if recommend:
+        if recommend and len(rows) < MIN_SCAN_FOR_REC:
+            # a broken fetch (rate limit, outage) must not replace yesterday's recommendations with scraps
+            parts_extra = "Only %d coins came back from the sources (rate limit or outage), so the recommendations were left as they were." % len(rows)
+            picks_done.append({"grp": "skipped", "sym": "-", "score": 0, "why": parts_extra})
+            chosen = []
+        if recommend and chosen:
             # no positions: the two best clean coins and the runners-up go to memebot/recommend for the page
             def rec(r, rtxt, ok):
                 pr = r["pr"]
@@ -1261,6 +1267,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
                                           "runnersUp": runners[:8], "flagged": flagged[:8]})
             picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "why": why_text(r) + "; " + rtxt, "score": r["sc"]} for r, rtxt in chosen]
+            chosen = []
+        elif recommend:
             chosen = []
         for i, (r, rtxt) in enumerate(chosen):
             pr, a = r["pr"], r["a"]
@@ -1333,7 +1341,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                                                                   "it was" if len(flagged) == 1 else "they were"))
         rs = [x for x in picks_done if x["grp"] == "recommend"]
         ps = [x for x in picks_done if x["grp"] == "pick"]
-        if rs:
+        sk = [x for x in picks_done if x["grp"] == "skipped"]
+        if sk:
+            parts.append(sk[0]["why"])
+        elif rs:
             parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + "; nothing bought (recommend mode).")
         elif recommend:
             parts.append("No recommendation: no top coin had a clean safety report." if gated else "No recommendation: nothing passed the gates.")

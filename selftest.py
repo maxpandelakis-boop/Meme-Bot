@@ -72,6 +72,9 @@ class Mock:
     def handle(self, path, query):
         self.hits[path.split("/")[1]] = self.hits.get(path.split("/")[1], 0) + 1
         q = urllib.parse.parse_qs(query)
+        if "/__429" in path:
+            self.n429 = getattr(self, "n429", 0) + 1
+            return (429, {"err": "slow down"}) if self.n429 <= 2 else (200, {"ok": True})
         if path.startswith("/__mult"):
             c = self.by_a[q["a"][0]]; c["mult"] = float(q["m"][0]); c["gone"] = q.get("gone", ["0"])[0] == "1"
             return 200, {"ok": True}
@@ -185,6 +188,13 @@ def main():
     check(r.returncode == 0 and "Traceback" not in r.stderr, "fetch.py writes coin names with emoji under an ASCII locale")
     shutil.rmtree(enc_dir, ignore_errors=True)
 
+    print("== rate limit: a 429 is waited out, not given up on")
+    sys.path.insert(0, HERE); import fetch as F, time as T
+    F.time.sleep = lambda s: None                     # no real waiting in the test
+    h = F.Http(url, pause=0)
+    got = h.get("https://api.dexscreener.com/__429")
+    check(got == {"ok": True} and h.limited == 2 and "api.dexscreener.com" not in h.dead, "429 twice, then the answer (%s waits)" % h.limited)
+
     print("== cycle 1: first full scan, expect 2 buys of 20")
     out, err = cycle(T0)
     g = json.loads(subprocess.run([PY, os.path.join(HERE, "memebot.py"), "gather", "--dir", d, "--now", str(T0)], capture_output=True, text=True).stdout)
@@ -292,6 +302,16 @@ def main():
     check(not os.path.isdir(os.path.join(rd, "db", "memepos")), "recommend mode opened no position")
     page = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
     check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
+    old_rec = rec
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
+    same = lambda a, b: [c["addr"] for c in a.get("picks", [])] == [c["addr"] for c in b.get("picks", [])]
+    check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s)" % (r.stderr.strip().splitlines() or ["?"])[-1][:120])
+    import fetch as F2
+    F2.clear_sources(rd)                                   # nothing fetched at all -> the scan is tiny -> the old recommendations stay
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 2 * H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rec3 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
+    check(r.returncode == 0 and same(rec3, old_rec) and "SKIPPED" in r.stdout, "a broken (tiny) scan does not replace the recommendations (%s)" % ((r.stderr.strip().splitlines() or ["?"])[-1][:120] if r.returncode else r.stdout.strip().splitlines()[-1][:120]))
     shutil.rmtree(rd, ignore_errors=True)
 
     print("== sync: page and small docs to a results branch")
