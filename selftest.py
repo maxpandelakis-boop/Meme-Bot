@@ -244,6 +244,20 @@ def main():
     check(all(p["sym"] in page for p in picks) and "Closed trades" in page and "Big test" in page, "page names the bought coins and the results")
     check(("%.2f" % c["free"]) in page, "page shows the bankroll (%.2f)" % c["free"])
     check("<svg" in page and "data-pts" in page and "Factor weights" in page, "equity curve, tooltips and weights rendered")
+    check("liquidity ÷ market cap" in page and "price unchanged" in page and "sold at" in page and "sells" in page, "glossary, big-test baseline, sale multiples and sell levels on the page")
+    check(open(os.path.join(d, "report.html"), "rb").read().decode("utf-8") == page, "report.html is UTF-8")
+    r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", d, "--out", os.path.join(d, "r2.html")], capture_output=True, text=True, env=dict(os.environ, LC_ALL="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0"))
+    check(r.returncode == 0, "report renders under an ASCII locale")
+    bad = tempfile.mkdtemp(prefix="memebot-bad-")
+    shutil.copytree(os.path.join(d, "db"), os.path.join(bad, "db"))
+    import glob as G
+    f0 = sorted(G.glob(os.path.join(bad, "db", "memesnapres", "*.json")))[0]
+    doc = json.load(open(f0)); doc["coins"].append(None); doc["coins"][0]["rank"] = "7"; json.dump(doc, open(f0, "w"))
+    f1 = sorted(G.glob(os.path.join(bad, "db", "memeexit", "*.json")))[0]
+    doc = json.load(open(f1)); doc["why"] = None; json.dump(doc, open(f1, "w"))
+    r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", bad], capture_output=True, text=True)
+    check(r.returncode == 0 and "could not be rendered" not in open(os.path.join(bad, "report.html")).read(), "malformed docs (null coin, string rank, null exit reason) do not break the page")
+    shutil.rmtree(bad, ignore_errors=True)
     empty = tempfile.mkdtemp(prefix="memebot-empty-")
     r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", empty], capture_output=True, text=True)
     check(r.returncode == 0 and "No open positions" in open(os.path.join(empty, "report.html")).read(), "page renders for an empty db")

@@ -1244,7 +1244,7 @@ def cmd_run(d, mode, now, force=False):
         top = [r["eur"] for r in res if r.get("rank") and r["rank"] <= 10]
         emit("memesnapres", sid, {"t": now, "t0": num(sn.get("t")), "rule": sn.get("rule"), "n": len(res), "passN": len(p_ok), "passAvg": avg(p_ok),
                                   "failN": len(p_no), "failAvg": avg(p_no), "top10N": len(top), "top10Avg": avg(top), "coins": res})
-        big.append((len(res), avg(p_ok), len(p_ok), avg(p_no), len(top), avg(top)))
+        big.append((len(res), avg(p_ok), len(p_ok), avg(p_no), len(top), avg(top), len(p_no)))
         scored_n += len(res)
     if scored_n:
         # new results -> re-learn and save the weights the next runs will use
@@ -1290,7 +1290,7 @@ def cmd_run(d, mode, now, force=False):
         wavg = lambda i_n, i_a: (sum(b[i_a] * b[i_n] for b in big if b[i_a] is not None) / max(sum(b[i_n] for b in big if b[i_a] is not None), 1)) if any(b[i_a] is not None for b in big) else None
         n_all, n_ok, n_no, n_top = (sum(b[i] for b in big) for i in (0, 2, 0, 4))
         n_no = n_all - n_ok
-        a_ok, a_no, a_top = wavg(2, 1), wavg(0, 3), wavg(4, 5)
+        a_ok, a_no, a_top = wavg(2, 1), wavg(6, 3), wavg(4, 5)   # each average weighted by its own group's count per chunk
         parts.append("Big test: %d coins from yesterday's scan, 24 hours later: %s." % (n_all, "; ".join(x for x in [
             "the %d that passed the gates averaged %+.2f per 20" % (n_ok, a_ok) if n_ok and a_ok is not None else "",
             "the bot's top 10 averaged %+.2f" % a_top if a_top is not None else "",

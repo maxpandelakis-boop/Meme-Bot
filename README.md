@@ -13,6 +13,7 @@ Python 3.9+ and nothing else (standard library only).
 python3 selftest.py                 # proves the whole pipeline on a local mock of every API (~10 s)
 python3 bot.py cycle                # one real cycle: fetch ~1000 coins, score, pick, apply the sell rules
 python3 bot.py status               # bankroll, open positions, closed trades
+python3 bot.py report               # render mb/report.html, the analysis page
 python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to stop)
 python3 bot.py cycle --force        # pick now, ignoring the 3-hour gap and the daily cap (the bankroll still caps it)
 python3 bot.py reset                # wipe the history and start again with 40
@@ -75,6 +76,15 @@ warning and at least 50% of the liquidity locked. No report means no buy.
 
 Money from a sale returns to the bankroll and frees a slot for the next pick run.
 
+## The analysis page
+
+Every cycle ends by rendering `mb/report.html` (also `python3 bot.py report`). Open it in any browser; it is a plain file.
+It shows the bankroll and equity, the equity curve per run, the bought coins with their last price, sell levels and the
+bot's reasons, the closed trades with their result, the 24-hour big test per scan against the "price unchanged" baseline,
+the factor weights in use with a glossary, the top candidates of the last full scan and why they were not bought, and the
+run log. Light and dark theme, phone-friendly, times in Europe/Berlin. To read it on a phone, serve the folder from the
+machine that runs the bot (`cd mb && python3 -m http.server 8000`) and open `http://<that machine>:8000/report.html`.
+
 ## Files
 
 | File | Role |
@@ -82,6 +92,7 @@ Money from a sale returns to the bankroll and frees a slot for the next pick run
 | `bot.py` | the cycle (`cycle`, `loop`, `status`, `reset`) |
 | `fetch.py` | the sources: every API → the plain-text files the analyst reads |
 | `memebot.py` | the analyst: gates, factors, learned weights, picks, exits, big test |
+| `report.py` | the analysis page: renders `mb/report.html` from `db/` |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
 
 All source files are plain text, one coin per line, fields separated by `|` (formats in the `memebot.py` docstring), so
