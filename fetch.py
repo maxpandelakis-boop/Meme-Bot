@@ -139,13 +139,13 @@ def write_rows(d, sub, name, rows):
     if not rows:
         return 0
     os.makedirs(os.path.join(d, sub), exist_ok=True)
-    with open(os.path.join(d, sub, name), "w") as f:
+    with open(os.path.join(d, sub, name), "w", encoding="utf-8") as f:
         f.write("\n".join(rows) + "\n")
     return len(rows)
 
 
 def write_json(d, name, data):
-    with open(os.path.join(d, name), "w") as f:
+    with open(os.path.join(d, name), "w", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"))
 
 
@@ -505,7 +505,7 @@ def addrs_arg(a):
     if a.addrs:
         out += a.addrs.split(",")
     if a.from_gather:
-        g = json.load(open(a.from_gather))
+        g = json.load(open(a.from_gather, encoding="utf-8"))
         for ch in g.get("chunks") or g.get("shortlist") or []:
             out += ch.split(",") if isinstance(ch, str) else []
     return [x.strip() for x in out if addr_of(x.strip())]

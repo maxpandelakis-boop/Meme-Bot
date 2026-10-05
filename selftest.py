@@ -39,7 +39,7 @@ def mk_universe(n=1100, seed=7):
             risks.append({"name": "Low amount of LP Providers", "level": "danger", "score": 5000})
         elif r < 0.35:
             risks.append({"name": rng.choice(["Top 10 holders high ownership", "Mutable metadata", "Creator history of rugged tokens", "Low Liquidity"]), "level": "warn", "score": 1000})
-        coins.append({"a": a, "sym": sym, "name": w.title() + " Coin " + str(i), "px": 10 ** rng.uniform(-6, -1), "mc": mc, "liq": liq, "vol": vol,
+        coins.append({"a": a, "sym": sym, "name": w.title() + (" 🐕 Coin " if i % 3 == 0 else " Coin ") + str(i), "px": 10 ** rng.uniform(-6, -1), "mc": mc, "liq": liq, "vol": vol,
                       "age_h": age_h, "dex": dex, "b24": b24, "s24": s24, "b1": int(b24 / 24 * rng.uniform(0.5, 2)), "s1": int(s24 / 24 * rng.uniform(0.5, 2)),
                       "chg": [rng.uniform(-30, 60) for _ in range(4)], "x": rng.random() < 0.6, "lp": lp, "risks": risks, "kw": w,
                       "holders": [ "".join(rng.choice(ALPH) for _ in range(44)) for _ in range(5)], "mult": 1.0, "gone": False})
@@ -176,6 +176,13 @@ def main():
 
     def cash():
         return json.loads(subprocess.run([PY, os.path.join(HERE, "memebot.py"), "cash", "--dir", d], capture_output=True, text=True).stdout)
+
+    print("== fetch under a non-UTF-8 locale (Windows cp1252 crash)")
+    enc_dir = tempfile.mkdtemp(prefix="memebot-enc-")
+    r = subprocess.run([PY, os.path.join(HERE, "fetch.py"), "sources", "--dir", enc_dir, "--mock", url, "--light", "--pause", "0"], capture_output=True, text=True,
+                       env=dict(os.environ, LC_ALL="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0", LANG="C"))
+    check(r.returncode == 0 and "Traceback" not in r.stderr, "fetch.py writes coin names with emoji under an ASCII locale")
+    shutil.rmtree(enc_dir, ignore_errors=True)
 
     print("== cycle 1: first full scan, expect 2 buys of 20")
     out, err = cycle(T0)

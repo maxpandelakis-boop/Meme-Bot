@@ -144,7 +144,7 @@ def fee(amount):
 
 def load_json(path, default):
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (OSError, ValueError):
         return default
@@ -306,7 +306,7 @@ def pipe_rows(fn, cols):
     """Plain text file: one row per line, len(cols) fields separated by |. Rows with the wrong field count are skipped."""
     out = []
     try:
-        with open(fn) as f:
+        with open(fn, encoding="utf-8", errors="replace") as f:
             for line in f:
                 parts = [p.strip() for p in line.strip().strip("`").split("|")]
                 if len(parts) != len(cols) or not B58.match(parts[0]):
@@ -451,9 +451,9 @@ def cmd_gather(d, now):
         if a in gm:
             p["gm"] = {k: gm[a].get(k) for k in ("holders", "top10", "smartDegen", "renowned", "sniper", "bundler", "rat", "bluechip", "rugRatio", "wash",
                                                  "hot", "devHold", "sniperHold", "botDegen", "honeypot", "creatorStatus", "twRename", "launchpad")}
-    with open(os.path.join(d, "pairs.json"), "w") as f:
+    with open(os.path.join(d, "pairs.json"), "w", encoding="utf-8") as f:
         json.dump(list(best.values()), f, separators=(",", ":"))
-    with open(os.path.join(d, "universe.json"), "w") as f:
+    with open(os.path.join(d, "universe.json"), "w", encoding="utf-8") as f:
         json.dump(universe, f, separators=(",", ":"))
     held = [p["addr"] for p in pos.values() if p["_left"] > 1e-9 and B58.match(str(p.get("addr", "")))]
     due = []
@@ -1127,7 +1127,7 @@ def cmd_run(d, mode, now, force=False):
 
     def emit(coll, doc_id, data):
         fn = os.path.join(out_dir, "%s__%s.json" % (coll, doc_id))
-        with open(fn, "w") as f:
+        with open(fn, "w", encoding="utf-8") as f:
             json.dump(data, f, separators=(",", ":"))
         writes.append({"collection": coll, "doc_id": doc_id, "file": fn})
         emitted.setdefault(coll, {})[doc_id] = data
@@ -1311,7 +1311,7 @@ def cmd_run(d, mode, now, force=False):
     emit("memecurve", run_id, curve_point(all_pos, all_ex, new_marks["px"], now))
     emit("memeruns", run_id, {"t": now, "mode": mode, "rule": RULE, "scanned": len(rows), "passed": len(gated),
                               "flagged": flagged, "picks": picks_done, "exits": exits_done, "note": note})
-    with open(os.path.join(out_dir, "manifest.json"), "w") as f:
+    with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(writes, f, indent=1)
     top5 = [{"sym": r["pr"].get("symbol"), "score": r["sc"], "addr": r["a"]} for r in gated[:5]]
     print(json.dumps({"mode": mode, "asked": asked, "scanned": len(rows), "gated": len(gated), "top5": top5, "flagged": flagged, "picks": picks_done,

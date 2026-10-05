@@ -31,7 +31,8 @@ def run(args, d, now=None, expect_json=True):
     cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
     if now and args[0] == "memebot.py":
         cmd += ["--now", str(now)]
-    p = subprocess.run(cmd, capture_output=True, text=True)
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     if p.stderr.strip():
         log(p.stderr.rstrip())
     if p.returncode != 0:
@@ -50,7 +51,7 @@ def apply_out(d):
     if not os.path.exists(man):
         return 0
     n = 0
-    for w in json.load(open(man)):
+    for w in json.load(open(man, encoding="utf-8")):
         dst_dir = os.path.join(d, "db", w["collection"])
         os.makedirs(dst_dir, exist_ok=True)
         shutil.copyfile(w["file"], os.path.join(dst_dir, w["doc_id"] + ".json"))
