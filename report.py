@@ -596,7 +596,8 @@ def closed_table(rows):
 
 def big_section(big):
     if not big:
-        return '<div class="empty">The big test starts after the first full scan has been priced again 24 hours later. Every full scan saves all its coins; the next day each one is checked: what would 20 in it have become?</div>'
+        hz = "%g hours" % M.EVAL_H if M.EVAL_H < 23 else "24 hours"
+        return '<div class="empty">The big test starts after the first full scan has been priced again %s later. Every full scan saves all its coins; %s later each one is checked: what would 20 in it have become?</div>' % (hz, hz)
     shown = big[-10:]
     groups = [(fmt_dt(g["t0"], True), fmt_dt(g["t0"], day=True), {"pass": g["passAvg"], "top": g["topAvg"], "fail": g["failAvg"]}) for g in shown]
     series = [("pass", "passed the gates", "s1"), ("top", "bot's top 10", "s2"), ("fail", "failed a gate", "s3")]

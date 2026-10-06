@@ -296,6 +296,11 @@ def cmd_mode(d, now, force=False, snapshot=False, recommend=False):
                       "open": sum(1 for p in pos.values() if p["_left"] > 1e-9), "cash": bankroll(pos)}))
 
 
+def eval_text():
+    """'2 hours' / '24 hours': how long after a snapshot its coins are priced again (EVAL_H, rounded for the text)."""
+    return "%g hours" % EVAL_H if EVAL_H < 23 else "24 hours"
+
+
 def cmd_cash(d):
     print(json.dumps(bankroll(positions(d)), indent=1))
 
@@ -1399,13 +1404,13 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     if exits_done:
         parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in ("pick", "early") else "random", x["why"], x["eur"]) for x in exits_done) + ".")
     if snap_n:
-        parts.append("Saved all %d scanned coins for the big test; they get priced again in 24 hours." % snap_n)
+        parts.append("Saved all %d scanned coins for the big test; they get priced again in %s." % (snap_n, eval_text()))
     if big:   # one line for all chunks of the scored snapshot
         wavg = lambda i_n, i_a: (sum(b[i_a] * b[i_n] for b in big if b[i_a] is not None) / max(sum(b[i_n] for b in big if b[i_a] is not None), 1)) if any(b[i_a] is not None for b in big) else None
         n_all, n_ok, n_no, n_top = (sum(b[i] for b in big) for i in (0, 2, 0, 4))
         n_no = n_all - n_ok
         a_ok, a_no, a_top = wavg(2, 1), wavg(6, 3), wavg(4, 5)   # each average weighted by its own group's count per chunk
-        parts.append("Big test: %d coins from yesterday's scan, 24 hours later: %s." % (n_all, "; ".join(x for x in [
+        parts.append("Big test: %d coins from the earlier scan, %s later: %s." % (n_all, eval_text(), "; ".join(x for x in [
             "the %d that passed the gates averaged %+.2f per 20" % (n_ok, a_ok) if n_ok and a_ok is not None else "",
             "the bot's top 10 averaged %+.2f" % a_top if a_top is not None else "",
             "the other %d averaged %+.2f" % (n_no, a_no) if a_no is not None else ""] if x)))
