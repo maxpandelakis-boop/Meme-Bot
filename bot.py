@@ -38,17 +38,25 @@ def run(args, d, now=None, expect_json=True):
     if now and args[0] == "memebot.py":
         cmd += ["--now", str(now)]
     env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
-    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
-    if p.stderr.strip():
-        log(p.stderr.rstrip())
+    # the child's progress lines (stderr) are shown as they happen; its result (stdout) is collected
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
+    out = []
+    import threading
+    t = threading.Thread(target=lambda: out.append(p.stdout.read()))
+    t.start()
+    for line in p.stderr:
+        log(line.rstrip())
+    t.join()
+    p.wait()
+    stdout = out[0] if out else ""
     if p.returncode != 0:
-        raise SystemExit("%s failed:\n%s" % (" ".join(cmd[1:3]), p.stdout[-2000:]))
+        raise SystemExit("%s failed:\n%s" % (" ".join(cmd[1:3]), stdout[-2000:]))
     if not expect_json:
-        return p.stdout
+        return stdout
     try:
-        return json.loads(p.stdout)
+        return json.loads(stdout)
     except ValueError:
-        raise SystemExit("%s printed no JSON:\n%s" % (args[0], p.stdout[-2000:]))
+        raise SystemExit("%s printed no JSON:\n%s" % (args[0], stdout[-2000:]))
 
 
 def apply_out(d):

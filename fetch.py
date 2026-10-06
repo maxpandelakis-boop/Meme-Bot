@@ -57,6 +57,7 @@ class Http:
         self.mock, self.pause, self.dead, self.fails, self.n = (mock or "").rstrip("/"), pause, set(), {}, 0
         self.cooldown, self.limited = {}, 0
         self.log = log or (lambda s: print(s, file=sys.stderr, flush=True))
+        self.last_progress = 0
 
     def url(self, u):
         if not self.mock:
@@ -216,10 +217,12 @@ def ds_lists(http):
 
 def ds_search(http, d, keywords):
     total = 0
-    for kw in keywords:
+    for i, kw in enumerate(keywords):
         data = http.get(DS + "/latest/dex/search?q=" + urllib.parse.quote(kw))
         rows = [r for r in (ds_row(p) for p in ((data or {}).get("pairs") or [])) if r]
         total += write_rows(d, "pairs", "search_%s.txt" % re.sub(r"[^a-z0-9]", "", kw.lower())[:14], rows)
+        if (i + 1) % 20 == 0:
+            http.log("  dexscreener search %d/%d keywords, %d pairs so far" % (i + 1, len(keywords), total))
     http.log("  dexscreener search: %d pairs from %d keywords" % (total, len(keywords)))
     return total
 
@@ -280,7 +283,9 @@ def rc_row(mint, rep):
 
 def rc_reports(http, d, addrs):
     rows = []
-    for a in addrs:
+    for i, a in enumerate(addrs):
+        if i and i % 25 == 0:
+            http.log("  rugcheck %d/%d reports" % (i, len(addrs)))
         rep = http.get(RC + "/tokens/%s/report" % a)
         if not isinstance(rep, dict):
             rep = http.get(RC + "/tokens/%s/report/summary" % a)
