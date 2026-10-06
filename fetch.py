@@ -38,16 +38,31 @@ PF = "https://frontend-api-v3.pump.fun"
 JUP = "https://lite-api.jup.ag/tokens/v2"
 GM = "https://gmgn.ai/defi/quotation/v1"
 LC = "https://lunarcrush.com/api4/public"
-KEYWORDS = """dog cat pepe frog elon trump musk ai agent moon inu wif bonk chad wojak doge shib baby meme giga sigma based degen ape monkey
-bear bull penguin pengu hat rocket lambo fart poop gm wen ser anon pnut squirrel goat duck bird fish whale shark cow pig chill guy girl
-king queen god alien ufo mars pixel retro game punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot
-cult coin shiba floki wojak mfer neko kitty puppy hamster capybara raccoon sloth otter seal llama donkey horse unicorn dragon wizard knight
-robot cyber matrix quantum nuke bomb rocketman banana cookie pizza taco burger beer coffee tea sushi noodle hotdog candy chocolate bacon
-mommy daddy uncle grandma karen chad stacy giga gm bro bruh lol lmao based cringe ratio cope seethe vibe dank yolo hodl wagmi ngmi""".split()
+KEYWORDS = list(dict.fromkeys("""dog cat pepe frog elon trump musk ai agent moon inu wif bonk chad wojak doge shib baby meme giga sigma based degen ape monkey bear bull penguin pengu hat
+rocket lambo fart poop gm wen ser anon pnut squirrel goat duck bird fish whale shark cow pig chill guy girl king queen god alien ufo mars pixel retro game
+punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot cult coin shiba floki mfer neko kitty puppy hamster capybara raccoon
+sloth otter seal llama donkey horse unicorn dragon wizard knight robot cyber matrix quantum nuke bomb rocketman banana cookie pizza taco burger beer coffee
+tea sushi noodle hotdog candy chocolate bacon mommy daddy uncle grandma karen stacy bro bruh lol lmao cringe ratio cope seethe vibe dank yolo hodl wagmi
+ngmi pump fun bonding curve graduated launch stealth fair presale airdrop points season meta trend viral tiktok twitter stream live sol solana jup jupiter
+ray raydium orca meteora phantom backpack bags boop moonshot believe launchlab letsbonk zora clanker pepecoin kek frogs toad mochi popcat michi mew gigachad
+andy brett landwolf boden tremp maga biden kamala obama putin xi china japan korea india brazil germany france canada mexico africa europe america world
+earth planet galaxy star sun cash money rich poor broke bank wall street stonks stock bitcoin btc eth ethereum xrp bnb hype aster fartcoin goatseus act
+kitten tabby husky corgi doggo pup bulldog pitbull poodle beagle labrador golden retriever chihuahua wolf fox lion tiger panda koala kangaroo elephant giraffe
+hippo rhino gorilla chimp orangutan bat rat mouse mole hedgehog badger beaver moose deer bunny rabbit snake lizard gecko turtle croc dino rex raptor mammoth
+dodo pigeon crow parrot owl eagle hawk chicken rooster turkey goose swan pumpkin witch vampire werewolf cyborg android mecha gundam anime waifu husbando
+senpai sensei kawaii chibi otaku jesus buddha zeus thor odin loki kratos satoshi vitalik cz sbf anatoly toly raj mert ansem murad cobie hsaka gcr crypto
+token tokens dao defi nft memes memecoin shitcoin gem gems moonbag bag wallet fomo fud rekt north south east west left right up down big small tiny micro
+mini mega ultra hyper super turbo nitro boost blast red blue green yellow purple pink orange black white gray rainbow neon glow dark light shadow spirit
+soul mind heart happy sad angry mad crazy insane wild calm cozy comfy warm cold hot spicy sweet sour salty bitter yummy tasty one two three four five six
+seven eight nine ten hundred thousand million billion trillion zero infinity pi phi alpha beta omega new old first last next final ultimate original classic
+vintage modern future past present now today tomorrow forever never yes no maybe ok okay sure nope yep wow omg wtf lmfao rofl top kek haha hehe lul xd uwu
+owo""".split()))
 NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json")
+HOST_GAP = {"api.geckoterminal.com": 2.1, "frontend-api-v3.pump.fun": 0.7}    # minimum seconds between requests to a host (GT allows ~30/min)
+HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
 
 
 class Http:
@@ -58,6 +73,7 @@ class Http:
         self.cooldown, self.limited = {}, 0
         self.log = log or (lambda s: print(s, file=sys.stderr, flush=True))
         self.last_progress = 0
+        self.last_at = {}
 
     def url(self, u):
         if not self.mock:
@@ -75,8 +91,12 @@ class Http:
         for i in range(tries):
             if self.cooldown.get(host, 0) > time.time():      # a rate limit hit a moment ago: wait it out instead of hammering
                 time.sleep(max(0.0, self.cooldown[host] - time.time()))
+            gap = HOST_GAP.get(host, 0.0) if not self.mock else 0.0
+            if gap and host in self.last_at:                     # hosts with a per-minute budget are paced, whatever the global pause
+                time.sleep(max(0.0, self.last_at[host] + gap - time.time()))
             try:
                 self.n += 1
+                self.last_at[host] = time.time()
                 with urllib.request.urlopen(urllib.request.Request(self.url(u), headers=hdr), timeout=TIMEOUT) as r:
                     raw = r.read()
                 self.fails[host] = 0
@@ -89,7 +109,7 @@ class Http:
                 return raw.decode("utf-8", "replace")
             except urllib.error.HTTPError as e:
                 if e.code == 429 and i + 1 < tries:
-                    pause = (10, 30, 60)[min(i, 2)]               # DexScreener's limits are per minute: back off for real
+                    pause = HOST_429.get(host, (10, 30, 60))[min(i, 2)]   # DexScreener's limits are per minute: back off for real
                     self.log("  ! 429 rate limited by %s, waiting %ds" % (host, pause))
                     self.cooldown[host] = time.time() + pause
                     self.limited += 1
@@ -323,17 +343,36 @@ def gt_rows(data):
     return rows
 
 
+GT_DEXES = (("pumpswap", 10), ("raydium", 8), ("launchlab", 6), ("meteora", 6), ("raydium-clmm", 4), ("orca", 4), ("boop-fun", 3), ("moonit", 3))
+
+
 def gt_pools(http, d, pages=3):
+    """GeckoTerminal pool lists -> gt/*.txt. 20 pools a page, ~30 requests a minute allowed (Http paces this host), so a full
+    scan spends about two minutes here for roughly a thousand pools."""
     total = 0
-    for name, path in (("trending", "/networks/solana/trending_pools?include=base_token&page=%d"), ("new", "/networks/solana/new_pools?include=base_token&page=%d"),
-                       ("top", "/networks/solana/pools?include=base_token&sort=h24_volume_usd_desc&page=%d")):
+    full = pages >= 8
+    lists = [("trending", "/networks/solana/trending_pools?include=base_token&duration=24h&page=%d", min(pages, 3)),
+             ("new", "/networks/solana/new_pools?include=base_token&page=%d", min(pages, 10)),
+             ("top", "/networks/solana/pools?include=base_token&sort=h24_volume_usd_desc&page=%d", min(pages, 10))]
+    if full:
+        lists += [("trending1h", "/networks/solana/trending_pools?include=base_token&duration=1h&page=%d", 3),
+                  ("trending6h", "/networks/solana/trending_pools?include=base_token&duration=6h&page=%d", 3)]
+        known = http.get(GT + "/networks/solana/dexes?page=1")
+        ids = {str((x or {}).get("id")) for x in ((known or {}).get("data") or []) if isinstance(x, dict)}
+        for dex, n in GT_DEXES:
+            if not ids or dex in ids:          # only exchanges GeckoTerminal lists, so no request is wasted on a 404
+                lists.append(("dex_" + re.sub(r"[^a-z0-9]", "", dex), "/networks/solana/dexes/%s/pools?include=base_token&sort=h24_volume_usd_desc&page=%%d" % dex, n))
+    for name, path, n in lists:
         rows = []
-        for pg in range(1, pages + 1):
+        for pg in range(1, n + 1):
             data = http.get(GT + path % pg)
-            if not data:
+            got = gt_rows(data) if data else []
+            if not got:
                 break
-            rows += gt_rows(data)
+            rows += got
         total += write_rows(d, "gt", name + ".txt", rows)
+        if full:
+            http.log("  geckoterminal %s: %d pools" % (name, len(rows)))
     http.log("  geckoterminal pools %d" % total)
     return total
 
@@ -352,12 +391,19 @@ def cg_trending(http, d):
 
 
 def pf_coins(http, d, light=False):
+    """pump.fun lists -> pf/*.txt: the biggest coins by market cap (graduated ones included), the newest, the graduated ones that
+    traded most recently, and the live-streaming ones. The host rate-limits hard; Http paces and retries it."""
     total = 0
-    for name, q in (("top", "sort=market_cap&order=DESC"), ("new", "sort=created_timestamp&order=DESC")):
+    lists = [("top", "/coins?offset=%d&limit=50&sort=market_cap&order=DESC&includeNsfw=false", 2 if light else 20),
+             ("new", "/coins?offset=%d&limit=50&sort=created_timestamp&order=DESC&includeNsfw=false", 1 if light else 10)]
+    if not light:
+        lists += [("graduated", "/coins?offset=%d&limit=50&sort=last_trade_timestamp&order=DESC&includeNsfw=false&complete=true", 10),
+                  ("live", "/coins/currently-live?offset=%d&limit=50&includeNsfw=false", 4)]
+    for name, path, n in lists:
         rows = []
-        for off in range(0, 50 if light else 150, 50):
-            data = http.get(PF + "/coins?offset=%d&limit=50&%s&includeNsfw=false" % (off, q))
-            if not isinstance(data, list):
+        for pg in range(n):
+            data = http.get(PF + path % (pg * 50))
+            if not isinstance(data, list) or not data:
                 break
             for c in data:
                 a = addr_of((c or {}).get("mint"))
@@ -371,12 +417,21 @@ def pf_coins(http, d, light=False):
     return total
 
 
-def jup_tokens(http, d):
+JUP_VERIFIED_MC = (20_000, 100_000_000)
+
+
+def jup_tokens(http, d, light=False):
     total = 0
-    for name, path in (("trending", "/toptrending/24h"), ("trending1h", "/toptrending/1h"), ("traded", "/toptraded/24h"), ("organic", "/toporganicscore/24h"), ("recent", "/recent")):
+    lists = [("trending", "/toptrending/24h?limit=100"), ("trending1h", "/toptrending/1h?limit=100"), ("trending6h", "/toptrending/6h?limit=100"),
+             ("traded", "/toptraded/24h?limit=100"), ("traded1h", "/toptraded/1h?limit=100"), ("traded6h", "/toptraded/6h?limit=100"),
+             ("organic", "/toporganicscore/24h?limit=100"), ("organic1h", "/toporganicscore/1h?limit=100"), ("organic6h", "/toporganicscore/6h?limit=100"),
+             ("recent", "/recent")] + ([] if light else [("verified", "/tag?query=verified")])
+    for name, path in lists:
         data = http.get(JUP + path)
         rows = []
         for t in data if isinstance(data, list) else []:
+            if name == "verified" and not (JUP_VERIFIED_MC[0] <= (num((t or {}).get("mcap")) or 0) <= JUP_VERIFIED_MC[1]):
+                continue               # the verified list is thousands of established tokens; keep the ones a meme gate could pass
             a = addr_of((t or {}).get("id") or t.get("address"))
             if not a:
                 continue
@@ -495,11 +550,12 @@ def cmd_sources(http, d, light=False):
     lists["rcNew"] = rc_new(http)
     lists["rcTrending"] = rc_list(http, "trending")
     lists["rcRecent"] = rc_list(http, "recent")
+    lists["rcVerified"] = rc_list(http, "verified")
     write_json(d, "lists.json", lists)
     ds_search(http, d, KEYWORDS[:60] if light else KEYWORDS)
     gt_pools(http, d, pages=3 if light else 8)
     cg_trending(http, d)
-    jup_tokens(http, d)
+    jup_tokens(http, d, light)
     news(http, d)
     lunarcrush(http, d, os.environ.get("LUNARCRUSH_API_KEY"))
     if not light:
