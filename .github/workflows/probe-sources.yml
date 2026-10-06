@@ -11,20 +11,7 @@ jobs:
         run: |
           probe() {  # name url
             out=$(curl -sS -o /tmp/body -w '%{http_code} %{time_total}s' --max-time 25 -A 'Mozilla/5.0' -H 'Accept: application/json' "$2" 2>&1 || true)
-            n=$(python3 -c "
-import json,sys
-try:
-  d=json.load(open('/tmp/body'))
-except Exception as e:
-  print('not json'); sys.exit()
-def count(x):
-  if isinstance(x,list): return len(x)
-  if isinstance(x,dict):
-    for k in ('data','pairs','coins','tokens','result','items'):
-      if k in x: return str(k)+':'+str(count(x[k]))
-    return 'keys:'+','.join(list(x)[:8])
-  return type(x).__name__
-print(count(d))")
+            n=$(jq -r 'if type=="array" then length elif type=="object" then (to_entries|map(select(.value|type=="array"))|map("\(.key):\(.value|length)")|join(",")) else type end' /tmp/body 2>/dev/null || echo "not json")
             printf '%-22s %-20s %7s bytes  n=%-14s %s\n' "$1" "$out" "$(wc -c </tmp/body)" "$n" "$2"
             head -c 260 /tmp/body | tr '\n' ' '; echo; echo
             sleep 0.5
