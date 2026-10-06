@@ -1,0 +1,34 @@
+# Feasibility probe: can a GitHub Actions runner reach the coin APIs the bot needs?
+# Manual run only. Prints HTTP status, time and body size per endpoint; never fails the job.
+name: probe-network
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe each API once
+        shell: bash
+        run: |
+          probe() {  # name url
+            out=$(curl -sS -o /tmp/body -w '%{http_code} %{time_total}s' --max-time 20 -A 'Mozilla/5.0' "$2" 2>&1 || true)
+            printf '%-14s %-24s %6s bytes  %s\n' "$1" "$out" "$(wc -c </tmp/body 2>/dev/null)" "$2"
+          }
+          probe dexscreener  'https://api.dexscreener.com/token-boosts/top/v1'
+          probe ds-search    'https://api.dexscreener.com/latest/dex/search?q=pepe'
+          probe ds-tokens    'https://api.dexscreener.com/tokens/v1/solana/So11111111111111111111111111111111111111112'
+          probe rugcheck     'https://api.rugcheck.xyz/v1/stats/new_tokens'
+          probe rc-report    'https://api.rugcheck.xyz/v1/tokens/So11111111111111111111111111111111111111112/report/summary'
+          probe geckoterm    'https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?include=base_token&page=1'
+          probe coingecko    'https://api.coingecko.com/api/v3/search/trending'
+          probe jupiter      'https://lite-api.jup.ag/tokens/v2/toptrending/1h'
+          probe pumpfun      'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=created_timestamp&order=DESC&includeNsfw=false'
+          probe gmgn         'https://gmgn.ai/defi/quotation/v1/rank/sol/swaps/1h?orderby=smartmoney&direction=desc'
+          probe rss          'https://cointelegraph.com/rss'
+          echo; echo "burst test: 25 quick DexScreener searches (rate-limit check)"
+          codes=""
+          for kw in dog cat frog pepe trump elon moon ai bonk wif popcat sol cto rug based giga mog brett pnut goat act chill fart neiro peanut; do
+            c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -A 'Mozilla/5.0' "https://api.dexscreener.com/latest/dex/search?q=$kw"); codes="$codes $c"; sleep 0.3
+          done
+          echo "codes:$codes"
