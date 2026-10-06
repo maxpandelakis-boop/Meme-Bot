@@ -1,0 +1,57 @@
+# The bot on GitHub's own servers: no laptop needed.
+# Runs every two hours and whenever you press "Run workflow" (github.com -> Actions -> memebot-scan).
+# Each run restores the bot's state from the results branch, scans ~1000 coins, writes the two recommendations,
+# pushes report.html + the small docs back to the results branch and shows the picks in the run's summary.
+# Fake money only: nothing is bought anywhere.
+name: memebot-scan
+on:
+  schedule:
+    - cron: '10 */2 * * *'          # UTC; GitHub may start a scheduled run up to ~15 minutes late
+  workflow_dispatch:
+    inputs:
+      horizon:
+        description: 'rule profile: 2h (pump in the next two hours) or 24h (survive a day)'
+        type: choice
+        options: ['2h', '24h']
+        default: '2h'
+      rescan:
+        description: 'force a full scan with a fresh big-test snapshot'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: memebot-scan              # a button press while a scheduled run is going waits for it instead of racing it
+  cancel-in-progress: false
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+      LUNARCRUSH_API_KEY: ${{ secrets.LUNARCRUSH_API_KEY }}
+      RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+      HORIZON: ${{ github.event.inputs.horizon || '2h' }}
+      RESCAN: ${{ github.event.inputs.rescan == 'true' && '--rescan' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore the bot's state from the results branch
+        run: |
+          if git clone -q --depth 1 --branch results "$RESULTS_URL" mb; then
+            echo "state restored: $(git -C mb log -1 --format='%h %s')"
+          else
+            mkdir -p mb && echo "no results branch yet: fresh start"
+          fi
+      - name: Keep the big-test snapshots between runs
+        uses: actions/cache@v4
+        with:
+          path: |
+            mb/db/memesnap
+            mb/db/memesnapres
+          key: memebot-snaps-${{ github.run_id }}
+          restore-keys: memebot-snaps-
+      - name: Scan, recommend, push
+        run: python3 bot.py cycle --recommend --push --remote "$RESULTS_URL" --horizon "$HORIZON" $RESCAN
+      - name: Show the picks on this run's page
+        if: always()
+        run: python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"

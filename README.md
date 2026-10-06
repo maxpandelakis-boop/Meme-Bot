@@ -102,6 +102,21 @@ learns only from its own results. Expect most 2-hour picks to lose and a few to 
 The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
 off), so a running laptop picks up updates without anyone touching it.
 
+## Running it on GitHub instead of your laptop
+
+`.github/workflows/scan.yml` runs the whole cycle on GitHub Actions, so no computer of yours has to stay awake:
+
+- every two hours on a schedule, and whenever you press **Run workflow** (github.com → Actions → memebot-scan; works from a phone browser);
+- each run clones the `results` branch into `mb/`, restores the big-test snapshots from the Actions cache, runs
+  `bot.py cycle --recommend --push --horizon 2h`, pushes the new page and docs back to `results`, and prints the two picks
+  with links on the run's own page (`bot.py summary`);
+- the **Run workflow** button takes two inputs: the profile (`2h` or `24h`) and `rescan` (force a full scan with a fresh snapshot);
+- `probe-network.yml` is a one-minute manual check that GitHub's runners can still reach every data API.
+
+Costs: a private repository has 2000 free Actions minutes a month; a public one has no limit. If the laptop loop and the
+Actions runs push at the same time, `sync` merges the two histories, but running both is pointless: stop the laptop loop.
+The Actions cache keeps the snapshots for seven days of inactivity; losing it only resets the learned weights.
+
 ## The analysis page
 
 Every cycle ends by rendering `mb/report.html` (also `python3 bot.py report`). Open it in any browser; it is a plain file.

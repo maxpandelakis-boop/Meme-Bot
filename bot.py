@@ -242,6 +242,54 @@ def sell(d, which, now=None):
     return done
 
 
+def summary(d):
+    """Markdown with the last recommendations (and open positions): what GitHub Actions shows on a run's page."""
+    sys.path.insert(0, HERE)
+    import memebot as M
+    import report as R
+    rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), {}) or {}
+    state = M.load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
+    out = []
+    t = M.num(rec.get("t")) or M.num(state.get("lastRun"))
+    when = dt.datetime.fromtimestamp(t / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC") if t else "?"
+    profile = state.get("horizon") or ("2h" if "2h" in str(state.get("rule") or "") else "24h")
+    out.append("## Meme-Bot %s (%s profile, fake money)" % (when, profile))
+    if rec.get("picks"):
+        out.append("Scanned %s coins, %s passed the gates." % (rec.get("scanned", "?"), rec.get("passed", "?")))
+        for p in rec["picks"]:
+            links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")))
+            out.append("### %d. %s (%s) — score %.0f" % (p.get("rank") or 0, p.get("sym"), p.get("name"), M.num(p.get("score")) or 0))
+            out.append("- market cap $%s, liquidity $%s, 24h volume $%s" % tuple(fmt_money(M.num(p.get(k))) for k in ("mc", "liq", "vol")))
+            if p.get("why"):
+                out.append("- " + str(p["why"]))
+            if p.get("safety"):
+                out.append("- " + str(p["safety"]))
+            out.append("- " + links)
+        if rec.get("runnersUp"):
+            out.append("Runners-up: " + ", ".join("%s (%.0f)" % (r.get("sym"), M.num(r.get("score")) or 0) for r in rec["runnersUp"]))
+    else:
+        out.append("No recommendation yet" + (": " + state["note"] if state.get("note") else "."))
+    pos = [(pid, p) for pid, p in M.positions(d).items() if p["_left"] > 1e-9]
+    if pos:
+        marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}
+        out.append("### Open positions")
+        for pid, p in sorted(pos, key=lambda kv: kv[1].get("t") or 0):
+            last, entry = M.num((marks.get("px") or {}).get(pid)), M.num(p.get("px"))
+            out.append("- %s: in %.0f, now %s" % (p.get("sym"), M.num(p.get("ticket")) or M.TICKET, ("%.2fx" % (last / entry)) if last and entry else "no price yet"))
+    text = "\n".join(out) + "\n"
+    print(text)
+    return text
+
+
+def fmt_money(v):
+    if v is None:
+        return "?"
+    for unit, div in (("B", 1e9), ("M", 1e6), ("k", 1e3)):
+        if abs(v) >= div:
+            return "%.1f%s" % (v / div, unit)
+    return "%.0f" % v
+
+
 def self_update():
     """git pull in the code folder; True when the code changed (the loop then restarts itself with the new code)."""
     git = lambda *x: subprocess.run(["git", "-C", HERE] + list(x), capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -292,7 +340,7 @@ def status(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync", "sell"])
+    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync", "sell", "summary"])
     ap.add_argument("--all", action="store_true", help="sell: close every open position")
     ap.add_argument("--coin", default="", help="sell: the symbol of the one position to close")
     ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
@@ -321,6 +369,8 @@ def main():
         print("db/ wiped: fresh bankroll")
     elif a.cmd == "sync":
         print(sync(a.dir, a.remote, a.branch))
+    elif a.cmd == "summary":
+        summary(a.dir)
     elif a.cmd == "sell":
         if not a.all and not a.coin:
             raise SystemExit("say what to sell: --all or --coin SYMBOL")
