@@ -144,8 +144,8 @@ PROFILES = {
     "24h": {},   # the defaults above
     "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
         "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 1.0, "GATE_MAX_AGE_H": 12.0,
-        "GATE_MIN_BUYRATIO1H": 1.2, "GATE_MIN_VOL1SHARE": 1.0 / 24, "GATE_CRASH": {"chgH1": -30.0, "chgH6": -50.0, "chgH24": -70.0},
-        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 150, "MAX_TOP1": 15.0, "MAX_INSIDERS": 10,
+        "GATE_MIN_BUYRATIO1H": 1.05, "GATE_MIN_VOL1SHARE": 1.0 / 36, "GATE_CRASH": {"chgH1": -30.0, "chgH6": -50.0, "chgH24": -70.0},
+        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 150, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 1500,
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
@@ -1070,11 +1070,14 @@ def scan(d, pos, pairs, now, w):
     return rows, fail_count, held, recent, risk
 
 
+OWNERSHIP_FLAG = re.compile(r"high ownership|single holder ownership", re.I)
+
+
 def risk_view(r):
     """A RugCheck summary -> (True/False/None, text). None means there is no report, so the coin is not bought."""
     if not isinstance(r, dict):
         return None, "no RugCheck report"
-    danger = names(r, "danger")
+    danger = [x for x in names(r, "danger") if not OWNERSHIP_FLAG.search(x)]   # ownership is judged by the numbers below
     if danger:
         return False, "RugCheck danger: " + ", ".join(danger[:3])
     warn = names(r, "warn")
@@ -1316,8 +1319,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             parts_extra = "Only %d coins came back from the sources (rate limit or outage), so the recommendations were left as they were." % len(rows)
             picks_done.append({"grp": "skipped", "sym": "-", "score": 0, "why": parts_extra})
             chosen = []
-        if recommend and chosen:
-            # no positions: the two best clean coins and the runners-up go to memebot/recommend for the page
+        if recommend and len(rows) >= MIN_SCAN_FOR_REC:
+            # no positions: the best clean coins and the runners-up go to memebot/recommend for the page. A valid scan that
+            # finds no clean coin writes an empty list with the reason, so an old pick never outlives its horizon on the page.
             def rec(r, rtxt, ok):
                 pr = r["pr"]
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
@@ -1329,8 +1333,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     continue
                 ok_r, rtxt = risk_view(risk.get(r["a"]))
                 runners.append(rec(r, rtxt, ok_r))
+            reason = "" if chosen else ("no top coin had a clean safety report" if gated else "nothing passed the gates")
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
-                                          "runnersUp": runners[:8], "flagged": flagged[:8]})
+                                          "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason})
             picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "why": why_text(r) + "; " + rtxt, "score": r["sc"]} for r, rtxt in chosen]
             chosen = []
         elif recommend:

@@ -61,7 +61,7 @@ NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), (
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json")
-HOST_GAP = {"api.geckoterminal.com": 4.0, "frontend-api-v3.pump.fun": 0.7}    # minimum seconds between requests to a host (GT allowed ~15/min from GitHub's shared addresses)
+HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
 
@@ -350,20 +350,20 @@ def gt_rows(data):
     return rows
 
 
-GT_DEXES = (("pumpswap", 5), ("raydium", 4), ("launchlab", 3), ("meteora", 3), ("raydium-clmm", 2), ("orca", 2), ("boop-fun", 2), ("moonit", 2))
+GT_DEXES = (("pumpswap", 3), ("raydium", 2), ("launchlab", 2), ("meteora", 1), ("boop-fun", 1), ("moonit", 1))
 
 
 def gt_pools(http, d, pages=3):
-    """GeckoTerminal pool lists -> gt/*.txt. 20 pools a page; the host allowed only ~15 requests a minute from GitHub's shared
-    addresses, so Http paces it at 4 s and a full scan spends about three minutes here for some 700 pools."""
+    """GeckoTerminal pool lists -> gt/*.txt. 20 pools a page; from GitHub's shared addresses the host allows only about six
+    requests a minute, so Http paces it at 10 s and a full scan spends under three minutes here for some 350 pools."""
     total = 0
     full = pages >= 8
-    lists = [("trending", "/networks/solana/trending_pools?include=base_token&duration=24h&page=%d", min(pages, 2)),
-             ("new", "/networks/solana/new_pools?include=base_token&page=%d", min(pages, 5)),
-             ("top", "/networks/solana/pools?include=base_token&sort=h24_volume_usd_desc&page=%d", min(pages, 5))]
+    lists = [("trending", "/networks/solana/trending_pools?include=base_token&duration=24h&page=%d", 1),
+             ("new", "/networks/solana/new_pools?include=base_token&page=%d", min(pages, 3)),
+             ("top", "/networks/solana/pools?include=base_token&sort=h24_volume_usd_desc&page=%d", min(pages, 3))]
     if full:
-        lists += [("trending1h", "/networks/solana/trending_pools?include=base_token&duration=1h&page=%d", 2),
-                  ("trending6h", "/networks/solana/trending_pools?include=base_token&duration=6h&page=%d", 2)]
+        lists += [("trending1h", "/networks/solana/trending_pools?include=base_token&duration=1h&page=%d", 1),
+                  ("trending6h", "/networks/solana/trending_pools?include=base_token&duration=6h&page=%d", 1)]
         known = http.get(GT + "/networks/solana/dexes?page=1")
         ids = {str((x or {}).get("id")) for x in ((known or {}).get("data") or []) if isinstance(x, dict)}
         for dex, n in GT_DEXES:

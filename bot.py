@@ -84,6 +84,7 @@ def chunk_addrs(g):
 
 def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
     os.makedirs(d, exist_ok=True)
+    now = int(now or time.time() * 1000)      # one clock for the whole cycle, so gather asks for exactly the coins run() will score
     extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else []) + ["--horizon", horizon]
     mode = run(["memebot.py", "mode"] + extra, d, now)
     log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
@@ -277,7 +278,13 @@ def summary(d):
             out.append("")
             out.append("Runners-up: " + ", ".join("%s (%.0f)" % (md(r.get("sym")), M.num(r.get("score")) or 0) for r in rec["runnersUp"]))
     else:
-        out.append("No recommendation yet.")
+        out.append("No recommendation" + (" this time: %s." % md(rec["reason"]) if rec.get("reason") else " yet."))
+        if rec.get("scanned"):
+            out.append("Scanned %s coins, %s passed the gates." % (rec.get("scanned", "?"), rec.get("passed", "?")))
+        near = [r for r in (rec.get("runnersUp") or []) if isinstance(r, dict)]
+        if near:
+            out.append("")
+            out.append("Closest, and why not: " + "; ".join("%s (%.0f) %s" % (md(r.get("sym")), M.num(r.get("score")) or 0, md(r.get("safety") or "")) for r in near[:5]))
     pos = [(pid, p) for pid, p in M.positions(d).items() if p["_left"] > 1e-9]
     if pos:
         marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}

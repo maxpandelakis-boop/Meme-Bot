@@ -695,7 +695,7 @@ def rec_section(D, embed):
     if picks:
         body = '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed) for c in picks)
     else:
-        body = '<div class="empty">No recommendation this time: %s</div>' % ("no top coin had a clean safety report." if rc.get("passed") else "nothing passed the gates.")
+        body = '<div class="empty">No recommendation this time: %s. The closest coins and what stopped them are listed below.</div>' % E(rc.get("reason") or ("no top coin had a clean safety report" if rc.get("passed") else "nothing passed the gates"))
     runners = [c for c in (rc.get("runnersUp") or []) if isinstance(c, dict)]
     if runners:
         tr = "".join('<tr>%s%s%s</tr>' % (coin_cell(c.get("rank") or "?", c.get("sym"), c.get("name"), safety_chip(c.get("ok"), c.get("safety"))),
