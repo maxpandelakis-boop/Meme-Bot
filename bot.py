@@ -290,8 +290,9 @@ def fmt_money(v):
     return "%.0f" % v
 
 
-SITE_NOTICE = ('<div class="empty"><strong>Live.</strong> Rebuilt after every scan, about every two hours; the page reloads itself. '
-               '<a href="%s" target="_blank" rel="noopener"><strong>Scan now</strong></a> opens GitHub: tap "Run workflow" there and come back in about seven minutes.</div>')
+SITE_NOTICE = ('<div class="live"><span><strong>Live</strong> · rebuilt after every scan, about every 2 h</span>'
+               '<a class="btn" href="%s" target="_blank" rel="noopener">Scan now</a>'
+               '<small>The page reloads itself. Scan now opens GitHub: tap “Run workflow” there and come back in about seven minutes.</small></div>')
 SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" href="manifest.webmanifest">\n'
              '<link rel="icon" href="icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="icon-180.png">\n'
              '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="Meme-Bot">\n'
