@@ -146,7 +146,7 @@ PROFILES = {
         "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 1.0, "GATE_MAX_AGE_H": 12.0,
         "GATE_MIN_BUYRATIO1H": 1.05, "GATE_MIN_VOL1SHARE": 1.0 / 36, "GATE_CRASH": {"chgH1": -30.0, "chgH6": -50.0, "chgH24": -70.0},
         "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 150, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
-        "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 1500,
+        "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
                   "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2}}}
@@ -1383,9 +1383,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     for sid, sn in due_snaps(d, now).items():
         coins = [c for c in sn["coins"] if isinstance(c, dict)]
         priced = sum(1 for c in coins if pairs.get(c.get("a")) and num(pairs[c.get("a")].get("priceUsd")))
-        if coins and priced < 0.7 * len(coins):
-            deferred += 1               # the price fetch failed for most of them (outage, rate limit): score this snapshot next run
-            continue
+        if coins and priced < 0.7 * len(coins) and now - (num(sn.get("t")) or now) < (EVAL_H + 1.0) * 3_600_000:
+            deferred += 1               # the price fetch failed for most of them (outage, rate limit): score this snapshot next run;
+            continue                    # an hour past the horizon it is scored anyway (a chunk of dead coins never gets prices)
         res = [snap_result(c, pairs) for c in coins]
         if not res:
             continue
