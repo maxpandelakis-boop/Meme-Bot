@@ -99,7 +99,10 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     need = chunk_addrs(g)
     if need and not offline:
         log("gather: %d coins, %d still need DexScreener data" % (g["coins"], len(need)))
-        fetch(["tokens", "--addrs", ",".join(need)])
+        need_file = os.path.join(d, "need.json")          # thousands of addresses do not fit on a command line
+        with open(need_file, "w", encoding="utf-8") as f:
+            json.dump({"chunks": [",".join(need[i:i + 30]) for i in range(0, len(need), 30)]}, f)
+        fetch(["tokens", "--from-gather", need_file])
         g = run(["memebot.py", "gather"], d, now)
     log("gather: %d coins (%d with full DEX data), coverage %.0f%%, lists %s" % (g["coins"], g["fullData"], 100 * g["coverage"], g["lists"]))
     if mode["pick"] or mode["bigTestSaveDue"]:

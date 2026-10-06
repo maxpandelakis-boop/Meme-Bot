@@ -98,7 +98,7 @@ class Mock:
                         out.append(self.pair(self.by_a[a]))
                 return 200, out
         if path.startswith("/api.rugcheck.xyz/v1/stats/"):
-            off = {"new_tokens": 150, "trending": 1000, "recent": 1030}.get(path.rsplit("/", 1)[1], 150)
+            off = {"new_tokens": 150, "trending": 1000, "recent": 1030, "verified": 1060}.get(path.rsplit("/", 1)[1], 150)
             return 200, [{"mint": c["a"]} for c in self.coins[off:off + 50]]
         m = re.match(r"^/api\.rugcheck\.xyz/v1/tokens/([^/]+)/report$", path)
         if m and m.group(1) in self.by_a:
@@ -108,21 +108,30 @@ class Mock:
                          "topHolders": [{"owner": h, "pct": 5.0 - i, "insider": i == 0} for i, h in enumerate(c["holders"])],
                          "markets": [{"lp": {"lpLockedPct": c["lp"]}}], "launchpad": {"name": "pump.fun"}}
         if path.startswith("/api.geckoterminal.com/"):
+            if path.endswith("/networks/solana/dexes"):
+                return 200, {"data": [{"id": x, "type": "dex", "attributes": {"name": x}} for x in ("raydium", "orca", "pumpswap", "meteora", "launchlab")]}
             pg = int(q.get("page", ["1"])[0])
-            kind = "trending" if "trending" in path else ("new" if "new_pools" in path else "top")
-            off = {"trending": 200, "new": 300, "top": 400}[kind] + (pg - 1) * 20
-            sub = self.coins[off:off + 20]
+            m2 = re.search(r"/dexes/([^/]+)/pools", path)
+            if m2:
+                kind, base = "dex", 600 + 40 * (("pumpswap", "raydium", "launchlab", "meteora", "raydium-clmm", "orca").index(m2.group(1)) if m2.group(1) in ("pumpswap", "raydium", "launchlab", "meteora", "raydium-clmm", "orca") else 6)
+            else:
+                kind = "trending" if "trending" in path else ("new" if "new_pools" in path else "top")
+                base = {"trending": 200, "new": 300, "top": 400}[kind] + {"1h": 60, "6h": 120}.get(q.get("duration", ["24h"])[0], 0)
+            off = base + (pg - 1) * 20
+            sub = self.coins[off:off + 20] if pg <= 3 else []        # a short list: later pages are empty, like the real API past its end
             return 200, {"data": [self.gt_pool(c) for c in sub], "included": [{"id": "solana_" + c["a"], "type": "token", "attributes": {"symbol": c["sym"], "name": c["name"]}} for c in sub]}
         if path.startswith("/api.coingecko.com/"):
             return 200, {"coins": [{"item": {"symbol": c["sym"], "name": c["name"], "market_cap_rank": 500 + i, "data": {"price_change_percentage_24h": {"usd": 3.3}}}} for i, c in enumerate(self.coins[:15])]}
         if path.startswith("/frontend-api-v3.pump.fun/coins"):
-            off = int(q.get("offset", ["0"])[0]); base = 500 if "market_cap" in q.get("sort", [""])[0] else 700
+            off = int(q.get("offset", ["0"])[0])
+            base = 500 if "market_cap" in q.get("sort", [""])[0] else (650 if "currently-live" in path else (750 if q.get("complete") else 700))
             return 200, [{"mint": c["a"], "symbol": c["sym"], "name": c["name"], "usd_market_cap": c["mc"], "market_cap": 50, "ath_market_cap": c["mc"] * 2, "reply_count": 12,
                           "is_currently_live": False, "complete": True, "created_timestamp": T0 - 5 * H, "twitter": "https://x.com/a", "website": None, "telegram": None}
                          for c in self.coins[base + off:base + off + 50]]
         if path.startswith("/lite-api.jup.ag/tokens/v2/"):
-            off = {"toptrending": 800, "toporganicscore": 850, "recent": 900, "toptraded": 950}[path.split("/")[4]]
-            return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["name"], "usdPrice": c["px"], "mcap": c["mc"], "fdv": c["mc"], "liquidity": c["liq"], "holderCount": 900,
+            off = {"toptrending": 800, "toporganicscore": 850, "recent": 900, "toptraded": 950, "tag": 1000, "search": 1050}[path.split("/")[4].split("?")[0]]
+            off += {"1h": 20, "6h": 40}.get(path.rstrip("/").rsplit("/", 1)[-1], 0)
+            return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["name"], "usdPrice": c["px"] * c["mult"], "mcap": c["mc"] * c["mult"], "fdv": c["mc"] * c["mult"], "liquidity": c["liq"], "holderCount": 900,
                           "organicScore": 55.5, "audit": {"topHoldersPercentage": 22.0}, "isVerified": False, "firstPool": {"createdAt": "2025-03-01T00:00:00Z"},
                           "stats1h": {"priceChange": 1.0, "numBuys": 10, "numSells": 5, "numNetBuyers": 3}, "stats6h": {"priceChange": 2.0},
                           "stats24h": {"priceChange": 5.0, "buyVolume": 1000, "sellVolume": 800, "numBuys": 100, "numSells": 80, "numTraders": 50, "numNetBuyers": 10, "holderChange": 20}}
