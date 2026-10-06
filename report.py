@@ -719,7 +719,7 @@ def closed_table(rows):
 
 
 def horizon_text():
-    return "%g hours" % M.EVAL_H if M.EVAL_H < 23 else "24 hours"
+    return M.eval_text()
 
 
 def big_section(D):

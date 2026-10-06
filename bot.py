@@ -253,35 +253,46 @@ def summary(d):
     rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), {}) or {}
     state = M.load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
     out = []
-    t = M.num(rec.get("t")) or M.num(state.get("lastRun"))
-    when = dt.datetime.fromtimestamp(t / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC") if t else "?"
+    stamp = lambda t: dt.datetime.fromtimestamp(t / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC") if t else "?"
+    t_rec, t_run = M.num(rec.get("t")), M.num(state.get("lastRun"))
     profile = state.get("horizon") or ("2h" if "2h" in str(state.get("rule") or "") else "24h")
-    out.append("## Meme-Bot %s (%s profile, fake money)" % (when, profile))
+    out.append("## Meme-Bot %s (%s profile, fake money)" % (stamp(t_run or t_rec), profile))
+    if state.get("note"):
+        out.append("Last run: " + md(state["note"]))
+        out.append("")
     if rec.get("picks"):
+        if t_rec and t_run and t_run - t_rec > 60_000:
+            out.append("The picks below are from the earlier run at %s; this run found nothing new." % stamp(t_rec))
         out.append("Scanned %s coins, %s passed the gates." % (rec.get("scanned", "?"), rec.get("passed", "?")))
         for p in rec["picks"]:
-            links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")))
-            out.append("### %d. %s (%s) — score %.0f" % (p.get("rank") or 0, p.get("sym"), p.get("name"), M.num(p.get("score")) or 0))
+            links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")) if u.startswith("https://") and ")" not in u and " " not in u)
+            out.append("### %d. %s (%s) — score %.0f" % (M.num(p.get("rank")) or 0, md(p.get("sym")), md(p.get("name")), M.num(p.get("score")) or 0))
             out.append("- market cap $%s, liquidity $%s, 24h volume $%s" % tuple(fmt_money(M.num(p.get(k))) for k in ("mc", "liq", "vol")))
             if p.get("why"):
-                out.append("- " + str(p["why"]))
+                out.append("- " + md(p["why"]))
             if p.get("safety"):
-                out.append("- " + str(p["safety"]))
+                out.append("- " + md(p["safety"]))
             out.append("- " + links)
         if rec.get("runnersUp"):
-            out.append("Runners-up: " + ", ".join("%s (%.0f)" % (r.get("sym"), M.num(r.get("score")) or 0) for r in rec["runnersUp"]))
+            out.append("")
+            out.append("Runners-up: " + ", ".join("%s (%.0f)" % (md(r.get("sym")), M.num(r.get("score")) or 0) for r in rec["runnersUp"]))
     else:
-        out.append("No recommendation yet" + (": " + state["note"] if state.get("note") else "."))
+        out.append("No recommendation yet.")
     pos = [(pid, p) for pid, p in M.positions(d).items() if p["_left"] > 1e-9]
     if pos:
         marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}
         out.append("### Open positions")
         for pid, p in sorted(pos, key=lambda kv: kv[1].get("t") or 0):
             last, entry = M.num((marks.get("px") or {}).get(pid)), M.num(p.get("px"))
-            out.append("- %s: in %.0f, now %s" % (p.get("sym"), M.num(p.get("ticket")) or M.TICKET, ("%.2fx" % (last / entry)) if last and entry else "no price yet"))
+            out.append("- %s: in %.0f, now %s" % (md(p.get("sym")), M.num(p.get("ticket")) or M.TICKET, ("%.2fx" % (last / entry)) if last and entry else "no price yet"))
     text = "\n".join(out) + "\n"
     print(text)
     return text
+
+
+def md(v):
+    """Coin names and notes as plain Markdown text: no line breaks, no link or emphasis syntax."""
+    return re.sub(r"[\[\]*_`#<>|]", "", re.sub(r"\s+", " ", str(v if v is not None else ""))).strip()
 
 
 def fmt_money(v):
@@ -417,6 +428,12 @@ def status(d):
 
 
 def main():
+    for stream in (sys.stdout, sys.stderr):      # coin names carry emoji; a redirected Windows console would otherwise crash
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync", "sell", "summary", "site"])
     ap.add_argument("--all", action="store_true", help="sell: close every open position")

@@ -61,7 +61,8 @@ NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), (
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json")
-HOST_GAP = {"api.geckoterminal.com": 2.1, "frontend-api-v3.pump.fun": 0.7}    # minimum seconds between requests to a host (GT allows ~30/min)
+HOST_GAP = {"api.geckoterminal.com": 4.0, "frontend-api-v3.pump.fun": 0.7}    # minimum seconds between requests to a host (GT allowed ~15/min from GitHub's shared addresses)
+MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
 
 
@@ -74,6 +75,7 @@ class Http:
         self.log = log or (lambda s: print(s, file=sys.stderr, flush=True))
         self.last_progress = 0
         self.last_at = {}
+        self.limited_by = {}
 
     def url(self, u):
         if not self.mock:
@@ -113,6 +115,11 @@ class Http:
                     self.log("  ! 429 rate limited by %s, waiting %ds" % (host, pause))
                     self.cooldown[host] = time.time() + pause
                     self.limited += 1
+                    self.limited_by[host] = self.limited_by.get(host, 0) + 1
+                    if self.limited_by[host] >= MAX_429_PER_HOST:
+                        self.dead.add(host)
+                        self.log("  ! giving up on %s for this run: rate limited %d times" % (host, self.limited_by[host]))
+                        return None
                     time.sleep(pause)
                     continue
                 self.log("  ! %s %s" % (e.code, u[:110]))
@@ -343,20 +350,20 @@ def gt_rows(data):
     return rows
 
 
-GT_DEXES = (("pumpswap", 10), ("raydium", 8), ("launchlab", 6), ("meteora", 6), ("raydium-clmm", 4), ("orca", 4), ("boop-fun", 3), ("moonit", 3))
+GT_DEXES = (("pumpswap", 5), ("raydium", 4), ("launchlab", 3), ("meteora", 3), ("raydium-clmm", 2), ("orca", 2), ("boop-fun", 2), ("moonit", 2))
 
 
 def gt_pools(http, d, pages=3):
-    """GeckoTerminal pool lists -> gt/*.txt. 20 pools a page, ~30 requests a minute allowed (Http paces this host), so a full
-    scan spends about two minutes here for roughly a thousand pools."""
+    """GeckoTerminal pool lists -> gt/*.txt. 20 pools a page; the host allowed only ~15 requests a minute from GitHub's shared
+    addresses, so Http paces it at 4 s and a full scan spends about three minutes here for some 700 pools."""
     total = 0
     full = pages >= 8
-    lists = [("trending", "/networks/solana/trending_pools?include=base_token&duration=24h&page=%d", min(pages, 3)),
-             ("new", "/networks/solana/new_pools?include=base_token&page=%d", min(pages, 10)),
-             ("top", "/networks/solana/pools?include=base_token&sort=h24_volume_usd_desc&page=%d", min(pages, 10))]
+    lists = [("trending", "/networks/solana/trending_pools?include=base_token&duration=24h&page=%d", min(pages, 2)),
+             ("new", "/networks/solana/new_pools?include=base_token&page=%d", min(pages, 5)),
+             ("top", "/networks/solana/pools?include=base_token&sort=h24_volume_usd_desc&page=%d", min(pages, 5))]
     if full:
-        lists += [("trending1h", "/networks/solana/trending_pools?include=base_token&duration=1h&page=%d", 3),
-                  ("trending6h", "/networks/solana/trending_pools?include=base_token&duration=6h&page=%d", 3)]
+        lists += [("trending1h", "/networks/solana/trending_pools?include=base_token&duration=1h&page=%d", 2),
+                  ("trending6h", "/networks/solana/trending_pools?include=base_token&duration=6h&page=%d", 2)]
         known = http.get(GT + "/networks/solana/dexes?page=1")
         ids = {str((x or {}).get("id")) for x in ((known or {}).get("data") or []) if isinstance(x, dict)}
         for dex, n in GT_DEXES:
