@@ -28,7 +28,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     env:
       PYTHONUTF8: '1'
       LUNARCRUSH_API_KEY: ${{ secrets.LUNARCRUSH_API_KEY }}
@@ -39,7 +39,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Restore the bot's state from the results branch
         run: |
-          if git clone -q --depth 1 --branch results "$RESULTS_URL" mb; then
+          if git ls-remote --exit-code --heads "$RESULTS_URL" results >/dev/null; then
+            git clone -q --depth 1 --branch results "$RESULTS_URL" mb || (sleep 10 && git clone -q --depth 1 --branch results "$RESULTS_URL" mb)
             echo "state restored: $(git -C mb log -1 --format='%h %s')"
           else
             mkdir -p mb && echo "no results branch yet: fresh start"
@@ -52,11 +53,18 @@ jobs:
             mb/db/memesnapres
           key: memebot-snaps-${{ github.run_id }}
           restore-keys: memebot-snaps-
-      - name: Scan, recommend, push
-        run: python3 bot.py cycle --recommend --push --remote "$RESULTS_URL" --horizon "$HORIZON" $RESCAN
+      - name: Scan and recommend
+        id: scan
+        run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
+      - name: Push the page and the small docs to the results branch
+        run: python3 bot.py sync --remote "$RESULTS_URL"
       - name: Show the picks on this run's page
         if: always()
-        run: python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          if [ "${{ steps.scan.outcome }}" != "success" ]; then
+            echo "## Scan ${{ steps.scan.outcome }}: the picks below are from an earlier run" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"
       - name: Build the website folder
         run: python3 bot.py site --out site --repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
       - uses: actions/upload-pages-artifact@v3

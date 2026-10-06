@@ -122,9 +122,11 @@ put it on the home screen like an app. The `pages` job publishes it with GitHub 
 **Change visibility → Public** (Pages is a paid feature on private repositories) and **Pages → Source: GitHub Actions**.
 Until then the `pages` job fails and the run still counts as green.
 
-Costs: a private repository has 2000 free Actions minutes a month; a public one has no limit. If the laptop loop and the
-Actions runs push at the same time, `sync` merges the two histories, but running both is pointless: stop the laptop loop.
-The Actions cache keeps the snapshots for seven days of inactivity; losing it only resets the learned weights.
+Costs: a public repository has unlimited Actions minutes; a private one has 2000 a month, which a full scan every two
+hours (about 10 minutes a run, 12 runs a day) exceeds, so a private repository needs a 4-hour schedule. Never run the
+laptop loop and the schedule together: when both push, the later push wins and the other machine's docs are dropped.
+The Actions cache keeps the big-test snapshots and results for seven days of inactivity; losing it wipes the big-test
+history and the learned weights (the page and the recommendations survive on the results branch).
 
 ## The analysis page
 

@@ -145,7 +145,7 @@ PROFILES = {
     "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
         "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 1.0, "GATE_MAX_AGE_H": 12.0,
         "GATE_MIN_BUYRATIO1H": 1.2, "GATE_MIN_VOL1SHARE": 1.0 / 24, "GATE_CRASH": {"chgH1": -30.0, "chgH6": -50.0, "chgH24": -70.0},
-        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 2.0, "MIN_HOLDERS": 150, "MAX_TOP1": 15.0, "MAX_INSIDERS": 10,
+        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 150, "MAX_TOP1": 15.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 1500,
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
@@ -297,8 +297,9 @@ def cmd_mode(d, now, force=False, snapshot=False, recommend=False):
 
 
 def eval_text():
-    """'2 hours' / '24 hours': how long after a snapshot its coins are priced again (EVAL_H, rounded for the text)."""
-    return "%g hours" % EVAL_H if EVAL_H < 23 else "24 hours"
+    """'2 hours' / '24 hours': how long after a snapshot its coins are priced again. EVAL_H carries some slack below the
+    nominal horizon (1.7 for the 2h profile, 23.5 for 24h) so a run that starts a little early still scores it."""
+    return "%d hours" % round(EVAL_H)
 
 
 def cmd_cash(d):
@@ -909,11 +910,38 @@ def gates(pr, basic, sym_mc, f=None):
     return fails
 
 
-FAIL_TEXT = {"price": "no price", "curve": "still on its launch curve", "nodex": "no DEX pair data (Jupiter, GeckoTerminal or GMGN list only)", "honeypot": "flagged as a honeypot (GMGN)", "notmeme": "not a meme coin (stock, wrapped or staked asset, stablecoin)", "young": "under an hour old", "liq": "liquidity under $20k",
-             "mc": "market cap outside $100k-$50M", "vol": "under $20k traded in 24h", "copy": "copycat of a bigger coin with the same name",
-             "crash": "crashed (down 40%+ in 1h, 50%+ in 6h or 70%+ in 24h)", "spike": "spiked (up 150%+ in 1h or 400%+ in 6h)",
-             "wash": "24h volume over 8x the market cap (wash trading)", "paid": "seen only on paid DexScreener lists (boosts, ads)",
-             "old": "older than 12 hours (2h profile wants early coins)", "nobuyers": "buys do not outweigh sells in the last hour", "novol1h": "volume not accelerating in the last hour"}
+FAIL_TEXT = {"price": "no price", "curve": "still on its launch curve", "nodex": "no DEX pair data (Jupiter, GeckoTerminal or GMGN list only)", "honeypot": "flagged as a honeypot (GMGN)", "notmeme": "not a meme coin (stock, wrapped or staked asset, stablecoin)",
+             "copy": "copycat of a bigger coin with the same name", "paid": "seen only on paid DexScreener lists (boosts, ads)",
+             "nobuyers": "buys do not outweigh sells in the last hour", "novol1h": "volume not accelerating in the last hour"}
+
+
+def fail_text(k):
+    """The wording of a gate, built from the active profile's numbers."""
+    if k == "liq":
+        return "liquidity under %s" % money(GATE_MIN_LIQ)
+    if k == "mc":
+        return "market cap outside %s-%s" % (money(GATE_MC[0]), money(GATE_MC[1]))
+    if k == "vol":
+        return "under %s traded in 24h" % money(GATE_MIN_VOL24)
+    if k == "young":
+        return "under %s old" % ("an hour" if GATE_MIN_AGE_H == 1 else "%g hours" % GATE_MIN_AGE_H)
+    if k == "old":
+        return "older than %g hours (%s profile wants early coins)" % (GATE_MAX_AGE_H, HORIZON)
+    if k == "crash":
+        return "crashed (down %.0f%%+ in 1h, %.0f%%+ in 6h or %.0f%%+ in 24h)" % tuple(-GATE_CRASH[x] for x in ("chgH1", "chgH6", "chgH24"))
+    if k == "spike":
+        return "spiked (up %.0f%%+ in 1h or %.0f%%+ in 6h)" % (GATE_SPIKE["chgH1"], GATE_SPIKE["chgH6"])
+    if k == "wash":
+        return "24h volume over %gx the market cap (wash trading)" % GATE_MAX_VOLMC
+    return FAIL_TEXT.get(k, k)
+
+
+def money(v):
+    v = float(v)
+    for unit, div in (("M", 1e6), ("k", 1e3)):
+        if v >= div:
+            return "$%g%s" % (round(v / div, 1), unit)
+    return "$%g" % v
 
 
 # ---------------------------------------------------------------- learning the weights
@@ -1346,8 +1374,14 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             emit("memesnap", "%s-%d" % (run_id, k // SNAP_CHUNK + 1), {"t": now, "rule": RULE, "n": len(part), "part": k // SNAP_CHUNK + 1,
                                                                         "total": len(coins), "coins": part})
         snap_n = len(coins)
+    deferred = 0
     for sid, sn in due_snaps(d, now).items():
-        res = [snap_result(c, pairs) for c in sn["coins"] if isinstance(c, dict)]
+        coins = [c for c in sn["coins"] if isinstance(c, dict)]
+        priced = sum(1 for c in coins if pairs.get(c.get("a")) and num(pairs[c.get("a")].get("priceUsd")))
+        if coins and priced < 0.7 * len(coins):
+            deferred += 1               # the price fetch failed for most of them (outage, rate limit): score this snapshot next run
+            continue
+        res = [snap_result(c, pairs) for c in coins]
         if not res:
             continue
         avg = lambda xs: round(sum(xs) / len(xs), 2) if xs else None
@@ -1372,7 +1406,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     if mode == "pick":
         parts.append("Scanned %d coins from %d sources; %d passed the gates." % (len(rows), len(load_lists(d)) + sum(1 for t in {t for r in rows for t in (r["pr"].get("tags") or [])} if t.startswith("kw:")), len(gated)))
         if top_fail:
-            parts.append("Most common gate: " + "; ".join("%s (%d)" % (FAIL_TEXT.get(k2, k2), v) for k2, v in top_fail) + ".")
+            parts.append("Most common gate: " + "; ".join("%s (%d)" % (fail_text(k2), v) for k2, v in top_fail) + ".")
         if flagged:
             parts.append("RugCheck flagged %s, so %s skipped." % (", ".join("%s (%s)" % (x["sym"], re.sub(r"^RugCheck( danger| warning)?: ", "", x["risk"])) for x in flagged[:3]),
                                                                   "it was" if len(flagged) == 1 else "they were"))
@@ -1403,6 +1437,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             parts.append("Nothing hit a sell rule.")
     if exits_done:
         parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in ("pick", "early") else "random", x["why"], x["eur"]) for x in exits_done) + ".")
+    if deferred:
+        parts.append("Big test postponed for %d snapshot%s: most of its coins came back without a price this run." % (deferred, "s" if deferred > 1 else ""))
     if snap_n:
         parts.append("Saved all %d scanned coins for the big test; they get priced again in %s." % (snap_n, eval_text()))
     if big:   # one line for all chunks of the scored snapshot

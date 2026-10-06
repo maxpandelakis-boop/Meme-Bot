@@ -596,7 +596,7 @@ def closed_table(rows):
 
 def big_section(big):
     if not big:
-        hz = "%g hours" % M.EVAL_H if M.EVAL_H < 23 else "24 hours"
+        hz = M.eval_text()
         return '<div class="empty">The big test starts after the first full scan has been priced again %s later. Every full scan saves all its coins; %s later each one is checked: what would 20 in it have become?</div>' % (hz, hz)
     shown = big[-10:]
     groups = [(fmt_dt(g["t0"], True), fmt_dt(g["t0"], day=True), {"pass": g["passAvg"], "top": g["topAvg"], "fail": g["failAvg"]}) for g in shown]
@@ -746,7 +746,7 @@ def render(data, fragment=False):
     body.append(safe("equity curve", curve))
     body.append(safe("bought coins", bought))
     body.append('<section><div class="sec-head"><h2>Closed trades</h2><p>what came back after fees, newest first</p></div>%s</section>' % safe("closed trades", lambda: closed_table(D["closed"])))
-    hz = "%g hours" % M.EVAL_H if M.EVAL_H < 23 else "24 hours"
+    hz = M.eval_text()
     body.append('<section><div class="sec-head"><h2>Big test: %s later</h2><p>what 20 in each scanned coin was worth %s later, after fees · an unchanged price counts %+.2f (the two fees)</p></div>%s</section>' % (hz, hz, FLAT, safe("big test", lambda: big_section(D["big"]))))
     w_html = safe("weights", lambda: weights_section(D))
     if w_html:
