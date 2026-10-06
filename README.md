@@ -113,6 +113,15 @@ off), so a running laptop picks up updates without anyone touching it.
 - the **Run workflow** button takes two inputs: the profile (`2h` or `24h`) and `rescan` (force a full scan with a fresh snapshot);
 - `probe-network.yml` is a one-minute manual check that GitHub's runners can still reach every data API.
 
+### A website for the phone
+
+The same workflow builds `site/` (`bot.py site`): the page as `index.html` with a "Scan now" link to the Actions page, an
+auto-refresh (every 15 minutes and whenever the tab comes back to the front), a web-app manifest and icons, so a phone can
+put it on the home screen like an app. The `pages` job publishes it with GitHub Pages at
+`https://<owner>.github.io/<repo>/`. Two switches on github.com make it live, both on the repository's Settings page:
+**Change visibility → Public** (Pages is a paid feature on private repositories) and **Pages → Source: GitHub Actions**.
+Until then the `pages` job fails and the run still counts as green.
+
 Costs: a private repository has 2000 free Actions minutes a month; a public one has no limit. If the laptop loop and the
 Actions runs push at the same time, `sync` merges the two histories, but running both is pointless: stop the laptop loop.
 The Actions cache keeps the snapshots for seven days of inactivity; losing it only resets the learned weights.

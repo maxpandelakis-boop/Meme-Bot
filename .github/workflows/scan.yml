@@ -2,6 +2,8 @@
 # Runs every two hours and whenever you press "Run workflow" (github.com -> Actions -> memebot-scan).
 # Each run restores the bot's state from the results branch, scans ~1000 coins, writes the two recommendations,
 # pushes report.html + the small docs back to the results branch and shows the picks in the run's summary.
+# When GitHub Pages is switched on (Settings -> Pages -> Source: GitHub Actions; needs a public repository on the free plan),
+# the second job publishes the page as a website that phones can keep on the home screen.
 # Fake money only: nothing is bought anywhere.
 name: memebot-scan
 on:
@@ -55,3 +57,25 @@ jobs:
       - name: Show the picks on this run's page
         if: always()
         run: python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"
+      - name: Build the website folder
+        run: python3 bot.py site --out site --repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+          retention-days: 1
+  pages:
+    needs: scan
+    runs-on: ubuntu-latest
+    continue-on-error: true          # without Pages (private repository) this job fails and the run still counts as green
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Show the website address on this run's page
+        run: |
+          echo "Website: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"

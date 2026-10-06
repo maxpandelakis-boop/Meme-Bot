@@ -25,7 +25,7 @@ Usage:
                                                             the picks can be read elsewhere; cycle/loop --push does it after each cycle
   python3 bot.py reset                                      wipe db/ (positions, history, learned weights) and start again with 40
 """
-import argparse, glob, json, os, shutil, subprocess, sys, time, datetime as dt
+import argparse, glob, json, os, re, shutil, subprocess, sys, time, datetime as dt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable or "python3"
@@ -290,6 +290,80 @@ def fmt_money(v):
     return "%.0f" % v
 
 
+SITE_NOTICE = ('<div class="empty"><strong>Live.</strong> Rebuilt after every scan, about every two hours; the page reloads itself. '
+               '<a href="%s" target="_blank" rel="noopener"><strong>Scan now</strong></a> opens GitHub: tap "Run workflow" there and come back in about seven minutes.</div>')
+SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" href="manifest.webmanifest">\n'
+             '<link rel="icon" href="icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="icon-180.png">\n'
+             '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="Meme-Bot">\n'
+             '<meta http-equiv="refresh" content="900">\n')
+SITE_SCRIPT = ('<script>(function(){var t=Date.now();document.addEventListener("visibilitychange",function(){'
+               'if(!document.hidden&&Date.now()-t>300000){location.reload();}});})();</script>')
+SITE_ICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#2a78d6"/>'
+             '<rect x="20" y="55" width="14" height="25" rx="3" fill="#fff"/><rect x="43" y="40" width="14" height="40" rx="3" fill="#fff"/>'
+             '<rect x="66" y="25" width="14" height="55" rx="3" fill="#fff"/></svg>')
+
+
+def site(d, out="site", repo=None):
+    """A folder for a static web host (GitHub Pages): the page as index.html with the tags that let a phone put it on the home
+    screen like an app, an auto-refresh, a "Scan now" link to the Actions page, a web-app manifest and icons."""
+    page = os.path.join(d, "report.html")
+    if not os.path.exists(page):
+        sys.path.insert(0, HERE)
+        import report as R
+        R.build(d)
+    h = open(page, encoding="utf-8").read()
+    if not repo:
+        p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        repo = p.stdout.strip() if p.returncode == 0 else ""
+    repo = re.sub(r"^(https?://)[^/@]*@", r"\1", repo.strip())   # no credentials in the link
+    repo = repo[:-4] if repo.endswith(".git") else repo
+    h = h.replace("</title>", "</title>\n" + SITE_TAGS, 1)
+    if repo:
+        h = h.replace('<div class="wrap">', '<div class="wrap">' + SITE_NOTICE % (repo + "/actions/workflows/scan.yml"), 1)
+    h = h.replace("</body>", SITE_SCRIPT + "</body>", 1)
+    os.makedirs(out, exist_ok=True)
+    files = {"index.html": h, "icon.svg": SITE_ICON, ".nojekyll": "",
+             "manifest.webmanifest": json.dumps({"name": "Meme-Bot Ledger", "short_name": "Meme-Bot", "start_url": "./", "scope": "./",
+                                                 "display": "standalone", "background_color": "#f5f6f8", "theme_color": "#2a78d6",
+                                                 "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+                                                           {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+                                                           {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]})}
+    for name, text in files.items():
+        with open(os.path.join(out, name), "w", encoding="utf-8") as f:
+            f.write(text)
+    for n in (180, 192, 512):
+        with open(os.path.join(out, "icon-%d.png" % n), "wb") as f:
+            f.write(icon_png(n))
+    log("site: %s (%d files, scan link %s)" % (out, len(files) + 3, "yes" if repo else "none: no git origin and no --repo"))
+    return out
+
+
+def icon_png(n):
+    """The icon as a PNG without any image library: a blue rounded square with three white bars, n x n pixels."""
+    import struct, zlib
+    bg, fg = (42, 120, 214), (255, 255, 255)
+    bars = [(0.20, 0.55, 0.34, 0.80), (0.43, 0.40, 0.57, 0.80), (0.66, 0.25, 0.80, 0.80)]   # x0, y0, x1, y1 as fractions of n
+    r = 0.22 * n
+    rows = []
+    for y in range(n):
+        row = bytearray([0])   # PNG filter byte: none
+        for x in range(n):
+            cx = min(max(x + 0.5, r), n - r); cy = min(max(y + 0.5, r), n - r)
+            if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > r * r:   # outside the rounded corners: transparent
+                row += b"\0\0\0\0"; continue
+            px = bg
+            for x0, y0, x1, y1 in bars:
+                if x0 * n <= x < x1 * n and y0 * n <= y < y1 * n:
+                    px = fg; break
+            row += bytes(px) + b"\xff"
+        rows.append(bytes(row))
+
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", n, n, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"".join(rows), 9)) + chunk(b"IEND", b""))
+
+
 def self_update():
     """git pull in the code folder; True when the code changed (the loop then restarts itself with the new code)."""
     git = lambda *x: subprocess.run(["git", "-C", HERE] + list(x), capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -340,7 +414,7 @@ def status(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync", "sell", "summary"])
+    ap.add_argument("cmd", choices=["cycle", "loop", "status", "reset", "report", "sync", "sell", "summary", "site"])
     ap.add_argument("--all", action="store_true", help="sell: close every open position")
     ap.add_argument("--coin", default="", help="sell: the symbol of the one position to close")
     ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
@@ -351,6 +425,8 @@ def main():
     ap.add_argument("--remote", default=None, help="git URL for sync/--push (default: this repository's origin)")
     ap.add_argument("--branch", default="results", help="branch for sync/--push")
     ap.add_argument("--dir", default="mb")
+    ap.add_argument("--out", default="site", help="site: folder to write the website into")
+    ap.add_argument("--repo", default=None, help="site: the GitHub repository URL for the Scan-now link (default: this folder's origin)")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--every", type=float, default=30.0, help="minutes between cycles in loop mode")
@@ -371,6 +447,8 @@ def main():
         print(sync(a.dir, a.remote, a.branch))
     elif a.cmd == "summary":
         summary(a.dir)
+    elif a.cmd == "site":
+        site(a.dir, a.out, a.repo)
     elif a.cmd == "sell":
         if not a.all and not a.coin:
             raise SystemExit("say what to sell: --all or --coin SYMBOL")

@@ -343,6 +343,24 @@ def main():
     r3 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(T0 + 100 * H), "--push", "--remote", bare], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     check(r3.returncode == 0 and "sync: new commit" in r3.stderr, "cycle --push syncs after the cycle")
     shutil.rmtree(bare, ignore_errors=True)
+
+    print("== site: a folder for GitHub Pages")
+    sd = tempfile.mkdtemp(prefix="memebot-site-")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "site", "--dir", d, "--out", sd, "--repo", "https://x-access-token:secret@github.com/x/y.git"], capture_output=True, text=True)
+    idx = open(os.path.join(sd, "index.html"), encoding="utf-8").read() if os.path.exists(os.path.join(sd, "index.html")) else ""
+    check(r.returncode == 0 and 'rel="manifest"' in idx and 'href="https://github.com/x/y/actions/workflows/scan.yml"' in idx and "secret" not in idx
+          and "<h1>Meme-Bot Ledger</h1>" in idx and "visibilitychange" in idx, "site/index.html is the page with app tags, auto-refresh and a clean scan link")
+    try:
+        man = json.load(open(os.path.join(sd, "manifest.webmanifest"), encoding="utf-8"))
+        pngs = [open(os.path.join(sd, "icon-%d.png" % n), "rb").read(24) for n in (180, 192, 512)]
+    except (OSError, ValueError):
+        man, pngs = {}, []
+    check(man.get("display") == "standalone" and len(pngs) == 3 and all(b[:8] == b"\x89PNG\r\n\x1a\n" for b in pngs)
+          and os.path.exists(os.path.join(sd, ".nojekyll")), "manifest, three PNG icons and .nojekyll are written")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "summary", "--dir", d], capture_output=True, text=True, encoding="utf-8")
+    check(r.returncode == 0 and r.stdout.startswith("## Meme-Bot ") and ("](https://dexscreener.com/solana/" in r.stdout or "### Open positions" in r.stdout),
+          "bot.py summary prints Markdown (%s)" % (r.stdout.strip().splitlines() or ["?"])[1][:60])
+    shutil.rmtree(sd, ignore_errors=True)
     shutil.rmtree(os.path.join(d, ".git"), ignore_errors=True)
 
     keep = os.environ.get("MEMEBOT_KEEP")
