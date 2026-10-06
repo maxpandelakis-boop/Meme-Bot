@@ -17,6 +17,7 @@ python3 bot.py report               # render mb/report.html, the analysis page
 python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to stop)
 python3 bot.py loop --every 30 --push   # the same, and push the results to the repository's results branch after each cycle
 python3 bot.py loop --every 60 --recommend --push   # recommend mode: never buy, each cycle rescans and puts the two best clean coins on the page
+python3 bot.py loop --every 30 --recommend --push --horizon 2h   # 2-hour profile: early, small, accelerating coins, re-priced 2 hours later
 python3 bot.py cycle --force        # pick now, ignoring the 3-hour gap and the daily cap (the bankroll still caps it)
 python3 bot.py cycle --rescan       # scan the whole universe now and save it for the big test (buys only if a slot is free)
 python3 bot.py sell --all           # close every open position by hand at the last price (or --coin SYMBOL); the money returns to the bankroll
@@ -89,6 +90,17 @@ Money from a sale returns to the bankroll and frees a slot for the next pick run
 check, and writes the two best coins to the top of the page with embedded DexScreener charts, the facts and the links,
 plus the runners-up. Nothing is bought or held. The big test (snapshots scored 24 hours later) keeps running, so the
 weights keep learning.
+
+## Two profiles
+
+`--horizon 24h` (default) looks for coins that survive a day: liquidity, holders, no crash, re-priced 24 hours later.
+`--horizon 2h` looks for coins that may pump in the next two hours: 1 to 12 hours old, market cap $50k to $2M, buys
+outweighing sells in the last hour, volume accelerating, no whale above 15%, at most 10 insider wallets; scored by momentum
+and holder growth; every scan is re-priced 2 hours later, so the learned weights target exactly that outcome. Each profile
+learns only from its own results. Expect most 2-hour picks to lose and a few to multiply; the big test shows the split.
+
+The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
+off), so a running laptop picks up updates without anyone touching it.
 
 ## The analysis page
 

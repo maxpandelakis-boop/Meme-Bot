@@ -136,6 +136,31 @@ memecoins crypto cryptocurrency solana sol pump fun pumpfun dex trading trade pr
 official community cto up down today news live here now just one all you your our we they what why how when who will can get got""".split())
 SW_MIN_COINS = 2         # a wallet needs this many scored coins before its record counts
 MIN_SCAN_FOR_REC = 300   # recommend mode: a scan smaller than this is a broken fetch, not a universe
+HORIZON = "24h"          # which profile is active: "24h" (survive a day) or "2h" (pump in the next two hours)
+GATE_MAX_AGE_H = None    # 2h profile: coins older than this are not "early" anymore
+GATE_MIN_BUYRATIO1H = None   # 2h profile: buys must outweigh sells in the last hour by this factor
+GATE_MIN_VOL1SHARE = None    # 2h profile: the last hour's share of the day's volume must be at least this (1/24 = even pace)
+PROFILES = {
+    "24h": {},   # the defaults above
+    "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
+        "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 1.0, "GATE_MAX_AGE_H": 12.0,
+        "GATE_MIN_BUYRATIO1H": 1.2, "GATE_MIN_VOL1SHARE": 1.0 / 24, "GATE_CRASH": {"chgH1": -30.0, "chgH6": -50.0, "chgH24": -70.0},
+        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 2.0, "MIN_HOLDERS": 150, "MAX_TOP1": 15.0, "MAX_INSIDERS": 10,
+        "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 1500,
+        "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
+                  "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
+                  "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2}}}
+
+
+def apply_profile(name):
+    """Switch the module's rules to a profile. Called once at startup from --horizon; every command of a run must use the same one."""
+    global HORIZON
+    prof = PROFILES.get(name)
+    if prof is None:
+        raise SystemExit("unknown horizon %r (choose from %s)" % (name, ", ".join(PROFILES)))
+    HORIZON = name
+    for k, v in prof.items():
+        globals()[k] = v
 BOT_GROUPS = ("pick", "early")   # position groups paid out of the bankroll
 
 
@@ -226,7 +251,7 @@ def bankroll(pos):
 def due_snaps(d, now):
     snaps, done = load_docs(d, "memesnap"), load_docs(d, "memesnapres")
     return {sid: sn for sid, sn in sorted(snaps.items()) if sid not in done and isinstance(sn.get("coins"), list)
-            and now - (num(sn.get("t")) or now) >= EVAL_H * 3_600_000}
+            and str(sn.get("rule") or RULE) == RULE and now - (num(sn.get("t")) or now) >= EVAL_H * 3_600_000}
 
 
 def berlin_day(ms):
@@ -852,8 +877,9 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
     return {k: v for k, v in f.items() if v is not None}, {"price": price, "mc": mc, "liq": liq, "vol24": vol24, "age_h": age_h, "holders": holders[:40]}
 
 
-def gates(pr, basic, sym_mc):
+def gates(pr, basic, sym_mc, f=None):
     price, mc, liq, vol24, age_h = basic["price"], basic["mc"], basic["liq"], basic["vol24"], basic["age_h"]
+    f = f or {}
     fails = []
     if not price or price <= 0: fails.append("price")
     if CURVE_DEX.search(str(pr.get("dexId", ""))): fails.append("curve")
@@ -872,19 +898,25 @@ def gates(pr, basic, sym_mc):
     if vol24 and mc and vol24 / mc > GATE_MAX_VOLMC: fails.append("wash")
     tags = pr.get("tags") or []
     if tags and all(t.startswith("list:") and t[5:] in PAID_LISTS for t in tags): fails.append("paid")
+    if GATE_MAX_AGE_H is not None and age_h is not None and age_h > GATE_MAX_AGE_H: fails.append("old")
+    if GATE_MIN_BUYRATIO1H is not None and (f.get("buyRatio1h") is None or f["buyRatio1h"] < GATE_MIN_BUYRATIO1H): fails.append("nobuyers")
+    if GATE_MIN_VOL1SHARE is not None and (f.get("vol1Share") is None or f["vol1Share"] < GATE_MIN_VOL1SHARE): fails.append("novol1h")
     return fails
 
 
 FAIL_TEXT = {"price": "no price", "curve": "still on its launch curve", "nodex": "no DEX pair data (Jupiter, GeckoTerminal or GMGN list only)", "honeypot": "flagged as a honeypot (GMGN)", "notmeme": "not a meme coin (stock, wrapped or staked asset, stablecoin)", "young": "under an hour old", "liq": "liquidity under $20k",
              "mc": "market cap outside $100k-$50M", "vol": "under $20k traded in 24h", "copy": "copycat of a bigger coin with the same name",
              "crash": "crashed (down 40%+ in 1h, 50%+ in 6h or 70%+ in 24h)", "spike": "spiked (up 150%+ in 1h or 400%+ in 6h)",
-             "wash": "24h volume over 8x the market cap (wash trading)", "paid": "seen only on paid DexScreener lists (boosts, ads)"}
+             "wash": "24h volume over 8x the market cap (wash trading)", "paid": "seen only on paid DexScreener lists (boosts, ads)",
+             "old": "older than 12 hours (2h profile wants early coins)", "nobuyers": "buys do not outweigh sells in the last hour", "novol1h": "volume not accelerating in the last hour"}
 
 
 # ---------------------------------------------------------------- learning the weights
 def result_rows(d):
     rows = []
     for doc in load_docs(d, "memesnapres").values():
+        if str(doc.get("rule") or RULE) != RULE:
+            continue                      # each profile learns from its own horizon only
         for c in doc.get("coins") or []:
             if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None:
                 rows.append((c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])))
@@ -989,7 +1021,7 @@ def scan(d, pos, pairs, now, w):
             risk[a]["holdersTop"] = basic["holders"]        # RugCheck owners + top buyers still holding -> what the wallet memory learns from
         if basic["age_h"] is None and f.get("ageH") is not None:
             basic["age_h"] = f["ageH"]
-        fails = gates(pr, basic, sym_mc)
+        fails = gates(pr, basic, sym_mc, f)
         for x in fails:
             fail_count[x] = fail_count.get(x, 0) + 1
         rows.append({"a": a, "pr": pr, "f": f, "basic": basic, "fails": fails, "ok": not fails})
@@ -1345,7 +1377,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if sk:
             parts.append(sk[0]["why"])
         elif rs:
-            parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + "; nothing bought (recommend mode).")
+            parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + " for the next %s; nothing bought (recommend mode)." % HORIZON)
         elif recommend:
             parts.append("No recommendation: no top coin had a clean safety report." if gated else "No recommendation: nothing passed the gates.")
         elif ps:
@@ -1383,7 +1415,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     parts.append("Bankroll: %.2f free of %.0f, %d open." % (cash_after["free"], BUDGET, cash_after["open"]))
     note = " ".join(parts)
     runs = int(state.get("runs") or 0) + 1
-    emit("memebot", "state", {"rule": RULE, "ticket": TICKET, "budget": BUDGET, "started": state.get("started") or now, "lastRun": now, "runs": runs,
+    emit("memebot", "state", {"rule": RULE, "horizon": HORIZON, "evalH": EVAL_H, "ticket": TICKET, "budget": BUDGET, "started": state.get("started") or now, "lastRun": now, "runs": runs,
                               "lastMode": mode, "lastPick": now if mode == "pick" else state.get("lastPick"), "note": note, "cash": cash_after,
                               "scanned": len(rows) if mode == "pick" or snap_n else state.get("scanned"),
                               "passed": len(gated) if mode == "pick" or snap_n else state.get("passed"),
@@ -1455,7 +1487,9 @@ def main():
     ap.add_argument("--force", action="store_true", help="manual run: pick even inside the 3-hour gap or the daily cap (the bankroll still caps it)")
     ap.add_argument("--snapshot", action="store_true", help="manual rescan: save a big-test snapshot of this scan even if the last one is recent")
     ap.add_argument("--recommend", action="store_true", help="no buys: write the two best clean coins to memebot/recommend instead of opening positions")
+    ap.add_argument("--horizon", default=os.environ.get("MEMEBOT_HORIZON", "24h"), choices=sorted(PROFILES), help="rule profile: 24h (survive a day) or 2h (pump in the next two hours)")
     a = ap.parse_args()
+    apply_profile(a.horizon)
     now = int(a.now if a.now else time.time() * 1000)
     if a.cmd == "mode":
         cmd_mode(a.dir, now, a.force, a.snapshot, a.recommend)

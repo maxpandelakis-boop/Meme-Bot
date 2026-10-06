@@ -8,7 +8,7 @@ universe, the scan gates and scores them, exactly two coins get bought for 20 ea
 while the money is deployed, exits (half at 2x, stop at -50%, 3-day time limit) return money to the bankroll, the 24h big test
 scores every snapshotted coin and the weights get learned. GMGN is mocked as blocked (403) to exercise the circuit breaker.
 """
-import json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse
+import glob, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -313,6 +313,22 @@ def main():
     rec3 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
     check(r.returncode == 0 and same(rec3, old_rec) and "SKIPPED" in r.stdout, "a broken (tiny) scan does not replace the recommendations (%s)" % ((r.stderr.strip().splitlines() or ["?"])[-1][:120] if r.returncode else r.stdout.strip().splitlines()[-1][:120]))
     shutil.rmtree(rd, ignore_errors=True)
+
+    print("== 2h profile: early, accelerating coins; recommendations and a 2-hour big test")
+    hd = tempfile.mkdtemp(prefix="memebot-2h-")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--mock", url, "--now", str(T0), "--recommend", "--horizon", "2h"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rec = json.load(open(os.path.join(hd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(hd, "db", "memebot", "recommend.json")) else {}
+    ages = [c.get("f", {}).get("ageH") for c in rec.get("picks", [])]
+    check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and all(a is not None and 1 <= a <= 12 for a in ages), "2h profile recommended 2 early coins (ages %s)" % [round(a, 1) if a else a for a in ages])
+    st = json.load(open(os.path.join(hd, "db", "memebot", "state.json")))
+    check(st.get("horizon") == "2h" and st.get("rule") == "m9-2h", "state carries the profile")
+    page = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
+    check("for the next 2 hours" in page and "Big test: 2 hours later" in page, "page is labelled for the 2-hour horizon")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--mock", url, "--now", str(T0 + 3 * H), "--recommend", "--horizon", "2h"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    res = glob.glob(os.path.join(hd, "db", "memesnapres", "*.json"))
+    check(r.returncode == 0 and res and "Big test" in r.stdout, "the snapshot was scored 2 hours later (%d result docs)" % len(res))
+    check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
+    shutil.rmtree(hd, ignore_errors=True)
 
     print("== sync: page and small docs to a results branch")
     bare = tempfile.mkdtemp(prefix="memebot-bare-")

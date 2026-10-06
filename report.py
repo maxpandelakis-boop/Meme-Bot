@@ -577,7 +577,7 @@ def rec_section(D, embed):
             "good" if c.get("ok") else ("bad" if c.get("ok") is False else ""), "clean" if c.get("ok") else ("flagged: " + str(c.get("safety") or "").replace("RugCheck", "").strip(": ") if c.get("ok") is False else "no safety report"),
             E(c.get("pair") or c.get("addr"))) for c in runners)
         body += '<details><summary>Runners-up</summary><div class="tbl"><table><thead><tr><th class="n">rank</th><th>coin</th><th class="n">score</th><th class="n">market cap</th><th class="n">liquidity</th><th class="n">24h volume</th><th>safety</th><th></th></tr></thead><tbody>%s</tbody></table></div></details>' % tr
-    return '<section><div class="sec-head"><h2>Two recommendations</h2><p>%s</p></div>%s</section>' % (E(head), body)
+    return '<section><div class="sec-head"><h2>Two recommendations%s</h2><p>%s</p></div>%s</section>' % (" for the next 2 hours" if M.HORIZON == "2h" else "", E(head), body)
 
 
 def closed_table(rows):
@@ -735,7 +735,7 @@ def render(data, fragment=False):
     scan_txt = ("last scan %s coins, %s passed the gates" % (E(st.get("scanned")), E(st.get("passed") or 0))) if st.get("scanned") else "no scan yet"
     head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real</div><h1>%s</h1></div>'
             '<div class="meta"><span>last run %s</span><span>%s run%s</span><span>%s</span><span>rule %s</span></div></header>') % (
-        E(TITLE), E(fmt_dt(last_run)), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s", scan_txt, E(st.get("rule") or M.RULE))
+        E(TITLE), E(fmt_dt(last_run)), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s", scan_txt, E((st.get("rule") or M.RULE) + " · %s profile" % M.HORIZON))
     body = [head]
     if D.get("rec"):
         body.append(safe("recommendations", lambda: rec_section(D, embed=not fragment)))
@@ -745,7 +745,8 @@ def render(data, fragment=False):
     body.append(safe("equity curve", curve))
     body.append(safe("bought coins", bought))
     body.append('<section><div class="sec-head"><h2>Closed trades</h2><p>what came back after fees, newest first</p></div>%s</section>' % safe("closed trades", lambda: closed_table(D["closed"])))
-    body.append('<section><div class="sec-head"><h2>Big test: 24 hours later</h2><p>what 20 in each scanned coin was worth a day later, after fees · an unchanged price counts %+.2f (the two fees)</p></div>%s</section>' % (FLAT, safe("big test", lambda: big_section(D["big"]))))
+    hz = "%g hours" % M.EVAL_H if M.EVAL_H < 23 else "24 hours"
+    body.append('<section><div class="sec-head"><h2>Big test: %s later</h2><p>what 20 in each scanned coin was worth %s later, after fees · an unchanged price counts %+.2f (the two fees)</p></div>%s</section>' % (hz, hz, FLAT, safe("big test", lambda: big_section(D["big"]))))
     w_html = safe("weights", lambda: weights_section(D))
     if w_html:
         body.append('<section><div class="sec-head"><h2>Factor weights in use</h2><p>what the score rewards and punishes</p></div>%s</section>' % w_html)
@@ -761,7 +762,9 @@ def render(data, fragment=False):
     return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n%s\n</head>\n<body>\n%s\n</body>\n</html>\n' % (head_html, content)
 
 
-def build(d, out=None, now=None, fragment=False):
+def build(d, out=None, now=None, fragment=False, horizon=None):
+    st0 = M.load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
+    M.apply_profile(horizon or st0.get("horizon") or "24h")       # the page reads the same rules the bot ran with
     now = int(now or dt.datetime.now(dt.timezone.utc).timestamp() * 1000)
     last = M.num((M.load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}).get("lastRun"))
     now = max(now, int(last)) if last else now      # a db written with a fake clock (tests) must not show negative ages
@@ -779,8 +782,9 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--now", type=float, default=None)
     ap.add_argument("--fragment", action="store_true")
+    ap.add_argument("--horizon", default=None)
     a = ap.parse_args()
-    print(build(a.dir, a.out, a.now, a.fragment))
+    print(build(a.dir, a.out, a.now, a.fragment, a.horizon))
 
 
 if __name__ == "__main__":

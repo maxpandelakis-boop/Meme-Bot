@@ -14,6 +14,8 @@ Usage:
   python3 bot.py cycle   [--dir mb] [--force] [--offline]   one cycle (--force: pick now even inside the 3h gap; --offline: reuse the files in --dir)
   python3 bot.py cycle --rescan                             full scan of the whole universe now, saved for the big test (buys only if a slot is free)
   python3 bot.py loop --every 60 --recommend --push         never buy: each cycle rescans everything and puts the two best clean coins on the page
+  python3 bot.py loop --every 30 --recommend --push --horizon 2h   the same with the 2-hour profile: early, small, accelerating coins, re-priced 2h later
+  (the loop git-pulls before each cycle and restarts itself when new code arrived; --no-update turns that off)
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
   python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
   python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
@@ -80,9 +82,9 @@ def chunk_addrs(g):
     return [a for a in out if a]
 
 
-def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False):
+def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
     os.makedirs(d, exist_ok=True)
-    extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else [])
+    extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else []) + ["--horizon", horizon]
     mode = run(["memebot.py", "mode"] + extra, d, now)
     log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
     fetch = lambda args, expect_json=True: run(["fetch.py"] + args + (["--mock", mock] if mock else []), d, expect_json=expect_json)
@@ -108,9 +110,18 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     n = apply_out(d)
     log("saved %d docs" % n)
+    # a scored snapshot's raw copy is not needed anymore (the result doc carries everything the learning reads)
+    try:
+        for w in json.load(open(os.path.join(d, "out", "manifest.json"), encoding="utf-8")):
+            if w["collection"] == "memesnapres":
+                raw = os.path.join(d, "db", "memesnap", w["doc_id"] + ".json")
+                if os.path.exists(raw):
+                    os.remove(raw)
+    except (OSError, ValueError):
+        pass
     try:
         import report as R
-        log("report: %s" % R.build(d, now=now))
+        log("report: %s" % R.build(d, now=now, horizon=horizon))
     except Exception as e:   # the page must never break a cycle
         log("report failed: %s" % e)
     print(r["note"])
@@ -231,6 +242,21 @@ def sell(d, which, now=None):
     return done
 
 
+def self_update():
+    """git pull in the code folder; True when the code changed (the loop then restarts itself with the new code)."""
+    git = lambda *x: subprocess.run(["git", "-C", HERE] + list(x), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                    env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+    before = git("rev-parse", "HEAD").stdout.strip()
+    if not before:
+        return False
+    p = git("pull", "--ff-only", "-q")
+    if p.returncode != 0:
+        log("self-update skipped: %s" % (p.stderr.strip().splitlines() or ["?"])[-1][:120])
+        return False
+    after = git("rev-parse", "HEAD").stdout.strip()
+    return bool(after) and after != before
+
+
 def status(d):
     sys.path.insert(0, HERE)
     import memebot as M
@@ -272,6 +298,8 @@ def main():
     ap.add_argument("--push", action="store_true", help="after each cycle, push report.html and the small docs to the results branch")
     ap.add_argument("--rescan", action="store_true", help="cycle: scan the whole universe now and save it for the big test, even if the last full scan is recent")
     ap.add_argument("--recommend", action="store_true", help="cycle/loop: never buy; write the two best clean coins of each full scan to the page")
+    ap.add_argument("--horizon", default=os.environ.get("MEMEBOT_HORIZON", "24h"), choices=["24h", "2h"], help="rule profile: 24h (survive a day) or 2h (pump in the next two hours)")
+    ap.add_argument("--no-update", action="store_true", help="loop: do not git pull and restart when new code is pushed")
     ap.add_argument("--remote", default=None, help="git URL for sync/--push (default: this repository's origin)")
     ap.add_argument("--branch", default="results", help="branch for sync/--push")
     ap.add_argument("--dir", default="mb")
@@ -300,11 +328,14 @@ def main():
         if a.push:
             sync(a.dir, a.remote, a.branch)
     elif a.cmd == "cycle":
-        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch, a.rescan, a.recommend)
+        cycle(a.dir, a.force, a.offline, a.mock, a.now, a.push, a.remote, a.branch, a.rescan, a.recommend, a.horizon)
     else:
         while True:
+            if not a.no_update and self_update():
+                log("new code pulled, restarting the loop")
+                os.execv(sys.executable, [sys.executable] + sys.argv)
             try:
-                cycle(a.dir, a.force, a.offline, a.mock, push=a.push, remote=a.remote, branch=a.branch, recommend=a.recommend)
+                cycle(a.dir, a.force, a.offline, a.mock, push=a.push, remote=a.remote, branch=a.branch, recommend=a.recommend, horizon=a.horizon)
             except SystemExit as e:
                 log("cycle failed: %s" % e)
             log("next cycle in %.0f minutes" % a.every)
