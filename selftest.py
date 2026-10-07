@@ -121,6 +121,10 @@ class Mock:
             if p in ("/token-boosts/top/v1", "/token-boosts/latest/v1", "/token-profiles/latest/v1", "/community-takeovers/latest/v1", "/ads/latest/v1"):
                 off = {"/token-boosts/top/v1": 0, "/token-boosts/latest/v1": 30, "/token-profiles/latest/v1": 60, "/community-takeovers/latest/v1": 90, "/ads/latest/v1": 120}[p]
                 return 200, [{"chainId": "solana", "tokenAddress": c["a"]} for c in self.coins[off:off + 30]] + [{"chainId": "ethereum", "tokenAddress": "0xabc"}]
+            if p.startswith("/orders/v1/solana/"):
+                a = p.rsplit("/", 1)[1]
+                i = self.coins.index(self.by_a[a]) if a in self.by_a else 1
+                return 200, ([{"type": "tokenProfile", "status": "approved", "paymentTimestamp": T0 - 5 * H}] + ([{"type": "tokenAd", "status": "approved", "paymentTimestamp": T0 - H}] if i % 6 == 0 else [])) if i % 3 == 0 else []
             if p == "/latest/dex/search":
                 kw = q.get("q", [""])[0]
                 hits = [c for c in self.coins if c["kw"] == kw][:30]
@@ -484,6 +488,12 @@ def main():
           "source tweets read for the story coins (%d rows; %d of the named coins carry one: %s)" % (len(vt_rows), len(told), [(c["sym"], round(10 ** c["f"]["vt.likes"])) for c in told[:3]]))
     check(any(M.num((c.get("f") or {}).get("theme.animal")) for c in rec.get("picks", []) + rec.get("runnersUp", [])) and "animal story" in page_r,
           "the animal theme is a factor and shows on the page")
+    dp_rows = [l for fn in glob.glob(os.path.join(rd, "dp", "dp_*.txt")) for l in open(fn, encoding="utf-8") if l.strip()]
+    named = rec.get("picks", []) + rec.get("runnersUp", [])
+    with_dp = [c for c in named if "ds.paid" in (c.get("f") or {})]
+    check(dp_rows and all(len(l.split("|")) == len(M.DP_COLS) for l in dp_rows) and with_dp and any(c["f"]["ds.paid"] == 1 for c in with_dp)
+          and any("DEX paid" in (c.get("why") or "") for c in with_dp) and ">DEX paid<" in page_r,
+          "DEX paid read from DexScreener's orders (%d rows; %d named coins carry it, %d paid)" % (len(dp_rows), len(with_dp), sum(1 for c in with_dp if c["f"]["ds.paid"] == 1)))
     fresh_files = glob.glob(os.path.join(rd, "pairs", "fresh_*.txt"))
     check(fresh_files and M.num(rec.get("pricedAt")) and rec.get("refreshed", 0) >= 16 and "refreshed" in (r.stderr or "") and "right before the pick" in open(os.path.join(rd, "report.html"), encoding="utf-8").read(),
           "the candidates' prices were refreshed before the pick (%d files, %s coins) and the page says when" % (len(fresh_files), rec.get("refreshed")))
@@ -518,7 +528,8 @@ def main():
             gone = rng.random() < (0.8 if 5.78 < lmc < 6.1 else 0.02)   # the zone sits inside the third of four equal-count bins
             mult = 0.0 if gone else max(0.05, rng.gauss(0.9 + 0.5 * bs, 0.3))
             coins.append({"a": "A%02d-%03d" % (g, i), "s": "S%d" % i, "pass": i % 3 == 0, "sc": 50.0, "why": [] if i % 3 == 0 else ["young"], "mc": 300_000, "liq": 40_000,
-                          "f": {"logMc": round(lmc, 4), "buyShare": round(bs, 4), "c1": round(rng.uniform(-30, 80), 2), "ageH": round(rng.uniform(2, 40), 2)},
+                          "f": {"logMc": round(lmc, 4), "buyShare": round(bs, 4), "c1": round(rng.uniform(-30, 80), 2), "ageH": round(rng.uniform(2, 40), 2),
+                                "volMc": round(rng.uniform(0.05, 3.0), 3), "web": float(i % 2), "socN": float(i % 3)},
                           "mult": round(mult, 4), "eur": round(19.9 * mult * 0.995 - 20, 2) if mult else -20.0, "gone": gone})
         syn["syn%02d-1" % g] = {"t": T0 + (g + 1) * 24 * H, "t0": T0 + g * 24 * H, "rule": M.RULE, "n": len(coins), "coins": coins}
         json.dump(syn["syn%02d-1" % g], open(os.path.join(td, "db", "memesnapres", "syn%02d-1.json" % g), "w"))
@@ -537,6 +548,10 @@ def main():
           "tuned limits stay in bounds: zero limit %s, score bar %s" % (tuned.get("MAX_ZERO_P"), tuned.get("MIN_REC_SCORE")))
     check(any(x.get("gate") == "pass" for x in tr.get("gates") or []) and any(x.get("gate") == "young" for x in tr.get("gates") or []) and tr.get("factors"),
           "gate audit and factor splits written (%d gates, %d factors)" % (len(tr.get("gates") or []), len(tr.get("factors") or [])))
+    flt = {g.get("filter"): g for g in (tr.get("filters") or [])}
+    mig = next((g for k, g in flt.items() if k and k.startswith("terminal 'migrated play'")), None)
+    check(mig and mig.get("n", 0) >= 20 and mig.get("avg") is not None and "the bot's gates (passed every gate)" in flt and flt["all candidate-like coins"]["n"] == tr.get("rows"),
+          "outside filter recipes tested on the results (migrated play keeps %s of %s coins)" % (mig.get("n") if mig else None, tr.get("rows")))
     ages_ = tr.get("ages") or []
     check(len(ages_) >= 3 and all(a.get("n") >= 10 and a.get("avg") is not None for a in ages_) and sum(a["n"] for a in ages_) == tr.get("rows") and any(a.get("passed") for a in ages_),
           "age record written: %s" % ", ".join("%s %d" % (a.get("age"), a.get("n")) for a in ages_))

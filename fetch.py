@@ -119,7 +119,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "cdn.syndication.twimg.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
@@ -978,6 +978,30 @@ GI_COLS = ("address", "gtScore", "holders", "top10Pct", "mintAuth", "freezeAuth"
 CM_COLS = ("address", "rcUp", "rcDown", "cgWatch", "cgTwitter", "cgReddit", "cgSentUp", "cgRank", "stWatch", "stMsgs24", "xFollowers", "xTweets7d", "tgSubs", "tgMsgs24")
 
 
+def ds_orders(http, d, addrs, now=None):
+    """'DEX paid': DexScreener's paid orders for a token (token profile, community takeover, ads) -> dp/<stamp>.txt. A team
+    that paid for its DexScreener profile spent real money on the coin; trading terminals filter on it. One request per
+    coin, paced to the endpoint's 60-per-minute limit, so only the shortlist gets it."""
+    now = now or time.time()
+    rows = []
+    for a in addrs:
+        if "api.dexscreener.com" in http.dead:
+            break
+        j = http.get(DS + "/orders/v1/solana/" + a)
+        if not isinstance(j, list):
+            continue
+        ok = [o for o in j if isinstance(o, dict) and str(o.get("status")) == "approved"]
+        prof = [o for o in ok if str(o.get("type")) == "tokenProfile"]
+        paid_ms = max((num(o.get("paymentTimestamp")) or 0 for o in prof), default=0)
+        rows.append(row(a, bool(prof), round((now - paid_ms / 1000.0) / 3600, 2) if paid_ms > 1e12 else None,
+                        sum(1 for o in ok if str(o.get("type")) in ("tokenAd", "trendingBarAd")), any(str(o.get("type")) == "communityTakeover" for o in ok), len(j)))
+        if not http.mock:
+            time.sleep(1.0)
+    n = write_rows(d, "dp", "dp_%d.txt" % int(time.time()), rows)
+    http.log("  dex paid %d of %d (%d paid profiles)" % (n, len(addrs), sum(1 for r in rows if r.split("|")[1] == "true")))
+    return n
+
+
 def goplus(http, d, addrs):
     """GoPlus token security for the shortlist (20 mints per request) -> gp/<stamp>.txt: the authorities that can still mint,
     freeze, close or rewrite balances, a transfer fee, whether GoPlus trusts it, holders, the top-10 share and the LP burn."""
@@ -1273,6 +1297,7 @@ def cmd_risk(http, d, addrs, meta=None):
     dev_check(http, d, addrs[:24])
     community(http, d, addrs[:20], meta)
     viral(http, d, addrs[:60], meta)
+    ds_orders(http, d, addrs[:40])
     bitquery_trades(http, d, addrs[:40], os.environ.get("BITQUERY_TOKEN"))
     lunarcrush_topics(http, d, addrs[:4], meta, os.environ.get("LUNARCRUSH_API_KEY"))
     if "gmgn.ai" not in http.dead:

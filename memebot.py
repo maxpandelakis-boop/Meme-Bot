@@ -136,7 +136,7 @@ PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6":
          "gp.risk": -0.2, "gp.lpBurn": 0.1, "gp.trusted": 0.05, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.cgWatch": 0.05, "cm.xFollowers": 0.05, "cm.tgSubs": 0.05, "cm.stWatch": 0.05,
          "bq.buyerRatio": 0.15, "bq.netUsd1h": 0.1, "bq.topBuyerShare": -0.1, "lct.interactions": 0.1, "lct.contributors": 0.05,
          # the story: a coin launched off one viral tweet (likes, posted within two days), an animal theme
-         "vt.likes": 0.15, "vt.fresh": 0.05, "vt.tweet": 0.05, "theme.animal": 0.05,
+         "vt.likes": 0.15, "vt.fresh": 0.05, "vt.tweet": 0.05, "theme.animal": 0.05, "ds.paid": 0.1,
          # v4 traders: GMGN smart money, top buyers, leaderboard wallets
          "gm.smartDegen": 0.15, "gm.renowned": 0.1, "gm.bluechip": 0.1, "gm.hot": 0.05, "gm.bundler": -0.1, "gm.rat": -0.1, "gm.sniperHold": -0.1,
          "gm.wash": -0.15, "gm.rugRatio": -0.1, "gm.devHold": -0.05, "tb.holdShare": 0.1, "tb.smartHold": 0.15, "tb.sniperShare": -0.05,
@@ -168,7 +168,7 @@ PROFILES = {
                   "rd.posts": 0.15, "rd.fresh": -0.05, "rd.byAddr": 0.05, "cmc.search": 0.1, "cmc.gain": 0.05, "cgm.listed": 0.05,
                   "gp.risk": -0.25, "gp.lpBurn": 0.1, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.xFollowers": 0.05, "cm.xTweets": 0.05, "cm.tgMsgs": 0.05, "cm.stMsgs": 0.05,
                   "bq.buyerRatio": 0.2, "bq.netUsd1h": 0.15, "bq.topBuyerShare": -0.1, "lct.interactions": 0.15, "lct.contributors": 0.05, "lct.trend": 0.05,
-                  "vt.likes": 0.25, "vt.fresh": 0.1, "vt.tweet": 0.05, "theme.animal": 0.05,
+                  "vt.likes": 0.25, "vt.fresh": 0.1, "vt.tweet": 0.05, "theme.animal": 0.05, "ds.paid": 0.1,
                   "dev.sold": -0.3, "dev.pct": -0.15, "dev.authOff": 0.05}}}
 
 
@@ -361,6 +361,7 @@ BQ_COLS = ("address", "trades1h", "buyers1h", "sellers1h", "netUsd1h", "topBuyer
 LCT_COLS = ("address", "interactions24h", "posts24h", "contributors", "sentiment", "trend")
 HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
 VT_COLS = ("address", "tweetId", "likes", "replies", "tweetAgeH", "followers", "verified", "media", "animal", "screenName", "text")
+DP_COLS = ("address", "paid", "paidAgeH", "ads", "cto", "orders")
 ANIMALS = re.compile(r"\b(monkey|monkeys|macaque|ape|apes|chimp|gorilla|cat|cats|kitten|kitty|dog|dogs|puppy|pup|doge|shiba|capybara|frog|frogs|toad|pepe|penguin|hamster|squirrel|raccoon|otter|bear|bears|panda|hippo|hippopotamus|moo deng|cow|cows|pig|piglet|duck|duckling|goat|bird|parrot|owl|fish|rat|mouse|seal|sloth|fox|wolf|lion|tiger|elephant|turtle|tortoise|rabbit|bunny|chick|chicken|giraffe|zebra|koala|kangaroo|llama|alpaca|dolphin|shark|octopus|snail|hedgehog|deer|moose|donkey|horse|pony|lamb|sheep|bat|crab|lobster|axolotl|quokka|wombat|lemur|baboon|orangutan)\b", re.I)
 TWEET_LINK = re.compile(r"^https://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]{1,30}/status/\d{5,25}")
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
@@ -530,6 +531,7 @@ def cmd_gather(d, now):
     lc, _ = load_side(d, "lc", LCT_COLS)
     hl, _ = load_side(d, "hl", HL_COLS)
     vt, _ = load_side(d, "vt", VT_COLS)
+    dp, _ = load_side(d, "dp", DP_COLS)
     ll, ltags = load_side(d, "ll", LL_COLS)
     for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
@@ -562,7 +564,7 @@ def cmd_gather(d, now):
             p["dev"] = dict(dev[a])
         if a in ll:
             p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
-        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl), ("vt", vt)):
+        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl), ("vt", vt), ("dp", dp)):
             if a in table:
                 p[sub] = {k: v for k, v in table[a].items() if k != "address" and v is not None}
         if a in gm:
@@ -1013,6 +1015,13 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
     for k, src in (("hl.top1", "top1Pct"), ("hl.top10", "top10Pct"), ("hl.top20", "top20Pct")):
         if num(hl.get(src)) is not None:
             f[k] = num(hl.get(src))
+    dp = pr.get("dp") or {}
+    if dp and dp.get("paid") is not None:           # 'DEX paid': the team paid for its DexScreener profile (and maybe ads)
+        f["ds.paid"] = 1.0 if truthy(dp.get("paid")) else 0.0
+        if num(dp.get("paidAgeH")) is not None:
+            f["ds.paidAgeH"] = num(dp["paidAgeH"])
+        f["ds.ads"] = num(dp.get("ads")) or 0.0
+        f["ds.cto"] = 1.0 if truthy(dp.get("cto")) else 0.0
     # the story behind the coin: a single tweet as its X link (the 'viral real story' launch), and an animal theme
     x_url = x_link(pr) or str((pr.get("pf") or {}).get("twitter") or "")
     f["vt.tweet"] = 1.0 if TWEET_LINK.match(x_url) else 0.0
@@ -1025,9 +1034,9 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f["vt.fresh"] = 1.0 if 0 <= num(vt["tweetAgeH"]) <= 48 else 0.0
         if num(vt.get("followers")) is not None:
             f["vt.followers"] = math.log10(1.0 + max(0.0, num(vt["followers"])))
-        f["vt.verified"] = 1.0 if str(vt.get("verified")).lower() == "true" else 0.0
-        f["vt.media"] = 1.0 if str(vt.get("media")).lower() == "true" else 0.0
-    f["theme.animal"] = 1.0 if (ANIMALS.search("%s %s" % (pr.get("name") or "", pr.get("symbol") or "")) or str(vt.get("animal")).lower() == "true") else 0.0
+        f["vt.verified"] = 1.0 if truthy(vt.get("verified")) else 0.0
+        f["vt.media"] = 1.0 if truthy(vt.get("media")) else 0.0
+    f["theme.animal"] = 1.0 if (ANIMALS.search("%s %s" % (pr.get("name") or "", pr.get("symbol") or "")) or truthy(vt.get("animal"))) else 0.0
     lc = pr.get("lc") or {}
     for k, src in (("lct.interactions", "interactions24h"), ("lct.posts", "posts24h"), ("lct.contributors", "contributors"), ("lct.sentiment", "sentiment"), ("lct.trend", "trend")):
         if num(lc.get(src)) is not None:
@@ -1482,6 +1491,57 @@ def age_audit(groups):
     return out
 
 
+def truthy(v):
+    """A boolean cell after the side-table parser: True, 1.0 or the text 'true'."""
+    return v is True or (isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 1) or str(v).strip().lower() == "true"
+
+
+def paid_profile(f):
+    """'DEX paid' for a scored row: the dp table where the row has it, else DexScreener's token info (websites/socials come
+    only with a paid profile or a takeover) as the proxy."""
+    if num(f.get("ds.paid")) is not None:
+        return num(f["ds.paid"]) >= 1.0
+    return (num(f.get("web")) or 0) > 0 or (num(f.get("socN")) or 0) > 0
+
+
+def vol24_of(f):
+    mc = 10 ** num(f["logMc"]) if num(f.get("logMc")) is not None else None
+    return num(f["volMc"]) * mc if num(f.get("volMc")) is not None and mc else None
+
+
+FILTER_RECIPES = (
+    ("all candidate-like coins", lambda r, f: True),
+    ("the bot's gates (passed every gate)", lambda r, f: r["pass"]),
+    ("terminal 'migrated play': market cap over $30k, over $50k traded in 24h (about 3 SOL of fees), under 10 h old, DEX paid",
+     lambda r, f: (num(f.get("logMc")) or 0) >= math.log10(30_000) and (vol24_of(f) or 0) >= 50_000 and num(f.get("ageH")) is not None and f["ageH"] <= 10 and paid_profile(f)),
+    ("the same without the DEX-paid rule",
+     lambda r, f: (num(f.get("logMc")) or 0) >= math.log10(30_000) and (vol24_of(f) or 0) >= 50_000 and num(f.get("ageH")) is not None and f["ageH"] <= 10),
+    ("terminal 'new play': market cap $6k to $60k, over $3k traded in 24h, under 10 h old",
+     lambda r, f: num(f.get("logMc")) is not None and math.log10(6_000) <= f["logMc"] <= math.log10(60_000) and (vol24_of(f) or 0) >= 3_000 and num(f.get("ageH")) is not None and f["ageH"] <= 10),
+    ("under 10 h old", lambda r, f: num(f.get("ageH")) is not None and f["ageH"] <= 10),
+    ("DEX paid", lambda r, f: paid_profile(f)),
+    ("not DEX paid", lambda r, f: not paid_profile(f)),
+)
+
+
+def filter_audit(groups):
+    """Filter recipes from outside (trading-terminal presets as they circulate on TikTok), tested on the bot's own scored
+    results next to the bot's gates: how many coins each keeps, how many went up, how many to zero, the average per 20."""
+    rows = [r for _, _, g in groups for r in g]
+    out = []
+    for name, keep in FILTER_RECIPES:
+        kept = []
+        for r in rows:
+            try:
+                if keep(r, r["f"]):
+                    kept.append(r)
+            except (TypeError, ValueError):
+                pass
+        if len(kept) >= 10 or name.startswith("all"):
+            out.append(dict(filter=name, share=round(100.0 * len(kept) / len(rows), 1) if rows else None, **tip_stats(kept)))
+    return out
+
+
 def tip_record(d):
     """Every real tip the bot gave (memerec) that has been priced again, as one stats row."""
     tips = []
@@ -1534,7 +1594,7 @@ def cmd_train(d, now):
     groups = train_groups(d)
     rows = [r for _, _, g in groups for r in g]
     doc = {"t": now, "rule": RULE, "rows": len(rows), "scans": len(groups), "zeros": sum(1 for r in rows if r["gone"]),
-           "tested": 0, "walkForward": {}, "zeroGrid": [], "scoreGrid": [], "gates": [], "ages": [], "factors": [], "tips": tip_record(d),
+           "tested": 0, "walkForward": {}, "zeroGrid": [], "scoreGrid": [], "gates": [], "ages": [], "filters": [], "factors": [], "tips": tip_record(d),
            "tuned": {"MAX_ZERO_P": MAX_ZERO_P, "MIN_REC_SCORE": MIN_REC_SCORE, "PICK_BY": "score"}, "tunedWhy": [], "zeroModel": None, "upModel": None, "zeroFactors": [], "note": ""}
     if rows:
         tested = walk_forward(groups)
@@ -1552,6 +1612,7 @@ def cmd_train(d, now):
             doc.update({"walkForward": wf, "zeroGrid": zero_grid, "scoreGrid": score_grid, "tuned": tuned, "tunedWhy": why})
         doc["gates"] = gate_audit(groups)
         doc["ages"] = age_audit(groups)
+        doc["filters"] = filter_audit(groups)
         model = zero_model(rows)
         doc["upModel"] = up_model(rows)
         if model:
@@ -1684,14 +1745,14 @@ def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
     # the shortlist's side tables are fetched after the gather, so the run reads them itself (gather attaches them next time anyway)
-    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS), ("vt", VT_COLS)):
+    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS), ("vt", VT_COLS), ("dp", DP_COLS)):
         table, _ = load_side(d, sub, cols)
         for a, r in table.items():
             if a in pairs and not pairs[a].get(sub):
                 pairs[a][sub] = {k: v for k, v in r.items() if k != "address" and v is not None}
     for a, pr in pairs.items():                       # the creator check (Jupiter + RPC), GoPlus and the community facts ride on the RugCheck entry
-        if a in risk and isinstance(risk[a], dict) and (pr.get("dev") or pr.get("gp") or pr.get("cm") or pr.get("gi") or pr.get("hl") or pr.get("vt")):
-            risk[a] = dict(risk[a], dev=pr.get("dev") or {}, gp=pr.get("gp") or {}, cm=pr.get("cm") or {}, gi=pr.get("gi") or {}, hl=pr.get("hl") or {}, vt=pr.get("vt") or {})
+        if a in risk and isinstance(risk[a], dict) and (pr.get("dev") or pr.get("gp") or pr.get("cm") or pr.get("gi") or pr.get("hl") or pr.get("vt") or pr.get("dp")):
+            risk[a] = dict(risk[a], dev=pr.get("dev") or {}, gp=pr.get("gp") or {}, cm=pr.get("cm") or {}, gi=pr.get("gi") or {}, hl=pr.get("hl") or {}, vt=pr.get("vt") or {}, dp=pr.get("dp") or {})
     news, cg, wallets = load_news(d, now), load_cg(d), wallet_table(d)
     tbs, board = load_top_buyers(d), load_leaderboard(d)
     held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9}
@@ -1849,7 +1910,7 @@ def risk_doc(r):
     dv = r.get("dev")
     if isinstance(dv, dict):
         doc["dev"] = {k: dv.get(k) for k in ("devPct", "devSold", "devSellAgeMin", "mintAuthOff", "freezeAuthOff", "txs3h", "jupHolders", "organic") if dv.get(k) is not None}
-    for sub in ("gp", "cm", "gi", "hl", "vt"):
+    for sub in ("gp", "cm", "gi", "hl", "vt", "dp"):
         if isinstance(r.get(sub), dict) and r[sub]:
             doc[sub] = dict(r[sub])
     if r.get("holdersTop"):
@@ -1939,6 +2000,9 @@ def why_text(r):
         bits.append("on-chain: %d trades in the last hour, %d buyers vs %d sellers, net %s%s" % (f["bq.trades1h"], f.get("bq.buyers1h") or 0, f.get("bq.sellers1h") or 0,
                                                                                                ("+" if (f.get("bq.netUsd1h") or 0) >= 0 else "-") + money(abs(f.get("bq.netUsd1h") or 0)),
                                                                                                (", biggest buyer %d%% of the buying" % round(100 * f["bq.topBuyerShare"])) if f.get("bq.topBuyerShare") is not None else ""))
+    if f.get("ds.paid") is not None:
+        bits.append(("DEX paid: DexScreener profile approved%s" % ((" %.0f h before the scan" % f["ds.paidAgeH"]) if f.get("ds.paidAgeH") is not None else "")
+                     + ((", %d paid ad%s" % (f["ds.ads"], "" if f["ds.ads"] == 1 else "s")) if f.get("ds.ads") else "")) if f["ds.paid"] else "no paid DexScreener profile")
     vt = (r.get("pr") or {}).get("vt") or {}
     if f.get("vt.likes") is not None:
         likes = 10 ** f["vt.likes"] - 1

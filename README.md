@@ -140,6 +140,10 @@ verified, picture or video) and names it on the card ("launched off a tweet by @
 the scan"). An animal theme in the name, ticker or tweet text is its own factor (`theme.animal`). Both start with small
 priors; the learning decides what they are worth. Views are not public without the X API, so likes stand in for them.
 
+"DEX paid" is read too: DexScreener's public orders endpoint says whether the team paid for the coin's DexScreener
+profile (and for ads or a community takeover) and when (`dp/<stamp>.txt`, factors `ds.paid`, `ds.paidAgeH`, `ds.ads`,
+`ds.cto`). Trading terminals filter on it because it costs real money; here it is a small prior and a row on the card.
+
 For the shortlist (the coins that get a RugCheck report) the bot also pulls: GoPlus token security (mint, freeze, close
 and balance authorities, transfer fee, trusted-token flag, holders, top-10 share, LP burn; a coin with any authority left
 is skipped), GeckoTerminal token facts (GT score, holders, top-10 share, authorities), RugCheck community votes,
@@ -165,6 +169,11 @@ Believe, Moonshot, pump.fun's detail endpoints, CryptoPanic, fxtwitter, Google T
 Every pick run starts with `memebot.py train`, which puts the scored snapshots of the active profile through five programs
 and writes `db/memebot/train.json` (shown on the page under "Training" and in the run summary):
 
+- **Outside filter recipes.** The presets that circulate on TikTok for trading terminals (market cap over $30k, over
+  $50k traded, under 10 hours old, "DEX paid"; the "new play" of $6k to $60k coins) are applied to every scored coin of
+  the profile next to the bot's own gates: what each keeps, how many went up, how many to zero, the average per 20
+  (`filters` in `train.json`, shown in the Training fold). A recipe that beats the gates on the bot's own results is a
+  reason to change the gates; a claim in a video is not.
 - **Walk-forward test.** The history is split at eight points; at each one the weights and the zero model are fitted on the
   scans before it only, and that model ranks the gate-passing coins of the scans up to the next point. What the top-1, the
   top-2, all passing coins and the two worst-scored coins did is the honest, out-of-sample record of the ranking.

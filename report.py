@@ -33,7 +33,8 @@ WHY = {"target": "hit 2x, half sold", "stop": "−50% stop", "time": "3-day limi
 SRC = {"kw": "search “%s”", "gt": "GeckoTerminal %s", "pf": "pump.fun %s", "list": "DexScreener %s", "jup": "Jupiter %s", "gm": "GMGN %s"}
 LIST_NAMES = {"reddit": "Reddit posts", "cgMeme": "CoinGecko meme list", "cmcGain": "CoinMarketCap gainers", "rayVol": "Raydium top pools", "llNew": "LaunchLab new", "llHot": "LaunchLab hot", "llMc": "LaunchLab biggest",
               "rcNew": "RugCheck new", "rcTrending": "RugCheck trending", "rcRecent": "RugCheck recent", "rcVerified": "RugCheck verified"}
-FACTOR = {"vt.likes": "source tweet: likes (log)", "vt.replies": "source tweet: replies (log)", "vt.ageH": "source tweet: age in hours", "vt.fresh": "source tweet posted within 48h",
+FACTOR = {"ds.paid": "DEX paid (DexScreener profile)", "ds.paidAgeH": "DEX paid: hours since payment", "ds.ads": "paid DexScreener ads", "ds.cto": "community takeover (DexScreener)",
+          "vt.likes": "source tweet: likes (log)", "vt.replies": "source tweet: replies (log)", "vt.ageH": "source tweet: age in hours", "vt.fresh": "source tweet posted within 48h",
           "vt.followers": "source tweet: author's followers (log)", "vt.verified": "source tweet: verified author", "vt.media": "source tweet has a picture or video",
           "vt.tweet": "X link is a single tweet", "theme.animal": "animal story",
           "liqMc": "liquidity ÷ market cap", "volMc": "24h volume ÷ market cap", "logLiq": "liquidity (log)", "logMc": "market cap (log)",
@@ -761,6 +762,11 @@ def rec_card(c, now, embed):
         kv.append(("on-chain, last hour", "%d trades · %d buyers / %d sellers · net %s" % (g("bq.trades1h"), g("bq.buyers1h") or 0, g("bq.sellers1h") or 0, fmt_amt(g("bq.netUsd1h") or 0, True))))
     if g("lct.interactions") is not None:
         kv.append(("X/social 24h (LunarCrush)", "%s interactions" % fmt_money(g("lct.interactions"), dollars=False) + ((" · %d posts" % g("lct.posts")) if g("lct.posts") is not None else "")))
+    dp = rk.get("dp") or {}
+    if dp.get("paid") is not None:
+        paid = M.truthy(dp.get("paid"))
+        kv.append(("DEX paid", ("yes" + ((" · profile approved %.0f h before the scan" % M.num(dp["paidAgeH"])) if M.num(dp.get("paidAgeH")) is not None else "")
+                                + ((" · %d paid ad%s" % (M.num(dp["ads"]), "" if M.num(dp["ads"]) == 1 else "s")) if M.num(dp.get("ads")) else "")) if paid else "no"))
     vt = rk.get("vt") or {}
     if M.num(vt.get("likes")) is not None:
         when = (" · posted %.0f h before the scan" % M.num(vt["tweetAgeH"])) if M.num(vt.get("tweetAgeH")) is not None else ""
@@ -981,6 +987,11 @@ def train_section(D):
         tg = "".join('<tr><td>%s</td>%s</tr>' % (E(g.get("text") or g.get("gate")), stat_cells(g)) for g in gates[:14])
         body.append('<details><summary>Gate audit (coins that failed exactly one gate)</summary><p class="note">a gate whose lone failers did as well as the passers protects nothing; one whose failers went to zero earns its keep</p>'
                     '<div class="tbl stack"><table><thead><tr><th>gate</th>%s</tr></thead><tbody>%s</tbody></table></div></details>' % (STAT_HEAD, tg))
+    filters = [g for g in (T.get("filters") or []) if isinstance(g, dict)]
+    if filters:
+        tf = "".join('<tr><td>%s</td><td class="n">%s</td>%s</tr>' % (E(g.get("filter")), pct(g.get("share")) if g.get("share") is not None else "–", stat_cells(g)) for g in filters)
+        body.append('<details><summary>Filter recipes from outside, tested on the bot\'s results</summary><p class="note">trading-terminal presets as they circulate on TikTok (market cap, volume, age, "DEX paid"), applied to every scored coin of this profile, next to the bot\'s own gates · "DEX paid" is read from DexScreener\'s orders for new coins and from the presence of a DexScreener profile for older results</p>'
+                    '<div class="tbl stack"><table><thead><tr><th>filter</th><th class="n">keeps</th>%s</tr></thead><tbody>%s</tbody></table></div></details>' % (STAT_HEAD, tf))
     tips = T.get("tips") or {}
     summary = ("%d coin results from %d scans" % (rows_n, scans_n)) if rows_n else "waiting for the first scored snapshot"
     if wf.get("top2zero") or wf.get("top2"):
