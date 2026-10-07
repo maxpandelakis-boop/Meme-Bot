@@ -23,6 +23,7 @@ on:
         default: false
 permissions:
   contents: write
+  actions: write                     # the tidy-up step deletes old runs of this workflow
 concurrency:
   group: memebot-scan              # a button press while a scheduled run is going waits for it instead of racing it
   cancel-in-progress: false
@@ -72,6 +73,20 @@ jobs:
         with:
           path: site
           retention-days: 1
+      - name: Tidy the run list (successful runs older than two days are deleted)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cutoff=$(date -u -d '2 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions"
+          ids=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "$api/workflows/scan.yml/runs?status=success&per_page=100" | jq -r --arg c "$cutoff" '.workflow_runs[] | select(.created_at < $c) | .id')
+          n=0
+          for id in $ids; do
+            curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api/runs/$id" && n=$((n+1))
+          done
+          echo "deleted $n old runs (before $cutoff)"
   pages:
     needs: scan
     runs-on: ubuntu-latest
