@@ -34,6 +34,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
       LUNARCRUSH_API_KEY: ${{ secrets.LUNARCRUSH_API_KEY }}
+      BITQUERY_TOKEN: ${{ secrets.BITQUERY_TOKEN }}
       RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
       HORIZON: ${{ github.event.inputs.horizon || '2h' }}
       RESCAN: ${{ github.event.inputs.rescan == 'true' && '--rescan' || '' }}
