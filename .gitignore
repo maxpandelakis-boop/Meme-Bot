@@ -17,3 +17,5 @@
 !db/memebot/**
 !db/memerec/
 !db/memerec/**
+!db/memeyoung/
+!db/memeyoung/**
