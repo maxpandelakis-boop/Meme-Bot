@@ -1539,15 +1539,15 @@ def cmd_train(d, now):
         doc["note"] = "%d scored coins from %d scans: too little history for the walk-forward test (it needs 4 scans and %d coins before the first checkpoint)." % (len(rows), len(groups), TRAIN_MIN_ROWS)
     else:
         t2, t2z, ap = wf["top2"], wf.get("top2zero") or wf["top2"], wf["allPass"]
-        doc["note"] = ("Walk-forward on %d scans (%d coin results): the bot's top-2 picks averaged %+.2f per 20 (%d%% up, %d%% to zero); all gate-passing coins %+.2f (%d%% up, %d%% to zero)." % (
-            len(tested), len(rows), t2["avg"], round(t2["win"]), round(t2["zero"]), ap["avg"], round(ap["win"]), round(ap["zero"])))
+        stat = lambda st: ("%+.2f per 20 (%d%% up, %d%% to zero)" % (st["avg"], round(st["win"]), round(st["zero"]))) if st and st.get("n") and st.get("avg") is not None else "no tips yet"
+        doc["note"] = "Walk-forward on %d scans (%d coin results): the bot's top-2 picks %s; all gate-passing coins %s." % (len(tested), len(rows), stat(t2), stat(ap))
         if doc["zeroModel"]:
-            doc["note"] += " With the zero model (limit %d%%): %+.2f per 20, %d%% to zero, %d%% of the scans covered." % (round(100 * doc["tuned"]["MAX_ZERO_P"]), t2z["avg"], round(t2z["zero"]), round(t2z["coverage"]))
+            doc["note"] += " With the zero model (limit %d%%): %s%s." % (round(100 * doc["tuned"]["MAX_ZERO_P"]), stat(t2z), (", %d%% of the scans covered" % round(t2z["coverage"])) if t2z.get("coverage") is not None else "")
         else:
             doc["note"] += " No zero model yet (it needs %d coins and at least 10 zeros)." % TRAIN_MIN_ROWS
         bo = wf.get("byOdds") or {}
-        if doc["upModel"] and bo.get("n"):
-            doc["note"] += " Ranked by trained odds alone (profit chance minus zero chance), the best coin per scan averaged %+.2f per 20 (%d%% up, %d%% to zero)." % (bo["avg"], round(bo["win"]), round(bo["zero"]))
+        if doc["upModel"] and bo.get("n") and bo.get("avg") is not None:
+            doc["note"] += " Ranked by trained odds alone (profit chance minus zero chance), the best coin per scan averaged %s." % stat(bo)
     path = os.path.join(d, "db", "memebot")
     os.makedirs(path, exist_ok=True)
     with open(os.path.join(path, "train.json"), "w", encoding="utf-8") as f:
