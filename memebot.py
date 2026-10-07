@@ -301,7 +301,8 @@ def cmd_mode(d, now, force=False, snapshot=False, recommend=False):
     room, why = (PICKS_PER_RUN, "recommend mode: no buys, the two best coins are written to the page") if recommend else pick_room(state, pos, now, force)
     sd = snap_due(d, now) or snapshot
     due = due_snaps(d, now)
-    print(json.dumps({"pick": room > 0, "room": room, "why": why, "scan": "full" if sd else ("light" if room > 0 else "none"), "bigTestSaveDue": sd,
+    # recommend mode always scans everything: a button press minutes after the last scan still deserves the whole universe
+    print(json.dumps({"pick": room > 0, "room": room, "why": why, "scan": "full" if (sd or recommend) else ("light" if room > 0 else "none"), "bigTestSaveDue": sd,
                       "bigTestDue": len(due), "bigTestDueCoins": sum(len(sn["coins"]) for sn in due.values()),
                       "open": sum(1 for p in pos.values() if p["_left"] > 1e-9), "cash": bankroll(pos)}))
 
