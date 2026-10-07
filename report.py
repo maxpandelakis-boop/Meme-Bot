@@ -265,7 +265,8 @@ def collect(d, now):
     weights = sorted(w.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16]
     rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), None)
     track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:40], "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:40], "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -673,6 +674,8 @@ def rec_card(c, now, embed):
           ("24h change", sgn("%+.0f%%" % g("c24")) if g("c24") is not None else "–")]
     if g("c6") is not None and g("c6") != g("c24"):
         kv.append(("6h change", sgn("%+.0f%%" % g("c6"))))
+    if M.num(c.get("zeroP")) is not None:
+        kv.append(("trained zero chance", pct(100 * M.num(c.get("zeroP")))))
     chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
             '<div class="kv">%s</div>%s%s%s<details class="more"><summary>Why the bot likes it</summary><p class="why">%s</p></details>%s<div class="addr">%s</div></article>') % (
@@ -743,6 +746,69 @@ def track_section(D):
     summary = ("%d tips priced again · %d went up · average %s per 20" % (len(scored), up, fmt_amt(avg, True))) if scored else "%d tips, none priced again yet" % len(rows)
     head = '<thead><tr><th>tip at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th><th class="n">%s later</th><th class="n">per 20</th><th></th></tr></thead>' % hz
     return fold("Track record of the tips", summary, '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows)), open_=False)
+
+
+def stat_cells(st):
+    st = st or {}
+    if not st.get("n"):
+        return '<td class="n muted" colspan="4">no tips</td>'
+    avg = M.num(st.get("avg"))
+    return '<td class="n">%d</td><td class="n">%s</td><td class="n">%s</td><td class="n %s">%s</td>' % (
+        st["n"], pct(st.get("win")) if st.get("win") is not None else "–", pct(st.get("zero")) if st.get("zero") is not None else "–",
+        "good" if (avg or 0) > 0 else "bad", fmt_amt(avg, True) if avg is not None else "–")
+
+
+STAT_HEAD = '<th class="n">tips</th><th class="n">went up</th><th class="n">to zero</th><th class="n">per 20</th>'
+
+
+def train_section(D):
+    """The training programs' results: the walk-forward test (what the bot's rule would have picked in past scans, judged by
+    models that had not seen those scans), the zero model and the tuned limits, the gate audit and the factor splits."""
+    T = D.get("train")
+    if not T:
+        return ""
+    hz = horizon_text()
+    rows_n, scans_n = int(M.num(T.get("rows")) or 0), int(M.num(T.get("scans")) or 0)
+    wf = T.get("walkForward") or {}
+    body = ['<p class="note">%s</p>' % E(T.get("note") or "")]
+    if wf:
+        names = [("top1", "the bot's best coin per scan"), ("top2", "the bot's two best coins per scan"), ("top2zero", "the two best under the zero limit (the rule in use)"),
+                 ("allPass", "every coin that passed the gates"), ("bottom2", "the two worst-scored passing coins")]
+        tr = "".join('<tr><td>%s</td>%s<td class="n">%s</td></tr>' % (E(label), stat_cells(wf.get(k)), pct((wf.get(k) or {}).get("coverage")) if (wf.get(k) or {}).get("coverage") is not None else "–")
+                     for k, label in names if wf.get(k))
+        body.append('<h3>Walk-forward test</h3><p class="note">%d scans judged by models fitted on the scans before them only · a tip is 20 in the coin, priced again %s later · coverage: scans in which the rule found a coin</p>'
+                    '<div class="tbl stack"><table><thead><tr><th>rule</th>%s<th class="n">coverage</th></tr></thead><tbody>%s</tbody></table></div>' % (int(M.num(T.get("tested")) or 0), hz, STAT_HEAD, tr))
+    tuned = T.get("tuned") or {}
+    if T.get("zeroModel"):
+        zm = T["zeroModel"]
+        lim = M.num(tuned.get("MAX_ZERO_P"))
+        why = "".join("<li>%s</li>" % E(w) for w in (T.get("tunedWhy") or []))
+        zf = "".join('<tr><td>%s <code>%s</code></td><td class="n">%s</td><td>%s</td></tr>' % (E(factor_label(z.get("factor"))), E(z.get("factor")), E("%.2f" % (M.num(z.get("spread")) or 0)),
+                     E(" → ".join(("%+.0f%%" % (100 * (math.exp(v) - 1))) for v in (z.get("lo") or [])))) for z in (T.get("zeroFactors") or [])[:10])
+        body.append('<h3>Zero model</h3><p class="note">fitted on %d coin results (%d went to zero, %s base rate): each factor is cut into four value bins, low to high, and each bin shifts the odds of going to zero within %s. '
+                    'A clean coin is skipped when its calibrated zero chance is above %s.</p>%s<div class="tbl stack"><table><thead><tr><th>factor</th><th class="n">spread</th><th>odds shift per bin, low → high</th></tr></thead><tbody>%s</tbody></table></div>' % (
+                        int(M.num(zm.get("n")) or 0), int(M.num(zm.get("zeros")) or 0), pct(100 * (M.num(zm.get("base")) or 0)), hz, pct(100 * lim) if lim is not None else "–",
+                        ("<ul class=\"note\">%s</ul>" % why) if why else "", zf))
+    zg = [g for g in (T.get("zeroGrid") or []) if isinstance(g, dict)]
+    sg = [g for g in (T.get("scoreGrid") or []) if isinstance(g, dict)]
+    if zg or sg:
+        tz = "".join('<tr><td>%s</td>%s<td class="n">%s</td></tr>' % (pct(100 * (M.num(g.get("limit")) or 0)), stat_cells(g), pct(g.get("coverage")) if g.get("coverage") is not None else "–") for g in zg)
+        ts = "".join('<tr><td>%s</td>%s<td class="n">%s</td></tr>' % (E("%.0f" % (M.num(g.get("minScore")) or 0)), stat_cells(g), pct(g.get("coverage")) if g.get("coverage") is not None else "–") for g in sg)
+        body.append('<details><summary>Limit grids (top-2 tips in the walk-forward test)</summary><div class="tbl stack"><table><thead><tr><th>zero limit</th>%s<th class="n">coverage</th></tr></thead><tbody>%s</tbody></table>'
+                    '<table><thead><tr><th>score at least</th>%s<th class="n">coverage</th></tr></thead><tbody>%s</tbody></table></div></details>' % (STAT_HEAD, tz, STAT_HEAD, ts))
+    gates = [g for g in (T.get("gates") or []) if isinstance(g, dict)]
+    if gates:
+        tg = "".join('<tr><td>%s</td>%s</tr>' % (E(g.get("text") or g.get("gate")), stat_cells(g)) for g in gates[:14])
+        body.append('<details><summary>Gate audit (coins that failed exactly one gate)</summary><p class="note">a gate whose lone failers did as well as the passers protects nothing; one whose failers went to zero earns its keep</p>'
+                    '<div class="tbl stack"><table><thead><tr><th>gate</th>%s</tr></thead><tbody>%s</tbody></table></div></details>' % (STAT_HEAD, tg))
+    tips = T.get("tips") or {}
+    summary = ("%d coin results from %d scans" % (rows_n, scans_n)) if rows_n else "waiting for the first scored snapshot"
+    if wf.get("top2zero") or wf.get("top2"):
+        st = wf.get("top2zero") or wf["top2"]
+        summary += " · walk-forward top-2: %s up, %s to zero" % (pct(st.get("win")), pct(st.get("zero")))
+    if tips.get("n"):
+        summary += " · real tips: %d, %s up" % (tips["n"], pct(tips.get("win")))
+    return fold("Training", summary, "<section>%s</section>" % "".join(body), open_=False)
 
 
 def closed_table(rows):
@@ -986,6 +1052,7 @@ def render(data, fragment=False):
     if D.get("rec"):
         body.append(safe("recommendations", lambda: rec_section(D, embed=not fragment)))
         body.append(safe("track record", lambda: track_section(D)))
+        body.append(safe("training", lambda: train_section(D)))
     body.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     body.append(safe("hero", hero))
     body.append(safe("equity curve", curve))

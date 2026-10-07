@@ -91,6 +91,30 @@ check, and writes the two best coins to the top of the page with embedded DexScr
 plus the runners-up. Nothing is bought or held. The big test (snapshots scored 24 hours later) keeps running, so the
 weights keep learning.
 
+## Training
+
+Every pick run starts with `memebot.py train`, which puts the scored snapshots of the active profile through five programs
+and writes `db/memebot/train.json` (shown on the page under "Training" and in the run summary):
+
+- **Walk-forward test.** The history is split at eight points; at each one the weights and the zero model are fitted on the
+  scans before it only, and that model ranks the gate-passing coins of the scans up to the next point. What the top-1, the
+  top-2, all passing coins and the two worst-scored coins did is the honest, out-of-sample record of the ranking.
+- **Zero model.** Which factor values go with a coin going to zero within the horizon: each factor is cut into four
+  equal-count bins, each bin shifts the odds of "gone", and the sum is calibrated against the observed zero rate. In the
+  run, a clean coin whose trained zero chance is above the limit is skipped like a RugCheck flag ("training model: 41%
+  chance of going to zero"). The chance is printed on the recommendation card.
+- **Limit grids.** The zero limit and the score bar for a "strong" pick are tried on a grid against the walk-forward tips;
+  the tightest zero limit that still leaves 85% of the scans with a tip and cuts the zero rate is used (never under 1.5x
+  the base zero rate, never under 5%), and the score bar with the best win rate (within −10/+20 of the profile's bar).
+  Nothing moves without 30 out-of-sample tips behind it.
+- **Gate audit.** Coins that failed exactly one gate, by gate, next to the coins that passed all: a gate whose lone
+  failers did as well as the passers protects nothing; one whose failers went to zero earns its keep.
+- **Factor splits and the real tip record.** Every factor above/below its median, and every tip the bot actually gave
+  (priced again after the horizon), as win rate, zero rate and average per 20.
+
+The training needs 400 scored candidate coins and at least 10 zeros before the zero model counts, and 4 scans before the
+walk-forward test runs; on GitHub Actions that is one or two days of 2-hourly scans. It takes under a minute on 30k rows.
+
 ## Two profiles
 
 `--horizon 24h` (default) looks for coins that survive a day: liquidity, holders, no crash, re-priced 24 hours later.
@@ -171,3 +195,5 @@ any extra source can be added by writing such a file into `mb/`.
   `bot.py cycle` logs the coverage per source. GMGN and pump.fun sit behind Cloudflare and often refuse plain clients.
 - Paper results ignore slippage and the price impact of a real 20-unit buy in a thin pool.
 - The learned weights need a few days of full scans before they mean anything; until then the prior drives the picks.
+- No model makes a meme coin safe. The zero model lowers the share of tips that go to zero; it cannot bring it to zero,
+  and a walk-forward win rate is a past average, not a promise for the next two hours.

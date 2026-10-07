@@ -6,9 +6,10 @@ A cycle:
   2. fetch.py sources     ~1000 coins from DexScreener, RugCheck, GeckoTerminal, CoinGecko, Jupiter, pump.fun, GMGN, news
   3. memebot.py gather    merge everything; fetch full DexScreener data for the addresses that still lack it; gather again
   4. memebot.py shortlist RugCheck reports (and GMGN top buyers) for the best candidates
-  5. memebot.py run       exits on the open positions, then the 2 best clean coins at 20 each out of the 40 bankroll
-  6. apply out/*.json into db/ (positions, exits, snapshots, learned weights, state)
-  7. report.py        renders mb/report.html, the analysis page (open it in a browser)
+  5. memebot.py train     the training programs on the scored snapshots: walk-forward test, zero model, tuned limits (db/memebot/train)
+  6. memebot.py run       exits on the open positions, then the 2 best clean coins at 20 each out of the 40 bankroll
+  7. apply out/*.json into db/ (positions, exits, snapshots, learned weights, state)
+  8. report.py        renders mb/report.html, the analysis page (open it in a browser)
 
 Usage:
   python3 bot.py cycle   [--dir mb] [--force] [--offline]   one cycle (--force: pick now even inside the 3h gap; --offline: reuse the files in --dir)
@@ -129,6 +130,10 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             log("after the deep search: %d coins, %d gated; best: %s" % (g["coins"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
         if s["shortlist"] and not offline:
             fetch(["risk", "--addrs", ",".join(s["shortlist"])])
+    if mode["pick"] or mode["bigTestDue"]:
+        # the training programs run on the scored snapshots before every pick: the run reads the zero model and the tuned limits
+        t = run(["memebot.py", "train", "--horizon", horizon], d, now)
+        log("training: " + t["note"])
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     n = apply_out(d)
     log("saved %d docs" % n)
@@ -313,6 +318,12 @@ def summary(d):
         up = sum(1 for o in outs if (M.num(o.get("eur")) or 0) > 0)
         out.append("")
         out.append("Track record: %d tips priced again, %d went up, average %+.2f per 20." % (len(outs), up, sum(M.num(o.get("eur")) or 0 for o in outs) / len(outs)))
+    train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), {}) or {}
+    if isinstance(train, dict) and train.get("note"):
+        out.append("")
+        out.append("Training: " + md(train["note"]))
+        for why in train.get("tunedWhy") or []:
+            out.append("- " + md(why))
     pos = [(pid, p) for pid, p in M.positions(d).items() if p["_left"] > 1e-9]
     if pos:
         marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}

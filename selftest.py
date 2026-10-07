@@ -362,6 +362,56 @@ def main():
     rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
     same = lambda a, b: [c["addr"] for c in a.get("picks", [])] == [c["addr"] for c in b.get("picks", [])]
     check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s)" % (r.stderr.strip().splitlines() or ["?"])[-1][:120])
+
+    print("== training: walk-forward test, zero model and tuned limits on synthetic snapshot results")
+    td = tempfile.mkdtemp(prefix="memebot-train-")
+    sys.path.insert(0, HERE)
+    import memebot as M
+    rng = random.Random(3)
+    os.makedirs(os.path.join(td, "db", "memesnapres"))
+    syn = {}
+    for g in range(24):   # 24 scans x 120 coins: a coin whose logMc sits in one zone mostly goes to zero (non-monotone: rank correlation cannot see it, bins can)
+        coins = []
+        for i in range(120):
+            lmc, bs = rng.uniform(5.0, 6.5), rng.random()
+            gone = rng.random() < (0.8 if 5.78 < lmc < 6.1 else 0.02)   # the zone sits inside the third of four equal-count bins
+            mult = 0.0 if gone else max(0.05, rng.gauss(0.9 + 0.5 * bs, 0.3))
+            coins.append({"a": "A%02d-%03d" % (g, i), "s": "S%d" % i, "pass": i % 3 == 0, "sc": 50.0, "why": [] if i % 3 == 0 else ["young"], "mc": 300_000, "liq": 40_000,
+                          "f": {"logMc": round(lmc, 4), "buyShare": round(bs, 4), "c1": round(rng.uniform(-30, 80), 2), "ageH": round(rng.uniform(2, 40), 2)},
+                          "mult": round(mult, 4), "eur": round(19.9 * mult * 0.995 - 20, 2) if mult else -20.0, "gone": gone})
+        syn["syn%02d-1" % g] = {"t": T0 + (g + 1) * 24 * H, "t0": T0 + g * 24 * H, "rule": M.RULE, "n": len(coins), "coins": coins}
+        json.dump(syn["syn%02d-1" % g], open(os.path.join(td, "db", "memesnapres", "syn%02d-1.json" % g), "w"))
+    r = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "train", "--dir", td, "--now", str(T0 + 25 * 24 * H)], capture_output=True, text=True)
+    tr = json.load(open(os.path.join(td, "db", "memebot", "train.json"))) if os.path.exists(os.path.join(td, "db", "memebot", "train.json")) else {}
+    wf, zm, tuned = tr.get("walkForward") or {}, tr.get("zeroModel") or {}, tr.get("tuned") or {}
+    check(r.returncode == 0 and tr.get("rows") == 2880 and tr.get("tested", 0) >= 10 and wf.get("top2", {}).get("n", 0) >= 30 and wf.get("allPass"),
+          "train: %s rows, walk-forward over %s scans, %s top-2 tips (%s)" % (tr.get("rows"), tr.get("tested"), wf.get("top2", {}).get("n"), (r.stderr.strip().splitlines() or [""])[-1][:100]))
+    check("logMc" in (zm.get("factors") or {}) and len(zm.get("cal") or []) >= 2, "zero model found the factor behind the zeros (%s)" % sorted((zm.get("factors") or {}).keys()))
+    bad, good = M.zero_p(zm, {"logMc": 5.95, "buyShare": 0.5, "c1": 10, "ageH": 5}), M.zero_p(zm, {"logMc": 6.3, "buyShare": 0.5, "c1": 10, "ageH": 5})
+    check(bad is not None and good is not None and bad > 0.4 and good < 0.1, "calibrated zero chance: %s for a coin in the zone, %s outside it" % (bad, good))
+    z = wf.get("top2zero") or {}
+    check(z.get("n", 0) >= 30 and z.get("zero") is not None and z["zero"] < wf["top2"]["zero"] and z.get("coverage", 0) >= 70,
+          "with the zero limit the top-2 zero rate fell from %s%% to %s%% at %s%% coverage" % (wf.get("top2", {}).get("zero"), z.get("zero"), z.get("coverage")))
+    check(M.ZERO_P_FLOOR <= M.num(tuned.get("MAX_ZERO_P")) <= 0.6 and M.MIN_REC_SCORE - 10 <= M.num(tuned.get("MIN_REC_SCORE")) <= M.MIN_REC_SCORE + 20 and tr.get("tunedWhy"),
+          "tuned limits stay in bounds: zero limit %s, score bar %s" % (tuned.get("MAX_ZERO_P"), tuned.get("MIN_REC_SCORE")))
+    check(any(x.get("gate") == "pass" for x in tr.get("gates") or []) and any(x.get("gate") == "young" for x in tr.get("gates") or []) and tr.get("factors"),
+          "gate audit and factor splits written (%d gates, %d factors)" % (len(tr.get("gates") or []), len(tr.get("factors") or [])))
+    shutil.rmtree(td, ignore_errors=True)
+    # the same results in the recommend db: the next cycle trains on them and the run applies the zero model to its picks
+    os.makedirs(os.path.join(rd, "db", "memesnapres"), exist_ok=True)
+    for k, doc in syn.items():
+        json.dump(doc, open(os.path.join(rd, "db", "memesnapres", k + ".json"), "w"))
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 2 * H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rec4 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
+    st4 = json.load(open(os.path.join(rd, "db", "memebot", "state.json")))
+    zps = [c.get("zeroP") for c in rec4.get("picks", [])]
+    check(r.returncode == 0 and "training:" in r.stderr and rec4.get("zeroLimit") is not None and rec4.get("trained") == 2880 and zps and all(isinstance(v, float) for v in zps)
+          and "Zero model" in (st4.get("note") or ""), "the cycle trained and the run applied the zero model (limit %s, picks' zero chance %s)" % (rec4.get("zeroLimit"), zps))
+    page4 = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
+    check("Walk-forward test" in page4 and "Zero model" in page4 and "trained zero chance" in page4, "page shows the training section and the zero chance on the card")
+    rs = subprocess.run([PY, os.path.join(HERE, "bot.py"), "summary", "--dir", rd], capture_output=True, text=True, encoding="utf-8")
+    check(rs.returncode == 0 and "Training: Walk-forward" in rs.stdout, "summary carries the training line")
+    old_rec = rec4
     import fetch as F2
     F2.clear_sources(rd)                                   # nothing fetched at all -> the scan is tiny -> the old recommendations stay
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 2 * H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
