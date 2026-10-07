@@ -102,6 +102,13 @@ learns only from its own results. Expect most 2-hour picks to lose and a few to 
 The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
 off), so a running laptop picks up updates without anyone touching it.
 
+## How big the scan is
+
+There is no cap: a full scan takes everything the public sources return, then runs the deep search (another 368 keyword
+searches on DexScreener) on top, about 12,000 coins from 800 lists in 14 minutes. More is not better: of those, roughly
+10,000 have under $15k of daily volume and never reach the gates, and the free APIs allow no more requests per minute
+(GeckoTerminal about six from GitHub's shared addresses, DexScreener 30 pairs per search).
+
 ## Running it on GitHub instead of your laptop
 
 `.github/workflows/scan.yml` runs the whole cycle on GitHub Actions, so no computer of yours has to stay awake:
