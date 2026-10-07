@@ -488,6 +488,9 @@ def main():
           "source tweets read for the story coins (%d rows; %d of the named coins carry one: %s)" % (len(vt_rows), len(told), [(c["sym"], round(10 ** c["f"]["vt.likes"])) for c in told[:3]]))
     check(any(M.num((c.get("f") or {}).get("theme.animal")) for c in rec.get("picks", []) + rec.get("runnersUp", [])) and "animal story" in page_r,
           "the animal theme is a factor and shows on the page")
+    lp = [c for c in rec.get("picks", []) + rec.get("runnersUp", []) if "lp.trusted" in (c.get("f") or {})]
+    check(lp and all(c.get("launchpad") for c in lp) and ("launched on" in " ".join(c.get("why") or "" for c in lp)) and ">launchpad<" in page_r,
+          "the launchpad is known and judged (%s)" % [(c["sym"], c.get("launchpad"), c["f"].get("lp.trusted")) for c in lp[:3]])
     dp_rows = [l for fn in glob.glob(os.path.join(rd, "dp", "dp_*.txt")) for l in open(fn, encoding="utf-8") if l.strip()]
     named = rec.get("picks", []) + rec.get("runnersUp", [])
     with_dp = [c for c in named if "ds.paid" in (c.get("f") or {})]

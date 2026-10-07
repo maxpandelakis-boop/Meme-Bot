@@ -138,7 +138,7 @@ PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6":
          "gp.risk": -0.2, "gp.lpBurn": 0.1, "gp.trusted": 0.05, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.cgWatch": 0.05, "cm.xFollowers": 0.05, "cm.tgSubs": 0.05, "cm.stWatch": 0.05,
          "bq.buyerRatio": 0.15, "bq.netUsd1h": 0.1, "bq.topBuyerShare": -0.1, "lct.interactions": 0.1, "lct.contributors": 0.05,
          # the story: a coin launched off one viral tweet (likes, posted within two days), an animal theme
-         "vt.likes": 0.15, "vt.fresh": 0.05, "vt.tweet": 0.05, "theme.animal": 0.05, "ds.paid": 0.1,
+         "vt.likes": 0.15, "vt.fresh": 0.05, "vt.tweet": 0.05, "theme.animal": 0.05, "ds.paid": 0.1, "lp.trusted": 0.05, "lp.other": -0.15,
          # v4 traders: GMGN smart money, top buyers, leaderboard wallets
          "gm.smartDegen": 0.15, "gm.renowned": 0.1, "gm.bluechip": 0.1, "gm.hot": 0.05, "gm.bundler": -0.1, "gm.rat": -0.1, "gm.sniperHold": -0.1,
          "gm.wash": -0.15, "gm.rugRatio": -0.1, "gm.devHold": -0.05, "tb.holdShare": 0.1, "tb.smartHold": 0.15, "tb.sniperShare": -0.05,
@@ -170,7 +170,7 @@ PROFILES = {
                   "rd.posts": 0.15, "rd.fresh": -0.05, "rd.byAddr": 0.05, "cmc.search": 0.1, "cmc.gain": 0.05, "cgm.listed": 0.05,
                   "gp.risk": -0.25, "gp.lpBurn": 0.1, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.xFollowers": 0.05, "cm.xTweets": 0.05, "cm.tgMsgs": 0.05, "cm.stMsgs": 0.05,
                   "bq.buyerRatio": 0.2, "bq.netUsd1h": 0.15, "bq.topBuyerShare": -0.1, "lct.interactions": 0.15, "lct.contributors": 0.05, "lct.trend": 0.05,
-                  "vt.likes": 0.25, "vt.fresh": 0.1, "vt.tweet": 0.05, "theme.animal": 0.05, "ds.paid": 0.1,
+                  "vt.likes": 0.25, "vt.fresh": 0.1, "vt.tweet": 0.05, "theme.animal": 0.05, "ds.paid": 0.1, "lp.trusted": 0.05, "lp.other": -0.2,
                   "dev.sold": -0.3, "dev.pct": -0.15, "dev.authOff": 0.05}}}
 
 
@@ -365,6 +365,35 @@ HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
 VT_COLS = ("address", "tweetId", "likes", "replies", "tweetAgeH", "followers", "verified", "media", "animal", "screenName", "text")
 DP_COLS = ("address", "paid", "paidAgeH", "ads", "cto", "orders")
 ANIMALS = re.compile(r"\b(monkey|monkeys|macaque|ape|apes|chimp|gorilla|cat|cats|kitten|kitty|dog|dogs|puppy|pup|doge|shiba|capybara|frog|frogs|toad|pepe|penguin|hamster|squirrel|raccoon|otter|bear|bears|panda|hippo|hippopotamus|moo deng|cow|cows|pig|piglet|duck|duckling|goat|bird|parrot|owl|fish|rat|mouse|seal|sloth|fox|wolf|lion|tiger|elephant|turtle|tortoise|rabbit|bunny|chick|chicken|giraffe|zebra|koala|kangaroo|llama|alpaca|dolphin|shark|octopus|snail|hedgehog|deer|moose|donkey|horse|pony|lamb|sheep|bat|crab|lobster|axolotl|quokka|wombat|lemur|baboon|orangutan)\b", re.I)
+TRUSTED_LP = re.compile(r"pump\.?fun|^pump$|pumpswap|bonk|^bags", re.I)        # the launchpads the terminal traders keep: pump.fun, Bonk, Bags
+OTHER_LP = re.compile(r"launchlab|believe|moonshot|boop|heaven|moonit|sugar|jupiter|dbc|meteora|virtuals|daos|time\.fun|zora|raydium", re.I)   # where the bundled 'fake charts' live
+
+
+def launchpad_of(pr, rc=None):
+    """Where a coin was launched, from what the sources say: RugCheck's or GMGN's launchpad field, the mint's suffix
+    (…pump, …bonk, …BAGS, …boop), the pump.fun and LaunchLab lists, the DEX it migrated to. Returns (name or None,
+    'trusted' / 'other' / None)."""
+    a = str(pr.get("address") or "")
+    name = None
+    for cand in ((rc or {}).get("launchpad") if isinstance(rc, dict) else None, (pr.get("gm") or {}).get("launchpad"), (pr.get("ll") or {}).get("launchpad")):
+        if cand and str(cand).lower() not in ("null", "none", "false"):
+            name = str(cand); break
+    if not name:
+        if a.endswith("pump") or pr.get("pf") or str(pr.get("dexId") or "").lower() in ("pumpfun", "pumpswap"):
+            name = "pump.fun"
+        elif a.endswith("bonk"):
+            name = "Bonk"
+        elif a.endswith("BAGS"):
+            name = "Bags"
+        elif a.endswith("boop"):
+            name = "Boop"
+        elif pr.get("ll") or str(pr.get("dexId") or "").lower() == "launchlab":
+            name = "LaunchLab"
+    if not name:
+        return None, None
+    return name, ("trusted" if TRUSTED_LP.search(name) else ("other" if OTHER_LP.search(name) else None))
+
+
 TWEET_LINK = re.compile(r"^https://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]{1,30}/status/\d{5,25}")
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
@@ -1024,6 +1053,10 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f["ds.paidAgeH"] = num(dp["paidAgeH"])
         f["ds.ads"] = num(dp.get("ads")) or 0.0
         f["ds.cto"] = 1.0 if truthy(dp.get("cto")) else 0.0
+    lp_name, lp_kind = launchpad_of(pr, rc)
+    if lp_kind:
+        f["lp.trusted"] = 1.0 if lp_kind == "trusted" else 0.0
+        f["lp.other"] = 1.0 if lp_kind == "other" else 0.0
     # the story behind the coin: a single tweet as its X link (the 'viral real story' launch), and an animal theme
     x_url = x_link(pr) or str((pr.get("pf") or {}).get("twitter") or "")
     f["vt.tweet"] = 1.0 if TWEET_LINK.match(x_url) else 0.0
@@ -1522,6 +1555,8 @@ FILTER_RECIPES = (
      lambda r, f: num(f.get("logMc")) is not None and math.log10(6_000) <= f["logMc"] <= math.log10(60_000) and (vol24_of(f) or 0) >= 3_000 and num(f.get("ageH")) is not None and f["ageH"] <= 10),
     ("under 10 h old", lambda r, f: num(f.get("ageH")) is not None and f["ageH"] <= 10),
     ("DEX paid", lambda r, f: paid_profile(f)),
+    ("launchpad pump.fun, Bonk or Bags (the terminal traders' launchpad filter)", lambda r, f: num(f.get("lp.trusted")) == 1.0),
+    ("other launchpads (LaunchLab, Believe, Moonshot, Boop, ...)", lambda r, f: num(f.get("lp.other")) == 1.0),
     ("not DEX paid", lambda r, f: not paid_profile(f)),
 )
 
@@ -2013,6 +2048,11 @@ def why_text(r):
         bits.append("on-chain: %d trades in the last hour, %d buyers vs %d sellers, net %s%s" % (f["bq.trades1h"], f.get("bq.buyers1h") or 0, f.get("bq.sellers1h") or 0,
                                                                                                ("+" if (f.get("bq.netUsd1h") or 0) >= 0 else "-") + money(abs(f.get("bq.netUsd1h") or 0)),
                                                                                                (", biggest buyer %d%% of the buying" % round(100 * f["bq.topBuyerShare"])) if f.get("bq.topBuyerShare") is not None else ""))
+    lp_name, lp_kind = launchpad_of(r.get("pr") or {}, (r.get("pr") or {}).get("rc"))
+    if lp_kind == "trusted":
+        bits.append("launched on %s" % lp_name)
+    elif lp_kind == "other":
+        bits.append("launched on %s (not pump.fun, Bonk or Bags: the launchpads where bundled charts are common)" % lp_name)
     if f.get("ds.paid") is not None:
         bits.append(("DEX paid: DexScreener profile approved%s" % ((" %.0f h before the scan" % f["ds.paidAgeH"]) if f.get("ds.paidAgeH") is not None else "")
                      + ((", %d paid ad%s" % (f["ds.ads"], "" if f["ds.ads"] == 1 else "s")) if f.get("ds.ads") else "")) if f["ds.paid"] else "no paid DexScreener profile")
@@ -2263,7 +2303,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
                         "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
                         "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"])),
-                        "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
+                        "launchpad": launchpad_of(pr, risk.get(r["a"]))[0], "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
             runners = []
             for r in gated[:12]:
                 if r["a"] in {c[0]["a"] for c in chosen}:

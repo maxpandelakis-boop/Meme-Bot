@@ -33,7 +33,7 @@ WHY = {"target": "hit 2x, half sold", "stop": "−50% stop", "time": "3-day limi
 SRC = {"kw": "search “%s”", "gt": "GeckoTerminal %s", "pf": "pump.fun %s", "list": "DexScreener %s", "jup": "Jupiter %s", "gm": "GMGN %s"}
 LIST_NAMES = {"reddit": "Reddit posts", "cgMeme": "CoinGecko meme list", "cmcGain": "CoinMarketCap gainers", "rayVol": "Raydium top pools", "llNew": "LaunchLab new", "llHot": "LaunchLab hot", "llMc": "LaunchLab biggest",
               "rcNew": "RugCheck new", "rcTrending": "RugCheck trending", "rcRecent": "RugCheck recent", "rcVerified": "RugCheck verified"}
-FACTOR = {"ds.paid": "DEX paid (DexScreener profile)", "ds.paidAgeH": "DEX paid: hours since payment", "ds.ads": "paid DexScreener ads", "ds.cto": "community takeover (DexScreener)",
+FACTOR = {"lp.trusted": "launchpad pump.fun / Bonk / Bags", "lp.other": "launchpad elsewhere (bundle-prone)", "ds.paid": "DEX paid (DexScreener profile)", "ds.paidAgeH": "DEX paid: hours since payment", "ds.ads": "paid DexScreener ads", "ds.cto": "community takeover (DexScreener)",
           "vt.likes": "source tweet: likes (log)", "vt.replies": "source tweet: replies (log)", "vt.ageH": "source tweet: age in hours", "vt.fresh": "source tweet posted within 48h",
           "vt.followers": "source tweet: author's followers (log)", "vt.verified": "source tweet: verified author", "vt.media": "source tweet has a picture or video",
           "vt.tweet": "X link is a single tweet", "theme.animal": "animal story",
@@ -762,6 +762,8 @@ def rec_card(c, now, embed):
         kv.append(("on-chain, last hour", "%d trades · %d buyers / %d sellers · net %s" % (g("bq.trades1h"), g("bq.buyers1h") or 0, g("bq.sellers1h") or 0, fmt_amt(g("bq.netUsd1h") or 0, True))))
     if g("lct.interactions") is not None:
         kv.append(("X/social 24h (LunarCrush)", "%s interactions" % fmt_money(g("lct.interactions"), dollars=False) + ((" · %d posts" % g("lct.posts")) if g("lct.posts") is not None else "")))
+    if c.get("launchpad"):
+        kv.append(("launchpad", str(c["launchpad"]) + (" · not pump.fun, Bonk or Bags" if g("lp.other") else "")))
     dp = rk.get("dp") or {}
     if dp.get("paid") is not None:
         paid = M.truthy(dp.get("paid"))
@@ -845,7 +847,10 @@ def story_chip(c):
         bits.append("tweet with %s likes" % fmt_money(vt["likes"], dollars=False))
     if M.num(f.get("theme.animal")):
         bits.append("animal story")
-    return ('<span class="chip neutral">%s</span>' % E(" · ".join(bits))) if bits else ""
+    out = ('<span class="chip neutral">%s</span>' % E(" · ".join(bits))) if bits else ""
+    if M.num(f.get("lp.other")):
+        out += '<span class="chip warn" title="launched on %s: not pump.fun, Bonk or Bags, where bundled charts are common">%s launch</span>' % (E(c.get("launchpad") or "another launchpad"), E(c.get("launchpad") or "other launchpad"))
+    return out
 
 
 def odds_chip(c):

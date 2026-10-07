@@ -148,6 +148,12 @@ verified, picture or video) and names it on the card ("launched off a tweet by @
 the scan"). An animal theme in the name, ticker or tweet text is its own factor (`theme.animal`). Both start with small
 priors; the learning decides what they are worth. Views are not public without the X API, so likes stand in for them.
 
+The launchpad counts: terminal traders keep only pump.fun, Bonk and Bags coins in their New and Soon columns because
+the bundled "fake charts" come from the other launchpads. The bot works out where a coin was launched (RugCheck's and
+GMGN's launchpad field, the mint suffix, the pump.fun and LaunchLab lists, the DEX it migrated to) and makes it a factor
+(`lp.trusted`, `lp.other`, the latter with a negative prior), names it on the card and tests the launchpad rule in the
+filter audit.
+
 "DEX paid" is read too: DexScreener's public orders endpoint says whether the team paid for the coin's DexScreener
 profile (and for ads or a community takeover) and when (`dp/<stamp>.txt`, factors `ds.paid`, `ds.paidAgeH`, `ds.ads`,
 `ds.cto`). Trading terminals filter on it because it costs real money; here it is a small prior and a row on the card.
