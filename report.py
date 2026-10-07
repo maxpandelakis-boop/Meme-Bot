@@ -31,12 +31,17 @@ _flat = M.TICKET - M.fee(M.TICKET)
 FLAT = round(max(0.0, _flat - M.fee(_flat)) - M.TICKET, 2)   # what 20 becomes when the price does not move: the two fees
 WHY = {"target": "hit 2x, half sold", "stop": "−50% stop", "time": "3-day limit", "back to entry": "fell back to entry", "rug": "price gone", "manual": "sold by hand"}
 SRC = {"kw": "search “%s”", "gt": "GeckoTerminal %s", "pf": "pump.fun %s", "list": "DexScreener %s", "jup": "Jupiter %s", "gm": "GMGN %s"}
+LIST_NAMES = {"reddit": "Reddit posts", "cgMeme": "CoinGecko meme list", "cmcGain": "CoinMarketCap gainers", "rayVol": "Raydium top pools", "llNew": "LaunchLab new", "llHot": "LaunchLab hot", "llMc": "LaunchLab biggest",
+              "rcNew": "RugCheck new", "rcTrending": "RugCheck trending", "rcRecent": "RugCheck recent", "rcVerified": "RugCheck verified"}
 FACTOR = {"liqMc": "liquidity ÷ market cap", "volMc": "24h volume ÷ market cap", "logLiq": "liquidity (log)", "logMc": "market cap (log)",
           "buyShare": "share of buys, 24h", "buyRatio1h": "buys ÷ sells, 1h", "buyRatio6h": "buys ÷ sells, 6h", "buys1": "buys, last hour", "buys24": "buys, 24h",
           "c1": "price change 1h", "c6": "price change 6h", "c24": "price change 24h", "m5": "price change 5 min", "ageH": "age in hours",
           "vol1Share": "share of volume in last 1h", "vol6Share": "share of volume in last 6h", "fdvMc": "FDV ÷ market cap", "boosts": "DexScreener boosts",
           "nPairs": "number of pairs", "nDex": "number of DEXes", "x": "has an X account", "web": "websites", "socN": "social links",
           "srcN": "source lists naming it", "kwN": "keyword searches naming it", "src.pf": "on pump.fun",
+          "rd.posts": "Reddit posts naming it, 48h", "rd.subs": "subreddits naming it", "rd.fresh": "hours since the newest Reddit post", "rd.byAddr": "Reddit post with its address",
+          "cgm.listed": "on CoinGecko's Solana meme list", "cgm.rank": "CoinGecko market-cap rank", "cgm.chg1h": "CoinGecko 1h change", "cmc.search": "in CoinMarketCap's top searches",
+          "cmc.searchRank": "CoinMarketCap search rank", "cmc.gain": "on CoinMarketCap's Solana gainers",
           "soc.match": "LunarCrush match", "soc.eng": "X engagements (LunarCrush)", "soc.ment": "mentions (LunarCrush)", "soc.cre": "creators (LunarCrush)",
           "soc.sent": "sentiment (LunarCrush)", "soc.galaxy": "galaxy score (LunarCrush)", "soc.alt": "alt rank (LunarCrush)",
           "rc.score": "RugCheck risk score", "rc.lp": "% of liquidity locked", "rc.top1": "top holder %", "rc.top10": "top 10 holders %", "rc.holders": "holders (RugCheck)",
@@ -618,7 +623,7 @@ def safety_chip(ok, text=""):
 
 
 def sources_row(src):
-    chips = "".join('<span class="chip">%s</span>' % E(SRC.get(t.split(":", 1)[0], "%s") % t.split(":", 1)[-1]) for t in (src or [])[:4])
+    chips = "".join('<span class="chip">%s</span>' % E(LIST_NAMES[t.split(":", 1)[-1]] if t.startswith("list:") and t.split(":", 1)[-1] in LIST_NAMES else SRC.get(t.split(":", 1)[0], "%s") % t.split(":", 1)[-1]) for t in (src or [])[:4])
     return ('<div class="row"><span class="k">Seen on</span>%s</div>' % chips) if chips else ""
 
 

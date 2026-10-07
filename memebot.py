@@ -131,6 +131,7 @@ PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6":
          "jup.top10Pct": -0.1, "jup.organic": 0.1, "jup.netBuyers24": 0.1,
          # v3 knowledge: news, narrative heat, distinct buyers (GeckoTerminal), CoinGecko trending, smart wallets
          "news.hits": 0.1, "news.narr": 0.1, "news.fresh": 0.05, "gt.buyerRatio": 0.1, "cg.trend": 0.05, "sw.avg": 0.15, "sw.n": 0.05,
+         "rd.posts": 0.1, "rd.byAddr": 0.05, "cgm.listed": 0.05, "cmc.search": 0.05, "cmc.gain": 0.05,
          # v4 traders: GMGN smart money, top buyers, leaderboard wallets
          "gm.smartDegen": 0.15, "gm.renowned": 0.1, "gm.bluechip": 0.1, "gm.hot": 0.05, "gm.bundler": -0.1, "gm.rat": -0.1, "gm.sniperHold": -0.1,
          "gm.wash": -0.15, "gm.rugRatio": -0.1, "gm.devHold": -0.05, "tb.holdShare": 0.1, "tb.smartHold": 0.15, "tb.sniperShare": -0.05,
@@ -159,6 +160,7 @@ PROFILES = {
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
                   "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2,
+                  "rd.posts": 0.15, "rd.fresh": -0.05, "rd.byAddr": 0.05, "cmc.search": 0.1, "cmc.gain": 0.05, "cgm.listed": 0.05,
                   "dev.sold": -0.3, "dev.pct": -0.15, "dev.authOff": 0.05}}}
 
 
@@ -561,6 +563,7 @@ def cmd_gather(d, now):
     print(json.dumps({"files": nfiles, "coins": len(best), "fullData": len(full), "jupiter": len(jup), "pumpfun": len(pf), "geckoterminal": len(gt),
                       "gmgn": len(gm), "topBuyerFiles": len(load_top_buyers(d)), "leaderboardWallets": len(load_leaderboard(d)),
                       "coingecko": len(load_cg(d)), "news": len(news["items"]), "newsTopWords": news["top"][:12], "smartWallets": len(wallet_table(d)),
+                      "reddit": len(load_publicity(d, now)["rd"]), "cgMeme": len(load_publicity(d, now)["cgm"]),
                       "lists": {k: len(v) for k, v in lists.items()},
                       "heldMissing": [a for a in held if a not in best], "dueMissing": sum(1 for a in set(due) if a not in best),
                       "wanted": len(wanted), "covered": covered, "coverage": round(covered / len(wanted), 3) if wanted else 1.0,
@@ -698,6 +701,81 @@ def load_cg(d):
     return out
 
 
+PUB_MAX_AGE_H = 48.0     # Reddit posts older than this do not count
+
+
+def load_publicity(d, now):
+    """reddit.json, cgmeme.json and cmc.json -> what the public says about a coin, by address and by ticker:
+    rd: {addr or ticker: {"n", "subs", "fresh"}} (posts in the last 48h; fresh = hours since the newest),
+    cgm: {addr: {"mcRank", "vol", "chg1h", "chg24", "pos"}} (CoinGecko's Solana meme list), cmcSearch: {ticker: rank}, cmcGain: {addr: {...}}."""
+    rd = {}
+    for p in load_json(os.path.join(d, "reddit.json"), []) or []:
+        if not isinstance(p, list) or len(p) < 5:
+            continue
+        ms = num(p[2])
+        age_h = (now - ms) / 3_600_000 if ms and ms > 1e12 else None
+        if age_h is not None and (age_h > PUB_MAX_AGE_H or age_h < -1):
+            continue
+        keys = [a for a in (p[3] or []) if isinstance(a, str)] + ["$" + str(t).upper() for t in (p[4] or []) if t]
+        for k in keys:
+            e = rd.setdefault(k, {"n": 0, "subs": set(), "fresh": None})
+            e["n"] += 1
+            e["subs"].add(str(p[1]))
+            if age_h is not None and (e["fresh"] is None or age_h < e["fresh"]):
+                e["fresh"] = age_h
+    cgm = {}
+    for i, r in enumerate(load_json(os.path.join(d, "cgmeme.json"), []) or []):
+        if isinstance(r, list) and len(r) >= 4 and isinstance(r[0], str):
+            cgm[r[0]] = {"mcRank": num(r[3]), "vol": num(r[4]) if len(r) > 4 else None, "chg1h": num(r[5]) if len(r) > 5 else None, "chg24": num(r[6]) if len(r) > 6 else None, "pos": i + 1}
+    raw = load_json(os.path.join(d, "cmc.json"), {}) or {}
+    search = {}
+    for r in (raw.get("search") or []) if isinstance(raw, dict) else []:
+        if isinstance(r, list) and len(r) >= 3 and r[0]:
+            search.setdefault(str(r[0]).upper(), {"rank": num(r[2]), "mc": num(r[3]) if len(r) > 3 else None})
+    gain = {}
+    for r in (raw.get("gainers") or []) if isinstance(raw, dict) else []:
+        if isinstance(r, list) and len(r) >= 4 and isinstance(r[0], str):
+            gain[r[0]] = {"rank": num(r[3]), "chg24": num(r[4]) if len(r) > 4 else None}
+    return {"rd": rd, "cgm": cgm, "cmcSearch": search, "cmcGain": gain, "symBest": {}}
+
+
+def publicity_for(pr, a, pub):
+    """The publicity factors of one coin. A ticker mention ($PEPE, a top search) counts only for the biggest coin with that
+    ticker in the scan (pub["symBest"]), an address mention counts for exactly that coin."""
+    f = {}
+    rd = pub.get("rd") or {}
+    sym = str(pr.get("symbol") or "").upper()
+    mine = sym and pub.get("symBest", {}).get(sym) == a
+    hits = [rd[a]] if a in rd else []
+    if mine and ("$" + sym) in rd:
+        hits.append(rd["$" + sym])
+    n = sum(h["n"] for h in hits)
+    f["rd.posts"] = float(n)
+    if n:
+        f["rd.subs"] = float(len(set().union(*[h["subs"] for h in hits])))
+        fresh = [h["fresh"] for h in hits if h["fresh"] is not None]
+        if fresh:
+            f["rd.fresh"] = round(min(fresh), 2)
+        f["rd.byAddr"] = 1.0 if a in rd else 0.0
+    c = (pub.get("cgm") or {}).get(a)
+    f["cgm.listed"] = 1.0 if c else 0.0
+    if c:
+        if c.get("mcRank"):
+            f["cgm.rank"] = c["mcRank"]
+        if c.get("chg1h") is not None:
+            f["cgm.chg1h"] = c["chg1h"]
+    s = (pub.get("cmcSearch") or {}).get(sym) if mine else None
+    mc = num(pr.get("marketCap")) or num(pr.get("fdv"))
+    if s and s.get("mc") and mc and not (0.3 <= s["mc"] / mc <= 3.0):
+        s = None                                          # same ticker, a different coin
+    f["cmc.search"] = 1.0 if s else 0.0
+    if s and s.get("rank"):
+        f["cmc.searchRank"] = s["rank"]
+    g = (pub.get("cmcGain") or {}).get(a)
+    f["cmc.gain"] = 1.0 if g else 0.0
+    return f
+
+
 def wallet_table(d):
     """Smart-wallet memory: every scored big-test coin whose RugCheck report listed its top holders credits those wallets with the
     coin's clipped 24h result. Returns {wallet: {"n": coins, "avg": mean eur, "wins": share > 0}} for wallets with >= SW_MIN_COINS coins."""
@@ -809,7 +887,7 @@ def social_for(pr, soc):
     return s, 2 if (n1 and n2 and (n1 == n2 or n1 in n2 or n2 in n1)) else 1
 
 
-def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None, board=None):
+def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None, board=None, pub=None):
     """Every number the bot knows about a coin right now, as named factors (None = unknown)."""
     g = lambda k: num(pr.get(k))
     price, mc, liq = g("priceUsd"), g("marketCap") or g("fdv"), g("liquidityUsd")
@@ -889,6 +967,8 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
         if c:
             f["cg.rank"] = c.get("rank")
             f["cg.chg24"] = c.get("chg24")
+    if pub is not None:
+        f.update(publicity_for(pr, pr.get("address") or pr.get("_a") or "", pub))
     # ---- v4 traders ----
     gm = pr.get("gm") or {}
     if gm:
@@ -1465,15 +1545,18 @@ def scan(d, pos, pairs, now, w):
     tbs, board = load_top_buyers(d), load_leaderboard(d)
     held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9}
     recent = {p.get("addr") for p in pos.values() if now - (num(p.get("t")) or 0) < REPICK_DAYS * DAY}
-    sym_mc = {}
+    sym_mc, pub = {}, load_publicity(d, now)
     for a, pr in pairs.items():
         s = str(pr.get("symbol") or "").upper()
-        sym_mc[s] = max(sym_mc.get(s, 0), num(pr.get("marketCap")) or 0)
+        mc = num(pr.get("marketCap")) or 0
+        if mc >= sym_mc.get(s, 0):
+            sym_mc[s] = mc
+            pub["symBest"][s] = a                         # a ticker mention goes to the biggest coin with that ticker
     rows, fail_count = [], {}
     for a, pr in pairs.items():
         if pr.get("px_only"):
             continue                      # price-only rows serve exits and the big test's re-pricing, they are not scanned coins
-        f, basic = feats(pr, now, soc, risk.get(a), news, cg, wallets, tbs.get(a), board)
+        f, basic = feats(dict(pr, _a=a), now, soc, risk.get(a), news, cg, wallets, tbs.get(a), board, pub)
         if isinstance(risk.get(a), dict) and basic.get("holders"):
             risk[a]["holdersTop"] = basic["holders"]        # RugCheck owners + top buyers still holding -> what the wallet memory learns from
         if basic["age_h"] is None and f.get("ageH") is not None:
@@ -1602,6 +1685,15 @@ def why_text(r):
         bits.append("%d distinct buyers vs %d sellers in 24h (GeckoTerminal)" % (f["gt.buyers24"], f["gt.sellers24"]))
     if f.get("cg.trend"):
         bits.append("on CoinGecko's trending list")
+    if f.get("rd.posts"):
+        bits.append("named in %d Reddit post%s in 48h%s%s" % (f["rd.posts"], "" if f["rd.posts"] == 1 else "s", (" in %d subreddits" % f["rd.subs"]) if (f.get("rd.subs") or 0) > 1 else "",
+                                                          (", newest %.0fh ago" % f["rd.fresh"]) if f.get("rd.fresh") is not None else ""))
+    if f.get("cgm.listed"):
+        bits.append("on CoinGecko's Solana meme-coin list" + (" (#%d by market cap)" % f["cgm.rank"] if f.get("cgm.rank") else ""))
+    if f.get("cmc.search"):
+        bits.append("in CoinMarketCap's top searches" + (" (#%d)" % f["cmc.searchRank"] if f.get("cmc.searchRank") else ""))
+    if f.get("cmc.gain"):
+        bits.append("on CoinMarketCap's Solana top-gainers list")
     if f.get("sw.n"):
         bits.append("%d top wallet%s with a track record (avg %+.1f euros per 20 on past coins)" % (f["sw.n"], "" if f["sw.n"] == 1 else "s", f.get("sw.avg", 0)))
     if f.get("gm.smartDegen") is not None:

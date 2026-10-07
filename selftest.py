@@ -141,8 +141,22 @@ class Mock:
             off = base + (pg - 1) * 20
             sub = self.coins[off:off + 20] if pg <= 3 else []        # a short list: later pages are empty, like the real API past its end
             return 200, {"data": [self.gt_pool(c) for c in sub], "included": [{"id": "solana_" + c["a"], "type": "token", "attributes": {"symbol": c["sym"], "name": c["name"]}} for c in sub]}
+        if path.startswith("/api.coingecko.com/api/v3/coins/list"):
+            return 200, [{"id": "c%d" % i, "symbol": c["sym"].lower(), "name": c["name"], "platforms": {"solana": c["a"]}} for i, c in enumerate(self.coins[:60])]
+        if path.startswith("/api.coingecko.com/api/v3/coins/markets"):
+            return 200, [{"id": "c%d" % i, "symbol": c["sym"].lower(), "name": c["name"], "market_cap_rank": 300 + i, "total_volume": 150000 + i,
+                          "price_change_percentage_1h_in_currency": 1.5, "price_change_percentage_24h_in_currency": 9.0} for i, c in enumerate(self.coins[:40])]
         if path.startswith("/api.coingecko.com/"):
             return 200, {"coins": [{"item": {"symbol": c["sym"], "name": c["name"], "market_cap_rank": 500 + i, "data": {"price_change_percentage_24h": {"usd": 3.3}}}} for i, c in enumerate(self.coins[:15])]}
+        if path.startswith("/www.reddit.com/"):
+            stamp = lambda i: time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(T0 / 1000 - 1800 * i))
+            entries = "".join('<entry><title>%s to the moon? $%s looks ready</title><content type="html">&lt;p&gt;CA: %s  $%s&lt;/p&gt;</content><updated>%s</updated><link href="https://www.reddit.com/r/x/%d"/></entry>' % (
+                c["name"], c["sym"], c["a"], c["sym"], stamp(i), i) for i, c in enumerate(self.coins[:12]))
+            return 200, '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"><title>r/x</title>%s</feed>' % entries
+        if path.startswith("/api.coinmarketcap.com/data-api/v3/topsearch/rank"):
+            return 200, {"data": {"cryptoTopSearchRanks": [{"symbol": c["sym"], "name": c["name"], "marketCap": c["mc"], "priceChange": {"priceChange24h": 2.0}} for c in self.coins[:10]]}}
+        if path.startswith("/api.coinmarketcap.com/data-api/v3/cryptocurrency/listing"):
+            return 200, {"data": {"cryptoCurrencyList": [{"symbol": c["sym"], "name": c["name"], "cmcRank": 2000 + i, "platform": {"token_address": c["a"]}, "quotes": [{"percentChange24h": 40.0, "marketCap": c["mc"]}]} for i, c in enumerate(self.coins[:20])]}}
         if path.startswith("/frontend-api-v3.pump.fun/coins"):
             off = int(q.get("offset", ["0"])[0])
             base = 500 if "market_cap" in q.get("sort", [""])[0] else (650 if "currently-live" in path else (750 if q.get("complete") else 700))
@@ -249,6 +263,8 @@ def main():
     g = json.loads(subprocess.run([PY, os.path.join(HERE, "memebot.py"), "gather", "--dir", d, "--now", str(T0)], capture_output=True, text=True).stdout)
     check(g["coins"] >= 1000, "universe has %d coins (>= 1000)" % g["coins"])
     check(g["geckoterminal"] > 0 and g["pumpfun"] > 0 and g["jupiter"] > 0 and g["coingecko"] > 0 and g["news"] > 0, "every mocked source parsed: gt %d pf %d jup %d cg %d news %d" % (g["geckoterminal"], g["pumpfun"], g["jupiter"], g["coingecko"], g["news"]))
+    check(g.get("reddit", 0) >= 12 and g.get("cgMeme", 0) >= 40 and g["lists"].get("reddit", 0) >= 12 and g["lists"].get("cmcGain", 0) >= 20,
+          "publicity sources parsed: reddit %s mentions, coingecko meme list %s, cmc gainers %s" % (g.get("reddit"), g.get("cgMeme"), g["lists"].get("cmcGain")))
     check("giving up on gmgn.ai" in err, "GMGN 403 trips the circuit breaker")
     devrows = [l for f in glob.glob(os.path.join(d, "dev", "*.txt")) for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not l.startswith("#")]
     check(devrows and "creator check" in err, "the creator check wrote %d rows (Jupiter facts + RPC transactions)" % len(devrows))

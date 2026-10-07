@@ -24,7 +24,7 @@ Usage:
   python3 fetch.py news    --dir mb                -> news.json only
   --mock http://127.0.0.1:8765  rewrites every URL to <mock>/<host>/<path> (used by selftest.py)
 """
-import argparse, email.utils, glob, json, os, re, shutil, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, html, email.utils, glob, json, os, re, shutil, sys, time, urllib.error, urllib.parse, urllib.request, datetime as dt
 import xml.etree.ElementTree as ET
 
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
@@ -41,6 +41,14 @@ LC = "https://lunarcrush.com/api4/public"
 RPC = "https://api.mainnet-beta.solana.com"            # Solana's public RPC: ~100 requests per 10 s, 40 per method
 LL = "https://launch-mint-v1.raydium.io"               # Raydium LaunchLab (bonk.fun): launches with their creator wallet
 RAY = "https://api-v3.raydium.io"
+RD = "https://www.reddit.com"                            # Reddit's JSON is blocked for servers, its RSS feeds are not
+CMC = "https://api.coinmarketcap.com/data-api/v3"       # CoinMarketCap's site API: top searches and the Solana gainers list
+REDDIT_FEEDS = [("CryptoMoonShots", RD + "/r/CryptoMoonShots/new/.rss"), ("memecoins", RD + "/r/memecoins/new/.rss"), ("solana", RD + "/r/solana/new/.rss"),
+                ("SolanaMemeCoins", RD + "/r/SolanaMemeCoins/new/.rss"), ("pumpfun", RD + "/r/pumpfun/new/.rss"),
+                ("search", RD + "/search.rss?q=solana+memecoin&sort=new&limit=100"), ("search2", RD + "/search.rss?q=pump.fun&sort=new&limit=100")]
+B58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
+CASHTAG_RE = re.compile(r"\$([A-Za-z][A-Za-z0-9]{1,11})\b")
+CG_MEME_CATEGORY = "solana-meme-coins"
 KEYWORDS = list(dict.fromkeys("""dog cat pepe frog elon trump musk ai agent moon inu wif bonk chad wojak doge shib baby meme giga sigma based degen ape monkey bear bull penguin pengu hat
 rocket lambo fart poop gm wen ser anon pnut squirrel goat duck bird fish whale shark cow pig chill guy girl king queen god alien ufo mars pixel retro game
 punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot cult coin shiba floki mfer neko kitty puppy hamster capybara raccoon
@@ -83,8 +91,8 @@ hawk eagle owl crow raven parrot pigeon dove swan goose duck hen rooster turkey 
 NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll")
-SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json")
-HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
+SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json")
+HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 2.0, "api.coinmarketcap.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
 
@@ -601,6 +609,84 @@ def news(http, d):
     return len(items)
 
 
+def reddit(http, d):
+    """Reddit's newest posts in the meme-coin subreddits and two searches (RSS, the JSON API refuses servers): every Solana
+    address and $cashtag in a title or body is recorded with the post's time and subreddit. reddit.json rows:
+    [title, sub, ms, [addresses], [cashtags]]. Returns the addresses (they join the universe through lists.json)."""
+    A = "{http://www.w3.org/2005/Atom}"
+    posts, addrs = [], []
+    for sub, url in REDDIT_FEEDS:
+        raw = http.get(url, kind="text")
+        if not raw:
+            continue
+        try:
+            root = ET.fromstring(raw.encode("utf-8", "replace"))
+        except ET.ParseError:
+            continue
+        for it in root.iter(A + "entry"):
+            title = html.unescape((it.findtext(A + "title") or "").strip())
+            body = html.unescape(re.sub(r"<[^>]+>", " ", it.findtext(A + "content") or ""))
+            ms = None
+            at = it.findtext(A + "updated") or it.findtext(A + "published")
+            if at:
+                try:
+                    ms = int(dt.datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp() * 1000)
+                except ValueError:
+                    ms = None
+            text = title + " " + body
+            found = [a for a in dict.fromkeys(B58_RE.findall(text)) if not a.isdigit()][:6]
+            tags = [t.upper() for t in dict.fromkeys(CASHTAG_RE.findall(text))][:8]
+            if title:
+                posts.append([title[:200], sub, ms, found, tags])
+                addrs += found
+    write_json(d, "reddit.json", posts)
+    http.log("  reddit %d posts, %d addresses, %d cashtags" % (len(posts), len(set(addrs)), sum(1 for p in posts for _ in p[4])))
+    return sorted(set(addrs))
+
+
+def cg_meme(http, d):
+    """CoinGecko's Solana meme-coin category (the 250 biggest by volume and by market cap) with each coin's Solana address from
+    the platform list. cgmeme.json rows: [address, symbol, name, mcRank, volume, chg1h, chg24h]. Returns the addresses."""
+    ids = {}
+    plat = http.get(CG + "/coins/list?include_platform=true")
+    for c in plat if isinstance(plat, list) else []:
+        a = ((c or {}).get("platforms") or {}).get("solana")
+        if a and c.get("id"):
+            ids[c["id"]] = a
+    rows, seen = [], set()
+    for order in ("volume_desc", "market_cap_desc"):
+        data = http.get(CG + "/coins/markets?vs_currency=usd&category=%s&order=%s&per_page=250&page=1&price_change_percentage=1h,24h" % (CG_MEME_CATEGORY, order))
+        for c in data if isinstance(data, list) else []:
+            a = ids.get((c or {}).get("id"))
+            if not a or a in seen:
+                continue
+            seen.add(a)
+            rows.append([a, c.get("symbol"), c.get("name"), num(c.get("market_cap_rank")), num(c.get("total_volume")),
+                         num(c.get("price_change_percentage_1h_in_currency")), num(c.get("price_change_percentage_24h_in_currency") or c.get("price_change_percentage_24h"))])
+    write_json(d, "cgmeme.json", rows)
+    http.log("  coingecko solana meme list %d coins (%d ids with a Solana address)" % (len(rows), len(ids)))
+    return [r[0] for r in rows]
+
+
+def cmc(http, d):
+    """CoinMarketCap: the top searches (publicity, by symbol) and the Solana coins with the biggest 24h gains (with address).
+    cmc.json: {"search": [[symbol, name, rank, marketCap, chg24h]], "gainers": [[address, symbol, name, cmcRank, chg24h, marketCap]]}."""
+    search, gainers = [], []
+    data = http.get(CMC + "/topsearch/rank")
+    for i, c in enumerate(((data or {}).get("data") or {}).get("cryptoTopSearchRanks") or []):
+        pc = (c or {}).get("priceChange") or {}
+        search.append([c.get("symbol"), c.get("name"), i + 1, num(c.get("marketCap")) or num(c.get("selfReportedMarketCap")), num(pc.get("priceChange24h"))])
+    data = http.get(CMC + "/cryptocurrency/listing?start=1&limit=100&sortBy=percent_change_24h&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=cmc_rank,date_added&platformId=16")
+    for c in ((data or {}).get("data") or {}).get("cryptoCurrencyList") or []:
+        a = ((c or {}).get("platform") or {}).get("token_address")
+        q = ((c.get("quotes") or [{}])[0]) if isinstance(c.get("quotes"), list) and c.get("quotes") else {}
+        if a and B58_RE.fullmatch(a):
+            gainers.append([a, c.get("symbol"), c.get("name"), num(c.get("cmcRank")), num(q.get("percentChange24h")), num(q.get("marketCap"))])
+    write_json(d, "cmc.json", {"search": search, "gainers": gainers})
+    http.log("  coinmarketcap %d top searches, %d solana gainers" % (len(search), len(gainers)))
+    return [g[0] for g in gainers]
+
+
 def lunarcrush(http, d, key):
     if not key:
         return 0
@@ -634,6 +720,9 @@ def cmd_sources(http, d, light=False):
     lists["rcVerified"] = rc_list(http, "verified")
     lists["rayVol"] = ray_top(http)
     lists.update(launchlab(http, d))
+    lists["reddit"] = reddit(http, d)          # publicity: what people post about, what CoinGecko and CoinMarketCap list
+    lists["cgMeme"] = cg_meme(http, d)
+    lists["cmcGain"] = cmc(http, d)
     write_json(d, "lists.json", lists)
     ds_search(http, d, KEYWORDS[:60] if light else KEYWORDS)
     gt_pools(http, d, pages=3 if light else 8)

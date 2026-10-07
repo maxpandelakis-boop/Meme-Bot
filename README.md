@@ -97,6 +97,16 @@ bar), **weak** (clean, below it), **fallback** (clean, but it failed a soft mome
 (no coin had a clean safety report at all: the tradable coin with the best odds, shown with its RugCheck flag and its
 odds, so the page says how likely it is to go). Only a scan with no tradable coin at all shows nothing.
 
+## Publicity
+
+Numbers alone miss what people are talking about, so every scan also reads Reddit (the newest posts of r/CryptoMoonShots,
+r/memecoins, r/solana, r/SolanaMemeCoins, r/pumpfun and two searches, through the RSS feeds; every Solana address and
+$ticker in a post counts for 48 hours, a ticker only for the biggest coin with that ticker), CoinGecko's Solana meme-coin
+category (the 500 biggest by volume and market cap, with their addresses) and CoinMarketCap (top searches, and the Solana
+coins with the biggest 24h gains). The coins found there join the scan; the mentions become factors (`rd.*`, `cgm.*`,
+`cmc.*`) with small priors, and the learning decides what they are worth. LunarCrush (X engagement) joins when a
+`LUNARCRUSH_API_KEY` secret is set.
+
 ## Training
 
 Every pick run starts with `memebot.py train`, which puts the scored snapshots of the active profile through five programs
