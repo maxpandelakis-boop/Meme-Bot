@@ -1,17 +1,21 @@
 # Meme-Bot: a paper-trading meme coin analyst
 
-Fake money only. The bot never signs a transaction, never touches a wallet and never buys anything for real. It scans
-roughly a thousand Solana meme coins from public sources, scores them, and "buys" the two best with a 40-unit fake
-bankroll (20 per coin). It then follows those positions with fixed sell rules and learns which factors predicted the
-next 24 hours from every coin it scanned.
+Fake money only. The bot never signs a transaction, never touches a wallet and never buys anything for real. Every two
+hours (and on a button press) it scans about 12,000 Solana meme coins from some 850 public lists, searches and social
+feeds, gates and scores them, checks the survivors against RugCheck, GoPlus and the creator's wallet, and names the best
+coin for the next two hours on a phone-friendly page, with its trained chance of a profit and of going to zero. Every
+scan is re-priced two hours later and feeds the training that sets the weights, the zero and profit models and the limits.
+The original 24-hour paper-trading mode (a 40-unit fake bankroll, two coins at 20) is still there.
 
 ## Quick start
 
-Python 3.9+ and nothing else (standard library only).
+On GitHub nothing has to be installed: the workflow in `.github/workflows/scan.yml` does everything (see "Running it on
+GitHub"). Locally it needs Python 3.9+ and nothing else (standard library only).
 
 ```bash
-python3 selftest.py                 # proves the whole pipeline on a local mock of every API (~10 s)
-python3 bot.py cycle                # one real cycle: fetch ~1000 coins, score, pick, apply the sell rules
+python3 selftest.py                 # proves the whole pipeline on a local mock of every API (~3 min)
+python3 bot.py cycle --recommend --horizon 2h   # one real cycle: scan, train, name the best coin for the next 2 hours, render the page
+python3 bot.py cycle                # one real 24h paper-trading cycle: fetch, score, pick, apply the sell rules
 python3 bot.py status               # bankroll, open positions, closed trades
 python3 bot.py report               # render mb/report.html, the analysis page
 python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to stop)
@@ -32,17 +36,22 @@ Everything lives in `./mb` (`--dir` changes it): the fetched source files, `pair
 1. **mode** – `memebot.py mode` says what the run needs: a full scan (every ~12 h, for the 24-hour "big test"), a light
    scan (the bankroll has a free slot and the last pick is more than 3 hours old) or only prices for the open positions.
 2. **sources** – `fetch.py sources` pulls the coin universe:
-   DexScreener boost / profile / community-takeover / ad lists plus ~70 keyword searches (about 30 pairs each),
-   RugCheck's new-token list, GeckoTerminal trending / new / top pools (with distinct buyers and sellers), CoinGecko
-   trending, Jupiter trending / organic / recent tokens (holders, organic score, traders), pump.fun top and new coins,
-   GMGN smart-money rankings and wallet leaderboard (usually blocked by Cloudflare, so often empty), and crypto news RSS
-   headlines. With `LUNARCRUSH_API_KEY` set it also pulls LunarCrush social buzz.
+   DexScreener boost / profile / community-takeover / ad lists plus 467 keyword searches (about 30 pairs each) and a
+   deep search with 368 more, RugCheck's new / trending / recent / verified lists, GeckoTerminal trending / new / top
+   pools and the busiest pools per DEX (with distinct buyers and sellers), CoinGecko trending and its Solana meme-coin
+   category, CoinMarketCap top searches and Solana gainers, Jupiter trending / organic / recent / verified tokens
+   (holders, organic score, traders), Raydium LaunchLab launches (with creator wallets) and Raydium's and Orca's biggest
+   pools, pump.fun top / new / graduated / live coins, GMGN smart-money rankings (usually blocked), Reddit, Farcaster,
+   Mastodon and 4chan posts, crypto news and Google News headlines, SOL/BTC and the Fear & Greed index. With
+   `LUNARCRUSH_API_KEY` set it also pulls LunarCrush social buzz.
 3. **gather** – `memebot.py gather` merges everything into one record per coin and lists the addresses that still need
    full DexScreener pair data; `fetch.py tokens` fetches those 30 at a time, then gather runs again.
-4. **shortlist** – the best-scored coins that pass the hard gates get a RugCheck report (12 for the pick, 120 more when
-   a big-test snapshot is due) and, when GMGN answers, their top-70 buyers.
-5. **run** – `memebot.py run` applies the sell rules to the open positions, then buys the two best coins whose RugCheck
-   report is clean, writes everything to `out/`, and `bot.py` copies it into `db/`.
+4. **shortlist** – the best-scored coins that pass the hard gates get a RugCheck report (16 for the pick, 60 to 120 more
+   when a big-test snapshot is due), a GoPlus security check, GeckoTerminal token facts, the creator check (Jupiter +
+   Solana RPC), the community data (votes, watchlists, X, Telegram, StockTwits) and, when GMGN answers, their top buyers.
+5. **train** – `memebot.py train` runs the training programs on the scored snapshots (see "Training").
+6. **run** – `memebot.py run` applies the sell rules to the open positions, then names or buys the best clean coins,
+   writes everything to `out/`, and `bot.py` copies it into `db/`.
 
 ### Hard gates (a coin must pass all of them)
 
@@ -171,7 +180,7 @@ searches on DexScreener) on top, about 12,000 coins from 800 lists in 14 minutes
   `bot.py cycle --recommend --push --horizon 2h`, pushes the new page and docs back to `results`, and prints the two picks
   with links on the run's own page (`bot.py summary`);
 - the **Run workflow** button takes two inputs: the profile (`2h` or `24h`) and `rescan` (force a full scan with a fresh snapshot);
-- `probe-network.yml` is a one-minute manual check that GitHub's runners can still reach every data API.
+- runs queue behind each other (one running, one waiting): a second press while one waits replaces the waiting one.
 
 ### A website for the phone
 
@@ -190,12 +199,14 @@ history and the learned weights (the page and the recommendations survive on the
 
 ## The analysis page
 
-Every cycle ends by rendering `mb/report.html` (also `python3 bot.py report`). Open it in any browser; it is a plain file.
-It shows the bankroll and equity, the equity curve per run, the bought coins with their last price, sell levels and the
-bot's reasons, the closed trades with their result, the 24-hour big test per scan against the "price unchanged" baseline,
-the factor weights in use with a glossary, the top candidates of the last full scan and why they were not bought, and the
-run log. Light and dark theme, phone-friendly, times in Europe/Berlin. To read it on a phone, serve the folder from the
-machine that runs the bot (`cd mb && python3 -m http.server 8000`) and open `http://<that machine>:8000/report.html`.
+Every cycle ends by rendering `mb/report.html` (also `python3 bot.py report`); on GitHub it becomes the website. In
+recommend mode the page answers one question: which coin, why, and the numbers behind it. The card shows the coin with
+its tier and safety verdict, the trained chance of a profit and of going to zero, the score and rank, the reason in plain
+words, the safety check (RugCheck, GoPlus, creator, community), every figure behind the pick (age, liquidity, volume
+pace, buy pressure, holders, top wallets, insiders, locked liquidity, creator share and sales, authorities, sources,
+boosts, buyers vs sellers, holder growth, community counts), the sources it was seen on, the live chart and the links.
+Below it: the runners-up, the track record of every tip, and one "Details" fold with the training, the big test, the
+paper bankroll, all candidates, the weights and the run log. Light and dark theme, phone-friendly, times in Europe/Berlin.
 
 ## Sending the results somewhere else
 
@@ -214,6 +225,7 @@ to show the picks, the charts and the links in chat.
 | `memebot.py` | the analyst: gates, factors, learned weights, picks, exits, big test |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
+| `.github/workflows/scan.yml` | the GitHub Actions scan every two hours, the results branch and the website |
 
 All source files are plain text, one coin per line, fields separated by `|` (formats in the `memebot.py` docstring), so
 any extra source can be added by writing such a file into `mb/`.

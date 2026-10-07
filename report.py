@@ -716,6 +716,9 @@ def rec_card(c, now, embed):
           ("holder change 24h", (sgn("%+.0f%%" % (100 * g("jup.holderChg24")))) if g("jup.holderChg24") is not None else "–")]
     if g("gm.smartDegen") is not None:
         kv.append(("smart-money wallets", "%d" % g("gm.smartDegen")))
+    # an unknown value stays on the card only where the gap itself is a warning (the safety rows); elsewhere it is noise
+    keep_unknown = {"holders", "biggest wallet", "top 10 wallets", "insider wallets", "liquidity locked", "creator holds", "creator sold in 3h", "mint authority"}
+    kv = [(k, v) for k, v in kv if v != "–" or k in keep_unknown]
     gp, cm = rk.get("gp") or {}, rk.get("cm") or {}
     if gp:
         flags = [n for k, n in (("mintable", "mintable"), ("freezable", "freezable"), ("closable", "closable"), ("balMutable", "balances mutable"), ("nonTransferable", "non-transferable")) if gp.get(k)]
