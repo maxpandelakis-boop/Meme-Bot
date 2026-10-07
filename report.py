@@ -33,7 +33,10 @@ WHY = {"target": "hit 2x, half sold", "stop": "−50% stop", "time": "3-day limi
 SRC = {"kw": "search “%s”", "gt": "GeckoTerminal %s", "pf": "pump.fun %s", "list": "DexScreener %s", "jup": "Jupiter %s", "gm": "GMGN %s"}
 LIST_NAMES = {"reddit": "Reddit posts", "cgMeme": "CoinGecko meme list", "cmcGain": "CoinMarketCap gainers", "rayVol": "Raydium top pools", "llNew": "LaunchLab new", "llHot": "LaunchLab hot", "llMc": "LaunchLab biggest",
               "rcNew": "RugCheck new", "rcTrending": "RugCheck trending", "rcRecent": "RugCheck recent", "rcVerified": "RugCheck verified"}
-FACTOR = {"liqMc": "liquidity ÷ market cap", "volMc": "24h volume ÷ market cap", "logLiq": "liquidity (log)", "logMc": "market cap (log)",
+FACTOR = {"vt.likes": "source tweet: likes (log)", "vt.replies": "source tweet: replies (log)", "vt.ageH": "source tweet: age in hours", "vt.fresh": "source tweet posted within 48h",
+          "vt.followers": "source tweet: author's followers (log)", "vt.verified": "source tweet: verified author", "vt.media": "source tweet has a picture or video",
+          "vt.tweet": "X link is a single tweet", "theme.animal": "animal story",
+          "liqMc": "liquidity ÷ market cap", "volMc": "24h volume ÷ market cap", "logLiq": "liquidity (log)", "logMc": "market cap (log)",
           "buyShare": "share of buys, 24h", "buyRatio1h": "buys ÷ sells, 1h", "buyRatio6h": "buys ÷ sells, 6h", "buys1": "buys, last hour", "buys24": "buys, 24h",
           "c1": "price change 1h", "c6": "price change 6h", "c24": "price change 24h", "m5": "price change 5 min", "ageH": "age in hours",
           "vol1Share": "share of volume in last 1h", "vol6Share": "share of volume in last 6h", "fdvMc": "FDV ÷ market cap", "boosts": "DexScreener boosts",
@@ -758,6 +761,16 @@ def rec_card(c, now, embed):
         kv.append(("on-chain, last hour", "%d trades · %d buyers / %d sellers · net %s" % (g("bq.trades1h"), g("bq.buyers1h") or 0, g("bq.sellers1h") or 0, fmt_amt(g("bq.netUsd1h") or 0, True))))
     if g("lct.interactions") is not None:
         kv.append(("X/social 24h (LunarCrush)", "%s interactions" % fmt_money(g("lct.interactions"), dollars=False) + ((" · %d posts" % g("lct.posts")) if g("lct.posts") is not None else "")))
+    vt = rk.get("vt") or {}
+    if M.num(vt.get("likes")) is not None:
+        when = (" · posted %.0f h before the scan" % M.num(vt["tweetAgeH"])) if M.num(vt.get("tweetAgeH")) is not None else ""
+        kv.append(("the story: source tweet", "@%s · %s likes · %s replies%s" % (vt.get("screenName") or "?", fmt_money(vt.get("likes"), dollars=False), fmt_money(vt.get("replies"), dollars=False), when)))
+        if vt.get("text") and str(vt.get("text")) != "null":
+            kv.append(("tweet text", "“%s”" % str(vt["text"])[:160]))
+    elif g("vt.tweet"):
+        kv.append(("the story: source tweet", "the X link is a single tweet, but it could not be read"))
+    if g("theme.animal"):
+        kv.append(("theme", "animal story"))
     if g("mkt.sol24") is not None:
         kv.append(("market: SOL 24h", sgn("%+.1f%%" % g("mkt.sol24")) + ((" · fear & greed %d" % g("mkt.fng")) if g("mkt.fng") is not None else "")))
     notes = ""
@@ -770,7 +783,7 @@ def rec_card(c, now, embed):
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
             '<div class="odds">%s</div><p class="why"><strong>%s</strong> %s</p>%s%s'
             '<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")), "".join(tiles),
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")) + story_chip(c), "".join(tiles),
         "Why it ranks here:" if c.get("tier") == "young" else "Why the bot picked it:", E(c.get("why") or ""),
         safety_box(c.get("safety"), c.get("ok")), notes,
         "".join(('<div class="span"><div class="k">%s</div><div class="v multi">%s</div></div>' if len(str(v)) > 22 else '<div><div class="k">%s</div><div class="v">%s</div></div>') % (E(k), E(v)) for k, v in kv),
@@ -818,6 +831,17 @@ def rec_section(D, embed):
     return section(E(h2), head, body)
 
 
+def story_chip(c):
+    """One chip when a coin is built on a story: a viral source tweet and/or an animal theme."""
+    f, vt = c.get("f") or {}, (c.get("risk") or {}).get("vt") or {}
+    bits = []
+    if M.num(vt.get("likes")) is not None:
+        bits.append("tweet with %s likes" % fmt_money(vt["likes"], dollars=False))
+    if M.num(f.get("theme.animal")):
+        bits.append("animal story")
+    return ('<span class="chip neutral">%s</span>' % E(" · ".join(bits))) if bits else ""
+
+
 def odds_chip(c):
     up, zp = M.num(c.get("upP")), M.num(c.get("zeroP"))
     if up is None and zp is None:
@@ -856,7 +880,7 @@ def young_section(D):
     if young:
         rows_html = []
         for i, c in enumerate(young, 1):
-            chips = '<span class="chip">%d min old</span>%s%s' % (int(M.num(c.get("ageMin")) or 0), safety_chip(c.get("ok"), c.get("safety")), odds_chip(c))
+            chips = '<span class="chip">%d min old</span>%s%s%s' % (int(M.num(c.get("ageMin")) or 0), safety_chip(c.get("ok"), c.get("safety")), odds_chip(c), story_chip(c))
             rows_html.append('<tr>%s%s%s</tr>' % (coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
         body = '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
         cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False) for c in young)

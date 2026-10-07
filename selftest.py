@@ -42,7 +42,8 @@ def mk_universe(n=1100, seed=7):
         coins.append({"a": a, "sym": sym, "name": w.title() + (" 🐕 Coin " if i % 3 == 0 else " Coin ") + str(i), "px": 10 ** rng.uniform(-6, -1), "mc": mc, "liq": liq, "vol": vol,
                       "age_h": age_h, "dex": dex, "b24": b24, "s24": s24, "b1": int(b24 / 24 * rng.uniform(0.5, 2)), "s1": int(s24 / 24 * rng.uniform(0.5, 2)),
                       "chg": [rng.uniform(-30, 60) for _ in range(4)], "x": rng.random() < 0.6, "lp": lp, "risks": risks, "kw": w,
-                      "holders": [ "".join(rng.choice(ALPH) for _ in range(44)) for _ in range(5)], "mult": 1.0, "gone": False})
+                      "holders": [ "".join(rng.choice(ALPH) for _ in range(44)) for _ in range(5)], "mult": 1.0, "gone": False,
+                      "tid": (i + 1) if i % 4 == 0 else 0})     # every fourth coin's X link is one tweet (the story launch)
     return coins
 
 
@@ -56,7 +57,7 @@ class Mock:
     def pair(self, c):
         px = 0.0 if c["gone"] else c["px"] * c["mult"]
         liq = 0.0 if c["gone"] else c["liq"]
-        socials = [{"type": "twitter", "url": "https://x.com/" + c["sym"].lower()}] if c["x"] else []
+        socials = [{"type": "twitter", "url": ("https://x.com/%s/status/18%018d" % (c["sym"].lower(), c["tid"])) if c.get("tid") else "https://x.com/" + c["sym"].lower()}] if c["x"] else []
         return {"chainId": "solana", "dexId": c["dex"], "pairAddress": c["a"][:20] + "pair", "baseToken": {"address": c["a"], "symbol": c["sym"], "name": c["name"]},
                 "priceUsd": "%.10f" % px, "marketCap": c["mc"] * c["mult"], "fdv": c["mc"] * c["mult"] * 1.1, "liquidity": {"usd": liq},
                 "volume": {"h24": c["vol"], "h6": c["vol"] / 3, "h1": c["vol"] / 20}, "priceChange": dict(zip(("m5", "h1", "h6", "h24"), c["chg"])),
@@ -182,6 +183,16 @@ class Mock:
             if any(c["sym"] == sym for c in self.coins):
                 return 200, {"symbol": {"symbol": sym + ".X", "watchlist_count": 777}, "messages": [{"id": i, "body": "x", "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(T0 / 1000 - 3000 * i))} for i in range(12)]}
             return 404, {"errors": [{"message": "not found"}]}
+        if path.startswith("/cdn.syndication.twimg.com/tweet-result"):
+            q = urllib.parse.parse_qs(query)
+            tid = int((q.get("id") or ["0"])[0][-6:])
+            if "token" not in q or tid % 7 == 0:
+                return 404, {"error": "not found"}
+            return 200, {"__typename": "Tweet", "id_str": (q.get("id") or ["0"])[0], "favorite_count": 1000 * tid, "conversation_count": 50 * tid,
+                         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(T0 / 1000 - 3600 * (tid % 30 + 1))),
+                         "text": "A baby monkey hugging a plush toy went viral today" if tid % 2 else "the chart speaks for itself",
+                         "user": {"screen_name": "storyteller%d" % tid, "followers_count": 12345, "is_blue_verified": tid % 3 == 0},
+                         "mediaDetails": [{"type": "photo"}] if tid % 2 else []}
         if path.startswith("/syndication.twitter.com/srv/timeline-profile/screen-name/"):
             return 200, '<html><script id="__NEXT_DATA__">{"props":{"user":{"followers_count":45678},"entries":[%s]}}</script></html>' % ",".join(
                 '{"created_at":"%s"}' % time.strftime("%a %b %d %H:%M:%S +0000 %Y", time.gmtime(T0 / 1000 - 86400 * i)) for i in range(5))
@@ -464,6 +475,15 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--mock", url, "--now", str(T0), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
+    vt_files = glob.glob(os.path.join(rd, "vt", "vt_*.txt"))
+    vt_rows = [l for fn in vt_files for l in open(fn, encoding="utf-8") if l.strip()]
+    page_r = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
+    told = [c for c in rec.get("picks", []) + rec.get("runnersUp", []) if "vt.likes" in (c.get("f") or {})]
+    check(vt_rows and all(len(l.split("|")) == len(M.VT_COLS) for l in vt_rows) and told and all(isinstance((c.get("risk") or {}).get("vt"), dict) for c in told)
+          and any("launched off a tweet" in (c.get("why") or "") for c in told) and "the story: source tweet" in page_r,
+          "source tweets read for the story coins (%d rows; %d of the named coins carry one: %s)" % (len(vt_rows), len(told), [(c["sym"], round(10 ** c["f"]["vt.likes"])) for c in told[:3]]))
+    check(any(M.num((c.get("f") or {}).get("theme.animal")) for c in rec.get("picks", []) + rec.get("runnersUp", [])) and "animal story" in page_r,
+          "the animal theme is a factor and shows on the page")
     fresh_files = glob.glob(os.path.join(rd, "pairs", "fresh_*.txt"))
     check(fresh_files and M.num(rec.get("pricedAt")) and rec.get("refreshed", 0) >= 16 and "refreshed" in (r.stderr or "") and "right before the pick" in open(os.path.join(rd, "report.html"), encoding="utf-8").read(),
           "the candidates' prices were refreshed before the pick (%d files, %s coins) and the page says when" % (len(fresh_files), rec.get("refreshed")))

@@ -132,6 +132,14 @@ coins with the biggest 24h gains). The coins found there join the scan; the ment
 search), Mastodon tag timelines and 4chan's /biz/ catalog, and Google News searches join the headline feeds. LunarCrush
 (X engagement) joins when a `LUNARCRUSH_API_KEY` secret is set.
 
+The story behind a coin counts too. The biggest viral coins were built on one real story that exploded on X within
+hours (very often an animal), so when a shortlisted coin's X link points at a single tweet (`x.com/<user>/status/<id>`,
+the usual pump.fun pattern), the bot reads that tweet's likes, replies, age, author and text without a key
+(`vt/<stamp>.txt`, factors `vt.*`: likes and replies on a log scale, "posted within 48 hours", the author's followers,
+verified, picture or video) and names it on the card ("launched off a tweet by @user with 92k likes, posted 5 h before
+the scan"). An animal theme in the name, ticker or tweet text is its own factor (`theme.animal`). Both start with small
+priors; the learning decides what they are worth. Views are not public without the X API, so likes stand in for them.
+
 For the shortlist (the coins that get a RugCheck report) the bot also pulls: GoPlus token security (mint, freeze, close
 and balance authorities, transfer fee, trusted-token flag, holders, top-10 share, LP burn; a coin with any authority left
 is skipped), GeckoTerminal token facts (GT score, holders, top-10 share, authorities), RugCheck community votes,

@@ -24,7 +24,7 @@ Usage:
   python3 fetch.py news    --dir mb                -> news.json only
   --mock http://127.0.0.1:8765  rewrites every URL to <mock>/<host>/<path> (used by selftest.py)
 """
-import argparse, html, email.utils, glob, json, os, re, shutil, sys, time, urllib.error, urllib.parse, urllib.request, datetime as dt
+import argparse, html, math, email.utils, glob, json, os, re, shutil, sys, time, urllib.error, urllib.parse, urllib.request, datetime as dt
 import xml.etree.ElementTree as ET
 import concurrent.futures
 
@@ -58,6 +58,7 @@ MASTO = "https://mastodon.social/api/v1/timelines/tag"
 CHAN = "https://a.4cdn.org/biz/catalog.json"
 ST = "https://api.stocktwits.com/api/2/streams/symbol"
 XSYN = "https://syndication.twitter.com/srv/timeline-profile/screen-name"
+XTW = "https://cdn.syndication.twimg.com/tweet-result"     # one tweet's public facts (likes, replies, text, author) by id, no key
 TG = "https://t.me/s"
 BQ = "https://streaming.bitquery.io/eap"                            # Bitquery: every DEX trade of a coin from the chain itself (BITQUERY_TOKEN)
 BQ_QUERY = """query ($mint: String!, $since: DateTime) {
@@ -118,10 +119,10 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
-            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
+            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "cdn.syndication.twimg.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
             "streaming.bitquery.io": 0.5, "lunarcrush.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60), "www.reddit.com": (5, 10, 15)}   # 429 back-off per host; DexScreener default below
@@ -1205,6 +1206,60 @@ def rpc_holders(http, d, addrs, known=()):
     return n
 
 
+ANIMALS = re.compile(r"\b(monkey|monkeys|macaque|ape|apes|chimp|gorilla|cat|cats|kitten|kitty|dog|dogs|puppy|pup|doge|shiba|capybara|frog|frogs|toad|pepe|penguin|hamster|squirrel|raccoon|otter|bear|bears|panda|hippo|hippopotamus|moo deng|cow|cows|pig|piglet|duck|duckling|goat|bird|parrot|owl|fish|rat|mouse|seal|sloth|fox|wolf|lion|tiger|elephant|turtle|tortoise|rabbit|bunny|chick|chicken|giraffe|zebra|koala|kangaroo|llama|alpaca|dolphin|shark|octopus|snail|hedgehog|deer|moose|donkey|horse|pony|lamb|sheep|bat|crab|lobster|axolotl|quokka|wombat|lemur|baboon|orangutan)\b", re.I)
+
+
+def tweet_token(tid):
+    """The token the syndication endpoint wants with a tweet id (the same arithmetic the embed code uses)."""
+    x = (int(tid) / 1e15) * math.pi
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    ip, fr = int(x), x - int(x)
+    s = ""
+    while ip:
+        s, ip = digits[ip % 36] + s, ip // 36
+    f = ""
+    for _ in range(11):
+        fr *= 36
+        f += digits[int(fr)]
+        fr -= int(fr)
+    return re.sub(r"(0+|\.)", "", (s or "0") + "." + f)
+
+
+def viral(http, d, addrs, meta, now=None):
+    """The story behind a coin: when its X link points at one tweet (x.com/<user>/status/<id>), that tweet's likes, replies,
+    age, author and text -> vt/<stamp>.txt. A coin launched off a tweet with tens of thousands of likes posted hours ago is
+    the 'viral real story' pattern; the text also says whether the story is about an animal. Coins whose link is only a
+    profile are skipped (the profile's followers are read by community())."""
+    now = now or time.time()
+    rows, tried = [], 0
+    for a in addrs:
+        m = (meta or {}).get(a) or {}
+        mt = re.search(r"^https://(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,30})/status/(\d{5,25})", str(m.get("x") or ""))
+        if not mt or "cdn.syndication.twimg.com" in http.dead:
+            continue
+        tried += 1
+        tid = mt.group(2)
+        j = http.get("%s?id=%s&token=%s&lang=en" % (XTW, tid, tweet_token(tid)))
+        if not isinstance(j, dict) or j.get("__typename") == "TweetTombstone" or not (j.get("id_str") or j.get("text") is not None):
+            continue
+        age_h = None
+        try:
+            age_h = round((now - dt.datetime.fromisoformat(str(j.get("created_at") or "").replace("Z", "+00:00")).timestamp()) / 3600, 2)
+        except (TypeError, ValueError):
+            pass
+        u = j.get("user") if isinstance(j.get("user"), dict) else {}
+        text = re.sub(r"\s+", " ", str(j.get("text") or "")).strip()
+        animal = bool(ANIMALS.search(text) or ANIMALS.search(str(m.get("sym") or "")))
+        rows.append(row(a, tid, num(j.get("favorite_count")), num(j.get("conversation_count")), age_h, num(u.get("followers_count")),
+                        bool(u.get("verified") or u.get("is_blue_verified")), bool(j.get("mediaDetails") or j.get("photos") or j.get("video")),
+                        animal, txt(u.get("screen_name") or mt.group(1), 30), txt(text, 160)))
+    n = write_rows(d, "vt", "vt_%d.txt" % int(time.time()), rows)
+    if tried >= 3 and n == 0:
+        http.log("  ! tweets: %d status links looked up, none read (did the syndication endpoint change?)" % tried)
+    http.log("  source tweets %d of %d status links (%d coins)" % (n, tried, len(addrs)))
+    return n
+
+
 def cmd_risk(http, d, addrs, meta=None):
     n = rc_reports(http, d, addrs)
     reported = set()
@@ -1217,6 +1272,7 @@ def cmd_risk(http, d, addrs, meta=None):
     gt_info(http, d, addrs[:30])
     dev_check(http, d, addrs[:24])
     community(http, d, addrs[:20], meta)
+    viral(http, d, addrs[:60], meta)
     bitquery_trades(http, d, addrs[:40], os.environ.get("BITQUERY_TOKEN"))
     lunarcrush_topics(http, d, addrs[:4], meta, os.environ.get("LUNARCRUSH_API_KEY"))
     if "gmgn.ai" not in http.dead:
