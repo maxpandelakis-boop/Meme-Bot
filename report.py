@@ -235,6 +235,7 @@ def collect(d, now):
             eur = M.num(c.get("eur")) if isinstance(c, dict) else None
             if eur is None:
                 continue
+            eur = M.clamp(eur, M.EUR_CLIP[0], M.EUR_CLIP[1])      # averages are shown clipped, like the learning sees them
             g["n"] += 1
             (g["pass"] if c.get("pass") else g["fail"]).append(eur)
             rank = M.num(c.get("rank"))

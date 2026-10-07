@@ -1466,8 +1466,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if not res:
             continue
         avg = lambda xs: round(sum(xs) / len(xs), 2) if xs else None
-        p_ok, p_no = [r["eur"] for r in res if r["pass"]], [r["eur"] for r in res if not r["pass"]]
-        top = [r["eur"] for r in res if r.get("rank") and r["rank"] <= 10]
+        cl = lambda r: clamp(r["eur"], EUR_CLIP[0], EUR_CLIP[1])      # one 1000x dust coin must not set the group average
+        p_ok, p_no = [cl(r) for r in res if r["pass"]], [cl(r) for r in res if not r["pass"]]
+        top = [cl(r) for r in res if r.get("rank") and r["rank"] <= 10]
         emit("memesnapres", sid, {"t": now, "t0": num(sn.get("t")), "rule": sn.get("rule"), "n": len(res), "passN": len(p_ok), "passAvg": avg(p_ok),
                                   "failN": len(p_no), "failAvg": avg(p_no), "top10N": len(top), "top10Avg": avg(top), "coins": res})
         big.append((len(res), avg(p_ok), len(p_ok), avg(p_no), len(top), avg(top), len(p_no)))
