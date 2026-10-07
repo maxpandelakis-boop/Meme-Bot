@@ -356,6 +356,7 @@ GI_COLS = ("address", "gtScore", "holders", "top10Pct", "mintAuth", "freezeAuth"
 CM_COLS = ("address", "rcUp", "rcDown", "cgWatch", "cgTwitter", "cgReddit", "cgSentUp", "cgRank", "stWatch", "stMsgs24", "xFollowers", "xTweets7d", "tgSubs", "tgMsgs24")
 BQ_COLS = ("address", "trades1h", "buyers1h", "sellers1h", "netUsd1h", "topBuyerShare", "traders", "buyUsd1h", "sellUsd1h")
 LCT_COLS = ("address", "interactions24h", "posts24h", "contributors", "sentiment", "trend")
+HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
 TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad", "devWallet", "creator", "poolId",
@@ -521,6 +522,7 @@ def cmd_gather(d, now):
     cm, _ = load_side(d, "cm", CM_COLS)
     bq, _ = load_side(d, "bq", BQ_COLS)
     lc, _ = load_side(d, "lc", LCT_COLS)
+    hl, _ = load_side(d, "hl", HL_COLS)
     ll, ltags = load_side(d, "ll", LL_COLS)
     for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
@@ -553,7 +555,7 @@ def cmd_gather(d, now):
             p["dev"] = dict(dev[a])
         if a in ll:
             p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
-        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc)):
+        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl)):
             if a in table:
                 p[sub] = {k: v for k, v in table[a].items() if k != "address" and v is not None}
         if a in gm:
@@ -1000,6 +1002,10 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f[k] = num(bq.get(src))
     if num(bq.get("buyers1h")) is not None and num(bq.get("sellers1h")) is not None:
         f["bq.buyerRatio"] = (num(bq["buyers1h"]) + 1.0) / (num(bq["sellers1h"]) + 1.0)
+    hl = pr.get("hl") or {}
+    for k, src in (("hl.top1", "top1Pct"), ("hl.top10", "top10Pct"), ("hl.top20", "top20Pct")):
+        if num(hl.get(src)) is not None:
+            f[k] = num(hl.get(src))
     lc = pr.get("lc") or {}
     for k, src in (("lct.interactions", "interactions24h"), ("lct.posts", "posts24h"), ("lct.contributors", "contributors"), ("lct.sentiment", "sentiment"), ("lct.trend", "trend")):
         if num(lc.get(src)) is not None:
@@ -1624,14 +1630,14 @@ def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
     # the shortlist's side tables are fetched after the gather, so the run reads them itself (gather attaches them next time anyway)
-    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS)):
+    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS)):
         table, _ = load_side(d, sub, cols)
         for a, r in table.items():
             if a in pairs and not pairs[a].get(sub):
                 pairs[a][sub] = {k: v for k, v in r.items() if k != "address" and v is not None}
     for a, pr in pairs.items():                       # the creator check (Jupiter + RPC), GoPlus and the community facts ride on the RugCheck entry
-        if a in risk and isinstance(risk[a], dict) and (pr.get("dev") or pr.get("gp") or pr.get("cm") or pr.get("gi")):
-            risk[a] = dict(risk[a], dev=pr.get("dev") or {}, gp=pr.get("gp") or {}, cm=pr.get("cm") or {}, gi=pr.get("gi") or {})
+        if a in risk and isinstance(risk[a], dict) and (pr.get("dev") or pr.get("gp") or pr.get("cm") or pr.get("gi") or pr.get("hl")):
+            risk[a] = dict(risk[a], dev=pr.get("dev") or {}, gp=pr.get("gp") or {}, cm=pr.get("cm") or {}, gi=pr.get("gi") or {}, hl=pr.get("hl") or {})
     news, cg, wallets = load_news(d, now), load_cg(d), wallet_table(d)
     tbs, board = load_top_buyers(d), load_leaderboard(d)
     held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9}
@@ -1743,7 +1749,14 @@ LOOSE_FLOOR = {"MIN_LP_LOCKED": 50.0, "MAX_TOP1": 20.0, "MAX_TOP10": 50.0, "MAX_
 def loose_view(r):
     """The safety floor a risky pick must still clear: a RugCheck report with no danger flag, at least half the liquidity
     locked, no wallet above 20%, the top 10 under half, at most 15 insiders, at least 300 holders, no creator sale, no
-    mint authority, no GoPlus authority or fee. Returns (ok, text); ok is None without a report."""
+    mint authority, no GoPlus authority or fee. Returns (ok, text); ok is None without a report. The chain's own holder
+    shares (hl) are checked first when present: a whale on the chain fails the floor whatever the report says."""
+    hl = (r or {}).get("hl") if isinstance(r, dict) else None
+    if isinstance(hl, dict):
+        if num(hl.get("top1Pct")) is not None and num(hl["top1Pct"]) > LOOSE_FLOOR["MAX_TOP1"]:
+            return False, "one wallet holds %d%% (chain)" % round(num(hl["top1Pct"]))
+        if num(hl.get("top10Pct")) is not None and num(hl["top10Pct"]) > LOOSE_FLOOR["MAX_TOP10"]:
+            return False, "top 10 wallets hold %d%% (chain)" % round(num(hl["top10Pct"]))
     if not isinstance(r, dict):
         return None, "no RugCheck report"
     danger = [x for x in names(r, "danger") if not OWNERSHIP_FLAG.search(x)]
@@ -1782,7 +1795,7 @@ def risk_doc(r):
     dv = r.get("dev")
     if isinstance(dv, dict):
         doc["dev"] = {k: dv.get(k) for k in ("devPct", "devSold", "devSellAgeMin", "mintAuthOff", "freezeAuthOff", "txs3h", "jupHolders", "organic") if dv.get(k) is not None}
-    for sub in ("gp", "cm", "gi"):
+    for sub in ("gp", "cm", "gi", "hl"):
         if isinstance(r.get(sub), dict) and r[sub]:
             doc[sub] = dict(r[sub])
     if r.get("holdersTop"):

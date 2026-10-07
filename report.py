@@ -48,6 +48,7 @@ FACTOR = {"liqMc": "liquidity ÷ market cap", "volMc": "24h volume ÷ market cap
           "cm.cgTwitter": "X followers (CoinGecko)", "cm.cgSentUp": "CoinGecko sentiment up %", "cm.stWatch": "StockTwits watchers", "cm.stMsgs": "StockTwits messages 24h",
           "cm.xFollowers": "X followers", "cm.xTweets": "tweets in 7 days", "cm.tgSubs": "Telegram members", "cm.tgMsgs": "Telegram messages 24h",
           "mkt.sol24": "SOL 24h change (market)", "mkt.btc24": "BTC 24h change (market)", "mkt.fng": "fear & greed index (market)",
+          "hl.top1": "biggest wallet % (chain)", "hl.top10": "top 10 wallets % (chain)", "hl.top20": "top 20 wallets % (chain)",
           "bq.trades1h": "on-chain trades, last hour", "bq.buyers1h": "on-chain buyers, last hour", "bq.sellers1h": "on-chain sellers, last hour", "bq.netUsd1h": "on-chain net flow $, last hour",
           "bq.topBuyerShare": "biggest buyer's share of buying", "bq.traders": "on-chain traders, 6h", "bq.buyerRatio": "on-chain buyers ÷ sellers, 1h",
           "lct.interactions": "X/social interactions 24h (LunarCrush)", "lct.posts": "social posts 24h (LunarCrush)", "lct.contributors": "social contributors (LunarCrush)", "lct.sentiment": "social sentiment (LunarCrush)", "lct.trend": "social trend (LunarCrush)",
@@ -722,7 +723,9 @@ def rec_card(c, now, embed):
     # an unknown value stays on the card only where the gap itself is a warning (the safety rows); elsewhere it is noise
     keep_unknown = {"holders", "biggest wallet", "top 10 wallets", "insider wallets", "liquidity locked", "creator holds", "creator sold in 3h", "mint authority"}
     kv = [(k, v) for k, v in kv if v != "–" or k in keep_unknown]
-    gp, cm = rk.get("gp") or {}, rk.get("cm") or {}
+    gp, cm, hl = rk.get("gp") or {}, rk.get("cm") or {}, rk.get("hl") or {}
+    if M.num(hl.get("top10Pct")) is not None:
+        kv.append(("top 10 wallets (chain)", pct(hl.get("top10Pct")) + (" · biggest %s" % pct(hl.get("top1Pct")) if M.num(hl.get("top1Pct")) is not None else "")))
     if gp:
         flags = [n for k, n in (("mintable", "mintable"), ("freezable", "freezable"), ("closable", "closable"), ("balMutable", "balances mutable"), ("nonTransferable", "non-transferable")) if gp.get(k)]
         kv.append(("GoPlus authorities", ", ".join(flags) if flags else "none left (good)"))

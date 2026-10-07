@@ -90,6 +90,10 @@ class Mock:
             if method == "getSignaturesForAddress":
                 dev = str(params[0]); sold = any(c["a"][3:] == dev[3:] and self.coins.index(c) % 5 == 2 for c in self.coins if dev.startswith("DEV"))
                 return 200, {"jsonrpc": "2.0", "result": [{"signature": "sig%s%d" % (dev[-6:], i), "blockTime": int(self.now / 1000) - 600 * (i + 1)} for i in range(3 if sold else 1)], "id": 1}
+            if method == "getTokenSupply":
+                return 200, {"jsonrpc": "2.0", "result": {"value": {"amount": "1000000000", "decimals": 0, "uiAmount": 1000000000.0}}, "id": 1}
+            if method == "getTokenLargestAccounts":
+                return 200, {"jsonrpc": "2.0", "result": {"value": [{"address": "acc%d" % i, "uiAmount": 30000000.0 - 1000000.0 * i} for i in range(20)]}, "id": 1}
             if method == "getTransaction":
                 sig = str(params[0]); dev6 = sig[3:9]
                 c = next((c for c in self.coins if c["a"][3:][-6:] == dev6), None)

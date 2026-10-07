@@ -118,7 +118,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
@@ -1173,8 +1173,43 @@ def lunarcrush_topics(http, d, addrs, meta, key):
     return n
 
 
+HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
+
+
+def rpc_holders(http, d, addrs, known=()):
+    """The chain itself: the 20 largest token accounts of a coin (getTokenLargestAccounts) against its supply -> hl/<stamp>.txt
+    with the top-1, top-10 and top-20 shares. Only for shortlisted coins RugCheck had no report for (`known` are the ones it
+    had): the public RPC throttles this call hard, so it is paced and gives up quietly."""
+    rows = []
+    todo = [a for a in addrs if a not in set(known)]
+    for a in todo:
+        if "api.mainnet-beta.solana.com" in http.dead:
+            break
+        sup = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTokenSupply", "params": [a]})
+        supply = num((((sup or {}).get("result") or {}).get("value") or {}).get("uiAmount"))
+        big = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTokenLargestAccounts", "params": [a]})
+        if isinstance(big, dict) and isinstance(big.get("error"), dict):
+            http.log("  ! rpc largest accounts: %s" % str(big["error"].get("message"))[:80])
+            break                                     # throttled: the rest of the shortlist would be throttled too
+        vals = sorted((num((v or {}).get("uiAmount")) or 0.0 for v in (((big or {}).get("result") or {}).get("value") or [])), reverse=True)
+        if not supply or not vals:
+            continue
+        pct = lambda k: round(100.0 * sum(vals[:k]) / supply, 2)
+        rows.append(row(a, pct(1), pct(10), pct(20), len(vals), supply))
+        time.sleep(2.0)
+    n = write_rows(d, "hl", "hl_%d.txt" % int(time.time()), rows)
+    http.log("  chain holders %d of %d coins without a RugCheck report" % (n, len(todo)))
+    return n
+
+
 def cmd_risk(http, d, addrs, meta=None):
     n = rc_reports(http, d, addrs)
+    reported = set()
+    for fn in glob.glob(os.path.join(d, "risk", "*.txt")):
+        for line in open(fn, encoding="utf-8"):
+            if line.strip() and not line.startswith("#"):
+                reported.add(line.split("|", 1)[0])
+    rpc_holders(http, d, addrs[:16], reported)
     goplus(http, d, addrs)
     gt_info(http, d, addrs[:30])
     dev_check(http, d, addrs[:24])
