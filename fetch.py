@@ -122,7 +122,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
-            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "cdn.syndication.twimg.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
+            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 3.0, "cdn.syndication.twimg.com": 1.5, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
             "streaming.bitquery.io": 0.5, "lunarcrush.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60), "www.reddit.com": (5, 10, 15)}   # 429 back-off per host; DexScreener default below
@@ -1005,7 +1005,15 @@ def ds_orders(http, d, addrs, now=None):
         if "api.dexscreener.com" in http.dead:
             break
         j = http.get(DS + "/orders/v1/solana/" + a)
+        if isinstance(j, dict):              # a wrapped answer: take the first list inside
+            inner = j.get("orders") if isinstance(j.get("orders"), list) else next((v for v in j.values() if isinstance(v, list)), None)
+            if inner is None and not j:
+                inner = []
+            j = inner
         if not isinstance(j, list):
+            if not getattr(http, "_dp_said", False):
+                http._dp_said = True
+                http.log("  ! dex paid: unexpected answer for %s: %r" % (a[:8], (repr(j)[:120] if j is not None else "none")))
             continue
         ok = [o for o in j if isinstance(o, dict) and str(o.get("status")) == "approved"]
         prof = [o for o in ok if str(o.get("type")) == "tokenProfile"]
