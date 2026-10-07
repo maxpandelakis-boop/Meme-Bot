@@ -1311,8 +1311,9 @@ TRAIN_CHECKPOINTS = 8      # walk-forward: the models are refitted this many tim
 TRAIN_MIN_TIPS = 30        # a limit is tuned only from at least this many out-of-sample tips
 MAX_ZERO_P = 0.35          # a clean coin whose trained chance of going to zero is above this is skipped; the training may tighten it ...
 ZERO_P_FLOOR = 0.05        # ... but never below this, nor below 1.5x the base zero rate: a tighter limit would leave the picks to chance
-MIN_UP_P = 0.2             # a pick with a trained profit chance under this is a loss with notice: not named ...
-ODDS_TRUST_ROWS = 20000    # ... for strong/weak picks only once the profit model rests on this many coin results (a thin model must not veto a clean coin)
+MIN_UP_P = 0.2             # a pick with a trained profit chance under this carries a "low odds" warning on the page (it is still named: only 3% of all
+                           # candidates end a window in profit after fees, so an absolute veto at this level would name nothing, ever)
+ODDS_TRUST_ROWS = 20000    # the profit model is quoted on the page from this many coin results
 ZERO_GRID = (0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5)
 SCORE_GRID = tuple(range(35, 85, 5))
 
@@ -2285,8 +2286,6 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         ok_r, rtxt = risk_view(risk.get(r["a"]))
         if ok_r:
             ok_r, rtxt = zero_view(zmodel, umodel, zmax, r, rtxt)
-        if ok_r and trained_n >= ODDS_TRUST_ROWS and r.get("up") is not None and r["up"] < MIN_UP_P:
-            return False, "training model: only %d%% chance of a profit within %s (limit %d%%)" % (round(100 * r["up"]), eval_text(), round(100 * MIN_UP_P))
         return ok_r, rtxt
     day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
     tickets = bankroll(pos)["tickets"]
@@ -2326,9 +2325,6 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     ok_r, rtxt = clean(r)
                     if ok_r is False and rtxt.startswith("training model"):
                         flagged.append({"sym": r["pr"].get("symbol"), "risk": rtxt}); zero_flagged += 1
-                    if ok_r and r.get("up") is not None and r["up"] < MIN_UP_P:
-                        flagged.append({"sym": r["pr"].get("symbol"), "risk": "training model: only %d%% chance of a profit" % round(100 * r["up"])}); zero_flagged += 1
-                        continue
                     if ok_r:
                         chosen.append((r, rtxt)); tiers[r["a"]] = "fallback"
                         break
@@ -2340,8 +2336,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     ok_l, ltxt = loose_view(risk.get(r["a"]))
                     if not ok_l:
                         continue
-                    if (r.get("zp") is not None and r["zp"] > zmax) or (r.get("up") is not None and r["up"] < MIN_UP_P):
-                        zero_flagged += 1          # the trained odds say loss with notice: not a risky pick, at most the watch coin below
+                    if r.get("zp") is not None and r["zp"] > zmax:
+                        zero_flagged += 1          # the zero model says it is likely gone: not a risky pick, at most the watch coin below
                         if watch is None:
                             watch = (r, ltxt)
                         continue
@@ -2368,7 +2364,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
                         "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
                         "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"])),
-                        "launchpad": launchpad_of(pr, risk.get(r["a"]))[0], "standin": bool(r.get("standin")), "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
+                        "launchpad": launchpad_of(pr, risk.get(r["a"]))[0], "standin": bool(r.get("standin")), "lowOdds": bool(r.get("up") is not None and r["up"] < MIN_UP_P), "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
             runners = []
             for r in gated[:12]:
                 if r["a"] in {c[0]["a"] for c in chosen}:
@@ -2376,7 +2372,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 ok_r, rtxt = clean(r)
                 ok_l, ltxt = loose_view(risk.get(r["a"]))
                 runners.append(dict(rec(r, rtxt, ok_r), floor=(ltxt if ok_l is False else ("clears the relaxed floor" if ok_l else "no report"))))
-            reason = "" if chosen else (("every coin that cleared the safety floor had trained odds of a loss (zero chance over %d%% or profit chance under %d%%)" % (round(100 * zmax), round(100 * MIN_UP_P)))
+            reason = "" if chosen else (("every coin that cleared the safety floor had a trained zero chance over %d%%" % round(100 * zmax))
                                         if zero_flagged else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)")
             if not chosen and runners:
                 reason += "; closest: " + ", ".join("%s (%s)" % (c["sym"], c.get("floor")) for c in runners[:3])

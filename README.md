@@ -112,6 +112,12 @@ sale, no authority left, and at least the profile's minimum age; shown with what
 odds). When nothing clears even that floor, the page says so and names no coin: a 20-minute-old launch without a report
 is never a tip, whatever its odds.
 
+### Always a coin, with its odds
+
+The trained profit chance never vetoes a pick: only about 3% of all candidates end a window in profit after fees, so
+an absolute bar would name nothing. A pick whose profit chance is under 20% carries a "low odds · X% profit chance"
+chip instead. The zero model still vetoes (a clean coin over the tuned zero limit is skipped).
+
 ### Always a coin, never a loss called a pick
 
 When no clean coin passes and no risky coin clears the trained odds, the page still names the safest-looking coin as a

@@ -689,10 +689,18 @@ def tier_chip(c):
     if t == "risky":
         return '<span class="chip warn" title="no coin had a clean safety report this scan: this is the tradable coin with the best trained odds, shown with its flag and its odds">risky · nothing clean, best odds</span>'
     if t == "watch":
-        return '<span class="chip bad" title="shown because the page always names the safest-looking coin: its trained odds say a loss on average, so it is not a pick">watch only · the odds say a loss</span>'
+        return '<span class="chip bad" title="shown because the page always names the safest-looking coin: the zero model puts it over the limit, so it is not a pick">watch only · zero risk over the limit</span>'
     if t == "young":
         return '<span class="chip" title="under an hour old: shown on the new-launches tab, never picked (the profile wants coins at least 3 hours old)">new launch · not a pick</span>'
     return '<span class="chip neutral">strong pick</span>'
+
+
+def odds_warn(c):
+    """The low-odds chip: the coin is named, the page says what the record gives it."""
+    up = M.num(c.get("upP"))
+    if c.get("lowOdds") and up is not None:
+        return '<span class="chip warn" title="trained on the bot\'s own scored scans: fewer than %d%% of coins like this ended the window in profit after fees">low odds · %s profit chance</span>' % (round(100 * M.MIN_UP_P), pct(100 * up))
+    return ""
 
 
 def yes_no(v, yes="yes", no="no"):
@@ -790,7 +798,7 @@ def rec_card(c, now, embed):
     if c.get("tier") == "fallback":
         notes = '<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))
     elif c.get("tier") == "watch":
-        notes += '<p class="note"><strong>Not a pick.</strong> Every coin that cleared the safety floor had trained odds of a loss this scan. This is the safest-looking one, shown with the odds that stopped it: %s%s.</p>' % (
+        notes += '<p class="note"><strong>Not a pick.</strong> Every coin that cleared the safety floor was over the zero limit this scan. This is the safest-looking one, shown with the odds that stopped it: %s%s.</p>' % (
             ("%s chance of a profit" % pct(100 * M.num(c["upP"]))) if M.num(c.get("upP")) is not None else "", (", %s chance of going to zero" % pct(100 * M.num(c["zeroP"]))) if M.num(c.get("zeroP")) is not None else "")
     elif c.get("tier") == "risky":
         notes = '<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero), not a clean pick.%s</p>' % (
@@ -799,7 +807,7 @@ def rec_card(c, now, embed):
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
             '<div class="odds">%s</div><p class="why"><strong>%s</strong> %s</p>%s%s'
             '<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")) + story_chip(c), "".join(tiles),
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c) + odds_warn(c), safety_chip(c.get("ok")) + story_chip(c), "".join(tiles),
         "Why it ranks here:" if c.get("tier") == "young" else "Why the bot picked it:", E(c.get("why") or ""),
         safety_box(c.get("safety"), c.get("ok")), notes,
         "".join(('<div class="span"><div class="k">%s</div><div class="v multi">%s</div></div>' if len(str(v)) > 22 else '<div><div class="k">%s</div><div class="v">%s</div></div>') % (E(k), E(v)) for k, v in kv),

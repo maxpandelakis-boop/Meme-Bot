@@ -338,7 +338,7 @@ def summary(d):
                 out.append("- named only because nothing cleaner passed every gate; it failed: " + md("; ".join(str(x) for x in p["relaxed"])))
             odds = [("%d%% chance of a profit" % round(100 * M.num(p["upP"]))) if M.num(p.get("upP")) is not None else "", ("%d%% chance of going to zero" % round(100 * M.num(p["zeroP"]))) if M.num(p.get("zeroP")) is not None else ""]
             if any(odds):
-                out.append("- trained odds: " + ", ".join(x for x in odds if x))
+                out.append("- trained odds: " + ", ".join(x for x in odds if x) + (" (low odds: named because the page always names the best, not because the record likes it)" if p.get("lowOdds") else ""))
             out.append("- market cap $%s, liquidity $%s, 24h volume $%s" % tuple(fmt_money(M.num(p.get(k))) for k in ("mc", "liq", "vol")))
             if p.get("why"):
                 out.append("- " + md(p["why"]))
