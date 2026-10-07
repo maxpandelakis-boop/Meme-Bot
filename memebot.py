@@ -1600,6 +1600,7 @@ def tip_due(doc, now):
     return [(k, h, sl) for k, h, sl in out if now - t0 >= (h - sl) * 3_600_000]
 
 
+CANDLE_WICK_X = 5.0  # a candle high more than this many times above the window's best close (or a low that far below its worst close) is a wick glitch: the close stands in
 TAKE_PROFIT = 0.5   # the "sell at the peak" question, made testable: what 20 made when sold at +50% as soon as the window hit it
 
 
@@ -1636,7 +1637,15 @@ def window_extremes(cands, t0, hours):
     inside = [c for c in cands if t0 <= c[0] <= t0 + hours * 3_600_000]
     if not inside:
         return None, None
-    return max(c[2] for c in inside), min(c[3] for c in inside)
+    top_close = max(c[4] for c in inside)
+    hi = max(c[2] for c in inside)
+    if top_close > 0 and hi > CANDLE_WICK_X * top_close:
+        hi = top_close                     # a wick thousands of times above every close is a thin-pool glitch, not a price anyone could sell at
+    lo = min(c[3] for c in inside)
+    low_close = min(c[4] for c in inside)
+    if low_close > 0 and lo < low_close / CANDLE_WICK_X:
+        lo = low_close
+    return hi, lo
 
 
 def tip_record(d):
