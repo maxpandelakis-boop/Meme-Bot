@@ -76,6 +76,16 @@ class Mock:
         except ValueError:
             return 400, {"error": "bad json"}
         method, params = req.get("method"), req.get("params") or []
+        if path.startswith("/streaming.bitquery.io/eap"):
+            mint = ((req.get("variables") or {}).get("mint") or "")
+            c = self.by_a.get(mint)
+            if not c:
+                return 200, {"data": {"Solana": {"DEXTradeByTokens": []}}}
+            stamp = lambda i: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 300 * i))
+            trades = [{"Block": {"Time": stamp(i)}, "Trade": {"Side": {"Type": "buy" if i % 3 else "sell"}, "Amount": "1000", "AmountInUSD": str(50 + 10 * i), "PriceInUSD": "0.05",
+                                                          "Account": {"Owner": "W%s%s" % (mint[:30], chr(65 + i) * 2)}, "Dex": {"ProtocolName": "pump_amm", "ProtocolFamily": "Pumpswap"}}, "Transaction": {"Signer": "S%s" % mint[:40]}}
+                      for i in range(24)]
+            return 200, {"data": {"Solana": {"DEXTradeByTokens": trades}}}
         if path.startswith("/api.mainnet-beta.solana.com"):
             if method == "getSignaturesForAddress":
                 dev = str(params[0]); sold = any(c["a"][3:] == dev[3:] and self.coins.index(c) % 5 == 2 for c in self.coins if dev.startswith("DEV"))
@@ -237,6 +247,8 @@ class Mock:
                           "stats1h": {"priceChange": 1.0, "numBuys": 10, "numSells": 5, "numNetBuyers": 3}, "stats6h": {"priceChange": 2.0},
                           "stats24h": {"priceChange": 5.0, "buyVolume": 1000, "sellVolume": 800, "numBuys": 100, "numSells": 80, "numTraders": 50, "numNetBuyers": 10, "holderChange": 20}}
                          for c in self.coins[off:off + 50]]
+        if path.startswith("/lunarcrush.com/api4/public/topic/"):
+            return 200, {"data": {"topic": path.split("/")[-2], "interactions_24h": 123456, "num_posts": 321, "num_contributors": 87, "types_sentiment": 71, "trend": "up"}}
         if path.startswith("/lunarcrush.com/"):
             return 200, {"data": [{"symbol": c["sym"], "name": c["name"], "interactions_24h": 50000, "social_volume_24h": 300, "creators_active": 40, "sentiment": 80, "galaxy_score": 60, "alt_rank": 100} for c in self.coins[:50]]}
         if path.endswith(("/rss/", "/rss", "/feed", "/feed/", "/rss.xml")):
@@ -277,6 +289,7 @@ def main():
     url = "http://127.0.0.1:%d" % srv.server_address[1]
     d = tempfile.mkdtemp(prefix="memebot-test-")
     os.environ["LUNARCRUSH_API_KEY"] = "test"
+    os.environ["BITQUERY_TOKEN"] = "test"
     fails = []
 
     def check(ok, what):
@@ -333,6 +346,11 @@ def main():
     v_gp = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "gp": {"mintable": 1, "freezable": 0}})
     v_gp2 = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "gp": {"mintable": 0, "trusted": 1, "lpBurnPct": 100}, "cm": {"rcUp": 40, "rcDown": 3, "cgWatch": 2500}})
     check(v_gp[0] is False and "minted" in v_gp[1] and v_gp2[0] is True and "GoPlus" in v_gp2[1] and "community votes" in v_gp2[1], "GoPlus mintable blocks a coin; a clean one carries the GoPlus and community facts (%s)" % v_gp2[1][-120:])
+    bq, lc = side("bq"), side("lc")
+    tbf = glob.glob(os.path.join(d, "tb", "*.txt"))
+    check(bq and len(bq) >= 20 and all(len(l.split("|")) == 9 for l in bq) and any(fv(l, 1) and fv(l, 1) >= 12 for l in bq) and "bitquery trades" in err, "Bitquery on-chain trades written for the shortlist (%d coins, e.g. %s)" % (len(bq), bq[0][:70] if bq else "-"))
+    check(len(tbf) >= 20 and any("dex:pumpswap" in open(f, encoding="utf-8").read() for f in tbf), "trader wallets from the chain fill the top-buyer files (%d files)" % len(tbf))
+    check(lc and len(lc) >= 1 and fv(lc[0], 1) == 123456 and "lunarcrush topics" in err, "LunarCrush topic rows written for the best coins (%s)" % (lc[0][:60] if lc else "-"))
     mk = json.load(open(os.path.join(d, "market.json")))
     check(mk.get("sol24") == -2.5 and mk.get("fng") == 66, "market context saved (SOL %s%%, fear & greed %s)" % (mk.get("sol24"), mk.get("fng")))
     jd = tempfile.mkdtemp(prefix="memebot-jup-")

@@ -132,6 +132,14 @@ through the t.me preview). All of it is on the card and in the factors. Jupiter'
 DexScreener drops, so the big test and the track record keep their prices; SOL and BTC's 24h change and the Fear & Greed
 index are recorded as market context for the models. Orca's busiest pools join the universe lists.
 
+Two more sources switch on with a key, stored as a repository secret (github.com → Settings → Secrets and variables →
+Actions → New repository secret), and `probe-keys.yml` (Actions → probe-keys → Run workflow) checks them without printing
+them: **`BITQUERY_TOKEN`** (bitquery.io, free tier) reads every DEX trade of a shortlisted coin straight from the chain,
+whatever app placed it (Fomo included): trader wallets with hold / sold status feed the top-buyer factors and the wallet
+memory, and the last hour's trades, buyers, sellers, net flow and biggest-buyer share become factors (`bq.*`).
+**`LUNARCRUSH_API_KEY`** (lunarcrush.com) adds the social-buzz list for every coin and the X/social topic of the best
+shortlisted coins (`lct.*`: interactions, posts, contributors, sentiment, trend).
+
 Probed and not usable without a key or at all: Reddit's JSON API, Bluesky search, Birdeye, DexTools, Solscan, Bags,
 Believe, Moonshot, pump.fun's detail endpoints, CryptoPanic, fxtwitter, Google Trends.
 

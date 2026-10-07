@@ -134,6 +134,7 @@ PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6":
          "news.hits": 0.1, "news.narr": 0.1, "news.fresh": 0.05, "gt.buyerRatio": 0.1, "cg.trend": 0.05, "sw.avg": 0.15, "sw.n": 0.05,
          "rd.posts": 0.1, "rd.byAddr": 0.05, "cgm.listed": 0.05, "cmc.search": 0.05, "cmc.gain": 0.05,
          "gp.risk": -0.2, "gp.lpBurn": 0.1, "gp.trusted": 0.05, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.cgWatch": 0.05, "cm.xFollowers": 0.05, "cm.tgSubs": 0.05, "cm.stWatch": 0.05,
+         "bq.buyerRatio": 0.15, "bq.netUsd1h": 0.1, "bq.topBuyerShare": -0.1, "lct.interactions": 0.1, "lct.contributors": 0.05,
          # v4 traders: GMGN smart money, top buyers, leaderboard wallets
          "gm.smartDegen": 0.15, "gm.renowned": 0.1, "gm.bluechip": 0.1, "gm.hot": 0.05, "gm.bundler": -0.1, "gm.rat": -0.1, "gm.sniperHold": -0.1,
          "gm.wash": -0.15, "gm.rugRatio": -0.1, "gm.devHold": -0.05, "tb.holdShare": 0.1, "tb.smartHold": 0.15, "tb.sniperShare": -0.05,
@@ -164,6 +165,7 @@ PROFILES = {
                   "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2,
                   "rd.posts": 0.15, "rd.fresh": -0.05, "rd.byAddr": 0.05, "cmc.search": 0.1, "cmc.gain": 0.05, "cgm.listed": 0.05,
                   "gp.risk": -0.25, "gp.lpBurn": 0.1, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.xFollowers": 0.05, "cm.xTweets": 0.05, "cm.tgMsgs": 0.05, "cm.stMsgs": 0.05,
+                  "bq.buyerRatio": 0.2, "bq.netUsd1h": 0.15, "bq.topBuyerShare": -0.1, "lct.interactions": 0.15, "lct.contributors": 0.05, "lct.trend": 0.05,
                   "dev.sold": -0.3, "dev.pct": -0.15, "dev.authOff": 0.05}}}
 
 
@@ -352,6 +354,8 @@ DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "j
 GP_COLS = ("address", "mintable", "freezable", "closable", "balMutable", "metaMutable", "transferFee", "nonTransferable", "trusted", "holderCount", "top10Pct", "lpBurnPct", "creatorMalicious", "dexN")
 GI_COLS = ("address", "gtScore", "holders", "top10Pct", "mintAuth", "freezeAuth")
 CM_COLS = ("address", "rcUp", "rcDown", "cgWatch", "cgTwitter", "cgReddit", "cgSentUp", "cgRank", "stWatch", "stMsgs24", "xFollowers", "xTweets7d", "tgSubs", "tgMsgs24")
+BQ_COLS = ("address", "trades1h", "buyers1h", "sellers1h", "netUsd1h", "topBuyerShare", "traders", "buyUsd1h", "sellUsd1h")
+LCT_COLS = ("address", "interactions24h", "posts24h", "contributors", "sentiment", "trend")
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
 TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad", "devWallet", "creator", "poolId",
@@ -515,6 +519,8 @@ def cmd_gather(d, now):
     gp, _ = load_side(d, "gp", GP_COLS)
     gi, _ = load_side(d, "gi", GI_COLS)
     cm, _ = load_side(d, "cm", CM_COLS)
+    bq, _ = load_side(d, "bq", BQ_COLS)
+    lc, _ = load_side(d, "lc", LCT_COLS)
     ll, ltags = load_side(d, "ll", LL_COLS)
     for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
@@ -547,7 +553,7 @@ def cmd_gather(d, now):
             p["dev"] = dict(dev[a])
         if a in ll:
             p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
-        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm)):
+        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc)):
             if a in table:
                 p[sub] = {k: v for k, v in table[a].items() if k != "address" and v is not None}
         if a in gm:
@@ -988,6 +994,16 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
     if num(cm.get("rcUp")) is not None or num(cm.get("rcDown")) is not None:
         up, down = num(cm.get("rcUp")) or 0.0, num(cm.get("rcDown")) or 0.0
         f["cm.rcNet"] = (up - down) / (up + down + 3.0)
+    bq = pr.get("bq") or {}
+    for k, src in (("bq.trades1h", "trades1h"), ("bq.buyers1h", "buyers1h"), ("bq.sellers1h", "sellers1h"), ("bq.netUsd1h", "netUsd1h"), ("bq.topBuyerShare", "topBuyerShare"), ("bq.traders", "traders")):
+        if num(bq.get(src)) is not None:
+            f[k] = num(bq.get(src))
+    if num(bq.get("buyers1h")) is not None and num(bq.get("sellers1h")) is not None:
+        f["bq.buyerRatio"] = (num(bq["buyers1h"]) + 1.0) / (num(bq["sellers1h"]) + 1.0)
+    lc = pr.get("lc") or {}
+    for k, src in (("lct.interactions", "interactions24h"), ("lct.posts", "posts24h"), ("lct.contributors", "contributors"), ("lct.sentiment", "sentiment"), ("lct.trend", "trend")):
+        if num(lc.get(src)) is not None:
+            f[k] = num(lc.get(src))
     if pr.get("mkt"):
         for k in ("sol24", "btc24", "fng"):
             if num(pr["mkt"].get(k)) is not None:
@@ -1608,7 +1624,7 @@ def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
     # the shortlist's side tables are fetched after the gather, so the run reads them itself (gather attaches them next time anyway)
-    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS)):
+    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS)):
         table, _ = load_side(d, sub, cols)
         for a, r in table.items():
             if a in pairs and not pairs[a].get(sub):
@@ -1848,6 +1864,12 @@ def why_text(r):
         bits.append("%d StockTwits watchers" % f["cm.stWatch"])
     if f.get("gi.score") is not None:
         bits.append("GeckoTerminal score %d" % f["gi.score"])
+    if f.get("bq.trades1h") is not None:
+        bits.append("on-chain: %d trades in the last hour, %d buyers vs %d sellers, net %s%s" % (f["bq.trades1h"], f.get("bq.buyers1h") or 0, f.get("bq.sellers1h") or 0,
+                                                                                               ("+" if (f.get("bq.netUsd1h") or 0) >= 0 else "-") + money(abs(f.get("bq.netUsd1h") or 0)),
+                                                                                               (", biggest buyer %d%% of the buying" % round(100 * f["bq.topBuyerShare"])) if f.get("bq.topBuyerShare") is not None else ""))
+    if f.get("lct.interactions") is not None:
+        bits.append("%s X/social interactions in 24h (LunarCrush)%s" % (money(f["lct.interactions"]).lstrip("$"), (", %d posts" % f["lct.posts"]) if f.get("lct.posts") is not None else ""))
     if f.get("mkt.sol24") is not None:
         bits.append("SOL %+.0f%% in 24h" % f["mkt.sol24"] + ((", fear & greed %d" % f["mkt.fng"]) if f.get("mkt.fng") is not None else ""))
     if f.get("sw.n"):

@@ -59,6 +59,19 @@ CHAN = "https://a.4cdn.org/biz/catalog.json"
 ST = "https://api.stocktwits.com/api/2/streams/symbol"
 XSYN = "https://syndication.twitter.com/srv/timeline-profile/screen-name"
 TG = "https://t.me/s"
+BQ = "https://streaming.bitquery.io/eap"                            # Bitquery: every DEX trade of a coin from the chain itself (BITQUERY_TOKEN)
+BQ_QUERY = """query ($mint: String!, $since: DateTime) {
+  Solana {
+    DEXTradeByTokens(limit: {count: 300}, orderBy: {descending: Block_Time},
+      where: {Trade: {Currency: {MintAddress: {is: $mint}}}, Transaction: {Result: {Success: true}}, Block: {Time: {since: $since}}}) {
+      Block { Time }
+      Trade { Side { Type } Amount AmountInUSD PriceInUSD Account { Owner } Dex { ProtocolName ProtocolFamily } }
+      Transaction { Signer }
+    }
+  }
+}"""
+BQ_COLS = ("address", "trades1h", "buyers1h", "sellers1h", "netUsd1h", "topBuyerShare", "traders", "buyUsd1h", "sellUsd1h")
+LCT_COLS = ("address", "interactions24h", "posts24h", "contributors", "sentiment", "trend")
 SOCIAL_QUERIES = (("farcaster", FC + "?q=solana%20memecoin&limit=100"), ("farcaster", FC + "?q=pump.fun&limit=100"), ("farcaster", FC + "?q=memecoin&limit=100"),
                   ("mastodon", MASTO + "/solana?limit=40"), ("mastodon", MASTO + "/memecoin?limit=40"), ("mastodon", MASTO + "/memecoins?limit=40"), ("mastodon", MASTO + "/pumpfun?limit=40"))
 QUOTE_MINTS = {"So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMGHMnZV5mLn8FXe9f2DoyA8z8K9HnQS7PnZLemAe"}
@@ -105,10 +118,11 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
-            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
+            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
+            "streaming.bitquery.io": 0.5, "lunarcrush.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60), "www.reddit.com": (5, 10, 15)}   # 429 back-off per host; DexScreener default below
 
@@ -183,13 +197,14 @@ class Http:
                 return None
         return None
 
-    def post(self, u, payload, tries=3):
+    def post(self, u, payload, tries=3, headers=None):
         """JSON-RPC style POST with the same pacing, 429 handling and circuit breaker as get()."""
         host = urllib.parse.urlsplit(u).netloc
         if host in self.dead:
             return None
         body = json.dumps(payload).encode("utf-8")
         hdr = {"User-Agent": UA, "Content-Type": "application/json", "Accept": "application/json"}
+        hdr.update(headers or {})
         for i in range(tries):
             if self.cooldown.get(host, 0) > time.time():
                 time.sleep(max(0.0, self.cooldown[host] - time.time()))
@@ -1071,12 +1086,101 @@ def community(http, d, addrs, meta, now=None):
     return n
 
 
+def bitquery_trades(http, d, addrs, token, now=None):
+    """With a Bitquery token: the last 300 trades of each shortlisted coin straight from the chain (any DEX, any app, Fomo
+    included). Every trader wallet goes to tb/<coin>.txt in GMGN's top-buyer format (status hold / sold_part / sold, tag
+    dex:<protocol>), so the tb.* factors and the wallet memory work without GMGN; per coin bq/<stamp>.txt holds the last
+    hour's trades, distinct buyers and sellers, net USD flow and the biggest buyer's share."""
+    if not token:
+        return 0
+    now = now or time.time()
+    since = dt.datetime.fromtimestamp(now - 6 * 3600, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows, n_tb, first_err = [], 0, None
+    for a in addrs:
+        data = http.post(BQ, {"query": BQ_QUERY, "variables": {"mint": a, "since": since}}, headers={"Authorization": "Bearer " + token})
+        if isinstance(data, dict) and data.get("errors") and first_err is None:
+            first_err = str(data["errors"])[:160]
+        trades = (((data or {}).get("data") or {}).get("Solana") or {}).get("DEXTradeByTokens") if isinstance(data, dict) else None
+        if not isinstance(trades, list):
+            if "streaming.bitquery.io" in http.dead:
+                break
+            continue
+        per, dexes = {}, {}
+        t1h = b1h = s1h = 0
+        buy_usd = sell_usd = 0.0
+        buyers_usd = {}
+        for t in trades:
+            tr, blk = (t or {}).get("Trade") or {}, (t or {}).get("Block") or {}
+            w = addr_of((tr.get("Account") or {}).get("Owner")) or addr_of(((t or {}).get("Transaction") or {}).get("Signer"))
+            side = str((tr.get("Side") or {}).get("Type") or "").lower()
+            usd = num(tr.get("AmountInUSD"))
+            if usd is None and num(tr.get("Amount")) is not None and num(tr.get("PriceInUSD")) is not None:
+                usd = num(tr["Amount"]) * num(tr["PriceInUSD"])
+            usd = usd or 0.0
+            try:
+                ts = dt.datetime.fromisoformat(str(blk.get("Time") or "").replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                ts = None
+            if not w:
+                continue
+            p = per.setdefault(w, [0.0, 0.0, set()])
+            fam = str((tr.get("Dex") or {}).get("ProtocolFamily") or (tr.get("Dex") or {}).get("ProtocolName") or "").lower()
+            if fam:
+                p[2].add(fam)
+            if side == "buy":
+                p[0] += usd
+            elif side == "sell":
+                p[1] += usd
+            if ts is not None and now - ts <= 3600:
+                t1h += 1
+                if side == "buy":
+                    b1h += 1; buy_usd += usd; buyers_usd[w] = buyers_usd.get(w, 0.0) + usd
+                elif side == "sell":
+                    s1h += 1; sell_usd += usd
+        tb_rows = []
+        for w, (b, s, fams) in per.items():
+            status = "hold" if b > 0 and s <= 0 else ("sold_part" if 0 < s < b else "sold")
+            tb_rows.append(row(w, status, ";".join("dex:" + x for x in sorted(fams)) or None, None))
+        n_tb += 1 if write_rows(d, "tb", a + ".txt", tb_rows) else 0
+        buyers = {w for w, (b, s, _) in per.items() if b > 0}
+        sellers = {w for w, (b, s, _) in per.items() if s > 0}
+        top_share = (max(buyers_usd.values()) / buy_usd) if buy_usd > 0 and buyers_usd else None
+        rows.append(row(a, t1h, len({w for w in buyers_usd}), s1h, round(buy_usd - sell_usd, 2), round(top_share, 4) if top_share is not None else None, len(per), round(buy_usd, 2), round(sell_usd, 2)))
+    n = write_rows(d, "bq", "bq_%d.txt" % int(time.time()), rows)
+    http.log("  bitquery trades %d of %d coins (%d trader files)%s" % (n, len(addrs), n_tb, (" ! " + first_err) if first_err else ""))
+    return n
+
+
+def lunarcrush_topics(http, d, addrs, meta, key):
+    """With a LunarCrush key: the X/social topic of the best shortlisted coins ($TICKER) -> lc/<stamp>.txt: interactions,
+    posts and contributors in 24h, sentiment, trend. The free plan allows ~100 requests a day, so only a few coins per run."""
+    if not key:
+        return 0
+    rows = []
+    for a in addrs:
+        sym = re.sub(r"[^A-Za-z0-9]", "", str(((meta or {}).get(a) or {}).get("sym") or "")).lower()
+        if not sym:
+            continue
+        data = http.get(LC + "/topic/$%s/v1" % sym, headers={"Authorization": "Bearer " + key})
+        t = (data or {}).get("data") if isinstance(data, dict) else None
+        if isinstance(t, dict):
+            rows.append(row(a, num(t.get("interactions_24h")), num(t.get("num_posts")), num(t.get("num_contributors")), num(t.get("types_sentiment") if not isinstance(t.get("types_sentiment"), dict) else None),
+                            num(t.get("trend")) if not isinstance(t.get("trend"), str) else {"up": 1.0, "down": -1.0, "flat": 0.0}.get(str(t.get("trend")).lower())))
+        if "lunarcrush.com" in http.dead:
+            break
+    n = write_rows(d, "lc", "lc_%d.txt" % int(time.time()), rows)
+    http.log("  lunarcrush topics %d of %d" % (n, len(addrs)))
+    return n
+
+
 def cmd_risk(http, d, addrs, meta=None):
     n = rc_reports(http, d, addrs)
     goplus(http, d, addrs)
     gt_info(http, d, addrs[:30])
     dev_check(http, d, addrs[:24])
     community(http, d, addrs[:20], meta)
+    bitquery_trades(http, d, addrs[:40], os.environ.get("BITQUERY_TOKEN"))
+    lunarcrush_topics(http, d, addrs[:4], meta, os.environ.get("LUNARCRUSH_API_KEY"))
     if "gmgn.ai" not in http.dead:
         gm_top_buyers(http, d, addrs[:40])
     return n
