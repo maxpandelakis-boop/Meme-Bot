@@ -106,8 +106,11 @@ weights keep learning.
 There is always a pick, in one of four tiers, and every pick shows its trained odds (chance of a profit after fees and
 chance of going to zero within the horizon, from the bot's own scored snapshots): **strong** (clean, score above the
 bar), **weak** (clean, below it), **fallback** (clean, but it failed a soft momentum gate, named with it) and **risky**
-(no coin had a clean safety report at all: the tradable coin with the best odds, shown with its RugCheck flag and its
-odds, so the page says how likely it is to go). Only a scan with no tradable coin at all shows nothing.
+(no coin passed the strict check: the coin with the best odds among those that still clear the relaxed 24-hour safety
+floor, i.e. a RugCheck report without danger flags, half the liquidity locked, no whale, at least 300 holders, no creator
+sale, no authority left, and at least the profile's minimum age; shown with what the strict check objected to and its
+odds). When nothing clears even that floor, the page says so and names no coin: a 20-minute-old launch without a report
+is never a tip, whatever its odds.
 
 ## Publicity
 

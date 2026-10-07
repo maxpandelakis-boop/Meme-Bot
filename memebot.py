@@ -1720,6 +1720,42 @@ def risk_view(r):
         (", %d holders" % hold if hold is not None else "") + (", %d insiders" % ins if ins else "") + dev_note + (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "") + gp_note + cm_note
 
 
+LOOSE_FLOOR = {"MIN_LP_LOCKED": 50.0, "MAX_TOP1": 20.0, "MAX_TOP10": 50.0, "MAX_INSIDERS": 15, "MIN_HOLDERS": 300}   # the 24h profile's safety floor
+
+
+def loose_view(r):
+    """The safety floor a risky pick must still clear: a RugCheck report with no danger flag, at least half the liquidity
+    locked, no wallet above 20%, the top 10 under half, at most 15 insiders, at least 300 holders, no creator sale, no
+    mint authority, no GoPlus authority or fee. Returns (ok, text); ok is None without a report."""
+    if not isinstance(r, dict):
+        return None, "no RugCheck report"
+    danger = [x for x in names(r, "danger") if not OWNERSHIP_FLAG.search(x)]
+    if danger:
+        return False, "RugCheck danger: " + ", ".join(danger[:3])
+    lp, top1, top10 = num(r.get("lpLocked")), num(r.get("top1Pct")), num(r.get("top10Pct"))
+    ins, hold = num(r.get("insiders")), num(r.get("holders"))
+    if lp is None or lp < LOOSE_FLOOR["MIN_LP_LOCKED"]:
+        return False, "only %s%% of liquidity locked" % ("?" if lp is None else round(lp))
+    if top1 is not None and top1 > LOOSE_FLOOR["MAX_TOP1"]:
+        return False, "one wallet holds %d%%" % round(top1)
+    if top10 is not None and top10 > LOOSE_FLOOR["MAX_TOP10"]:
+        return False, "top 10 wallets hold %d%%" % round(top10)
+    if ins is not None and ins > LOOSE_FLOOR["MAX_INSIDERS"]:
+        return False, "%d insider wallets" % ins
+    if hold is not None and hold < LOOSE_FLOOR["MIN_HOLDERS"]:
+        return False, "only %d holders" % hold
+    dv, gp = r.get("dev") or {}, r.get("gp") or {}
+    if dv.get("devSold"):
+        return False, "the creator sold recently"
+    if dv and dv.get("mintAuthOff") is False:
+        return False, "mint authority still active"
+    if any(gp.get(k) for k in ("mintable", "freezable", "closable", "balMutable", "nonTransferable")) or (num(gp.get("transferFee")) or 0) > 0:
+        return False, "GoPlus: an authority or a transfer fee is still in place"
+    warn = names(r, "warn")
+    return True, "clears the relaxed safety floor: %d%% of liquidity locked" % round(lp) + (", top 10 wallets hold %d%%" % round(top10) if top10 is not None else "") + \
+        (", %d holders" % hold if hold is not None else "") + ((" (warnings: " + ", ".join(warn[:2]) + ")") if warn else "")
+
+
 def risk_doc(r):
     if not isinstance(r, dict):
         return None
@@ -2017,11 +2053,15 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                         chosen.append((r, rtxt)); tiers[r["a"]] = "fallback"
                         break
             if not chosen:
+                # the risky tier still demands the relaxed safety floor (the 24h profile's): a report with no danger flag, half
+                # the liquidity locked, no whale, enough holders, no creator sale or authority. Nothing clears it -> no coin.
                 for r in risky_rows(rows, held, recent, zmodel, umodel, risk):
+                    ok_l, ltxt = loose_view(risk.get(r["a"]))
+                    if not ok_l:
+                        continue
                     ok_r, rtxt = risk_view(risk.get(r["a"]))
                     r["ok_risky"] = ok_r
-                    if ok_r is None:
-                        rtxt = "no safety report came back for it"
+                    rtxt = "%s; strict check: %s" % (ltxt, re.sub(r"^RugCheck( danger| warning)?: ", "", rtxt))
                     pool_txt = {1: "", 2: " (no coin of the profile's age with momentum was tradable: the market-cap range was kept, age and momentum were not)",
                                 3: " (nothing inside the profile's market-cap range was tradable: any size)"}.get(r.get("pool"), "")
                     chosen.append((r, "%s; %s%s" % (rtxt, odds_text(r), pool_txt) if odds_text(r) else rtxt + pool_txt)); tiers[r["a"]] = "risky"
@@ -2041,7 +2081,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     continue
                 ok_r, rtxt = clean(r)
                 runners.append(rec(r, rtxt, ok_r))
-            reason = "" if chosen else "no coin in the scan had a tradable pair with the minimum liquidity and market cap"
+            reason = "" if chosen else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)"
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
