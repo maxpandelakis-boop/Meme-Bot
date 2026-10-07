@@ -285,7 +285,7 @@ def main():
     check(all(p["sym"] in page for p in picks) and "Closed trades" in page and "Big test" in page, "page names the bought coins and the results")
     check(("%.2f" % c["free"]) in page, "page shows the bankroll (%.2f)" % c["free"])
     check("<svg" in page and "data-pts" in page and "Factor weights" in page, "equity curve, tooltips and weights rendered")
-    check("liquidity ÷ market cap" in page and "price unchanged" in page and "sold at" in page and "sells" in page, "glossary, big-test baseline, sale multiples and sell levels on the page")
+    check("Table view and glossary" in page and "price unchanged" in page and "sold at" in page and "sells" in page, "glossary, big-test baseline, sale multiples and sell levels on the page")
     check(open(os.path.join(d, "report.html"), "rb").read().decode("utf-8") == page, "report.html is UTF-8")
     r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", d, "--out", os.path.join(d, "r2.html")], capture_output=True, text=True, env=dict(os.environ, LC_ALL="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0"))
     check(r.returncode == 0, "report renders under an ASCII locale")
@@ -336,6 +336,10 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--mock", url, "--now", str(T0 + 3 * H), "--recommend", "--horizon", "2h"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     res = glob.glob(os.path.join(hd, "db", "memesnapres", "*.json"))
     check(r.returncode == 0 and res and "Big test" in r.stdout, "the snapshot was scored 2 hours later (%d result docs)" % len(res))
+    recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
+    scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
+    page2 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
+    check(recs and scored and "Track record" in r.stdout and "Track record of the tips" in page2, "the tips were recorded and priced again 2 hours later (%d docs, %d scored)" % (len(recs), len(scored)))
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
     shutil.rmtree(hd, ignore_errors=True)
 

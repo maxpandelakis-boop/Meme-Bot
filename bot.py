@@ -164,6 +164,8 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memeweights/**
 !db/memebot/
 !db/memebot/**
+!db/memerec/
+!db/memerec/**
 """
 
 
@@ -285,6 +287,11 @@ def summary(d):
         if near:
             out.append("")
             out.append("Closest, and why not: " + "; ".join("%s (%.0f) %s" % (md(r.get("sym")), M.num(r.get("score")) or 0, md(r.get("safety") or "")) for r in near[:5]))
+    outs = [o for doc in M.load_docs(d, "memerec").values() if isinstance(doc, dict) for o in ((doc.get("out") or {}).get("picks") or []) if isinstance(o, dict)]
+    if outs:
+        up = sum(1 for o in outs if (M.num(o.get("eur")) or 0) > 0)
+        out.append("")
+        out.append("Track record: %d tips priced again, %d went up, average %+.2f per 20." % (len(outs), up, sum(M.num(o.get("eur")) or 0 for o in outs) / len(outs)))
     pos = [(pid, p) for pid, p in M.positions(d).items() if p["_left"] > 1e-9]
     if pos:
         marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}

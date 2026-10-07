@@ -262,7 +262,8 @@ def collect(d, now):
     w, winfo = M.blended_weights(d)
     weights = sorted(w.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16]
     rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), None)
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:40], "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -704,6 +705,32 @@ def rec_section(D, embed):
     return section(E(h2), head, body)
 
 
+def track_section(D):
+    """Every recommendation the bot made, and what 20 in it became when its horizon had passed: the honest scorecard."""
+    docs = D.get("track") or []
+    if not docs:
+        return ""
+    hz = horizon_text()
+    rows, scored = [], []
+    for doc in docs:
+        outs = {o.get("sym"): o for o in ((doc.get("out") or {}).get("picks") or []) if isinstance(o, dict)}
+        for p in doc.get("picks") or []:
+            o = outs.get(p.get("sym"))
+            if o:
+                scored.append(o)
+                res = '<td class="n %s">%s</td><td class="n %s">%s</td>' % ("good" if (o.get("eur") or 0) > 0 else "bad", fmt_mult(o.get("mult")),
+                                                                              "good" if (o.get("eur") or 0) > 0 else "bad", fmt_amt(o.get("eur"), True))
+            else:
+                res = '<td class="n muted" colspan="2">pending · priced again at %s</td>' % fmt_dt((M.num(doc.get("t")) or 0) + M.EVAL_H * 3_600_000, True)
+            rows.append('<tr><td>%s</td><td><strong>%s</strong></td><td class="n">%s</td><td class="n">%s</td>%s%s</tr>' % (
+                fmt_dt(doc.get("t"), True), E(p.get("sym")), E("%.0f" % (M.num(p.get("score")) or 0)), fmt_money(p.get("mc")), res, CHART_CELL % E(p.get("pair") or p.get("addr"))))
+    up = sum(1 for o in scored if (o.get("eur") or 0) > 0)
+    avg = (sum(M.num(o.get("eur")) or 0 for o in scored) / len(scored)) if scored else None
+    summary = ("%d tips priced again · %d went up · average %s per 20" % (len(scored), up, fmt_amt(avg, True))) if scored else "%d tips, none priced again yet" % len(rows)
+    head = '<thead><tr><th>tip at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th><th class="n">%s later</th><th class="n">per 20</th><th></th></tr></thead>' % hz
+    return fold("Track record of the tips", summary, '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows)), open_=False)
+
+
 def closed_table(rows):
     if not rows:
         return '<div class="empty">No closed trades yet.</div>'
@@ -944,6 +971,7 @@ def render(data, fragment=False):
     body = [head]
     if D.get("rec"):
         body.append(safe("recommendations", lambda: rec_section(D, embed=not fragment)))
+        body.append(safe("track record", lambda: track_section(D)))
     body.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     body.append(safe("hero", hero))
     body.append(safe("equity curve", curve))

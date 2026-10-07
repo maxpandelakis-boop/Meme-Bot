@@ -101,6 +101,7 @@ PAID_LISTS = ("boostTop", "boostLatest", "ads")                   # DexScreener 
 MIN_LP_LOCKED = 50.0
 MAX_TOP1 = 20.0          # holder checks (RugCheck): the biggest wallet, the top 10 together, insider wallets, holder count
 MAX_TOP10 = 50.0
+MIN_REC_SCORE = 45.0     # recommend mode: a clean coin below this score is not worth naming ("no coin good enough" instead)
 MAX_INSIDERS = 15
 MIN_HOLDERS = 300
 RISK_WARN_BLOCK = re.compile(r"holder|ownership|unlocked|creator|copycat|rug", re.I)
@@ -144,7 +145,8 @@ PROFILES = {
     "24h": {},   # the defaults above
     "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
         "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 1.0, "GATE_MAX_AGE_H": 12.0,
-        "GATE_MIN_BUYRATIO1H": 1.05, "GATE_MIN_VOL1SHARE": 1.0 / 36, "GATE_CRASH": {"chgH1": -30.0, "chgH6": -50.0, "chgH24": -70.0},
+        "GATE_MIN_BUYRATIO1H": 1.05, "GATE_MIN_VOL1SHARE": 1.0 / 36, "GATE_CRASH": {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0},
+        "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0,
         "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 150, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
@@ -516,6 +518,9 @@ def cmd_gather(d, now):
     with open(os.path.join(d, "universe.json"), "w", encoding="utf-8") as f:
         json.dump(universe, f, separators=(",", ":"))
     held = [p["addr"] for p in pos.values() if p["_left"] > 1e-9 and B58.match(str(p.get("addr", "")))]
+    for doc in load_docs(d, "memerec").values():        # recommendations not yet priced again travel like open positions
+        if isinstance(doc, dict) and not doc.get("out") and now - (num(doc.get("t")) or now) < 48 * 3_600_000:
+            held += [str(p.get("addr")) for p in (doc.get("picks") or []) if isinstance(p, dict) and B58.match(str(p.get("addr", "")))]
     due = []
     for sn in due_snaps(d, now).values():
         due += [str(c.get("a")) for c in sn["coins"] if isinstance(c, dict) and B58.match(str(c.get("a", "")))]
@@ -945,13 +950,20 @@ def money(v):
 
 
 # ---------------------------------------------------------------- learning the weights
+def learnable(c):
+    """Only coins that could have been candidates teach the weights: with the dust (no liquidity, tiny market cap) in the
+    sample, the weights learn 'established coins survive', not 'which candidate rises'."""
+    liq, mc = num(c.get("liq")), num(c.get("mc"))
+    return liq is not None and mc is not None and liq >= GATE_MIN_LIQ and GATE_MC[0] <= mc <= GATE_MC[1]
+
+
 def result_rows(d):
     rows = []
     for doc in load_docs(d, "memesnapres").values():
         if str(doc.get("rule") or RULE) != RULE:
             continue                      # each profile learns from its own horizon only
         for c in doc.get("coins") or []:
-            if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None:
+            if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c):
                 rows.append((c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])))
     return rows
 
@@ -1322,6 +1334,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if recommend and len(rows) >= MIN_SCAN_FOR_REC:
             # no positions: the best clean coins and the runners-up go to memebot/recommend for the page. A valid scan that
             # finds no clean coin writes an empty list with the reason, so an old pick never outlives its horizon on the page.
+            weak = [r for r, _ in chosen if r["sc"] < MIN_REC_SCORE]
+            chosen = [(r, rtxt) for r, rtxt in chosen if r["sc"] >= MIN_REC_SCORE]
+
             def rec(r, rtxt, ok):
                 pr = r["pr"]
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
@@ -1333,9 +1348,13 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     continue
                 ok_r, rtxt = risk_view(risk.get(r["a"]))
                 runners.append(rec(r, rtxt, ok_r))
-            reason = "" if chosen else ("no top coin had a clean safety report" if gated else "nothing passed the gates")
+            reason = "" if chosen else (("the best clean coin scored only %.0f, under the %.0f needed" % (max(r["sc"] for r in weak), MIN_REC_SCORE)) if weak
+                                        else ("no top coin had a clean safety report" if gated else "nothing passed the gates"))
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
                                           "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason})
+            if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
+                emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
+                                                                            "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"]} for r, _ in chosen]})
             picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "why": why_text(r) + "; " + rtxt, "score": r["sc"]} for r, rtxt in chosen]
             chosen = []
         elif recommend:
@@ -1400,10 +1419,32 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         # new results -> re-learn and save the weights the next runs will use
         all_res = dict(load_docs(d, "memesnapres")); all_res.update(emitted.get("memesnapres", {}))
         rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for doc in all_res.values() for c in (doc.get("coins") or [])
-                  if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None]
+                  if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c)]
         learned, n_l, detail = learn(rows_l)
         emit("memeweights", run_id, {"t": now, "rule": RULE, "n": n_l, "lambda": round(clamp(n_l / float(LEARN_FULL_N)), 3), "learned": learned,
                                      "prior": PRIOR, "detail": {k: v for k, v in sorted(detail.items(), key=lambda kv: -abs(kv[1]["rho"]))[:40]}})
+
+    # ---------- the recommendation track record: price each past tip again once its horizon has passed ----------
+    rec_scored = []
+    for rid, doc in load_docs(d, "memerec").items():
+        t0 = num(doc.get("t"))
+        if not isinstance(doc, dict) or doc.get("out") or not t0 or now - t0 < EVAL_H * 3_600_000 or str(doc.get("rule") or RULE) != RULE:
+            continue
+        outs = []
+        for p in doc.get("picks") or []:
+            pr = pairs.get(p.get("a") or p.get("addr"))
+            px0, px1 = num(p.get("px")), num(pr.get("priceUsd")) if pr else None
+            if not px0:
+                continue
+            if px1 is None and now - t0 < (EVAL_H + 1.0) * 3_600_000:
+                outs = None; break                   # no price yet (fetch outage): try again next run, up to an hour late
+            mult = (px1 / px0) if px1 else 0.0
+            invested = TICKET - fee(TICKET); gross = invested * mult
+            outs.append({"sym": p.get("sym"), "mult": round(mult, 4), "eur": round((max(0.0, gross - fee(gross)) if gross > 0 else 0.0) - TICKET, 2), "gone": not px1})
+        if outs:
+            doc = dict(doc, out={"t": now, "h": round((now - t0) / 3_600_000, 2), "picks": outs})
+            emit("memerec", rid, doc)
+            rec_scored += outs
 
     # ---------- note, state, marks, run log ----------
     parts = []
@@ -1442,6 +1483,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             parts.append("Nothing hit a sell rule.")
     if exits_done:
         parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in ("pick", "early") else "random", x["why"], x["eur"]) for x in exits_done) + ".")
+    if rec_scored:
+        parts.append("Track record: %d earlier tip%s priced again after %s: %s." % (len(rec_scored), "s" if len(rec_scored) > 1 else "", eval_text(),
+                     ", ".join("%s %.2fx (%+.2f per 20)" % (o["sym"], o["mult"], o["eur"]) for o in rec_scored)))
     if deferred:
         parts.append("Big test postponed for %d snapshot%s: most of its coins came back without a price this run." % (deferred, "s" if deferred > 1 else ""))
     if snap_n:
