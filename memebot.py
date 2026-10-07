@@ -102,7 +102,8 @@ MIN_LP_LOCKED = 50.0
 MAX_TOP1 = 20.0          # holder checks (RugCheck): the biggest wallet, the top 10 together, insider wallets, holder count
 MAX_TOP10 = 50.0
 MIN_REC_SCORE = 45.0
-SOFT_GATES = ("nobuyers", "novol1h", "old")   # recommend mode: when no clean coin passes every gate, the best clean coin failing only these is named, labelled
+SOFT_GATES = ("nobuyers", "novol1h")   # recommend mode: when no clean coin passes every gate, the best clean coin failing only these is named, labelled
+FALLBACK_MAX_AGE_X = 2.0                # ... and only if it is at most this many times the profile's maximum age and not falling over 6 hours
 DEEP_SCAN_BELOW = 10 ** 9   # fewer gated coins than this after a full scan -> the deep search runs too; set this high, it always runs     # recommend mode: a clean coin below this score is not worth naming ("no coin good enough" instead)
 MAX_INSIDERS = 15
 MIN_HOLDERS = 300
@@ -1125,7 +1126,9 @@ def risk_doc(r):
 
 def soft_rows(rows, held, recent):
     """Coins that failed only the soft (momentum/age) gates, best score first: the fallback pool of recommend mode."""
-    out = [r for r in rows if not r["ok"] and r["fails"] and set(r["fails"]) <= set(SOFT_GATES) and r["a"] not in held and r["a"] not in recent]
+    max_age = (GATE_MAX_AGE_H or 1e9) * FALLBACK_MAX_AGE_X
+    out = [r for r in rows if not r["ok"] and r["fails"] and set(r["fails"]) <= set(SOFT_GATES) and r["a"] not in held and r["a"] not in recent
+           and (r["basic"].get("age_h") is None or r["basic"]["age_h"] <= max_age) and (r["f"].get("c6") is None or r["f"]["c6"] >= 0)]
     out.sort(key=lambda r: -r["sc"])
     return out
 
