@@ -1,0 +1,37 @@
+# Manual check of the optional keys: press "Run workflow" after adding BITQUERY_TOKEN and/or LUNARCRUSH_API_KEY as repository secrets.
+# Prints only counts and status, never the keys.
+name: probe-keys
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONUTF8: '1'
+      LUNARCRUSH_API_KEY: ${{ secrets.LUNARCRUSH_API_KEY }}
+      BITQUERY_TOKEN: ${{ secrets.BITQUERY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          echo "BITQUERY_TOKEN set: $([ -n "$BITQUERY_TOKEN" ] && echo yes || echo no)"
+          echo "LUNARCRUSH_API_KEY set: $([ -n "$LUNARCRUSH_API_KEY" ] && echo yes || echo no)"
+          python3 - <<'PY'
+          import os, sys, json
+          sys.path.insert(0, ".")
+          import fetch as F
+          http = F.Http(None, 0.3)
+          d = "probe"
+          os.makedirs(d, exist_ok=True)
+          bonk = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+          if os.environ.get("BITQUERY_TOKEN"):
+              raw = http.post(F.BQ, {"query": F.BQ_QUERY, "variables": {"mint": bonk, "since": "2026-01-01T00:00:00Z"}}, headers={"Authorization": "Bearer " + os.environ["BITQUERY_TOKEN"]})
+              print("bitquery raw keys:", list(raw.keys()) if isinstance(raw, dict) else raw)
+              print("bitquery sample:", json.dumps(raw)[:600] if raw else None)
+              print("bitquery rows:", F.bitquery_trades(http, d, [bonk], os.environ["BITQUERY_TOKEN"]))
+          if os.environ.get("LUNARCRUSH_API_KEY"):
+              print("lunarcrush list:", F.lunarcrush(http, d, os.environ["LUNARCRUSH_API_KEY"]))
+              print("lunarcrush topic rows:", F.lunarcrush_topics(http, d, [bonk], {bonk: {"sym": "bonk"}}, os.environ["LUNARCRUSH_API_KEY"]))
+          print("hosts skipped:", sorted(http.dead) or "none")
+          PY
