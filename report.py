@@ -782,6 +782,8 @@ def rec_card(c, now, embed):
     if g("mkt.sol24") is not None:
         kv.append(("market: SOL 24h", sgn("%+.1f%%" % g("mkt.sol24")) + ((" · fear & greed %d" % g("mkt.fng")) if g("mkt.fng") is not None else "")))
     notes = ""
+    if c.get("standin"):
+        notes += '<p class="note">DexScreener delivered no pair data this scan: the numbers here come from Jupiter or GeckoTerminal, which stood in. The chart opens by mint address.</p>'
     if c.get("tier") == "fallback":
         notes = '<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))
     elif c.get("tier") == "risky":

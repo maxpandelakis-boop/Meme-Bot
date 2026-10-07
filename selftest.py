@@ -8,7 +8,7 @@ universe, the scan gates and scores them, exactly two coins get bought for 20 ea
 while the money is deployed, exits (half at 2x, stop at -50%, 3-day time limit) return money to the bankroll, the 24h big test
 scores every snapshotted coin and the weights get learned. GMGN is mocked as blocked (403) to exercise the circuit breaker.
 """
-import glob, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse
+import glob, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -111,6 +111,11 @@ class Mock:
         if "/__429" in path:
             self.n429 = getattr(self, "n429", 0) + 1
             return (429, {"err": "slow down"}) if self.n429 <= 2 else (200, {"ok": True})
+        if path.startswith("/__dsdead"):
+            self.ds_dead = q.get("on", ["1"])[0] == "1"
+            return 200, {"ok": True}
+        if getattr(self, "ds_dead", False) and path.startswith("/api.dexscreener.com/") and ("/latest/dex/search" in path or "/tokens/v1/" in path or "/token-boosts/" in path):
+            return 200, ({"pairs": []} if "/latest/dex/search" in path else [])
         if path.startswith("/__mult"):
             c = self.by_a[q["a"][0]]; c["mult"] = float(q["m"][0]); c["gone"] = q.get("gone", ["0"])[0] == "1"
             return 200, {"ok": True}
@@ -263,7 +268,7 @@ class Mock:
             off += {"1h": 20, "6h": 40}.get(path.rstrip("/").rsplit("/", 1)[-1], 0)
             return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["name"], "usdPrice": c["px"] * c["mult"], "mcap": c["mc"] * c["mult"], "fdv": c["mc"] * c["mult"], "liquidity": c["liq"], "holderCount": 900,
                           "organicScore": 55.5, "audit": {"topHoldersPercentage": 22.0}, "isVerified": False, "firstPool": {"createdAt": "2025-03-01T00:00:00Z"},
-                          "stats1h": {"priceChange": 1.0, "numBuys": 10, "numSells": 5, "numNetBuyers": 3}, "stats6h": {"priceChange": 2.0},
+                          "stats1h": {"priceChange": 1.0, "numBuys": 10, "numSells": 5, "numNetBuyers": 3, "buyVolume": 120, "sellVolume": 60}, "stats6h": {"priceChange": 2.0},
                           "stats24h": {"priceChange": 5.0, "buyVolume": 1000, "sellVolume": 800, "numBuys": 100, "numSells": 80, "numTraders": 50, "numNetBuyers": 10, "holderChange": 20}}
                          for c in self.coins[off:off + 50]]
         if path.startswith("/lunarcrush.com/api4/public/topic/"):
@@ -516,6 +521,18 @@ def main():
     rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
     same = lambda a, b: [c["addr"] for c in a.get("picks", [])] == [c["addr"] for c in b.get("picks", [])]
     check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s -> %s; %s)" % ([c["sym"] for c in old_rec.get("picks", [])], [c["sym"] for c in rec2.get("picks", [])], (r.stderr.strip().splitlines() or ["?"])[-1][:100]))
+
+    print("== DexScreener out: Jupiter and GeckoTerminal data stand in, the scan still names a coin")
+    sd = tempfile.mkdtemp(prefix="memebot-standin-")
+    urllib.request.urlopen(url + "/__dsdead?on=1").read()
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", sd, "--mock", url, "--now", str(T0), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    urllib.request.urlopen(url + "/__dsdead?on=0").read()
+    rec_s = json.load(open(os.path.join(sd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(sd, "db", "memebot", "recommend.json")) else {}
+    st_s = json.load(open(os.path.join(sd, "db", "memebot", "state.json"))) if os.path.exists(os.path.join(sd, "db", "memebot", "state.json")) else {}
+    page_s = open(os.path.join(sd, "report.html"), encoding="utf-8").read() if os.path.exists(os.path.join(sd, "report.html")) else ""
+    check(r.returncode == 0 and rec_s.get("picks") and all(c.get("standin") for c in rec_s["picks"]) and "stood in" in (st_s.get("note") or "") and "stood in" in page_s,
+          "with DexScreener empty the scan named %s from Jupiter/GeckoTerminal data and said so (%s)" % ([c["sym"] for c in rec_s.get("picks", [])], (r.stderr.strip().splitlines() or [""])[-1][:100] if r.returncode else "ok"))
+    shutil.rmtree(sd, ignore_errors=True)
 
     print("== training: walk-forward test, zero model and tuned limits on synthetic snapshot results")
     td = tempfile.mkdtemp(prefix="memebot-train-")

@@ -629,7 +629,7 @@ def jup_tokens(http, d, light=False):
                             bool(t.get("isVerified")), (t.get("firstPool") or {}).get("createdAt"), num(s1.get("priceChange")), num((t.get("stats6h") or {}).get("priceChange")),
                             num(s24.get("priceChange")), num(s24.get("buyVolume")), num(s24.get("sellVolume")), num(s24.get("numBuys")), num(s24.get("numSells")),
                             num(s24.get("numTraders")), num(s24.get("numNetBuyers")), num(s24.get("holderChange")), num(s1.get("numBuys")), num(s1.get("numSells")),
-                            num(s1.get("numNetBuyers"))))
+                            num(s1.get("numNetBuyers")), num(s1.get("buyVolume")), num(s1.get("sellVolume"))))
         total += write_rows(d, "jup", name + ".txt", rows)
     http.log("  jupiter %d" % total)
     return total

@@ -346,7 +346,7 @@ PIPE_COLS = ("address", "symbol", "name", "dexId", "pairAddress", "priceUsd", "m
 PX_COLS = ("address", "priceUsd", "liquidityUsd")          # cheap re-pricing rows: 3 fields
 JUP_COLS = ("address", "symbol", "name", "priceUsd", "marketCap", "fdv", "liquidityUsd", "holders", "organic", "top10Pct", "devMints", "verified",
             "createdAt", "chgH1", "chgH6", "chgH24", "buyVol24", "sellVol24", "buysH24", "sellsH24", "traders24", "netBuyers24", "holderChg24",
-            "buysH1", "sellsH1", "netBuyers1")
+            "buysH1", "sellsH1", "netBuyers1", "buyVol1", "sellVol1")
 RC_COLS = ("address", "score", "lpLocked", "holders", "top1Pct", "top10Pct", "insiders", "creatorPct", "mutable", "launchpad", "danger", "warn")
 RC_COLS13 = RC_COLS + ("topAddrs",)                     # v3: optional 13th field, top holder addresses ; separated
 PF_COLS = ("address", "symbol", "name", "usdMc", "mc", "athMc", "replies", "live", "complete", "createdAt", "twitter", "website", "telegram")
@@ -465,9 +465,10 @@ def load_pair_file(fn):
 def jup_pair(j):
     """A Jupiter token row as a pair object (used only when DexScreener has no pair for the coin)."""
     vol = (j.get("buyVol24") or 0) + (j.get("sellVol24") or 0)
+    vol1 = (j.get("buyVol1") or 0) + (j.get("sellVol1") or 0) if (j.get("buyVol1") is not None or j.get("sellVol1") is not None) else None
     return {"address": j["address"], "symbol": j.get("symbol"), "name": j.get("name"), "dexId": "jupiter", "pairAddress": None,
             "priceUsd": j.get("priceUsd"), "marketCap": j.get("marketCap"), "fdv": j.get("fdv"), "liquidityUsd": j.get("liquidityUsd"),
-            "volH24": vol or None, "chgH1": j.get("chgH1"), "chgH6": j.get("chgH6"), "chgH24": j.get("chgH24"),
+            "volH24": vol or None, "volH1": vol1, "chgH1": j.get("chgH1"), "chgH6": j.get("chgH6"), "chgH24": j.get("chgH24"),
             "buysH24": j.get("buysH24"), "sellsH24": j.get("sellsH24"), "buysH1": j.get("buysH1"), "sellsH1": j.get("sellsH1"),
             "pairCreatedAt": parse_ms(j.get("createdAt")), "xUrl": None}
 
@@ -1123,13 +1124,17 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
     return {k: v for k, v in f.items() if v is not None}, {"price": price, "mc": mc, "liq": liq, "vol24": vol24, "age_h": age_h, "holders": holders[:40]}
 
 
-def gates(pr, basic, sym_mc, f=None):
+STANDIN = {"on": False}   # set by scan(): DexScreener gave (almost) no pair data this run, Jupiter/GeckoTerminal rows stand in as tradable coins
+
+
+def gates(pr, basic, sym_mc, f=None, standin=False):
     price, mc, liq, vol24, age_h = basic["price"], basic["mc"], basic["liq"], basic["vol24"], basic["age_h"]
     f = f or {}
     fails = []
     if not price or price <= 0: fails.append("price")
     if CURVE_DEX.search(str(pr.get("dexId", ""))): fails.append("curve")
-    if str(pr.get("dexId", "")).lower() == "jupiter" or pr.get("gt_only") or pr.get("gm_only"): fails.append("nodex")      # known only from a list: no DexScreener pair data to trade on
+    list_only = str(pr.get("dexId", "")).lower() == "jupiter" or pr.get("gt_only")
+    if pr.get("gm_only") or (list_only and not standin): fails.append("nodex")      # known only from a list: no DexScreener pair data to trade on (unless DexScreener is out and the list data stands in)
     if num((pr.get("gm") or {}).get("honeypot")): fails.append("honeypot")                              # GMGN says it cannot be sold
     if NOT_MEME.search(str(pr.get("name", "")) + " " + str(pr.get("symbol", ""))): fails.append("notmeme")   # tokenized stocks, wrapped and staked assets, stablecoins
     if age_h is None or age_h < GATE_MIN_AGE_H: fails.append("young")
@@ -1815,6 +1820,9 @@ def scan(d, pos, pairs, now, w):
             sym_mc[s] = mc
             pub["symBest"][s] = a                         # a ticker mention goes to the biggest coin with that ticker
     rows, fail_count = [], {}
+    n_full = sum(1 for p in pairs.values() if not p.get("px_only") and str(p.get("dexId") or "").lower() != "jupiter" and not p.get("gt_only") and not p.get("gm_only"))
+    n_list = sum(1 for p in pairs.values() if not p.get("px_only") and (str(p.get("dexId") or "").lower() == "jupiter" or p.get("gt_only")))
+    STANDIN["on"] = n_full < MIN_SCAN_FOR_REC and n_list >= MIN_SCAN_FOR_REC   # DexScreener out: Jupiter's and GeckoTerminal's pool data (price, liquidity, volume, buys/sells) stands in
     for a, pr in pairs.items():
         if pr.get("px_only"):
             continue                      # price-only rows serve exits and the big test's re-pricing, they are not scanned coins
@@ -1823,10 +1831,11 @@ def scan(d, pos, pairs, now, w):
             risk[a]["holdersTop"] = basic["holders"]        # RugCheck owners + top buyers still holding -> what the wallet memory learns from
         if basic["age_h"] is None and f.get("ageH") is not None:
             basic["age_h"] = f["ageH"]
-        fails = gates(pr, basic, sym_mc, f)
+        fails = gates(pr, basic, sym_mc, f, STANDIN["on"])
         for x in fails:
             fail_count[x] = fail_count.get(x, 0) + 1
-        rows.append({"a": a, "pr": pr, "f": f, "basic": basic, "fails": fails, "ok": not fails})
+        rows.append({"a": a, "pr": pr, "f": f, "basic": basic, "fails": fails, "ok": not fails,
+                     "standin": bool(STANDIN["on"] and (str(pr.get("dexId") or "").lower() == "jupiter" or pr.get("gt_only")))})
     sc = score_all([(r["a"], r["f"]) for r in rows], w)
     for r in rows:
         r["sc"] = sc.get(r["a"], 50.0)
@@ -2305,7 +2314,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
                         "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
                         "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"])),
-                        "launchpad": launchpad_of(pr, risk.get(r["a"]))[0], "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
+                        "launchpad": launchpad_of(pr, risk.get(r["a"]))[0], "standin": bool(r.get("standin")), "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
             runners = []
             for r in gated[:12]:
                 if r["a"] in {c[0]["a"] for c in chosen}:
@@ -2443,6 +2452,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     top_fail = sorted(fail_count.items(), key=lambda x: -x[1])[:3]
     if mode == "pick":
         parts.append("Scanned %d coins from %d sources; %d passed the gates." % (len(rows), len(load_lists(d)) + sum(1 for t in {t for r in rows for t in (r["pr"].get("tags") or [])} if t.startswith("kw:")), len(gated)))
+        if STANDIN["on"]:
+            parts.append("DexScreener delivered no pair data this scan, so Jupiter's and GeckoTerminal's numbers stood in as the tradable coins (no pair addresses: charts open by mint).")
         if top_fail:
             parts.append("Most common gate: " + "; ".join("%s (%d)" % (fail_text(k2), v) for k2, v in top_fail) + ".")
         if flagged:
