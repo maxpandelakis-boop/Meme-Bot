@@ -292,10 +292,15 @@ def summary(d):
         out.append("Scanned %s coins, %s passed the gates." % (rec.get("scanned", "?"), rec.get("passed", "?")))
         for p in rec["picks"]:
             links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")) if u.startswith("https://") and ")" not in u and " " not in u)
-            tier = {"weak": " · weak, best available", "fallback": " · fallback, momentum rules relaxed"}.get(p.get("tier"), "")
+            tier = {"weak": " · weak, best available", "fallback": " · fallback, momentum rules relaxed", "risky": " · risky, nothing clean this scan"}.get(p.get("tier"), "")
             out.append("### %d. %s (%s) — score %.0f%s" % (M.num(p.get("rank")) or 0, md(p.get("sym")), md(p.get("name")), M.num(p.get("score")) or 0, tier))
-            if p.get("relaxed"):
+            if p.get("tier") == "risky":
+                out.append("- no coin had a clean safety report this scan: this is the tradable coin with the best trained odds, not a clean pick" + ("; it also failed: " + md("; ".join(str(x) for x in p["relaxed"])) if p.get("relaxed") else ""))
+            elif p.get("relaxed"):
                 out.append("- named only because nothing cleaner passed every gate; it failed: " + md("; ".join(str(x) for x in p["relaxed"])))
+            odds = [("%d%% chance of a profit" % round(100 * M.num(p["upP"]))) if M.num(p.get("upP")) is not None else "", ("%d%% chance of going to zero" % round(100 * M.num(p["zeroP"]))) if M.num(p.get("zeroP")) is not None else ""]
+            if any(odds):
+                out.append("- trained odds: " + ", ".join(x for x in odds if x))
             out.append("- market cap $%s, liquidity $%s, 24h volume $%s" % tuple(fmt_money(M.num(p.get(k))) for k in ("mc", "liq", "vol")))
             if p.get("why"):
                 out.append("- " + md(p["why"]))

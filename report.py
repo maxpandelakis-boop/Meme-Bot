@@ -657,6 +657,8 @@ def tier_chip(c):
     if t == "fallback":
         relaxed = "; ".join(str(x) for x in (c.get("relaxed") or []))
         return '<span class="chip warn" title="%s">fallback · momentum rules relaxed</span>' % E(relaxed or "no clean coin passed every gate")
+    if t == "risky":
+        return '<span class="chip warn" title="no coin had a clean safety report this scan: this is the tradable coin with the best trained odds, shown with its flag and its odds">risky · nothing clean, best odds</span>'
     return '<span class="chip neutral">strong pick</span>'
 
 
@@ -674,14 +676,18 @@ def rec_card(c, now, embed):
           ("24h change", sgn("%+.0f%%" % g("c24")) if g("c24") is not None else "–")]
     if g("c6") is not None and g("c6") != g("c24"):
         kv.append(("6h change", sgn("%+.0f%%" % g("c6"))))
+    if M.num(c.get("upP")) is not None:
+        kv.append(("chance of profit", pct(100 * M.num(c.get("upP")))))
     if M.num(c.get("zeroP")) is not None:
-        kv.append(("trained zero chance", pct(100 * M.num(c.get("zeroP")))))
+        kv.append(("chance of zero", pct(100 * M.num(c.get("zeroP")))))
     chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
             '<div class="kv">%s</div>%s%s%s<details class="more"><summary>Why the bot likes it</summary><p class="why">%s</p></details>%s<div class="addr">%s</div></article>') % (
         E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")),
         "".join('<div><div class="k">%s</div><div class="v">%s</div></div>' % (E(k), E(v)) for k, v in kv),
-        safety_box(c.get("safety"), c.get("ok")) + (('<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("tier") == "fallback" else ""),
+        safety_box(c.get("safety"), c.get("ok")) + (('<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("tier") == "fallback" else "")
+        + (('<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero, both from the bot\'s own %s results), not a clean pick.%s</p>' % (
+            horizon_text(), (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")) if c.get("tier") == "risky" else ""),
         sources_row(c.get("src")), chart, E(c.get("why") or ""), links(c), E(c.get("addr")))
 
 
@@ -773,7 +779,7 @@ def train_section(D):
     body = ['<p class="note">%s</p>' % E(T.get("note") or "")]
     if wf:
         names = [("top1", "the bot's best coin per scan"), ("top2", "the bot's two best coins per scan"), ("top2zero", "the two best under the zero limit (the rule in use)"),
-                 ("allPass", "every coin that passed the gates"), ("bottom2", "the two worst-scored passing coins")]
+                 ("byOdds", "the best trained odds per scan (the risky tier's rule)"), ("allPass", "every coin that passed the gates"), ("bottom2", "the two worst-scored passing coins")]
         tr = "".join('<tr><td>%s</td>%s<td class="n">%s</td></tr>' % (E(label), stat_cells(wf.get(k)), pct((wf.get(k) or {}).get("coverage")) if (wf.get(k) or {}).get("coverage") is not None else "–")
                      for k, label in names if wf.get(k))
         body.append('<h3>Walk-forward test</h3><p class="note">%d scans judged by models fitted on the scans before them only · a tip is 20 in the coin, priced again %s later · coverage: scans in which the rule found a coin</p>'

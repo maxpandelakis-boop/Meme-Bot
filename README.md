@@ -91,6 +91,12 @@ check, and writes the two best coins to the top of the page with embedded DexScr
 plus the runners-up. Nothing is bought or held. The big test (snapshots scored 24 hours later) keeps running, so the
 weights keep learning.
 
+There is always a pick, in one of four tiers, and every pick shows its trained odds (chance of a profit after fees and
+chance of going to zero within the horizon, from the bot's own scored snapshots): **strong** (clean, score above the
+bar), **weak** (clean, below it), **fallback** (clean, but it failed a soft momentum gate, named with it) and **risky**
+(no coin had a clean safety report at all: the tradable coin with the best odds, shown with its RugCheck flag and its
+odds, so the page says how likely it is to go). Only a scan with no tradable coin at all shows nothing.
+
 ## Training
 
 Every pick run starts with `memebot.py train`, which puts the scored snapshots of the active profile through five programs

@@ -408,7 +408,20 @@ def main():
     check(r.returncode == 0 and "training:" in r.stderr and rec4.get("zeroLimit") is not None and rec4.get("trained") == 2880 and zps and all(isinstance(v, float) for v in zps)
           and "Zero model" in (st4.get("note") or ""), "the cycle trained and the run applied the zero model (limit %s, picks' zero chance %s)" % (rec4.get("zeroLimit"), zps))
     page4 = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
-    check("Walk-forward test" in page4 and "Zero model" in page4 and "trained zero chance" in page4, "page shows the training section and the zero chance on the card")
+    check("Walk-forward test" in page4 and "Zero model" in page4 and "chance of zero" in page4 and "chance of profit" in page4, "page shows the training section and the odds on the card")
+    ups = [c.get("upP") for c in rec4.get("picks", [])]
+    check(ups and all(isinstance(v, float) for v in ups) and "chance of a profit" in (rec4["picks"][0].get("safety") or ""), "picks carry the trained profit chance (%s)" % ups)
+    # nothing clean at all: a training doc that puts every coin over the zero limit -> the risky tier names the best odds, with its flag
+    tr4 = json.load(open(os.path.join(rd, "db", "memebot", "train.json")))
+    tr4["zeroModel"] = {"base": 0.5, "n": 1000, "zeros": 500, "factors": {"logMc": {"edges": [1.0], "lo": [0.0, 0.0], "n": 1000}}, "cal": [{"hi": 1e9, "p": 0.9, "n": 1000}]}
+    tr4["tuned"] = {"MAX_ZERO_P": 0.05, "MIN_REC_SCORE": 45}
+    json.dump(tr4, open(os.path.join(rd, "db", "memebot", "train.json"), "w"))
+    r = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "run", "--dir", rd, "--mode", "pick", "--recommend", "--now", str(T0 + 2 * H + 60000)], capture_output=True, text=True)
+    rec5 = json.load(open(os.path.join(rd, "out", "memebot__recommend.json"))) if os.path.exists(os.path.join(rd, "out", "memebot__recommend.json")) else {}
+    p5 = (rec5.get("picks") or [{}])[0]
+    check(r.returncode == 0 and len(rec5.get("picks") or []) == 1 and p5.get("tier") == "risky" and p5.get("zeroP") == 0.9 and "chance of going to zero" in (p5.get("safety") or "") and "risky pick" in r.stdout,
+          "with every coin over the zero limit the risky tier still names one, with its odds (%s, %s)" % (p5.get("sym"), (p5.get("safety") or "")[:80]))
+    json.dump(tr4 | {"zeroModel": None, "tuned": {"MAX_ZERO_P": 0.35, "MIN_REC_SCORE": 45}}, open(os.path.join(rd, "db", "memebot", "train.json"), "w"))
     rs = subprocess.run([PY, os.path.join(HERE, "bot.py"), "summary", "--dir", rd], capture_output=True, text=True, encoding="utf-8")
     check(rs.returncode == 0 and "Training: Walk-forward" in rs.stdout, "summary carries the training line")
     old_rec = rec4

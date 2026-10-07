@@ -1109,20 +1109,21 @@ def train_groups(d):
     return sorted(((run, g["t"], g["rows"]) for run, g in by_run.items() if g["rows"]), key=lambda x: (x[1], x[0]))
 
 
-def zero_model(rows):
-    """Which factor values go with a coin going to zero within the horizon. Each factor is cut into equal-count bins and each bin
-    gets the (smoothed) log-odds of 'gone' against the base rate. A coin's raw score is the sum over its factors. The raw score
-    is then calibrated on the same rows (bucket -> observed zero rate, made monotone), so what comes out is a probability
-    that means what it says. None when there is too little history or too few zeros to learn from."""
+def bin_model(rows, target):
+    """Which factor values go with an outcome (target(row) -> bool) within the horizon. Each factor is cut into equal-count bins
+    and each bin gets the (smoothed) log-odds of the outcome against the base rate. A coin's raw score is the sum over its
+    factors. The raw score is then calibrated on the same rows (bucket -> observed rate, made monotone), so what comes out is a
+    probability that means what it says. None when there is too little history or too few cases on either side."""
     n = len(rows)
-    gone_n = sum(1 for r in rows if r["gone"])
+    ys = [bool(target(r)) for r in rows]
+    gone_n = sum(1 for y in ys if y)
     if n < TRAIN_MIN_ROWS or gone_n < 10 or gone_n > n - 10:
         return None
     base = gone_n / float(n)
     factors = {}
     keys = sorted({k for r in rows for k in r["f"] if num(r["f"].get(k)) is not None})
     for k in keys:
-        pts = [(num(r["f"][k]), r["gone"]) for r in rows if num(r["f"].get(k)) is not None]
+        pts = [(num(r["f"][k]), y) for r, y in zip(rows, ys) if num(r["f"].get(k)) is not None]
         if len(pts) < 2 * LEARN_MIN_N:
             continue
         xs = sorted(p[0] for p in pts)
@@ -1141,7 +1142,7 @@ def zero_model(rows):
     if not factors:
         return None
     model = {"base": round(base, 5), "n": n, "zeros": gone_n, "factors": factors, "cal": []}
-    raw = sorted((raw_zero(model, r["f"]), r["gone"]) for r in rows)
+    raw = sorted((raw_zero(model, r["f"]), y) for r, y in zip(rows, ys))
     target = max(50, len(raw) // 10)
     blocks, cur, i = [], None, 0
     while i < len(raw):                               # buckets of ~target coins; coins with the same raw score stay in one bucket
@@ -1174,6 +1175,21 @@ def zero_model(rows):
     return model
 
 
+def zero_model(rows):
+    """The chance of going to zero (no price, or liquidity gone) within the horizon."""
+    return bin_model(rows, lambda r: r["gone"])
+
+
+def up_model(rows):
+    """The chance of a profit after fees within the horizon."""
+    return bin_model(rows, lambda r: r["eur"] > 0)
+
+
+def chances(zmodel, umodel, f):
+    """(chance of zero, chance of profit) for a coin's factors; None where there is no model."""
+    return zero_p(zmodel, f) if zmodel else None, zero_p(umodel, f) if umodel else None
+
+
 def raw_zero(model, f):
     s = 0.0
     for k, m in model["factors"].items():
@@ -1199,7 +1215,7 @@ def tip_stats(tips):
     if not n:
         return {"n": 0, "avg": None, "win": None, "zero": None, "median": None}
     mults = sorted(num(t.get("mult")) or 0.0 for t in tips)
-    return {"n": n, "avg": round(sum(num(t.get("eur")) or 0.0 for t in tips) / n, 2), "win": round(100.0 * sum(1 for m in mults if m > 1.0) / n, 1),
+    return {"n": n, "avg": round(sum(num(t.get("eur")) or 0.0 for t in tips) / n, 2), "win": round(100.0 * sum(1 for t in tips if (num(t.get("eur")) or 0.0) > 0) / n, 1),
             "zero": round(100.0 * sum(1 for t in tips if t.get("gone")) / n, 1), "median": round(mults[n // 2], 3)}
 
 
@@ -1227,20 +1243,22 @@ def walk_forward(groups):
         hist = [r for _, _, rows in groups[:a] for r in rows]
         if len(hist) < TRAIN_MIN_ROWS:
             continue
-        w, model = fit_weights(hist), zero_model(hist)
+        w, model, umodel = fit_weights(hist), zero_model(hist), up_model(hist)
         for run, t0, rows in groups[a:b]:
             sc = score_all([(r["a"], r["f"]) for r in rows], w)
-            cands = [dict(r, sc=sc.get(r["a"], 50.0), zp=zero_p(model, r["f"]) if model else None) for r in rows if r["pass"]]
+            cands = [dict(r, sc=sc.get(r["a"], 50.0), zp=zero_p(model, r["f"]) if model else None, up=zero_p(umodel, r["f"]) if umodel else None) for r in rows if r["pass"]]
             cands.sort(key=lambda r: -r["sc"])
             tested.append((run, t0, cands, len(hist)))
     return tested
 
 
-def strategy(tested, top=2, zmax=None, min_sc=None):
-    """The tips a rule would have given in the tested scans: the best `top` candidates (above min_sc, under the zero limit)."""
+def strategy(tested, top=2, zmax=None, min_sc=None, by_odds=False):
+    """The tips a rule would have given in the tested scans: the best `top` candidates (above min_sc, under the zero limit);
+    by_odds ranks them by trained profit chance minus zero chance instead of the score (the risky tier's rule)."""
     tips, covered = [], 0
     for _, _, cands, _ in tested:
-        got = [c for c in cands if (zmax is None or c["zp"] is None or c["zp"] <= zmax) and (min_sc is None or c["sc"] >= min_sc)][:top]
+        pool = sorted(cands, key=lambda c: -((c.get("up") or 0.0) - (c.get("zp") or 0.0))) if by_odds else cands
+        got = [c for c in pool if (zmax is None or c["zp"] is None or c["zp"] <= zmax) and (min_sc is None or c["sc"] >= min_sc)][:top]
         tips += got
         covered += 1 if got else 0
     st = tip_stats(tips)
@@ -1305,7 +1323,7 @@ def cmd_train(d, now):
     rows = [r for _, _, g in groups for r in g]
     doc = {"t": now, "rule": RULE, "rows": len(rows), "scans": len(groups), "zeros": sum(1 for r in rows if r["gone"]),
            "tested": 0, "walkForward": {}, "zeroGrid": [], "scoreGrid": [], "gates": [], "factors": [], "tips": tip_record(d),
-           "tuned": {"MAX_ZERO_P": MAX_ZERO_P, "MIN_REC_SCORE": MIN_REC_SCORE}, "tunedWhy": [], "zeroModel": None, "zeroFactors": [], "note": ""}
+           "tuned": {"MAX_ZERO_P": MAX_ZERO_P, "MIN_REC_SCORE": MIN_REC_SCORE}, "tunedWhy": [], "zeroModel": None, "upModel": None, "zeroFactors": [], "note": ""}
     if rows:
         tested = walk_forward(groups)
         doc["tested"] = len(tested)
@@ -1318,9 +1336,11 @@ def cmd_train(d, now):
             wf["bottom2"]["coverage"] = None
             tuned, zero_grid, score_grid, why = tune(tested, wf["top2"], sum(1 for r in rows if r["gone"]) / float(len(rows)))
             wf["top2zero"] = strategy(tested, 2, zmax=tuned["MAX_ZERO_P"])
+            wf["byOdds"] = strategy(tested, 1, by_odds=True)
             doc.update({"walkForward": wf, "zeroGrid": zero_grid, "scoreGrid": score_grid, "tuned": tuned, "tunedWhy": why})
         doc["gates"] = gate_audit(groups)
         model = zero_model(rows)
+        doc["upModel"] = up_model(rows)
         if model:
             doc["zeroModel"] = model
             doc["zeroFactors"] = [{"factor": k, "spread": round(max(m["lo"]) - min(m["lo"]), 3), "lo": m["lo"], "edges": m["edges"]}
@@ -1351,39 +1371,67 @@ def cmd_train(d, now):
             doc["note"] += " With the zero model (limit %d%%): %+.2f per 20, %d%% to zero, %d%% of the scans covered." % (round(100 * doc["tuned"]["MAX_ZERO_P"]), t2z["avg"], round(t2z["zero"]), round(t2z["coverage"]))
         else:
             doc["note"] += " No zero model yet (it needs %d coins and at least 10 zeros)." % TRAIN_MIN_ROWS
+        bo = wf.get("byOdds") or {}
+        if doc["upModel"] and bo.get("n"):
+            doc["note"] += " Ranked by trained odds alone (profit chance minus zero chance), the best coin per scan averaged %+.2f per 20 (%d%% up, %d%% to zero)." % (bo["avg"], round(bo["win"]), round(bo["zero"]))
     path = os.path.join(d, "db", "memebot")
     os.makedirs(path, exist_ok=True)
     with open(os.path.join(path, "train.json"), "w", encoding="utf-8") as f:
         json.dump(doc, f, separators=(",", ":"))
     short = {k: doc[k] for k in ("rows", "scans", "zeros", "tested", "walkForward", "tuned", "tunedWhy", "note", "tips")}
-    short["zeroModel"] = bool(doc["zeroModel"])
+    short["zeroModel"], short["upModel"] = bool(doc["zeroModel"]), bool(doc["upModel"])
     print(json.dumps(short, indent=1))
     return doc
 
 
 def load_train(d):
-    """What the last training left for the runs: (zero model or None, zero limit, strong-pick score bar, rows it was trained on)."""
+    """What the last training left for the runs: (zero model, profit model, zero limit, strong-pick score bar, rows trained on)."""
     doc = load_json(os.path.join(d, "db", "memebot", "train.json"), {}) or {}
     if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
-        return None, MAX_ZERO_P, MIN_REC_SCORE, 0
+        return None, None, MAX_ZERO_P, MIN_REC_SCORE, 0
     tuned = doc.get("tuned") or {}
     model = doc.get("zeroModel") if isinstance(doc.get("zeroModel"), dict) else None
+    umodel = doc.get("upModel") if isinstance(doc.get("upModel"), dict) else None
     zmax = num(tuned.get("MAX_ZERO_P"))
     zmax = min(max(zmax, ZERO_P_FLOOR), 0.9) if zmax is not None else MAX_ZERO_P
     bar = num(tuned.get("MIN_REC_SCORE"))
     bar = min(max(bar, MIN_REC_SCORE - 10), MIN_REC_SCORE + 20) if bar is not None else MIN_REC_SCORE
-    return model, zmax, bar, int(num(doc.get("rows")) or 0)
+    return model, umodel, zmax, bar, int(num(doc.get("rows")) or 0)
 
 
-def zero_view(model, zmax, r, rtxt):
+def odds_text(r):
+    up, zp = r.get("up"), r.get("zp")
+    bits = (["%d%% chance of a profit" % round(100 * up)] if up is not None else []) + (["%d%% chance of going to zero" % round(100 * zp)] if zp is not None else [])
+    return ("trained odds: " + ", ".join(bits) + " within " + eval_text()) if bits else ""
+
+
+def zero_view(model, umodel, zmax, r, rtxt):
     """The zero model's verdict on a clean coin: (ok, safety text). Without a model the RugCheck verdict stands as it is."""
-    zp = zero_p(model, r["f"]) if model else None
-    if zp is None:
+    r["zp"], r["up"] = chances(model, umodel, r["f"])
+    if r["zp"] is None:
         return True, rtxt
-    r["zp"] = zp
-    if zp > zmax:
-        return False, "training model: %d%% chance of going to zero within %s (limit %d%%)" % (round(100 * zp), eval_text(), round(100 * zmax))
-    return True, "%s, trained zero chance %d%%" % (rtxt, round(100 * zp))
+    if r["zp"] > zmax:
+        return False, "training model: %d%% chance of going to zero within %s (limit %d%%)" % (round(100 * r["zp"]), eval_text(), round(100 * zmax))
+    return True, "%s; %s" % (rtxt, odds_text(r))
+
+
+HARD_BLOCK = ("price", "curve", "nodex", "honeypot", "notmeme", "copy")   # gates no tier relaxes: without a tradable pair or as a scam there is nothing to name
+
+
+def risky_rows(rows, held, recent, zmodel, umodel):
+    """The last resort of recommend mode: every coin with a tradable pair, the profile's minimum liquidity and market cap and no
+    crash, whatever else it failed, ranked by trained odds (profit chance minus zero chance), then score."""
+    out = []
+    for r in rows:
+        if r["a"] in held or r["a"] in recent or any(k in HARD_BLOCK or k == "crash" for k in r["fails"]):
+            continue
+        liq, mc = r["basic"].get("liq"), r["basic"].get("mc")
+        if not r["basic"].get("price") or liq is None or liq < GATE_MIN_LIQ or mc is None or mc < GATE_MC[0]:
+            continue
+        r["zp"], r["up"] = chances(zmodel, umodel, r["f"])
+        out.append(r)
+    out.sort(key=lambda r: (-((r["up"] or 0.0) - (r["zp"] or 0.0)), -r["sc"]))
+    return out
 
 
 # ---------------------------------------------------------------- the scan
@@ -1676,7 +1724,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
 
     # ---------- scan + picks ----------
     w, winfo = blended_weights(d)
-    zmodel, zmax, rec_bar, trained_n = load_train(d)     # the zero model and the limits the last training left
+    zmodel, umodel, zmax, rec_bar, trained_n = load_train(d)     # the zero and profit models and the limits the last training left
     rows, fail_count, held, recent, risk = scan(d, pos, pairs, now, w)
     gated = [r for r in rows if r["ok"]]
     flagged, unchecked, chosen, zero_flagged = [], 0, [], 0
@@ -1685,7 +1733,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         """RugCheck's verdict, then the zero model's: (ok, text); None when no report came back."""
         ok_r, rtxt = risk_view(risk.get(r["a"]))
         if ok_r:
-            ok_r, rtxt = zero_view(zmodel, zmax, r, rtxt)
+            ok_r, rtxt = zero_view(zmodel, umodel, zmax, r, rtxt)
         return ok_r, rtxt
     day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
     tickets = bankroll(pos)["tickets"]
@@ -1713,8 +1761,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         tiers = {}
         if recommend and len(rows) >= MIN_SCAN_FOR_REC:
             # no positions: the best clean coins and the runners-up go to memebot/recommend for the page. There is always a
-            # pick when any clean coin exists: "strong" from MIN_REC_SCORE, "weak" below it, and "fallback" when no clean
-            # coin passed every gate (the best clean coin that failed only the soft momentum/age gates, labelled with them).
+            # pick: "strong" from MIN_REC_SCORE, "weak" below it, "fallback" when no clean coin passed every gate (the best
+            # clean coin that failed only the soft momentum/age gates, labelled with them), and "risky" when nothing is clean
+            # at all: the coin with the best trained odds among the tradable ones, shown with its flag and its odds.
             for r, _ in chosen:
                 tiers[r["a"]] = "strong" if r["sc"] >= rec_bar else "weak"
             if not chosen:
@@ -1725,26 +1774,34 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     if ok_r:
                         chosen.append((r, rtxt)); tiers[r["a"]] = "fallback"
                         break
+            if not chosen:
+                for r in risky_rows(rows, held, recent, zmodel, umodel):
+                    ok_r, rtxt = risk_view(risk.get(r["a"]))
+                    if ok_r is None:
+                        rtxt = "no safety report came back for it"
+                    chosen.append((r, "%s; %s" % (rtxt, odds_text(r)) if odds_text(r) else rtxt)); tiers[r["a"]] = "risky"
+                    break
 
             def rec(r, rtxt, ok):
                 pr = r["pr"]
+                if "zp" not in r:
+                    r["zp"], r["up"] = chances(zmodel, umodel, r["f"])
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
                         "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
                         "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"])),
-                        "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) == "fallback" else [], "zeroP": r.get("zp")}
+                        "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) in ("fallback", "risky") else [], "zeroP": r.get("zp"), "upP": r.get("up")}
             runners = []
             for r in gated[:12]:
                 if r["a"] in {c[0]["a"] for c in chosen}:
                     continue
                 ok_r, rtxt = clean(r)
                 runners.append(rec(r, rtxt, ok_r))
-            reason = "" if chosen else (("every clean coin was over the trained zero limit of %d%% (%d of them)" % (round(100 * zmax), zero_flagged)) if zero_flagged else
-                                        "no coin had a clean safety report, not even with the momentum rules relaxed" if (gated or soft_rows(rows, held, recent)) else "nothing passed the gates")
+            reason = "" if chosen else "no coin in the scan had a tradable pair with the minimum liquidity and market cap"
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
                                           "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
                 emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
-                                                                            "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"], "zp": r.get("zp"), "tier": tiers.get(r["a"])} for r, _ in chosen]})
+                                                                            "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"], "zp": r.get("zp"), "up": r.get("up"), "tier": tiers.get(r["a"])} for r, _ in chosen]})
             picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "score": r["sc"], "tier": tiers.get(r["a"]),
                             "why": ("%s pick; " % tiers.get(r["a"]) if tiers.get(r["a"]) != "strong" else "") + why_text(r) + "; " + rtxt} for r, rtxt in chosen]
             chosen = []
@@ -1870,7 +1927,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             parts.append("Nothing passed the gates, so no new fake buys this time. Staying out is a result too.")
         parts.append("Weights: %s (%d scored coins so far)." % (", ".join("%s %+.2f" % kv for kv in sorted(w.items(), key=lambda kv: -abs(kv[1]))[:5]), winfo["n"]))
         if zmodel:
-            parts.append("Zero model: trained on %d coin results, a clean coin is skipped above a %d%% zero chance." % (trained_n, round(100 * zmax)))
+            parts.append("Zero model: trained on %d coin results, a clean coin is skipped above a %d%% zero chance; when nothing is clean the best odds are named as a risky pick." % (trained_n, round(100 * zmax)))
     else:
         parts.append(("Checked %d open fake position%s." % (n_open, "" if n_open == 1 else "s")) if n_open else "No open fake positions to check.")
         if n_open and not exits_done:
