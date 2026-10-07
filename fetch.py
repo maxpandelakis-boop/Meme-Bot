@@ -125,6 +125,7 @@ HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 3.0, "cdn.syndication.twimg.com": 1.5, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
             "streaming.bitquery.io": 0.5, "lunarcrush.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
+HOST_MAX_429 = {"syndication.twitter.com": 2, "api.coingecko.com": 3}   # hosts whose limits are per minute and whose waits cost the run minutes: give up early
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60), "www.reddit.com": (5, 10, 15)}   # 429 back-off per host; DexScreener default below
 
 
@@ -182,7 +183,7 @@ class Http:
                     self.cooldown[host] = time.time() + pause
                     self.limited += 1
                     self.limited_by[host] = self.limited_by.get(host, 0) + 1
-                    if self.limited_by[host] >= MAX_429_PER_HOST:
+                    if self.limited_by[host] >= HOST_MAX_429.get(host, MAX_429_PER_HOST):
                         self.dead.add(host)
                         self.log("  ! giving up on %s for this run: rate limited %d times" % (host, self.limited_by[host]))
                         return None
@@ -1103,11 +1104,18 @@ def community(http, d, addrs, meta, now=None):
     subscribers and recent messages -> cm/<stamp>.txt. Every part is optional; a source that fails leaves its fields empty."""
     now = now or time.time()
     rows = []
+    try:
+        with open(os.path.join(d, "cgmeme.json"), encoding="utf-8") as f:
+            cg_known = {str(r[0]) for r in (json.load(f) or []) if isinstance(r, list) and r}
+    except (OSError, ValueError):
+        cg_known = set()
     for a in addrs:
         m = (meta or {}).get(a) or {}
         v = http.get(RC + "/tokens/%s/votes" % a)
         rc_up, rc_down = (num(v.get("up")), num(v.get("down"))) if isinstance(v, dict) else (None, None)
-        cg = http.get(CG + "/coins/solana/contract/%s?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false" % a)
+        # CoinGecko lists only a few hundred Solana memes; a lookup for a fresh pump.fun mint is a sure 404 and a rate-limit wait, so only
+        # coins on its own Solana meme list (cgmeme.json, fetched every scan) are asked about
+        cg = http.get(CG + "/coins/solana/contract/%s?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false" % a) if a in cg_known else None
         cg = cg if isinstance(cg, dict) and cg.get("id") else {}
         cd = cg.get("community_data") or {}
         st_watch = st_msgs = None
