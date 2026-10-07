@@ -518,8 +518,14 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "run", "--dir", rd, "--mode", "pick", "--recommend", "--now", str(T0 + 2 * H + 60000)], capture_output=True, text=True)
     rec5 = json.load(open(os.path.join(rd, "out", "memebot__recommend.json"))) if os.path.exists(os.path.join(rd, "out", "memebot__recommend.json")) else {}
     p5 = (rec5.get("picks") or [{}])[0]
-    check(r.returncode == 0 and len(rec5.get("picks") or []) == 1 and p5.get("tier") == "risky" and p5.get("zeroP") == 0.9 and "chance of going to zero" in (p5.get("safety") or "") and "risky pick" in r.stdout,
-          "with every coin over the zero limit the risky tier still names one, with its odds (%s, %s)" % (p5.get("sym"), (p5.get("safety") or "")[:80]))
+    check(r.returncode == 0 and not rec5.get("picks") and "trained odds of a loss" in (rec5.get("reason") or ""), "with every coin over the zero limit no coin is named, not even a risky one (%s)" % (rec5.get("reason") or "")[:80])
+    rk_ok = {"lpLocked": 80, "top1Pct": 5, "top10Pct": 30, "insiders": 3, "holders": 900, "warn": "High holder correlation"}
+    rk_bad = {"lpLocked": 80, "top1Pct": 5, "top10Pct": 30, "insiders": 3, "holders": 120}
+    mk = lambda a, age, mc, fails, up, zp: {"a": a, "pr": {"symbol": a}, "f": {}, "basic": {"price": 1.0, "liq": 50000.0, "mc": mc, "age_h": age}, "fails": fails, "sc": 50.0, "ok": not fails}
+    rows_r = [mk("YOUNG", 0.4, 300000, ["young"], 0, 0), mk("OLDOK", 6.0, 300000, ["nobuyers"], 0, 0), mk("NOREP", 7.0, 300000, ["nobuyers"], 0, 0), mk("BIG", 8.0, 50_000_000, ["mc"], 0, 0)]
+    pool = M.risky_rows(rows_r, set(), set(), None, None, {"OLDOK": rk_ok, "BIG": rk_ok})
+    check([r["a"] for r in pool][:2] == ["OLDOK", "NOREP"] and all(r["a"] != "YOUNG" for r in pool) and M.loose_view(rk_ok)[0] is True and M.loose_view(rk_bad)[0] is False and M.loose_view(None)[0] is None,
+          "risky pool: never under the minimum age, reported coins first, the relaxed floor judges reports (%s)" % [r["a"] for r in pool])
     json.dump(tr4 | {"zeroModel": None, "tuned": {"MAX_ZERO_P": 0.35, "MIN_REC_SCORE": 45}}, open(os.path.join(rd, "db", "memebot", "train.json"), "w"))
     rs = subprocess.run([PY, os.path.join(HERE, "bot.py"), "summary", "--dir", rd], capture_output=True, text=True, encoding="utf-8")
     check(rs.returncode == 0 and "Training: Walk-forward" in rs.stdout, "summary carries the training line")

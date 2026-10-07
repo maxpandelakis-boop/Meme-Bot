@@ -1214,6 +1214,7 @@ TRAIN_CHECKPOINTS = 8      # walk-forward: the models are refitted this many tim
 TRAIN_MIN_TIPS = 30        # a limit is tuned only from at least this many out-of-sample tips
 MAX_ZERO_P = 0.35          # a clean coin whose trained chance of going to zero is above this is skipped; the training may tighten it ...
 ZERO_P_FLOOR = 0.05        # ... but never below this, nor below 1.5x the base zero rate: a tighter limit would leave the picks to chance
+MIN_UP_P = 0.2             # a fallback or risky pick with a trained profit chance under this is a loss with notice: not named
 ZERO_GRID = (0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5)
 SCORE_GRID = tuple(range(35, 85, 5))
 
@@ -2049,6 +2050,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     ok_r, rtxt = clean(r)
                     if ok_r is False and rtxt.startswith("training model"):
                         flagged.append({"sym": r["pr"].get("symbol"), "risk": rtxt}); zero_flagged += 1
+                    if ok_r and r.get("up") is not None and r["up"] < MIN_UP_P:
+                        flagged.append({"sym": r["pr"].get("symbol"), "risk": "training model: only %d%% chance of a profit" % round(100 * r["up"])}); zero_flagged += 1
+                        continue
                     if ok_r:
                         chosen.append((r, rtxt)); tiers[r["a"]] = "fallback"
                         break
@@ -2058,6 +2062,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 for r in risky_rows(rows, held, recent, zmodel, umodel, risk):
                     ok_l, ltxt = loose_view(risk.get(r["a"]))
                     if not ok_l:
+                        continue
+                    if (r.get("zp") is not None and r["zp"] > zmax) or (r.get("up") is not None and r["up"] < MIN_UP_P):
+                        zero_flagged += 1          # the trained odds say loss with notice: not even as a risky pick
                         continue
                     ok_r, rtxt = risk_view(risk.get(r["a"]))
                     r["ok_risky"] = ok_r
@@ -2081,7 +2088,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     continue
                 ok_r, rtxt = clean(r)
                 runners.append(rec(r, rtxt, ok_r))
-            reason = "" if chosen else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)"
+            reason = "" if chosen else (("every coin that cleared the safety floor had trained odds of a loss (zero chance over %d%% or profit chance under %d%%)" % (round(100 * zmax), round(100 * MIN_UP_P)))
+                                        if zero_flagged else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)")
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
