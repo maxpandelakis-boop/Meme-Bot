@@ -2254,13 +2254,15 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 chosen.append((r, rtxt))
                 if len(chosen) >= room:
                     break
-        if recommend and len(rows) < MIN_SCAN_FOR_REC:
-            # a broken fetch (rate limit, outage) must not replace yesterday's recommendations with scraps
-            parts_extra = "Only %d coins came back from the sources (rate limit or outage), so the recommendations were left as they were." % len(rows)
+        with_pair = sum(1 for r in rows if "nodex" not in r["fails"] and r["basic"].get("price"))   # coins DexScreener (or a stand-in) actually priced
+        if recommend and with_pair < MIN_SCAN_FOR_REC:
+            # a broken fetch (rate limit, outage) must not replace yesterday's recommendations with scraps: a scan where only
+            # the list-only coins came back is a DexScreener outage, however many names it holds
+            parts_extra = "Only %d coins with DEX pair data came back from the sources (%d names in all; rate limit or outage), so the recommendations were left as they were." % (with_pair, len(rows))
             picks_done.append({"grp": "skipped", "sym": "-", "score": 0, "why": parts_extra})
             chosen = []
         tiers = {}
-        if recommend and len(rows) >= MIN_SCAN_FOR_REC:
+        if recommend and with_pair >= MIN_SCAN_FOR_REC:
             # no positions: the best clean coins and the runners-up go to memebot/recommend for the page. There is always a
             # pick: "strong" from MIN_REC_SCORE, "weak" below it, "fallback" when no clean coin passed every gate (the best
             # clean coin that failed only the soft momentum/age gates, labelled with them), and "risky" when nothing is clean

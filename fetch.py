@@ -138,6 +138,7 @@ class Http:
         self.last_progress = 0
         self.last_at = {}
         self.limited_by = {}
+        self.nonjson = {}
 
     def url(self, u):
         if not self.mock:
@@ -169,6 +170,9 @@ class Http:
                     try:
                         return json.loads(raw.decode("utf-8", "replace"))
                     except ValueError:
+                        self.nonjson[host] = self.nonjson.get(host, 0) + 1
+                        if self.nonjson[host] <= 2:      # a 200 that is not JSON (a block page, a maintenance page): say so, with the start of the body
+                            self.log("  ! %s answered with something that is not JSON (HTTP %s): %r" % (host, getattr(r, "status", "?"), raw[:100].decode("utf-8", "replace")))
                         return None
                 return raw.decode("utf-8", "replace")
             except urllib.error.HTTPError as e:
@@ -352,6 +356,17 @@ SEARCH_THREADS = 3          # DexScreener keyword searches run on this many thre
 SEARCH_PAUSE = 0.65         # ... each thread pausing this long after a request: 3 threads x ~1.1 requests/s stayed under the limit (0.4 did not)
 
 
+def ds_probe(http):
+    """DexScreener answered every search with no pairs: fetch one well-known search raw and log what came back, so the run
+    log says whether the API is empty, blocked or changed (a 200 with no pairs is not a rate limit)."""
+    raw = http.get(DS + "/latest/dex/search?q=pumpswap", kind="text")
+    if raw is None:
+        http.log("  ! dexscreener probe: no answer at all")
+        return
+    head = re.sub(r"\s+", " ", raw[:160])
+    http.log("  ! dexscreener probe (%d bytes): %s" % (len(raw), head))
+
+
 def ds_search(http, d, keywords):
     """DexScreener keyword searches -> pairs/search_<kw>.txt, one file per keyword. Long lists run on SEARCH_THREADS threads, each
     with its own Http (own pacing and breaker); their counters and dead hosts are merged back into `http`."""
@@ -383,6 +398,8 @@ def ds_search(http, d, keywords):
             for host, k in w.limited_by.items():
                 http.limited_by[host] = http.limited_by.get(host, 0) + k
     http.log("  dexscreener search: %d pairs from %d keywords%s" % (total, len(keywords), (" on %d threads" % SEARCH_THREADS) if len(keywords) > 40 else ""))
+    if total == 0 and len(keywords) >= 20:
+        ds_probe(http)
     return total
 
 
