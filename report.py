@@ -42,6 +42,12 @@ FACTOR = {"liqMc": "liquidity ÷ market cap", "volMc": "24h volume ÷ market cap
           "rd.posts": "Reddit posts naming it, 48h", "rd.subs": "subreddits naming it", "rd.fresh": "hours since the newest Reddit post", "rd.byAddr": "Reddit post with its address",
           "cgm.listed": "on CoinGecko's Solana meme list", "cgm.rank": "CoinGecko market-cap rank", "cgm.chg1h": "CoinGecko 1h change", "cmc.search": "in CoinMarketCap's top searches",
           "cmc.searchRank": "CoinMarketCap search rank", "cmc.gain": "on CoinMarketCap's Solana gainers",
+          "gp.risk": "GoPlus risk flags", "gp.trusted": "GoPlus trusted token", "gp.holders": "holders (GoPlus)", "gp.top10": "top 10 wallets % (GoPlus)", "gp.lpBurn": "LP burned % (GoPlus)", "gp.dexN": "DEX pools (GoPlus)",
+          "gi.score": "GeckoTerminal score", "gi.holders": "holders (GeckoTerminal)", "gi.top10": "top 10 wallets % (GeckoTerminal)",
+          "cm.rcUp": "RugCheck community up-votes", "cm.rcDown": "RugCheck community down-votes", "cm.rcNet": "RugCheck community vote balance", "cm.cgWatch": "CoinGecko watchlists",
+          "cm.cgTwitter": "X followers (CoinGecko)", "cm.cgSentUp": "CoinGecko sentiment up %", "cm.stWatch": "StockTwits watchers", "cm.stMsgs": "StockTwits messages 24h",
+          "cm.xFollowers": "X followers", "cm.xTweets": "tweets in 7 days", "cm.tgSubs": "Telegram members", "cm.tgMsgs": "Telegram messages 24h",
+          "mkt.sol24": "SOL 24h change (market)", "mkt.btc24": "BTC 24h change (market)", "mkt.fng": "fear & greed index (market)",
           "soc.match": "LunarCrush match", "soc.eng": "X engagements (LunarCrush)", "soc.ment": "mentions (LunarCrush)", "soc.cre": "creators (LunarCrush)",
           "soc.sent": "sentiment (LunarCrush)", "soc.galaxy": "galaxy score (LunarCrush)", "soc.alt": "alt rank (LunarCrush)",
           "rc.score": "RugCheck risk score", "rc.lp": "% of liquidity locked", "rc.top1": "top holder %", "rc.top10": "top 10 holders %", "rc.holders": "holders (RugCheck)",
@@ -710,6 +716,28 @@ def rec_card(c, now, embed):
           ("holder change 24h", (sgn("%+.0f%%" % (100 * g("jup.holderChg24")))) if g("jup.holderChg24") is not None else "–")]
     if g("gm.smartDegen") is not None:
         kv.append(("smart-money wallets", "%d" % g("gm.smartDegen")))
+    gp, cm = rk.get("gp") or {}, rk.get("cm") or {}
+    if gp:
+        flags = [n for k, n in (("mintable", "mintable"), ("freezable", "freezable"), ("closable", "closable"), ("balMutable", "balances mutable"), ("nonTransferable", "non-transferable")) if gp.get(k)]
+        kv.append(("GoPlus authorities", ", ".join(flags) if flags else "none left (good)"))
+        kv.append(("GoPlus trusted", yes_no(gp.get("trusted"))))
+        if M.num(gp.get("lpBurnPct")) is not None:
+            kv.append(("LP burned (GoPlus)", pct(gp.get("lpBurnPct"))))
+        if M.num(gp.get("top10Pct")) is not None:
+            kv.append(("top 10 wallets (GoPlus)", pct(gp.get("top10Pct"))))
+    if cm:
+        if M.num(cm.get("rcUp")) is not None or M.num(cm.get("rcDown")) is not None:
+            kv.append(("community votes (RugCheck)", "%d up / %d down" % (M.num(cm.get("rcUp")) or 0, M.num(cm.get("rcDown")) or 0)))
+        if M.num(cm.get("cgWatch")):
+            kv.append(("CoinGecko watchlists", "%d" % M.num(cm.get("cgWatch"))))
+        if M.num(cm.get("xFollowers")) is not None:
+            kv.append(("X followers", "%d" % M.num(cm.get("xFollowers")) + ((" · %d tweets / 7d" % M.num(cm.get("xTweets7d"))) if M.num(cm.get("xTweets7d")) is not None else "")))
+        if M.num(cm.get("tgSubs")) is not None:
+            kv.append(("Telegram members", "%d" % M.num(cm.get("tgSubs")) + ((" · %d msgs / 24h" % M.num(cm.get("tgMsgs24"))) if M.num(cm.get("tgMsgs24")) is not None else "")))
+        if M.num(cm.get("stWatch")) is not None:
+            kv.append(("StockTwits watchers", "%d" % M.num(cm.get("stWatch"))))
+    if g("mkt.sol24") is not None:
+        kv.append(("market: SOL 24h", sgn("%+.1f%%" % g("mkt.sol24")) + ((" · fear & greed %d" % g("mkt.fng")) if g("mkt.fng") is not None else "")))
     notes = ""
     if c.get("tier") == "fallback":
         notes = '<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))

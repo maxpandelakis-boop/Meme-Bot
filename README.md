@@ -104,8 +104,21 @@ r/memecoins, r/solana, r/SolanaMemeCoins, r/pumpfun and two searches, through th
 $ticker in a post counts for 48 hours, a ticker only for the biggest coin with that ticker), CoinGecko's Solana meme-coin
 category (the 500 biggest by volume and market cap, with their addresses) and CoinMarketCap (top searches, and the Solana
 coins with the biggest 24h gains). The coins found there join the scan; the mentions become factors (`rd.*`, `cgm.*`,
-`cmc.*`) with small priors, and the learning decides what they are worth. LunarCrush (X engagement) joins when a
-`LUNARCRUSH_API_KEY` secret is set.
+`cmc.*`) with small priors, and the learning decides what they are worth. The same post scan covers Farcaster (Warpcast
+search), Mastodon tag timelines and 4chan's /biz/ catalog, and Google News searches join the headline feeds. LunarCrush
+(X engagement) joins when a `LUNARCRUSH_API_KEY` secret is set.
+
+For the shortlist (the coins that get a RugCheck report) the bot also pulls: GoPlus token security (mint, freeze, close
+and balance authorities, transfer fee, trusted-token flag, holders, top-10 share, LP burn; a coin with any authority left
+is skipped), GeckoTerminal token facts (GT score, holders, top-10 share, authorities), RugCheck community votes,
+CoinGecko community data (watchlists, X followers, sentiment), StockTwits watchers and messages, the coin's X account
+(followers, tweets in 7 days, through the public syndication page) and its Telegram channel (members, messages in 24h,
+through the t.me preview). All of it is on the card and in the factors. Jupiter's price API re-prices every coin
+DexScreener drops, so the big test and the track record keep their prices; SOL and BTC's 24h change and the Fear & Greed
+index are recorded as market context for the models. Orca's busiest pools join the universe lists.
+
+Probed and not usable without a key or at all: Reddit's JSON API, Bluesky search, Birdeye, DexTools, Solscan, Bags,
+Believe, Moonshot, pump.fun's detail endpoints, CryptoPanic, fxtwitter, Google Trends.
 
 ## Training
 

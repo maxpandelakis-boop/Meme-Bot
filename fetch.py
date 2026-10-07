@@ -49,6 +49,19 @@ REDDIT_FEEDS = [("CryptoMoonShots", RD + "/r/CryptoMoonShots/new/.rss"), ("memec
 B58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 CASHTAG_RE = re.compile(r"\$([A-Za-z][A-Za-z0-9]{1,11})\b")
 CG_MEME_CATEGORY = "solana-meme-coins"
+GOPLUS = "https://api.gopluslabs.io/api/v1/solana/token_security"   # GoPlus token security for Solana: authorities, holders, LP burn; no key
+JUP_PRICE = "https://lite-api.jup.ag/price/v3"                     # Jupiter's price API: 50 mints per request; the re-pricing fallback
+ORCA = "https://api.orca.so/v2/solana/pools"
+FNG = "https://api.alternative.me/fng/?limit=1"
+FC = "https://api.warpcast.com/v2/search-casts"                    # Farcaster casts (public search)
+MASTO = "https://mastodon.social/api/v1/timelines/tag"
+CHAN = "https://a.4cdn.org/biz/catalog.json"
+ST = "https://api.stocktwits.com/api/2/streams/symbol"
+XSYN = "https://syndication.twitter.com/srv/timeline-profile/screen-name"
+TG = "https://t.me/s"
+SOCIAL_QUERIES = (("farcaster", FC + "?q=solana%20memecoin&limit=100"), ("farcaster", FC + "?q=pump.fun&limit=100"), ("farcaster", FC + "?q=memecoin&limit=100"),
+                  ("mastodon", MASTO + "/solana?limit=40"), ("mastodon", MASTO + "/memecoin?limit=40"), ("mastodon", MASTO + "/memecoins?limit=40"), ("mastodon", MASTO + "/pumpfun?limit=40"))
+QUOTE_MINTS = {"So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMGHMnZV5mLn8FXe9f2DoyA8z8K9HnQS7PnZLemAe"}
 KEYWORDS = list(dict.fromkeys("""dog cat pepe frog elon trump musk ai agent moon inu wif bonk chad wojak doge shib baby meme giga sigma based degen ape monkey bear bull penguin pengu hat
 rocket lambo fart poop gm wen ser anon pnut squirrel goat duck bird fish whale shark cow pig chill guy girl king queen god alien ufo mars pixel retro game
 punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot cult coin shiba floki mfer neko kitty puppy hamster capybara raccoon
@@ -88,11 +101,14 @@ ai gpt llm bot agent neural quantum crypto chain block hash node mesh grid net w
 sol eth btc bnb xrp ada dot link uni aave comp mkr snx yfi sushi cake bake rune luna atom osmo juno sei sui apt arb op base
 cat dog pig cow goat sheep horse donkey mule camel llama yak bison buffalo moose elk deer boar wolf fox bear lion tiger leopard cheetah
 hawk eagle owl crow raven parrot pigeon dove swan goose duck hen rooster turkey peacock flamingo pelican penguin puffin kiwi emu ostrich""".split())) if w not in set(KEYWORDS)]   # the deep search: only words the normal scan did not use
-NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
+NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+memecoin&hl=en-US&gl=US&ceid=US:en"),
+              ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
+              ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll")
-SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json")
-HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 2.0, "api.coinmarketcap.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm")
+SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json")
+HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 2.0, "api.coinmarketcap.com": 1.0,
+            "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
 
@@ -331,14 +347,34 @@ def ds_search(http, d, keywords):
 def ds_tokens(http, d, addrs, start=0):
     """Full pair data for a list of token addresses, 30 per request -> pairs/tokens_<k>.txt. Returns rows written."""
     addrs = [a for a in dict.fromkeys(a for a in addrs if addr_of(a))]
-    total, k = 0, start
+    total, k, got = 0, start, set()
     for i in range(0, len(addrs), 30):
         data = http.get(DS + "/tokens/v1/solana/" + ",".join(addrs[i:i + 30]))
         rows = [r for r in (ds_row(p) for p in (data if isinstance(data, list) else (data or {}).get("pairs") or [])) if r]
         total += write_rows(d, "pairs", "tokens_%03d.txt" % k, rows)
         k += 1
+        for r in rows:
+            got.add(r.split("|", 1)[0])
     http.log("  dexscreener tokens: %d pairs for %d addresses" % (total, len(addrs)))
+    missing = [a for a in addrs if a not in got]
+    if missing and "lite-api.jup.ag" not in http.dead:
+        jup_prices(http, d, missing, k)
     return total
+
+
+def jup_prices(http, d, addrs, k=0):
+    """Jupiter's price API for coins DexScreener did not return (50 mints per request): price and liquidity only, as
+    px-only rows -> pairs/jupx_<k>.txt. The big test and the track record then still get a price when DexScreener drops a
+    coin or a chunk fails; a coin Jupiter does not price either is the one that is really gone."""
+    rows = []
+    for i in range(0, len(addrs), 50):
+        data = http.get(JUP_PRICE + "?ids=" + ",".join(addrs[i:i + 50]))
+        for a, p in (data or {}).items() if isinstance(data, dict) else []:
+            if isinstance(p, dict) and num(p.get("usdPrice")):
+                rows.append(row(a, num(p.get("usdPrice")), num(p.get("liquidity"))))
+    n = write_rows(d, "pairs", "jupx_%03d.txt" % k, rows)
+    http.log("  jupiter prices: %d of %d coins DexScreener had no pair for" % (n, len(addrs)))
+    return n
 
 
 # ---------------------------------------------------------------- RugCheck
@@ -639,9 +675,70 @@ def reddit(http, d):
             if title:
                 posts.append([title[:200], sub, ms, found, tags])
                 addrs += found
+    n_reddit = len(posts)
+    for sub, url in SOCIAL_QUERIES:            # Farcaster casts and Mastodon tag timelines, same row shape
+        data = http.get(url)
+        items = ((data or {}).get("result") or {}).get("casts") if isinstance(data, dict) else data
+        for it in items if isinstance(items, list) else []:
+            if not isinstance(it, dict):
+                continue
+            text = html.unescape(re.sub(r"<[^>]+>", " ", str(it.get("text") or it.get("content") or "")))
+            ms = num(it.get("timestamp"))
+            if ms is None and it.get("created_at"):
+                try:
+                    ms = int(dt.datetime.fromisoformat(str(it["created_at"]).replace("Z", "+00:00")).timestamp() * 1000)
+                except ValueError:
+                    ms = None
+            found = [a for a in dict.fromkeys(B58_RE.findall(text)) if not a.isdigit()][:6]
+            tags = [t.upper() for t in dict.fromkeys(CASHTAG_RE.findall(text))][:8]
+            if text.strip() and (found or tags):
+                posts.append([text[:200], sub, ms, found, tags])
+                addrs += found
+    data = http.get(CHAN)                       # 4chan /biz/: every thread's subject and opening post
+    for page in data if isinstance(data, list) else []:
+        for th in (page or {}).get("threads") or []:
+            text = html.unescape(re.sub(r"<[^>]+>", " ", "%s %s" % (th.get("sub") or "", th.get("com") or "")))
+            found = [a for a in dict.fromkeys(B58_RE.findall(text)) if not a.isdigit()][:6]
+            tags = [t.upper() for t in dict.fromkeys(CASHTAG_RE.findall(text))][:8]
+            ms = num(th.get("last_modified")) or num(th.get("time"))
+            if (found or tags) and ms:
+                posts.append([text[:200], "4chan", int(ms * 1000), found, tags])
+                addrs += found
     write_json(d, "reddit.json", posts)
-    http.log("  reddit %d posts, %d addresses, %d cashtags" % (len(posts), len(set(addrs)), sum(1 for p in posts for _ in p[4])))
+    http.log("  social posts %d (reddit %d, farcaster/mastodon/4chan %d), %d addresses, %d cashtags" % (
+        len(posts), n_reddit, len(posts) - n_reddit, len(set(addrs)), sum(1 for p in posts for _ in p[4])))
     return sorted(set(addrs))
+
+
+def market(http, d):
+    """The market around the coins: SOL and BTC 24h change (CoinGecko) and the Fear & Greed index -> market.json."""
+    out = {}
+    px = http.get(CG + "/simple/price?ids=solana,bitcoin&vs_currencies=usd&include_24hr_change=true")
+    if isinstance(px, dict):
+        out["sol24"] = num((px.get("solana") or {}).get("usd_24h_change"))
+        out["btc24"] = num((px.get("bitcoin") or {}).get("usd_24h_change"))
+        out["solUsd"] = num((px.get("solana") or {}).get("usd"))
+    fg = http.get(FNG)
+    try:
+        out["fng"] = num(((fg or {}).get("data") or [{}])[0].get("value"))
+    except (AttributeError, IndexError, TypeError):
+        out["fng"] = None
+    write_json(d, "market.json", out)
+    http.log("  market: SOL %s%% 24h, BTC %s%%, fear & greed %s" % (out.get("sol24"), out.get("btc24"), out.get("fng")))
+    return out
+
+
+def orca_top(http):
+    """Orca's 100 busiest pools -> the non-quote mints in them (list orcaVol)."""
+    data = http.get(ORCA + "?limit=100&sort=volume24h&order=desc")
+    out = []
+    for p in ((data or {}).get("data") or []) if isinstance(data, dict) else []:
+        for k in ("tokenMintA", "tokenMintB"):
+            a = addr_of((p or {}).get(k))
+            if a and a not in QUOTE_MINTS:
+                out.append(a)
+    http.log("  orca top pools %d mints" % len(set(out)))
+    return sorted(set(out))
 
 
 def cg_meme(http, d):
@@ -719,7 +816,9 @@ def cmd_sources(http, d, light=False):
     lists["rcRecent"] = rc_list(http, "recent")
     lists["rcVerified"] = rc_list(http, "verified")
     lists["rayVol"] = ray_top(http)
+    lists["orcaVol"] = orca_top(http)
     lists.update(launchlab(http, d))
+    market(http, d)
     lists["reddit"] = reddit(http, d)          # publicity: what people post about, what CoinGecko and CoinMarketCap list
     lists["cgMeme"] = cg_meme(http, d)
     lists["cmcGain"] = cmc(http, d)
@@ -820,9 +919,123 @@ def ray_top(http):
     return out
 
 
-def cmd_risk(http, d, addrs):
+GP_COLS = ("address", "mintable", "freezable", "closable", "balMutable", "metaMutable", "transferFee", "nonTransferable", "trusted", "holderCount", "top10Pct", "lpBurnPct", "creatorMalicious", "dexN")
+GI_COLS = ("address", "gtScore", "holders", "top10Pct", "mintAuth", "freezeAuth")
+CM_COLS = ("address", "rcUp", "rcDown", "cgWatch", "cgTwitter", "cgReddit", "cgSentUp", "cgRank", "stWatch", "stMsgs24", "xFollowers", "xTweets7d", "tgSubs", "tgMsgs24")
+
+
+def goplus(http, d, addrs):
+    """GoPlus token security for the shortlist (20 mints per request) -> gp/<stamp>.txt: the authorities that can still mint,
+    freeze, close or rewrite balances, a transfer fee, whether GoPlus trusts it, holders, the top-10 share and the LP burn."""
+    rows = []
+    flag = lambda v: (1 if str((v or {}).get("status") if isinstance(v, dict) else v) == "1" else 0) if v is not None else None
+    for i in range(0, len(addrs), 20):
+        data = http.get(GOPLUS + "?contract_addresses=" + ",".join(addrs[i:i + 20]))
+        res = (data or {}).get("result") if isinstance(data, dict) else None
+        for a, t in (res or {}).items():
+            if not isinstance(t, dict):
+                continue
+            holders = [h for h in (t.get("holders") or []) if isinstance(h, dict)]
+            top10 = sum(num(h.get("percent")) or 0 for h in holders[:10])
+            top10 = top10 * 100 if top10 <= 1.0 else top10
+            burns = [num(x.get("burn_percent")) for x in (t.get("dex") or []) if isinstance(x, dict) and num(x.get("burn_percent")) is not None]
+            fee = t.get("transfer_fee") or {}
+            fee_pct = num(fee.get("current_fee_rate") if isinstance(fee, dict) else fee)
+            malicious = any(str((c or {}).get("malicious_address")) == "1" for c in (t.get("creators") or []) if isinstance(c, dict))
+            rows.append(row(a, flag(t.get("mintable")), flag(t.get("freezable")), flag(t.get("closable")), flag(t.get("balance_mutable_authority")),
+                            flag(t.get("metadata_mutable")), fee_pct, flag(t.get("non_transferable")), flag(t.get("trusted_token")),
+                            num(t.get("holder_count")), round(top10, 2) if holders else None, max(burns) if burns else None, malicious, len(t.get("dex") or [])))
+    n = write_rows(d, "gp", "gp_%d.txt" % int(time.time()), rows)
+    http.log("  goplus security %d of %d" % (n, len(addrs)))
+    return n
+
+
+def gt_info(http, d, addrs):
+    """GeckoTerminal token facts for the shortlist (30 per request, one request a time) -> gi/<stamp>.txt: GT score, holders,
+    top-10 share, mint and freeze authority."""
+    rows = []
+    for i in range(0, len(addrs), 30):
+        data = http.get(GT + "/networks/solana/tokens/multi/" + ",".join(addrs[i:i + 30]))
+        for t in ((data or {}).get("data") or []) if isinstance(data, dict) else []:
+            at = (t or {}).get("attributes") or {}
+            h = at.get("holders") or {}
+            dist = h.get("distribution_percentage") or {} if isinstance(h, dict) else {}
+            rows.append(row(at.get("address"), num(at.get("gt_score")), num(h.get("count")) if isinstance(h, dict) else None, num(dist.get("top_10")),
+                            None if at.get("mint_authority") is None else str(at.get("mint_authority")).lower() == "yes",
+                            None if at.get("freeze_authority") is None else str(at.get("freeze_authority")).lower() == "yes"))
+    n = write_rows(d, "gi", "gi_%d.txt" % int(time.time()), [r for r in rows if r.split("|", 1)[0]])
+    http.log("  geckoterminal token info %d of %d" % (n, len(addrs)))
+    return n
+
+
+def community(http, d, addrs, meta, now=None):
+    """What the public does with a shortlisted coin: RugCheck votes, CoinGecko community data (watchlists, followers,
+    sentiment), StockTwits watchers and messages, the X account's followers and recent tweets, the Telegram channel's
+    subscribers and recent messages -> cm/<stamp>.txt. Every part is optional; a source that fails leaves its fields empty."""
+    now = now or time.time()
+    rows = []
+    for a in addrs:
+        m = (meta or {}).get(a) or {}
+        v = http.get(RC + "/tokens/%s/votes" % a)
+        rc_up, rc_down = (num(v.get("up")), num(v.get("down"))) if isinstance(v, dict) else (None, None)
+        cg = http.get(CG + "/coins/solana/contract/%s?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false" % a)
+        cg = cg if isinstance(cg, dict) and cg.get("id") else {}
+        cd = cg.get("community_data") or {}
+        st_watch = st_msgs = None
+        sym = re.sub(r"[^A-Za-z0-9]", "", str(m.get("sym") or ""))
+        if sym and "api.stocktwits.com" not in http.dead:
+            s = http.get(ST + "/%s.X.json" % sym.upper())
+            if isinstance(s, dict) and isinstance(s.get("symbol"), dict):
+                st_watch = num(s["symbol"].get("watchlist_count"))
+                st_msgs = 0
+                for msg in s.get("messages") or []:
+                    try:
+                        t = email.utils.parsedate_to_datetime(str(msg.get("created_at"))).timestamp() if "," in str(msg.get("created_at")) else dt.datetime.fromisoformat(str(msg.get("created_at")).replace("Z", "+00:00")).timestamp()
+                    except (TypeError, ValueError):
+                        continue
+                    st_msgs += 1 if now - t <= 86400 else 0
+        x_fol = x_tw = None
+        handle = re.sub(r"^https://(www\.)?(x|twitter)\.com/", "", str(m.get("x") or "")).split("/")[0].split("?")[0]
+        if handle and re.fullmatch(r"[A-Za-z0-9_]{1,30}", handle) and handle.lower() not in ("i", "search", "home", "intent") and "syndication.twitter.com" not in http.dead:
+            page = http.get(XSYN + "/" + handle, kind="text") or ""
+            mf = re.search(r'"followers_count":(\d+)', page)
+            x_fol = num(mf.group(1)) if mf else None
+            if mf:
+                x_tw = 0
+                for mt in re.finditer(r'"created_at":"([A-Z][a-z]{2} [A-Z][a-z]{2} \d\d \d\d:\d\d:\d\d \+0000 \d{4})"', page):
+                    try:
+                        if now - email.utils.parsedate_to_datetime(mt.group(1)).timestamp() <= 7 * 86400:
+                            x_tw += 1
+                    except (TypeError, ValueError):
+                        pass
+        tg_subs = tg_msgs = None
+        chan = re.sub(r"^https?://(t\.me|telegram\.me)/(s/)?", "", str(m.get("tg") or "")).split("/")[0].split("?")[0]
+        if chan and re.fullmatch(r"[A-Za-z0-9_]{3,40}", chan) and "t.me" not in http.dead:
+            page = http.get(TG + "/" + chan, kind="text") or ""
+            ms_ = re.search(r'<div class="tgme_header_counter">([\d\s.,]+)\s*(subscribers|members)', page) or re.search(r'<div class="tgme_page_extra">([\d\s.,]+)\s*(subscribers|members)', page)
+            tg_subs = num(re.sub(r"[^\d]", "", ms_.group(1))) if ms_ else None
+            if "tgme_widget_message" in page:
+                tg_msgs = 0
+                for mt in re.finditer(r'<time datetime="([^"]+)"', page):
+                    try:
+                        if now - dt.datetime.fromisoformat(mt.group(1).replace("Z", "+00:00")).timestamp() <= 86400:
+                            tg_msgs += 1
+                    except ValueError:
+                        pass
+        rows.append(row(a, rc_up, rc_down, num(cg.get("watchlist_portfolio_users")), num(cd.get("twitter_followers")), num(cd.get("reddit_subscribers")),
+                        num(cg.get("sentiment_votes_up_percentage")), num(cg.get("market_cap_rank")), st_watch, st_msgs, x_fol, x_tw, tg_subs, tg_msgs))
+    n = write_rows(d, "cm", "cm_%d.txt" % int(time.time()), rows)
+    has = lambda i: sum(1 for r in rows if r.split("|")[i] not in ("", "null"))
+    http.log("  community %d of %d (coingecko %d, stocktwits %d, x %d, telegram %d)" % (n, len(addrs), has(3), has(8), has(10), has(12)))
+    return n
+
+
+def cmd_risk(http, d, addrs, meta=None):
     n = rc_reports(http, d, addrs)
+    goplus(http, d, addrs)
+    gt_info(http, d, addrs[:30])
     dev_check(http, d, addrs[:24])
+    community(http, d, addrs[:20], meta)
     if "gmgn.ai" not in http.dead:
         gm_top_buyers(http, d, addrs[:40])
     return n
@@ -846,6 +1059,7 @@ def main():
     ap.add_argument("--light", action="store_true")
     ap.add_argument("--addrs", default="")
     ap.add_argument("--from-gather", default="", help="a gather/shortlist JSON file whose chunks/shortlist give the addresses")
+    ap.add_argument("--meta", default="", help="risk: a JSON file {address: {sym, x, tg}} for the community lookups")
     ap.add_argument("--mock", default=os.environ.get("MEMEBOT_MOCK", ""))
     ap.add_argument("--pause", type=float, default=float(os.environ.get("MEMEBOT_PAUSE", "0.3")))
     a = ap.parse_args()
@@ -858,7 +1072,11 @@ def main():
     elif a.cmd == "tokens":
         print(json.dumps({"rows": cmd_tokens(http, a.dir, addrs_arg(a))}))
     elif a.cmd == "risk":
-        print(json.dumps({"reports": cmd_risk(http, a.dir, addrs_arg(a))}))
+        meta = {}
+        if a.meta and os.path.exists(a.meta):
+            with open(a.meta, encoding="utf-8") as f:
+                meta = json.load(f) or {}
+        print(json.dumps({"reports": cmd_risk(http, a.dir, addrs_arg(a), meta if isinstance(meta, dict) else {})}))
     else:
         print(json.dumps({"news": news(http, a.dir)}))
 

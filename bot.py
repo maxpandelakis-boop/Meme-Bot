@@ -129,7 +129,10 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             s = run(["memebot.py", "shortlist"] + extra, d, now)
             log("after the deep search: %d coins, %d gated; best: %s" % (g["coins"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
         if s["shortlist"] and not offline:
-            fetch(["risk", "--addrs", ",".join(s["shortlist"])])
+            meta_file = os.path.join(d, "shortmeta.json")
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(s.get("meta") or {}, f)
+            fetch(["risk", "--addrs", ",".join(s["shortlist"]), "--meta", meta_file])
     if mode["pick"] or mode["bigTestDue"]:
         # the training programs run on the scored snapshots before every pick: the run reads the zero model and the tuned limits
         t = run(["memebot.py", "train", "--horizon", horizon], d, now)

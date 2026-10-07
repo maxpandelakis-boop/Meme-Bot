@@ -132,6 +132,7 @@ PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6":
          # v3 knowledge: news, narrative heat, distinct buyers (GeckoTerminal), CoinGecko trending, smart wallets
          "news.hits": 0.1, "news.narr": 0.1, "news.fresh": 0.05, "gt.buyerRatio": 0.1, "cg.trend": 0.05, "sw.avg": 0.15, "sw.n": 0.05,
          "rd.posts": 0.1, "rd.byAddr": 0.05, "cgm.listed": 0.05, "cmc.search": 0.05, "cmc.gain": 0.05,
+         "gp.risk": -0.2, "gp.lpBurn": 0.1, "gp.trusted": 0.05, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.cgWatch": 0.05, "cm.xFollowers": 0.05, "cm.tgSubs": 0.05, "cm.stWatch": 0.05,
          # v4 traders: GMGN smart money, top buyers, leaderboard wallets
          "gm.smartDegen": 0.15, "gm.renowned": 0.1, "gm.bluechip": 0.1, "gm.hot": 0.05, "gm.bundler": -0.1, "gm.rat": -0.1, "gm.sniperHold": -0.1,
          "gm.wash": -0.15, "gm.rugRatio": -0.1, "gm.devHold": -0.05, "tb.holdShare": 0.1, "tb.smartHold": 0.15, "tb.sniperShare": -0.05,
@@ -161,6 +162,7 @@ PROFILES = {
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
                   "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2,
                   "rd.posts": 0.15, "rd.fresh": -0.05, "rd.byAddr": 0.05, "cmc.search": 0.1, "cmc.gain": 0.05, "cgm.listed": 0.05,
+                  "gp.risk": -0.25, "gp.lpBurn": 0.1, "gi.score": 0.05, "cm.rcNet": 0.05, "cm.xFollowers": 0.05, "cm.xTweets": 0.05, "cm.tgMsgs": 0.05, "cm.stMsgs": 0.05,
                   "dev.sold": -0.3, "dev.pct": -0.15, "dev.authOff": 0.05}}}
 
 
@@ -346,6 +348,9 @@ GM_COLS = ("address", "symbol", "name", "priceUsd", "marketCap", "liquidityUsd",
            "bundler", "rat", "bluechip", "rugRatio", "wash", "hot", "devHold", "sniperHold", "botDegen", "honeypot", "creatorStatus", "twRename",
            "openTs", "launchpad")
 DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "jupHolders", "organic", "txs3h", "devSold", "devSellAgeMin", "topHoldersPct")
+GP_COLS = ("address", "mintable", "freezable", "closable", "balMutable", "metaMutable", "transferFee", "nonTransferable", "trusted", "holderCount", "top10Pct", "lpBurnPct", "creatorMalicious", "dexN")
+GI_COLS = ("address", "gtScore", "holders", "top10Pct", "mintAuth", "freezeAuth")
+CM_COLS = ("address", "rcUp", "rcDown", "cgWatch", "cgTwitter", "cgReddit", "cgSentUp", "cgRank", "stWatch", "stMsgs24", "xFollowers", "xTweets7d", "tgSubs", "tgMsgs24")
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
 TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad", "devWallet", "creator", "poolId",
@@ -497,6 +502,9 @@ def cmd_gather(d, now):
     gt, gtags = load_side(d, "gt", GT_COLS)
     gm, mtags = load_side(d, "gm", GM_COLS)
     dev, _ = load_side(d, "dev", DEV_COLS)
+    gp, _ = load_side(d, "gp", GP_COLS)
+    gi, _ = load_side(d, "gi", GI_COLS)
+    cm, _ = load_side(d, "cm", CM_COLS)
     ll, ltags = load_side(d, "ll", LL_COLS)
     for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
@@ -529,6 +537,9 @@ def cmd_gather(d, now):
             p["dev"] = dict(dev[a])
         if a in ll:
             p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
+        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm)):
+            if a in table:
+                p[sub] = {k: v for k, v in table[a].items() if k != "address" and v is not None}
         if a in gm:
             p["gm"] = {k: gm[a].get(k) for k in ("holders", "top10", "smartDegen", "renowned", "sniper", "bundler", "rat", "bluechip", "rugRatio", "wash",
                                                  "hot", "devHold", "sniperHold", "botDegen", "honeypot", "creatorStatus", "twRename", "launchpad")}
@@ -947,6 +958,30 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
         f["dev.pct"], f["dev.txs3h"] = num(dv.get("devPct")), num(dv.get("txs3h"))
         f["dev.sold"] = 1.0 if dv.get("devSold") else 0.0
         f["dev.authOff"] = 1.0 if (dv.get("mintAuthOff") and dv.get("freezeAuthOff")) else 0.0
+    gp = pr.get("gp") or {}
+    if gp:
+        flags = ["mintable", "freezable", "closable", "balMutable", "nonTransferable"]
+        f["gp.risk"] = float(sum(1 for k in flags if gp.get(k)) + (1 if (num(gp.get("transferFee")) or 0) > 0 else 0) + (1 if gp.get("creatorMalicious") else 0))
+        f["gp.trusted"] = 1.0 if gp.get("trusted") else 0.0
+        for k, src in (("gp.holders", "holderCount"), ("gp.top10", "top10Pct"), ("gp.lpBurn", "lpBurnPct"), ("gp.dexN", "dexN")):
+            if num(gp.get(src)) is not None:
+                f[k] = num(gp.get(src))
+    gi = pr.get("gi") or {}
+    for k, src in (("gi.score", "gtScore"), ("gi.holders", "holders"), ("gi.top10", "top10Pct")):
+        if num(gi.get(src)) is not None:
+            f[k] = num(gi.get(src))
+    cm = pr.get("cm") or {}
+    for k, src in (("cm.rcUp", "rcUp"), ("cm.rcDown", "rcDown"), ("cm.cgWatch", "cgWatch"), ("cm.cgTwitter", "cgTwitter"), ("cm.cgSentUp", "cgSentUp"),
+                   ("cm.stWatch", "stWatch"), ("cm.stMsgs", "stMsgs24"), ("cm.xFollowers", "xFollowers"), ("cm.xTweets", "xTweets7d"), ("cm.tgSubs", "tgSubs"), ("cm.tgMsgs", "tgMsgs24")):
+        if num(cm.get(src)) is not None:
+            f[k] = num(cm.get(src))
+    if num(cm.get("rcUp")) is not None or num(cm.get("rcDown")) is not None:
+        up, down = num(cm.get("rcUp")) or 0.0, num(cm.get("rcDown")) or 0.0
+        f["cm.rcNet"] = (up - down) / (up + down + 3.0)
+    if pr.get("mkt"):
+        for k in ("sol24", "btc24", "fng"):
+            if num(pr["mkt"].get(k)) is not None:
+                f["mkt." + k] = num(pr["mkt"][k])
     # ---- v3 knowledge ----
     gt = pr.get("gt") or {}
     if gt:
@@ -1538,14 +1573,22 @@ def risky_rows(rows, held, recent, zmodel, umodel):
 def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
-    for a, pr in pairs.items():                       # the creator check (Jupiter + RPC) rides on the RugCheck entry
-        if pr.get("dev") and a in risk and isinstance(risk[a], dict):
-            risk[a] = dict(risk[a], dev=pr["dev"])
+    # the shortlist's side tables are fetched after the gather, so the run reads them itself (gather attaches them next time anyway)
+    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS)):
+        table, _ = load_side(d, sub, cols)
+        for a, r in table.items():
+            if a in pairs and not pairs[a].get(sub):
+                pairs[a][sub] = {k: v for k, v in r.items() if k != "address" and v is not None}
+    for a, pr in pairs.items():                       # the creator check (Jupiter + RPC), GoPlus and the community facts ride on the RugCheck entry
+        if a in risk and isinstance(risk[a], dict) and (pr.get("dev") or pr.get("gp") or pr.get("cm") or pr.get("gi")):
+            risk[a] = dict(risk[a], dev=pr.get("dev") or {}, gp=pr.get("gp") or {}, cm=pr.get("cm") or {}, gi=pr.get("gi") or {})
     news, cg, wallets = load_news(d, now), load_cg(d), wallet_table(d)
     tbs, board = load_top_buyers(d), load_leaderboard(d)
     held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9}
     recent = {p.get("addr") for p in pos.values() if now - (num(p.get("t")) or 0) < REPICK_DAYS * DAY}
     sym_mc, pub = {}, load_publicity(d, now)
+    mkt = load_json(os.path.join(d, "market.json"), {}) or {}
+    mkt = mkt if isinstance(mkt, dict) else {}
     for a, pr in pairs.items():
         s = str(pr.get("symbol") or "").upper()
         mc = num(pr.get("marketCap")) or 0
@@ -1556,7 +1599,7 @@ def scan(d, pos, pairs, now, w):
     for a, pr in pairs.items():
         if pr.get("px_only"):
             continue                      # price-only rows serve exits and the big test's re-pricing, they are not scanned coins
-        f, basic = feats(dict(pr, _a=a), now, soc, risk.get(a), news, cg, wallets, tbs.get(a), board, pub)
+        f, basic = feats(dict(pr, _a=a, mkt=mkt), now, soc, risk.get(a), news, cg, wallets, tbs.get(a), board, pub)
         if isinstance(risk.get(a), dict) and basic.get("holders"):
             risk[a]["holdersTop"] = basic["holders"]        # RugCheck owners + top buyers still holding -> what the wallet memory learns from
         if basic["age_h"] is None and f.get("ageH") is not None:
@@ -1616,10 +1659,32 @@ def risk_view(r):
     dev_note = ""
     if dv:
         dev_note = ", creator holds %s%%" % (round(dev_pct) if dev_pct is not None else "?") + (", no creator sale in 3h" if dv.get("txs3h") is not None else "")
+    gp = r.get("gp") or {}
+    if gp:
+        bad = [name for k, name in (("mintable", "supply can still be minted"), ("freezable", "accounts can be frozen"), ("closable", "accounts can be closed"),
+                                     ("balMutable", "balances can be rewritten"), ("nonTransferable", "the token cannot be transferred")) if gp.get(k)]
+        if (num(gp.get("transferFee")) or 0) > 0:
+            bad.append("a transfer fee of %s%%" % gp.get("transferFee"))
+        if gp.get("creatorMalicious"):
+            bad.append("a creator wallet GoPlus flags as malicious")
+        if bad:
+            return False, "GoPlus: " + ", ".join(bad[:3])
+        if num(gp.get("top10Pct")) is not None and num(gp["top10Pct"]) > MAX_TOP10 and (top10 is None or num(gp["top10Pct"]) > top10 + 5):
+            return False, "GoPlus: top 10 wallets hold %d%%" % round(num(gp["top10Pct"]))
     if hold is not None and hold < MIN_HOLDERS:
         return False, "RugCheck: only %d holders" % hold
+    gp_note = ""
+    if gp:
+        gp_note = "; GoPlus: no mint, freeze or balance authority" + (", trusted token" if gp.get("trusted") else "") + \
+            ((", LP %d%% burned" % round(num(gp["lpBurnPct"]))) if num(gp.get("lpBurnPct")) is not None else "")
+    cm = r.get("cm") or {}
+    cm_bits = [x for x in [("%d up / %d down community votes" % (num(cm.get("rcUp")) or 0, num(cm.get("rcDown")) or 0)) if num(cm.get("rcUp")) is not None or num(cm.get("rcDown")) is not None else "",
+                           ("%d CoinGecko watchlists" % num(cm["cgWatch"])) if num(cm.get("cgWatch")) else "",
+                           ("%s X followers" % money(num(cm["xFollowers"])).lstrip("$")) if num(cm.get("xFollowers")) else "",
+                           ("%s Telegram members" % money(num(cm["tgSubs"])).lstrip("$")) if num(cm.get("tgSubs")) else ""] if x]
+    cm_note = ("; community: " + ", ".join(cm_bits)) if cm_bits else ""
     return True, "RugCheck: no danger flags, %d%% of liquidity locked" % round(lp) + (", top 10 wallets hold %d%%" % round(top10) if top10 is not None else "") + \
-        (", %d holders" % hold if hold is not None else "") + (", %d insiders" % ins if ins else "") + dev_note + (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "")
+        (", %d holders" % hold if hold is not None else "") + (", %d insiders" % ins if ins else "") + dev_note + (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "") + gp_note + cm_note
 
 
 def risk_doc(r):
@@ -1631,6 +1696,9 @@ def risk_doc(r):
     dv = r.get("dev")
     if isinstance(dv, dict):
         doc["dev"] = {k: dv.get(k) for k in ("devPct", "devSold", "devSellAgeMin", "mintAuthOff", "freezeAuthOff", "txs3h", "jupHolders", "organic") if dv.get(k) is not None}
+    for sub in ("gp", "cm", "gi"):
+        if isinstance(r.get(sub), dict) and r[sub]:
+            doc[sub] = dict(r[sub])
     if r.get("holdersTop"):
         doc["holders"] = list(r["holdersTop"])[:40]      # kept in snapshots so scored coins can credit their wallets
     return doc
@@ -1656,7 +1724,8 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     if recommend and room > 0 and len(short) < SHORTLIST:      # the fallback pool needs RugCheck reports too
         short += [r for r in soft_rows(rows, held, recent) if r["a"] not in risk][:SHORTLIST - len(short)]
     more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
-    print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short],
+    meta = {r["a"]: {"sym": str(r["pr"].get("symbol") or "")[:16], "x": x_link(r["pr"]), "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100]} for r in short + more}
+    print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta,
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
 
@@ -1694,6 +1763,20 @@ def why_text(r):
         bits.append("in CoinMarketCap's top searches" + (" (#%d)" % f["cmc.searchRank"] if f.get("cmc.searchRank") else ""))
     if f.get("cmc.gain"):
         bits.append("on CoinMarketCap's Solana top-gainers list")
+    if f.get("cm.rcUp") is not None or f.get("cm.rcDown") is not None:
+        bits.append("%d up / %d down RugCheck community votes" % (f.get("cm.rcUp") or 0, f.get("cm.rcDown") or 0))
+    if f.get("cm.cgWatch"):
+        bits.append("on %d CoinGecko watchlists" % f["cm.cgWatch"])
+    if f.get("cm.xFollowers"):
+        bits.append("X account with %s followers%s" % (money(f["cm.xFollowers"]).lstrip("$"), (", %d tweets in 7 days" % f["cm.xTweets"]) if f.get("cm.xTweets") is not None else ""))
+    if f.get("cm.tgSubs"):
+        bits.append("Telegram with %s members%s" % (money(f["cm.tgSubs"]).lstrip("$"), (", %d messages in 24h" % f["cm.tgMsgs"]) if f.get("cm.tgMsgs") is not None else ""))
+    if f.get("cm.stWatch"):
+        bits.append("%d StockTwits watchers" % f["cm.stWatch"])
+    if f.get("gi.score") is not None:
+        bits.append("GeckoTerminal score %d" % f["gi.score"])
+    if f.get("mkt.sol24") is not None:
+        bits.append("SOL %+.0f%% in 24h" % f["mkt.sol24"] + ((", fear & greed %d" % f["mkt.fng"]) if f.get("mkt.fng") is not None else ""))
     if f.get("sw.n"):
         bits.append("%d top wallet%s with a track record (avg %+.1f euros per 20 on past coins)" % (f["sw.n"], "" if f["sw.n"] == 1 else "s", f.get("sw.avg", 0)))
     if f.get("gm.smartDegen") is not None:

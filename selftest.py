@@ -121,6 +121,61 @@ class Mock:
         if path.startswith("/api.rugcheck.xyz/v1/stats/"):
             off = {"new_tokens": 150, "trending": 1000, "recent": 1030, "verified": 1060}.get(path.rsplit("/", 1)[1], 150)
             return 200, [{"mint": c["a"]} for c in self.coins[off:off + 50]]
+        mv = re.match(r"^/api\.rugcheck\.xyz/v1/tokens/([^/]+)/votes$", path)
+        if mv:
+            return 200, {"up": 40, "down": 3, "userVoted": False}
+        if path.startswith("/api.gopluslabs.io/api/v1/solana/token_security"):
+            res = {}
+            for a in q.get("contract_addresses", [""])[0].split(","):
+                c = self.by_a.get(a)
+                if c:
+                    i = self.coins.index(c)
+                    res[a] = {"mintable": {"status": "1" if i % 11 == 5 else "0"}, "freezable": {"status": "0"}, "closable": {"status": "0"}, "balance_mutable_authority": {"status": "0"},
+                              "metadata_mutable": {"status": "0"}, "transfer_fee": {}, "non_transferable": "0", "trusted_token": 1 if i % 3 == 0 else 0, "holder_count": 1500,
+                              "holders": [{"account": "h%d" % k, "percent": "0.02"} for k in range(10)], "dex": [{"dex_name": "raydium", "burn_percent": 100}], "creators": []}
+            return 200, {"code": 1, "message": "ok", "result": res}
+        if path.startswith("/lite-api.jup.ag/price/v3"):
+            out = {}
+            for a in q.get("ids", [""])[0].split(","):
+                c = self.by_a.get(a)
+                if c and not c["gone"]:
+                    out[a] = {"usdPrice": c["px"] * c["mult"], "liquidity": c["liq"], "priceChange24h": 1.0}
+                elif a.startswith("JUPXFALLBACK"):
+                    out[a] = {"usdPrice": 0.000123, "liquidity": 55555.0, "priceChange24h": 1.0}
+            return 200, out
+        if path.startswith("/api.geckoterminal.com/api/v2/networks/solana/tokens/multi/"):
+            addrs = path.rsplit("/", 1)[1].split(",")
+            return 200, {"data": [{"id": "solana_" + a, "type": "token", "attributes": {"address": a, "gt_score": 70.5, "holders": {"count": 1800, "distribution_percentage": {"top_10": "18.5"}}, "mint_authority": "no", "freeze_authority": "no"}} for a in addrs if a in self.by_a]}
+        if path.startswith("/api.orca.so/v2/solana/pools"):
+            return 200, {"data": [{"address": "p%d" % i, "tokenMintA": "So11111111111111111111111111111111111111112", "tokenMintB": c["a"]} for i, c in enumerate(self.coins[700:760])]}
+        if path.startswith("/api.alternative.me/fng/"):
+            return 200, {"name": "Fear and Greed Index", "data": [{"value": "66", "value_classification": "Greed"}]}
+        if path.startswith("/api.coingecko.com/api/v3/simple/price"):
+            return 200, {"solana": {"usd": 120.0, "usd_24h_change": -2.5}, "bitcoin": {"usd": 90000.0, "usd_24h_change": -1.0}}
+        if path.startswith("/api.coingecko.com/api/v3/coins/solana/contract/"):
+            a = path.rsplit("/", 1)[1].split("?")[0]
+            if a in self.by_a:
+                return 200, {"id": "c-" + a[:6], "watchlist_portfolio_users": 2500, "sentiment_votes_up_percentage": 71.0, "market_cap_rank": 900, "community_data": {"twitter_followers": 12000, "reddit_subscribers": 300}}
+            return 404, {"error": "coin not found"}
+        if path.startswith("/api.warpcast.com/v2/search-casts"):
+            return 200, {"result": {"casts": [{"hash": "0x%d" % i, "text": "ape in %s CA %s $%s" % (c["name"], c["a"], c["sym"]), "timestamp": int(T0 - 600000 * i), "author": {"followerCount": 100}} for i, c in enumerate(self.coins[12:20])]}}
+        if path.startswith("/mastodon.social/api/v1/timelines/tag/"):
+            return 200, [{"id": str(i), "content": "<p>$%s is moving, ca %s</p>" % (c["sym"], c["a"]), "created_at": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(T0 / 1000 - 900 * i))} for i, c in enumerate(self.coins[20:26])]
+        if path.startswith("/a.4cdn.org/biz/catalog.json"):
+            return 200, [{"page": 1, "threads": [{"no": i, "sub": "%s thread" % c["sym"], "com": "buy $%s now<br>%s" % (c["sym"], c["a"]), "time": int(T0 / 1000 - 3600 * i), "last_modified": int(T0 / 1000 - 60 * i)} for i, c in enumerate(self.coins[26:32])]}]
+        if path.startswith("/api.stocktwits.com/api/2/streams/symbol/"):
+            sym = path.rsplit("/", 1)[1].replace(".X.json", "")
+            if any(c["sym"] == sym for c in self.coins):
+                return 200, {"symbol": {"symbol": sym + ".X", "watchlist_count": 777}, "messages": [{"id": i, "body": "x", "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(T0 / 1000 - 3000 * i))} for i in range(12)]}
+            return 404, {"errors": [{"message": "not found"}]}
+        if path.startswith("/syndication.twitter.com/srv/timeline-profile/screen-name/"):
+            return 200, '<html><script id="__NEXT_DATA__">{"props":{"user":{"followers_count":45678},"entries":[%s]}}</script></html>' % ",".join(
+                '{"created_at":"%s"}' % time.strftime("%a %b %d %H:%M:%S +0000 %Y", time.gmtime(T0 / 1000 - 86400 * i)) for i in range(5))
+        if path.startswith("/t.me/s/"):
+            return 200, '<html><div class="tgme_header_counter">12 345 members</div>%s</html>' % "".join('<div class="tgme_widget_message"><time datetime="%s"></time></div>' % time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(T0 / 1000 - 7200 * i)) for i in range(6))
+        if "/rss/search" in path:
+            items = "".join("<item><title>%s coin %s in the news</title><pubDate>%s</pubDate></item>" % (c["name"], c["sym"], time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime(T0 / 1000 - 3600 * i))) for i, c in enumerate(self.coins[8:12]))
+            return 200, '<?xml version="1.0"?><rss version="2.0"><channel><title>g</title>%s</channel></rss>' % items
         m = re.match(r"^/api\.rugcheck\.xyz/v1/tokens/([^/]+)/report$", path)
         if m and m.group(1) in self.by_a:
             c = self.by_a[m.group(1)]
@@ -161,7 +216,7 @@ class Mock:
             off = int(q.get("offset", ["0"])[0])
             base = 500 if "market_cap" in q.get("sort", [""])[0] else (650 if "currently-live" in path else (750 if q.get("complete") else 700))
             return 200, [{"mint": c["a"], "symbol": c["sym"], "name": c["name"], "usd_market_cap": c["mc"], "market_cap": 50, "ath_market_cap": c["mc"] * 2, "reply_count": 12,
-                          "is_currently_live": False, "complete": True, "created_timestamp": T0 - 5 * H, "twitter": "https://x.com/a", "website": None, "telegram": None}
+                          "is_currently_live": False, "complete": True, "created_timestamp": T0 - 5 * H, "twitter": "https://x.com/a", "website": None, "telegram": "https://t.me/" + c["sym"].lower() + "chat"}
                          for c in self.coins[base + off:base + off + 50]]
         if path.startswith("/lite-api.jup.ag/tokens/v2/search") and q.get("query", [""])[0] in self.by_a:
             c = self.by_a[q["query"][0]]
@@ -263,11 +318,28 @@ def main():
     g = json.loads(subprocess.run([PY, os.path.join(HERE, "memebot.py"), "gather", "--dir", d, "--now", str(T0)], capture_output=True, text=True).stdout)
     check(g["coins"] >= 1000, "universe has %d coins (>= 1000)" % g["coins"])
     check(g["geckoterminal"] > 0 and g["pumpfun"] > 0 and g["jupiter"] > 0 and g["coingecko"] > 0 and g["news"] > 0, "every mocked source parsed: gt %d pf %d jup %d cg %d news %d" % (g["geckoterminal"], g["pumpfun"], g["jupiter"], g["coingecko"], g["news"]))
-    check(g.get("reddit", 0) >= 12 and g.get("cgMeme", 0) >= 40 and g["lists"].get("reddit", 0) >= 12 and g["lists"].get("cmcGain", 0) >= 20,
-          "publicity sources parsed: reddit %s mentions, coingecko meme list %s, cmc gainers %s" % (g.get("reddit"), g.get("cgMeme"), g["lists"].get("cmcGain")))
+    check(g.get("reddit", 0) >= 30 and g.get("cgMeme", 0) >= 40 and g["lists"].get("reddit", 0) >= 30 and g["lists"].get("cmcGain", 0) >= 20 and g["lists"].get("orcaVol", 0) >= 50,
+          "publicity sources parsed: %s social mentions (reddit, farcaster, mastodon, 4chan), coingecko meme list %s, cmc gainers %s, orca %s" % (g.get("reddit"), g.get("cgMeme"), g["lists"].get("cmcGain"), g["lists"].get("orcaVol")))
     check("giving up on gmgn.ai" in err, "GMGN 403 trips the circuit breaker")
     devrows = [l for f in glob.glob(os.path.join(d, "dev", "*.txt")) for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not l.startswith("#")]
     check(devrows and "creator check" in err, "the creator check wrote %d rows (Jupiter facts + RPC transactions)" % len(devrows))
+    side = lambda sub: [l for f in glob.glob(os.path.join(d, sub, "*.txt")) for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not l.startswith("#")]
+    gp, gi, cm = side("gp"), side("gi"), side("cm")
+    check(gp and gi and cm and "goplus security" in err and "community" in err, "GoPlus (%d), GeckoTerminal info (%d) and community (%d) rows written for the shortlist" % (len(gp), len(gi), len(cm)))
+    fv = lambda l, i: float(l.split("|")[i]) if l.split("|")[i] not in ("", "null") else None
+    check(cm and all(len(l.split("|")) == 14 for l in cm) and any(fv(l, 1) == 40 for l in cm) and any(fv(l, 3) == 2500 for l in cm) and any(fv(l, 10) == 45678 for l in cm) and any(fv(l, 12) == 12345 for l in cm),
+          "community rows carry RugCheck votes, CoinGecko watchlists, X followers and Telegram members (%s)" % (cm[0][:140] if cm else "-"))
+    import memebot as MB
+    v_gp = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "gp": {"mintable": 1, "freezable": 0}})
+    v_gp2 = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "gp": {"mintable": 0, "trusted": 1, "lpBurnPct": 100}, "cm": {"rcUp": 40, "rcDown": 3, "cgWatch": 2500}})
+    check(v_gp[0] is False and "minted" in v_gp[1] and v_gp2[0] is True and "GoPlus" in v_gp2[1] and "community votes" in v_gp2[1], "GoPlus mintable blocks a coin; a clean one carries the GoPlus and community facts (%s)" % v_gp2[1][-120:])
+    mk = json.load(open(os.path.join(d, "market.json")))
+    check(mk.get("sol24") == -2.5 and mk.get("fng") == 66, "market context saved (SOL %s%%, fear & greed %s)" % (mk.get("sol24"), mk.get("fng")))
+    jd = tempfile.mkdtemp(prefix="memebot-jup-")
+    r = subprocess.run([PY, os.path.join(HERE, "fetch.py"), "tokens", "--dir", jd, "--mock", url, "--pause", "0", "--addrs", "JUPXFALLBACK" + "2" * 32 + "," + mock.coins[3]["a"]], capture_output=True, text=True)
+    jrows = side_j = [l for f in glob.glob(os.path.join(jd, "pairs", "jupx_*.txt")) for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not l.startswith("#")]
+    check(r.returncode == 0 and len(jrows) == 1 and jrows[0].startswith("JUPXFALLBACK") and "jupiter prices: 1 of 1" in r.stderr, "a coin DexScreener does not return is priced through Jupiter (%s)" % (jrows[0][:60] if jrows else r.stderr[-100:]))
+    shutil.rmtree(jd, ignore_errors=True)
     import memebot as MB
     v_sold = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": True, "devSellAgeMin": 25, "mintAuthOff": True, "txs3h": 3}})
     v_ok = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": False, "mintAuthOff": True, "freezeAuthOff": True, "txs3h": 0}})
@@ -374,10 +446,10 @@ def main():
     page = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
     check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
     old_rec = rec
-    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 120000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
     same = lambda a, b: [c["addr"] for c in a.get("picks", [])] == [c["addr"] for c in b.get("picks", [])]
-    check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s)" % (r.stderr.strip().splitlines() or ["?"])[-1][:120])
+    check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s -> %s; %s)" % ([c["sym"] for c in old_rec.get("picks", [])], [c["sym"] for c in rec2.get("picks", [])], (r.stderr.strip().splitlines() or ["?"])[-1][:100]))
 
     print("== training: walk-forward test, zero model and tuned limits on synthetic snapshot results")
     td = tempfile.mkdtemp(prefix="memebot-train-")
