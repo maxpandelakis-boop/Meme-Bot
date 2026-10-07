@@ -1,0 +1,53 @@
+# Manual probe, round 2: candidate sources for holder/wallet behaviour and more pool lists. Prints status, size, count, sample.
+name: probe-sources2
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - shell: bash
+        run: |
+          probe() {  # name url [post-json]
+            if [ -n "$3" ]; then
+              out=$(curl -sS -o /tmp/body -w '%{http_code} %{time_total}s' --max-time 25 -A 'Mozilla/5.0' -H 'Content-Type: application/json' -d "$3" "$2" 2>&1 || true)
+            else
+              out=$(curl -sS -o /tmp/body -w '%{http_code} %{time_total}s' --max-time 25 -A 'Mozilla/5.0' -H 'Accept: application/json' "$2" 2>&1 || true)
+            fi
+            n=$(jq -r 'def c: if type=="array" then length elif type=="object" then (to_entries|map(select(.value|type=="array" or (.value|type=="object")))|map("\(.key):\(.value|if type=="array" then length else (keys|join("/")) end)")|join(",")|.[0:120]) else type end; c' /tmp/body 2>/dev/null || echo "not json")
+            printf '%-20s %-18s %8s bytes  n=%s\n   %s\n\n' "$1" "$out" "$(wc -c </tmp/body)" "$n" "$(head -c 300 /tmp/body | tr '\n' ' ')"
+            sleep 0.6
+          }
+          M=BaqDcVARx7Bcs73o6pvexwNcpnHuW8z11zaw2Mjepump
+          probe ray-list-liq   'https://api-v3.raydium.io/pools/info/list?poolType=all&poolSortField=liquidity&sortType=desc&pageSize=50&page=1'
+          probe ray-list-vol   'https://api-v3.raydium.io/pools/info/list?poolType=all&poolSortField=volume24h&sortType=desc&pageSize=50&page=1'
+          probe ray-list-new   'https://api-v3.raydium.io/pools/info/list?poolType=all&poolSortField=default&sortType=desc&pageSize=50&page=1'
+          probe ray-launchlab  'https://launch-mint-v1.raydium.io/get/list?sort=new&size=100&mintType=default&includeNsfw=false'
+          probe ray-launch-hot 'https://launch-mint-v1.raydium.io/get/list?sort=lastTrade&size=100&mintType=default&includeNsfw=false'
+          probe ray-launch-mc  'https://launch-mint-v1.raydium.io/get/list?sort=marketCap&size=100&mintType=default&includeNsfw=false'
+          probe met-groups     'https://dlmm-api.meteora.ag/pair/all_by_groups?page=0&limit=50&sort_key=volume&order_by=desc'
+          probe met-amm        'https://amm-v2.meteora.ag/pools?page=0&size=50'
+          probe met-dbc        'https://dbc-api.meteora.ag/pools?page=0&limit=50'
+          probe pf-latest      'https://frontend-api-v3.pump.fun/coins/latest'
+          probe pf-search      'https://frontend-api-v3.pump.fun/coins/search?offset=0&limit=50&sort=market_cap&order=DESC&includeNsfw=false'
+          probe pf-adv-grad    'https://advanced-api-v2.pump.fun/coins/graduated'
+          probe pf-adv-list    'https://advanced-api-v2.pump.fun/coins/list?sortBy=creationTime'
+          probe pf-coin        "https://frontend-api-v3.pump.fun/coins/$M"
+          probe ds-orders      "https://api.dexscreener.com/orders/v1/solana/$M"
+          probe gt-token-info  "https://api.geckoterminal.com/api/v2/networks/solana/tokens/$M/info"
+          probe gt-token       "https://api.geckoterminal.com/api/v2/networks/solana/tokens/$M"
+          probe jup-search     "https://lite-api.jup.ag/tokens/v2/search?query=$M"
+          probe rc-insiders    "https://api.rugcheck.xyz/v1/tokens/$M/insiders/graph"
+          probe rc-votes       "https://api.rugcheck.xyz/v1/tokens/$M/votes"
+          probe bubble-legacy  "https://api-legacy.bubblemaps.io/map-data?token=$M&chain=sol"
+          probe solfm-holders  "https://api.solana.fm/v1/tokens/$M/holders?page=1&pageSize=20"
+          probe solscan-pub    "https://public-api.solscan.io/token/holders?tokenAddress=$M&limit=10"
+          probe birdeye-pub    "https://public-api.birdeye.so/defi/token_overview?address=$M"
+          probe rpc-largest    'https://api.mainnet-beta.solana.com' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTokenLargestAccounts\",\"params\":[\"$M\"]}"
+          probe rpc-sigs       'https://api.mainnet-beta.solana.com' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getSignaturesForAddress\",\"params\":[\"$M\",{\"limit\":20}]}"
+          probe rpc-supply     'https://api.mainnet-beta.solana.com' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTokenSupply\",\"params\":[\"$M\"]}"
+          probe rpc-publicnode 'https://solana-rpc.publicnode.com' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTokenLargestAccounts\",\"params\":[\"$M\"]}"
+          probe rpc-drpc       'https://solana.drpc.org' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTokenLargestAccounts\",\"params\":[\"$M\"]}"
+          echo "burst: 12 quick RPC calls to mainnet-beta"
+          codes=""; for i in $(seq 1 12); do c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H 'Content-Type: application/json' -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTokenSupply\",\"params\":[\"$M\"]}" https://api.mainnet-beta.solana.com || echo ERR); codes="$codes $c"; done; echo "codes:$codes"
