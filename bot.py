@@ -363,6 +363,9 @@ def summary(d):
     if lines:
         out.append("")
         out.append("Track record (fake money, 20 per tip): " + "; ".join(lines) + ".")
+        chain = R.compound_chain(docs)
+        if chain["n"]:
+            out.append("20 put into every tip one after the other (sold after 1 h, after fees) would be %.2f now after %d tips." % (chain["equity"], chain["n"]))
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), {}) or {}
     if isinstance(train, dict) and train.get("note"):
         out.append("")

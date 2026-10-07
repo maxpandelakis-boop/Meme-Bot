@@ -538,6 +538,7 @@ def main():
     td = tempfile.mkdtemp(prefix="memebot-train-")
     sys.path.insert(0, HERE)
     import memebot as M
+    import report as R
     rng = random.Random(3)
     os.makedirs(os.path.join(td, "db", "memesnapres"))
     syn = {}
@@ -650,6 +651,8 @@ def main():
     day = [o for doc in recs for o in ((doc.get("outs") or {}).get("24") or {}).get("picks", [])]
     page3 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
     check(r.returncode == 0 and day and "24 h later: %d tips priced" % len(day) in page3, "a day later the tips carry their 24 h result too (%d)" % len(day))
+    m_chain = re.search(r"one after the other \(sold after 1 h, after fees\) would be ([\d.,]+) now after (\d+) tips", page3)
+    check(m_chain and int(m_chain.group(2)) >= 1, "the page says what 20 riding every tip would be now (%s)" % (m_chain.group(0)[-40:] if m_chain else "missing"))
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
     shutil.rmtree(hd, ignore_errors=True)
 

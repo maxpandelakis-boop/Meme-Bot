@@ -939,6 +939,20 @@ def no_coin_reason(note):
     return "no coin named"
 
 
+def compound_chain(recs, key="1"):
+    """What 20 becomes when it rides every tip in turn: each tip's 1 h result (after fees) multiplies the stake. Tips of one
+    scan share the stake equally. The honest 'how much would 20 be now' line."""
+    equity, n = M.TICKET, 0
+    for doc in sorted((d for d in recs if isinstance(d, dict) and str(d.get("rule") or M.RULE) == M.RULE), key=lambda d: M.num(d.get("t")) or 0):
+        outs = [o for o in (((doc.get("outs") or {}).get(key) or {}).get("picks") or []) if isinstance(o, dict) and M.num(o.get("eur")) is not None]
+        if not outs:
+            continue
+        mult = sum((M.TICKET + M.num(o["eur"])) / M.TICKET for o in outs) / len(outs)
+        equity *= max(0.0, mult)
+        n += 1
+    return {"equity": round(equity, 2), "n": n}
+
+
 def history_section(D):
     """Every scan of the last days, newest first: what the bot named at that hour (tier, score, the odds it gave), and
     what 20 in it became when the horizon had passed. Scans that named nothing say why. This is the page's memory."""
@@ -1004,6 +1018,9 @@ def history_section(D):
             up_n = sum(1 for o in sc if (M.num(o.get("eur")) or 0) > 0)
             bits.append("%d h later: %d tips priced, %d went up, average %s per 20" % (h, len(sc), up_n, fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)))
     sub += (" · track record " + "; ".join(bits)) if bits else " · no tip has been priced again yet"
+    chain = compound_chain(recs)
+    if chain["n"]:
+        sub += " · 20 put into every tip one after the other (sold after 1 h, after fees) would be %s now after %d tips" % (fmt_amt(chain["equity"]), chain["n"])
     sub += " · fake money, 20 per tip, after fees"
     head = '<thead><tr><th>scan at</th><th>named</th><th class="n">score</th><th class="n">odds then</th>%s<th></th></tr></thead>' % "".join('<th class="n">%d h later</th>' % h for h in M.TIP_CHECKS)
     body = '<div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows[:HISTORY_OPEN]))
