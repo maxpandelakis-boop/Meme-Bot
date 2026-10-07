@@ -688,6 +688,8 @@ def tier_chip(c):
         return '<span class="chip warn" title="%s">fallback · momentum rules relaxed</span>' % E(relaxed or "no clean coin passed every gate")
     if t == "risky":
         return '<span class="chip warn" title="no coin had a clean safety report this scan: this is the tradable coin with the best trained odds, shown with its flag and its odds">risky · nothing clean, best odds</span>'
+    if t == "watch":
+        return '<span class="chip bad" title="shown because the page always names the safest-looking coin: its trained odds say a loss on average, so it is not a pick">watch only · the odds say a loss</span>'
     if t == "young":
         return '<span class="chip" title="under an hour old: shown on the new-launches tab, never picked (the profile wants coins at least 3 hours old)">new launch · not a pick</span>'
     return '<span class="chip neutral">strong pick</span>'
@@ -787,6 +789,9 @@ def rec_card(c, now, embed):
         notes += '<p class="note">DexScreener delivered no pair data this scan: the numbers here come from Jupiter or GeckoTerminal, which stood in. The chart opens by mint address.</p>'
     if c.get("tier") == "fallback":
         notes = '<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))
+    elif c.get("tier") == "watch":
+        notes += '<p class="note"><strong>Not a pick.</strong> Every coin that cleared the safety floor had trained odds of a loss this scan. This is the safest-looking one, shown with the odds that stopped it: %s%s.</p>' % (
+            ("%s chance of a profit" % pct(100 * M.num(c["upP"]))) if M.num(c.get("upP")) is not None else "", (", %s chance of going to zero" % pct(100 * M.num(c["zeroP"]))) if M.num(c.get("zeroP")) is not None else "")
     elif c.get("tier") == "risky":
         notes = '<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero), not a clean pick.%s</p>' % (
             (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")
@@ -822,6 +827,8 @@ def rec_section(D, embed):
     n = len(picks)
     hz = " for the next 2 hours" if M.HORIZON == "2h" else ""
     h2 = {0: "No recommendation", 1: "One recommendation", 2: "Two recommendations"}.get(n, "%d recommendations" % n) + hz
+    if picks and all(c.get("tier") == "watch" for c in picks):
+        h2 = "No pick, one coin to watch" + hz
     head = "fake money · the bot names coins, it buys nothing · %s of %s scanned passed the gates" % (rc.get("passed") or 0, rc.get("scanned") or "–")
     if rc.get("pickBy") == "odds":
         head += " · candidates ranked by trained odds (the training found them better than the score)"

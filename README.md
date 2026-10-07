@@ -112,6 +112,13 @@ sale, no authority left, and at least the profile's minimum age; shown with what
 odds). When nothing clears even that floor, the page says so and names no coin: a 20-minute-old launch without a report
 is never a tip, whatever its odds.
 
+### Always a coin, never a loss called a pick
+
+When no clean coin passes and no risky coin clears the trained odds, the page still names the safest-looking coin as a
+**watch** coin: the chip says "watch only · the odds say a loss", the card shows the odds that stopped it, and the
+heading reads "No pick, one coin to watch". It is recorded and priced again like a tip, so the record keeps learning
+from it, but it is not a recommendation.
+
 ### Hour by hour
 
 Under the pick, "Recommendations, hour by hour" lists every scan of the last two days, newest first: the time, the coin

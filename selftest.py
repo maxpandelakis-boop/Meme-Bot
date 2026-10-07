@@ -610,7 +610,13 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "run", "--dir", rd, "--mode", "pick", "--recommend", "--now", str(T0 + 2 * H + 60000)], capture_output=True, text=True)
     rec5 = json.load(open(os.path.join(rd, "out", "memebot__recommend.json"))) if os.path.exists(os.path.join(rd, "out", "memebot__recommend.json")) else {}
     p5 = (rec5.get("picks") or [{}])[0]
-    check(r.returncode == 0 and not rec5.get("picks") and "trained odds of a loss" in (rec5.get("reason") or ""), "with every coin over the zero limit no coin is named, not even a risky one (%s)" % (rec5.get("reason") or "")[:80])
+    prev_rec = open(os.path.join(rd, "db", "memebot", "recommend.json"), encoding="utf-8").read()
+    shutil.copy(os.path.join(rd, "out", "memebot__recommend.json"), os.path.join(rd, "db", "memebot", "recommend.json"))
+    subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", rd], capture_output=True, text=True)
+    page5 = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
+    open(os.path.join(rd, "db", "memebot", "recommend.json"), "w", encoding="utf-8").write(prev_rec)
+    check(r.returncode == 0 and len(rec5.get("picks", [])) == 1 and rec5["picks"][0].get("tier") == "watch" and "watch only" in page5 and "No pick, one coin to watch" in page5,
+          "with every coin over the zero limit the safest-looking coin is shown as a watch coin, not a pick (%s)" % [(c["sym"], c.get("tier")) for c in rec5.get("picks", [])])
     rk_ok = {"lpLocked": 80, "top1Pct": 5, "top10Pct": 30, "insiders": 3, "holders": 900, "warn": "High holder correlation"}
     rk_bad = {"lpLocked": 80, "top1Pct": 5, "top10Pct": 30, "insiders": 3, "holders": 120}
     mk = lambda a, age, mc, fails, up, zp: {"a": a, "pr": {"symbol": a}, "f": {}, "basic": {"price": 1.0, "liq": 50000.0, "mc": mc, "age_h": age}, "fails": fails, "sc": 50.0, "ok": not fails}

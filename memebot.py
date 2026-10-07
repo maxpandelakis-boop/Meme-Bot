@@ -2335,12 +2335,15 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             if not chosen:
                 # the risky tier still demands the relaxed safety floor (the 24h profile's): a report with no danger flag, half
                 # the liquidity locked, no whale, enough holders, no creator sale or authority. Nothing clears it -> no coin.
+                watch = None
                 for r in risky_rows(rows, held, recent, zmodel, umodel, risk):
                     ok_l, ltxt = loose_view(risk.get(r["a"]))
                     if not ok_l:
                         continue
                     if (r.get("zp") is not None and r["zp"] > zmax) or (r.get("up") is not None and r["up"] < MIN_UP_P):
-                        zero_flagged += 1          # the trained odds say loss with notice: not even as a risky pick
+                        zero_flagged += 1          # the trained odds say loss with notice: not a risky pick, at most the watch coin below
+                        if watch is None:
+                            watch = (r, ltxt)
                         continue
                     ok_r, rtxt = risk_view(risk.get(r["a"]))
                     r["ok_risky"] = ok_r
@@ -2349,6 +2352,14 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                                 3: " (nothing inside the profile's market-cap range was tradable: any size)"}.get(r.get("pool"), "")
                     chosen.append((r, "%s; %s%s" % (rtxt, odds_text(r), pool_txt) if odds_text(r) else rtxt + pool_txt)); tiers[r["a"]] = "risky"
                     break
+                if not chosen and watch is not None:
+                    # "always a coin" meets "no pick with a loss built in": the safest-looking coin is still shown, as a watch coin, with
+                    # the odds that stopped it, so the page never says nothing and never calls a loss a pick
+                    r, ltxt = watch
+                    ok_r, rtxt = risk_view(risk.get(r["a"]))
+                    r["ok_risky"] = ok_r
+                    rtxt = "%s; strict check: %s" % (ltxt, re.sub(r"^RugCheck( danger| warning)?: ", "", rtxt))
+                    chosen.append((r, "%s; %s" % (rtxt, odds_text(r)) if odds_text(r) else rtxt)); tiers[r["a"]] = "watch"
 
             def rec(r, rtxt, ok):
                 pr = r["pr"]
