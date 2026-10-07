@@ -1,0 +1,41 @@
+# Manual probe, round 3: publicity sources (Reddit, CoinGecko lists and community data, Telegram/X mirrors, Google Trends). Prints status, size, sample.
+name: probe-social
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - shell: bash
+        run: |
+          probe() {  # name url
+            out=$(curl -sS -o /tmp/body -w '%{http_code} %{time_total}s' --max-time 25 -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' -H 'Accept: application/json, text/html, */*' "$2" 2>&1 || true)
+            n=$(jq -r 'def c: if type=="array" then length elif type=="object" then (to_entries|map(select(.value|type=="array" or (.value|type=="object")))|map("\(.key):\(.value|if type=="array" then length else (keys|join("/")) end)")|join(",")|.[0:120]) else type end; c' /tmp/body 2>/dev/null || echo "not json")
+            printf '%-22s %-18s %8s bytes  n=%s\n   %s\n\n' "$1" "$out" "$(wc -c </tmp/body)" "$n" "$(head -c 300 /tmp/body | tr '\n' ' ')"
+            sleep 1
+          }
+          probe reddit-new-json   'https://www.reddit.com/r/CryptoMoonShots/new.json?limit=100'
+          probe reddit-rss        'https://www.reddit.com/r/CryptoMoonShots/new/.rss'
+          probe reddit-old        'https://old.reddit.com/r/solana/new.json?limit=100'
+          probe reddit-search     'https://www.reddit.com/search.json?q=solana+memecoin&sort=new&limit=100'
+          probe reddit-api        'https://api.reddit.com/r/memecoins/new?limit=100'
+          probe reddit-i          'https://i.reddit.com/r/memecoins/new.json?limit=100'
+          probe redlib            'https://redlib.catsarch.com/r/memecoins/new'
+          probe cg-cat-markets    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=solana-meme-coins&order=volume_desc&per_page=250&page=1&price_change_percentage=1h,24h'
+          probe cg-cat-markets2   'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=250&page=1'
+          probe cg-list-platform  'https://api.coingecko.com/api/v3/coins/list?include_platform=true'
+          probe cg-coin-community 'https://api.coingecko.com/api/v3/coins/bonk?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false'
+          probe cg-search         'https://api.coingecko.com/api/v3/search?query=pump'
+          probe cg-new            'https://api.coingecko.com/api/v3/coins/list/new'
+          probe cmc-trending      'https://api.coinmarketcap.com/data-api/v3/topsearch/rank'
+          probe cmc-gainers       'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=100&sortBy=percent_change_24h&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,max_supply,circulating_supply,total_supply,volume_7d,volume_30d,self_reported_circulating_supply,self_reported_market_cap&platformId=16'
+          probe cmc-community     'https://api.coinmarketcap.com/gravity/v3/gravity/trending/token?limit=50'
+          probe gtrends           'https://trends.google.com/trends/api/dailytrends?hl=en-US&tz=0&geo=US'
+          probe ds-profiles       'https://api.dexscreener.com/token-profiles/latest/v1'
+          probe ds-boosts-top     'https://api.dexscreener.com/token-boosts/top/v1'
+          probe pf-replies        'https://frontend-api-v3.pump.fun/replies/BaqDcVARx7Bcs73o6pvexwNcpnHuW8z11zaw2Mjepump?limit=50&offset=0'
+          probe tg-preview        'https://t.me/s/solana'
+          probe nitter            'https://nitter.net/search?f=tweets&q=%24SOL+memecoin'
+          probe stocktwits        'https://api.stocktwits.com/api/2/streams/trending.json'
+          probe lc-public         'https://lunarcrush.com/api4/public/coins/list/v2?sort=galaxy_score&limit=50'
