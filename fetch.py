@@ -44,9 +44,8 @@ LL = "https://launch-mint-v1.raydium.io"               # Raydium LaunchLab (bonk
 RAY = "https://api-v3.raydium.io"
 RD = "https://www.reddit.com"                            # Reddit's JSON is blocked for servers, its RSS feeds are not
 CMC = "https://api.coinmarketcap.com/data-api/v3"       # CoinMarketCap's site API: top searches and the Solana gainers list
-REDDIT_FEEDS = [("CryptoMoonShots", RD + "/r/CryptoMoonShots/new/.rss"), ("memecoins", RD + "/r/memecoins/new/.rss"), ("solana", RD + "/r/solana/new/.rss"),
-                ("SolanaMemeCoins", RD + "/r/SolanaMemeCoins/new/.rss"), ("pumpfun", RD + "/r/pumpfun/new/.rss"),
-                ("search", RD + "/search.rss?q=solana+memecoin&sort=new&limit=100"), ("search2", RD + "/search.rss?q=pump.fun&sort=new&limit=100")]
+REDDIT_FEEDS = [("CryptoMoonShots", RD + "/r/CryptoMoonShots/new/.rss"), ("memecoins", RD + "/r/memecoins/new/.rss"), ("SolanaMemeCoins", RD + "/r/SolanaMemeCoins/new/.rss"),
+                ("search", RD + "/search.rss?q=solana+memecoin&sort=new&limit=100")]      # Reddit allows about one RSS request per 6 s; four feeds is what fits
 B58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 CASHTAG_RE = re.compile(r"\$([A-Za-z][A-Za-z0-9]{1,11})\b")
 CG_MEME_CATEGORY = "solana-meme-coins"
@@ -108,10 +107,10 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
-HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 2.0, "api.coinmarketcap.com": 1.0,
+HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 6.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
-HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
+HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60), "www.reddit.com": (5, 10, 15)}   # 429 back-off per host; DexScreener default below
 
 
 class Http:
@@ -809,7 +808,7 @@ def cmc(http, d):
     for i, c in enumerate(((data or {}).get("data") or {}).get("cryptoTopSearchRanks") or []):
         pc = (c or {}).get("priceChange") or {}
         search.append([c.get("symbol"), c.get("name"), i + 1, num(c.get("marketCap")) or num(c.get("selfReportedMarketCap")), num(pc.get("priceChange24h"))])
-    data = http.get(CMC + "/cryptocurrency/listing?start=1&limit=100&sortBy=percent_change_24h&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=cmc_rank,date_added&platformId=16")
+    data = http.get(CMC + "/cryptocurrency/listing?start=1&limit=100&sortBy=percent_change_24h&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=cmc_rank,date_added,platform&platformId=16")
     for c in ((data or {}).get("data") or {}).get("cryptoCurrencyList") or []:
         a = ((c or {}).get("platform") or {}).get("token_address")
         q = ((c.get("quotes") or [{}])[0]) if isinstance(c.get("quotes"), list) and c.get("quotes") else {}

@@ -1103,12 +1103,17 @@ def learnable(c):
     return liq is not None and mc is not None and liq >= GATE_MIN_LIQ and GATE_MC[0] <= mc <= GATE_MC[1]
 
 
+def priceless_at_snapshot(c):
+    """True for a snapshot coin that no price source could follow: no DEX pair (list-only) or still on its launch curve."""
+    return any(k in ("nodex", "curve") for k in (c.get("why") or []))
+
+
 def usable_result(doc):
     """A scored snapshot chunk teaches only when its pricing worked: when more than half of its candidate-like coins (minimum
     liquidity and market cap at the time) count as gone, the price fetch failed for the chunk and 'gone' means 'unpriced'."""
     if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
         return False
-    cand = [c for c in (doc.get("coins") or []) if isinstance(c, dict) and learnable(c)]
+    cand = [c for c in (doc.get("coins") or []) if isinstance(c, dict) and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c))]
     return len(cand) < 20 or sum(1 for c in cand if c.get("gone")) <= 0.5 * len(cand)
 
 
@@ -1118,7 +1123,7 @@ def result_rows(d):
         if not usable_result(doc):
             continue                      # each profile learns from its own horizon only, and only from chunks whose pricing worked
         for c in doc.get("coins") or []:
-            if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c):
+            if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c)):
                 rows.append((c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])))
     return rows
 
@@ -1235,7 +1240,7 @@ def train_groups(d):
         g = by_run.setdefault(run, {"t": t0, "rows": []})
         g["t"] = min(g["t"], t0)
         for c in doc.get("coins") or []:
-            if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and c.get("a"):
+            if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and c.get("a") and not (c.get("gone") and priceless_at_snapshot(c)):
                 mult = num(c.get("mult")) or 0.0
                 g["rows"].append({"a": str(c["a"]), "s": c.get("s"), "f": c["f"], "eur": clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1]), "mult": mult,
                                   "gone": bool(c.get("gone")) or mult <= 0.0, "pass": bool(c.get("pass")), "why": [str(x) for x in (c.get("why") or []) if x],
@@ -1563,19 +1568,34 @@ HARD_BLOCK = ("price", "curve", "nodex", "honeypot", "notmeme", "copy")   # gate
 
 
 def risky_rows(rows, held, recent, zmodel, umodel):
-    """The last resort of recommend mode: every coin with a tradable pair, the profile's minimum liquidity and market cap and no
-    crash, whatever else it failed, ranked by trained odds (profit chance minus zero chance), then score."""
-    out = []
+    """The last resort of recommend mode, in three widening pools: (1) coins inside the profile's market-cap range and at most
+    twice its maximum age that failed only the momentum gates, (2) coins inside the market-cap range whatever their age or
+    momentum, (3) every coin with a tradable pair and the minimum liquidity. The first pool with a coin is used, ranked by
+    trained odds (profit chance minus zero chance), then score; without the pools a $250M coin that cannot go to zero would
+    always win the odds. Each row gets r["pool"]."""
+    max_age = (GATE_MAX_AGE_H or 1e9) * FALLBACK_MAX_AGE_X
+    pools = [[], [], []]
     for r in rows:
         if r["a"] in held or r["a"] in recent or any(k in HARD_BLOCK or k == "crash" for k in r["fails"]):
             continue
-        liq, mc = r["basic"].get("liq"), r["basic"].get("mc")
+        liq, mc, age = r["basic"].get("liq"), r["basic"].get("mc"), r["basic"].get("age_h")
         if not r["basic"].get("price") or liq is None or liq < GATE_MIN_LIQ or mc is None or mc < GATE_MC[0]:
             continue
         r["zp"], r["up"] = chances(zmodel, umodel, r["f"])
-        out.append(r)
-    out.sort(key=lambda r: (-((r["up"] or 0.0) - (r["zp"] or 0.0)), -r["sc"]))
-    return out
+        in_mc = mc <= GATE_MC[1]
+        if in_mc and (age is None or age <= max_age) and set(r["fails"]) <= set(SOFT_GATES) | {"young"}:
+            pools[0].append(r)
+        elif in_mc:
+            pools[1].append(r)
+        else:
+            pools[2].append(r)
+    for i, pool in enumerate(pools):
+        if pool:
+            for r in pool:
+                r["pool"] = i + 1
+            pool.sort(key=lambda r: (-((r["up"] or 0.0) - (r["zp"] or 0.0)), -r["sc"]))
+            return pool
+    return []
 
 
 # ---------------------------------------------------------------- the scan
@@ -1741,7 +1761,7 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
 
 def why_text(r):
     f, b = r["f"], r["basic"]
-    bits = ["score %.0f/100 (rank %s of the coins that passed the gates)" % (r["sc"], r.get("rank", "?"))]
+    bits = [("score %.0f/100 (rank %s of the coins that passed the gates)" % (r["sc"], r["rank"])) if r.get("rank") else "score %.0f/100 (not among the coins that passed every gate)" % r["sc"]]
     if b["liq"] and b["mc"]:
         bits.append("liquidity %d%% of a %s market cap" % (round(100 * b["liq"] / b["mc"]), money(b["mc"])))
     if b["vol24"]:
@@ -1995,7 +2015,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     ok_r, rtxt = risk_view(risk.get(r["a"]))
                     if ok_r is None:
                         rtxt = "no safety report came back for it"
-                    chosen.append((r, "%s; %s" % (rtxt, odds_text(r)) if odds_text(r) else rtxt)); tiers[r["a"]] = "risky"
+                    pool_txt = {1: "", 2: " (no coin of the profile's age with momentum was tradable: the market-cap range was kept, age and momentum were not)",
+                                3: " (nothing inside the profile's market-cap range was tradable: any size)"}.get(r.get("pool"), "")
+                    chosen.append((r, "%s; %s%s" % (rtxt, odds_text(r), pool_txt) if odds_text(r) else rtxt + pool_txt)); tiers[r["a"]] = "risky"
                     break
 
             def rec(r, rtxt, ok):
@@ -2072,7 +2094,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if late and now - (num(sn.get("t")) or now) < (EVAL_H + 1.0) * 3_600_000:
             deferred += 1               # the price fetch failed for most of them (outage, rate limit): score this snapshot next run;
             continue                    # an hour past the horizon it is scored anyway, but then only the coins that did get a price count
-        res = [snap_result(c, pairs) for c in coins if not late or (pairs.get(c.get("a")) and num(pairs[c.get("a")].get("priceUsd")))]
+        # a coin that had no DEX pair at snapshot time (Jupiter/GeckoTerminal list only, or still on its launch curve) and has no
+        # price now was never re-priceable: it is unknown, not gone
+        has_px = lambda c: bool(pairs.get(c.get("a")) and num(pairs[c.get("a")].get("priceUsd")))
+        res = [snap_result(c, pairs) for c in coins if (not late or has_px(c)) and (has_px(c) or not priceless_at_snapshot(c))]
         unpriced = len(coins) - len(res)
         dropped += unpriced
         if not res:
@@ -2089,7 +2114,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         # new results -> re-learn and save the weights the next runs will use
         all_res = dict(load_docs(d, "memesnapres")); all_res.update(emitted.get("memesnapres", {}))
         rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for doc in all_res.values() if usable_result(doc) for c in (doc.get("coins") or [])
-                  if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c)]
+                  if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c))]
         learned, n_l, detail = learn(rows_l)
         emit("memeweights", run_id, {"t": now, "rule": RULE, "n": n_l, "lambda": round(clamp(n_l / float(LEARN_FULL_N)), 3), "learned": learned,
                                      "prior": PRIOR, "detail": {k: v for k, v in sorted(detail.items(), key=lambda kv: -abs(kv[1]["rho"]))[:40]}})
