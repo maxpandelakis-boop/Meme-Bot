@@ -116,6 +116,8 @@ RC_BIG = 120             # more coins (by score) that get a RugCheck report when
 RAND_MIN_LIQ = 20_000
 SNAP_GAP_H = 11.5
 EVAL_H = 23.5
+TIP_CHECKS = (1.0, 24.0)   # every tip is priced again at these hours too (the page's "1h later" / "24h later" columns), whatever the profile's horizon
+TIP_SLACK_H = 0.25         # a checkpoint counts from this much before the hour: the hourly run after a tip lands about 60 minutes later
 SNAP_CHUNK = 200
 LEARN_MIN_N = 80         # coins a factor needs on both sides before its correlation counts
 LEARN_FULL_N = 600       # scored coins at which the learned weights fully replace the prior
@@ -576,7 +578,7 @@ def cmd_gather(d, now):
         json.dump(universe, f, separators=(",", ":"))
     held = [p["addr"] for p in pos.values() if p["_left"] > 1e-9 and B58.match(str(p.get("addr", "")))]
     for doc in load_docs(d, "memerec").values():        # recommendations not yet priced again travel like open positions
-        if isinstance(doc, dict) and not doc.get("out") and now - (num(doc.get("t")) or now) < 48 * 3_600_000:
+        if isinstance(doc, dict) and now - (num(doc.get("t")) or now) < 48 * 3_600_000 and (not doc.get("out") or any(str(int(h)) not in (doc.get("outs") or {}) for h in TIP_CHECKS)):
             held += [str(p.get("addr")) for p in (doc.get("picks") or []) if isinstance(p, dict) and B58.match(str(p.get("addr", "")))]
     due = []
     for sn in due_snaps(d, now).values():
@@ -1542,6 +1544,17 @@ def filter_audit(groups):
     return out
 
 
+def tip_due(doc, now):
+    """Which of a tip's checkpoints (the profile's horizon 'out' and TIP_CHECKS) still need a price: [(key, hours, slack)]."""
+    t0 = num(doc.get("t")) or now
+    out = []
+    if not doc.get("out"):
+        out.append(("out", EVAL_H, 0.0))
+    outs = doc.get("outs") if isinstance(doc.get("outs"), dict) else {}
+    out += [(str(int(h)), h, TIP_SLACK_H) for h in TIP_CHECKS if str(int(h)) not in outs]
+    return [(k, h, sl) for k, h, sl in out if now - t0 >= (h - sl) * 3_600_000]
+
+
 def tip_record(d):
     """Every real tip the bot gave (memerec) that has been priced again, as one stats row."""
     tips = []
@@ -2352,27 +2365,36 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         emit("memeweights", run_id, {"t": now, "rule": RULE, "n": n_l, "lambda": round(clamp(n_l / float(LEARN_FULL_N)), 3), "learned": learned,
                                      "prior": PRIOR, "detail": {k: v for k, v in sorted(detail.items(), key=lambda kv: -abs(kv[1]["rho"]))[:40]}})
 
-    # ---------- the recommendation track record: price each past tip again once its horizon has passed ----------
+    # ---------- the recommendation track record: price each past tip again at 1 h, at 24 h and at the profile's horizon ----------
     rec_scored = []
     for rid, doc in load_docs(d, "memerec").items():
         t0 = num(doc.get("t"))
-        if not isinstance(doc, dict) or doc.get("out") or not t0 or now - t0 < EVAL_H * 3_600_000 or str(doc.get("rule") or RULE) != RULE:
+        if not isinstance(doc, dict) or not t0 or str(doc.get("rule") or RULE) != RULE:
             continue
-        outs = []
-        for p in doc.get("picks") or []:
-            pr = pairs.get(p.get("a") or p.get("addr"))
-            px0, px1 = num(p.get("px")), num(pr.get("priceUsd")) if pr else None
-            if not px0:
+        changed = False
+        for key, hours, _ in tip_due(doc, now):
+            outs = []
+            for p in doc.get("picks") or []:
+                pr = pairs.get(p.get("a") or p.get("addr"))
+                px0, px1 = num(p.get("px")), num(pr.get("priceUsd")) if pr else None
+                if not px0:
+                    continue
+                if px1 is None and now - t0 < (hours + 1.0) * 3_600_000:
+                    outs = None; break               # no price yet (fetch outage): try again next run, up to an hour late
+                mult = (px1 / px0) if px1 else 0.0
+                invested = TICKET - fee(TICKET); gross = invested * mult
+                outs.append({"sym": p.get("sym"), "mult": round(mult, 4), "eur": round((max(0.0, gross - fee(gross)) if gross > 0 else 0.0) - TICKET, 2), "gone": not px1})
+            if not outs:
                 continue
-            if px1 is None and now - t0 < (EVAL_H + 1.0) * 3_600_000:
-                outs = None; break                   # no price yet (fetch outage): try again next run, up to an hour late
-            mult = (px1 / px0) if px1 else 0.0
-            invested = TICKET - fee(TICKET); gross = invested * mult
-            outs.append({"sym": p.get("sym"), "mult": round(mult, 4), "eur": round((max(0.0, gross - fee(gross)) if gross > 0 else 0.0) - TICKET, 2), "gone": not px1})
-        if outs:
-            doc = dict(doc, out={"t": now, "h": round((now - t0) / 3_600_000, 2), "picks": outs})
+            res = {"t": now, "h": round((now - t0) / 3_600_000, 2), "picks": outs}
+            if key == "out":
+                doc = dict(doc, out=res)
+                rec_scored += outs
+            else:
+                doc = dict(doc, outs=dict(doc.get("outs") or {}, **{key: res}))
+            changed = True
+        if changed:
             emit("memerec", rid, doc)
-            rec_scored += outs
 
     # ---------- note, state, marks, run log ----------
     parts = []

@@ -353,11 +353,16 @@ def summary(d):
         if near:
             out.append("")
             out.append("Closest, and why not: " + "; ".join("%s (%.0f) %s" % (md(r.get("sym")), M.num(r.get("score")) or 0, md(r.get("safety") or "")) for r in near[:5]))
-    outs = [o for doc in M.load_docs(d, "memerec").values() if isinstance(doc, dict) for o in ((doc.get("out") or {}).get("picks") or []) if isinstance(o, dict)]
-    if outs:
-        up = sum(1 for o in outs if (M.num(o.get("eur")) or 0) > 0)
+    docs = [doc for doc in M.load_docs(d, "memerec").values() if isinstance(doc, dict)]
+    lines = []
+    for h in M.TIP_CHECKS:
+        outs = [o for doc in docs for o in (((doc.get("outs") or {}).get(str(int(h))) or {}).get("picks") or []) if isinstance(o, dict)]
+        if outs:
+            up = sum(1 for o in outs if (M.num(o.get("eur")) or 0) > 0)
+            lines.append("%d h later: %d tips priced again, %d went up, average %+.2f per 20" % (h, len(outs), up, sum(M.num(o.get("eur")) or 0 for o in outs) / len(outs)))
+    if lines:
         out.append("")
-        out.append("Track record: %d tips priced again, %d went up, average %+.2f per 20." % (len(outs), up, sum(M.num(o.get("eur")) or 0 for o in outs) / len(outs)))
+        out.append("Track record (fake money, 20 per tip): " + "; ".join(lines) + ".")
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), {}) or {}
     if isinstance(train, dict) and train.get("note"):
         out.append("")

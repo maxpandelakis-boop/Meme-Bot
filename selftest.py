@@ -622,7 +622,14 @@ def main():
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
     scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
     page2 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
-    check(recs and scored and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next scan starts about" in page2 and "tips priced again" in page2, "the tips were recorded and priced again 2 hours later (%d docs, %d scored)" % (len(recs), len(scored)))
+    one_h = [o for doc in recs for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
+    check(recs and scored and one_h and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next scan starts about" in page2 and "1 h later" in page2 and "24 h later" in page2,
+          "the tips were recorded and priced again at 1 h and at the horizon (%d docs, %d scored, %d at 1 h)" % (len(recs), len(scored), len(one_h)))
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--now", str(T0 + 25 * H), "--recommend", "--horizon", "2h", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
+    day = [o for doc in recs for o in ((doc.get("outs") or {}).get("24") or {}).get("picks", [])]
+    page3 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
+    check(r.returncode == 0 and day and "24 h later: %d tips priced" % len(day) in page3, "a day later the tips carry their 24 h result too (%d)" % len(day))
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
     shutil.rmtree(hd, ignore_errors=True)
 

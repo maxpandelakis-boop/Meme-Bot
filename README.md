@@ -115,8 +115,9 @@ is never a tip, whatever its odds.
 ### Hour by hour
 
 Under the pick, "Recommendations, hour by hour" lists every scan of the last two days, newest first: the time, the coin
-the bot named (tier, score, the odds it gave at the time) and what 20 in it became when the horizon had passed, or
-"pending" with the time it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
+the bot named (tier, score, the odds it gave at the time) and what 20 in it became 1 hour and 24 hours later (every tip
+is priced again at both marks by the runs that follow, on top of the profile's own horizon), or "pending" with the time
+it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
 starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes).
 
 ### New launches tab
