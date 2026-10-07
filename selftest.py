@@ -69,6 +69,27 @@ class Mock:
                 "price_change_percentage": {"h1": "1.5", "h6": "-2", "h24": "10"}, "transactions": {"h24": {"buys": c["b24"], "sells": c["s24"], "buyers": c["b24"] // 3, "sellers": c["s24"] // 3}},
                 "pool_created_at": "2025-01-01T00:00:00Z"}, "relationships": {"base_token": {"data": {"id": "solana_" + c["a"], "type": "token"}}, "dex": {"data": {"id": c["dex"]}}}}
 
+    def handle_post(self, path, body):
+        """The public Solana RPC: signatures of a creator wallet and the decoded transactions (coin index % 5 == 2: the creator sold)."""
+        try:
+            req = json.loads(body or b"{}")
+        except ValueError:
+            return 400, {"error": "bad json"}
+        method, params = req.get("method"), req.get("params") or []
+        if path.startswith("/api.mainnet-beta.solana.com"):
+            if method == "getSignaturesForAddress":
+                dev = str(params[0]); sold = any(c["a"][3:] == dev[3:] and self.coins.index(c) % 5 == 2 for c in self.coins if dev.startswith("DEV"))
+                return 200, {"jsonrpc": "2.0", "result": [{"signature": "sig%s%d" % (dev[-6:], i), "blockTime": int(self.now / 1000) - 600 * (i + 1)} for i in range(3 if sold else 1)], "id": 1}
+            if method == "getTransaction":
+                sig = str(params[0]); dev6 = sig[3:9]
+                c = next((c for c in self.coins if c["a"][3:][-6:] == dev6), None)
+                sold = bool(c) and self.coins.index(c) % 5 == 2 and sig.endswith("0")
+                mint = c["a"] if c else "x"; owner = "DEV" + mint[3:]
+                return 200, {"jsonrpc": "2.0", "result": {"meta": {"preTokenBalances": [{"mint": mint, "owner": owner, "uiTokenAmount": {"uiAmount": 1000.0}}],
+                                                                   "postTokenBalances": [{"mint": mint, "owner": owner, "uiTokenAmount": {"uiAmount": 400.0 if sold else 1000.0}}]}}, "id": 1}
+            return 200, {"jsonrpc": "2.0", "result": None, "id": 1}
+        return 404, {"error": "no post route " + path}
+
     def handle(self, path, query):
         self.hits[path.split("/")[1]] = self.hits.get(path.split("/")[1], 0) + 1
         q = urllib.parse.parse_qs(query)
@@ -128,6 +149,17 @@ class Mock:
             return 200, [{"mint": c["a"], "symbol": c["sym"], "name": c["name"], "usd_market_cap": c["mc"], "market_cap": 50, "ath_market_cap": c["mc"] * 2, "reply_count": 12,
                           "is_currently_live": False, "complete": True, "created_timestamp": T0 - 5 * H, "twitter": "https://x.com/a", "website": None, "telegram": None}
                          for c in self.coins[base + off:base + off + 50]]
+        if path.startswith("/lite-api.jup.ag/tokens/v2/search") and q.get("query", [""])[0] in self.by_a:
+            c = self.by_a[q["query"][0]]
+            i = self.coins.index(c)
+            return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["name"], "dev": "DEV" + c["a"][3:], "holderCount": 1500, "organicScore": 60.0,
+                          "audit": {"mintAuthorityDisabled": True, "freezeAuthorityDisabled": True, "topHoldersPercentage": 20.0, "devBalancePercentage": 12.0 if i % 7 == 3 else 1.0}}]
+        if path.startswith("/launch-mint-v1.raydium.io/get/list"):
+            base = {"new": 1060, "lastTrade": 1070, "marketCap": 1080}.get(q.get("sort", ["new"])[0], 1060)
+            return 200, {"success": True, "data": {"rows": [{"mint": c["a"], "symbol": c["sym"], "name": c["name"], "creator": "DEV" + c["a"][3:], "marketCap": c["mc"], "volumeU": c["vol"], "createAt": T0 - 4 * H, "poolId": "pool" + c["a"][:10], "finishingRate": 1}
+                                                            for c in self.coins[base:base + 20]]}}
+        if path.startswith("/api-v3.raydium.io/pools/info/list"):
+            return 200, {"success": True, "data": {"count": 20, "data": [{"id": "p" + c["a"][:8], "mintA": {"address": c["a"]}, "mintB": {"address": "So11111111111111111111111111111111111111112"}} for c in self.coins[40:60]]}}
         if path.startswith("/lite-api.jup.ag/tokens/v2/"):
             off = {"toptrending": 800, "toporganicscore": 850, "recent": 900, "toptraded": 950, "tag": 1000, "search": 1050}[path.split("/")[4].split("?")[0]]
             off += {"1h": 20, "6h": 40}.get(path.rstrip("/").rsplit("/", 1)[-1], 0)
@@ -152,6 +184,14 @@ def serve(mock):
             code, body = mock.handle(u.path, u.query)
             raw = (body if isinstance(body, str) else json.dumps(body)).encode()
             self.send_response(code); self.send_header("Content-Type", "text/xml" if isinstance(body, str) else "application/json")
+            self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+
+        def do_POST(self):
+            u = urllib.parse.urlsplit(self.path)
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            code, body = mock.handle_post(u.path, body)
+            raw = json.dumps(body).encode()
+            self.send_response(code); self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
 
         def log_message(self, *a):
@@ -210,6 +250,12 @@ def main():
     check(g["coins"] >= 1000, "universe has %d coins (>= 1000)" % g["coins"])
     check(g["geckoterminal"] > 0 and g["pumpfun"] > 0 and g["jupiter"] > 0 and g["coingecko"] > 0 and g["news"] > 0, "every mocked source parsed: gt %d pf %d jup %d cg %d news %d" % (g["geckoterminal"], g["pumpfun"], g["jupiter"], g["coingecko"], g["news"]))
     check("giving up on gmgn.ai" in err, "GMGN 403 trips the circuit breaker")
+    devrows = [l for f in glob.glob(os.path.join(d, "dev", "*.txt")) for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not l.startswith("#")]
+    check(devrows and "creator check" in err, "the creator check wrote %d rows (Jupiter facts + RPC transactions)" % len(devrows))
+    import memebot as MB
+    v_sold = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": True, "devSellAgeMin": 25, "mintAuthOff": True, "txs3h": 3}})
+    v_ok = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": False, "mintAuthOff": True, "freezeAuthOff": True, "txs3h": 0}})
+    check(v_sold[0] is False and "sold 25 minutes ago" in v_sold[1] and v_ok[0] is True and "no creator sale" in v_ok[1], "a creator sale blocks a coin, a quiet creator is noted (%s)" % v_sold[1])
     pos = docs("memepos")
     picks = [dict(p, _id=pid) for pid, p in pos.items() if p["grp"] == "pick"]
     check(len(picks) == 2, "%d positions opened, all bot picks (%d)" % (len(pos), len(picks)))

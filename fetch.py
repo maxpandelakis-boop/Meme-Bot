@@ -38,6 +38,9 @@ PF = "https://frontend-api-v3.pump.fun"
 JUP = "https://lite-api.jup.ag/tokens/v2"
 GM = "https://gmgn.ai/defi/quotation/v1"
 LC = "https://lunarcrush.com/api4/public"
+RPC = "https://api.mainnet-beta.solana.com"            # Solana's public RPC: ~100 requests per 10 s, 40 per method
+LL = "https://launch-mint-v1.raydium.io"               # Raydium LaunchLab (bonk.fun): launches with their creator wallet
+RAY = "https://api-v3.raydium.io"
 KEYWORDS = list(dict.fromkeys("""dog cat pepe frog elon trump musk ai agent moon inu wif bonk chad wojak doge shib baby meme giga sigma based degen ape monkey bear bull penguin pengu hat
 rocket lambo fart poop gm wen ser anon pnut squirrel goat duck bird fish whale shark cow pig chill guy girl king queen god alien ufo mars pixel retro game
 punk ninja pirate zombie ghost skull fire ice gold diamond brain beard mog brainrot cult coin shiba floki mfer neko kitty puppy hamster capybara raccoon
@@ -79,9 +82,9 @@ cat dog pig cow goat sheep horse donkey mule camel llama yak bison buffalo moose
 hawk eagle owl crow raven parrot pigeon dove swan goose duck hen rooster turkey peacock flamingo pelican penguin puffin kiwi emu ostrich""".split())) if w not in set(KEYWORDS)]   # the deep search: only words the normal scan did not use
 NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json")
-HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
+HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60)}   # 429 back-off per host; DexScreener default below
 
@@ -152,6 +155,49 @@ class Http:
                 if i + 1 < tries:
                     time.sleep(wait); wait *= 2
                     continue
+                self._fail(host, hard=True)
+                return None
+        return None
+
+    def post(self, u, payload, tries=3):
+        """JSON-RPC style POST with the same pacing, 429 handling and circuit breaker as get()."""
+        host = urllib.parse.urlsplit(u).netloc
+        if host in self.dead:
+            return None
+        body = json.dumps(payload).encode("utf-8")
+        hdr = {"User-Agent": UA, "Content-Type": "application/json", "Accept": "application/json"}
+        for i in range(tries):
+            if self.cooldown.get(host, 0) > time.time():
+                time.sleep(max(0.0, self.cooldown[host] - time.time()))
+            gap = HOST_GAP.get(host, 0.0) if not self.mock else 0.0
+            if gap and host in self.last_at:
+                time.sleep(max(0.0, self.last_at[host] + gap - time.time()))
+            try:
+                self.n += 1
+                self.last_at[host] = time.time()
+                with urllib.request.urlopen(urllib.request.Request(self.url(u), data=body, headers=hdr, method="POST"), timeout=TIMEOUT) as r:
+                    raw = r.read()
+                self.fails[host] = 0
+                time.sleep(self.pause)
+                try:
+                    out = json.loads(raw.decode("utf-8", "replace"))
+                except ValueError:
+                    return None
+                if isinstance(out, dict) and isinstance(out.get("error"), dict) and out["error"].get("code") == 429 and i + 1 < tries:
+                    time.sleep(3); continue               # the public RPC answers 200 with a 429 inside for a throttled method
+                return out
+            except urllib.error.HTTPError as e:
+                if e.code == 429 and i + 1 < tries:
+                    self.limited += 1
+                    time.sleep((3, 8)[min(i, 1)]); continue
+                self.log("  ! %s %s" % (e.code, u[:80]))
+                if e.code in (401, 403):
+                    self._fail(host, hard=True)
+                return None
+            except Exception as e:
+                self.log("  ! %s %s" % (str(e)[:60], u[:80]))
+                if i + 1 < tries:
+                    time.sleep(1.5); continue
                 self._fail(host, hard=True)
                 return None
         return None
@@ -586,6 +632,8 @@ def cmd_sources(http, d, light=False):
     lists["rcTrending"] = rc_list(http, "trending")
     lists["rcRecent"] = rc_list(http, "recent")
     lists["rcVerified"] = rc_list(http, "verified")
+    lists["rayVol"] = ray_top(http)
+    lists.update(launchlab(http, d))
     write_json(d, "lists.json", lists)
     ds_search(http, d, KEYWORDS[:60] if light else KEYWORDS)
     gt_pools(http, d, pages=3 if light else 8)
@@ -605,8 +653,87 @@ def cmd_tokens(http, d, addrs):
     return ds_tokens(http, d, addrs, start)
 
 
+DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "jupHolders", "organic", "txs3h", "devSold", "devSellAgeMin", "topHoldersPct")
+DEV_WINDOW_H = 3.0          # the creator's transactions of the last three hours are read
+DEV_MAX_TX = 12             # at most this many of them are decoded per coin (40 getTransaction calls per 10 s allowed)
+
+
+def dev_check(http, d, addrs, now=None):
+    """For each shortlisted coin: Jupiter's token facts (creator wallet, creator's share, mint/freeze authority, holders) and,
+    through the public Solana RPC, whether that creator wallet sold or moved the coin in the last hours -> dev/<stamp>.txt."""
+    now = now or time.time()
+    rows = []
+    for a in addrs:
+        data = http.get(JUP + "/search?query=" + a)
+        t = next((x for x in (data if isinstance(data, list) else []) if isinstance(x, dict) and str(x.get("id")) == a), None)
+        if not t:
+            continue
+        au = t.get("audit") or {}
+        dev = addr_of(t.get("dev"))
+        txs, sold, sell_age = None, None, None
+        if dev and "api.mainnet-beta.solana.com" not in http.dead:
+            sigs = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getSignaturesForAddress", "params": [dev, {"limit": 25}]})
+            recent = [x for x in ((sigs or {}).get("result") or []) if isinstance(x, dict) and num(x.get("blockTime")) and now - x["blockTime"] <= DEV_WINDOW_H * 3600]
+            txs, sold = len(recent), False
+            for x in recent[:DEV_MAX_TX]:
+                tx = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTransaction", "params": [x["signature"], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}]})
+                meta = ((tx or {}).get("result") or {}).get("meta") or {}
+                bal = lambda key: sum(num(((b.get("uiTokenAmount") or {}).get("uiAmount"))) or 0 for b in (meta.get(key) or [])
+                                      if isinstance(b, dict) and b.get("mint") == a and b.get("owner") == dev)
+                if bal("postTokenBalances") < bal("preTokenBalances") - 1e-9:
+                    sold = True
+                    age = (now - x["blockTime"]) / 60.0
+                    sell_age = age if sell_age is None else min(sell_age, age)
+        rows.append(row(a, dev, num(au.get("devBalancePercentage")), bool(au.get("mintAuthorityDisabled")), bool(au.get("freezeAuthorityDisabled")),
+                        num(t.get("holderCount")), num(t.get("organicScore")), txs, sold, round(sell_age) if sell_age is not None else None,
+                        num(au.get("topHoldersPercentage"))))
+    n = write_rows(d, "dev", "dev_%d.txt" % int(time.time()), rows)
+    http.log("  creator check %d of %d (%d sold recently)" % (n, len(addrs), sum(1 for r in rows if r.split("|")[8] == "1")))
+    return n
+
+
+LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
+
+
+def launchlab(http, d):
+    """Raydium LaunchLab (bonk.fun) launches: newest, most recently traded, biggest -> ll/*.txt (with the creator wallet)
+    and lists.json entries, so they count as source lists and get DexScreener data."""
+    lists, total = {}, 0
+    for name, sort in (("llNew", "new"), ("llHot", "lastTrade"), ("llMc", "marketCap")):
+        data = http.get(LL + "/get/list?sort=%s&size=100&mintType=default&includeNsfw=false" % sort)
+        rows, addrs = [], []
+        for c in ((data or {}).get("data") or {}).get("rows") or []:
+            a = addr_of((c or {}).get("mint"))
+            if not a:
+                continue
+            mc = next((num(c.get(k)) for k in ("marketCap", "usdMarketCap", "mcap") if c.get(k) is not None), None)
+            vol = next((num(c.get(k)) for k in ("volumeU", "volume24h", "volume") if c.get(k) is not None), None)
+            created = next((c.get(k) for k in ("createAt", "createdAt", "createTime") if c.get(k) is not None), None)
+            rows.append(row(a, c.get("symbol"), c.get("name"), addr_of(c.get("creator")), mc, vol, created, c.get("poolId"), bool(c.get("finishingRate") == 1 or c.get("migrated"))))
+            addrs.append(a)
+        total += write_rows(d, "ll", name + ".txt", rows)
+        lists[name] = addrs
+    http.log("  launchlab %d" % total)
+    return lists
+
+
+def ray_top(http):
+    """Raydium's biggest pools by 24h volume: the base mints as one more list."""
+    data = http.get(RAY + "/pools/info/list?poolType=all&poolSortField=volume24h&sortType=desc&pageSize=1000&page=1")
+    skip = {"So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCdbgHKKaLN"}
+    out = []
+    for pool in ((data or {}).get("data") or {}).get("data") or []:
+        for side in ("mintA", "mintB"):
+            a = addr_of(((pool or {}).get(side) or {}).get("address"))
+            if a and a not in skip:
+                out.append(a)
+    http.log("  raydium top pools %d mints" % len(out))
+    return out
+
+
 def cmd_risk(http, d, addrs):
     n = rc_reports(http, d, addrs)
+    dev_check(http, d, addrs[:24])
     if "gmgn.ai" not in http.dead:
         gm_top_buyers(http, d, addrs[:40])
     return n

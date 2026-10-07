@@ -125,6 +125,7 @@ PRIOR = {"liqMc": 0.35, "volMc": 0.1, "buyShare": 0.1, "buyRatio1h": 0.15, "c6":
          "boosts": -0.15, "nDex": 0.1, "soc.eng": 0.1, "x": 0.1, "web": 0.05,
          # holders: many holders, spread out, growing; few insiders and whales
          "rc.lp": 0.1, "rc.top10": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.15, "jup.holders": 0.1, "jup.holderChg24": 0.1,
+         "dev.sold": -0.25, "dev.pct": -0.1, "dev.authOff": 0.05,
          "jup.top10Pct": -0.1, "jup.organic": 0.1, "jup.netBuyers24": 0.1,
          # v3 knowledge: news, narrative heat, distinct buyers (GeckoTerminal), CoinGecko trending, smart wallets
          "news.hits": 0.1, "news.narr": 0.1, "news.fresh": 0.05, "gt.buyerRatio": 0.1, "cg.trend": 0.05, "sw.avg": 0.15, "sw.n": 0.05,
@@ -155,7 +156,8 @@ PROFILES = {
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
-                  "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2}}}
+                  "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2,
+                  "dev.sold": -0.3, "dev.pct": -0.15, "dev.authOff": 0.05}}}
 
 
 def apply_profile(name):
@@ -338,8 +340,10 @@ GT_COLS = ("address", "symbol", "name", "poolAddress", "dexId", "priceUsd", "fdv
 GM_COLS = ("address", "symbol", "name", "priceUsd", "marketCap", "liquidityUsd", "volH24", "holders", "top10", "smartDegen", "renowned", "sniper",
            "bundler", "rat", "bluechip", "rugRatio", "wash", "hot", "devHold", "sniperHold", "botDegen", "honeypot", "creatorStatus", "twRename",
            "openTs", "launchpad")
+DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "jupHolders", "organic", "txs3h", "devSold", "devSellAgeMin", "topHoldersPct")
+LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
-TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad",
+TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad", "devWallet", "creator", "poolId",
              "danger", "warn", "topAddrs", "creatorStatus", "status", "tags", "makerTags"}
 CURVE_DEX = re.compile(r"pumpfun|dbc|launchlab|boop|moonit|curve", re.I)
 NOT_MEME = re.compile(r"xstock|securities|tokenized|wrapped|wormhole|staked|\bst[A-Z]|liquid stak|tether|usd[ct]?\b|\bpyusd|stablecoin|xaut|cbbtc|wbtc|weth", re.I)
@@ -487,7 +491,9 @@ def cmd_gather(d, now):
     pf, ptags = load_side(d, "pf", PF_COLS)
     gt, gtags = load_side(d, "gt", GT_COLS)
     gm, mtags = load_side(d, "gm", GM_COLS)
-    for src in (jtags, ptags, gtags, mtags):
+    dev, _ = load_side(d, "dev", DEV_COLS)
+    ll, ltags = load_side(d, "ll", LL_COLS)
+    for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
             tags.setdefault(a, set()).update(t)
     for name, addrs in lists.items():
@@ -514,6 +520,10 @@ def cmd_gather(d, now):
             p["pf"] = {k: pf[a].get(k) for k in ("mc", "athMc", "replies", "live", "complete", "createdAt", "twitter", "website", "telegram")}
         if a in gt:
             p["gt"] = {k: gt[a].get(k) for k in ("buyers24", "sellers24", "buysH24", "sellsH24", "volH24", "liquidityUsd", "chgH24")}
+        if a in dev:
+            p["dev"] = dict(dev[a])
+        if a in ll:
+            p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
         if a in gm:
             p["gm"] = {k: gm[a].get(k) for k in ("holders", "top10", "smartDegen", "renowned", "sniper", "bundler", "rat", "bluechip", "rugRatio", "wash",
                                                  "hot", "devHold", "sniperHold", "botDegen", "honeypot", "creatorStatus", "twRename", "launchpad")}
@@ -851,6 +861,11 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f["rc." + k] = num(rc.get(src))
         f["rc.danger"], f["rc.warn"] = float(len(names(rc, "danger"))), float(len(names(rc, "warn")))
         f["rc.mutable"] = 1.0 if rc.get("mutable") else 0.0
+    dv = pr.get("dev") or {}
+    if dv:
+        f["dev.pct"], f["dev.txs3h"] = num(dv.get("devPct")), num(dv.get("txs3h"))
+        f["dev.sold"] = 1.0 if dv.get("devSold") else 0.0
+        f["dev.authOff"] = 1.0 if (dv.get("mintAuthOff") and dv.get("freezeAuthOff")) else 0.0
     # ---- v3 knowledge ----
     gt = pr.get("gt") or {}
     if gt:
@@ -1053,6 +1068,9 @@ def score_all(items, w):
 def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
+    for a, pr in pairs.items():                       # the creator check (Jupiter + RPC) rides on the RugCheck entry
+        if pr.get("dev") and a in risk and isinstance(risk[a], dict):
+            risk[a] = dict(risk[a], dev=pr["dev"])
     news, cg, wallets = load_news(d, now), load_cg(d), wallet_table(d)
     tbs, board = load_top_buyers(d), load_leaderboard(d)
     held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9}
@@ -1113,10 +1131,22 @@ def risk_view(r):
     creator = num(r.get("creatorPct"))
     if creator is not None and creator > MAX_CREATOR_PCT:
         return False, "RugCheck: the creator still holds %d%%" % round(creator)
+    dv = r.get("dev") or {}
+    dev_pct = num(dv.get("devPct"))
+    if dev_pct is not None and dev_pct > MAX_CREATOR_PCT:
+        return False, "the creator still holds %d%% (Jupiter)" % round(dev_pct)
+    if dv.get("devSold"):
+        age = num(dv.get("devSellAgeMin"))
+        return False, "the creator sold %s" % (("%d minutes ago" % age) if age is not None else "within the last hours")
+    if dv and dv.get("mintAuthOff") is False:
+        return False, "mint authority still active (Jupiter)"
+    dev_note = ""
+    if dv:
+        dev_note = ", creator holds %s%%" % (round(dev_pct) if dev_pct is not None else "?") + (", no creator sale in 3h" if dv.get("txs3h") is not None else "")
     if hold is not None and hold < MIN_HOLDERS:
         return False, "RugCheck: only %d holders" % hold
     return True, "RugCheck: no danger flags, %d%% of liquidity locked" % round(lp) + (", top 10 wallets hold %d%%" % round(top10) if top10 is not None else "") + \
-        (", %d holders" % hold if hold is not None else "") + (", %d insiders" % ins if ins else "") + (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "")
+        (", %d holders" % hold if hold is not None else "") + (", %d insiders" % ins if ins else "") + dev_note + (" (warnings: " + ", ".join(warn[:2]) + ")" if warn else "")
 
 
 def risk_doc(r):
