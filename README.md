@@ -112,6 +112,13 @@ sale, no authority left, and at least the profile's minimum age; shown with what
 odds). When nothing clears even that floor, the page says so and names no coin: a 20-minute-old launch without a report
 is never a tip, whatever its odds.
 
+### Hour by hour
+
+Under the pick, "Recommendations, hour by hour" lists every scan of the last two days, newest first: the time, the coin
+the bot named (tier, score, the odds it gave at the time) and what 20 in it became when the horizon had passed, or
+"pending" with the time it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
+starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes).
+
 ### New launches tab
 
 The page has two tabs. "The pick" is the recommendation. "New launches <1h" lists every coin under an hour old that had

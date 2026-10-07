@@ -622,7 +622,7 @@ def main():
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
     scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
     page2 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
-    check(recs and scored and "Track record" in r.stdout and "Track record of the tips" in page2, "the tips were recorded and priced again 2 hours later (%d docs, %d scored)" % (len(recs), len(scored)))
+    check(recs and scored and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next scan starts about" in page2 and "tips priced again" in page2, "the tips were recorded and priced again 2 hours later (%d docs, %d scored)" % (len(recs), len(scored)))
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
     shutil.rmtree(hd, ignore_errors=True)
 

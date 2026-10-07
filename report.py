@@ -908,30 +908,97 @@ def young_section(D):
     return section(E(h2), head, body)
 
 
-def track_section(D):
-    """Every recommendation the bot made, and what 20 in it became when its horizon had passed: the honest scorecard."""
-    docs = D.get("track") or []
-    if not docs:
+SCAN_MINUTE_UTC = 10      # the scheduled scan starts at this minute of every hour (.github/workflows/scan.yml); a run takes about 15 minutes
+HISTORY_DAYS = 2          # the hour-by-hour list covers this many days
+HISTORY_OPEN = 12         # rows shown before the rest folds (a phone screen's worth)
+
+
+def next_scan_ms(now):
+    """When the next scheduled scan starts, from the hourly cron in scan.yml."""
+    t = dt.datetime.fromtimestamp((M.num(now) or 0) / 1000, dt.timezone.utc).replace(minute=SCAN_MINUTE_UTC, second=0, microsecond=0)
+    if t.timestamp() * 1000 <= (M.num(now) or 0):
+        t += dt.timedelta(hours=1)
+    return int(t.timestamp() * 1000)
+
+
+def no_coin_reason(note):
+    """The 'why no coin' sentence of a run note, short."""
+    s = str(note or "")
+    m = re.search(r"No recommendation:?\s*([^.]*)", s)
+    if m:
+        return (m.group(1).strip(" .") or "no coin named")[:160]
+    if "left as they were" in s or "rate limit or outage" in s:
+        return "scan too small (rate limit or outage), the earlier pick was kept"
+    return "no coin named"
+
+
+def history_section(D):
+    """Every scan of the last days, newest first: what the bot named at that hour (tier, score, the odds it gave), and
+    what 20 in it became when the horizon had passed. Scans that named nothing say why. This is the page's memory."""
+    runs = [r for r in (D.get("runs") or []) if isinstance(r, dict) and M.num(r.get("t"))]
+    if not runs:
         return ""
+    now = D["now"]
     hz = horizon_text()
-    rows, scored = [], []
-    for doc in docs:
-        outs = {o.get("sym"): o for o in ((doc.get("out") or {}).get("picks") or []) if isinstance(o, dict)}
-        for p in doc.get("picks") or []:
-            o = outs.get(p.get("sym"))
+    recent = [r for r in runs if M.num(r["t"]) >= now - HISTORY_DAYS * 86_400_000]
+    runs = (recent or runs[:24])[:72]
+    recs = [d for d in (D.get("track") or []) if isinstance(d, dict) and M.num(d.get("t"))]
+
+    def rec_for(t):
+        best = min(recs, key=lambda d: abs(M.num(d["t"]) - t), default=None)
+        return best if best is not None and abs(M.num(best["t"]) - t) <= 180_000 else None
+    rows, scored, n_named = [], [], 0
+    for r in runs:
+        t = M.num(r["t"])
+        rec = rec_for(t) or {}
+        picks = [p for p in (r.get("picks") or []) if isinstance(p, dict) and p.get("grp") == "recommend"]
+        recp = {p.get("sym"): p for p in (rec.get("picks") or []) if isinstance(p, dict)}
+        outs = {o.get("sym"): o for o in ((rec.get("out") or {}).get("picks") or []) if isinstance(o, dict)}
+        rule = str(r.get("rule") or M.RULE)
+        other = "" if rule == M.RULE else ('<span class="chip" title="a manual run of the other profile">%s profile</span>' % ("2h" if "2h" in rule else "24h"))
+        when = '<td class="w">%s</td>' % fmt_dt(t, True)
+        if not picks:
+            rows.append('<tr>%s<td colspan="5"><span class="muted">no coin</span> · %s%s</td><td></td></tr>' % (when, E(no_coin_reason(r.get("note"))), (" " + other) if other else ""))
+            continue
+        n_named += 1
+        for p in picks:
+            rp, o = recp.get(p.get("sym")) or {}, outs.get(p.get("sym"))
+            up, zp = M.num(rp.get("up")), M.num(rp.get("zp"))
+            odds = ("%s / %s" % (pct(100 * up) if up is not None else "–", pct(100 * zp) if zp is not None else "–")) if (up is not None or zp is not None) else "–"
+            tier = dict(p, tier=p.get("tier") or rp.get("tier") or "strong")
             if o:
-                scored.append(o)
-                res = '<td class="n %s">%s</td><td class="n %s">%s</td>' % ("good" if (o.get("eur") or 0) > 0 else "bad", fmt_mult(o.get("mult")),
-                                                                              "good" if (o.get("eur") or 0) > 0 else "bad", fmt_amt(o.get("eur"), True))
+                if rule == M.RULE:
+                    scored.append(o)
+                good = (M.num(o.get("eur")) or 0) > 0
+                res = '<td class="n %s">%s</td><td class="n %s">%s</td>' % ("good" if good else "bad", fmt_mult(o.get("mult")), "good" if good else "bad", fmt_amt(o.get("eur"), True))
             else:
-                res = '<td class="n muted" colspan="2">pending · priced again at %s</td>' % fmt_dt((M.num(doc.get("t")) or 0) + M.EVAL_H * 3_600_000, True)
-            rows.append('<tr><td>%s</td><td><strong>%s</strong></td><td class="n">%s</td><td class="n">%s</td>%s%s</tr>' % (
-                fmt_dt(doc.get("t"), True), E(p.get("sym")), E("%.0f" % (M.num(p.get("score")) or 0)), fmt_money(p.get("mc")), res, CHART_CELL % E(p.get("pair") or p.get("addr"))))
-    up = sum(1 for o in scored if (o.get("eur") or 0) > 0)
+                due = t + (M.EVAL_H if rule == M.RULE else 24.0) * 3_600_000
+                if rule != M.RULE:
+                    txt = "pending · only a %s-profile run prices it" % ("2h" if "2h" in rule else "24h")
+                elif due > now:
+                    txt = "pending · priced again at %s" % fmt_dt(due, True)
+                elif rec and now - due < 3 * M.EVAL_H * 3_600_000:
+                    txt = "pending · the next scan prices it"
+                else:
+                    txt = "no result recorded"
+                res = '<td class="n muted" colspan="2">%s</td>' % txt
+            chips = tier_chip(tier) + other
+            rows.append('<tr>%s<td><strong>%s</strong>%s<div class="row">%s</div></td><td class="n">%s</td><td class="n" title="chance of a profit / chance of going to zero, as the bot saw it then">%s</td>%s%s</tr>' % (
+                when, E(p.get("sym")), name_html(p.get("sym"), p.get("name")), chips, E("%.0f" % (M.num(p.get("score")) or 0)), E(odds), res,
+                CHART_CELL % E(rp.get("pair") or p.get("addr") or rp.get("addr") or "")))
+    up_n = sum(1 for o in scored if (M.num(o.get("eur")) or 0) > 0)
     avg = (sum(M.num(o.get("eur")) or 0 for o in scored) / len(scored)) if scored else None
-    summary = ("%d tips priced again · %d went up · average %s per 20" % (len(scored), up, fmt_amt(avg, True))) if scored else "%d tips, none priced again yet" % len(rows)
-    head = '<thead><tr><th>tip at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th><th class="n">%s later</th><th class="n">per 20</th><th></th></tr></thead>' % hz
-    return fold("Track record of the tips", summary, '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows)), open_=False)
+    sub = "%d scans in the last %d days, %d of them named a coin" % (len(runs), HISTORY_DAYS, n_named)
+    if scored:
+        sub += " · track record: %d tips priced again %s later, %d went up, average %s per 20" % (len(scored), hz, up_n, fmt_amt(avg, True))
+    else:
+        sub += " · no tip has been priced again yet"
+    sub += " · fake money, 20 per tip"
+    head = '<thead><tr><th>scan at</th><th>named</th><th class="n">score</th><th class="n">odds then</th><th class="n">%s later</th><th class="n">per 20</th><th></th></tr></thead>' % hz
+    body = '<div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows[:HISTORY_OPEN]))
+    if len(rows) > HISTORY_OPEN:
+        body += '<details><summary>Earlier scans (%d more)</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details>' % (len(rows) - HISTORY_OPEN, head, "".join(rows[HISTORY_OPEN:]))
+    return section("Recommendations, hour by hour", sub, body)
 
 
 def stat_cells(st):
@@ -1237,13 +1304,14 @@ def render(data, fragment=False):
         return fold("Run log", "last %d runs" % min(12, len(D["runs"])), inner)
 
     last_run = st.get("lastRun")
-    head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real</div><h1>%s</h1></div>'
-            '<div class="meta">updated %s · %s run%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s")
+    nxt = (" · next scan starts about %s" % fmt_when(next_scan_ms(now), now)) if rec_mode else ""
+    head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real · scans every hour</div><h1>%s</h1></div>'
+            '<div class="meta">updated %s%s · %s run%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(nxt), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s")
     body = [head]
     if D.get("rec"):
         # two tabs: the pick (and its track record) and the new launches under an hour old; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
-        pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("track record", lambda: track_section(D))
+        pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_young = safe("new launches", lambda: young_section(D))
         body.append('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young">'
                     '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New launches &lt;1h <span class="cnt">%d</span></label></div>'
