@@ -26,6 +26,7 @@ Usage:
 """
 import argparse, html, email.utils, glob, json, os, re, shutil, sys, time, urllib.error, urllib.parse, urllib.request, datetime as dt
 import xml.etree.ElementTree as ET
+import concurrent.futures
 
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 memebot-paper/1.0"
@@ -332,15 +333,41 @@ def ds_lists(http):
     return out
 
 
+SEARCH_THREADS = 3          # DexScreener keyword searches run on this many threads (its search limit is ~300 requests a minute)
+SEARCH_PAUSE = 0.4          # ... each thread pausing this long after a request: 3 threads x ~1.4 requests/s stays under the limit
+
+
 def ds_search(http, d, keywords):
-    total = 0
-    for i, kw in enumerate(keywords):
-        data = http.get(DS + "/latest/dex/search?q=" + urllib.parse.quote(kw))
+    """DexScreener keyword searches -> pairs/search_<kw>.txt, one file per keyword. Long lists run on SEARCH_THREADS threads, each
+    with its own Http (own pacing and breaker); their counters and dead hosts are merged back into `http`."""
+    def one(h, kw):
+        data = h.get(DS + "/latest/dex/search?q=" + urllib.parse.quote(kw))
         rows = [r for r in (ds_row(p) for p in ((data or {}).get("pairs") or [])) if r]
-        total += write_rows(d, "pairs", "search_%s.txt" % re.sub(r"[^a-z0-9]", "", kw.lower())[:14], rows)
-        if (i + 1) % 20 == 0:
-            http.log("  dexscreener search %d/%d keywords, %d pairs so far" % (i + 1, len(keywords), total))
-    http.log("  dexscreener search: %d pairs from %d keywords" % (total, len(keywords)))
+        return write_rows(d, "pairs", "search_%s.txt" % re.sub(r"[^a-z0-9]", "", kw.lower())[:14], rows)
+    total = 0
+    if len(keywords) <= 40 or "api.dexscreener.com" in http.dead:
+        for i, kw in enumerate(keywords):
+            total += one(http, kw)
+            if (i + 1) % 20 == 0:
+                http.log("  dexscreener search %d/%d keywords, %d pairs so far" % (i + 1, len(keywords), total))
+    else:
+        workers = [Http(http.mock, http.pause if http.mock else max(http.pause, SEARCH_PAUSE), http.log) for _ in range(SEARCH_THREADS)]
+        done = [0]
+        def job(i, kw):
+            n = one(workers[i % SEARCH_THREADS], kw)
+            done[0] += 1
+            if done[0] % 100 == 0:
+                http.log("  dexscreener search %d/%d keywords" % (done[0], len(keywords)))
+            return n
+        with concurrent.futures.ThreadPoolExecutor(max_workers=SEARCH_THREADS) as ex:
+            total = sum(ex.map(lambda ik: job(*ik), enumerate(keywords)))
+        for w in workers:
+            http.n += w.n
+            http.limited += w.limited
+            http.dead |= w.dead
+            for host, k in w.limited_by.items():
+                http.limited_by[host] = http.limited_by.get(host, 0) + k
+    http.log("  dexscreener search: %d pairs from %d keywords%s" % (total, len(keywords), (" on %d threads" % SEARCH_THREADS) if len(keywords) > 40 else ""))
     return total
 
 
@@ -1035,6 +1062,12 @@ def community(http, d, addrs, meta, now=None):
                         num(cg.get("sentiment_votes_up_percentage")), num(cg.get("market_cap_rank")), st_watch, st_msgs, x_fol, x_tw, tg_subs, tg_msgs))
     n = write_rows(d, "cm", "cm_%d.txt" % int(time.time()), rows)
     has = lambda i: sum(1 for r in rows if r.split("|")[i] not in ("", "null"))
+    tried_x = sum(1 for a in addrs if str(((meta or {}).get(a) or {}).get("x") or "").strip())
+    tried_tg = sum(1 for a in addrs if str(((meta or {}).get(a) or {}).get("tg") or "").strip())
+    if tried_x >= 3 and has(10) == 0:
+        http.log("  ! X: %d accounts looked up, no follower count read at all (did the syndication page change?)" % tried_x)
+    if tried_tg >= 3 and has(12) == 0:
+        http.log("  ! Telegram: %d channels looked up, no member count read at all (did the t.me preview change?)" % tried_tg)
     http.log("  community %d of %d (coingecko %d, stocktwits %d, x %d, telegram %d)" % (n, len(addrs), has(3), has(8), has(10), has(12)))
     return n
 

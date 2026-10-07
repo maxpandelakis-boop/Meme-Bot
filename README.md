@@ -154,7 +154,7 @@ and writes `db/memebot/train.json` (shown on the page under "Training" and in th
   (priced again after the horizon), as win rate, zero rate and average per 20.
 
 The training needs 400 scored candidate coins and at least 10 zeros before the zero model counts, and 4 scans before the
-walk-forward test runs; on GitHub Actions that is one or two days of 2-hourly scans. It takes under a minute on 30k rows.
+walk-forward test runs; on GitHub Actions that is about a day of hourly scans. It takes under a minute on 30k rows.
 
 ## Two profiles
 
@@ -170,7 +170,9 @@ off), so a running laptop picks up updates without anyone touching it.
 ## How big the scan is
 
 There is no cap: a full scan takes everything the public sources return, then runs the deep search (another 368 keyword
-searches on DexScreener) on top, about 12,000 coins from 800 lists in 14 minutes. More is not better: of those, roughly
+searches on DexScreener) on top, about 12,000 coins from 850 lists; the keyword searches run on three threads, so a scan
+takes about eight minutes. Scored snapshot chunks older than 60 days and raw chunks that never got scored are pruned
+from the Actions cache. More is not better: of those, roughly
 10,000 have under $15k of daily volume and never reach the gates, and the free APIs allow no more requests per minute
 (GeckoTerminal about six from GitHub's shared addresses, DexScreener 30 pairs per search).
 
@@ -178,7 +180,7 @@ searches on DexScreener) on top, about 12,000 coins from 800 lists in 14 minutes
 
 `.github/workflows/scan.yml` runs the whole cycle on GitHub Actions, so no computer of yours has to stay awake:
 
-- every two hours on a schedule, and whenever you press **Run workflow** (github.com → Actions → Meme-Bot scan; works from a phone browser);
+- every hour on a schedule, and whenever you press **Run workflow** (github.com → Actions → Meme-Bot scan; works from a phone browser);
 - each run clones the `results` branch into `mb/`, restores the big-test snapshots from the Actions cache, runs
   `bot.py cycle --recommend --push --horizon 2h`, pushes the new page and docs back to `results`, and prints the two picks
   with links on the run's own page (`bot.py summary`);
@@ -228,7 +230,7 @@ to show the picks, the charts and the links in chat.
 | `memebot.py` | the analyst: gates, factors, learned weights, picks, exits, big test |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
-| `.github/workflows/scan.yml` | the GitHub Actions scan every two hours, the results branch and the website |
+| `.github/workflows/scan.yml` | the hourly GitHub Actions scan, the results branch and the website |
 
 All source files are plain text, one coin per line, fields separated by `|` (formats in the `memebot.py` docstring), so
 any extra source can be added by writing such a file into `mb/`.

@@ -62,6 +62,27 @@ def run(args, d, now=None, expect_json=True):
         raise SystemExit("%s printed no JSON:\n%s" % (args[0], stdout[-2000:]))
 
 
+KEEP_RESULTS_DAYS = 60      # scored snapshot chunks older than this leave the cache (the training does not need older coins)
+KEEP_RAW_DAYS = 3           # a raw snapshot chunk that was never scored by then never will be (its coins never got a price)
+
+
+def prune(d, now):
+    """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted."""
+    gone = 0
+    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS)):
+        for fn in glob.glob(os.path.join(d, "db", sub, "*.json")):
+            try:
+                t = (json.load(open(fn, encoding="utf-8")) or {}).get("t")
+                if isinstance(t, (int, float)) and now - t > days * 86_400_000:
+                    os.remove(fn)
+                    gone += 1
+            except (OSError, ValueError):
+                continue
+    if gone:
+        log("pruned %d old snapshot files" % gone)
+    return gone
+
+
 def apply_out(d):
     """out/manifest.json -> db/<collection>/<doc_id>.json"""
     man = os.path.join(d, "out", "manifest.json")
@@ -144,6 +165,7 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     n = apply_out(d)
     log("saved %d docs" % n)
+    prune(d, now)
     # a scored snapshot's raw copy is not needed anymore (the result doc carries everything the learning reads)
     try:
         for w in json.load(open(os.path.join(d, "out", "manifest.json"), encoding="utf-8")):
@@ -363,9 +385,9 @@ def fmt_money(v):
     return "%.0f" % v
 
 
-SITE_NOTICE = ('<div class="live"><span><strong>Live</strong> · rebuilt after every scan, about every 2 h</span>'
+SITE_NOTICE = ('<div class="live"><span><strong>Live</strong> · rebuilt after every scan, every hour</span>'
                '<a class="btn" href="%s" target="_blank" rel="noopener">Scan now</a>'
-               '<small>The page reloads itself. Scan now opens GitHub: tap “Run workflow” there and come back in about seven minutes.</small></div>')
+               '<small>The page reloads itself. Scan now opens GitHub: tap “Run workflow” there and come back in about ten minutes.</small></div>')
 SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" href="manifest.webmanifest">\n'
              '<link rel="icon" href="icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="icon-180.png">\n'
              '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="Meme-Bot">\n'
