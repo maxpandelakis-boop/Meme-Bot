@@ -2109,9 +2109,12 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 if r["a"] in {c[0]["a"] for c in chosen}:
                     continue
                 ok_r, rtxt = clean(r)
-                runners.append(rec(r, rtxt, ok_r))
+                ok_l, ltxt = loose_view(risk.get(r["a"]))
+                runners.append(dict(rec(r, rtxt, ok_r), floor=(ltxt if ok_l is False else ("clears the relaxed floor" if ok_l else "no report"))))
             reason = "" if chosen else (("every coin that cleared the safety floor had trained odds of a loss (zero chance over %d%% or profit chance under %d%%)" % (round(100 * zmax), round(100 * MIN_UP_P)))
                                         if zero_flagged else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)")
+            if not chosen and runners:
+                reason += "; closest: " + ", ".join("%s (%s)" % (c["sym"], c.get("floor")) for c in runners[:3])
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
