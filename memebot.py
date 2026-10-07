@@ -1445,6 +1445,21 @@ def gate_audit(groups):
     return sorted(out, key=lambda x: (x["gate"] != "pass", -x["n"]))
 
 
+AGE_BUCKETS = ((0, 1, "under 1 hour"), (1, 3, "1 to 3 hours"), (3, 12, "3 to 12 hours"), (12, 24, "12 to 24 hours"), (24, 168, "1 to 7 days"), (168, None, "over 7 days"))
+
+
+def age_audit(groups):
+    """Every scored coin by its age at the snapshot: does the horizon reward the newest coins? One stats row per bucket
+    (all candidate-like coins, gates or not), plus the same for the coins that passed the gates."""
+    out = []
+    for lo, hi, text in AGE_BUCKETS:
+        rows = [r for _, _, g in groups for r in g if num(r["f"].get("ageH")) is not None and lo <= num(r["f"]["ageH"]) and (hi is None or num(r["f"]["ageH"]) < hi)]
+        if len(rows) >= 10:
+            passed = [r for r in rows if r["pass"]]
+            out.append(dict(age=text, lo=lo, hi=hi, **tip_stats(rows), passed=tip_stats(passed) if len(passed) >= 10 else None))
+    return out
+
+
 def tip_record(d):
     """Every real tip the bot gave (memerec) that has been priced again, as one stats row."""
     tips = []
@@ -1497,7 +1512,7 @@ def cmd_train(d, now):
     groups = train_groups(d)
     rows = [r for _, _, g in groups for r in g]
     doc = {"t": now, "rule": RULE, "rows": len(rows), "scans": len(groups), "zeros": sum(1 for r in rows if r["gone"]),
-           "tested": 0, "walkForward": {}, "zeroGrid": [], "scoreGrid": [], "gates": [], "factors": [], "tips": tip_record(d),
+           "tested": 0, "walkForward": {}, "zeroGrid": [], "scoreGrid": [], "gates": [], "ages": [], "factors": [], "tips": tip_record(d),
            "tuned": {"MAX_ZERO_P": MAX_ZERO_P, "MIN_REC_SCORE": MIN_REC_SCORE, "PICK_BY": "score"}, "tunedWhy": [], "zeroModel": None, "upModel": None, "zeroFactors": [], "note": ""}
     if rows:
         tested = walk_forward(groups)
@@ -1514,6 +1529,7 @@ def cmd_train(d, now):
             wf["top2zero"] = strategy(tested, 2, zmax=tuned["MAX_ZERO_P"])
             doc.update({"walkForward": wf, "zeroGrid": zero_grid, "scoreGrid": score_grid, "tuned": tuned, "tunedWhy": why})
         doc["gates"] = gate_audit(groups)
+        doc["ages"] = age_audit(groups)
         model = zero_model(rows)
         doc["upModel"] = up_model(rows)
         if model:
@@ -1590,6 +1606,10 @@ def zero_view(model, umodel, zmax, r, rtxt):
     return True, "%s; %s" % (rtxt, odds_text(r))
 
 
+YOUNG_MAX_AGE_H = 1.0     # the "new launches" tab: coins under an hour old with a tradable pair, shown next to the pick (never picked themselves)
+YOUNG_MIN_LIQ = 5_000     # ...with at least this much liquidity: under it the price is noise
+YOUNG_N = 12              # how many of them the page shows
+
 HARD_BLOCK = ("price", "curve", "nodex", "honeypot", "notmeme", "copy")   # gates no tier relaxes: without a tradable pair or as a scam there is nothing to name
 
 
@@ -1624,6 +1644,17 @@ def risky_rows(rows, held, recent, zmodel, umodel, risk=None):
             pool.sort(key=lambda r: (0 if isinstance(risk.get(r["a"]), dict) else 1, -((r["up"] or 0.0) - (r["zp"] or 0.0)), -r["sc"]))
             return pool
     return []
+
+
+def young_rows(rows, held=(), recent=()):
+    """The new launches: every coin under YOUNG_MAX_AGE_H old with a price, a DEX pair and YOUNG_MIN_LIQ of liquidity, best
+    score first. They never become a pick (the profile's minimum age stands); the page shows them on their own tab with the
+    same odds and safety data as the pick, so the question "do the newest coins do better?" gets answered by the record."""
+    out = [r for r in rows if r["basic"].get("age_h") is not None and 0 <= r["basic"]["age_h"] < YOUNG_MAX_AGE_H and r["basic"].get("price")
+           and (r["basic"].get("liq") or 0) >= YOUNG_MIN_LIQ and r["a"] not in held and r["a"] not in recent
+           and not any(k in ("price", "curve", "nodex", "honeypot", "copy") for k in r["fails"])]
+    out.sort(key=lambda r: (-r["sc"], r["basic"]["age_h"]))
+    return out
 
 
 # ---------------------------------------------------------------- the scan
@@ -1824,10 +1855,13 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     if recommend and room > 0 and len(short) < SHORTLIST:      # the fallback pool needs RugCheck reports too
         short += [r for r in soft_rows(rows, held, recent) if r["a"] not in risk][:SHORTLIST - len(short)]
     more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
+    if recommend:                                              # the new-launches tab shows safety data too
+        seen = {r["a"] for r in short + more} | set(risk)
+        more += [r for r in young_rows(rows, held, recent) if r["a"] not in seen][:YOUNG_N]
     meta = {r["a"]: {"sym": str(r["pr"].get("symbol") or "")[:16], "x": x_link(r["pr"]), "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100]} for r in short + more}
     zm, um = load_train(d)[:2]
     refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]
-                                 + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]]))[:240]
+                                 + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]] + [r["a"] for r in young_rows(rows, held, recent)[:YOUNG_N]]))[:252]
     print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta, "refresh": refresh,
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
@@ -1844,7 +1878,7 @@ def why_text(r):
     if f.get("c6") is not None:
         bits.append("%+.0f%% in 6h" % f["c6"])
     if b["age_h"] is not None:
-        bits.append(("%.0f days old" % (b["age_h"] / 24)) if b["age_h"] >= 48 else ("%.0f hours old" % b["age_h"]))
+        bits.append(("%.0f days old" % (b["age_h"] / 24)) if b["age_h"] >= 48 else (("%.0f hours old" % b["age_h"]) if b["age_h"] >= 1 else ("%d min old" % round(60 * b["age_h"]))))
     if f.get("srcN"):
         bits.append("seen on %d source lists" % f["srcN"])
     if f.get("soc.match") and f.get("soc.eng") is not None:
@@ -2131,10 +2165,16 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                                         if zero_flagged else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)")
             if not chosen and runners:
                 reason += "; closest: " + ", ".join("%s (%s)" % (c["sym"], c.get("floor")) for c in runners[:3])
+            young = []
+            for r in young_rows(rows, held, recent)[:YOUNG_N]:
+                ok_r, rtxt = clean(r)
+                ok_l, ltxt = loose_view(risk.get(r["a"]))
+                young.append(dict(rec(r, rtxt, ok_r), floor=(ltxt if ok_l is False else ("clears the relaxed floor" if ok_l else "no report")),
+                                  ageMin=round(60 * r["basic"]["age_h"]), gates=[fail_text(k) for k in r["fails"] if k != "young"]))
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
-                                          "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
+                                          "runnersUp": runners[:8], "young": young, "youngOf": len(young_rows(rows, held, recent)), "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
                 emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
                                                                             "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"], "zp": r.get("zp"), "up": r.get("up"), "tier": tiers.get(r["a"])} for r, _ in chosen]})

@@ -340,6 +340,11 @@ def summary(d):
         if rec.get("runnersUp"):
             out.append("")
             out.append("Runners-up: " + ", ".join("%s (%.0f)" % (md(r.get("sym")), M.num(r.get("score")) or 0) for r in rec["runnersUp"]))
+        if rec.get("young"):
+            out.append("")
+            out.append("New launches under an hour old (shown on their own tab, never picked): " + ", ".join(
+                "%s (%d min, score %.0f%s)" % (md(y.get("sym")), M.num(y.get("ageMin")) or 0, M.num(y.get("score")) or 0, (", %d%% profit chance" % round(100 * M.num(y["upP"]))) if M.num(y.get("upP")) is not None else "")
+                for y in rec["young"][:6]))
     else:
         out.append("No recommendation" + (" this time: %s." % md(rec["reason"]) if rec.get("reason") else " yet."))
         if rec.get("scanned"):

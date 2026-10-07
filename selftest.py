@@ -517,6 +517,9 @@ def main():
           "tuned limits stay in bounds: zero limit %s, score bar %s" % (tuned.get("MAX_ZERO_P"), tuned.get("MIN_REC_SCORE")))
     check(any(x.get("gate") == "pass" for x in tr.get("gates") or []) and any(x.get("gate") == "young" for x in tr.get("gates") or []) and tr.get("factors"),
           "gate audit and factor splits written (%d gates, %d factors)" % (len(tr.get("gates") or []), len(tr.get("factors") or [])))
+    ages_ = tr.get("ages") or []
+    check(len(ages_) >= 3 and all(a.get("n") >= 10 and a.get("avg") is not None for a in ages_) and sum(a["n"] for a in ages_) == tr.get("rows") and any(a.get("passed") for a in ages_),
+          "age record written: %s" % ", ".join("%s %d" % (a.get("age"), a.get("n")) for a in ages_))
     shutil.rmtree(td, ignore_errors=True)
     # the same results in the recommend db: the next cycle trains on them and the run applies the zero model to its picks
     os.makedirs(os.path.join(rd, "db", "memesnapres"), exist_ok=True)
@@ -570,6 +573,14 @@ def main():
     check(st.get("horizon") == "2h" and st.get("rule") == "m9-2h", "state carries the profile")
     page = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
     check("for the next 2 hours" in page and "Big test: 2 hours later" in page, "page is labelled for the 2-hour horizon")
+    young = rec.get("young") or []
+    check(young and all(0 <= M.num(y.get("ageMin")) < 60 and y.get("addr") and "upP" in y and "floor" in y and y.get("liq", 0) >= M.YOUNG_MIN_LIQ for y in young)
+          and all(y["addr"] not in {c["addr"] for c in rec.get("picks", [])} for y in young) and rec.get("youngOf", 0) >= len(young),
+          "new launches under an hour old are listed with odds and safety, none of them picked (%d of %d: %s)" % (len(young), rec.get("youngOf", 0), [(y.get("sym"), y.get("ageMin")) for y in young[:4]]))
+    check('id="tab-young"' in page and "New launches &lt;1h" in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
+          "page has the new-launches tab with the coins, their cards and the age record")
+    rk_young = [y for y in young if isinstance(y.get("risk"), dict) and y["risk"]]
+    check(rk_young, "the new launches got safety reports with the shortlist (%d of %d)" % (len(rk_young), len(young)))
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--mock", url, "--now", str(T0 + 3 * H), "--recommend", "--horizon", "2h"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     res = glob.glob(os.path.join(hd, "db", "memesnapres", "*.json"))
     check(r.returncode == 0 and res and "Big test" in r.stdout, "the snapshot was scored 2 hours later (%d result docs)" % len(res))

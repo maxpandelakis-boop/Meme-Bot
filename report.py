@@ -510,6 +510,13 @@ details.fold > summary:hover { border-color:var(--accent) }
 .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-width:0; display:grid; gap:12px }
 .card .top { display:flex; justify-content:space-between; gap:8px 12px; align-items:center; flex-wrap:wrap }
 .card .sym { font-size:20px; font-weight:600 } .name { color:var(--fg2); font-size:var(--fs-s); margin-left:6px }
+.tabs { display:grid; gap:20px } .tabs > input { position:absolute; opacity:0; pointer-events:none }
+.tabbar { display:flex; gap:6px; border-bottom:1px solid var(--line); padding-bottom:0 }
+.tabbar label { cursor:pointer; padding:10px 14px; border-radius:8px 8px 0 0; font-weight:500; color:var(--fg2); border:1px solid transparent; border-bottom:none; margin-bottom:-1px; display:inline-flex; gap:8px; align-items:center; min-height:44px }
+.tabbar label:hover { color:var(--fg) } .tabbar .cnt { font-size:var(--fs-xs); background:var(--chip); color:var(--fg2); border-radius:999px; padding:1px 8px }
+#tab-pick:checked ~ .tabbar label[for="tab-pick"], #tab-young:checked ~ .tabbar label[for="tab-young"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
+.tabbar label:focus-visible, .tabs > input:focus-visible ~ .tabbar label[for] { outline:2px solid var(--accent); outline-offset:2px }
+.pane { display:grid; gap:24px } #tab-young:checked ~ #pane-pick, #tab-pick:checked ~ #pane-young { display:none }
 .chips { display:flex; flex-wrap:wrap; gap:6px }
 .chip { display:inline-block; font-size:var(--fs-xs); font-weight:500; padding:3px 9px; border-radius:999px; background:var(--chip); color:var(--fg2); white-space:nowrap; line-height:1.4 }
 .chip.good { background:color-mix(in srgb,var(--good-mark) 16%,var(--surface)); color:var(--good) } .chip.bad { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
@@ -676,6 +683,8 @@ def tier_chip(c):
         return '<span class="chip warn" title="%s">fallback · momentum rules relaxed</span>' % E(relaxed or "no clean coin passed every gate")
     if t == "risky":
         return '<span class="chip warn" title="no coin had a clean safety report this scan: this is the tradable coin with the best trained odds, shown with its flag and its odds">risky · nothing clean, best odds</span>'
+    if t == "young":
+        return '<span class="chip" title="under an hour old: shown on the new-launches tab, never picked (the profile wants coins at least 3 hours old)">new launch · not a pick</span>'
     return '<span class="chip neutral">strong pick</span>'
 
 
@@ -759,11 +768,12 @@ def rec_card(c, now, embed):
             (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")
     chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
-            '<div class="odds">%s</div><p class="why"><strong>Why the bot picked it:</strong> %s</p>%s%s'
+            '<div class="odds">%s</div><p class="why"><strong>%s</strong> %s</p>%s%s'
             '<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")), "".join(tiles), E(c.get("why") or ""),
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")), "".join(tiles),
+        "Why it ranks here:" if c.get("tier") == "young" else "Why the bot picked it:", E(c.get("why") or ""),
         safety_box(c.get("safety"), c.get("ok")), notes,
-        "".join('<div><div class="k">%s</div><div class="v">%s</div></div>' % (E(k), E(v)) for k, v in kv),
+        "".join(('<div class="span"><div class="k">%s</div><div class="v multi">%s</div></div>' if len(str(v)) > 22 else '<div><div class="k">%s</div><div class="v">%s</div></div>') % (E(k), E(v)) for k, v in kv),
         sources_row(c.get("src")), chart, links(c), E(c.get("addr")))
 
 
@@ -805,6 +815,66 @@ def rec_section(D, embed):
         tr = "".join('<tr>%s%s%s</tr>' % (coin_cell(c.get("rank") or "?", c.get("sym"), c.get("name"), safety_chip(c.get("ok"), c.get("safety"))),
                                           num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))) for c in runners)
         body += '<details><summary>Runners-up (%d)</summary><div class="tbl stack"><table>%s<tbody>%s</tbody></table></div></details>' % (len(runners), COIN_HEAD, tr)
+    return section(E(h2), head, body)
+
+
+def odds_chip(c):
+    up, zp = M.num(c.get("upP")), M.num(c.get("zeroP"))
+    if up is None and zp is None:
+        return '<span class="chip">no trained odds</span>'
+    return '<span class="chip" title="trained odds within %s: chance of a profit · chance of going to zero">%s profit · %s zero</span>' % (
+        E(horizon_text()), pct(100 * up) if up is not None else "–", pct(100 * zp) if zp is not None else "–")
+
+
+def age_record(T):
+    """The scored record by age at the scan (train.json 'ages'): the table that says whether the newest coins do better."""
+    ages = [a for a in ((T or {}).get("ages") or []) if isinstance(a, dict) and a.get("n")]
+    if not ages:
+        return '<p class="note">No age record yet: the first scored scans decide whether coins under an hour old do better than the 3-to-12-hour coins the bot picks from.</p>'
+    hz = horizon_text()
+    tr = "".join('<tr><td>%s</td>%s%s</tr>' % (E(a.get("age")), stat_cells(a), stat_cells(a.get("passed")) if a.get("passed") else '<td class="n muted" colspan="4">–</td>') for a in ages)
+    by = {a.get("lo"): a for a in ages}
+    verdict = ""
+    y, m = by.get(0), by.get(3)
+    if y and m and y.get("avg") is not None and m.get("avg") is not None:
+        better = y["avg"] > m["avg"]
+        verdict = '<p class="note"><strong>What the record says:</strong> coins under an hour old averaged %s per 20 (%s went up, %s to zero) against %s (%s up, %s to zero) for the 3-to-12-hour coins the bot picks from, over %d and %d coin results. %s</p>' % (
+            fmt_amt(y["avg"], True), pct(y.get("win")), pct(y.get("zero")), fmt_amt(m["avg"], True), pct(m.get("win")), pct(m.get("zero")), y["n"], m["n"],
+            "So far the newest coins did better on average." if better else "So far the newest coins did not do better on average; the higher zero rate eats the winners.")
+    return '%s<div class="tbl stack"><table><thead><tr><th>age at the scan</th><th colspan="4">all candidate-like coins</th><th colspan="4">coins that passed the gates</th></tr><tr><th></th>%s%s</tr></thead><tbody>%s</tbody></table></div><p class="note">a result is 20 in the coin at the scan, priced again %s later, after fees</p>' % (
+        verdict, STAT_HEAD, STAT_HEAD, tr, E(hz))
+
+
+def young_section(D):
+    """The new-launches tab: every coin under an hour old with a tradable pair this scan, best score first, with the same odds
+    and safety data as the pick, and the scored record by age. These coins are shown, never picked."""
+    rc = D.get("rec") or {}
+    young = [c for c in (rc.get("young") or []) if isinstance(c, dict)]
+    n_all = int(M.num(rc.get("youngOf")) or len(young))
+    head = "coins under an hour old with a DEX pair and at least %s of liquidity at the scan · shown, never picked: the %s profile picks from coins %g to %g hours old · fake money" % (
+        fmt_money(M.YOUNG_MIN_LIQ), M.HORIZON, M.GATE_MIN_AGE_H, M.GATE_MAX_AGE_H or 0)
+    if young:
+        rows_html = []
+        for i, c in enumerate(young, 1):
+            chips = '<span class="chip">%d min old</span>%s%s' % (int(M.num(c.get("ageMin")) or 0), safety_chip(c.get("ok"), c.get("safety")), odds_chip(c))
+            rows_html.append('<tr>%s%s%s</tr>' % (coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
+        body = '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
+        cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False) for c in young)
+        body += '<details><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
+        gates = [(c.get("sym"), c.get("gates") or []) for c in young if c.get("gates")]
+        if gates:
+            body += '<details><summary>Which other gates they would fail today</summary><ul class="note">%s</ul></details>' % "".join(
+                "<li><strong>%s</strong>: %s</li>" % (E(sym), E("; ".join(str(x) for x in g))) for sym, g in gates)
+    elif rc and "young" not in rc:
+        body = '<div class="empty">This scan ran before the tab existed; the next scan fills it.</div>'
+    elif rc:
+        body = '<div class="empty">No coin under an hour old had a DEX pair with %s of liquidity in this scan (%d coins scanned).</div>' % (fmt_money(M.YOUNG_MIN_LIQ), int(M.num(rc.get("scanned")) or 0))
+    else:
+        body = '<div class="empty">No scan yet.</div>'
+    body = '<h3>The record by age</h3>%s<h3>This scan</h3>%s' % (age_record(D.get("train")), body)
+    h2 = ("%d new launch%s under an hour old" % (n_all, "" if n_all == 1 else "es")) if rc else "New launches"
+    if n_all > len(young) and young:
+        h2 += " (the %d best shown)" % len(young)
     return section(E(h2), head, body)
 
 
@@ -1136,8 +1206,13 @@ def render(data, fragment=False):
             '<div class="meta">updated %s · %s run%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s")
     body = [head]
     if D.get("rec"):
-        body.append(safe("recommendations", lambda: rec_section(D, embed=not fragment)))
-        body.append(safe("track record", lambda: track_section(D)))
+        # two tabs: the pick (and its track record) and the new launches under an hour old; CSS-only, so the fragment works without scripts
+        n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
+        pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("track record", lambda: track_section(D))
+        pane_young = safe("new launches", lambda: young_section(D))
+        body.append('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young">'
+                    '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New launches &lt;1h <span class="cnt">%d</span></label></div>'
+                    '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div></div>' % (n_young, pane_pick, pane_young))
     rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
     rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     rest += [safe("hero", hero), safe("equity curve", curve), safe("bought coins", bought), safe("closed trades", closed), safe("candidates", candidates)]

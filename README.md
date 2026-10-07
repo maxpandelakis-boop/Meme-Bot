@@ -112,6 +112,15 @@ sale, no authority left, and at least the profile's minimum age; shown with what
 odds). When nothing clears even that floor, the page says so and names no coin: a 20-minute-old launch without a report
 is never a tip, whatever its odds.
 
+### New launches tab
+
+The page has two tabs. "The pick" is the recommendation. "New launches <1h" lists every coin under an hour old that had
+a DEX pair and at least $5k of liquidity at the scan, best score first, with the same trained odds, safety report and
+numbers as the pick (`young` in `db/memebot/recommend.json`). These coins are shown, never picked: the 2h profile picks
+from coins 3 to 12 hours old, and the training's age record (`ages` in `db/memebot/train.json`, shown at the top of the
+tab) says how coins of each age did after the horizon, so the question "do the newest coins do better?" is answered by
+the record, not by a hunch. The RugCheck/GoPlus reports for them are fetched with the shortlist.
+
 ## Publicity
 
 Numbers alone miss what people are talking about, so every scan also reads Reddit (the newest posts of r/CryptoMoonShots,
