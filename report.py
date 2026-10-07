@@ -466,6 +466,7 @@ details.fold > summary .t { font-weight:600; font-size:17px; line-height:1.25 } 
 details.fold > summary::after { content:"›"; grid-column:2; grid-row:1 / span 2; color:var(--muted); font-size:24px; line-height:1; transform:rotate(90deg); transition:transform .15s }
 details.fold[open] > summary { margin-bottom:12px } details.fold[open] > summary::after { transform:rotate(-90deg) }
 details.fold > summary:hover { border-color:var(--accent) }
+.rest { display:grid; gap:24px }
 .hero { display:grid; grid-template-columns:minmax(280px,1.5fr) repeat(auto-fit,minmax(140px,1fr)); gap:12px }
 .tile { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px 14px; min-width:0; display:grid; gap:4px; align-content:start }
 .tile .label { font-size:var(--fs-xs); color:var(--muted) }
@@ -499,6 +500,7 @@ details.fold > summary:hover { border-color:var(--accent) }
 .chip.good { background:color-mix(in srgb,var(--good-mark) 16%,var(--surface)); color:var(--good) } .chip.bad { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
 .chip.warn { background:color-mix(in srgb,var(--warn-mark) 18%,var(--surface)); color:var(--warn) }
 .chip.neutral { background:color-mix(in srgb,var(--accent) 14%,var(--surface)); color:var(--accent) }
+.odds { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px } .odds .tile .value { font-size:26px }
 .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px 12px; font-size:var(--fs-m) }
 .kv div { min-width:0 } .kv .k { color:var(--muted); font-size:var(--fs-xs) } .kv .v { font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:500 }
 .kv .v.multi { white-space:normal } .kv .span { grid-column:1 / -1 }
@@ -532,7 +534,7 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
   body { font-size:15px } h1 { font-size:21px } .wrap { gap:20px }
   .note, .why, .safety, .sec-head p, details, table, .legend, .tile .sub, header .meta, .live, .links a { font-size:14px } .chip { font-size:13px }
   .hero { grid-template-columns:1fr 1fr } .hero .tile.lead { grid-column:1 / -1 } .hero .tile:last-child:nth-child(even) { grid-column:1 / -1 } .tile.lead .value { font-size:32px }
-  .kv { grid-template-columns:1fr 1fr } .embed { height:240px } .card { gap:12px }
+  .kv { grid-template-columns:1fr 1fr } .embed { height:240px } .card { gap:12px } .odds { grid-template-columns:1fr 1fr } .odds .tile:last-child { grid-column:1 / -1 }
   .stack table, .stack tbody, .stack tr, .stack td { display:block } .stack thead { display:none } .stack tr { padding:10px 12px; border-top:1px solid var(--line2) } .stack tr:first-child { border-top:0 }
   .stack td { border-top:0; padding:2px 0; text-align:left; white-space:normal; min-width:0; max-width:none } .stack td.n, .stack td.w, .stack td.m, .stack td.act { display:inline-block; padding-right:12px }
   .stack td.d { display:inline-block; padding-right:12px } .stack td.n::before, .stack td.d::before { content:attr(data-k) " "; color:var(--muted); font-size:12px } .stack td.act { padding-top:4px } }
@@ -662,33 +664,61 @@ def tier_chip(c):
     return '<span class="chip neutral">strong pick</span>'
 
 
+def yes_no(v, yes="yes", no="no"):
+    return "–" if v is None else (yes if v else no)
+
+
 def rec_card(c, now, embed):
-    """A recommended coin: top row with the safety answer, the key figures, the safety sentence, sources, the live chart, the
-    bot's reasoning behind a tap, then the links and the address."""
-    f = c.get("f") or {}
+    """A recommended coin, top to bottom: who it is and how much the pick is worth (tier, safety), the trained odds, why the
+    bot picked it, the safety check, every number behind the pick, the sources, the live chart, the links."""
+    f, rk = c.get("f") or {}, c.get("risk") or {}
+    dv = rk.get("dev") or {}
     g = lambda k: M.num(f.get(k))
-    kv = [("score", "%.0f of 100" % (M.num(c.get("score")) or 0)), ("rank", "#%s" % (c.get("rank") or "?")),
-          ("age", fmt_age(now - (g("ageH") or 0) * 3_600_000, now) if g("ageH") is not None else "–"),
-          ("price", fmt_px(c.get("px"))), ("market cap", fmt_money(c.get("mc"))), ("liquidity", fmt_money(c.get("liq"))),
-          ("liquidity ÷ cap", pct(100 * g("liqMc")) if g("liqMc") is not None else "–"),
-          ("24h volume", fmt_money(c.get("vol"))), ("share of buys", pct(100 * g("buyShare")) if g("buyShare") is not None else "–"),
-          ("holders", ("%d" % g("rc.holders")) if g("rc.holders") else "–"), ("top 10 hold", pct(g("rc.top10")) if g("rc.top10") is not None else "–"),
-          ("24h change", sgn("%+.0f%%" % g("c24")) if g("c24") is not None else "–")]
-    if g("c6") is not None and g("c6") != g("c24"):
-        kv.append(("6h change", sgn("%+.0f%%" % g("c6"))))
-    if M.num(c.get("upP")) is not None:
-        kv.append(("chance of profit", pct(100 * M.num(c.get("upP")))))
-    if M.num(c.get("zeroP")) is not None:
-        kv.append(("chance of zero", pct(100 * M.num(c.get("zeroP")))))
+    hz = horizon_text()
+    up, zp = M.num(c.get("upP")), M.num(c.get("zeroP"))
+    tiles = [tile("Chance of a profit", pct(100 * up) if up is not None else "–", "within %s, after fees · learned from the bot's own scored scans" % hz if up is not None else "no trained model yet"),
+             tile("Chance of going to zero", pct(100 * zp) if zp is not None else "–", "within %s" % hz if zp is not None else "no trained model yet"),
+             tile("Score", "%.0f of 100" % (M.num(c.get("score")) or 0), "rank #%s of the coins that passed the gates" % (c.get("rank") or "?"))]
+    age = fmt_age(now - (g("ageH") or 0) * 3_600_000, now) if g("ageH") is not None else "–"
+    chg = lambda k: sgn("%+.0f%%" % g(k)) if g(k) is not None else "–"
+    holders = M.num(rk.get("holdersN")) or g("rc.holders") or M.num(dv.get("jupHolders"))
+    creator = M.num(rk.get("creatorPct")) if M.num(rk.get("creatorPct")) is not None else M.num(dv.get("devPct"))
+    sold = dv.get("devSold")
+    kv = [("age", age), ("price", fmt_px(c.get("px"))), ("market cap", fmt_money(c.get("mc"))), ("liquidity", fmt_money(c.get("liq"))),
+          ("liquidity ÷ cap", pct(100 * g("liqMc")) if g("liqMc") is not None else "–"), ("24h volume", fmt_money(c.get("vol"))),
+          ("last hour's share of 24h volume", pct(100 * g("vol1Share")) if g("vol1Share") is not None else "–"),
+          ("share of buys", pct(100 * g("buyShare")) if g("buyShare") is not None else "–"),
+          ("buys ÷ sells, last hour", ("%.2fx" % g("buyRatio1h")) if g("buyRatio1h") is not None else "–"),
+          ("1h change", chg("c1")), ("6h change", chg("c6")), ("24h change", chg("c24")),
+          ("holders", ("%d" % holders) if holders else "–"), ("biggest wallet", pct(rk.get("top1")) if M.num(rk.get("top1")) is not None else "–"),
+          ("top 10 wallets", pct(rk.get("top10")) if M.num(rk.get("top10")) is not None else (pct(g("rc.top10")) if g("rc.top10") is not None else "–")),
+          ("insider wallets", ("%d" % M.num(rk.get("insiders"))) if M.num(rk.get("insiders")) is not None else "–"),
+          ("liquidity locked", pct(rk.get("lpLocked")) if M.num(rk.get("lpLocked")) is not None else "–"),
+          ("creator holds", pct(creator) if creator is not None else "–"),
+          ("creator sold in 3h", "–" if not dv else (("yes, %d min ago" % M.num(dv.get("devSellAgeMin"))) if sold and M.num(dv.get("devSellAgeMin")) is not None else yes_no(sold))),
+          ("mint authority", "–" if dv.get("mintAuthOff") is None else ("given up" if dv.get("mintAuthOff") else "still active")),
+          ("metadata changeable", yes_no(rk.get("mutable"))), ("RugCheck score", ("%d" % M.num(rk.get("score"))) if M.num(rk.get("score")) is not None else "–"),
+          ("source lists", ("%d" % g("srcN")) if g("srcN") else "–"), ("keyword hits", ("%d" % g("kwN")) if g("kwN") else "0"),
+          ("paid boosts", ("%d" % g("boosts")) if g("boosts") else "none"),
+          ("buyers / sellers 24h", ("%d / %d" % (g("gt.buyers24"), g("gt.sellers24"))) if g("gt.buyers24") is not None and g("gt.sellers24") is not None else "–"),
+          ("net new buyers, last hour", ("%+d" % g("jup.netBuyers1")) if g("jup.netBuyers1") is not None else "–"),
+          ("holder change 24h", (sgn("%+.0f%%" % (100 * g("jup.holderChg24")))) if g("jup.holderChg24") is not None else "–")]
+    if g("gm.smartDegen") is not None:
+        kv.append(("smart-money wallets", "%d" % g("gm.smartDegen")))
+    notes = ""
+    if c.get("tier") == "fallback":
+        notes = '<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))
+    elif c.get("tier") == "risky":
+        notes = '<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero), not a clean pick.%s</p>' % (
+            (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")
     chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
-            '<div class="kv">%s</div>%s%s%s<details class="more"><summary>Why the bot likes it</summary><p class="why">%s</p></details>%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")),
+            '<div class="odds">%s</div><p class="why"><strong>Why the bot picked it:</strong> %s</p>%s%s'
+            '<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></article>') % (
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")), "".join(tiles), E(c.get("why") or ""),
+        safety_box(c.get("safety"), c.get("ok")), notes,
         "".join('<div><div class="k">%s</div><div class="v">%s</div></div>' % (E(k), E(v)) for k, v in kv),
-        safety_box(c.get("safety"), c.get("ok")) + (('<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("tier") == "fallback" else "")
-        + (('<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero, both from the bot\'s own %s results), not a clean pick.%s</p>' % (
-            horizon_text(), (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")) if c.get("tier") == "risky" else ""),
-        sources_row(c.get("src")), chart, E(c.get("why") or ""), links(c), E(c.get("addr")))
+        sources_row(c.get("src")), chart, links(c), E(c.get("addr")))
 
 
 def coin_cell(rank, sym, name, chips):
@@ -1058,18 +1088,20 @@ def render(data, fragment=False):
     if D.get("rec"):
         body.append(safe("recommendations", lambda: rec_section(D, embed=not fragment)))
         body.append(safe("track record", lambda: track_section(D)))
-        body.append(safe("training", lambda: train_section(D)))
-    body.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
-    body.append(safe("hero", hero))
-    body.append(safe("equity curve", curve))
-    body.append(safe("bought coins", bought))
-    body.append(safe("closed trades", closed))
-    body.append(safe("candidates", candidates))
+    rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
+    rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
+    rest += [safe("hero", hero), safe("equity curve", curve), safe("bought coins", bought), safe("closed trades", closed), safe("candidates", candidates)]
     w_html = safe("weights", lambda: weights_section(D))
     if w_html:
-        body.append(w_html)
+        rest.append(w_html)
     if D["runs"]:
-        body.append(safe("run log", runlog))
+        rest.append(safe("run log", runlog))
+    if rec_mode:
+        # the page answers one question: which coin, why, and the numbers behind it; everything else sits behind one tap
+        body.append(fold("Details: training, big test, all candidates, weights, run log", "%d coins scanned · %d coin results scored" % (int(D["scan_n"] or 0), scored),
+                         '<div class="rest">%s</div>' % "\n".join(x for x in rest if x)))
+    else:
+        body += [x for x in rest if x]
     body.append('<footer><span>generated %s</span><span>rule %s · %s profile</span><span>fees simulated at 0.5%%, minimum 0.81 per trade</span><span>prices from DexScreener at the time of each run</span><span>times in %s</span></footer>' % (
         E(fmt_dt(now)), E(st.get("rule") or M.RULE), E(M.HORIZON), TZ_NAME))
     content = '<div class="wrap">%s</div>\n<script>%s</script>' % ("\n".join(body), JS)

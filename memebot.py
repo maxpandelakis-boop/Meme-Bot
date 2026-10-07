@@ -1532,7 +1532,12 @@ def risk_view(r):
 def risk_doc(r):
     if not isinstance(r, dict):
         return None
-    doc = {"score": num(r.get("score")), "lpLocked": num(r.get("lpLocked")), "danger": names(r, "danger")[:6], "warn": names(r, "warn")[:6]}
+    doc = {"score": num(r.get("score")), "lpLocked": num(r.get("lpLocked")), "danger": names(r, "danger")[:6], "warn": names(r, "warn")[:6],
+           "holdersN": num(r.get("holders")), "top1": num(r.get("top1Pct")), "top10": num(r.get("top10Pct")), "insiders": num(r.get("insiders")),
+           "creatorPct": num(r.get("creatorPct")), "mutable": r.get("mutable"), "launchpad": r.get("launchpad")}
+    dv = r.get("dev")
+    if isinstance(dv, dict):
+        doc["dev"] = {k: dv.get(k) for k in ("devPct", "devSold", "devSellAgeMin", "mintAuthOff", "freezeAuthOff", "txs3h", "jupHolders", "organic") if dv.get(k) is not None}
     if r.get("holdersTop"):
         doc["holders"] = list(r["holdersTop"])[:40]      # kept in snapshots so scored coins can credit their wallets
     return doc

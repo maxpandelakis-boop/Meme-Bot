@@ -408,7 +408,7 @@ def main():
     check(r.returncode == 0 and "training:" in r.stderr and rec4.get("zeroLimit") is not None and rec4.get("trained") == 2880 and zps and all(isinstance(v, float) for v in zps)
           and "Zero model" in (st4.get("note") or ""), "the cycle trained and the run applied the zero model (limit %s, picks' zero chance %s)" % (rec4.get("zeroLimit"), zps))
     page4 = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
-    check("Walk-forward test" in page4 and "Zero model" in page4 and "chance of zero" in page4 and "chance of profit" in page4, "page shows the training section and the odds on the card")
+    check("Walk-forward test" in page4 and "Zero model" in page4 and "Chance of going to zero" in page4 and "Chance of a profit" in page4 and "Why the bot picked it" in page4, "page shows the training section and the odds on the card")
     ups = [c.get("upP") for c in rec4.get("picks", [])]
     check(ups and all(isinstance(v, float) for v in ups) and "chance of a profit" in (rec4["picks"][0].get("safety") or ""), "picks carry the trained profit chance (%s)" % ups)
     # nothing clean at all: a training doc that puts every coin over the zero limit -> the risky tier names the best odds, with its flag
