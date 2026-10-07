@@ -1236,7 +1236,8 @@ TRAIN_CHECKPOINTS = 8      # walk-forward: the models are refitted this many tim
 TRAIN_MIN_TIPS = 30        # a limit is tuned only from at least this many out-of-sample tips
 MAX_ZERO_P = 0.35          # a clean coin whose trained chance of going to zero is above this is skipped; the training may tighten it ...
 ZERO_P_FLOOR = 0.05        # ... but never below this, nor below 1.5x the base zero rate: a tighter limit would leave the picks to chance
-MIN_UP_P = 0.2             # a fallback or risky pick with a trained profit chance under this is a loss with notice: not named
+MIN_UP_P = 0.2             # a pick with a trained profit chance under this is a loss with notice: not named ...
+ODDS_TRUST_ROWS = 20000    # ... for strong/weak picks only once the profit model rests on this many coin results (a thin model must not veto a clean coin)
 ZERO_GRID = (0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5)
 SCORE_GRID = tuple(range(35, 85, 5))
 
@@ -2044,10 +2045,12 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     flagged, unchecked, chosen, zero_flagged = [], 0, [], 0
 
     def clean(r):
-        """RugCheck's verdict, then the zero model's: (ok, text); None when no report came back."""
+        """RugCheck's verdict, then the zero model's, then (with enough training) the profit model's: (ok, text); None when no report came back."""
         ok_r, rtxt = risk_view(risk.get(r["a"]))
         if ok_r:
             ok_r, rtxt = zero_view(zmodel, umodel, zmax, r, rtxt)
+        if ok_r and trained_n >= ODDS_TRUST_ROWS and r.get("up") is not None and r["up"] < MIN_UP_P:
+            return False, "training model: only %d%% chance of a profit within %s (limit %d%%)" % (round(100 * r["up"]), eval_text(), round(100 * MIN_UP_P))
         return ok_r, rtxt
     day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
     tickets = bankroll(pos)["tickets"]
