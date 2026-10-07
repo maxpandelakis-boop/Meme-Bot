@@ -120,6 +120,7 @@ SNAP_CHUNK = 200
 LEARN_MIN_N = 80         # coins a factor needs on both sides before its correlation counts
 LEARN_FULL_N = 600       # scored coins at which the learned weights fully replace the prior
 EUR_CLIP = (-20.0, 60.0) # a 24h result is clipped to this range before learning, so one 50x coin does not set the weights
+LEARN_FROM = 1791380700000   # 2026-10-07 13:45 UTC: results scored before this counted every unpriced coin as gone (no Jupiter fallback yet) and taught nonsense
 DAY = 86_400_000
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 # prior weights (sign = direction). Used fully until coins are scored, then blended out.
@@ -1109,9 +1110,10 @@ def priceless_at_snapshot(c):
 
 
 def usable_result(doc):
-    """A scored snapshot chunk teaches only when its pricing worked: when more than half of its candidate-like coins (minimum
-    liquidity and market cap at the time) count as gone, the price fetch failed for the chunk and 'gone' means 'unpriced'."""
-    if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
+    """A scored snapshot chunk teaches only when its pricing worked: scored after LEARN_FROM (the Jupiter price fallback), and
+    when more than half of its candidate-like coins (minimum liquidity and market cap at the time) count as gone, the price
+    fetch failed for the chunk and 'gone' means 'unpriced'."""
+    if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE or (num(doc.get("t")) or 0) < LEARN_FROM:
         return False
     cand = [c for c in (doc.get("coins") or []) if isinstance(c, dict) and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c))]
     return len(cand) < 20 or sum(1 for c in cand if c.get("gone")) <= 0.5 * len(cand)
@@ -1567,23 +1569,25 @@ def zero_view(model, umodel, zmax, r, rtxt):
 HARD_BLOCK = ("price", "curve", "nodex", "honeypot", "notmeme", "copy")   # gates no tier relaxes: without a tradable pair or as a scam there is nothing to name
 
 
-def risky_rows(rows, held, recent, zmodel, umodel):
-    """The last resort of recommend mode, in three widening pools: (1) coins inside the profile's market-cap range and at most
-    twice its maximum age that failed only the momentum gates, (2) coins inside the market-cap range whatever their age or
-    momentum, (3) every coin with a tradable pair and the minimum liquidity. The first pool with a coin is used, ranked by
-    trained odds (profit chance minus zero chance), then score; without the pools a $250M coin that cannot go to zero would
-    always win the odds. Each row gets r["pool"]."""
+def risky_rows(rows, held, recent, zmodel, umodel, risk=None):
+    """The last resort of recommend mode, in three widening pools: (1) coins inside the profile's market-cap range, at least its
+    minimum age and at most twice its maximum age, that failed only the momentum gates, (2) coins inside the market-cap range
+    whatever their age or momentum, (3) every coin with a tradable pair and the minimum liquidity. Never a coin younger than
+    the profile's minimum age or with an unknown age: a 22-minute-old launch with no report is what the floors exist for.
+    The first pool with a coin is used; inside it a coin with a RugCheck report (whatever its warning) comes before one
+    without, then the trained odds (profit chance minus zero chance), then the score. Each row gets r["pool"]."""
     max_age = (GATE_MAX_AGE_H or 1e9) * FALLBACK_MAX_AGE_X
+    risk = risk or {}
     pools = [[], [], []]
     for r in rows:
         if r["a"] in held or r["a"] in recent or any(k in HARD_BLOCK or k == "crash" for k in r["fails"]):
             continue
         liq, mc, age = r["basic"].get("liq"), r["basic"].get("mc"), r["basic"].get("age_h")
-        if not r["basic"].get("price") or liq is None or liq < GATE_MIN_LIQ or mc is None or mc < GATE_MC[0]:
+        if not r["basic"].get("price") or liq is None or liq < GATE_MIN_LIQ or mc is None or mc < GATE_MC[0] or age is None or age < GATE_MIN_AGE_H:
             continue
         r["zp"], r["up"] = chances(zmodel, umodel, r["f"])
         in_mc = mc <= GATE_MC[1]
-        if in_mc and (age is None or age <= max_age) and set(r["fails"]) <= set(SOFT_GATES) | {"young"}:
+        if in_mc and age <= max_age and set(r["fails"]) <= set(SOFT_GATES):
             pools[0].append(r)
         elif in_mc:
             pools[1].append(r)
@@ -1593,7 +1597,7 @@ def risky_rows(rows, held, recent, zmodel, umodel):
         if pool:
             for r in pool:
                 r["pool"] = i + 1
-            pool.sort(key=lambda r: (-((r["up"] or 0.0) - (r["zp"] or 0.0)), -r["sc"]))
+            pool.sort(key=lambda r: (0 if isinstance(risk.get(r["a"]), dict) else 1, -((r["up"] or 0.0) - (r["zp"] or 0.0)), -r["sc"]))
             return pool
     return []
 
@@ -1754,7 +1758,9 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
         short += [r for r in soft_rows(rows, held, recent) if r["a"] not in risk][:SHORTLIST - len(short)]
     more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
     meta = {r["a"]: {"sym": str(r["pr"].get("symbol") or "")[:16], "x": x_link(r["pr"]), "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100]} for r in short + more}
-    refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]))[:240]
+    zm, um = load_train(d)[:2]
+    refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]
+                                 + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]]))[:240]
     print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta, "refresh": refresh,
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
@@ -2011,8 +2017,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                         chosen.append((r, rtxt)); tiers[r["a"]] = "fallback"
                         break
             if not chosen:
-                for r in risky_rows(rows, held, recent, zmodel, umodel):
+                for r in risky_rows(rows, held, recent, zmodel, umodel, risk):
                     ok_r, rtxt = risk_view(risk.get(r["a"]))
+                    r["ok_risky"] = ok_r
                     if ok_r is None:
                         rtxt = "no safety report came back for it"
                     pool_txt = {1: "", 2: " (no coin of the profile's age with momentum was tradable: the market-cap range was kept, age and momentum were not)",
@@ -2036,7 +2043,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 runners.append(rec(r, rtxt, ok_r))
             reason = "" if chosen else "no coin in the scan had a tradable pair with the minimum liquidity and market cap"
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
-            emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
+            emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
                                           "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
