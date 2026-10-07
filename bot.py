@@ -75,6 +75,12 @@ def apply_out(d):
     return n
 
 
+def M_DEEP_SCAN_BELOW():
+    sys.path.insert(0, HERE)
+    import memebot as M
+    return M.DEEP_SCAN_BELOW
+
+
 def chunk_addrs(g):
     out = []
     for ch in g.get("chunks") or []:
@@ -109,6 +115,18 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     if mode["pick"] or mode["bigTestSaveDue"]:
         s = run(["memebot.py", "shortlist"] + extra, d, now)
         log("shortlist: %d of %d gated coins get a RugCheck report; best: %s" % (s["n"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
+        if mode["pick"] and mode["scan"] == "full" and not offline and s["gated"] < M_DEEP_SCAN_BELOW():
+            log("only %d coins passed the gates: searching deeper" % s["gated"])
+            fetch(["deep"])
+            g = run(["memebot.py", "gather"], d, now)
+            need = chunk_addrs(g)
+            if need:
+                with open(os.path.join(d, "need.json"), "w", encoding="utf-8") as f:
+                    json.dump({"chunks": [",".join(need[i:i + 30]) for i in range(0, len(need), 30)]}, f)
+                fetch(["tokens", "--from-gather", os.path.join(d, "need.json")])
+                g = run(["memebot.py", "gather"], d, now)
+            s = run(["memebot.py", "shortlist"] + extra, d, now)
+            log("after the deep search: %d coins, %d gated; best: %s" % (g["coins"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
         if s["shortlist"] and not offline:
             fetch(["risk", "--addrs", ",".join(s["shortlist"])])
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
@@ -269,7 +287,10 @@ def summary(d):
         out.append("Scanned %s coins, %s passed the gates." % (rec.get("scanned", "?"), rec.get("passed", "?")))
         for p in rec["picks"]:
             links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")) if u.startswith("https://") and ")" not in u and " " not in u)
-            out.append("### %d. %s (%s) — score %.0f" % (M.num(p.get("rank")) or 0, md(p.get("sym")), md(p.get("name")), M.num(p.get("score")) or 0))
+            tier = {"weak": " · weak, best available", "fallback": " · fallback, momentum rules relaxed"}.get(p.get("tier"), "")
+            out.append("### %d. %s (%s) — score %.0f%s" % (M.num(p.get("rank")) or 0, md(p.get("sym")), md(p.get("name")), M.num(p.get("score")) or 0, tier))
+            if p.get("relaxed"):
+                out.append("- named only because nothing cleaner passed every gate; it failed: " + md("; ".join(str(x) for x in p["relaxed"])))
             out.append("- market cap $%s, liquidity $%s, 24h volume $%s" % tuple(fmt_money(M.num(p.get(k))) for k in ("mc", "liq", "vol")))
             if p.get("why"):
                 out.append("- " + md(p["why"]))

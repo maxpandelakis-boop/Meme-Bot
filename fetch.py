@@ -57,6 +57,26 @@ soul mind heart happy sad angry mad crazy insane wild calm cozy comfy warm cold 
 seven eight nine ten hundred thousand million billion trillion zero infinity pi phi alpha beta omega new old first last next final ultimate original classic
 vintage modern future past present now today tomorrow forever never yes no maybe ok okay sure nope yep wow omg wtf lmfao rofl top kek haha hehe lul xd uwu
 owo""".split()))
+EXTRA_KEYWORDS = [w for w in list(dict.fromkeys("""wen moon pump dump rug safe scam honest legit real fake test demo alpha beta gamma delta sigma omega
+jeet whale shrimp crab fish dolphin octopus squid jelly coral reef ocean sea lake river pond puddle rain snow storm thunder lightning
+wind cloud fog mist dust sand rock stone mountain hill valley forest tree leaf flower rose tulip daisy lily lotus cactus mushroom
+apple orange lemon lime grape cherry berry melon mango peach pear plum kiwi coconut avocado tomato potato carrot onion garlic pepper
+bread butter cheese milk egg honey sugar salt rice bean corn wheat oat soup stew salad sandwich sausage steak ribs wings
+car truck bike train plane ship boat rocket jet tank robot drone laser sword shield armor helmet crown ring gem pearl ruby emerald
+sapphire opal jade amber ivory marble granite steel iron copper silver platinum uranium plutonium carbon neon argon helium hydrogen
+hero villain legend myth saga epic tale story book page word letter sign symbol code secret mystery riddle puzzle maze labyrinth
+clock time hour minute second day night dawn dusk noon midnight week month year decade century eon era age epoch
+north pole arctic tundra desert jungle savanna prairie island peninsula continent country city town village farm ranch castle tower
+church temple shrine altar monk priest nun saint angel demon devil hell heaven paradise utopia dystopia apocalypse zombie plague virus
+doctor nurse cop judge lawyer banker trader broker dealer miner farmer baker chef pilot sailor soldier spy agent hacker coder nerd geek
+mom dad son kid boy girl man woman baby twin bro sis cousin uncle aunt grandpa grandma family tribe clan gang crew squad team club
+love hate joy fear hope faith trust luck fate doom gloom glory honor pride shame guilt envy greed lust wrath sloth gluttony
+win lose draw tie fight race chase hunt catch grab steal rob loot raid siege war peace truce deal trade swap flip pump hold sell buy
+giga mega ultra max min micro nano pico tiny huge vast epic super duper hyper turbo nitro boost rocket blast bang boom crash smash
+ai gpt llm bot agent neural quantum crypto chain block hash node mesh grid net web cloud edge core kernel shell byte bit pixel
+sol eth btc bnb xrp ada dot link uni aave comp mkr snx yfi sushi cake bake rune luna atom osmo juno sei sui apt arb op base
+cat dog pig cow goat sheep horse donkey mule camel llama yak bison buffalo moose elk deer boar wolf fox bear lion tiger leopard cheetah
+hawk eagle owl crow raven parrot pigeon dove swan goose duck hen rooster turkey peacock flamingo pelican penguin puffin kiwi emu ostrich""".split())) if w not in set(KEYWORDS)]   # the deep search: only words the normal scan did not use
 NEWS_FEEDS = [("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb")
@@ -549,6 +569,14 @@ def lunarcrush(http, d, key):
 
 
 # ---------------------------------------------------------------- commands
+def cmd_deep(http, d):
+    """The deep search a cycle asks for when few coins passed the gates: more DexScreener keyword searches, added to the files."""
+    http.log("deep search: %d extra keywords" % len(EXTRA_KEYWORDS))
+    n = ds_search(http, d, EXTRA_KEYWORDS)
+    http.log("  %d requests, %d rate-limit waits" % (http.n, http.limited))
+    return n
+
+
 def cmd_sources(http, d, light=False):
     os.makedirs(d, exist_ok=True)
     clear_sources(d)
@@ -597,7 +625,7 @@ def addrs_arg(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["sources", "tokens", "risk", "news"])
+    ap.add_argument("cmd", choices=["sources", "deep", "tokens", "risk", "news"])
     ap.add_argument("--dir", default="mb")
     ap.add_argument("--light", action="store_true")
     ap.add_argument("--addrs", default="")
@@ -609,6 +637,8 @@ def main():
     os.makedirs(a.dir, exist_ok=True)
     if a.cmd == "sources":
         cmd_sources(http, a.dir, a.light)
+    elif a.cmd == "deep":
+        print(json.dumps({"pairs": cmd_deep(http, a.dir)}))
     elif a.cmd == "tokens":
         print(json.dumps({"rows": cmd_tokens(http, a.dir, addrs_arg(a))}))
     elif a.cmd == "risk":

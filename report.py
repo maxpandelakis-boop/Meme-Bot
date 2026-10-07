@@ -646,6 +646,17 @@ def position_card(r, now):
         links(p), E(p.get("addr")))
 
 
+def tier_chip(c):
+    """strong / weak / fallback: how much the recommendation is worth, in one chip."""
+    t = c.get("tier") or "strong"
+    if t == "weak":
+        return '<span class="chip warn" title="clean, but the score is under the bar: the best that was available">weak · best available</span>'
+    if t == "fallback":
+        relaxed = "; ".join(str(x) for x in (c.get("relaxed") or []))
+        return '<span class="chip warn" title="%s">fallback · momentum rules relaxed</span>' % E(relaxed or "no clean coin passed every gate")
+    return '<span class="chip neutral">strong pick</span>'
+
+
 def rec_card(c, now, embed):
     """A recommended coin: top row with the safety answer, the key figures, the safety sentence, sources, the live chart, the
     bot's reasoning behind a tap, then the links and the address."""
@@ -661,11 +672,12 @@ def rec_card(c, now, embed):
     if g("c6") is not None and g("c6") != g("c24"):
         kv.append(("6h change", sgn("%+.0f%%" % g("c6"))))
     chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
-    return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips"><span class="chip neutral">recommended</span>%s</div></div>'
+    return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
             '<div class="kv">%s</div>%s%s%s<details class="more"><summary>Why the bot likes it</summary><p class="why">%s</p></details>%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), safety_chip(c.get("ok")),
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")),
         "".join('<div><div class="k">%s</div><div class="v">%s</div></div>' % (E(k), E(v)) for k, v in kv),
-        safety_box(c.get("safety"), c.get("ok")), sources_row(c.get("src")), chart, E(c.get("why") or ""), links(c), E(c.get("addr")))
+        safety_box(c.get("safety"), c.get("ok")) + (('<p class="note">Named only because nothing cleaner passed every gate. It failed: %s.</p>' % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("tier") == "fallback" else ""),
+        sources_row(c.get("src")), chart, E(c.get("why") or ""), links(c), E(c.get("addr")))
 
 
 def coin_cell(rank, sym, name, chips):

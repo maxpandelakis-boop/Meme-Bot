@@ -329,6 +329,7 @@ def main():
     rec = json.load(open(os.path.join(hd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(hd, "db", "memebot", "recommend.json")) else {}
     ages = [c.get("f", {}).get("ageH") for c in rec.get("picks", [])]
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and all(a is not None and 1 <= a <= 12 for a in ages), "2h profile recommended 2 early coins (ages %s)" % [round(a, 1) if a else a for a in ages])
+    check(all(c.get("tier") in ("strong", "weak", "fallback") for c in rec.get("picks", [])), "each pick carries its tier (%s)" % [c.get("tier") for c in rec.get("picks", [])])
     st = json.load(open(os.path.join(hd, "db", "memebot", "state.json")))
     check(st.get("horizon") == "2h" and st.get("rule") == "m9-2h", "state carries the profile")
     page = open(os.path.join(hd, "report.html"), encoding="utf-8").read()

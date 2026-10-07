@@ -101,7 +101,9 @@ PAID_LISTS = ("boostTop", "boostLatest", "ads")                   # DexScreener 
 MIN_LP_LOCKED = 50.0
 MAX_TOP1 = 20.0          # holder checks (RugCheck): the biggest wallet, the top 10 together, insider wallets, holder count
 MAX_TOP10 = 50.0
-MIN_REC_SCORE = 45.0     # recommend mode: a clean coin below this score is not worth naming ("no coin good enough" instead)
+MIN_REC_SCORE = 45.0
+SOFT_GATES = ("nobuyers", "novol1h", "old")   # recommend mode: when no clean coin passes every gate, the best clean coin failing only these is named, labelled
+DEEP_SCAN_BELOW = 6      # fewer gated coins than this after a full scan -> the cycle searches the extra keywords too     # recommend mode: a clean coin below this score is not worth naming ("no coin good enough" instead)
 MAX_INSIDERS = 15
 MIN_HOLDERS = 300
 RISK_WARN_BLOCK = re.compile(r"holder|ownership|unlocked|creator|copycat|rug", re.I)
@@ -1121,6 +1123,13 @@ def risk_doc(r):
     return doc
 
 
+def soft_rows(rows, held, recent):
+    """Coins that failed only the soft (momentum/age) gates, best score first: the fallback pool of recommend mode."""
+    out = [r for r in rows if not r["ok"] and r["fails"] and set(r["fails"]) <= set(SOFT_GATES) and r["a"] not in held and r["a"] not in recent]
+    out.sort(key=lambda r: -r["sc"])
+    return out
+
+
 def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     pos, pairs = positions(d), load_pairs(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
@@ -1129,6 +1138,8 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     rows, _, held, recent, risk = scan(d, pos, pairs, now, w)
     cands = [r for r in rows if r["ok"] and r["a"] not in held and r["a"] not in recent and r["a"] not in risk]
     short = cands[:SHORTLIST] if room > 0 else []
+    if recommend and room > 0 and len(short) < SHORTLIST:      # the fallback pool needs RugCheck reports too
+        short += [r for r in soft_rows(rows, held, recent) if r["a"] not in risk][:SHORTLIST - len(short)]
     more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
     print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short],
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
@@ -1331,31 +1342,40 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             parts_extra = "Only %d coins came back from the sources (rate limit or outage), so the recommendations were left as they were." % len(rows)
             picks_done.append({"grp": "skipped", "sym": "-", "score": 0, "why": parts_extra})
             chosen = []
+        tiers = {}
         if recommend and len(rows) >= MIN_SCAN_FOR_REC:
-            # no positions: the best clean coins and the runners-up go to memebot/recommend for the page. A valid scan that
-            # finds no clean coin writes an empty list with the reason, so an old pick never outlives its horizon on the page.
-            weak = [r for r, _ in chosen if r["sc"] < MIN_REC_SCORE]
-            chosen = [(r, rtxt) for r, rtxt in chosen if r["sc"] >= MIN_REC_SCORE]
+            # no positions: the best clean coins and the runners-up go to memebot/recommend for the page. There is always a
+            # pick when any clean coin exists: "strong" from MIN_REC_SCORE, "weak" below it, and "fallback" when no clean
+            # coin passed every gate (the best clean coin that failed only the soft momentum/age gates, labelled with them).
+            for r, _ in chosen:
+                tiers[r["a"]] = "strong" if r["sc"] >= MIN_REC_SCORE else "weak"
+            if not chosen:
+                for r in soft_rows(rows, held, recent):
+                    ok_r, rtxt = risk_view(risk.get(r["a"]))
+                    if ok_r:
+                        chosen.append((r, rtxt)); tiers[r["a"]] = "fallback"
+                        break
 
             def rec(r, rtxt, ok):
                 pr = r["pr"]
                 return {"sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "addr": r["a"], "pair": pr.get("pairAddress"), "dex": pr.get("dexId"),
                         "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"], "rank": r.get("rank"),
-                        "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"]))}
+                        "why": why_text(r), "safety": rtxt, "ok": ok, "x": x_link(pr), "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(r["a"])),
+                        "tier": tiers.get(r["a"]), "relaxed": [fail_text(k) for k in r["fails"]] if tiers.get(r["a"]) == "fallback" else []}
             runners = []
             for r in gated[:12]:
                 if r["a"] in {c[0]["a"] for c in chosen}:
                     continue
                 ok_r, rtxt = risk_view(risk.get(r["a"]))
                 runners.append(rec(r, rtxt, ok_r))
-            reason = "" if chosen else (("the best clean coin scored only %.0f, under the %.0f needed" % (max(r["sc"] for r in weak), MIN_REC_SCORE)) if weak
-                                        else ("no top coin had a clean safety report" if gated else "nothing passed the gates"))
+            reason = "" if chosen else ("no coin had a clean safety report, not even with the momentum rules relaxed" if (gated or soft_rows(rows, held, recent)) else "nothing passed the gates")
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
                                           "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
                 emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
                                                                             "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"]} for r, _ in chosen]})
-            picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "why": why_text(r) + "; " + rtxt, "score": r["sc"]} for r, rtxt in chosen]
+            picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "score": r["sc"], "tier": tiers.get(r["a"]),
+                            "why": ("%s pick; " % tiers.get(r["a"]) if tiers.get(r["a"]) != "strong" else "") + why_text(r) + "; " + rtxt} for r, rtxt in chosen]
             chosen = []
         elif recommend:
             chosen = []
