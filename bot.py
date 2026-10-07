@@ -289,7 +289,7 @@ def summary(d):
     if rec.get("picks"):
         if t_rec and t_run and t_run - t_rec > 60_000:
             out.append("The picks below are from the earlier run at %s; this run found nothing new." % stamp(t_rec))
-        out.append("Scanned %s coins, %s passed the gates." % (rec.get("scanned", "?"), rec.get("passed", "?")))
+        out.append("Scanned %s coins, %s passed the gates.%s" % (rec.get("scanned", "?"), rec.get("passed", "?"), " Candidates ranked by trained odds." if rec.get("pickBy") == "odds" else ""))
         for p in rec["picks"]:
             links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")) if u.startswith("https://") and ")" not in u and " " not in u)
             tier = {"weak": " · weak, best available", "fallback": " · fallback, momentum rules relaxed", "risky": " · risky, nothing clean this scan"}.get(p.get("tier"), "")

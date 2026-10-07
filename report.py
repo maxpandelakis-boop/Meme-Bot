@@ -743,6 +743,8 @@ def rec_section(D, embed):
     hz = " for the next 2 hours" if M.HORIZON == "2h" else ""
     h2 = {0: "No recommendation", 1: "One recommendation", 2: "Two recommendations"}.get(n, "%d recommendations" % n) + hz
     head = "fake money · the bot names coins, it buys nothing · %s of %s scanned passed the gates" % (rc.get("passed") or 0, rc.get("scanned") or "–")
+    if rc.get("pickBy") == "odds":
+        head += " · candidates ranked by trained odds (the training found them better than the score)"
     t_rec, t_run = M.num(rc.get("t")), M.num((D.get("state") or {}).get("lastRun"))
     if picks and t_rec and t_run and t_run - t_rec > 60_000:     # the newest run found no clean coin, so the older pick stays up: say so
         head = "from the run at %s · the latest run (%s) found no clean coin, so this older pick stays up · fake money" % (fmt_dt(t_rec, True), fmt_dt(t_run, True))
