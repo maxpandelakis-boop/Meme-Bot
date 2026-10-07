@@ -454,9 +454,10 @@ def rc_row(mint, rep):
     pcts = [num(h.get("pct")) or 0 for h in top]
     top1 = pcts[0] if pcts else None
     top10 = sum(pcts[:10]) if pcts else None
-    insiders = num(rep.get("graphInsidersDetected"))
-    if insiders is None and top:
-        insiders = float(sum(1 for h in top if h.get("insider")))
+    # "insiders" = top holders RugCheck flags as insiders (what the 10/15 limits were made for); the size of the detected insider
+    # network (often thousands of correlated wallets on a launchpad coin) goes into the warnings as information, not as the count
+    insiders = float(sum(1 for h in top if h.get("insider"))) if top else num(rep.get("graphInsidersDetected"))
+    net = num(rep.get("graphInsidersDetected"))
     supply = num((rep.get("token") or {}).get("supply"))
     creator_pct = (num(rep.get("creatorBalance")) / supply * 100) if supply and num(rep.get("creatorBalance")) is not None else None
     mutable = (rep.get("tokenMeta") or {}).get("mutable")
@@ -464,6 +465,8 @@ def rc_row(mint, rep):
     launchpad = (lpd.get("name") if isinstance(lpd, dict) else lpd) or None
     holders = num(rep.get("totalHolders"))
     addrs = [a for a in (addr_of(h.get("owner") or h.get("address")) for h in top[:12]) if a]
+    if net and net > 50:
+        warn.append("insider network of %d wallets" % int(net))
     return row(mint, score, lp, holders, top1, top10, insiders, creator_pct, bool(mutable) if mutable is not None else None, launchpad,
                ";".join(danger) or None, ";".join(warn) or None, ";".join(addrs) or None)
 
