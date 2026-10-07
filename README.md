@@ -175,7 +175,7 @@ searches on DexScreener) on top, about 12,000 coins from 800 lists in 14 minutes
 
 `.github/workflows/scan.yml` runs the whole cycle on GitHub Actions, so no computer of yours has to stay awake:
 
-- every two hours on a schedule, and whenever you press **Run workflow** (github.com → Actions → memebot-scan; works from a phone browser);
+- every two hours on a schedule, and whenever you press **Run workflow** (github.com → Actions → Meme-Bot scan; works from a phone browser);
 - each run clones the `results` branch into `mb/`, restores the big-test snapshots from the Actions cache, runs
   `bot.py cycle --recommend --push --horizon 2h`, pushes the new page and docs back to `results`, and prints the two picks
   with links on the run's own page (`bot.py summary`);
