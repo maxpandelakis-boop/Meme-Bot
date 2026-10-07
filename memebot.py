@@ -431,7 +431,7 @@ def jup_pair(j):
 def merge_pairs(d):
     """Every pairs/* file -> best DexScreener pair per token (price-only rows fill in when nothing better exists), plus how many
     pairs/DEXes were seen and which search files listed it."""
-    best, npairs, dexes, tags = {}, {}, {}, {}
+    best, npairs, dexes, tags, fresh = {}, {}, {}, {}, {}
     files = sorted(glob.glob(os.path.join(d, "pairs", "*.json")) + glob.glob(os.path.join(d, "pairs", "*.txt")))
     for fn in files:
         arr = load_pair_file(fn)
@@ -442,6 +442,11 @@ def merge_pairs(d):
                 continue
             a = str(p.get("address") or "").strip()
             if not B58.match(a) or str(p.get("chainId") or "solana").lower() != "solana":
+                continue
+            if base.startswith("fresh_"):
+                # the refresh right before the pick: newest data wins, but it is no extra source list and no extra pair
+                if not p.get("px_only") and (a not in fresh or (num(p.get("liquidityUsd")) or 0) > (num(fresh[a].get("liquidityUsd")) or 0)):
+                    fresh[a] = dict(p)
                 continue
             prev = best.get(a)
             if p.get("px_only"):
@@ -456,11 +461,15 @@ def merge_pairs(d):
                 tags.setdefault(a, set()).add(tag)
             if prev is None or prev.get("px_only") or (num(p.get("liquidityUsd")) or 0) > (num(prev.get("liquidityUsd")) or 0):
                 best[a] = dict(p)
+    for a, p in fresh.items():
+        best[a] = p
     for a, p in best.items():
         p["address"] = a
         if a in npairs:
             p["nPairs"] = npairs[a]
             p["nDex"] = len(dexes[a])
+        if a in fresh:
+            p["fresh"] = True
     return best, tags, len(files)
 
 
@@ -1725,7 +1734,8 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
         short += [r for r in soft_rows(rows, held, recent) if r["a"] not in risk][:SHORTLIST - len(short)]
     more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
     meta = {r["a"]: {"sym": str(r["pr"].get("symbol") or "")[:16], "x": x_link(r["pr"]), "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100]} for r in short + more}
-    print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta,
+    refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]))[:240]
+    print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta, "refresh": refresh,
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
 
@@ -2003,7 +2013,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 ok_r, rtxt = clean(r)
                 runners.append(rec(r, rtxt, ok_r))
             reason = "" if chosen else "no coin in the scan had a tradable pair with the minimum liquidity and market cap"
+            fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, True) for r, rtxt in chosen],
+                                          "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
                                           "runnersUp": runners[:8], "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
                 emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
@@ -2135,6 +2147,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         else:
             parts.append("Nothing passed the gates, so no new fake buys this time. Staying out is a result too.")
         parts.append("Weights: %s (%d scored coins so far)." % (", ".join("%s %+.2f" % kv for kv in sorted(w.items(), key=lambda kv: -abs(kv[1]))[:5]), winfo["n"]))
+        fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
+        if recommend and isinstance(fresh, dict) and num(fresh.get("t")):
+            parts.append("Prices of %d candidates refreshed %d minutes after the scan started, right before the pick." % (int(num(fresh.get("n")) or 0), max(0, round((num(fresh["t"]) - now) / 60000))))
         if zmodel:
             parts.append("Zero model: trained on %d coin results, a clean coin is skipped above a %d%% zero chance; when nothing is clean the best odds are named as a risky pick.%s" % (
                 trained_n, round(100 * zmax), " Candidates ranked by trained odds (the training found them better than the score)." if pick_by == "odds" else ""))

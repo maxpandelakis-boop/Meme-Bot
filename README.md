@@ -49,8 +49,11 @@ Everything lives in `./mb` (`--dir` changes it): the fetched source files, `pair
 4. **shortlist** – the best-scored coins that pass the hard gates get a RugCheck report (16 for the pick, 60 to 120 more
    when a big-test snapshot is due), a GoPlus security check, GeckoTerminal token facts, the creator check (Jupiter +
    Solana RPC), the community data (votes, watchlists, X, Telegram, StockTwits) and, when GMGN answers, their top buyers.
-5. **train** – `memebot.py train` runs the training programs on the scored snapshots (see "Training").
-6. **run** – `memebot.py run` applies the sell rules to the open positions, then names or buys the best clean coins,
+5. **refresh** – the market moves during a 15-minute scan, so `fetch.py refresh` pulls fresh pair data for the
+   candidates (shortlist, the 150 best gated coins, the fallback pool) right before the decision; the newest row wins
+   in the merge without counting as another pair or source, and the page says when the prices were refreshed.
+6. **train** – `memebot.py train` runs the training programs on the scored snapshots (see "Training").
+7. **run** – `memebot.py run` applies the sell rules to the open positions, then names or buys the best clean coins,
    writes everything to `out/`, and `bot.py` copies it into `db/`.
 
 ### Hard gates (a coin must pass all of them)

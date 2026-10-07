@@ -781,6 +781,8 @@ def rec_section(D, embed):
     head = "fake money · the bot names coins, it buys nothing · %s of %s scanned passed the gates" % (rc.get("passed") or 0, rc.get("scanned") or "–")
     if rc.get("pickBy") == "odds":
         head += " · candidates ranked by trained odds (the training found them better than the score)"
+    if M.num(rc.get("pricedAt")):
+        head += " · prices of the candidates refreshed at %s, %d min after the scan started" % (fmt_dt(rc["pricedAt"], True), max(0, round((M.num(rc["pricedAt"]) - (M.num(rc.get("t")) or 0)) / 60000)))
     t_rec, t_run = M.num(rc.get("t")), M.num((D.get("state") or {}).get("lastRun"))
     if picks and t_rec and t_run and t_run - t_rec > 60_000:     # the newest run found no clean coin, so the older pick stays up: say so
         head = "from the run at %s · the latest run (%s) found no clean coin, so this older pick stays up · fake money" % (fmt_dt(t_rec, True), fmt_dt(t_run, True))

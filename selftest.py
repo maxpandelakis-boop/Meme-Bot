@@ -442,6 +442,17 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--mock", url, "--now", str(T0), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
+    fresh_files = glob.glob(os.path.join(rd, "pairs", "fresh_*.txt"))
+    check(fresh_files and M.num(rec.get("pricedAt")) and rec.get("refreshed", 0) >= 16 and "refreshed" in (r.stderr or "") and "right before the pick" in open(os.path.join(rd, "report.html"), encoding="utf-8").read(),
+          "the candidates' prices were refreshed before the pick (%d files, %s coins) and the page says when" % (len(fresh_files), rec.get("refreshed")))
+    md_ = tempfile.mkdtemp(prefix="memebot-merge-")
+    os.makedirs(os.path.join(md_, "pairs"))
+    a_m = mock.coins[5]["a"]
+    open(os.path.join(md_, "pairs", "tokens_000.txt"), "w").write("%s|AAA|Aaa|raydium|%spair|0.001|500000|550000|40000|100000|30000|5000|0|1|2|3|100|80|30|20|10|5|%d|0||1|1\n" % (a_m, a_m[:20], T0 - 5 * H))
+    open(os.path.join(md_, "pairs", "fresh_000.txt"), "w").write("%s|AAA|Aaa|raydium|%spair|0.002|900000|950000|20000|120000|40000|9000|0|1|2|3|100|80|30|20|10|5|%d|0||1|1\n" % (a_m, a_m[:20], T0 - 5 * H))
+    merged, mtags, _ = M.merge_pairs(md_)
+    check(merged.get(a_m, {}).get("priceUsd") == 0.002 and merged[a_m].get("fresh") and merged[a_m].get("nPairs") == 1 and not mtags.get(a_m), "a fresh row overrides the scan's row without counting as another pair or source")
+    shutil.rmtree(md_, ignore_errors=True)
     check(not os.path.isdir(os.path.join(rd, "db", "memepos")), "recommend mode opened no position")
     page = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
     check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")

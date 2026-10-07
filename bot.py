@@ -133,6 +133,10 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             with open(meta_file, "w", encoding="utf-8") as f:
                 json.dump(s.get("meta") or {}, f)
             fetch(["risk", "--addrs", ",".join(s["shortlist"]), "--meta", meta_file])
+        if mode["pick"] and not offline and s.get("refresh"):
+            # the market moved during the scan: fresh prices for the candidates, then merge again, then decide
+            fetch(["refresh", "--addrs", ",".join(s["refresh"])])
+            g = run(["memebot.py", "gather"], d, now)
     if mode["pick"] or mode["bigTestDue"]:
         # the training programs run on the scored snapshots before every pick: the run reads the zero model and the tuned limits
         t = run(["memebot.py", "train", "--horizon", horizon], d, now)
@@ -292,7 +296,8 @@ def summary(d):
     if rec.get("picks"):
         if t_rec and t_run and t_run - t_rec > 60_000:
             out.append("The picks below are from the earlier run at %s; this run found nothing new." % stamp(t_rec))
-        out.append("Scanned %s coins, %s passed the gates.%s" % (rec.get("scanned", "?"), rec.get("passed", "?"), " Candidates ranked by trained odds." if rec.get("pickBy") == "odds" else ""))
+        out.append("Scanned %s coins, %s passed the gates.%s%s" % (rec.get("scanned", "?"), rec.get("passed", "?"), " Candidates ranked by trained odds." if rec.get("pickBy") == "odds" else "",
+                                                             (" Prices of the candidates refreshed at %s, right before the pick." % stamp(M.num(rec["pricedAt"]))) if M.num(rec.get("pricedAt")) else ""))
         for p in rec["picks"]:
             links = " · ".join("[%s](%s)" % (n, u) for n, u in R.coin_links(p.get("addr"), p.get("pair"), p.get("x")) if u.startswith("https://") and ")" not in u and " " not in u)
             tier = {"weak": " · weak, best available", "fallback": " · fallback, momentum rules relaxed", "risky": " · risky, nothing clean this scan"}.get(p.get("tier"), "")

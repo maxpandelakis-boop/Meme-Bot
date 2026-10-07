@@ -106,7 +106,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
 SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm")
-SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json")
+SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 2.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 1.0, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
@@ -344,25 +344,34 @@ def ds_search(http, d, keywords):
     return total
 
 
-def ds_tokens(http, d, addrs, start=0):
-    """Full pair data for a list of token addresses, 30 per request -> pairs/tokens_<k>.txt. Returns rows written."""
+def ds_tokens(http, d, addrs, start=0, prefix="tokens"):
+    """Full pair data for a list of token addresses, 30 per request -> pairs/<prefix>_<k>.txt. Returns rows written."""
     addrs = [a for a in dict.fromkeys(a for a in addrs if addr_of(a))]
     total, k, got = 0, start, set()
     for i in range(0, len(addrs), 30):
         data = http.get(DS + "/tokens/v1/solana/" + ",".join(addrs[i:i + 30]))
         rows = [r for r in (ds_row(p) for p in (data if isinstance(data, list) else (data or {}).get("pairs") or [])) if r]
-        total += write_rows(d, "pairs", "tokens_%03d.txt" % k, rows)
+        total += write_rows(d, "pairs", "%s_%03d.txt" % (prefix, k), rows)
         k += 1
         for r in rows:
             got.add(r.split("|", 1)[0])
-    http.log("  dexscreener tokens: %d pairs for %d addresses" % (total, len(addrs)))
+    http.log("  dexscreener %s: %d pairs for %d addresses" % (prefix, total, len(addrs)))
     missing = [a for a in addrs if a not in got]
     if missing and "lite-api.jup.ag" not in http.dead:
-        jup_prices(http, d, missing, k)
+        jup_prices(http, d, missing, k, prefix)
     return total
 
 
-def jup_prices(http, d, addrs, k=0):
+def cmd_refresh(http, d, addrs):
+    """The last thing before the decision: fresh pair data for the candidates (shortlist and the best gated coins), so the
+    pick rests on prices from this minute, not from the start of a 15-minute scan -> pairs/fresh_<k>.txt + fresh.json."""
+    n = ds_tokens(http, d, addrs, 0, "fresh")
+    write_json(d, "fresh.json", {"t": int(time.time() * 1000), "n": len(addrs), "rows": n})
+    http.log("  refreshed the prices of %d candidates before the pick" % len(addrs))
+    return n
+
+
+def jup_prices(http, d, addrs, k=0, prefix="tokens"):
     """Jupiter's price API for coins DexScreener did not return (50 mints per request): price and liquidity only, as
     px-only rows -> pairs/jupx_<k>.txt. The big test and the track record then still get a price when DexScreener drops a
     coin or a chunk fails; a coin Jupiter does not price either is the one that is really gone."""
@@ -372,7 +381,7 @@ def jup_prices(http, d, addrs, k=0):
         for a, p in (data or {}).items() if isinstance(data, dict) else []:
             if isinstance(p, dict) and num(p.get("usdPrice")):
                 rows.append(row(a, num(p.get("usdPrice")), num(p.get("liquidity"))))
-    n = write_rows(d, "pairs", "jupx_%03d.txt" % k, rows)
+    n = write_rows(d, "pairs", "%sjupx_%03d.txt" % ("fresh_" if prefix == "fresh" else "", k), rows)
     http.log("  jupiter prices: %d of %d coins DexScreener had no pair for" % (n, len(addrs)))
     return n
 
@@ -1054,7 +1063,7 @@ def addrs_arg(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["sources", "deep", "tokens", "risk", "news"])
+    ap.add_argument("cmd", choices=["sources", "deep", "tokens", "refresh", "risk", "news"])
     ap.add_argument("--dir", default="mb")
     ap.add_argument("--light", action="store_true")
     ap.add_argument("--addrs", default="")
@@ -1071,6 +1080,8 @@ def main():
         print(json.dumps({"pairs": cmd_deep(http, a.dir)}))
     elif a.cmd == "tokens":
         print(json.dumps({"rows": cmd_tokens(http, a.dir, addrs_arg(a))}))
+    elif a.cmd == "refresh":
+        print(json.dumps({"rows": cmd_refresh(http, a.dir, addrs_arg(a))}))
     elif a.cmd == "risk":
         meta = {}
         if a.meta and os.path.exists(a.meta):
