@@ -69,7 +69,7 @@ KEEP_RAW_DAYS = 3           # a raw snapshot chunk that was never scored by then
 def prune(d, now):
     """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted."""
     gone = 0
-    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS)):
+    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS)):
         for fn in glob.glob(os.path.join(d, "db", sub, "*.json")):
             try:
                 t = (json.load(open(fn, encoding="utf-8")) or {}).get("t")
@@ -154,6 +154,12 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             with open(meta_file, "w", encoding="utf-8") as f:
                 json.dump(s.get("meta") or {}, f)
             fetch(["risk", "--addrs", ",".join(s["shortlist"]), "--meta", meta_file])
+        if not offline and s.get("candles"):
+            # minute candles for the tips and new launches due for their 1 h / 24 h check: the record learns the peak inside the window
+            items_file = os.path.join(d, "candles.json")
+            with open(items_file, "w", encoding="utf-8") as f:
+                json.dump(s["candles"], f)
+            fetch(["candles", "--items", items_file])
         if mode["pick"] and not offline and s.get("refresh"):
             # the market moved during the scan: fresh prices for the candidates, then merge again, then decide
             fetch(["refresh", "--addrs", ",".join(s["refresh"])])
@@ -218,6 +224,8 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memebot/**
 !db/memerec/
 !db/memerec/**
+!db/memeyoung/
+!db/memeyoung/**
 """
 
 

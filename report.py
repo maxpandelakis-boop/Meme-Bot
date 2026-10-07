@@ -284,8 +284,9 @@ def collect(d, now):
     weights = sorted(w.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16]
     rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), None)
     track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
+    young_hist = sorted([r for r in M.load_docs(d, "memeyoung").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))[:48]
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:80], "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:80], "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -882,6 +883,46 @@ def age_record(T):
         verdict, STAT_HEAD, STAT_HEAD, tr, E(hz))
 
 
+def young_history(D):
+    """Every new launch the tab listed in the last two days, and what 20 in it became 1 h and 24 h later: the thesis
+    "the newest coins run" tested coin by coin, with the same fees as the tips."""
+    docs = [d for d in (D.get("young_hist") or []) if isinstance(d, dict) and M.num(d.get("t"))]
+    now = D["now"]
+    rows, stats = [], {str(int(h)): [] for h in M.TIP_CHECKS}
+    for doc in docs:
+        t = M.num(doc["t"])
+        outs = doc.get("outs") or {}
+        for p in doc.get("picks") or []:
+            if not isinstance(p, dict):
+                continue
+            cells = ""
+            for h in M.TIP_CHECKS:
+                key = str(int(h))
+                o = next((x for x in ((outs.get(key) or {}).get("picks") or []) if isinstance(x, dict) and x.get("sym") == p.get("sym")), None)
+                if o:
+                    stats[key].append(o)
+                    good = (M.num(o.get("eur")) or 0) > 0
+                    cells += '<td class="n %s" data-k="%d h later">%s · %s%s</td>' % ("good" if good else "bad", h, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o))
+                else:
+                    due = t + h * 3_600_000
+                    cells += '<td class="n muted" data-k="%d h later">%s</td>' % (h, ("pending · %s" % fmt_dt(due, True)) if due > now else ("pending · next scan" if now - due < 3 * 3_600_000 else "no result"))
+            chips = '<span class="chip">%d min old</span>%s' % (int(M.num(p.get("ageMin")) or 0), safety_chip(p.get("ok")))
+            rows.append('<tr><td class="w">%s</td><td><strong>%s</strong><div class="row">%s</div></td><td class="n" data-k="score">%s</td><td class="n" data-k="market cap then">%s</td>%s%s</tr>' % (
+                fmt_dt(t, True), E(p.get("sym")), chips, E("%.0f" % (M.num(p.get("score")) or 0)), fmt_money(p.get("mc")), cells, CHART_CELL % E(p.get("pair") or p.get("addr") or "")))
+    if not rows:
+        return ""
+    bits = []
+    for h in M.TIP_CHECKS:
+        sc = stats[str(int(h))]
+        if sc:
+            up = sum(1 for o in sc if (M.num(o.get("eur")) or 0) > 0)
+            bits.append("%d h later: %d priced, %d went up, %d to zero, average %s per 20" % (h, len(sc), up, sum(1 for o in sc if o.get("gone")), fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)) + ((" · " + tp_stats(sc)) if tp_stats(sc) else ""))
+    head = '<thead><tr><th>scan at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th>%s<th></th></tr></thead>' % "".join('<th class="n">%d h later</th>' % h for h in M.TIP_CHECKS)
+    note = ("the earlier new launches: " + "; ".join(bits)) if bits else "the earlier new launches: none priced again yet"
+    return '<h3>What the earlier new launches did</h3><p class="note">%s · 20 in each at the scan price, after fees · fake money</p><details><summary>%d new launches from the last scans</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details>' % (
+        E(note), len(rows), head, "".join(rows))
+
+
 def young_section(D):
     """The new-launches tab: every coin under an hour old with a tradable pair this scan, best score first, with the same odds
     and safety data as the pick, and the scored record by age. These coins are shown, never picked."""
@@ -908,7 +949,7 @@ def young_section(D):
         body = '<div class="empty">No coin under an hour old had a DEX pair with %s of liquidity in this scan (%d coins scanned).</div>' % (fmt_money(M.YOUNG_MIN_LIQ), int(M.num(rc.get("scanned")) or 0))
     else:
         body = '<div class="empty">No scan yet.</div>'
-    body = '<h3>The record by age</h3>%s<h3>This scan</h3>%s' % (age_record(D.get("train")), body)
+    body = '<h3>The record by age</h3>%s<h3>This scan</h3>%s%s' % (age_record(D.get("train")), body, young_history(D))
     h2 = ("%d new launch%s under an hour old" % (n_all, "" if n_all == 1 else "es")) if rc else "New launches"
     if n_all > len(young) and young:
         h2 += " (the %d best shown)" % len(young)
@@ -937,6 +978,25 @@ def no_coin_reason(note):
     if "left as they were" in s or "rate limit or outage" in s:
         return "scan too small (rate limit or outage), the earlier pick was kept"
     return "no coin named"
+
+
+def peak_txt(o):
+    """' · peak 5.9x · +50% take-profit +8.95' when the candles of the window are known."""
+    if M.num(o.get("hi")) is None:
+        return ""
+    s = " · peak %s" % fmt_mult(o.get("hi"))
+    if M.num(o.get("tp")) is not None and M.num(o.get("hi")) >= 1.0 + M.TAKE_PROFIT:
+        s += " · sold at +%d%%: %s" % (round(100 * M.TAKE_PROFIT), fmt_amt(o.get("tp"), True))
+    return s
+
+
+def tp_stats(outs):
+    """What 20 made when sold at +TAKE_PROFIT the moment the window hit it (else held to the end), over the results that have candles."""
+    known = [o for o in outs if M.num(o.get("tp")) is not None]
+    if not known:
+        return ""
+    hit = sum(1 for o in known if (M.num(o.get("hi")) or 0) >= 1.0 + M.TAKE_PROFIT)
+    return "selling at +%d%% when hit (%d of %d reached it): average %s per 20" % (round(100 * M.TAKE_PROFIT), hit, len(known), fmt_amt(sum(M.num(o["tp"]) for o in known) / len(known), True))
 
 
 def compound_chain(recs, key="1"):
@@ -988,7 +1048,7 @@ def history_section(D):
                 if rule == M.RULE:
                     scored[key].append(o)
                 good = (M.num(o.get("eur")) or 0) > 0
-                return '<td class="n %s" data-k="%d h later">%s · %s</td>' % ("good" if good else "bad", hours, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True))
+                return '<td class="n %s" data-k="%d h later">%s · %s%s</td>' % ("good" if good else "bad", hours, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o))
             if rule != M.RULE:
                 return '<td class="n muted" data-k="%d h later">–</td>' % hours
             due = t + hours * 3_600_000
@@ -1016,7 +1076,7 @@ def history_section(D):
         sc = scored[str(int(h))]
         if sc:
             up_n = sum(1 for o in sc if (M.num(o.get("eur")) or 0) > 0)
-            bits.append("%d h later: %d tips priced, %d went up, average %s per 20" % (h, len(sc), up_n, fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)))
+            bits.append("%d h later: %d tips priced, %d went up, average %s per 20" % (h, len(sc), up_n, fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)) + ((" · " + tp_stats(sc)) if tp_stats(sc) else ""))
     sub += (" · track record " + "; ".join(bits)) if bits else " · no tip has been priced again yet"
     chain = compound_chain(recs)
     if chain["n"]:

@@ -167,6 +167,17 @@ class Mock:
                 elif a.startswith("JUPXFALLBACK"):
                     out[a] = {"usdPrice": 0.000123, "liquidity": 55555.0, "priceChange24h": 1.0}
             return 200, out
+        if "/api.geckoterminal.com/api/v2/networks/solana/pools/" in path and "/ohlcv/" in path:
+            pool = path.split("/pools/")[1].split("/")[0]
+            c = next((x for x in self.coins if x["a"][:20] + "pair" == pool), None)
+            before = int((q.get("before_timestamp") or [str(int(T0 / 1000) + 4500)])[0]); agg = int((q.get("aggregate") or ["1"])[0]); lim = int((q.get("limit") or ["70"])[0])
+            px = (c["px"] * c["mult"]) if c else 0.001
+            lst = []
+            for i in range(lim):
+                ts = before - i * 60 * agg
+                hi = px * (3.0 if i == lim // 2 else 1.02)
+                lst.append([ts, px, hi, px * 0.9, px, 1000.0])
+            return 200, {"data": {"attributes": {"ohlcv_list": lst}}}
         if path.startswith("/api.geckoterminal.com/api/v2/networks/solana/tokens/multi/"):
             addrs = path.rsplit("/", 1)[1].split(",")
             return 200, {"data": [{"id": "solana_" + a, "type": "token", "attributes": {"address": a, "gt_score": 70.5, "holders": {"count": 1800, "distribution_percentage": {"top_10": "18.5"}}, "mint_authority": "no", "freeze_authority": "no"}} for a in addrs if a in self.by_a]}
@@ -643,6 +654,12 @@ def main():
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
     scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
     page2 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
+    yd = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memeyoung", "*.json"))]
+    y1 = [o for doc in yd for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
+    check(yd and y1 and "What the earlier new launches did" in page2, "the new launches are recorded and priced again at 1 h too (%d docs, %d results)" % (len(yd), len(y1)))
+    with_peak = [o for o in y1 if o.get("hi") is not None]
+    check(with_peak and all(o.get("tp") is not None and o["hi"] >= 2.5 for o in with_peak) and "peak" in page2 and "selling at +50% when hit" in page2,
+          "the minute candles give each result its peak and the +50%% take-profit outcome (%d of %d with candles)" % (len(with_peak), len(y1)))
     one_h = [o for doc in recs for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
     check(recs and scored and one_h and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next scan starts about" in page2 and "1 h later" in page2 and "24 h later" in page2,
           "the tips were recorded and priced again at 1 h and at the horizon (%d docs, %d scored, %d at 1 h)" % (len(recs), len(scored), len(one_h)))

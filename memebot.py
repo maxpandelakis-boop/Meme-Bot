@@ -610,9 +610,10 @@ def cmd_gather(d, now):
     with open(os.path.join(d, "universe.json"), "w", encoding="utf-8") as f:
         json.dump(universe, f, separators=(",", ":"))
     held = [p["addr"] for p in pos.values() if p["_left"] > 1e-9 and B58.match(str(p.get("addr", "")))]
-    for doc in load_docs(d, "memerec").values():        # recommendations not yet priced again travel like open positions
-        if isinstance(doc, dict) and now - (num(doc.get("t")) or now) < 48 * 3_600_000 and (not doc.get("out") or any(str(int(h)) not in (doc.get("outs") or {}) for h in TIP_CHECKS)):
-            held += [str(p.get("addr")) for p in (doc.get("picks") or []) if isinstance(p, dict) and B58.match(str(p.get("addr", "")))]
+    for coll in ("memerec", "memeyoung"):              # recommendations and listed new launches not yet priced again travel like open positions
+        for doc in load_docs(d, coll).values():
+            if isinstance(doc, dict) and now - (num(doc.get("t")) or now) < 48 * 3_600_000 and (not doc.get("out") or any(str(int(h)) not in (doc.get("outs") or {}) for h in TIP_CHECKS)):
+                held += [str(p.get("addr")) for p in (doc.get("picks") or []) if isinstance(p, dict) and B58.match(str(p.get("addr", "")))]
     due = []
     for sn in due_snaps(d, now).values():
         due += [str(c.get("a")) for c in sn["coins"] if isinstance(c, dict) and B58.match(str(c.get("a", "")))]
@@ -1598,6 +1599,45 @@ def tip_due(doc, now):
     return [(k, h, sl) for k, h, sl in out if now - t0 >= (h - sl) * 3_600_000]
 
 
+TAKE_PROFIT = 0.5   # the "sell at the peak" question, made testable: what 20 made when sold at +50% as soon as the window hit it
+
+
+def candle_items(d, now):
+    """The pools whose minute candles the next price check needs: tips and new launches with a 1 h or 24 h mark due."""
+    items = []
+    for coll in ("memerec", "memeyoung"):
+        for doc in load_docs(d, coll).values():
+            if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
+                continue
+            for key, hours, _ in tip_due(doc, now):
+                if key == "out":
+                    continue
+                items += [{"pool": p.get("pair"), "since": num(doc.get("t")), "hours": hours} for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]
+    return items[:16]
+
+
+def load_candles(d, pool, hours):
+    fn = os.path.join(d, "candles", "%s_%d.txt" % (pool, int(hours)))
+    out = []
+    try:
+        with open(fn, encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split("|")
+                if len(parts) >= 5 and all(num(x) is not None for x in parts[:5]):
+                    out.append(tuple(num(x) for x in parts[:5]))
+    except OSError:
+        pass
+    return out
+
+
+def window_extremes(cands, t0, hours):
+    """(highest high / lowest low) inside [t0, t0 + hours] from the candles, or (None, None)."""
+    inside = [c for c in cands if t0 <= c[0] <= t0 + hours * 3_600_000]
+    if not inside:
+        return None, None
+    return max(c[2] for c in inside), min(c[3] for c in inside)
+
+
 def tip_record(d):
     """Every real tip the bot gave (memerec) that has been priced again, as one stats row."""
     tips = []
@@ -2006,7 +2046,7 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     zm, um = load_train(d)[:2]
     refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]
                                  + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]] + [r["a"] for r in young_rows(rows, held, recent)[:YOUNG_N]]))[:252]
-    print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta, "refresh": refresh,
+    print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta, "refresh": refresh, "candles": candle_items(d, now),
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
 
@@ -2339,6 +2379,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
                                           "runnersUp": runners[:8], "young": young, "youngOf": len(young_rows(rows, held, recent)), "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
+            if young:    # the new launches get the same 1 h / 24 h record, so the "do the newest coins do better" question is answered coin by coin
+                emit("memeyoung", run_id, {"t": now, "rule": RULE, "picks": [{"sym": y["sym"], "addr": y["addr"], "pair": y.get("pair"), "px": y.get("px"), "mc": y.get("mc"),
+                                                                            "score": y.get("score"), "ageMin": y.get("ageMin"), "ok": y.get("ok"), "launchpad": y.get("launchpad")} for y in young]})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
                 emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
                                                                             "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"], "zp": r.get("zp"), "up": r.get("up"), "tier": tiers.get(r["a"])} for r, _ in chosen]})
@@ -2421,7 +2464,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
 
     # ---------- the recommendation track record: price each past tip again at 1 h, at 24 h and at the profile's horizon ----------
     rec_scored = []
-    for rid, doc in load_docs(d, "memerec").items():
+    for coll, rid, doc in [(c, k, v) for c in ("memerec", "memeyoung") for k, v in load_docs(d, c).items()]:
         t0 = num(doc.get("t"))
         if not isinstance(doc, dict) or not t0 or str(doc.get("rule") or RULE) != RULE:
             continue
@@ -2436,19 +2479,26 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 if px1 is None and now - t0 < (hours + 1.0) * 3_600_000:
                     outs = None; break               # no price yet (fetch outage): try again next run, up to an hour late
                 mult = (px1 / px0) if px1 else 0.0
-                invested = TICKET - fee(TICKET); gross = invested * mult
-                outs.append({"sym": p.get("sym"), "mult": round(mult, 4), "eur": round((max(0.0, gross - fee(gross)) if gross > 0 else 0.0) - TICKET, 2), "gone": not px1})
+                net = lambda m: round((max(0.0, (TICKET - fee(TICKET)) * m - fee((TICKET - fee(TICKET)) * m)) if m > 0 else 0.0) - TICKET, 2)
+                o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": not px1}
+                if key != "out" and p.get("pair"):
+                    hi, lo = window_extremes(load_candles(d, str(p["pair"]), hours), t0, hours)
+                    if hi and lo:
+                        o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
+                        o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]   # sold at +50% the moment it was hit, else held to the end
+                outs.append(o)
             if not outs:
                 continue
             res = {"t": now, "h": round((now - t0) / 3_600_000, 2), "picks": outs}
             if key == "out":
                 doc = dict(doc, out=res)
-                rec_scored += outs
+                if coll == "memerec":
+                    rec_scored += outs
             else:
                 doc = dict(doc, outs=dict(doc.get("outs") or {}, **{key: res}))
             changed = True
         if changed:
-            emit("memerec", rid, doc)
+            emit(coll, rid, doc)
 
     # ---------- note, state, marks, run log ----------
     parts = []

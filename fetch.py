@@ -119,7 +119,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp", "candles")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 3.0, "cdn.syndication.twimg.com": 1.5, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
@@ -419,6 +419,32 @@ def ds_tokens(http, d, addrs, start=0, prefix="tokens"):
     if missing and "lite-api.jup.ag" not in http.dead:
         jup_prices(http, d, missing, k, prefix)
     return total
+
+
+def candles(http, d, items):
+    """Minute candles for the pools of the tips and new launches that are due for their 1 h or 24 h price check
+    (GeckoTerminal OHLCV, base token in USD) -> candles/<pool>_<hours>.txt rows ms|open|high|low|close|volume. With them
+    the record knows the peak and the trough inside the window, not just the price at its end."""
+    n = 0
+    for it in items[:16]:
+        pool, since, hours = str(it.get("pool") or ""), num(it.get("since")), num(it.get("hours")) or 1.0
+        if not pool or not since or "api.geckoterminal.com" in http.dead:
+            continue
+        agg = 1 if hours <= 2 else 15
+        limit = min(1000, int(hours * 60 / agg) + 12)
+        before = int(since / 1000 + hours * 3600 + 900)
+        j = http.get(GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (pool, agg, limit, before))
+        rows = []
+        for c in (((j or {}).get("data") or {}).get("attributes") or {}).get("ohlcv_list") or [] if isinstance(j, dict) else []:
+            if isinstance(c, list) and len(c) >= 5 and num(c[0]) and num(c[0]) * 1000 >= since - 60_000:
+                rows.append(row(int(num(c[0]) * 1000), num(c[1]), num(c[2]), num(c[3]), num(c[4]), num(c[5]) if len(c) > 5 else None))
+        if rows:
+            os.makedirs(os.path.join(d, "candles"), exist_ok=True)
+            with open(os.path.join(d, "candles", "%s_%d.txt" % (pool, int(hours))), "w", encoding="utf-8") as f:
+                f.write("\n".join(rows) + "\n")
+            n += 1
+    http.log("  candles %d of %d pools" % (n, min(len(items), 16)))
+    return n
 
 
 def cmd_refresh(http, d, addrs):
@@ -1343,7 +1369,8 @@ def addrs_arg(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["sources", "deep", "tokens", "refresh", "risk", "news"])
+    ap.add_argument("cmd", choices=["sources", "deep", "tokens", "refresh", "risk", "news", "candles"])
+    ap.add_argument("--items", default="", help="candles: a JSON file with [{pool, since, hours}]")
     ap.add_argument("--dir", default="mb")
     ap.add_argument("--light", action="store_true")
     ap.add_argument("--addrs", default="")
@@ -1362,6 +1389,12 @@ def main():
         print(json.dumps({"rows": cmd_tokens(http, a.dir, addrs_arg(a))}))
     elif a.cmd == "refresh":
         print(json.dumps({"rows": cmd_refresh(http, a.dir, addrs_arg(a))}))
+    elif a.cmd == "candles":
+        items = []
+        if a.items and os.path.exists(a.items):
+            with open(a.items, encoding="utf-8") as f:
+                items = json.load(f) or []
+        print(json.dumps({"pools": candles(http, a.dir, items if isinstance(items, list) else [])}))
     elif a.cmd == "risk":
         meta = {}
         if a.meta and os.path.exists(a.meta):

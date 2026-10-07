@@ -120,9 +120,18 @@ is priced again at both marks by the runs that follow, on top of the profile's o
 it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
 starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes).
 
+### Peaks and the take-profit question
+
+For every tip and every listed new launch, the next runs also fetch the minute candles of its pool (GeckoTerminal
+OHLCV, `candles/<pool>_<hours>.txt`) for the 1 h and 24 h windows, so each result carries the peak and the trough
+inside the window (`hi`, `lo`) and what 20 made when sold at +50% the moment the window hit it (`tp`, otherwise held
+to the end). The hour-by-hour list and the new-launches tab show "peak 5.9x · sold at +50%: +8.95" next to the plain
+result, and the header lines say how many results reached +50% and what that rule averaged.
+
 ### New launches tab
 
-The page has two tabs. "The pick" is the recommendation. "New launches <1h" lists every coin under an hour old that had
+The page has two tabs. "The pick" is the recommendation. "New launches <1h" lists every coin under an hour old (each listed coin is recorded in `db/memeyoung` and priced again
+at 1 h and 24 h, shown under "What the earlier new launches did") that had
 a DEX pair and at least $5k of liquidity at the scan, best score first, with the same trained odds, safety report and
 numbers as the pick (`young` in `db/memebot/recommend.json`). These coins are shown, never picked: the 2h profile picks
 from coins 3 to 24 hours old, and the training's age record (`ages` in `db/memebot/train.json`, shown at the top of the
