@@ -15,3 +15,5 @@
 !db/memeweights/**
 !db/memebot/
 !db/memebot/**
+!db/memerec/
+!db/memerec/**
