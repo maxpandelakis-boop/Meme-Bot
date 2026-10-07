@@ -978,11 +978,20 @@ def learnable(c):
     return liq is not None and mc is not None and liq >= GATE_MIN_LIQ and GATE_MC[0] <= mc <= GATE_MC[1]
 
 
+def usable_result(doc):
+    """A scored snapshot chunk teaches only when its pricing worked: when more than half of its candidate-like coins (minimum
+    liquidity and market cap at the time) count as gone, the price fetch failed for the chunk and 'gone' means 'unpriced'."""
+    if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
+        return False
+    cand = [c for c in (doc.get("coins") or []) if isinstance(c, dict) and learnable(c)]
+    return len(cand) < 20 or sum(1 for c in cand if c.get("gone")) <= 0.5 * len(cand)
+
+
 def result_rows(d):
     rows = []
     for doc in load_docs(d, "memesnapres").values():
-        if str(doc.get("rule") or RULE) != RULE:
-            continue                      # each profile learns from its own horizon only
+        if not usable_result(doc):
+            continue                      # each profile learns from its own horizon only, and only from chunks whose pricing worked
         for c in doc.get("coins") or []:
             if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c):
                 rows.append((c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])))
@@ -1094,7 +1103,7 @@ def train_groups(d):
     the gates it failed, the score it had. Only candidate-like coins (learnable) are kept, as for the weights."""
     by_run = {}
     for sid, doc in load_docs(d, "memesnapres").items():
-        if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
+        if not usable_result(doc):
             continue
         run = str(sid).rsplit("-", 1)[0]
         t0 = num(doc.get("t0")) or num(doc.get("t")) or 0
@@ -1846,14 +1855,17 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             emit("memesnap", "%s-%d" % (run_id, k // SNAP_CHUNK + 1), {"t": now, "rule": RULE, "n": len(part), "part": k // SNAP_CHUNK + 1,
                                                                         "total": len(coins), "coins": part})
         snap_n = len(coins)
-    deferred = 0
+    deferred, dropped = 0, 0
     for sid, sn in due_snaps(d, now).items():
         coins = [c for c in sn["coins"] if isinstance(c, dict)]
         priced = sum(1 for c in coins if pairs.get(c.get("a")) and num(pairs[c.get("a")].get("priceUsd")))
-        if coins and priced < 0.7 * len(coins) and now - (num(sn.get("t")) or now) < (EVAL_H + 1.0) * 3_600_000:
+        late = bool(coins) and priced < 0.7 * len(coins)
+        if late and now - (num(sn.get("t")) or now) < (EVAL_H + 1.0) * 3_600_000:
             deferred += 1               # the price fetch failed for most of them (outage, rate limit): score this snapshot next run;
-            continue                    # an hour past the horizon it is scored anyway (a chunk of dead coins never gets prices)
-        res = [snap_result(c, pairs) for c in coins]
+            continue                    # an hour past the horizon it is scored anyway, but then only the coins that did get a price count
+        res = [snap_result(c, pairs) for c in coins if not late or (pairs.get(c.get("a")) and num(pairs[c.get("a")].get("priceUsd")))]
+        unpriced = len(coins) - len(res)
+        dropped += unpriced
         if not res:
             continue
         avg = lambda xs: round(sum(xs) / len(xs), 2) if xs else None
@@ -1861,13 +1873,13 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         p_ok, p_no = [cl(r) for r in res if r["pass"]], [cl(r) for r in res if not r["pass"]]
         top = [cl(r) for r in res if r.get("rank") and r["rank"] <= 10]
         emit("memesnapres", sid, {"t": now, "t0": num(sn.get("t")), "rule": sn.get("rule"), "n": len(res), "passN": len(p_ok), "passAvg": avg(p_ok),
-                                  "failN": len(p_no), "failAvg": avg(p_no), "top10N": len(top), "top10Avg": avg(top), "coins": res})
+                                  "failN": len(p_no), "failAvg": avg(p_no), "top10N": len(top), "top10Avg": avg(top), "unpriced": unpriced, "coins": res})
         big.append((len(res), avg(p_ok), len(p_ok), avg(p_no), len(top), avg(top), len(p_no)))
         scored_n += len(res)
     if scored_n:
         # new results -> re-learn and save the weights the next runs will use
         all_res = dict(load_docs(d, "memesnapres")); all_res.update(emitted.get("memesnapres", {}))
-        rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for doc in all_res.values() for c in (doc.get("coins") or [])
+        rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for doc in all_res.values() if usable_result(doc) for c in (doc.get("coins") or [])
                   if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c)]
         learned, n_l, detail = learn(rows_l)
         emit("memeweights", run_id, {"t": now, "rule": RULE, "n": n_l, "lambda": round(clamp(n_l / float(LEARN_FULL_N)), 3), "learned": learned,
@@ -1939,6 +1951,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                      ", ".join("%s %.2fx (%+.2f per 20)" % (o["sym"], o["mult"], o["eur"]) for o in rec_scored)))
     if deferred:
         parts.append("Big test postponed for %d snapshot%s: most of its coins came back without a price this run." % (deferred, "s" if deferred > 1 else ""))
+    if dropped:
+        parts.append("%d coins of a late-scored snapshot had no price and were left out rather than counted as zero." % dropped)
     if snap_n:
         parts.append("Saved all %d scanned coins for the big test; they get priced again in %s." % (snap_n, eval_text()))
     if big:   # one line for all chunks of the scored snapshot
