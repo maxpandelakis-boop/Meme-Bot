@@ -1,11 +1,12 @@
 # The bot on GitHub's own servers: no laptop needed.
 # Runs every two hours and whenever you press "Run workflow" (github.com -> Actions -> memebot-scan).
-# Each run restores the bot's state from the results branch, scans ~1000 coins, writes the two recommendations,
+# Each run restores the bot's state from the results branch, scans ~12,000 coins, names the best coin for the next two hours,
 # pushes report.html + the small docs back to the results branch and shows the picks in the run's summary.
 # When GitHub Pages is switched on (Settings -> Pages -> Source: GitHub Actions; needs a public repository on the free plan),
 # the second job publishes the page as a website that phones can keep on the home screen.
 # Fake money only: nothing is bought anywhere.
-name: memebot-scan
+name: Meme-Bot scan
+run-name: "${{ github.event_name == 'schedule' && 'Scheduled scan' || 'Scan now' }} · ${{ inputs.horizon || '2h' }} profile${{ inputs.rescan && ' · fresh snapshot' || '' }}"
 on:
   schedule:
     - cron: '10 */2 * * *'          # UTC; GitHub may start a scheduled run up to ~15 minutes late
