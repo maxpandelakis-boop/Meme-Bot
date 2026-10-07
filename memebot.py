@@ -99,6 +99,7 @@ GATE_SPIKE = {"chgH1": 150.0, "chgH6": 400.0}                     # and one that
 GATE_MAX_VOLMC = 8.0     # 24h volume more than 8x the market cap is wash trading, not interest
 PAID_LISTS = ("boostTop", "boostLatest", "ads")                   # DexScreener lists that cost money; a coin seen only there is not "found"
 MIN_LP_LOCKED = 50.0
+MAX_CREATOR_PCT = 100.0  # the creator's share of the supply; the 2h profile caps it (a dev who still holds a lot can dump it)
 MAX_TOP1 = 20.0          # holder checks (RugCheck): the biggest wallet, the top 10 together, insider wallets, holder count
 MAX_TOP10 = 50.0
 MIN_REC_SCORE = 45.0
@@ -147,10 +148,10 @@ GATE_MIN_VOL1SHARE = None    # 2h profile: the last hour's share of the day's vo
 PROFILES = {
     "24h": {},   # the defaults above
     "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
-        "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 1.0, "GATE_MAX_AGE_H": 12.0,
+        "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 3.0, "GATE_MAX_AGE_H": 12.0,
         "GATE_MIN_BUYRATIO1H": 1.05, "GATE_MIN_VOL1SHARE": 1.0 / 36, "GATE_CRASH": {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0},
-        "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0,
-        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 150, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
+        "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0, "MIN_LP_LOCKED": 90.0, "MAX_CREATOR_PCT": 5.0,
+        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
@@ -1109,6 +1110,9 @@ def risk_view(r):
         return False, "RugCheck: top 10 wallets hold %d%%" % round(top10)
     if ins is not None and ins > MAX_INSIDERS:
         return False, "RugCheck: %d insider wallets" % ins
+    creator = num(r.get("creatorPct"))
+    if creator is not None and creator > MAX_CREATOR_PCT:
+        return False, "RugCheck: the creator still holds %d%%" % round(creator)
     if hold is not None and hold < MIN_HOLDERS:
         return False, "RugCheck: only %d holders" % hold
     return True, "RugCheck: no danger flags, %d%% of liquidity locked" % round(lp) + (", top 10 wallets hold %d%%" % round(top10) if top10 is not None else "") + \
