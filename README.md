@@ -131,7 +131,9 @@ Under the pick, "Recommendations, hour by hour" lists every scan of the last two
 the bot named (tier, score, the odds it gave at the time) and what 20 in it became 1 hour and 24 hours later (every tip
 is priced again at both marks by the runs that follow, on top of the profile's own horizon), or "pending" with the time
 it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
-starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes).
+starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes). A run in which DexScreener
+priced under 300 coins is an outage: it postpones every due price check to the next run instead of counting a tip
+it cannot price as gone (the note says "Tip checks postponed").
 
 ### Peaks and the take-profit question
 

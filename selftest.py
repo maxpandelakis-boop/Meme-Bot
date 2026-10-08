@@ -535,6 +535,10 @@ def main():
 
     print("== DexScreener out: Jupiter and GeckoTerminal data stand in, the scan still names a coin")
     sd = tempfile.mkdtemp(prefix="memebot-standin-")
+    os.makedirs(os.path.join(sd, "db", "memerec"))
+    tip_a = mock.coins[0]["a"]        # a tip from three hours ago whose 1 h and 2 h checks are overdue: an outage must not turn it into "gone"
+    json.dump({"t": T0 - 3 * H, "rule": M.RULE, "picks": [{"sym": "OLDTIP", "addr": tip_a, "pair": tip_a[:20] + "pair", "px": 0.001, "mc": 300000, "score": 50.0, "tier": "strong"}]},
+              open(os.path.join(sd, "db", "memerec", "oldtip.json"), "w"))
     urllib.request.urlopen(url + "/__dsdead?on=1").read()
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", sd, "--mock", url, "--now", str(T0), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     urllib.request.urlopen(url + "/__dsdead?on=0").read()
@@ -543,6 +547,9 @@ def main():
     page_s = open(os.path.join(sd, "report.html"), encoding="utf-8").read() if os.path.exists(os.path.join(sd, "report.html")) else ""
     check(r.returncode == 0 and rec_s.get("picks") and all(c.get("standin") for c in rec_s["picks"]) and "stood in" in (st_s.get("note") or "") and "stood in" in page_s,
           "with DexScreener empty the scan named %s from Jupiter/GeckoTerminal data and said so (%s)" % ([c["sym"] for c in rec_s.get("picks", [])], (r.stderr.strip().splitlines() or [""])[-1][:100] if r.returncode else "ok"))
+    tip_doc = json.load(open(os.path.join(sd, "db", "memerec", "oldtip.json")))
+    check(not tip_doc.get("out") and not (tip_doc.get("outs") or {}) and "Tip checks postponed" in (st_s.get("note") or ""),
+          "with DexScreener empty the overdue tip stayed unpriced instead of counting as gone (%s)" % ((st_s.get("note") or "").split("Tip checks postponed")[-1][:90]))
     shutil.rmtree(sd, ignore_errors=True)
 
     print("== training: walk-forward test, zero model and tuned limits on synthetic snapshot results")

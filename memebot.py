@@ -1852,6 +1852,12 @@ def young_rows(rows, held=(), recent=()):
 
 
 # ---------------------------------------------------------------- the scan
+def dex_rows(pairs):
+    """How many coins DexScreener itself priced this run: not the Jupiter, GeckoTerminal or GMGN list rows, not the price-only lookups.
+    Under MIN_SCAN_FOR_REC it is an outage, whatever the list rows say."""
+    return sum(1 for p in pairs.values() if not p.get("px_only") and str(p.get("dexId") or "").lower() != "jupiter" and not p.get("gt_only") and not p.get("gm_only"))
+
+
 def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
@@ -1878,7 +1884,7 @@ def scan(d, pos, pairs, now, w):
             sym_mc[s] = mc
             pub["symBest"][s] = a                         # a ticker mention goes to the biggest coin with that ticker
     rows, fail_count = [], {}
-    n_full = sum(1 for p in pairs.values() if not p.get("px_only") and str(p.get("dexId") or "").lower() != "jupiter" and not p.get("gt_only") and not p.get("gm_only"))
+    n_full = dex_rows(pairs)
     n_list = sum(1 for p in pairs.values() if not p.get("px_only") and (str(p.get("dexId") or "").lower() == "jupiter" or p.get("gt_only")))
     STANDIN["on"] = n_full < MIN_SCAN_FOR_REC and n_list >= MIN_SCAN_FOR_REC   # DexScreener out: Jupiter's and GeckoTerminal's pool data (price, liquidity, volume, buys/sells) stands in
     for a, pr in pairs.items():
@@ -2484,13 +2490,21 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                                      "prior": PRIOR, "detail": {k: v for k, v in sorted(detail.items(), key=lambda kv: -abs(kv[1]["rho"]))[:40]}})
 
     # ---------- the recommendation track record: price each past tip again at 1 h, at 24 h and at the profile's horizon ----------
-    rec_scored = []
+    rec_scored, tips_postponed = [], 0
+    # a run in which DexScreener priced almost nothing is an outage: a tip it cannot price is unpriced, not gone, however late the
+    # check already is (the first night's outage lasted two runs and turned a tip's 1 h check into "gone" at 0.00x), so every due
+    # check waits for the next run that has DexScreener data
+    dex_n = dex_rows(pairs)
     for coll, rid, doc in [(c, k, v) for c in ("memerec", "memeyoung") for k, v in load_docs(d, c).items()]:
         t0 = num(doc.get("t"))
         if not isinstance(doc, dict) or not t0 or str(doc.get("rule") or RULE) != RULE:
             continue
+        due = tip_due(doc, now)
+        if due and dex_n < MIN_SCAN_FOR_REC:
+            tips_postponed += len(due)
+            continue
         changed = False
-        for key, hours, _ in tip_due(doc, now):
+        for key, hours, _ in due:
             outs = []
             for p in doc.get("picks") or []:
                 pr = pairs.get(p.get("a") or p.get("addr"))
@@ -2575,6 +2589,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     if rec_scored:
         parts.append("Track record: %d earlier tip%s priced again after %s: %s." % (len(rec_scored), "s" if len(rec_scored) > 1 else "", eval_text(),
                      ", ".join("%s %.2fx (%+.2f per 20)" % (o["sym"], o["mult"], o["eur"]) for o in rec_scored)))
+    if tips_postponed:
+        parts.append("Tip checks postponed: DexScreener priced only %d coins this run (an outage), so %d price check%s wait%s for the next run instead of counting a coin as gone."
+                     % (dex_n, tips_postponed, "s" if tips_postponed > 1 else "", "" if tips_postponed > 1 else "s"))
     if deferred:
         parts.append("Big test postponed for %d snapshot%s: most of its coins came back without a price this run." % (deferred, "s" if deferred > 1 else ""))
     if dropped:
