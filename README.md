@@ -131,7 +131,9 @@ Under the pick, "Recommendations, hour by hour" lists every scan of the last two
 the bot named (tier, score, the odds it gave at the time) and what 20 in it became 1 hour and 24 hours later (every tip
 is priced again at both marks by the runs that follow, on top of the profile's own horizon), or "pending" with the time
 it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
-starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes). A run in which DexScreener
+starts (minute 10 UTC every hour, started through the GitHub API by the hourly routine of the Claude session, because
+GitHub's own cron scheduler starts a run 10 to 20 minutes late; the cron in `scan.yml` at :25 is only the safety net
+and does nothing when a scan started in the last 45 minutes; a run takes about 20 minutes). A run in which DexScreener
 priced under 300 coins is an outage: it postpones every due price check to the next run instead of counting a tip
 it cannot price as gone (the note says "Tip checks postponed"). A 1 h or 24 h check that is more than 1.5 hours late
 (a missed run, an outage, the backfill after a code change) is not priced at the price of the day either: the window's
@@ -261,7 +263,7 @@ from the Actions cache. More is not better: of those, roughly
 
 `.github/workflows/scan.yml` runs the whole cycle on GitHub Actions, so no computer of yours has to stay awake:
 
-- every hour on a schedule, and whenever you press **Run workflow** (github.com → Actions → Meme-Bot scan; works from a phone browser);
+- every hour at :10 UTC, started through the GitHub API by the hourly routine (run name "Hourly scan"); the cron in the workflow at :25 is the safety net ("Safety-net scan", skips itself when a scan started in the last 45 minutes); and whenever you press **Run workflow** (github.com → Actions → Meme-Bot scan; works from a phone browser);
 - each run clones the `results` branch into `mb/`, restores the big-test snapshots from the Actions cache, runs
   `bot.py cycle --recommend --push --horizon 2h`, pushes the new page and docs back to `results`, and prints the two picks
   with links on the run's own page (`bot.py summary`);

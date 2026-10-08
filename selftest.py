@@ -375,8 +375,8 @@ def main():
     gp, gi, cm = side("gp"), side("gi"), side("cm")
     check(gp and gi and cm and "goplus security" in err and "community" in err, "GoPlus (%d), GeckoTerminal info (%d) and community (%d) rows written for the shortlist" % (len(gp), len(gi), len(cm)))
     fv = lambda l, i: float(l.split("|")[i]) if l.split("|")[i] not in ("", "null") else None
-    check(cm and all(len(l.split("|")) == 14 for l in cm) and any(fv(l, 1) == 40 for l in cm) and any(fv(l, 3) == 2500 for l in cm) and any(fv(l, 10) == 45678 for l in cm) and any(fv(l, 12) == 12345 for l in cm),
-          "community rows carry RugCheck votes, CoinGecko watchlists, X followers and Telegram members (%s)" % (cm[0][:140] if cm else "-"))
+    check(cm and all(len(l.split("|")) == 14 for l in cm) and any(fv(l, 1) == 40 for l in cm) and any(fv(l, 3) == 2500 for l in cm) and (not F.X_PROFILES or any(fv(l, 10) == 45678 for l in cm)) and any(fv(l, 12) == 12345 for l in cm),
+          "community rows carry RugCheck votes, CoinGecko watchlists, X followers (when the lookup is on: %s) and Telegram members (%s)" % (F.X_PROFILES, cm[0][:140] if cm else "-"))
     import memebot as MB
     v_gp = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "gp": {"mintable": 1, "freezable": 0}})
     v_gp2 = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "gp": {"mintable": 0, "trusted": 1, "lpBurnPct": 100}, "cm": {"rcUp": 40, "rcDown": 3, "cgWatch": 2500}})

@@ -1,15 +1,17 @@
 # The bot on GitHub's own servers: no laptop needed.
-# Runs every hour and whenever you press "Run workflow" (github.com -> Actions -> Meme-Bot scan).
+# Runs every hour at :10 UTC, started by the hourly routine of the Claude session through the GitHub API (a cron start on
+# GitHub's own scheduler comes 10 to 20 minutes late), and whenever you press "Run workflow" (github.com -> Actions -> Meme-Bot
+# scan). The cron below is the safety net: it fires at :25 and does nothing when a scan started in the last 45 minutes.
 # Each run restores the bot's state from the results branch, scans ~12,000 coins, names the best coin for the next two hours,
 # pushes report.html + the small docs back to the results branch and shows the picks in the run's summary.
 # When GitHub Pages is switched on (Settings -> Pages -> Source: GitHub Actions; needs a public repository on the free plan),
 # the second job publishes the page as a website that phones can keep on the home screen.
 # Fake money only: nothing is bought anywhere.
 name: Meme-Bot scan
-run-name: "${{ github.event_name == 'schedule' && 'Scheduled scan' || 'Scan now' }} · ${{ inputs.horizon || '2h' }} profile${{ inputs.rescan && ' · fresh snapshot' || '' }}"
+run-name: "${{ inputs.source == 'hourly' && 'Hourly scan' || (github.event_name == 'schedule' && 'Safety-net scan' || 'Scan now') }} · ${{ inputs.horizon || '2h' }} profile${{ inputs.rescan && ' · fresh snapshot' || '' }}"
 on:
   schedule:
-    - cron: '10 * * * *'            # UTC, hourly; GitHub may start a scheduled run up to ~15 minutes late
+    - cron: '25 * * * *'            # UTC, the safety net only: the routine starts the real scan at :10; a scheduled run that finds a scan from the last 45 minutes skips itself
   workflow_dispatch:
     inputs:
       horizon:
@@ -21,6 +23,11 @@ on:
         description: 'force a full scan with a fresh big-test snapshot'
         type: boolean
         default: false
+      source:
+        description: 'who starts it: the hourly routine passes "hourly" (shown in the run name)'
+        type: choice
+        options: ['manual', 'hourly']
+        default: 'manual'
 permissions:
   contents: write
   actions: write                     # the tidy-up step deletes old runs of this workflow
@@ -31,6 +38,8 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      skipped: ${{ steps.recent.outputs.skip }}
     env:
       PYTHONUTF8: '1'
       LUNARCRUSH_API_KEY: ${{ secrets.LUNARCRUSH_API_KEY }}
@@ -39,8 +48,27 @@ jobs:
       HORIZON: ${{ github.event.inputs.horizon || '2h' }}
       RESCAN: ${{ github.event.inputs.rescan == 'true' && '--rescan' || '' }}
     steps:
+      - name: Safety net only - skip when a scan started in the last 45 minutes
+        id: recent
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '45 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml/runs?per_page=15"
+          n=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api" \
+              | jq -r --arg s "$since" --argjson me "$GITHUB_RUN_ID" '[.workflow_runs[] | select(.id != $me and .created_at > $s and (.status == "queued" or .status == "in_progress" or .conclusion == "success"))] | length')
+          if [ "${n:-0}" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "A scan started in the last 45 minutes (the hourly routine did its job): this safety-net run does nothing." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "No scan in the last 45 minutes: the safety net runs the scan." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/checkout@v4
+        if: steps.recent.outputs.skip != 'true'
       - name: Restore the bot's state from the results branch
+        if: steps.recent.outputs.skip != 'true'
         run: |
           if git ls-remote --exit-code --heads "$RESULTS_URL" results >/dev/null; then
             git clone -q --depth 1 --branch results "$RESULTS_URL" mb || (sleep 10 && git clone -q --depth 1 --branch results "$RESULTS_URL" mb)
@@ -49,6 +77,7 @@ jobs:
             mkdir -p mb && echo "no results branch yet: fresh start"
           fi
       - name: Keep the big-test snapshots between runs
+        if: steps.recent.outputs.skip != 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -58,23 +87,28 @@ jobs:
           restore-keys: memebot-snaps-
       - name: Scan and recommend
         id: scan
+        if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
       - name: Push the page and the small docs to the results branch
+        if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py sync --remote "$RESULTS_URL"
       - name: Show the picks on this run's page
-        if: always()
+        if: always() && steps.recent.outputs.skip != 'true'
         run: |
           if [ "${{ steps.scan.outcome }}" != "success" ]; then
             echo "## Scan ${{ steps.scan.outcome }}: the picks below are from an earlier run" >> "$GITHUB_STEP_SUMMARY"
           fi
           python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"
       - name: Build the website folder
+        if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py site --out site --repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
       - uses: actions/upload-pages-artifact@v3
+        if: steps.recent.outputs.skip != 'true'
         with:
           path: site
           retention-days: 1
       - name: Tidy the run list (successful runs older than two days are deleted)
+        if: steps.recent.outputs.skip != 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -90,6 +124,7 @@ jobs:
           echo "deleted $n old runs (before $cutoff)"
   pages:
     needs: scan
+    if: needs.scan.outputs.skipped != 'true'
     runs-on: ubuntu-latest
     continue-on-error: true          # without Pages (private repository) this job fails and the run still counts as green
     permissions:

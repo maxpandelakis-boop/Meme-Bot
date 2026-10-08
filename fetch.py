@@ -941,7 +941,8 @@ def cmd_tokens(http, d, addrs):
 
 DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "jupHolders", "organic", "txs3h", "devSold", "devSellAgeMin", "topHoldersPct")
 DEV_WINDOW_H = 3.0          # the creator's transactions of the last three hours are read
-DEV_MAX_TX = 12             # at most this many of them are decoded per coin (40 getTransaction calls per 10 s allowed)
+DEV_MAX_TX = 6              # at most this many of them are decoded per coin (40 getTransaction calls per 10 s allowed); 12 made the check 3 minutes for 20 coins
+X_PROFILES = False          # the syndication profile page has not returned a follower count in any run since the first night ("did the syndication page change?"): off until it does
 
 
 def dev_check(http, d, addrs, now=None):
@@ -1133,7 +1134,7 @@ def community(http, d, addrs, meta, now=None):
                     st_msgs += 1 if now - t <= 86400 else 0
         x_fol = x_tw = None
         handle = re.sub(r"^https://(www\.)?(x|twitter)\.com/", "", str(m.get("x") or "")).split("/")[0].split("?")[0]
-        if handle and re.fullmatch(r"[A-Za-z0-9_]{1,30}", handle) and handle.lower() not in ("i", "search", "home", "intent") and "syndication.twitter.com" not in http.dead:
+        if X_PROFILES and handle and re.fullmatch(r"[A-Za-z0-9_]{1,30}", handle) and handle.lower() not in ("i", "search", "home", "intent") and "syndication.twitter.com" not in http.dead:
             page = http.get(XSYN + "/" + handle, kind="text") or ""
             mf = re.search(r'"followers_count":(\d+)', page)
             x_fol = num(mf.group(1)) if mf else None
@@ -1165,7 +1166,7 @@ def community(http, d, addrs, meta, now=None):
     has = lambda i: sum(1 for r in rows if r.split("|")[i] not in ("", "null"))
     tried_x = sum(1 for a in addrs if str(((meta or {}).get(a) or {}).get("x") or "").strip())
     tried_tg = sum(1 for a in addrs if str(((meta or {}).get(a) or {}).get("tg") or "").strip())
-    if tried_x >= 3 and has(10) == 0:
+    if X_PROFILES and tried_x >= 3 and has(10) == 0:
         http.log("  ! X: %d accounts looked up, no follower count read at all (did the syndication page change?)" % tried_x)
     if tried_tg >= 3 and has(12) == 0:
         http.log("  ! Telegram: %d channels looked up, no member count read at all (did the t.me preview change?)" % tried_tg)

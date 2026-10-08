@@ -126,6 +126,7 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             F.clear_sources(d, F.SOURCE_DIRS, ("lists.json",))
     g = run(["memebot.py", "gather"], d, now)
     need = chunk_addrs(g)
+    asked = set(need)                                      # DexScreener was asked about these once; the deep pass asks only about new addresses
     if need and not offline:
         log("gather: %d coins, %d still need DexScreener data" % (g["coins"], len(need)))
         need_file = os.path.join(d, "need.json")          # thousands of addresses do not fit on a command line
@@ -141,7 +142,7 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             log("only %d coins passed the gates: searching deeper" % s["gated"])
             fetch(["deep"])
             g = run(["memebot.py", "gather"], d, now)
-            need = chunk_addrs(g)
+            need = [a for a in chunk_addrs(g) if a not in asked]   # the 1,200 addresses DexScreener had no pair for minutes ago are not asked again (that cost 80 s a run for 1 to 12 pairs)
             if need:
                 with open(os.path.join(d, "need.json"), "w", encoding="utf-8") as f:
                     json.dump({"chunks": [",".join(need[i:i + 30]) for i in range(0, len(need), 30)]}, f)
