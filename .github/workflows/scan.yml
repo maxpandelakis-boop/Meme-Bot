@@ -89,17 +89,17 @@ jobs:
         id: scan
         if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
-      - name: Keep the big-test results for offline research (artifact, two days)
+      - name: Keep the big-test results on the bigtest branch for offline research (one commit, replaced every run)
         if: steps.recent.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: big-test-results
-          path: |
-            mb/db/memesnapres
-            mb/db/memebot/train.json
-            mb/db/memeweights
-          retention-days: 2
-          if-no-files-found: ignore
+        continue-on-error: true
+        run: |
+          rm -rf bt && mkdir -p bt
+          tar -C mb/db -czf bt/memesnapres.tgz memesnapres 2>/dev/null || true
+          tar -C mb/db -czf bt/memeweights.tgz memeweights 2>/dev/null || true
+          cp mb/db/memebot/train.json bt/ 2>/dev/null || true
+          cd bt && git init -q && git checkout -q -b bigtest && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "big-test results $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$RESULTS_URL" bigtest && echo "bigtest branch updated: $(du -h memesnapres.tgz | cut -f1)"
       - name: Push the page and the small docs to the results branch
         if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py sync --remote "$RESULTS_URL"
