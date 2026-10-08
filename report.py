@@ -1021,7 +1021,7 @@ def odd_cell(cont, o, hours):
     if o and o.get("waiting"):
         return '<td class="n muted" data-k="%d h later">pending · the window\'s candles</td>' % hours
     if o and o.get("missed"):
-        return '<td class="n muted" data-k="%d h later">not priced · no candles for the window</td>' % hours
+        return '<td class="n muted" data-k="%d h later">not priced · %s</td>' % (hours, "the window\'s candles are unusable" if o.get("glitch") else "no candles for the window")
     return ""
 
 

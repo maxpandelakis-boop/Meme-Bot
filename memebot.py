@@ -1607,10 +1607,22 @@ def tip_due(doc, now):
     return [(k, h, sl) for k, h, sl in out if now - t0 >= (h - sl) * 3_600_000]
 
 
+def glitchy(o):
+    """A candle-priced result whose window spans more than CANDLE_MAX_X between its low and its high is a thin-pool glitch, not
+    a price (the first repair gave a tip 6.9x at the hour with a low of 0.02x in the same hour)."""
+    hi, lo = num((o or {}).get("hi")), num((o or {}).get("lo"))
+    return bool(hi and lo and lo > 0 and hi / lo > CANDLE_MAX_X)
+
+
 def stale_check(res, hours):
     """A stored 1 h / 24 h check priced far too late at the price of the day (the first night backfilled twelve 1 h checks 2 to
-    12 hours late, five of them as "gone" in an outage): not a result, the next run prices the window from its candles."""
-    return isinstance(res, dict) and (num(res.get("h")) or 0) > hours + LATE_H and not res.get("late")
+    12 hours late, five of them as "gone" in an outage), or priced from glitchy candles: not a result, the next run prices the
+    window from its candles again."""
+    if not isinstance(res, dict):
+        return False
+    if (num(res.get("h")) or 0) > hours + LATE_H and not res.get("late"):
+        return True
+    return any(isinstance(o, dict) and o.get("fromCandles") and glitchy(o) for o in (res.get("picks") or []))
 
 
 def open_check(res):
@@ -2544,8 +2556,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     # the price at its end); the settled picks of an earlier late pass are kept; a pool without candles waits,
                     # up to LATE_RETRY_H, then it is written off as never priced
                     po = prev_p.get(p.get("sym"))
-                    if po and not po.get("waiting"):
+                    if po and not po.get("waiting") and not (po.get("fromCandles") and glitchy(po)):
                         outs.append(po)
+                    elif last_close and hi and lo and lo > 0 and hi / lo > CANDLE_MAX_X:
+                        outs.append({"sym": p.get("sym"), "missed": True, "glitch": True})   # the window's candles span over CANDLE_MAX_X: unusable
                     elif last_close and last_close / px0 <= CANDLE_MAX_X:
                         mult = last_close / px0
                         o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": mult < 0.02, "fromCandles": True}

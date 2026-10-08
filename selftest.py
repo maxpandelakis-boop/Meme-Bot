@@ -503,7 +503,8 @@ def main():
     lp = (l1.get("picks") or [{}])[0]
     import report as R_
     check(l1.get("late") and lp.get("fromCandles") and abs((M.num(lp.get("mult")) or 0) - late_c["mult"]) < 0.01 and M.num(lp.get("hi")) and "1" not in [k for k, _, _ in M.tip_due(late_doc, T0)]
-          and "from candles" in R_.candles_txt(lp) and "priced 8.0 h late" in R_.odd_cell({"h": 8.0, "picks": []}, None, 1.0) and not M.settled({"h": 8.0, "picks": [lp]}, 1.0) and M.settled(l1, 1.0),
+          and "from candles" in R_.candles_txt(lp) and "priced 8.0 h late" in R_.odd_cell({"h": 8.0, "picks": []}, None, 1.0) and not M.settled({"h": 8.0, "picks": [lp]}, 1.0) and M.settled(l1, 1.0)
+          and M.stale_check({"h": 1.0, "late": True, "picks": [{"sym": "G", "mult": 6.9, "eur": 111.0, "hi": 8.6, "lo": 0.02, "fromCandles": True}]}, 1.0) and "unusable" in R_.odd_cell({}, {"missed": True, "glitch": True}, 1.0),
           "a 1 h check priced 8 h late was priced again from the window's candles (%sx, peak %sx, checked %s h late)" % (lp.get("mult"), lp.get("hi"), l1.get("checkedH")))
     rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
