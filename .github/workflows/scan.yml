@@ -89,6 +89,17 @@ jobs:
         id: scan
         if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
+      - name: Keep the big-test results for offline research (artifact, two days)
+        if: steps.recent.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: big-test-results
+          path: |
+            mb/db/memesnapres
+            mb/db/memebot/train.json
+            mb/db/memeweights
+          retention-days: 2
+          if-no-files-found: ignore
       - name: Push the page and the small docs to the results branch
         if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py sync --remote "$RESULTS_URL"
