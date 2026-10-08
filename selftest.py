@@ -88,6 +88,18 @@ class Mock:
                       for i in range(24)]
             return 200, {"data": {"Solana": {"DEXTradeByTokens": trades}}}
         if path.startswith("/api.mainnet-beta.solana.com"):
+            if method == "getSignaturesForAddress" and str(params[0]).endswith("pair"):      # a pool: 30 swaps in the last 45 minutes
+                pool = str(params[0]); idx = next((i for i, c in enumerate(self.coins) if c["a"][:20] + "pair" == pool), None)
+                if idx is None:
+                    return 200, {"jsonrpc": "2.0", "result": [], "id": 1}
+                return 200, {"jsonrpc": "2.0", "result": [{"signature": "flw%d_%d" % (idx, i), "blockTime": int(self.now / 1000) - 90 * i, "err": None} for i in range(30)], "id": 1}
+            if method == "getTransaction" and str(params[0]).startswith("flw"):            # a swap: two of three buy 100 coins for 0.5 SOL, one sells 100 for 0.4 SOL
+                idx, i = (int(x) for x in str(params[0])[3:].split("_"))
+                c = self.coins[idx]; payer = c["a"][:36] + "Wxab" + "cdefghj"[i % 7]; buy = i % 3 != 0
+                return 200, {"jsonrpc": "2.0", "result": {"meta": {"err": None, "preBalances": [10_000_000_000], "postBalances": [9_500_000_000 if buy else 10_400_000_000],
+                                                                   "preTokenBalances": [{"mint": c["a"], "owner": payer, "uiTokenAmount": {"uiAmount": 1000.0}}],
+                                                                   "postTokenBalances": [{"mint": c["a"], "owner": payer, "uiTokenAmount": {"uiAmount": 1100.0 if buy else 900.0}}]},
+                                                          "transaction": {"message": {"accountKeys": [{"pubkey": payer, "signer": True, "writable": True}]}}}, "id": 1}
             if method == "getSignaturesForAddress":
                 dev = str(params[0]); sold = any(c["a"][3:] == dev[3:] and self.coins.index(c) % 5 == 2 for c in self.coins if dev.startswith("DEV"))
                 return 200, {"jsonrpc": "2.0", "result": [{"signature": "sig%s%d" % (dev[-6:], i), "blockTime": int(self.now / 1000) - 600 * (i + 1)} for i in range(3 if sold else 1)], "id": 1}
@@ -373,6 +385,12 @@ def main():
     check(devrows and "creator check" in err, "the creator check wrote %d rows (Jupiter facts + RPC transactions)" % len(devrows))
     side = lambda sub: [l for f in glob.glob(os.path.join(d, sub, "*.txt")) for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not l.startswith("#")]
     gp, gi, cm = side("gp"), side("gi"), side("cm")
+    fl = side("fl")
+    flc = lambda l, i: l.split("|")[i]
+    check(fl and all(len(l.split("|")) == 14 for l in fl) and "on-chain flow (public RPC)" in err
+          and all(float(flc(l, 3)) == 16 and float(flc(l, 5)) == 6 and float(flc(l, 6)) == 4 and float(flc(l, 7)) == 10 and abs(float(flc(l, 9)) - 3 / 7) < 0.01
+                  and float(flc(l, 2)) == 30 and abs(float(flc(l, 11)) - 5.0) < 0.01 and abs(float(flc(l, 12)) - 2.4) < 0.01 and len(flc(l, 13).split(";")) == 6 for l in fl),
+          "the public-RPC trade sample: %d coins, 16 of 30 swaps decoded each, 6 buyers / 4 sellers, 3 of 7 wallets on both sides, 5 SOL in / 2.4 out (%s)" % (len(fl), fl[0][:120] if fl else "-"))
     check(gp and gi and cm and "goplus security" in err and "community" in err, "GoPlus (%d), GeckoTerminal info (%d) and community (%d) rows written for the shortlist" % (len(gp), len(gi), len(cm)))
     fv = lambda l, i: float(l.split("|")[i]) if l.split("|")[i] not in ("", "null") else None
     check(cm and all(len(l.split("|")) == 14 for l in cm) and any(fv(l, 1) == 40 for l in cm) and any(fv(l, 3) == 2500 for l in cm) and (not F.X_PROFILES or any(fv(l, 10) == 45678 for l in cm)) and any(fv(l, 12) == 12345 for l in cm),
@@ -520,6 +538,11 @@ def main():
     lp = [c for c in rec.get("picks", []) + rec.get("runnersUp", []) if "lp.trusted" in (c.get("f") or {})]
     check(lp and all(c.get("launchpad") for c in lp) and ("launched on" in " ".join(c.get("why") or "" for c in lp)) and ">launchpad<" in page_r,
           "the launchpad is known and judged (%s)" % [(c["sym"], c.get("launchpad"), c["f"].get("lp.trusted")) for c in lp[:3]])
+    with_fl = [c for c in rec.get("picks", []) + rec.get("runnersUp", []) if "fl.buyers" in (c.get("f") or {})]
+    check(with_fl and all(c["f"]["fl.buyers"] == 6 and c["f"]["fl.sellers"] == 4 and abs(c["f"]["fl.buyerRatio"] - 7 / 5) < 1e-6 and abs(c["f"]["fl.netSol"] - 2.6) < 0.01 for c in with_fl)
+          and any("on-chain sample: about 30 swaps in the last hour, 6 buyers vs 4 sellers among 16 decoded, net +2.60 SOL" in (c.get("why") or "") for c in with_fl)
+          and all("fl." not in k for k in M.PRIOR),
+          "the RPC trade sample becomes fl.* factors with no prior weight and a sentence in the why text (%d named coins carry it)" % len(with_fl))
     dp_rows = [l for fn in glob.glob(os.path.join(rd, "dp", "dp_*.txt")) for l in open(fn, encoding="utf-8") if l.strip()]
     named = rec.get("picks", []) + rec.get("runnersUp", [])
     with_dp = [c for c in named if "ds.paid" in (c.get("f") or {})]
@@ -684,6 +707,8 @@ def main():
     y1 = [o for doc in yd for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
     check(yd and y1 and "What the earlier new launches did" in page2, "the new launches are recorded and priced again at 1 h too (%d docs, %d results)" % (len(yd), len(y1)))
     with_peak = [o for o in y1 if o.get("hi") is not None]
+    check(with_peak and all(isinstance(o.get("path"), list) and len(o["path"]) >= 30 and all(len(c) == 4 and c[2] <= c[3] <= c[1] for c in o["path"]) for o in with_peak),
+          "every candle-priced result keeps its window's minute path for exit-rule replays (%s candles in the first)" % (len(with_peak[0].get("path") or []) if with_peak else "-"))
     check(with_peak and all(o.get("tp") is not None and o["hi"] >= 2.5 for o in with_peak) and "peak" in page2 and "selling at +50% when hit" in page2,
           "the minute candles give each result its peak and the +50%% take-profit outcome (%d of %d with candles)" % (len(with_peak), len(y1)))
     one_h = [o for doc in recs for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]

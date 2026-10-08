@@ -119,7 +119,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp", "candles")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp", "candles", "fl")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 3.0, "cdn.syndication.twimg.com": 1.5, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
@@ -979,6 +979,75 @@ def dev_check(http, d, addrs, now=None):
     return n
 
 
+FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buySol", "sellSol", "wallets")
+FLOW_SIGS = 100   # the pool's latest signatures read per coin (one call): the swap rate of the last hour
+FLOW_TX = 16      # of the last hour's swaps this many are decoded, spread over the hour (the public RPC allows about 40 getTransaction calls per 10 s)
+WSOL = "So11111111111111111111111111111111111111112"
+
+
+def rpc_flow(http, d, items, now=None):
+    """Without Bitquery: who traded each shortlisted coin in the last hour, read from the public Solana RPC. For each pool the
+    latest FLOW_SIGS signatures give the swap rate; FLOW_TX of the last hour's swaps, spread over it, are decoded: the fee payer
+    is the trader, its change in the coin says buy or sell and its change in SOL (and wrapped SOL) the size. -> fl/<stamp>.txt:
+    swap rate, distinct buyers and sellers in the sample, the share of wallets that both bought and sold in it, the biggest
+    buyer's share of the SOL bought, SOL in and out, and the buyer wallets for the wallet memory. A sample, not the full flow."""
+    now = now or time.time()
+    rows, decoded = [], 0
+    for it in items:
+        a, pool = addr_of(it.get("a")), str(it.get("pool") or "").strip()
+        if not a or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{20,48}", pool):
+            continue
+        if "api.mainnet-beta.solana.com" in http.dead:
+            break
+        sigs = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getSignaturesForAddress", "params": [pool, {"limit": FLOW_SIGS}]})
+        lst = [x for x in ((sigs or {}).get("result") or []) if isinstance(x, dict) and num(x.get("blockTime")) and not x.get("err")] if isinstance(sigs, dict) else []
+        if not lst:
+            continue
+        recent = sorted((x for x in lst if now - x["blockTime"] <= 3600), key=lambda x: -x["blockTime"])
+        if len(lst) >= FLOW_SIGS and len(recent) == len(lst):      # every one of them inside the hour: extrapolate the rate from their span
+            rate = len(lst) * 3600.0 / max(60.0, now - min(x["blockTime"] for x in lst))
+        else:
+            rate = float(len(recent))
+        pick = recent if len(recent) <= FLOW_TX else [recent[round(i * (len(recent) - 1) / (FLOW_TX - 1))] for i in range(FLOW_TX)]
+        per, times, nb, ns = {}, [], 0, 0          # per wallet: [coins bought, coins sold, SOL spent, SOL received]
+        for x in pick:
+            tx = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTransaction", "params": [x["signature"], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}]})
+            res = tx.get("result") if isinstance(tx, dict) else None
+            meta = (res or {}).get("meta") if isinstance(res, dict) else None
+            if not isinstance(meta, dict) or meta.get("err"):
+                continue
+            keys = (((res.get("transaction") or {}).get("message") or {}).get("accountKeys") or [])
+            payer = addr_of(keys[0].get("pubkey") if keys and isinstance(keys[0], dict) else (keys[0] if keys else None))
+            if not payer:
+                continue
+            bal = lambda key, mint: sum(num(((b.get("uiTokenAmount") or {}).get("uiAmount"))) or 0.0 for b in (meta.get(key) or [])
+                                        if isinstance(b, dict) and b.get("mint") == mint and b.get("owner") == payer)
+            dtok = bal("postTokenBalances", a) - bal("preTokenBalances", a)
+            pre, post = meta.get("preBalances") or [], meta.get("postBalances") or []
+            dsol = ((num(post[0]) or 0.0) - (num(pre[0]) or 0.0)) / 1e9 if pre and post else 0.0
+            dsol += bal("postTokenBalances", WSOL) - bal("preTokenBalances", WSOL)
+            if abs(dtok) <= 1e-12:
+                continue                            # not a swap of this coin by the fee payer (liquidity, routing, a bot's other leg)
+            p = per.setdefault(payer, [0.0, 0.0, 0.0, 0.0])
+            if dtok > 0:
+                p[0] += dtok; p[2] += max(0.0, -dsol); nb += 1
+            else:
+                p[1] += -dtok; p[3] += max(0.0, dsol); ns += 1
+            times.append(x["blockTime"])
+        decoded += len(times)
+        buyers = [w for w, p in per.items() if p[0] > 0]
+        sellers = [w for w, p in per.items() if p[1] > 0]
+        buy_sol, sell_sol = sum(p[2] for p in per.values()), sum(p[3] for p in per.values())
+        rows.append(row(a, pool, round(rate, 1), len(times), round((max(times) - min(times)) / 60.0, 1) if len(times) > 1 else None,
+                        len(buyers) if times else None, len(sellers) if times else None, nb if times else None, ns if times else None,
+                        round(sum(1 for p in per.values() if p[0] > 0 and p[1] > 0) / len(per), 3) if per else None,
+                        round(max(p[2] for p in per.values()) / buy_sol, 3) if buy_sol > 0 else None,
+                        round(buy_sol, 3) if times else None, round(sell_sol, 3) if times else None, ";".join(buyers[:40]) or None))
+    n = write_rows(d, "fl", "fl_%d.txt" % int(time.time()), rows)
+    http.log("  on-chain flow (public RPC) %d of %d coins, %d swaps decoded" % (n, len(items), decoded))
+    return n
+
+
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 
 
@@ -1355,6 +1424,7 @@ def cmd_risk(http, d, addrs, meta=None):
     goplus(http, d, addrs)
     gt_info(http, d, addrs[:30])
     dev_check(http, d, addrs[:24])
+    rpc_flow(http, d, [{"a": a, "pool": ((meta or {}).get(a) or {}).get("pair")} for a in addrs[:20]])
     community(http, d, addrs[:20], meta)
     viral(http, d, addrs[:60], meta)
     ds_orders(http, d, addrs[:40])
@@ -1384,7 +1454,7 @@ def main():
     ap.add_argument("--light", action="store_true")
     ap.add_argument("--addrs", default="")
     ap.add_argument("--from-gather", default="", help="a gather/shortlist JSON file whose chunks/shortlist give the addresses")
-    ap.add_argument("--meta", default="", help="risk: a JSON file {address: {sym, x, tg}} for the community lookups")
+    ap.add_argument("--meta", default="", help="risk: a JSON file {address: {sym, x, tg, pair}} for the community lookups and the on-chain flow")
     ap.add_argument("--mock", default=os.environ.get("MEMEBOT_MOCK", ""))
     ap.add_argument("--pause", type=float, default=float(os.environ.get("MEMEBOT_PAUSE", "0.3")))
     a = ap.parse_args()

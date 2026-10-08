@@ -27,6 +27,13 @@ it walk-forward (history = earlier scans only; a rule may fit on history, never 
 (stats, per_scan). `H.bootstrap_ci(per_scan)` gives the 95% interval of the average per pick by resampling scans;
 `H.scan_consistency(per_scan)` counts the scans with a positive average.
 
+New since 2026-10-08 12:10 UTC: the shortlisted coins (about 20 a scan) carry fl.* factors from a public-RPC trade sample
+(fl.rate1h swaps in the last hour, fl.buyers, fl.sellers, fl.buyerRatio, fl.flip = share of wallets on both sides,
+fl.topBuyer = biggest buyer's share of the SOL bought, fl.netSol, fl.netShare). They have no prior weight; the question
+for this family is whether they separate the coins that rise from those that crash among ACTIVE coins (the first study
+found buy share, buyer counts and momentum identical for both). The tips and new launches also keep their candle paths:
+run research/check_exits.py on the results branch for the exit rules.
+
 Gate history (the pass flag and the why tags of a row follow the gate of its scan time, not today's):
 - until 2026-10-07 21:26 UTC: 2h profile ages 3 to 12 h, the momentum gates "nobuyers" and "novol1h" active
 - from 2026-10-07 21:26 UTC: ages 3 to 24 h, the momentum gates became scored factors

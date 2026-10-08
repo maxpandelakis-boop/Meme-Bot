@@ -374,6 +374,7 @@ LCT_COLS = ("address", "interactions24h", "posts24h", "contributors", "sentiment
 HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
 VT_COLS = ("address", "tweetId", "likes", "replies", "tweetAgeH", "followers", "verified", "media", "animal", "screenName", "text")
 DP_COLS = ("address", "paid", "paidAgeH", "ads", "cto", "orders")
+FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buySol", "sellSol", "wallets")   # fl/*.txt: the public-RPC trade sample (fetch.rpc_flow)
 ANIMALS = re.compile(r"\b(monkey|monkeys|macaque|ape|apes|chimp|gorilla|cat|cats|kitten|kitty|dog|dogs|puppy|pup|doge|shiba|capybara|frog|frogs|toad|pepe|penguin|hamster|squirrel|raccoon|otter|bear|bears|panda|hippo|hippopotamus|moo deng|cow|cows|pig|piglet|duck|duckling|goat|bird|parrot|owl|fish|rat|mouse|seal|sloth|fox|wolf|lion|tiger|elephant|turtle|tortoise|rabbit|bunny|chick|chicken|giraffe|zebra|koala|kangaroo|llama|alpaca|dolphin|shark|octopus|snail|hedgehog|deer|moose|donkey|horse|pony|lamb|sheep|bat|crab|lobster|axolotl|quokka|wombat|lemur|baboon|orangutan)\b", re.I)
 TRUSTED_LP = re.compile(r"pump\.?fun|^pump$|pumpswap|bonk|^bags", re.I)        # the launchpads the terminal traders keep: pump.fun, Bonk, Bags
 OTHER_LP = re.compile(r"launchlab|believe|moonshot|boop|heaven|moonit|sugar|jupiter|dbc|meteora|virtuals|daos|time\.fun|zora|raydium", re.I)   # where the bundled 'fake charts' live
@@ -408,7 +409,7 @@ TWEET_LINK = re.compile(r"^https://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]{1,3
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
 TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad", "devWallet", "creator", "poolId",
-             "danger", "warn", "topAddrs", "creatorStatus", "status", "tags", "makerTags", "tweetId", "screenName", "text"}
+             "danger", "warn", "topAddrs", "creatorStatus", "status", "tags", "makerTags", "tweetId", "screenName", "text", "pool", "wallets"}
 CURVE_DEX = re.compile(r"pumpfun|dbc|launchlab|boop|moonit|curve", re.I)
 NOT_MEME = re.compile(r"xstock|securities|tokenized|wrapped|wormhole|staked|\bst[A-Z]|liquid stak|tether|usd[ct]?\b|\bpyusd|stablecoin|xaut|cbbtc|wbtc|weth", re.I)
 
@@ -574,6 +575,7 @@ def cmd_gather(d, now):
     hl, _ = load_side(d, "hl", HL_COLS)
     vt, _ = load_side(d, "vt", VT_COLS)
     dp, _ = load_side(d, "dp", DP_COLS)
+    fl, _ = load_side(d, "fl", FL_COLS)
     ll, ltags = load_side(d, "ll", LL_COLS)
     for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
@@ -606,7 +608,7 @@ def cmd_gather(d, now):
             p["dev"] = dict(dev[a])
         if a in ll:
             p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
-        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl), ("vt", vt), ("dp", dp)):
+        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl), ("vt", vt), ("dp", dp), ("fl", fl)):
             if a in table:
                 p[sub] = {k: v for k, v in table[a].items() if k != "address" and v is not None}
         if a in gm:
@@ -1054,6 +1056,20 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f[k] = num(bq.get(src))
     if num(bq.get("buyers1h")) is not None and num(bq.get("sellers1h")) is not None:
         f["bq.buyerRatio"] = (num(bq["buyers1h"]) + 1.0) / (num(bq["sellers1h"]) + 1.0)
+    # the public-RPC trade sample (fetch.rpc_flow): measured and kept with every scored coin, no prior weight; the weekly study
+    # decides whether it separates the coins that rise from the ones that crash before it moves a pick
+    fl = pr.get("fl") or {}
+    if num(fl.get("rate1h")) is not None:
+        f["fl.rate1h"] = num(fl["rate1h"])
+    if num(fl.get("sampled")):
+        for k, src in (("fl.buyers", "buyers"), ("fl.sellers", "sellers"), ("fl.flip", "flip"), ("fl.topBuyer", "topBuyerShare")):
+            if num(fl.get(src)) is not None:
+                f[k] = num(fl.get(src))
+        f["fl.buyerRatio"] = ((num(fl.get("buyers")) or 0.0) + 1.0) / ((num(fl.get("sellers")) or 0.0) + 1.0)
+        bs, ss = num(fl.get("buySol")) or 0.0, num(fl.get("sellSol")) or 0.0
+        f["fl.netSol"] = bs - ss
+        if bs + ss > 0:
+            f["fl.netShare"] = (bs - ss) / (bs + ss)
     hl = pr.get("hl") or {}
     for k, src in (("hl.top1", "top1Pct"), ("hl.top10", "top10Pct"), ("hl.top20", "top20Pct")):
         if num(hl.get(src)) is not None:
@@ -1126,6 +1142,7 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f["gm.smartShare"] = f["gm.smartDegen"] / f["gm.holders"]
     f["gm.src"] = float(sum(1 for t in tags if t.startswith("gm:")))
     holders = list((rc or {}).get("holdersTop") or []) if isinstance(rc, dict) else []
+    holders += [w for w in str((pr.get("fl") or {}).get("wallets") or "").split(";") if B58.match(w.strip()) and w.strip() not in holders]   # last hour's buyers: the wallet memory learns them too
     if tb:
         tf, tb_hold = top_buyer_feats(tb, board)
         f.update(tf)
@@ -1644,6 +1661,22 @@ def settled(res, hours):
 CANDLE_MAX_X = 30.0  # a peak over this many times the entry price inside a window is not believed (two glitches in the first night were 4,121x and 22,310x)
 CANDLE_WICK_X = 5.0  # a candle high more than this many times above the window's best close (or a low that far below its worst close) is a wick glitch: the close stands in
 TAKE_PROFIT = 0.5   # the "sell at the peak" question, made testable: what 20 made when sold at +50% as soon as the window hit it
+PATH_MAX = 120      # candles kept per window with each result ("path"), so exit rules (take profit, stop loss, trailing stops) can be replayed later
+
+
+def candle_path(inside, t0, px0):
+    """The window's candles relative to the entry price, compact: [[minutes after the tip, high, low, close], ...]. A wick far
+    above every close (or below) is clipped to that close, as in window_extremes, so a thin-pool glitch does not look like an exit."""
+    if not inside or not px0:
+        return None
+    top_close = max(c[4] for c in inside)
+    low_close = min(c[4] for c in inside)
+    out = []
+    for c in inside[-PATH_MAX:]:
+        hi = min(c[2], CANDLE_WICK_X * top_close) if top_close > 0 else c[2]
+        lo = max(c[3], low_close / CANDLE_WICK_X) if low_close > 0 else c[3]
+        out.append([int(round((c[0] - t0) / 60_000)), round(hi / px0, 4), round(lo / px0, 4), round(c[4] / px0, 4)])
+    return out
 
 
 def candle_items(d, now):
@@ -1899,7 +1932,7 @@ def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
     # the shortlist's side tables are fetched after the gather, so the run reads them itself (gather attaches them next time anyway)
-    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS), ("vt", VT_COLS), ("dp", DP_COLS)):
+    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS), ("vt", VT_COLS), ("dp", DP_COLS), ("fl", FL_COLS)):
         table, _ = load_side(d, sub, cols)
         for a, r in table.items():
             if a in pairs and not pairs[a].get(sub):
@@ -2100,7 +2133,7 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
         seen = {r["a"] for r in short + more} | set(risk)
         more += [r for r in young_rows(rows, held, recent) if r["a"] not in seen][:YOUNG_N]
     meta = {r["a"]: {"sym": str(r["pr"].get("symbol") or "")[:16], "x": x_link(r["pr"]) or str((r["pr"].get("pf") or {}).get("twitter") or "")[:120],
-                     "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100]} for r in short + more}
+                     "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100], "pair": str(r["pr"].get("pairAddress") or "")[:60]} for r in short + more}
     zm, um = load_train(d)[:2]
     refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]
                                  + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]] + [r["a"] for r in young_rows(rows, held, recent)[:YOUNG_N]]))[:252]
@@ -2158,6 +2191,12 @@ def why_text(r):
         bits.append("on-chain: %d trades in the last hour, %d buyers vs %d sellers, net %s%s" % (f["bq.trades1h"], f.get("bq.buyers1h") or 0, f.get("bq.sellers1h") or 0,
                                                                                                ("+" if (f.get("bq.netUsd1h") or 0) >= 0 else "-") + money(abs(f.get("bq.netUsd1h") or 0)),
                                                                                                (", biggest buyer %d%% of the buying" % round(100 * f["bq.topBuyerShare"])) if f.get("bq.topBuyerShare") is not None else ""))
+    if f.get("fl.buyers") is not None:
+        bits.append("on-chain sample: about %d swaps in the last hour, %d buyers vs %d sellers among %d decoded, net %s%.2f SOL%s%s" % (
+            round(f.get("fl.rate1h") or 0), f["fl.buyers"], f.get("fl.sellers") or 0, ((r.get("pr") or {}).get("fl") or {}).get("sampled") or 0,
+            "+" if (f.get("fl.netSol") or 0) >= 0 else "-", abs(f.get("fl.netSol") or 0),
+            (", biggest buyer %d%% of the SOL bought" % round(100 * f["fl.topBuyer"])) if f.get("fl.topBuyer") is not None else "",
+            (", %d%% of the wallets bought and sold" % round(100 * f["fl.flip"])) if f.get("fl.flip") else ""))
     lp_name, lp_kind = launchpad_of(r.get("pr") or {}, (r.get("pr") or {}).get("rc"))
     if lp_kind == "trusted":
         bits.append("launched on %s" % lp_name)
@@ -2570,6 +2609,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                         if hi and lo and hi / px0 <= CANDLE_MAX_X:
                             o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
                             o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]
+                            o["path"] = candle_path(inside, t0, px0)
                         outs.append(o)
                     elif now - t0 >= (hours + LATE_RETRY_H) * 3_600_000:
                         outs.append({"sym": p.get("sym"), "missed": True})
@@ -2591,6 +2631,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     if sane:
                         o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
                         o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]   # sold at +50% the moment it was hit, else held to the end
+                        o["path"] = candle_path(inside, t0, px0)
                 outs.append(o)
             if not outs:
                 continue

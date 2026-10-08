@@ -149,6 +149,25 @@ went to zero, the total on the money staked and the average per 20, plus what th
 A chart draws the running total tip by tip against the break-even line, and the summary of each run carries the same
 verdict ("Is the bot making money? No, not so far: ...").
 
+### On-chain flow without Bitquery
+
+For the shortlisted coins (about 20 a scan) the bot reads the last hour's trading straight from the chain through the
+public Solana RPC (`fetch.py rpc_flow`): the pool's latest 100 signatures give the swap rate, and 16 of the last hour's
+swaps, spread over it, are decoded (the fee payer is the trader; its change in the coin says buy or sell, its change in
+SOL the size). `fl/<stamp>.txt` holds the swap rate, the distinct buyers and sellers in the sample, the share of wallets
+that both bought and sold, the biggest buyer's share of the SOL bought, SOL in and out, and the buyer wallets. They
+become the factors `fl.*` and a sentence in the why text, and the buyers join the wallet memory. The factors carry no
+prior weight on purpose: the 2026-10-08 study found nothing in price and volume that tells a coin about to rise from one
+about to crash, and the weekly study decides whether the wallet sample does before it moves a pick. It is a sample, not
+the full flow; with a Bitquery token the `bq.*` factors read every trade.
+
+### Minute paths for exit rules
+
+Every 1 h and 24 h result priced from candles also keeps its window's candles relative to the entry price (`path`:
+minutes after the tip, high, low, close; wicks clipped like the peak). `research/check_exits.py` replays take-profit,
+stop-loss and trailing-stop rules on them for the tips and the new launches, so "sell at +20%, stop at -20%" and the
+like are measured on the bot's own coins rather than argued about.
+
 ### Peaks and the take-profit question
 
 For every tip and every listed new launch, the next runs also fetch the minute candles of its pool (GeckoTerminal
