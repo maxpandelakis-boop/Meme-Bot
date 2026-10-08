@@ -931,7 +931,7 @@ def young_history(D):
         sc = stats[str(int(h))]
         if sc:
             up = sum(1 for o in sc if (M.num(o.get("eur")) or 0) > 0)
-            bits.append("%d h later: %d priced, %d went up, %d to zero, average %s per 20" % (h, len(sc), up, sum(1 for o in sc if o.get("gone")), fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)) + ((" · " + tp_stats(sc)) if tp_stats(sc) else ""))
+            bits.append("%d h later: %d priced, %d went up, %d to zero, average %s per 20" % (h, len(sc), up, sum(1 for o in sc if o.get("gone") or (M.num(o.get("mult")) or 0) < 0.02), fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)) + ((" · " + tp_stats(sc)) if tp_stats(sc) else ""))
     head = '<thead><tr><th>scan at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th>%s<th></th></tr></thead>' % "".join('<th class="n">%d h later</th>' % h for h in M.TIP_CHECKS)
     note = ("the earlier new launches: " + "; ".join(bits)) if bits else "the earlier new launches: none priced again yet"
     return '<h3>What the earlier new launches did</h3><p class="note">%s · 20 in each at the scan price, after fees · fake money</p><details><summary>%d new launches from the last scans</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details>' % (
