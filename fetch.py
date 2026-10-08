@@ -427,7 +427,7 @@ def candles(http, d, items):
     (GeckoTerminal OHLCV, base token in USD) -> candles/<pool>_<hours>.txt rows ms|open|high|low|close|volume. With them
     the record knows the peak and the trough inside the window, not just the price at its end."""
     n = 0
-    for it in items[:16]:
+    for it in items[:24]:
         pool, since, hours = str(it.get("pool") or ""), num(it.get("since")), num(it.get("hours")) or 1.0
         if not pool or not since or "api.geckoterminal.com" in http.dead:
             continue
@@ -444,7 +444,7 @@ def candles(http, d, items):
             with open(os.path.join(d, "candles", "%s_%d.txt" % (pool, int(hours))), "w", encoding="utf-8") as f:
                 f.write("\n".join(rows) + "\n")
             n += 1
-    http.log("  candles %d of %d pools" % (n, min(len(items), 16)))
+    http.log("  candles %d of %d pools" % (n, min(len(items), 24)))
     return n
 
 

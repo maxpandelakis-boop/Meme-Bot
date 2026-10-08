@@ -118,6 +118,9 @@ SNAP_GAP_H = 11.5
 EVAL_H = 23.5
 TIP_CHECKS = (1.0, 24.0)   # every tip is priced again at these hours too (the page's "1h later" / "24h later" columns), whatever the profile's horizon
 TIP_SLACK_H = 0.25         # a checkpoint counts from this much before the hour: the hourly run after a tip lands about 60 minutes later
+LATE_H = 1.5               # a 1 h / 24 h check more than this late is not priced at the price of the day: the window's minute candles price it, or it stays open
+LATE_RETRY_H = 48.0        # how long a late check keeps asking for the window's candles before it is written off as "not priced"
+CANDLE_MAX_ITEMS = 24      # pools whose candles one run fetches (the late checks come first, then the new launches)
 SNAP_CHUNK = 200
 LEARN_MIN_N = 80         # coins a factor needs on both sides before its correlation counts
 LEARN_FULL_N = 600       # scored coins at which the learned weights fully replace the prior
@@ -1461,7 +1464,7 @@ def tip_stats(tips):
         return {"n": 0, "avg": None, "win": None, "zero": None, "median": None}
     mults = sorted(num(t.get("mult")) or 0.0 for t in tips)
     return {"n": n, "avg": round(sum(num(t.get("eur")) or 0.0 for t in tips) / n, 2), "win": round(100.0 * sum(1 for t in tips if (num(t.get("eur")) or 0.0) > 0) / n, 1),
-            "zero": round(100.0 * sum(1 for t in tips if t.get("gone")) / n, 1), "median": round(mults[n // 2], 3)}
+            "zero": round(100.0 * sum(1 for t in tips if t.get("gone") or (num(t.get("mult")) or 0) < 0.02) / n, 1), "median": round(mults[n // 2], 3)}
 
 
 def fit_weights(rows):
@@ -1600,8 +1603,26 @@ def tip_due(doc, now):
     if not doc.get("out"):
         out.append(("out", EVAL_H, 0.0))
     outs = doc.get("outs") if isinstance(doc.get("outs"), dict) else {}
-    out += [(str(int(h)), h, TIP_SLACK_H) for h in TIP_CHECKS if str(int(h)) not in outs]
+    out += [(str(int(h)), h, TIP_SLACK_H) for h in TIP_CHECKS if str(int(h)) not in outs or stale_check(outs[str(int(h))], h) or open_check(outs[str(int(h))])]
     return [(k, h, sl) for k, h, sl in out if now - t0 >= (h - sl) * 3_600_000]
+
+
+def stale_check(res, hours):
+    """A stored 1 h / 24 h check priced far too late at the price of the day (the first night backfilled twelve 1 h checks 2 to
+    12 hours late, five of them as "gone" in an outage): not a result, the next run prices the window from its candles."""
+    return isinstance(res, dict) and (num(res.get("h")) or 0) > hours + LATE_H and not res.get("late")
+
+
+def open_check(res):
+    """A late check still waiting for a pool's candles."""
+    return isinstance(res, dict) and any(isinstance(o, dict) and o.get("waiting") for o in (res.get("picks") or []))
+
+
+def settled(res, hours):
+    """The usable pick results of a stored check: none while it is stale, never the waiting or the never-priced ones."""
+    if not isinstance(res, dict) or stale_check(res, hours):
+        return []
+    return [o for o in (res.get("picks") or []) if isinstance(o, dict) and num(o.get("mult")) is not None and not o.get("waiting") and not o.get("missed")]
 
 
 CANDLE_MAX_X = 30.0  # a peak over this many times the entry price inside a window is not believed (two glitches in the first night were 4,121x and 22,310x)
@@ -1620,7 +1641,7 @@ def candle_items(d, now):
                 if key == "out":
                     continue
                 items += [{"pool": p.get("pair"), "since": num(doc.get("t")), "hours": hours} for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]
-    return items[:16]
+    return items[:CANDLE_MAX_ITEMS]
 
 
 def load_candles(d, pool, hours):
@@ -2504,23 +2525,48 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             tips_postponed += len(due)
             continue
         changed = False
+        net = lambda m: round((max(0.0, (TICKET - fee(TICKET)) * m - fee((TICKET - fee(TICKET)) * m)) if m > 0 else 0.0) - TICKET, 2)
         for key, hours, _ in due:
+            late = key != "out" and now - t0 > (hours + LATE_H) * 3_600_000
+            prev = ((doc.get("outs") or {}).get(key) or {}) if key != "out" else {}
+            prev_p = {o.get("sym"): o for o in (prev.get("picks") or []) if isinstance(o, dict)} if prev.get("late") else {}
             outs = []
             for p in doc.get("picks") or []:
-                pr = pairs.get(p.get("a") or p.get("addr"))
-                px0, px1 = num(p.get("px")), num(pr.get("priceUsd")) if pr else None
+                px0 = num(p.get("px"))
                 if not px0:
                     continue
-                if px1 is None and now - t0 < (hours + 1.0) * 3_600_000:
-                    outs = None; break               # no price yet (fetch outage): try again next run, up to an hour late
+                cands = load_candles(d, str(p["pair"]), hours) if key != "out" and p.get("pair") else []
+                hi, lo = window_extremes(cands, t0, hours)
+                inside = [c for c in cands if t0 <= c[0] <= t0 + hours * 3_600_000]
+                last_close = inside[-1][4] if inside else None
+                if late:
+                    # too late for the price of the day: the window's own candles price it (the last close inside the window is
+                    # the price at its end); the settled picks of an earlier late pass are kept; a pool without candles waits,
+                    # up to LATE_RETRY_H, then it is written off as never priced
+                    po = prev_p.get(p.get("sym"))
+                    if po and not po.get("waiting"):
+                        outs.append(po)
+                    elif last_close and last_close / px0 <= CANDLE_MAX_X:
+                        mult = last_close / px0
+                        o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": mult < 0.02, "fromCandles": True}
+                        if hi and lo and hi / px0 <= CANDLE_MAX_X:
+                            o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
+                            o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]
+                        outs.append(o)
+                    elif now - t0 >= (hours + LATE_RETRY_H) * 3_600_000:
+                        outs.append({"sym": p.get("sym"), "missed": True})
+                    else:
+                        outs.append({"sym": p.get("sym"), "waiting": True})
+                    continue
+                pr = pairs.get(p.get("a") or p.get("addr"))
+                px1 = num(pr.get("priceUsd")) if pr else None
+                if px1 is None:
+                    if key != "out" or now - t0 < (hours + LATE_H) * 3_600_000:
+                        outs = None; break           # no price this run (the coin dropped out of the lists): next run again; past LATE_H the candles price the 1 h / 24 h marks
+                    px1 = 0.0                        # the horizon check has no candle fallback: no price anywhere this long after the horizon is gone
                 mult = (px1 / px0) if px1 else 0.0
-                net = lambda m: round((max(0.0, (TICKET - fee(TICKET)) * m - fee((TICKET - fee(TICKET)) * m)) if m > 0 else 0.0) - TICKET, 2)
                 o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": not px1}
                 if key != "out" and p.get("pair"):
-                    cands = load_candles(d, str(p["pair"]), hours)
-                    hi, lo = window_extremes(cands, t0, hours)
-                    inside = [c for c in cands if t0 <= c[0] <= t0 + hours * 3_600_000]
-                    last_close = inside[-1][4] if inside else None
                     # the candles must agree with the prices the run itself saw: a last close far from the end price (or a peak over
                     # CANDLE_MAX_X of the entry) means the pool's candles are in another unit or a thin-pool glitch, and they are dropped
                     sane = hi and lo and hi / px0 <= CANDLE_MAX_X and (not px1 or not last_close or 1.0 / 3 <= last_close / px1 <= 3.0)
@@ -2531,6 +2577,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             if not outs:
                 continue
             res = {"t": now, "h": round((now - t0) / 3_600_000, 2), "picks": outs}
+            if late:
+                res.update({"h": hours, "late": True, "checkedH": round((now - t0) / 3_600_000, 2)})   # the window is the window; when it was priced is checkedH
             if key == "out":
                 doc = dict(doc, out=res)
                 if coll == "memerec":

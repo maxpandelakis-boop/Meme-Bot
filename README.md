@@ -133,7 +133,11 @@ is priced again at both marks by the runs that follow, on top of the profile's o
 it is priced again, or "no coin" with the reason. The header says when the next scheduled scan
 starts (the hourly cron in `scan.yml`, minute 10 UTC; a run takes about 15 minutes). A run in which DexScreener
 priced under 300 coins is an outage: it postpones every due price check to the next run instead of counting a tip
-it cannot price as gone (the note says "Tip checks postponed").
+it cannot price as gone (the note says "Tip checks postponed"). A 1 h or 24 h check that is more than 1.5 hours late
+(a missed run, an outage, the backfill after a code change) is not priced at the price of the day either: the window's
+minute candles price it (the last close inside the window; the cell says "from candles"), and until the candles are
+there the check stays open, for two days at most, after which it reads "not priced". A check that an older version
+had priced hours late is treated as open and priced again from the candles.
 
 ### Peaks and the take-profit question
 

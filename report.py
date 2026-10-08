@@ -913,11 +913,15 @@ def young_history(D):
             cells = ""
             for h in M.TIP_CHECKS:
                 key = str(int(h))
-                o = next((x for x in ((outs.get(key) or {}).get("picks") or []) if isinstance(x, dict) and x.get("sym") == p.get("sym")), None)
-                if o:
+                cont = outs.get(key) or {}
+                o = next((x for x in (cont.get("picks") or []) if isinstance(x, dict) and x.get("sym") == p.get("sym")), None)
+                odd = odd_cell(cont, o, h)
+                if odd:
+                    cells += odd
+                elif o:
                     stats[key].append(o)
                     good = (M.num(o.get("eur")) or 0) > 0
-                    cells += '<td class="n %s" data-k="%d h later">%s · %s%s</td>' % ("good" if good else "bad", h, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o))
+                    cells += '<td class="n %s" data-k="%d h later">%s · %s%s%s</td>' % ("good" if good else "bad", h, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o), candles_txt(o))
                 else:
                     due = t + h * 3_600_000
                     cells += '<td class="n muted" data-k="%d h later">%s</td>' % (h, ("pending · %s" % fmt_dt(due, True)) if due > now else ("pending · next scan" if now - due < 3 * 3_600_000 else "no result"))
@@ -1005,6 +1009,22 @@ def peak_txt(o):
     return s
 
 
+def candles_txt(o):
+    return ' <span class="muted" title="priced from the minute candles of the window, because the run that should have priced it came too late">· from candles</span>' if o.get("fromCandles") else ""
+
+
+def odd_cell(cont, o, hours):
+    """The cell of a check that is not a result: priced far too late (being priced again from the candles), still waiting for
+    the pool's candles, or never priced because the pool has none."""
+    if cont and M.stale_check(cont, hours):
+        return '<td class="n muted" data-k="%d h later">priced %.1f h late · being priced again from the window\'s candles</td>' % (hours, M.num(cont.get("h")) or 0)
+    if o and o.get("waiting"):
+        return '<td class="n muted" data-k="%d h later">pending · the window\'s candles</td>' % hours
+    if o and o.get("missed"):
+        return '<td class="n muted" data-k="%d h later">not priced · no candles for the window</td>' % hours
+    return ""
+
+
 def tp_stats(outs):
     """What 20 made when sold at +TAKE_PROFIT the moment the window hit it (else held to the end), over the results that have candles."""
     known = [o for o in outs if M.num(o.get("tp")) is not None]
@@ -1019,7 +1039,7 @@ def compound_chain(recs, key="1"):
     scan share the stake equally. The honest 'how much would 20 be now' line."""
     equity, n = M.TICKET, 0
     for doc in sorted((d for d in recs if isinstance(d, dict) and str(d.get("rule") or M.RULE) == M.RULE), key=lambda d: M.num(d.get("t")) or 0):
-        outs = [o for o in (((doc.get("outs") or {}).get(key) or {}).get("picks") or []) if isinstance(o, dict) and M.num(o.get("eur")) is not None]
+        outs = [o for o in M.settled((doc.get("outs") or {}).get(key), float(key)) if M.num(o.get("eur")) is not None]
         if not outs:
             continue
         mult = sum((M.TICKET + M.num(o["eur"])) / M.TICKET for o in outs) / len(outs)
@@ -1057,13 +1077,16 @@ def history_section(D):
             continue
 
         def res_cell(sym, key, hours):
-            o = ((rec.get("outs") or {}).get(key) or {}) if rec else {}
-            o = next((x for x in (o.get("picks") or []) if isinstance(x, dict) and x.get("sym") == sym), None)
+            cont = ((rec.get("outs") or {}).get(key) or {}) if rec else {}
+            o = next((x for x in (cont.get("picks") or []) if isinstance(x, dict) and x.get("sym") == sym), None)
+            odd = odd_cell(cont, o, hours)
+            if odd:
+                return odd
             if o:
                 if rule == M.RULE:
                     scored[key].append(o)
                 good = (M.num(o.get("eur")) or 0) > 0
-                return '<td class="n %s" data-k="%d h later">%s · %s%s</td>' % ("good" if good else "bad", hours, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o))
+                return '<td class="n %s" data-k="%d h later">%s · %s%s%s</td>' % ("good" if good else "bad", hours, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o), candles_txt(o))
             if rule != M.RULE:
                 return '<td class="n muted" data-k="%d h later">–</td>' % hours
             due = t + hours * 3_600_000

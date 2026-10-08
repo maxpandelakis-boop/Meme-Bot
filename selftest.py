@@ -492,7 +492,19 @@ def main():
     shutil.rmtree(empty, ignore_errors=True)
     print("== recommend mode: a fresh db, full scan, two recommendations, no positions")
     rd = tempfile.mkdtemp(prefix="memebot-rec-")
+    os.makedirs(os.path.join(rd, "db", "memerec"))
+    late_c = mock.coins[150]      # a tip from nine hours ago whose 1 h check an older version priced eight hours late as "gone": the candles must price it again
+    json.dump({"t": T0 - 9 * H, "rule": M.RULE, "picks": [{"sym": "LATE", "addr": late_c["a"], "pair": late_c["a"][:20] + "pair", "px": late_c["px"], "mc": 300000, "score": 50.0, "tier": "strong"}],
+               "outs": {"1": {"t": T0 - H, "h": 8.0, "picks": [{"sym": "LATE", "mult": 0.0, "eur": -20.0, "gone": True}]}}},
+              open(os.path.join(rd, "db", "memerec", "late.json"), "w"))
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--mock", url, "--now", str(T0), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    late_doc = json.load(open(os.path.join(rd, "db", "memerec", "late.json")))
+    l1 = (late_doc.get("outs") or {}).get("1") or {}
+    lp = (l1.get("picks") or [{}])[0]
+    import report as R_
+    check(l1.get("late") and lp.get("fromCandles") and abs((M.num(lp.get("mult")) or 0) - late_c["mult"]) < 0.01 and M.num(lp.get("hi")) and "1" not in [k for k, _, _ in M.tip_due(late_doc, T0)]
+          and "from candles" in R_.candles_txt(lp) and "priced 8.0 h late" in R_.odd_cell({"h": 8.0, "picks": []}, None, 1.0) and not M.settled({"h": 8.0, "picks": [lp]}, 1.0) and M.settled(l1, 1.0),
+          "a 1 h check priced 8 h late was priced again from the window's candles (%sx, peak %sx, checked %s h late)" % (lp.get("mult"), lp.get("hi"), l1.get("checkedH")))
     rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
     vt_files = glob.glob(os.path.join(rd, "vt", "vt_*.txt"))

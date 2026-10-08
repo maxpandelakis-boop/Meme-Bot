@@ -364,7 +364,7 @@ def summary(d):
     docs = [doc for doc in M.load_docs(d, "memerec").values() if isinstance(doc, dict)]
     lines = []
     for h in M.TIP_CHECKS:
-        outs = [o for doc in docs for o in (((doc.get("outs") or {}).get(str(int(h))) or {}).get("picks") or []) if isinstance(o, dict)]
+        outs = [o for doc in docs for o in M.settled((doc.get("outs") or {}).get(str(int(h))), h)]
         if outs:
             up = sum(1 for o in outs if (M.num(o.get("eur")) or 0) > 0)
             lines.append("%d h later: %d tips priced again, %d went up, average %+.2f per 20" % (h, len(outs), up, sum(M.num(o.get("eur")) or 0 for o in outs) / len(outs)))
