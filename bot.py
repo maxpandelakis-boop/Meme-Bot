@@ -372,6 +372,10 @@ def summary(d):
     if lines:
         out.append("")
         out.append("Track record (fake money, 20 per tip): " + "; ".join(lines) + ".")
+        one = [o for doc in docs for o in M.settled((doc.get("outs") or {}).get("1"), 1.0) if M.num(o.get("eur")) is not None]
+        if one:
+            tot = sum(M.num(o["eur"]) for o in one)
+            out.append("Is the bot making money? %s: %+.2f together on %d tips sold 1 h later (%.0f staked, fake money, after fees)." % ("Yes, so far" if tot > 0 else "No, not so far", tot, len(one), len(one) * M.TICKET))
         chain = R.compound_chain(docs)
         if chain["n"]:
             out.append("20 put into every tip one after the other (sold after 1 h, after fees) would be %.2f now after %d tips." % (chain["equity"], chain["n"]))

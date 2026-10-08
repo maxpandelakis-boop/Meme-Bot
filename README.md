@@ -141,6 +141,14 @@ minute candles price it (the last close inside the window; the cell says "from c
 there the check stays open, for two days at most, after which it reads "not priced". A check that an older version
 had priced hours late is treated as open and priced again from the candles.
 
+### Is the bot making money?
+
+The last section of the page answers that in one line: every coin the bot named, priced again 1 hour later (and at the
+profile's horizon and 24 hours later), summed up as fake money with 20 in each tip after fees: how many went up, how many
+went to zero, the total on the money staked and the average per 20, plus what the +50% take-profit rule would have made.
+A chart draws the running total tip by tip against the break-even line, and the summary of each run carries the same
+verdict ("Is the bot making money? No, not so far: ...").
+
 ### Peaks and the take-profit question
 
 For every tip and every listed new launch, the next runs also fetch the minute candles of its pool (GeckoTerminal

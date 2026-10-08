@@ -694,6 +694,12 @@ def main():
     day = [o for doc in recs for o in ((doc.get("outs") or {}).get("24") or {}).get("picks", [])]
     page3 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
     check(r.returncode == 0 and day and "24 h later: %d tips priced" % len(day) in page3, "a day later the tips carry their 24 h result too (%d)" % len(day))
+    one_h3 = [o for doc in recs for o in M.settled((doc.get("outs") or {}).get("1"), 1.0) if M.num(o.get("eur")) is not None]
+    m_profit = re.search(r'<p class="verdict (good|bad)"><strong>(Yes, so far|No, not so far)\.</strong> (\d+) tips? priced 1 h later: (\d+) went up, (\d+) went to zero, together <strong>([^<]+)</strong>', page3)
+    tot3 = sum(M.num(o["eur"]) for o in one_h3)
+    check(m_profit and "Is the bot making money?" in page3 and int(m_profit.group(3)) == len(one_h3) and m_profit.group(2) == ("Yes, so far" if tot3 > 0 else "No, not so far")
+          and m_profit.group(6).replace("\u2212", "").replace("+", "").replace("-", "") == "%.2f" % abs(tot3) and 'aria-label="Equity per run"' in page3.split("Is the bot making money?")[-1],
+          "the page ends with the profit verdict and the running-total chart (%s, %d tips, %+.2f)" % (m_profit.group(2) if m_profit else "missing", len(one_h3), tot3))
     m_chain = re.search(r"one after the other \(sold after 1 h, after fees\) would be ([\d.,]+) now after (\d+) tips", page3)
     check(m_chain and int(m_chain.group(2)) >= 1, "the page says what 20 riding every tip would be now (%s)" % (m_chain.group(0)[-40:] if m_chain else "missing"))
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
