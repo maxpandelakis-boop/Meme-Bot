@@ -393,10 +393,14 @@ def main():
     fl = side("fl")
     flc = lambda l, i: l.split("|")[i]
     check(fl and all(len(l.split("|")) == 15 for l in fl) and "on-chain flow (public RPC)" in err
-          and all(float(flc(l, 3)) == 15 and float(flc(l, 5)) == 6 and float(flc(l, 6)) == 4 and float(flc(l, 7)) == 10 and float(flc(l, 8)) == 5 and abs(float(flc(l, 9)) - 3 / 7) < 0.01
-                  and float(flc(l, 2)) == 30 and abs(float(flc(l, 10)) - 0.2) < 0.01 and abs(float(flc(l, 11)) - 600.0) < 0.01 and abs(float(flc(l, 12)) - 240.0) < 0.01
-                  and flc(l, 13) == "SOL" and len(flc(l, 14).split(";")) == 6 for l in fl),
-          "the public-RPC trade sample: %d coins, 15 of 16 sampled swaps counted (one liquidity deposit skipped), 6 buyers / 4 sellers, 3 of 7 wallets on both sides, $600 in / $240 out at the pool's vault (%s)" % (len(fl), fl[0][:120] if fl else "-"))
+          and all(float(flc(l, 3)) == 10 and float(flc(l, 5)) == 5 and float(flc(l, 6)) == 3 and float(flc(l, 7)) == 7 and float(flc(l, 8)) == 3 and abs(float(flc(l, 9)) - 2 / 6) < 0.01
+                  and float(flc(l, 2)) == 30 and abs(float(flc(l, 10)) - 120 / 420) < 0.01 and abs(float(flc(l, 11)) - 420.0) < 0.01 and abs(float(flc(l, 12)) - 144.0) < 0.01
+                  and flc(l, 13) == "SOL" and len(flc(l, 14).split(";")) == 5 for l in fl),
+          "the public-RPC trade sample: %d coins, 10 of 30 swaps decoded, 5 buyers / 3 sellers, 2 of 6 wallets on both sides, $420 in / $144 out at the pool's vault (%s)" % (len(fl), fl[0][:120] if fl else "-"))
+    lp_meta = {"err": None, "preBalances": [10 ** 10], "postBalances": [10 ** 10 - 5 * 10 ** 8]}
+    lp_tx = F.flow_swap(dict(lp_meta, preTokenBalances=[{"mint": "C" * 40, "owner": "W" * 40, "uiTokenAmount": {"uiAmount": 1000.0}}, {"mint": "C" * 40, "owner": "P" * 40, "uiTokenAmount": {"uiAmount": 1e6}}, {"mint": F.WSOL, "owner": "P" * 40, "uiTokenAmount": {"uiAmount": 500.0}}],
+                                          postTokenBalances=[{"mint": "C" * 40, "owner": "W" * 40, "uiTokenAmount": {"uiAmount": 900.0}}, {"mint": "C" * 40, "owner": "P" * 40, "uiTokenAmount": {"uiAmount": 1e6 + 100}}, {"mint": F.WSOL, "owner": "P" * 40, "uiTokenAmount": {"uiAmount": 500.5}}]), "W" * 40, "C" * 40)
+    check(lp_tx is None, "a liquidity deposit (coins and SOL both into the pool) is not counted as a trade")
     t9 = 1_800_000_000
     r9, ok9 = F.flow_rate([{"signature": "s%d" % k, "blockTime": t9 - 1.2 * k, "err": {"x": 1} if k == 50 else None} for k in range(100)], t9)
     W1, W2, W3, CO, PV = "W" * 40, "X" * 40, "Y" * 40, "C" * 40, "P" * 40
@@ -559,8 +563,8 @@ def main():
     check(lp and all(c.get("launchpad") for c in lp) and ("launched on" in " ".join(c.get("why") or "" for c in lp)) and ">launchpad<" in page_r,
           "the launchpad is known and judged (%s)" % [(c["sym"], c.get("launchpad"), c["f"].get("lp.trusted")) for c in lp[:3]])
     with_fl = [c for c in rec.get("picks", []) + rec.get("runnersUp", []) if "fl.buyers" in (c.get("f") or {})]
-    check(with_fl and all(c["f"]["fl.buyers"] == 6 and c["f"]["fl.sellers"] == 4 and abs(c["f"]["fl.buyerRatio"] - 7 / 5) < 1e-6 and abs(c["f"]["fl.netUsd"] - 360.0) < 0.01 for c in with_fl)
-          and any("on-chain sample: about 30 swaps in the last hour, 6 buyers vs 4 sellers among 15 decoded, net +$" in (c.get("why") or "") for c in with_fl)
+    check(with_fl and all(c["f"]["fl.buyers"] == 5 and c["f"]["fl.sellers"] == 3 and abs(c["f"]["fl.buyerRatio"] - 6 / 4) < 1e-6 and abs(c["f"]["fl.netUsd"] - 276.0) < 0.01 for c in with_fl)
+          and any("on-chain sample: about 30 swaps in the last hour, 5 buyers vs 3 sellers among 10 decoded, net +$" in (c.get("why") or "") for c in with_fl)
           and all("fl." not in k for k in M.PRIOR),
           "the RPC trade sample becomes fl.* factors with no prior weight and a sentence in the why text (%d named coins carry it)" % len(with_fl))
     lw, _, ldet = M.learn([({"fl.buyers": float(i % 7), "c1": float(i % 7)}, float(i % 7)) for i in range(200)])

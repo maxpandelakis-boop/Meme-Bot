@@ -41,7 +41,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40              # a full scan takes 20 to 27 minutes; the wallet-flow sample added up to 2.5
     outputs:
       skipped: ${{ steps.recent.outputs.skip }}
     env:

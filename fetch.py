@@ -995,8 +995,8 @@ def dev_check(http, d, addrs, now=None):
 
 FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buyUsd", "sellUsd", "quote", "wallets")
 FLOW_SIGS = 100        # the pool's latest signatures read per coin (one call): the swap rate of the last hour
-FLOW_TX = 16           # of the last hour's successful ones this many are decoded, spread over the hour (the public RPC allows about 40 getTransaction calls per 10 s)
-FLOW_BUDGET_S = 150    # the whole sample stops after this many seconds (a slow or throttled RPC must not eat the run's 30 minutes)
+FLOW_TX = 10           # of the last hour's successful ones this many are decoded, spread over the hour (from GitHub a call takes about 1 s: 16 per coin took 5.5 minutes)
+FLOW_BUDGET_S = 150    # the whole sample stops after this many seconds; the shortlist comes best first, so the pick and its runners-up are covered
 FLOW_WALLETS = 12      # buyer wallets kept per coin (the side-table cell holds 600 characters)
 WSOL = "So11111111111111111111111111111111111111112"
 STABLES = {"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",

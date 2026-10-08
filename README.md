@@ -152,7 +152,7 @@ verdict ("Is the bot making money? No, not so far: ...").
 ### On-chain flow without Bitquery
 
 For the shortlisted coins (about 20 a scan) the bot reads the last hour's trading straight from the chain through the
-public Solana RPC (`fetch.py rpc_flow`): the pool's latest 100 signatures give the swap rate, and 16 of the last hour's
+public Solana RPC (`fetch.py rpc_flow`): the pool's latest 100 signatures give the swap rate, and 10 of the last hour's
 successful swaps, spread over it, are decoded. The pool's vault decides: the account whose coin and quote balances moved
 in opposite directions is the pool, the pool giving coins is a buy, the size is what crossed its quote vault (SOL at the
 run's CoinGecko price, USDC/USDT/USD1 at 1), and a deposit or withdrawal that moves both the same way is not a trade; the
