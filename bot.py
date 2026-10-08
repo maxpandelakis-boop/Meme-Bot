@@ -362,7 +362,8 @@ def summary(d):
         if near:
             out.append("")
             out.append("Closest, and why not: " + "; ".join("%s (%.0f) %s" % (md(r.get("sym")), M.num(r.get("score")) or 0, md(r.get("safety") or "")) for r in near[:5]))
-    docs = [doc for doc in M.load_docs(d, "memerec").values() if isinstance(doc, dict)]
+    rule_now = str(state.get("rule") or M.RULE)      # the page counts the active profile's tips only; so does this
+    docs = [doc for doc in M.load_docs(d, "memerec").values() if isinstance(doc, dict) and str(doc.get("rule") or M.RULE) == rule_now]
     lines = []
     for h in M.TIP_CHECKS:
         outs = [o for doc in docs for o in M.settled((doc.get("outs") or {}).get(str(int(h))), h)]

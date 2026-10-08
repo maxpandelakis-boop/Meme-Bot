@@ -286,7 +286,7 @@ def collect(d, now):
     track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
     young_hist = sorted([r for r in M.load_docs(d, "memeyoung").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))[:48]
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:80], "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -295,7 +295,7 @@ def collect(d, now):
 
 
 # ---------------------------------------------------------------- charts (inline SVG in CSS pixels; a wide and a narrow variant per chart)
-def line_chart(series, budget, width, height=240, ref_label="start"):
+def line_chart(series, budget, width, height=240, ref_label="start", aria_label="Equity per run"):
     """series: [(name, css class, [(t, v)])]. Hover: crosshair + tooltip via the page script (data-pts on the overlay)."""
     pts_all = [(t, v) for _, _, pts in series for t, v in pts]
     if len(pts_all) < 2:
@@ -311,7 +311,7 @@ def line_chart(series, budget, width, height=240, ref_label="start"):
     tick_fmt = fmt_amt if step < 1 else (lambda v: sgn("%g" % v))
     X = lambda t: ml + (t - t0) / (t1 - t0) * pw
     Y = lambda v: mt + (hi - v) / (hi - lo) * ph
-    out = ['<svg class="chart-svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="Equity per run">' % (width, height, width, height)]
+    out = ['<svg class="chart-svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="%s">' % (width, height, width, height, E(aria_label))]
     for tk in ticks:
         y = Y(tk)
         out.append('<line class="grid" x1="%d" y1="%.1f" x2="%d" y2="%.1f"/><text class="tick" x="%d" y="%.1f" text-anchor="end">%s</text>' % (ml, y, ml + pw, y, ml - 6, y + 4, tick_fmt(tk)))
@@ -1053,7 +1053,7 @@ def compound_chain(recs, key="1"):
 def profit_rows(D):
     """Every tip the bot named, priced again 1 h, horizon and 24 h later: [(key, hours, label, [(tip time, result)...])],
     oldest tip first, settled results only (fake money, 20 per tip, after fees)."""
-    recs = sorted((d for d in (D.get("track") or []) if isinstance(d, dict) and M.num(d.get("t")) and str(d.get("rule") or M.RULE) == M.RULE), key=lambda d: M.num(d["t"]))
+    recs = sorted((d for d in (D.get("track_all") or D.get("track") or []) if isinstance(d, dict) and M.num(d.get("t")) and str(d.get("rule") or M.RULE) == M.RULE), key=lambda d: M.num(d["t"]))
     rows = []
     for key, hours, label in (("1", 1.0, "1 h later"), ("out", M.EVAL_H, "%s later (the horizon)" % horizon_text()), ("24", 24.0, "24 h later")):
         pts = []
@@ -1074,7 +1074,9 @@ def profit_stats(pts):
     up = sum(1 for _, o in pts if M.num(o["eur"]) > 0)
     zero = sum(1 for _, o in pts if o.get("gone") or (M.num(o.get("mult")) or 0) < 0.02)
     tp = [M.num(o["tp"]) for _, o in pts if M.num(o.get("tp")) is not None]
-    return {"n": n, "tot": tot, "up": up, "zero": zero, "tp": tp}
+    tp_tot = sum((M.num(o["tp"]) if M.num(o.get("tp")) is not None else M.num(o["eur"])) for _, o in pts)   # sold at +TAKE_PROFIT where the candles are known, else held to the end
+    hit = sum(1 for _, o in pts if (M.num(o.get("hi")) or 0) >= 1.0 + M.TAKE_PROFIT)
+    return {"n": n, "tot": tot, "up": up, "zero": zero, "tp": tp, "tpTot": tp_tot, "hit": hit}
 
 
 def profit_section(D):
@@ -1090,35 +1092,35 @@ def profit_section(D):
     verdict = ('<p class="verdict %s"><strong>%s.</strong> %d tip%s priced %s: %d went up, %d went to zero, together <strong>%s</strong> on %s staked (%s per 20).%s</p>' % (
         "good" if yes else "bad", "Yes, so far" if yes else "No, not so far", s["n"], "s" if s["n"] != 1 else "", label, s["up"], s["zero"],
         fmt_amt(s["tot"], True), fmt_amt(staked), fmt_amt(s["tot"] / s["n"], True),
-        (" Sold at +%d%% the moment a window hit it (%d of %d did): %s together." % (round(100 * M.TAKE_PROFIT), sum(1 for _, o in pts if (M.num(o.get("hi")) or 0) >= 1.0 + M.TAKE_PROFIT), len(s["tp"]), fmt_amt(sum(s["tp"]), True))) if s["tp"] else ""))
+        (" Sold at +%d%% the moment a window hit it (%d of %d did; %d had candles, the rest held to the end): %s together." % (round(100 * M.TAKE_PROFIT), s["hit"], s["n"], len(s["tp"]), fmt_amt(s["tpTot"], True))) if s["tp"] else ""))
     tiles = [tile("Profit so far, %s" % label, fmt_amt(s["tot"], True), "%d tips · %s staked · fake money, after fees" % (s["n"], fmt_amt(staked)), lead=True),
              tile("Tips that went up", "%d of %d" % (s["up"], s["n"]), "a profit after fees needs about +8.5%"),
              tile("Tips that went to zero", "%d of %d" % (s["zero"], s["n"]), "under 2% of the entry price")]
     if s["tp"]:
-        tiles.append(tile("Sold at +%d%% when hit" % round(100 * M.TAKE_PROFIT), fmt_amt(sum(s["tp"]), True), "%d of %d tips reached it" % (sum(1 for _, o in pts if (M.num(o.get("hi")) or 0) >= 1.0 + M.TAKE_PROFIT), len(s["tp"]))))
+        tiles.append(tile("Sold at +%d%% when hit" % round(100 * M.TAKE_PROFIT), fmt_amt(s["tpTot"], True), "%d of %d tips reached it · %d had candles, the rest held to the end" % (s["hit"], s["n"], len(s["tp"]))))
     html_ = '<section class="hero">%s</section>' % "".join(tiles)
     trs = []
     for key_, hours_, label_, pts_ in rows:
         st_ = profit_stats(pts_)
-        trs.append('<tr><td>%s</td><td class="n" data-k="tips priced">%d</td><td class="n" data-k="went up">%d</td><td class="n" data-k="to zero">%d</td><td class="n %s" data-k="together">%s</td><td class="n" data-k="per 20">%s</td><td class="n" data-k="sold at +50%% when hit">%s</td></tr>' % (
+        trs.append('<tr><td>%s</td><td class="n" data-k="tips priced">%d</td><td class="n" data-k="went up">%d</td><td class="n" data-k="to zero">%d</td><td class="n" data-k="together"><span class="%s">%s</span></td><td class="n" data-k="per 20">%s</td><td class="n" data-k="sold at +50%% when hit">%s</td></tr>' % (
             E(label_), st_["n"], st_["up"], st_["zero"], "good" if st_["tot"] > 0 else "bad", fmt_amt(st_["tot"], True), fmt_amt(st_["tot"] / st_["n"], True),
-            (fmt_amt(sum(st_["tp"]), True) + " (%d with candles)" % len(st_["tp"])) if st_["tp"] else "–"))
+            (fmt_amt(st_["tpTot"], True) + " (%d of %d with candles)" % (len(st_["tp"]), st_["n"])) if st_["tp"] else "–"))
     table = '<div class="tbl"><table><thead><tr><th>priced</th><th class="n">tips</th><th class="n">went up</th><th class="n">to zero</th><th class="n">together</th><th class="n">per 20</th><th class="n">sold at +%d%% when hit</th></tr></thead><tbody>%s</tbody></table></div>' % (round(100 * M.TAKE_PROFIT), "".join(trs))
     chart = ""
-    if len(pts) >= 2:
-        run, series = 0.0, []
-        for t, o in pts:
-            run += M.num(o["eur"])
+    by_t = {}
+    for t, o in pts:                       # a scan that named two coins is one point: the running total after that scan
+        by_t.setdefault(t, []).append(o)
+    if len(by_t) >= 2:
+        run, run_tp, series, series_tp = 0.0, 0.0, [], []
+        for t in sorted(by_t):
+            run += sum(M.num(o["eur"]) for o in by_t[t])
+            run_tp += sum((M.num(o["tp"]) if M.num(o.get("tp")) is not None else M.num(o["eur"])) for o in by_t[t])
             series.append((t, round(run, 2)))
-        run_tp, series_tp = 0.0, []
-        if s["tp"]:
-            for t, o in pts:
-                run_tp += M.num(o["tp"]) if M.num(o.get("tp")) is not None else M.num(o["eur"])
-                series_tp.append((t, round(run_tp, 2)))
-        ser = [("profit %s, sold at the end" % label, "s1", series)] + ([("sold at +%d%% when hit" % round(100 * M.TAKE_PROFIT), "s2", series_tp)] if series_tp else [])
+            series_tp.append((t, round(run_tp, 2)))
+        ser = [("profit %s, sold at the end" % label, "s1", series)] + ([("sold at +%d%% when hit" % round(100 * M.TAKE_PROFIT), "s2", series_tp)] if s["tp"] else [])
         legend = ('<div class="legend">%s<span class="ref-leg">break-even</span></div>' % "".join('<span style="--c:var(--%s)">%s</span>' % (cls, E(name)) for name, cls, _ in ser)) if len(ser) > 1 else '<div class="legend"><span class="ref-leg">break-even</span></div>'
-        chart = chart_box(line_chart(ser, 0.0, 1040, ref_label="break-even"), line_chart(ser, 0.0, 360, ref_label="break-even"), legend)
-    chain = compound_chain(D.get("track") or [])
+        chart = chart_box(line_chart(ser, 0.0, WIDE, ref_label="break-even", aria_label="Running profit of the tips"), line_chart(ser, 0.0, NARROW, ref_label="break-even", aria_label="Running profit of the tips"), legend)
+    chain = compound_chain(D.get("track_all") or D.get("track") or [])
     note = '<p class="note">Running total of every tip in time order, 20 in each, sold %s. ' % label
     note += ('20 put into every tip one after the other, each time the whole stake, would be %s now after %d tips. ' % (fmt_amt(chain["equity"]), chain["n"])) if chain["n"] else ""
     note += 'Fake money: the bot names coins and buys nothing; fees simulated at 0.5%, minimum 0.81 per trade.</p>'
