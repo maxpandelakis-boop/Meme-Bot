@@ -125,7 +125,9 @@ HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 3.0, "cdn.syndication.twimg.com": 1.5, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
             "streaming.bitquery.io": 0.5, "lunarcrush.com": 1.0}   # minimum seconds between requests to a host (GT allows only ~6/min from GitHub's shared addresses)
 MAX_429_PER_HOST = 8          # rate-limit waits per host and run before the host is skipped (the other sources still run)
-HOST_MAX_429 = {"syndication.twitter.com": 2, "api.coingecko.com": 3}   # hosts whose limits are per minute and whose waits cost the run minutes: give up early
+HOST_MAX_429 = {"syndication.twitter.com": 2, "api.coingecko.com": 3,   # hosts whose limits are per minute and whose waits cost the run minutes: give up early
+                "api.mainnet-beta.solana.com": 40}   # the public RPC throttles GitHub's addresses in short bursts; 8 waits were used up by the creator check alone
+                                                     # (08 Oct 13:13 UTC), which left the wallet-flow sample with nothing. Its time budget bounds the waits there.
 HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20, 40, 60), "www.reddit.com": (5, 10, 15)}   # 429 back-off per host; DexScreener default below
 
 
@@ -956,6 +958,7 @@ def cmd_tokens(http, d, addrs):
 DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "jupHolders", "organic", "txs3h", "devSold", "devSellAgeMin", "topHoldersPct")
 DEV_WINDOW_H = 3.0          # the creator's transactions of the last three hours are read
 DEV_MAX_TX = 6              # at most this many of them are decoded per coin (40 getTransaction calls per 10 s allowed); 12 made the check 3 minutes for 20 coins
+DEV_RPC_429 = 20            # the creator check stops asking the RPC after this many rate-limit waits, so the wallet-flow sample keeps the other half
 X_PROFILES = False          # the syndication profile page has not returned a follower count in any run since the first night ("did the syndication page change?"): off until it does
 
 
@@ -972,24 +975,31 @@ def dev_check(http, d, addrs, now=None):
         au = t.get("audit") or {}
         dev = addr_of(t.get("dev"))
         txs, sold, sell_age = None, None, None
-        if dev and "api.mainnet-beta.solana.com" not in http.dead:
+        if dev and "api.mainnet-beta.solana.com" not in http.dead and http.limited_by.get("api.mainnet-beta.solana.com", 0) < DEV_RPC_429:
             sigs = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getSignaturesForAddress", "params": [dev, {"limit": 25}]})
-            recent = [x for x in ((sigs or {}).get("result") or []) if isinstance(x, dict) and num(x.get("blockTime")) and now - x["blockTime"] <= DEV_WINDOW_H * 3600]
-            txs, sold = len(recent), False
+            lst = sigs.get("result") if isinstance(sigs, dict) else None
+            recent = [x for x in (lst if isinstance(lst, list) else []) if isinstance(x, dict) and num(x.get("blockTime")) and now - x["blockTime"] <= DEV_WINDOW_H * 3600]
+            txs, sold, unread = (len(recent), False, 0) if isinstance(lst, list) else (None, None, 0)   # a failed call is unknown, not "no sale"
             for x in recent[:DEV_MAX_TX]:
                 tx = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTransaction", "params": [x["signature"], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}]})
-                meta = ((tx or {}).get("result") or {}).get("meta") or {}
+                if not (isinstance(tx, dict) and isinstance(tx.get("result"), dict)):
+                    unread += 1
+                    continue
+                meta = tx["result"].get("meta") or {}
                 bal = lambda key: sum(num(((b.get("uiTokenAmount") or {}).get("uiAmount"))) or 0 for b in (meta.get(key) or [])
                                       if isinstance(b, dict) and b.get("mint") == a and b.get("owner") == dev)
                 if bal("postTokenBalances") < bal("preTokenBalances") - 1e-9:
                     sold = True
                     age = (now - x["blockTime"]) / 60.0
                     sell_age = age if sell_age is None else min(sell_age, age)
+            if unread and not sold:
+                sold = None                           # some of the creator's transactions could not be read: no sale seen is not "no sale"
         rows.append(row(a, dev, num(au.get("devBalancePercentage")), bool(au.get("mintAuthorityDisabled")), bool(au.get("freezeAuthorityDisabled")),
                         num(t.get("holderCount")), num(t.get("organicScore")), txs, sold, round(sell_age) if sell_age is not None else None,
                         num(au.get("topHoldersPercentage"))))
     n = write_rows(d, "dev", "dev_%d.txt" % int(time.time()), rows)
-    http.log("  creator check %d of %d (%d sold recently)" % (n, len(addrs), sum(1 for r in rows if r.split("|")[8] == "1")))
+    http.log("  creator check %d of %d (%d sold recently, %d unknown, %d RPC rate-limit waits so far)" % (n, len(addrs), sum(1 for r in rows if r.split("|")[8] == "true"),
+             sum(1 for r in rows if r.split("|")[8] == "null"), http.limited_by.get("api.mainnet-beta.solana.com", 0)))
     return n
 
 
@@ -1116,8 +1126,8 @@ def rpc_flow(http, d, items, now=None):
                         round(buy_usd, 2) if priced and times else None, round(sell_usd, 2) if priced and times else None,
                         ("SOL" if quote == WSOL else STABLES.get(quote, "other")) if quote else None, ";".join(buyers[:FLOW_WALLETS]) or None))
     n = write_rows(d, "fl", "fl_%d.txt" % int(time.time()), rows)
-    http.log("  on-chain flow (public RPC) %d of %d coins, %d swaps decoded in %ds%s" % (n, len(items), decoded, time.time() - t_start,
-             "" if covered >= len([i for i in items if addr_of(i.get("a"))]) else " (time budget or RPC limit reached after %d coins)" % covered))
+    http.log("  on-chain flow (public RPC) %d of %d coins, %d swaps decoded in %ds, %d RPC rate-limit waits in the run%s" % (n, len(items), decoded, time.time() - t_start,
+             http.limited_by.get("api.mainnet-beta.solana.com", 0), "" if covered >= len([i for i in items if addr_of(i.get("a"))]) else " (time budget or RPC limit reached after %d coins)" % covered))
     return n
 
 

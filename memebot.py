@@ -2033,7 +2033,7 @@ def risk_view(r):
         return False, "mint authority still active (Jupiter)"
     dev_note = ""
     if dv:
-        dev_note = ", creator holds %s%%" % (round(dev_pct) if dev_pct is not None else "?") + (", no creator sale in 3h" if dv.get("txs3h") is not None else "")
+        dev_note = ", creator holds %s%%" % (round(dev_pct) if dev_pct is not None else "?") + (", no creator sale in 3h" if dv.get("txs3h") is not None and dv.get("devSold") is not None else "")
     gp = r.get("gp") or {}
     if gp:
         bad = [name for k, name in (("mintable", "supply can still be minted"), ("freezable", "accounts can be frozen"), ("closable", "accounts can be closed"),

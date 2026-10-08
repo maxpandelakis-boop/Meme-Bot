@@ -378,6 +378,27 @@ def main():
     got = h.get("https://api.dexscreener.com/__429")
     check(got == {"ok": True} and h.limited == 2 and "api.dexscreener.com" not in h.dead, "429 twice, then the answer (%s waits)" % h.limited)
 
+    print("== public RPC throttled: the creator check stops at half the waits, a failed call is unknown")
+    class Throttled:                                  # every RPC call is a 429 that post() counted; Jupiter answers
+        def __init__(s): s.dead, s.limited_by, s.logs, s.posts = set(), {}, [], 0
+        def log(s, m): s.logs.append(m)
+        def get(s, u, **k):
+            a = u.rsplit("=", 1)[1]
+            return [{"id": a, "dev": "DEV" + a[3:], "audit": {"devBalancePercentage": 1.0, "mintAuthorityDisabled": True, "freezeAuthorityDisabled": True}}]
+        def post(s, u, payload, **k):
+            s.posts += 1
+            s.limited_by["api.mainnet-beta.solana.com"] = s.limited_by.get("api.mainnet-beta.solana.com", 0) + 1
+            return None
+    th, th_dir = Throttled(), tempfile.mkdtemp(prefix="memebot-dev-")
+    addrs = ["Coin%sxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxpump" % "ABCDEFGHJKLMNPQRSTUVWXYZabcdef"[i] for i in range(30)]   # base58 only, or the creator wallet is dropped
+    F.dev_check(th, th_dir, addrs, now=T.time())
+    dev_rows = [l.rstrip("\n").split("|") for fn in glob.glob(os.path.join(th_dir, "dev", "*.txt")) for l in open(fn, encoding="utf-8") if "|" in l and not l.startswith("address")]
+    check(th.posts == F.DEV_RPC_429 and "api.mainnet-beta.solana.com" not in th.dead and F.HOST_MAX_429["api.mainnet-beta.solana.com"] > F.DEV_RPC_429,
+          "the creator check made %d RPC calls and left the rest of the %d waits to the wallet sample" % (th.posts, F.HOST_MAX_429["api.mainnet-beta.solana.com"]))
+    check(len(dev_rows) == 30 and all(r[7] == "null" and r[8] == "null" for r in dev_rows) and "30 unknown" in th.logs[-1],
+          "failed RPC calls leave txs3h and devSold unknown, not 'no sale' (%s)" % th.logs[-1].strip())
+    shutil.rmtree(th_dir, ignore_errors=True)
+
     print("== cycle 1: first full scan, expect 2 buys of 20")
     out, err = cycle(T0)
     g = json.loads(subprocess.run([PY, os.path.join(HERE, "memebot.py"), "gather", "--dir", d, "--now", str(T0)], capture_output=True, text=True).stdout)
@@ -437,6 +458,8 @@ def main():
     v_sold = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": True, "devSellAgeMin": 25, "mintAuthOff": True, "txs3h": 3}})
     v_ok = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": False, "mintAuthOff": True, "freezeAuthOff": True, "txs3h": 0}})
     check(v_sold[0] is False and "sold 25 minutes ago" in v_sold[1] and v_ok[0] is True and "no creator sale" in v_ok[1], "a creator sale blocks a coin, a quiet creator is noted (%s)" % v_sold[1])
+    v_unk = MB.risk_view({"lpLocked": 100, "top1Pct": 3, "top10Pct": 20, "insiders": 1, "holders": 2000, "creatorPct": 1, "dev": {"devPct": 1.0, "devSold": None, "mintAuthOff": True, "freezeAuthOff": True, "txs3h": 4}})
+    check(v_unk[0] is True and "no creator sale" not in v_unk[1], "unread creator transactions are not called 'no creator sale' (%s)" % v_unk[1][-60:])
     pos = docs("memepos")
     picks = [dict(p, _id=pid) for pid, p in pos.items() if p["grp"] == "pick"]
     check(len(picks) == 2, "%d positions opened, all bot picks (%d)" % (len(pos), len(picks)))
