@@ -93,12 +93,17 @@ class Mock:
                 if idx is None:
                     return 200, {"jsonrpc": "2.0", "result": [], "id": 1}
                 return 200, {"jsonrpc": "2.0", "result": [{"signature": "flw%d_%d" % (idx, i), "blockTime": int(self.now / 1000) - 90 * i, "err": None} for i in range(30)], "id": 1}
-            if method == "getTransaction" and str(params[0]).startswith("flw"):            # a swap: two of three buy 100 coins for 0.5 SOL, one sells 100 for 0.4 SOL
+            if method == "getTransaction" and str(params[0]).startswith("flw"):
+                # a swap against the pool's vaults (owner POOL): two of three buy 100 coins for 0.5 SOL, one sells 100 for 0.4 SOL; swap 27 is a
+                # liquidity deposit (the trader's coins and SOL both go into the pool), which is not a trade
                 idx, i = (int(x) for x in str(params[0])[3:].split("_"))
-                c = self.coins[idx]; payer = c["a"][:36] + "Wxab" + "cdefghj"[i % 7]; buy = i % 3 != 0
-                return 200, {"jsonrpc": "2.0", "result": {"meta": {"err": None, "preBalances": [10_000_000_000], "postBalances": [9_500_000_000 if buy else 10_400_000_000],
-                                                                   "preTokenBalances": [{"mint": c["a"], "owner": payer, "uiTokenAmount": {"uiAmount": 1000.0}}],
-                                                                   "postTokenBalances": [{"mint": c["a"], "owner": payer, "uiTokenAmount": {"uiAmount": 1100.0 if buy else 900.0}}]},
+                c = self.coins[idx]; payer = c["a"][:36] + "Wxab" + "cdefghj"[i % 7]; pool_owner = c["a"][:30] + "PooLvauLtz"; wsol = "So11111111111111111111111111111111111111112"
+                buy, lp = i % 3 != 0, i == 27
+                v_coin = -100.0 if buy else 100.0; v_sol = 0.5 if buy else (0.5 if lp else -0.4)
+                tb = lambda owner, mint, amt: {"mint": mint, "owner": owner, "uiTokenAmount": {"uiAmount": amt}}
+                return 200, {"jsonrpc": "2.0", "result": {"meta": {"err": None, "preBalances": [10_000_000_000], "postBalances": [9_500_000_000 if buy or lp else 10_400_000_000],
+                                                                   "preTokenBalances": [tb(payer, c["a"], 1000.0), tb(pool_owner, c["a"], 1_000_000.0), tb(pool_owner, wsol, 500.0)],
+                                                                   "postTokenBalances": [tb(payer, c["a"], 1000.0 - v_coin), tb(pool_owner, c["a"], 1_000_000.0 + v_coin), tb(pool_owner, wsol, 500.0 + v_sol)]},
                                                           "transaction": {"message": {"accountKeys": [{"pubkey": payer, "signer": True, "writable": True}]}}}, "id": 1}
             if method == "getSignaturesForAddress":
                 dev = str(params[0]); sold = any(c["a"][3:] == dev[3:] and self.coins.index(c) % 5 == 2 for c in self.coins if dev.startswith("DEV"))
@@ -387,10 +392,23 @@ def main():
     gp, gi, cm = side("gp"), side("gi"), side("cm")
     fl = side("fl")
     flc = lambda l, i: l.split("|")[i]
-    check(fl and all(len(l.split("|")) == 14 for l in fl) and "on-chain flow (public RPC)" in err
-          and all(float(flc(l, 3)) == 16 and float(flc(l, 5)) == 6 and float(flc(l, 6)) == 4 and float(flc(l, 7)) == 10 and abs(float(flc(l, 9)) - 3 / 7) < 0.01
-                  and float(flc(l, 2)) == 30 and abs(float(flc(l, 11)) - 5.0) < 0.01 and abs(float(flc(l, 12)) - 2.4) < 0.01 and len(flc(l, 13).split(";")) == 6 for l in fl),
-          "the public-RPC trade sample: %d coins, 16 of 30 swaps decoded each, 6 buyers / 4 sellers, 3 of 7 wallets on both sides, 5 SOL in / 2.4 out (%s)" % (len(fl), fl[0][:120] if fl else "-"))
+    check(fl and all(len(l.split("|")) == 15 for l in fl) and "on-chain flow (public RPC)" in err
+          and all(float(flc(l, 3)) == 15 and float(flc(l, 5)) == 6 and float(flc(l, 6)) == 4 and float(flc(l, 7)) == 10 and float(flc(l, 8)) == 5 and abs(float(flc(l, 9)) - 3 / 7) < 0.01
+                  and float(flc(l, 2)) == 30 and abs(float(flc(l, 10)) - 0.2) < 0.01 and abs(float(flc(l, 11)) - 600.0) < 0.01 and abs(float(flc(l, 12)) - 240.0) < 0.01
+                  and flc(l, 13) == "SOL" and len(flc(l, 14).split(";")) == 6 for l in fl),
+          "the public-RPC trade sample: %d coins, 15 of 16 sampled swaps counted (one liquidity deposit skipped), 6 buyers / 4 sellers, 3 of 7 wallets on both sides, $600 in / $240 out at the pool's vault (%s)" % (len(fl), fl[0][:120] if fl else "-"))
+    t9 = 1_800_000_000
+    r9, ok9 = F.flow_rate([{"signature": "s%d" % k, "blockTime": t9 - 1.2 * k, "err": {"x": 1} if k == 50 else None} for k in range(100)], t9)
+    W1, W2, W3, CO, PV = "W" * 40, "X" * 40, "Y" * 40, "C" * 40, "P" * 40
+    tbl = lambda pre, post: {"preTokenBalances": [{"mint": m, "owner": o, "uiTokenAmount": {"uiAmount": a}} for o, m, a in pre],
+                             "postTokenBalances": [{"mint": m, "owner": o, "uiTokenAmount": {"uiAmount": a}} for o, m, a in post], "preBalances": [10 ** 10], "postBalances": [10 ** 10 - 5000]}
+    relay = F.flow_swap(tbl([(W2, CO, 0.0), (PV, CO, 1e6), (PV, F.WSOL, 100.0)], [(W2, CO, 50.0), (PV, CO, 1e6 - 50), (PV, F.WSOL, 101.0)]), W1, CO)
+    usdc = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    stable = F.flow_swap(tbl([(W1, CO, 50.0), (PV, CO, 1e6), (PV, usdc, 1000.0)], [(W1, CO, 0.0), (PV, CO, 1e6 + 50), (PV, usdc, 900.0)]), W1, CO)
+    remove = F.flow_swap(tbl([(W1, CO, 0.0), (PV, CO, 1e6), (PV, F.WSOL, 100.0)], [(W1, CO, 50.0), (PV, CO, 1e6 - 50), (PV, F.WSOL, 99.0)]), W1, CO)
+    feeonly = F.flow_swap(tbl([(W1, CO, 0.0)], [(W1, CO, 50.0)]), W1, CO)
+    check(abs(r9 - 99 * 3600 / (1.2 * 99)) < 1 and len(ok9) == 99 and relay == (W2, "buy", F.WSOL, 1.0) and stable == (W1, "sell", usdc, 100.0) and remove is None and feeonly is None,
+          "flow details: a failed swap among 100 does not cap the rate (%.0f/h), a relayer-paid buy counts for the wallet that got the coins, a USDC pool is sized in USDC, a liquidity removal and a fee-only change are not trades" % r9)
     check(gp and gi and cm and "goplus security" in err and "community" in err, "GoPlus (%d), GeckoTerminal info (%d) and community (%d) rows written for the shortlist" % (len(gp), len(gi), len(cm)))
     fv = lambda l, i: float(l.split("|")[i]) if l.split("|")[i] not in ("", "null") else None
     check(cm and all(len(l.split("|")) == 14 for l in cm) and any(fv(l, 1) == 40 for l in cm) and any(fv(l, 3) == 2500 for l in cm) and (not F.X_PROFILES or any(fv(l, 10) == 45678 for l in cm)) and any(fv(l, 12) == 12345 for l in cm),
@@ -522,7 +540,9 @@ def main():
     import report as R_
     check(l1.get("late") and lp.get("fromCandles") and abs((M.num(lp.get("mult")) or 0) - late_c["mult"]) < 0.01 and M.num(lp.get("hi")) and "1" not in [k for k, _, _ in M.tip_due(late_doc, T0)]
           and "from candles" in R_.candles_txt(lp) and "priced 8.0 h late" in R_.odd_cell({"h": 8.0, "picks": []}, None, 1.0) and not M.settled({"h": 8.0, "picks": [lp]}, 1.0) and M.settled(l1, 1.0)
-          and M.stale_check({"h": 1.0, "late": True, "picks": [{"sym": "G", "mult": 6.9, "eur": 111.0, "hi": 8.6, "lo": 0.02, "fromCandles": True}]}, 1.0) and "unusable" in R_.odd_cell({}, {"missed": True, "glitch": True}, 1.0),
+          and M.stale_check({"h": 1.0, "late": True, "picks": [{"sym": "G", "mult": 6.9, "eur": 111.0, "hi": 8.6, "lo": 0.02, "fromCandles": True}]}, 1.0) and "unusable" in R_.odd_cell({}, {"missed": True, "glitch": True}, 1.0)
+          and lp.get("cv") == M.CANDLE_V and M.stale_check({"h": 1.0, "late": True, "picks": [{"sym": "O", "mult": 1.01, "eur": -1.4, "fromCandles": True}]}, 1.0)
+          and not M.stale_check(l1, 1.0),
           "a 1 h check priced 8 h late was priced again from the window's candles (%sx, peak %sx, checked %s h late)" % (lp.get("mult"), lp.get("hi"), l1.get("checkedH")))
     rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
@@ -539,10 +559,15 @@ def main():
     check(lp and all(c.get("launchpad") for c in lp) and ("launched on" in " ".join(c.get("why") or "" for c in lp)) and ">launchpad<" in page_r,
           "the launchpad is known and judged (%s)" % [(c["sym"], c.get("launchpad"), c["f"].get("lp.trusted")) for c in lp[:3]])
     with_fl = [c for c in rec.get("picks", []) + rec.get("runnersUp", []) if "fl.buyers" in (c.get("f") or {})]
-    check(with_fl and all(c["f"]["fl.buyers"] == 6 and c["f"]["fl.sellers"] == 4 and abs(c["f"]["fl.buyerRatio"] - 7 / 5) < 1e-6 and abs(c["f"]["fl.netSol"] - 2.6) < 0.01 for c in with_fl)
-          and any("on-chain sample: about 30 swaps in the last hour, 6 buyers vs 4 sellers among 16 decoded, net +2.60 SOL" in (c.get("why") or "") for c in with_fl)
+    check(with_fl and all(c["f"]["fl.buyers"] == 6 and c["f"]["fl.sellers"] == 4 and abs(c["f"]["fl.buyerRatio"] - 7 / 5) < 1e-6 and abs(c["f"]["fl.netUsd"] - 360.0) < 0.01 for c in with_fl)
+          and any("on-chain sample: about 30 swaps in the last hour, 6 buyers vs 4 sellers among 15 decoded, net +$" in (c.get("why") or "") for c in with_fl)
           and all("fl." not in k for k in M.PRIOR),
           "the RPC trade sample becomes fl.* factors with no prior weight and a sentence in the why text (%d named coins carry it)" % len(with_fl))
+    lw, _, ldet = M.learn([({"fl.buyers": float(i % 7), "c1": float(i % 7)}, float(i % 7)) for i in range(200)])
+    snaps = [c for fn in glob.glob(os.path.join(rd, "db", "memesnap", "*.json")) for c in (json.load(open(fn)).get("coins") or []) if isinstance(c, dict)]
+    with_flb = [c for c in snaps if c.get("flb")]
+    check("c1" in lw and "fl.buyers" not in lw and "fl.buyers" in ldet and with_flb and all(not set(c["flb"]) & set((c.get("rc") or {}).get("holders") or []) for c in with_flb),
+          "fl.* are measure-only: the learner reports them but gives no weight, and the sampled buyers are stored apart from the holders that feed the wallet memory (%d snapshot coins carry them)" % len(with_flb))
     dp_rows = [l for fn in glob.glob(os.path.join(rd, "dp", "dp_*.txt")) for l in open(fn, encoding="utf-8") if l.strip()]
     named = rec.get("picks", []) + rec.get("runnersUp", [])
     with_dp = [c for c in named if "ds.paid" in (c.get("f") or {})]
@@ -707,8 +732,10 @@ def main():
     y1 = [o for doc in yd for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
     check(yd and y1 and "What the earlier new launches did" in page2, "the new launches are recorded and priced again at 1 h too (%d docs, %d results)" % (len(yd), len(y1)))
     with_peak = [o for o in y1 if o.get("hi") is not None]
-    check(with_peak and all(isinstance(o.get("path"), list) and len(o["path"]) >= 30 and all(len(c) == 4 and c[2] <= c[3] <= c[1] for c in o["path"]) for o in with_peak),
-          "every candle-priced result keeps its window's minute path for exit-rule replays (%s candles in the first)" % (len(with_peak[0].get("path") or []) if with_peak else "-"))
+    okp = lambda pth: (isinstance(pth, list) and len(pth) >= 55 and pth[0][0] <= 1 and all(len(c) == 5 and c[3] <= c[4] <= c[2] and c[3] <= c[1] <= c[2] for c in pth)
+                       and all(pth[k][0] < pth[k + 1][0] for k in range(len(pth) - 1)))
+    check(with_peak and all(o.get("cv") == M.CANDLE_V and okp(o.get("path")) for o in with_peak),
+          "every candle-priced result keeps its window's minute path, oldest first from minute 0, for exit-rule replays (%s candles in the first)" % (len(with_peak[0].get("path") or []) if with_peak else "-"))
     check(with_peak and all(o.get("tp") is not None and o["hi"] >= 2.5 for o in with_peak) and "peak" in page2 and "selling at +50% when hit" in page2,
           "the minute candles give each result its peak and the +50%% take-profit outcome (%d of %d with candles)" % (len(with_peak), len(y1)))
     one_h = [o for doc in recs for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]

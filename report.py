@@ -56,7 +56,7 @@ FACTOR = {"lp.trusted": "launchpad pump.fun / Bonk / Bags", "lp.other": "launchp
           "bq.trades1h": "on-chain trades, last hour", "bq.buyers1h": "on-chain buyers, last hour", "bq.sellers1h": "on-chain sellers, last hour", "bq.netUsd1h": "on-chain net flow $, last hour",
           "bq.topBuyerShare": "biggest buyer's share of buying", "bq.traders": "on-chain traders, 6h", "bq.buyerRatio": "on-chain buyers ÷ sellers, 1h", "fl.rate1h": "swaps in the last hour (public RPC)", "fl.buyers": "buyers in the RPC sample", "fl.sellers": "sellers in the RPC sample",
           "fl.buyerRatio": "RPC sample buyers ÷ sellers", "fl.flip": "wallets that bought and sold (RPC sample)", "fl.topBuyer": "biggest buyer's share (RPC sample)",
-          "fl.netSol": "net SOL into the coin (RPC sample)", "fl.netShare": "net SOL share (RPC sample)",
+          "fl.netUsd": "net buying in USD (RPC sample)", "fl.netShare": "net buying share (RPC sample)",
           "lct.interactions": "X/social interactions 24h (LunarCrush)", "lct.posts": "social posts 24h (LunarCrush)", "lct.contributors": "social contributors (LunarCrush)", "lct.sentiment": "social sentiment (LunarCrush)", "lct.trend": "social trend (LunarCrush)",
           "soc.match": "LunarCrush match", "soc.eng": "X engagements (LunarCrush)", "soc.ment": "mentions (LunarCrush)", "soc.cre": "creators (LunarCrush)",
           "soc.sent": "sentiment (LunarCrush)", "soc.galaxy": "galaxy score (LunarCrush)", "soc.alt": "alt rank (LunarCrush)",

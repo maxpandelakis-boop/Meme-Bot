@@ -29,9 +29,11 @@ it walk-forward (history = earlier scans only; a rule may fit on history, never 
 
 New since 2026-10-08 12:10 UTC: the shortlisted coins (about 20 a scan) carry fl.* factors from a public-RPC trade sample
 (fl.rate1h swaps in the last hour, fl.buyers, fl.sellers, fl.buyerRatio, fl.flip = share of wallets on both sides,
-fl.topBuyer = biggest buyer's share of the SOL bought, fl.netSol, fl.netShare). They have no prior weight; the question
+fl.topBuyer = biggest buyer's share of the buying, fl.netUsd, fl.netShare; the sampled buyer wallets are stored per coin as
+"flb"). The first run (2026-10-08 12:11 UTC) used an earlier decoder: ignore its fl rows (fl.netSol instead of fl.netUsd)
+and its holders, which then still included the sampled buyers. They have no prior weight; the question
 for this family is whether they separate the coins that rise from those that crash among ACTIVE coins (the first study
-found buy share, buyer counts and momentum identical for both). The tips and new launches also keep their candle paths:
+found buy share, buyer counts and momentum identical for both). The tips and new launches also keep their candle paths (cv 2, oldest first):
 run research/check_exits.py on the results branch for the exit rules.
 
 Gate history (the pass flag and the why tags of a row follow the gate of its scan time, not today's):

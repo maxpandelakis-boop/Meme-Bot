@@ -374,7 +374,8 @@ LCT_COLS = ("address", "interactions24h", "posts24h", "contributors", "sentiment
 HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
 VT_COLS = ("address", "tweetId", "likes", "replies", "tweetAgeH", "followers", "verified", "media", "animal", "screenName", "text")
 DP_COLS = ("address", "paid", "paidAgeH", "ads", "cto", "orders")
-FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buySol", "sellSol", "wallets")   # fl/*.txt: the public-RPC trade sample (fetch.rpc_flow)
+FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buyUsd", "sellUsd", "quote", "wallets")   # fl/*.txt: the public-RPC trade sample (fetch.rpc_flow)
+MEASURE_ONLY = ("fl.",)  # factors that are measured and stored with every scored coin but get neither a prior nor a learned weight until a study approves them
 ANIMALS = re.compile(r"\b(monkey|monkeys|macaque|ape|apes|chimp|gorilla|cat|cats|kitten|kitty|dog|dogs|puppy|pup|doge|shiba|capybara|frog|frogs|toad|pepe|penguin|hamster|squirrel|raccoon|otter|bear|bears|panda|hippo|hippopotamus|moo deng|cow|cows|pig|piglet|duck|duckling|goat|bird|parrot|owl|fish|rat|mouse|seal|sloth|fox|wolf|lion|tiger|elephant|turtle|tortoise|rabbit|bunny|chick|chicken|giraffe|zebra|koala|kangaroo|llama|alpaca|dolphin|shark|octopus|snail|hedgehog|deer|moose|donkey|horse|pony|lamb|sheep|bat|crab|lobster|axolotl|quokka|wombat|lemur|baboon|orangutan)\b", re.I)
 TRUSTED_LP = re.compile(r"pump\.?fun|^pump$|pumpswap|bonk|^bags", re.I)        # the launchpads the terminal traders keep: pump.fun, Bonk, Bags
 OTHER_LP = re.compile(r"launchlab|believe|moonshot|boop|heaven|moonit|sugar|jupiter|dbc|meteora|virtuals|daos|time\.fun|zora|raydium", re.I)   # where the bundled 'fake charts' live
@@ -409,7 +410,7 @@ TWEET_LINK = re.compile(r"^https://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]{1,3
 LL_COLS = ("address", "symbol", "name", "creator", "marketCap", "volume24h", "createdAt", "poolId", "finished")
 TB_COLS = ("address", "status", "tags", "makerTags")                       # tb/<coin>.txt: address here is the WALLET
 TEXT_COLS = {"address", "symbol", "name", "dexId", "pairAddress", "poolAddress", "xUrl", "twitter", "website", "telegram", "createdAt", "launchpad", "devWallet", "creator", "poolId",
-             "danger", "warn", "topAddrs", "creatorStatus", "status", "tags", "makerTags", "tweetId", "screenName", "text", "pool", "wallets"}
+             "danger", "warn", "topAddrs", "creatorStatus", "status", "tags", "makerTags", "tweetId", "screenName", "text", "pool", "wallets", "quote"}
 CURVE_DEX = re.compile(r"pumpfun|dbc|launchlab|boop|moonit|curve", re.I)
 NOT_MEME = re.compile(r"xstock|securities|tokenized|wrapped|wormhole|staked|\bst[A-Z]|liquid stak|tether|usd[ct]?\b|\bpyusd|stablecoin|xaut|cbbtc|wbtc|weth", re.I)
 
@@ -1066,10 +1067,11 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             if num(fl.get(src)) is not None:
                 f[k] = num(fl.get(src))
         f["fl.buyerRatio"] = ((num(fl.get("buyers")) or 0.0) + 1.0) / ((num(fl.get("sellers")) or 0.0) + 1.0)
-        bs, ss = num(fl.get("buySol")) or 0.0, num(fl.get("sellSol")) or 0.0
-        f["fl.netSol"] = bs - ss
-        if bs + ss > 0:
-            f["fl.netShare"] = (bs - ss) / (bs + ss)
+        bs, ss = num(fl.get("buyUsd")), num(fl.get("sellUsd"))
+        if bs is not None and ss is not None:
+            f["fl.netUsd"] = bs - ss
+            if bs + ss > 0:
+                f["fl.netShare"] = (bs - ss) / (bs + ss)
     hl = pr.get("hl") or {}
     for k, src in (("hl.top1", "top1Pct"), ("hl.top10", "top10Pct"), ("hl.top20", "top20Pct")):
         if num(hl.get(src)) is not None:
@@ -1142,14 +1144,16 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f["gm.smartShare"] = f["gm.smartDegen"] / f["gm.holders"]
     f["gm.src"] = float(sum(1 for t in tags if t.startswith("gm:")))
     holders = list((rc or {}).get("holdersTop") or []) if isinstance(rc, dict) else []
-    holders += [w for w in str((pr.get("fl") or {}).get("wallets") or "").split(";") if B58.match(w.strip()) and w.strip() not in holders]   # last hour's buyers: the wallet memory learns them too
     if tb:
         tf, tb_hold = top_buyer_feats(tb, board)
         f.update(tf)
         holders += [w for w in tb_hold if w not in holders]
     if wallets is not None and holders:
         f.update(wallets_for(holders, wallets))
-    return {k: v for k, v in f.items() if v is not None}, {"price": price, "mc": mc, "liq": liq, "vol24": vol24, "age_h": age_h, "holders": holders[:40]}
+    # the last hour's buyers from the RPC sample are kept apart from the holders: they are stored with the coin for the weekly study
+    # (a "known buyer" memory of its own) but do not feed the sw.* wallet factors, which carry weights
+    fl_buyers = [w.strip() for w in str((pr.get("fl") or {}).get("wallets") or "").split(";") if B58.match(w.strip())]
+    return {k: v for k, v in f.items() if v is not None}, {"price": price, "mc": mc, "liq": liq, "vol24": vol24, "age_h": age_h, "holders": holders[:40], "flBuyers": fl_buyers[:16]}
 
 
 STANDIN = {"on": False}   # set by scan(): DexScreener gave (almost) no pair data this run, Jupiter/GeckoTerminal rows stand in as tradable coins
@@ -1288,6 +1292,8 @@ def learn(rows):
             continue
         rho = spearman(xs, [p[1] for p in pts])
         detail[k] = {"n": len(pts), "rho": round(rho, 4)}
+        if k.startswith(MEASURE_ONLY):
+            continue                                   # measured, reported in detail, never weighted until a study approves it
         if abs(rho) >= 0.03:
             w[k] = round(rho, 4)
     return w, len(rows), detail
@@ -1643,6 +1649,8 @@ def stale_check(res, hours):
         return False
     if (num(res.get("h")) or 0) > hours + LATE_H and not res.get("late"):
         return True
+    if res.get("late") and any(isinstance(o, dict) and o.get("fromCandles") and (num(o.get("cv")) or 0) < CANDLE_V for o in (res.get("picks") or [])):
+        return True                                    # priced from newest-first candles (the "last" close was the window's first): price it again
     return any(isinstance(o, dict) and o.get("fromCandles") and glitchy(o) for o in (res.get("picks") or []))
 
 
@@ -1661,21 +1669,25 @@ def settled(res, hours):
 CANDLE_MAX_X = 30.0  # a peak over this many times the entry price inside a window is not believed (two glitches in the first night were 4,121x and 22,310x)
 CANDLE_WICK_X = 5.0  # a candle high more than this many times above the window's best close (or a low that far below its worst close) is a wick glitch: the close stands in
 TAKE_PROFIT = 0.5   # the "sell at the peak" question, made testable: what 20 made when sold at +50% as soon as the window hit it
-PATH_MAX = 120      # candles kept per window with each result ("path"), so exit rules (take profit, stop loss, trailing stops) can be replayed later
+PATH_MAX = 160      # candles kept per window with each result ("path"), so exit rules (take profit, stop loss, trailing stops) can be replayed later
+CANDLE_V = 2        # results priced from candles sorted oldest first carry cv=2; a late check priced before (newest-first candles) is priced again
 
 
 def candle_path(inside, t0, px0):
-    """The window's candles relative to the entry price, compact: [[minutes after the tip, high, low, close], ...]. A wick far
-    above every close (or below) is clipped to that close, as in window_extremes, so a thin-pool glitch does not look like an exit."""
+    """The window's candles relative to the entry price, oldest first: [[minutes after the tip, open, high, low, close], ...].
+    A wick more than CANDLE_WICK_X above the window's best close (or below its worst) is replaced by the candle's close, exactly
+    as window_extremes does, so a thin-pool glitch does not look like an exit."""
     if not inside or not px0:
         return None
+    inside = sorted(inside, key=lambda c: c[0])
     top_close = max(c[4] for c in inside)
     low_close = min(c[4] for c in inside)
     out = []
-    for c in inside[-PATH_MAX:]:
-        hi = min(c[2], CANDLE_WICK_X * top_close) if top_close > 0 else c[2]
-        lo = max(c[3], low_close / CANDLE_WICK_X) if low_close > 0 else c[3]
-        out.append([int(round((c[0] - t0) / 60_000)), round(hi / px0, 4), round(lo / px0, 4), round(c[4] / px0, 4)])
+    for c in inside[:PATH_MAX]:
+        hi = c[4] if top_close > 0 and c[2] > CANDLE_WICK_X * top_close else c[2]
+        lo = c[4] if low_close > 0 and c[3] < low_close / CANDLE_WICK_X else c[3]
+        op = min(max(c[1], lo), hi)
+        out.append([int(round((c[0] - t0) / 60_000)), round(op / px0, 4), round(hi / px0, 4), round(lo / px0, 4), round(c[4] / px0, 4)])
     return out
 
 
@@ -1704,6 +1716,7 @@ def load_candles(d, pool, hours):
                     out.append(tuple(num(x) for x in parts[:5]))
     except OSError:
         pass
+    out.sort(key=lambda c: c[0])    # GeckoTerminal sends the newest candle first: the window's last close is the LAST one in time
     return out
 
 
@@ -2192,10 +2205,10 @@ def why_text(r):
                                                                                                ("+" if (f.get("bq.netUsd1h") or 0) >= 0 else "-") + money(abs(f.get("bq.netUsd1h") or 0)),
                                                                                                (", biggest buyer %d%% of the buying" % round(100 * f["bq.topBuyerShare"])) if f.get("bq.topBuyerShare") is not None else ""))
     if f.get("fl.buyers") is not None:
-        bits.append("on-chain sample: about %d swaps in the last hour, %d buyers vs %d sellers among %d decoded, net %s%.2f SOL%s%s" % (
+        bits.append("on-chain sample: about %d swaps in the last hour, %d buyers vs %d sellers among %d decoded%s%s%s" % (
             round(f.get("fl.rate1h") or 0), f["fl.buyers"], f.get("fl.sellers") or 0, ((r.get("pr") or {}).get("fl") or {}).get("sampled") or 0,
-            "+" if (f.get("fl.netSol") or 0) >= 0 else "-", abs(f.get("fl.netSol") or 0),
-            (", biggest buyer %d%% of the SOL bought" % round(100 * f["fl.topBuyer"])) if f.get("fl.topBuyer") is not None else "",
+            (", net %s%s" % ("+" if f["fl.netUsd"] >= 0 else "-", money(abs(f["fl.netUsd"])))) if f.get("fl.netUsd") is not None else "",
+            (", biggest buyer %d%% of the buying" % round(100 * f["fl.topBuyer"])) if f.get("fl.topBuyer") is not None else "",
             (", %d%% of the wallets bought and sold" % round(100 * f["fl.flip"])) if f.get("fl.flip") else ""))
     lp_name, lp_kind = launchpad_of(r.get("pr") or {}, (r.get("pr") or {}).get("rc"))
     if lp_kind == "trusted":
@@ -2253,6 +2266,8 @@ def snap_coin(r, rc):
         c["rank"] = r["rank"]
     if rc:
         c["rc"] = risk_doc(rc)
+    if r["basic"].get("flBuyers"):
+        c["flb"] = list(r["basic"]["flBuyers"])
     return c
 
 
@@ -2265,7 +2280,7 @@ def snap_result(c, pairs):
     invested = TICKET - fee(TICKET)
     gross = invested * mult
     eur = (max(0.0, gross - fee(gross)) if gross > 0 else 0.0) - TICKET
-    out = {k: c.get(k) for k in ("a", "s", "pass", "sc", "rank", "why", "x", "f", "rc", "src", "mc", "liq") if c.get(k) is not None}
+    out = {k: c.get(k) for k in ("a", "s", "pass", "sc", "rank", "why", "x", "f", "rc", "src", "mc", "liq", "flb") if c.get(k) is not None}
     out.update({"mult": round(mult, 4), "eur": round(eur, 2), "gone": bool(gone)})
     return out
 
@@ -2599,13 +2614,13 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     # the price at its end); the settled picks of an earlier late pass are kept; a pool without candles waits,
                     # up to LATE_RETRY_H, then it is written off as never priced
                     po = prev_p.get(p.get("sym"))
-                    if po and not po.get("waiting") and not (po.get("fromCandles") and glitchy(po)):
+                    if po and not po.get("waiting") and not (po.get("fromCandles") and (glitchy(po) or (num(po.get("cv")) or 0) < CANDLE_V)):
                         outs.append(po)
                     elif last_close and hi and lo and lo > 0 and hi / lo > CANDLE_MAX_X:
                         outs.append({"sym": p.get("sym"), "missed": True, "glitch": True})   # the window's candles span over CANDLE_MAX_X: unusable
                     elif last_close and last_close / px0 <= CANDLE_MAX_X:
                         mult = last_close / px0
-                        o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": mult < 0.02, "fromCandles": True}
+                        o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": mult < 0.02, "fromCandles": True, "cv": CANDLE_V}
                         if hi and lo and hi / px0 <= CANDLE_MAX_X:
                             o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
                             o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]
@@ -2631,7 +2646,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     if sane:
                         o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
                         o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]   # sold at +50% the moment it was hit, else held to the end
-                        o["path"] = candle_path(inside, t0, px0)
+                        o["path"], o["cv"] = candle_path(inside, t0, px0), CANDLE_V
                 outs.append(o)
             if not outs:
                 continue

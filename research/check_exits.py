@@ -1,9 +1,11 @@
 """Exit rules replayed on the stored candle paths of every tip (memerec) and every listed new launch (memeyoung).
 
-Each 1 h / 24 h result priced from candles carries "path": [[minutes after the tip, high, low, close], ...] relative to the
-entry price (from 2026-10-08 on). A rule sells at its take-profit or stop level the first time a candle reaches it; when one
-candle reaches both, the stop is assumed first (conservative); a trailing stop follows the highest high of the earlier
-candles. Without an exit the coin is sold at the window's end price. Fake money: 20 per pick, fees 0.5% with a 0.81 minimum.
+Each 1 h / 24 h result priced from candles carries "path": [[minutes after the tip, open, high, low, close], ...] relative
+to the entry price, oldest first, with "cv": 2 (results without it were stored from newest-first candles and are skipped).
+A rule sells at its take-profit or stop level the first time a candle reaches it; when one candle reaches both, the stop is
+assumed first (conservative); a candle that opens below the stop fills at its open (a gap or a rug does not sell at the stop
+price); a take-profit fills at its level even when the candle opens above it; a trailing stop follows the highest high of the
+earlier candles. Without an exit the coin is sold at the window's end price. Fake money: 20 per pick, fees 0.5% with a 0.81 minimum.
 
 usage: git archive origin/results db/memerec db/memeyoung | tar -x -C /tmp/res && python3 -I research/check_exits.py /tmp/res
 """
@@ -25,7 +27,7 @@ def net(m):
 def replay(path, end_mult, tp=None, sl=None, trail=None):
     """-> the multiple the rule sold at."""
     peak = 1.0
-    for _, hi, lo, close in path:
+    for _, op, hi, lo, close in path:
         stop = None
         if sl is not None:
             stop = 1.0 - sl
@@ -33,7 +35,7 @@ def replay(path, end_mult, tp=None, sl=None, trail=None):
             t = peak * (1.0 - trail)
             stop = t if stop is None else max(stop, t)
         if stop is not None and lo <= stop:
-            return stop
+            return min(stop, op)
         if tp is not None and hi >= 1.0 + tp:
             return 1.0 + tp
         peak = max(peak, hi)
@@ -56,7 +58,8 @@ def results(root):
                 continue
             for key, res in ((doc.get("outs") or {}).items() if isinstance(doc.get("outs"), dict) else []):
                 for o in (res or {}).get("picks") or []:
-                    if isinstance(o, dict) and isinstance(o.get("path"), list) and o["path"] and isinstance(o.get("mult"), (int, float)):
+                    if isinstance(o, dict) and isinstance(o.get("path"), list) and o["path"] and isinstance(o.get("mult"), (int, float)) and (o.get("cv") or 0) >= 2 \
+                            and all(isinstance(c, list) and len(c) == 5 for c in o["path"]):
                         out.append((coll, key, o))
     return out
 

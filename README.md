@@ -153,18 +153,24 @@ verdict ("Is the bot making money? No, not so far: ...").
 
 For the shortlisted coins (about 20 a scan) the bot reads the last hour's trading straight from the chain through the
 public Solana RPC (`fetch.py rpc_flow`): the pool's latest 100 signatures give the swap rate, and 16 of the last hour's
-swaps, spread over it, are decoded (the fee payer is the trader; its change in the coin says buy or sell, its change in
-SOL the size). `fl/<stamp>.txt` holds the swap rate, the distinct buyers and sellers in the sample, the share of wallets
-that both bought and sold, the biggest buyer's share of the SOL bought, SOL in and out, and the buyer wallets. They
-become the factors `fl.*` and a sentence in the why text, and the buyers join the wallet memory. The factors carry no
-prior weight on purpose: the 2026-10-08 study found nothing in price and volume that tells a coin about to rise from one
-about to crash, and the weekly study decides whether the wallet sample does before it moves a pick. It is a sample, not
-the full flow; with a Bitquery token the `bq.*` factors read every trade.
+successful swaps, spread over it, are decoded. The pool's vault decides: the account whose coin and quote balances moved
+in opposite directions is the pool, the pool giving coins is a buy, the size is what crossed its quote vault (SOL at the
+run's CoinGecko price, USDC/USDT/USD1 at 1), and a deposit or withdrawal that moves both the same way is not a trade; the
+trader is the wallet that received or gave the coins, even when a relayer paid the fee. `fl/<stamp>.txt` holds the swap
+rate, the distinct buyers and sellers in the sample, the share of wallets that both bought and sold, the biggest buyer's
+share of the buying, buying and selling in USD, the quote token and the buyer wallets. They become the factors `fl.*` and
+a sentence in the why text; the buyers are stored with the coin (`flb`) apart from the holders behind the wallet factors.
+The `fl.*` factors are measure-only (`MEASURE_ONLY`): no prior and no learned weight, because the 2026-10-08 study found
+nothing in price and volume that tells a coin about to rise from one about to crash, and the weekly study decides whether
+the wallet sample does before it moves a pick. It is a sample, capped at 150 seconds a run; with a Bitquery token the
+`bq.*` factors read every trade.
 
 ### Minute paths for exit rules
 
-Every 1 h and 24 h result priced from candles also keeps its window's candles relative to the entry price (`path`:
-minutes after the tip, high, low, close; wicks clipped like the peak). `research/check_exits.py` replays take-profit,
+Every 1 h and 24 h result priced from candles also keeps its window's candles relative to the entry price, oldest first
+(`path`: minutes after the tip, open, high, low, close; glitch wicks replaced by the close, as for the peak; `cv: 2`).
+GeckoTerminal sends the newest candle first; until 2026-10-08 13:10 UTC nothing sorted them, so the "last close" of a late
+check was the window's first close. Late checks priced that way are priced again by the next run. `research/check_exits.py` replays take-profit,
 stop-loss and trailing-stop rules on them for the tips and the new launches, so "sell at +20%, stop at -20%" and the
 like are measured on the bot's own coins rather than argued about.
 

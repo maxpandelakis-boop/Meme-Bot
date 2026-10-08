@@ -228,12 +228,15 @@ class Http:
                     out = json.loads(raw.decode("utf-8", "replace"))
                 except ValueError:
                     return None
-                if isinstance(out, dict) and isinstance(out.get("error"), dict) and out["error"].get("code") == 429 and i + 1 < tries:
-                    time.sleep(3); continue               # the public RPC answers 200 with a 429 inside for a throttled method
+                if isinstance(out, dict) and isinstance(out.get("error"), dict) and out["error"].get("code") == 429:
+                    if self._limited(host) or i + 1 >= tries:     # the public RPC answers 200 with a 429 inside for a throttled method
+                        return None
+                    time.sleep(3); continue
                 return out
             except urllib.error.HTTPError as e:
-                if e.code == 429 and i + 1 < tries:
-                    self.limited += 1
+                if e.code == 429:
+                    if self._limited(host) or i + 1 >= tries:
+                        return None
                     time.sleep((3, 8)[min(i, 1)]); continue
                 self.log("  ! %s %s" % (e.code, u[:80]))
                 if e.code in (401, 403):
@@ -246,6 +249,17 @@ class Http:
                 self._fail(host, hard=True)
                 return None
         return None
+
+    def _limited(self, host):
+        """A 429 from host: count it; True once the host has used up its waits for this run (it is then skipped, as in get())."""
+        self.limited += 1
+        self.limited_by[host] = self.limited_by.get(host, 0) + 1
+        if self.limited_by[host] >= HOST_MAX_429.get(host, MAX_429_PER_HOST):
+            if host not in self.dead:
+                self.dead.add(host)
+                self.log("  ! giving up on %s for this run: rate limited %d times" % (host, self.limited_by[host]))
+            return True
+        return False
 
     def _fail(self, host, hard):
         if hard:
@@ -432,7 +446,7 @@ def candles(http, d, items):
         if not pool or not since or "api.geckoterminal.com" in http.dead:
             continue
         agg = 1 if hours <= 2 else 15
-        limit = min(1000, int(hours * 60 / agg) + 12)
+        limit = min(1000, int((hours * 3600 + 900) / (60 * agg)) + 12)   # the request ends 15 minutes after the window: cover that too, or the window's first minutes are cut
         before = int(since / 1000 + hours * 3600 + 900)
         j = http.get(GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (pool, agg, limit, before))
         rows = []
@@ -979,72 +993,131 @@ def dev_check(http, d, addrs, now=None):
     return n
 
 
-FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buySol", "sellSol", "wallets")
-FLOW_SIGS = 100   # the pool's latest signatures read per coin (one call): the swap rate of the last hour
-FLOW_TX = 16      # of the last hour's swaps this many are decoded, spread over the hour (the public RPC allows about 40 getTransaction calls per 10 s)
+FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buyUsd", "sellUsd", "quote", "wallets")
+FLOW_SIGS = 100        # the pool's latest signatures read per coin (one call): the swap rate of the last hour
+FLOW_TX = 16           # of the last hour's successful ones this many are decoded, spread over the hour (the public RPC allows about 40 getTransaction calls per 10 s)
+FLOW_BUDGET_S = 150    # the whole sample stops after this many seconds (a slow or throttled RPC must not eat the run's 30 minutes)
+FLOW_WALLETS = 12      # buyer wallets kept per coin (the side-table cell holds 600 characters)
 WSOL = "So11111111111111111111111111111111111111112"
+STABLES = {"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
+           "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB": "USD1"}
+
+
+def flow_rate(sigs, t_ref):
+    """(swaps per hour, the last hour's successful signatures newest first). The rate counts successful swaps; whether the 100
+    signatures cover the whole hour is decided on all of them, failed ones included (bots' failed swaps are common on busy pools)."""
+    raw = [x for x in sigs if isinstance(x, dict) and num(x.get("blockTime"))]
+    ok = sorted((x for x in raw if not x.get("err") and t_ref - x["blockTime"] <= 3600), key=lambda x: -x["blockTime"])
+    if raw and len(raw) >= FLOW_SIGS and all(t_ref - x["blockTime"] <= 3600 for x in raw):
+        return len(ok) * 3600.0 / max(60.0, t_ref - min(x["blockTime"] for x in raw)), ok
+    return float(len(ok)), ok
+
+
+def flow_swap(meta, payer, coin):
+    """One decoded transaction -> (trader, "buy"|"sell", quote mint or None, size in quote units or None), or None when it is
+    not a swap of the coin. The pool side decides: the vault owner is the account whose coin balance and quote balance moved in
+    opposite directions (a liquidity add or removal moves both the same way and is skipped); the pool giving coins is a buy.
+    The trader is the other owner whose coin balance moved the opposite way (a relayer or a bundler's funding wallet may pay the
+    fee), else the fee payer. Without a vault in the token balances (a launch curve holding native SOL) the fee payer's coin and
+    SOL changes decide, and a change that is only fees is not a swap."""
+    delta = {}
+    for key, sign in (("preTokenBalances", -1.0), ("postTokenBalances", 1.0)):
+        for b in meta.get(key) or []:
+            if isinstance(b, dict) and b.get("owner") and b.get("mint"):
+                k = (b["owner"], b["mint"])
+                delta[k] = delta.get(k, 0.0) + sign * (num((b.get("uiTokenAmount") or {}).get("uiAmount")) or 0.0)
+    coin_d = {o: v for (o, m), v in delta.items() if m == coin and abs(v) > 1e-12}
+    vaults = []
+    for o, dc in coin_d.items():
+        others = [(m, v) for (oo, m), v in delta.items() if oo == o and m != coin and abs(v) > 1e-12]
+        if others:
+            qm, qv = max(others, key=lambda mv: abs(mv[1]))
+            vaults.append((abs(dc), o, dc, qm, qv))
+    if vaults:
+        _, vo, dc, qm, qv = max(vaults)
+        if (dc > 0) == (qv > 0):
+            return None                                     # coin and quote went the same way: liquidity, not a swap
+        side = "buy" if dc < 0 else "sell"
+        cands = [(abs(v), o) for o, v in coin_d.items() if o != vo and (v > 0) == (side == "buy")]
+        trader = max(cands)[1] if cands else payer
+        return trader, side, qm, abs(qv)
+    dtok = coin_d.get(payer, 0.0)
+    if not dtok:
+        return None
+    pre, post = meta.get("preBalances") or [], meta.get("postBalances") or []
+    dsol = ((num(post[0]) or 0.0) - (num(pre[0]) or 0.0)) / 1e9 if pre and post else 0.0
+    dsol += delta.get((payer, WSOL), 0.0)
+    if dtok > 0 and dsol < -0.001:
+        return payer, "buy", WSOL, -dsol
+    if dtok < 0 and dsol > 0.001:
+        return payer, "sell", WSOL, dsol
+    return None
 
 
 def rpc_flow(http, d, items, now=None):
     """Without Bitquery: who traded each shortlisted coin in the last hour, read from the public Solana RPC. For each pool the
-    latest FLOW_SIGS signatures give the swap rate; FLOW_TX of the last hour's swaps, spread over it, are decoded: the fee payer
-    is the trader, its change in the coin says buy or sell and its change in SOL (and wrapped SOL) the size. -> fl/<stamp>.txt:
-    swap rate, distinct buyers and sellers in the sample, the share of wallets that both bought and sold in it, the biggest
-    buyer's share of the SOL bought, SOL in and out, and the buyer wallets for the wallet memory. A sample, not the full flow."""
-    now = now or time.time()
-    rows, decoded = [], 0
+    latest FLOW_SIGS signatures give the swap rate; FLOW_TX of the last hour's successful swaps, spread over it, are decoded
+    (flow_swap: the pool's vault decides side and size, a liquidity move is skipped). -> fl/<stamp>.txt: swap rate, distinct
+    buyers and sellers in the sample, the share of wallets that both bought and sold in it, the biggest buyer's share of the
+    buying, buying and selling in USD (SOL at the run's CoinGecko price, stablecoins at 1), the quote token, and the buyer
+    wallets. A sample, not the full flow; FLOW_BUDGET_S caps its time."""
+    t_start = time.time()
+    try:
+        sol_usd = num((json.load(open(os.path.join(d, "market.json"), encoding="utf-8")) or {}).get("solUsd"))
+    except (OSError, ValueError, AttributeError):
+        sol_usd = None
+    rows, decoded, covered = [], 0, 0
     for it in items:
         a, pool = addr_of(it.get("a")), str(it.get("pool") or "").strip()
         if not a or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{20,48}", pool):
             continue
-        if "api.mainnet-beta.solana.com" in http.dead:
+        if "api.mainnet-beta.solana.com" in http.dead or time.time() - t_start > FLOW_BUDGET_S:
             break
+        covered += 1
         sigs = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getSignaturesForAddress", "params": [pool, {"limit": FLOW_SIGS}]})
-        lst = [x for x in ((sigs or {}).get("result") or []) if isinstance(x, dict) and num(x.get("blockTime")) and not x.get("err")] if isinstance(sigs, dict) else []
-        if not lst:
+        lst = (sigs or {}).get("result") if isinstance(sigs, dict) else None
+        if not isinstance(lst, list) or not lst:
             continue
-        recent = sorted((x for x in lst if now - x["blockTime"] <= 3600), key=lambda x: -x["blockTime"])
-        if len(lst) >= FLOW_SIGS and len(recent) == len(lst):      # every one of them inside the hour: extrapolate the rate from their span
-            rate = len(lst) * 3600.0 / max(60.0, now - min(x["blockTime"] for x in lst))
-        else:
-            rate = float(len(recent))
+        t_ref = max([now or time.time()] + [num(x.get("blockTime")) or 0 for x in lst if isinstance(x, dict)])
+        rate, recent = flow_rate(lst, t_ref)
         pick = recent if len(recent) <= FLOW_TX else [recent[round(i * (len(recent) - 1) / (FLOW_TX - 1))] for i in range(FLOW_TX)]
-        per, times, nb, ns = {}, [], 0, 0          # per wallet: [coins bought, coins sold, SOL spent, SOL received]
+        per, times, nb, ns, quotes = {}, [], 0, 0, {}     # per wallet: [buys, sells, USD bought, USD sold]
         for x in pick:
+            if time.time() - t_start > FLOW_BUDGET_S or "api.mainnet-beta.solana.com" in http.dead:
+                break
             tx = http.post(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTransaction", "params": [x["signature"], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}]})
             res = tx.get("result") if isinstance(tx, dict) else None
-            meta = (res or {}).get("meta") if isinstance(res, dict) else None
+            meta = res.get("meta") if isinstance(res, dict) else None
             if not isinstance(meta, dict) or meta.get("err"):
                 continue
             keys = (((res.get("transaction") or {}).get("message") or {}).get("accountKeys") or [])
             payer = addr_of(keys[0].get("pubkey") if keys and isinstance(keys[0], dict) else (keys[0] if keys else None))
-            if not payer:
+            sw = flow_swap(meta, payer, a) if payer else None
+            if not sw or not addr_of(sw[0]):
                 continue
-            bal = lambda key, mint: sum(num(((b.get("uiTokenAmount") or {}).get("uiAmount"))) or 0.0 for b in (meta.get(key) or [])
-                                        if isinstance(b, dict) and b.get("mint") == mint and b.get("owner") == payer)
-            dtok = bal("postTokenBalances", a) - bal("preTokenBalances", a)
-            pre, post = meta.get("preBalances") or [], meta.get("postBalances") or []
-            dsol = ((num(post[0]) or 0.0) - (num(pre[0]) or 0.0)) / 1e9 if pre and post else 0.0
-            dsol += bal("postTokenBalances", WSOL) - bal("preTokenBalances", WSOL)
-            if abs(dtok) <= 1e-12:
-                continue                            # not a swap of this coin by the fee payer (liquidity, routing, a bot's other leg)
-            p = per.setdefault(payer, [0.0, 0.0, 0.0, 0.0])
-            if dtok > 0:
-                p[0] += dtok; p[2] += max(0.0, -dsol); nb += 1
+            trader, side, qm, size = sw
+            usd = size * sol_usd if qm == WSOL and sol_usd else (size if qm in STABLES else None)
+            quotes[qm] = quotes.get(qm, 0) + 1
+            p = per.setdefault(trader, [0, 0, 0.0, 0.0])
+            if side == "buy":
+                p[0] += 1; p[2] += usd or 0.0; nb += 1
             else:
-                p[1] += -dtok; p[3] += max(0.0, dsol); ns += 1
+                p[1] += 1; p[3] += usd or 0.0; ns += 1
             times.append(x["blockTime"])
         decoded += len(times)
+        quote = max(quotes, key=quotes.get) if quotes else None
+        priced = quote == WSOL and sol_usd or quote in STABLES
         buyers = [w for w, p in per.items() if p[0] > 0]
-        sellers = [w for w, p in per.items() if p[1] > 0]
-        buy_sol, sell_sol = sum(p[2] for p in per.values()), sum(p[3] for p in per.values())
+        buy_usd, sell_usd = sum(p[2] for p in per.values()), sum(p[3] for p in per.values())
         rows.append(row(a, pool, round(rate, 1), len(times), round((max(times) - min(times)) / 60.0, 1) if len(times) > 1 else None,
-                        len(buyers) if times else None, len(sellers) if times else None, nb if times else None, ns if times else None,
-                        round(sum(1 for p in per.values() if p[0] > 0 and p[1] > 0) / len(per), 3) if per else None,
-                        round(max(p[2] for p in per.values()) / buy_sol, 3) if buy_sol > 0 else None,
-                        round(buy_sol, 3) if times else None, round(sell_sol, 3) if times else None, ";".join(buyers[:40]) or None))
+                        len(buyers) if times else None, sum(1 for p in per.values() if p[1] > 0) if times else None, nb if times else None, ns if times else None,
+                        round(sum(1 for p in per.values() if p[0] and p[1]) / len(per), 3) if per else None,
+                        round(max(p[2] for p in per.values()) / buy_usd, 3) if priced and buy_usd > 0 else None,
+                        round(buy_usd, 2) if priced and times else None, round(sell_usd, 2) if priced and times else None,
+                        ("SOL" if quote == WSOL else STABLES.get(quote, "other")) if quote else None, ";".join(buyers[:FLOW_WALLETS]) or None))
     n = write_rows(d, "fl", "fl_%d.txt" % int(time.time()), rows)
-    http.log("  on-chain flow (public RPC) %d of %d coins, %d swaps decoded" % (n, len(items), decoded))
+    http.log("  on-chain flow (public RPC) %d of %d coins, %d swaps decoded in %ds%s" % (n, len(items), decoded, time.time() - t_start,
+             "" if covered >= len([i for i in items if addr_of(i.get("a"))]) else " (time budget or RPC limit reached after %d coins)" % covered))
     return n
 
 
