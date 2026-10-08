@@ -163,7 +163,7 @@ The page has two tabs. "The pick" is the recommendation. "New launches <1h" list
 at 1 h and 24 h, shown under "What the earlier new launches did") that had
 a DEX pair and at least $5k of liquidity at the scan, best score first, with the same trained odds, safety report and
 numbers as the pick (`young` in `db/memebot/recommend.json`). These coins are shown, never picked: the 2h profile picks
-from coins 3 to 24 hours old, and the training's age record (`ages` in `db/memebot/train.json`, shown at the top of the
+from coins 6 to 24 hours old, and the training's age record (`ages` in `db/memebot/train.json`, shown at the top of the
 tab) says how coins of each age did after the horizon, so the question "do the newest coins do better?" is answered by
 the record, not by a hunch. The RugCheck/GoPlus reports for them are fetched with the shortlist.
 
@@ -248,7 +248,7 @@ walk-forward test runs; on GitHub Actions that is about a day of hourly scans. I
 ## Two profiles
 
 `--horizon 24h` (default) looks for coins that survive a day: liquidity, holders, no crash, re-priced 24 hours later.
-`--horizon 2h` looks for coins that may pump in the next two hours: 3 to 24 hours old, market cap $50k to $2M, at least
+`--horizon 2h` looks for coins that may pump in the next two hours: 6 to 24 hours old, market cap $100k to $2M, at least
 $15k of liquidity and of 24h volume, no crash or spike, no whale above 20%, at most 10 insider wallets; buys versus sells
 and the last hour's volume share are scored, not gated (the gate audit showed they rejected 11,000 coins a scan while a
 high buyer ratio went with going to zero); scored by momentum

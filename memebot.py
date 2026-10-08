@@ -164,8 +164,12 @@ PROFILES = {
     "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
         # the gate audit (train.json "gates" and "ages") decides these: coins 12 to 24 hours old did best (22% up, 5% to zero) and the lone
         # failers of the old 12-hour cap beat the passers, so the window is 3 to 24 hours; "buys outweigh sells" and "volume accelerating"
-        # rejected 11,000 coins a scan while a high buyer ratio went with going to zero, so they are scored factors now, not gates
-        "RULE": "m9-2h", "GATE_MC": (50_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 3.0, "GATE_MAX_AGE_H": 24.0,
+        # rejected 11,000 coins a scan while a high buyer ratio went with going to zero, so they are scored factors now, not gates.
+        # The walk-forward study of 37,904 scored coins in 25 scans (2026-10-08) moved the floors: coins of $50k-$100k were the worst
+        # market-cap band in both halves of the data (-2.39 per 20, 3.7% to zero) and gave the bot its two near-total losses
+        # (BULLCRAFT, OMEN); coins 3 to 6 hours old lost -5.61 per 20 with 11.6% to zero. With both floors raised the current gate's
+        # pick improved from -1.39 to -1.13 per 20 (k=1) and the gate's coins as a whole from -2.03 to -1.32, in both halves.
+        "RULE": "m9-2h", "GATE_MC": (100_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 6.0, "GATE_MAX_AGE_H": 24.0,
         "GATE_MIN_BUYRATIO1H": None, "GATE_MIN_VOL1SHARE": None, "GATE_CRASH": {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0},
         "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0, "MIN_LP_LOCKED": 90.0, "MAX_CREATOR_PCT": 5.0,
         "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,

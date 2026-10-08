@@ -692,7 +692,7 @@ def tier_chip(c):
     if t == "watch":
         return '<span class="chip bad" title="shown because the page always names the safest-looking coin: the zero model puts it over the limit, so it is not a pick">watch only · zero risk over the limit</span>'
     if t == "young":
-        return '<span class="chip" title="under an hour old: shown on the new-launches tab, never picked (the profile wants coins at least 3 hours old)">new launch · not a pick</span>'
+        return '<span class="chip" title="under an hour old: shown on the new-launches tab, never picked (the profile wants coins at least %g hours old)">new launch · not a pick</span>' % M.GATE_MIN_AGE_H
     return '<span class="chip neutral">strong pick</span>'
 
 
