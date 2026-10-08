@@ -1600,6 +1600,7 @@ def tip_due(doc, now):
     return [(k, h, sl) for k, h, sl in out if now - t0 >= (h - sl) * 3_600_000]
 
 
+CANDLE_MAX_X = 30.0  # a peak over this many times the entry price inside a window is not believed (two glitches in the first night were 4,121x and 22,310x)
 CANDLE_WICK_X = 5.0  # a candle high more than this many times above the window's best close (or a low that far below its worst close) is a wick glitch: the close stands in
 TAKE_PROFIT = 0.5   # the "sell at the peak" question, made testable: what 20 made when sold at +50% as soon as the window hit it
 
@@ -2498,8 +2499,14 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 net = lambda m: round((max(0.0, (TICKET - fee(TICKET)) * m - fee((TICKET - fee(TICKET)) * m)) if m > 0 else 0.0) - TICKET, 2)
                 o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": not px1}
                 if key != "out" and p.get("pair"):
-                    hi, lo = window_extremes(load_candles(d, str(p["pair"]), hours), t0, hours)
-                    if hi and lo:
+                    cands = load_candles(d, str(p["pair"]), hours)
+                    hi, lo = window_extremes(cands, t0, hours)
+                    inside = [c for c in cands if t0 <= c[0] <= t0 + hours * 3_600_000]
+                    last_close = inside[-1][4] if inside else None
+                    # the candles must agree with the prices the run itself saw: a last close far from the end price (or a peak over
+                    # CANDLE_MAX_X of the entry) means the pool's candles are in another unit or a thin-pool glitch, and they are dropped
+                    sane = hi and lo and hi / px0 <= CANDLE_MAX_X and (not px1 or not last_close or 1.0 / 3 <= last_close / px1 <= 3.0)
+                    if sane:
                         o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
                         o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]   # sold at +50% the moment it was hit, else held to the end
                 outs.append(o)
