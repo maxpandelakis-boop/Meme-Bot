@@ -1276,7 +1276,11 @@ def blended_weights(d):
     lam = clamp(n / float(LEARN_FULL_N))
     w = {}
     for k in set(PRIOR) | set(learned):
-        v = (1 - lam) * PRIOR.get(k, 0.0) + lam * learned.get(k, 0.0)
+        # each factor earns its learned weight on its own sample: a factor known for a few hundred shortlisted coins (the RugCheck
+        # fields, the side tables) keeps its prior until it has LEARN_FULL_N rows of its own, so a biased sliver of the data cannot
+        # steer the whole score (the first night's weights said "more warnings, less locked liquidity = better" on 2% of the rows)
+        lam_k = clamp((detail.get(k) or {}).get("n", 0) / float(LEARN_FULL_N))
+        v = (1 - lam_k) * PRIOR.get(k, 0.0) + lam_k * learned.get(k, 0.0)
         if abs(v) >= 0.01:
             w[k] = round(v, 4)
     return w, {"n": n, "lambda": round(lam, 3), "learned": learned, "detail": detail}
