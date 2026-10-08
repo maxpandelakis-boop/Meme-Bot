@@ -28,6 +28,10 @@ on:
         type: choice
         options: ['manual', 'hourly']
         default: 'manual'
+      export:
+        description: 'also export the big-test results to the bigtest branch now (otherwise once a day, at the 06 UTC scan)'
+        type: boolean
+        default: false
 permissions:
   contents: write
   actions: write                     # the tidy-up step deletes old runs of this workflow
@@ -89,17 +93,18 @@ jobs:
         id: scan
         if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
-      - name: Keep the big-test results on the bigtest branch for offline research (one commit, replaced every run)
+      - name: Export the big-test results to the bigtest branch for offline research (once a day at the 06 UTC scan, or when asked)
         if: steps.recent.outputs.skip != 'true'
         continue-on-error: true
         run: |
+          if [ "$(date -u +%H)" != "06" ] && [ "${{ inputs.export }}" != "true" ]; then echo "bigtest export: once a day at the 06 UTC scan, or with the export input"; exit 0; fi
           rm -rf bt && mkdir -p bt
-          tar -C mb/db -czf bt/memesnapres.tgz memesnapres 2>/dev/null || true
+          tar -C mb/db -czf - memesnapres | split -b 90m - bt/memesnapres.tgz.part-   # GitHub refuses files over 100 MB; research/get_data.sh joins the parts
           tar -C mb/db -czf bt/memeweights.tgz memeweights 2>/dev/null || true
           cp mb/db/memebot/train.json bt/ 2>/dev/null || true
           cd bt && git init -q && git checkout -q -b bigtest && git add -A \
             && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "big-test results $(date -u +%Y-%m-%dT%H:%MZ)" \
-            && git push -q --force "$RESULTS_URL" bigtest && echo "bigtest branch updated: $(du -h memesnapres.tgz | cut -f1)"
+            && git push -q --force "$RESULTS_URL" bigtest && echo "bigtest branch updated: $(du -ch memesnapres.tgz.part-* | tail -1 | cut -f1) in $(ls memesnapres.tgz.part-* | wc -l) part(s)"
       - name: Push the page and the small docs to the results branch
         if: steps.recent.outputs.skip != 'true'
         run: python3 bot.py sync --remote "$RESULTS_URL"
