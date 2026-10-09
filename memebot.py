@@ -91,6 +91,18 @@ DAILY_MAX = 4            # bot picks per Berlin day
 PICK_GAP_H = 2.9
 REPICK_DAYS = 7
 TP_MULT, STOP_MULT, MAX_DAYS = 2.0, 0.5, 3
+# recommend mode holds what it names (grp "hold"): one paper position per coin from the first tip on, paid from the bankroll while a slot
+# is free, no second ticket while it is held (named again, the coin stays a tip and buys nothing). It is sold, all of it:
+HOLD_TP = 0.40           # the first minute a candle closes 40% above the entry (on GeckoTerminal's own entry price, so the gap to DexScreener's
+                         # price cannot fake a sale); booked at exactly +40%
+HOLD_EXIT_GATES = ("crash", "spike", "mc", "liq", "vol", "wash", "old", "honeypot")   # the first run the coin fails one of these (the market
+                         # turned: a crash, a spike, too big, drained, dead, too old), at that run's price; data gaps (no DEX pair) are no reason
+HOLD_MAX_H = 48.0        # or after this long, whatever happens
+HOLD_COOL_H = 24.0       # a coin sold is not bought again for this long (named again, it stays a tip): a take-profit is not undone by the next tip
+# Replayed on the 2026-10-09 data: the 16 coins the bot named, held this way with at most 2 at once, lost -52 against -205 for the 50
+# separate 2-hour tickets; on every coin that passed the 2h gates (big test, hourly) it lost -14 over 22 positions against -305 for
+# the 171 tickets. Holding (one ticket per coin instead of one per hour) is most of it; the take-profit level is not settled: +40%
+# did best on both, it is also just under CLAUDIA's +44% peak before its rug, and without CLAUDIA no take-profit beat holding.
 # hard gates (everything else is a factor the big test measures)
 GATE_MIN_LIQ = 20_000
 GATE_MC = (100_000, 50_000_000)
@@ -199,7 +211,7 @@ def apply_profile(name):
     HORIZON = name
     for k, v in prof.items():
         globals()[k] = v
-BOT_GROUPS = ("pick", "early")   # position groups paid out of the bankroll
+BOT_GROUPS = ("pick", "early", "hold")   # position groups paid out of the bankroll
 
 
 def num(v):
@@ -326,7 +338,7 @@ def snap_due(d, now):
 def cmd_mode(d, now, force=False, snapshot=False, recommend=False):
     pos = positions(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
-    room, why = (PICKS_PER_RUN, "recommend mode: no buys, the two best coins are written to the page") if recommend else pick_room(state, pos, now, force)
+    room, why = (PICKS_PER_RUN, "recommend mode: the two best coins are written to the page and held as paper positions while a slot is free") if recommend else pick_room(state, pos, now, force)
     sd = snap_due(d, now) or snapshot
     due = due_snaps(d, now)
     # recommend mode always scans everything: a button press minutes after the last scan still deserves the whole universe
@@ -1779,6 +1791,12 @@ def candle_items(d, now):
     due. The horizon check's window runs up to this run (its price is this run's); the tips come first, the new launches'
     horizon checks last."""
     items = []
+    chk = (load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}).get("chk") or {}
+    for pid, p in positions(d).items():          # held coins: their candles since the last check, for the take-profit
+        if p.get("grp") == "hold" and p["_left"] > 1e-9 and p.get("pair"):
+            since = max(num(p.get("entryAt")) or num(p.get("t")) or 0, num(chk.get(pid)) or 0) - 60_000
+            if now - since > 60_000:
+                items.append(((-1, False), {"pool": p["pair"], "since": since, "hours": round((now - since) / 3_600_000, 3), "key": "hold"}))
     for ci, coll in enumerate(("memerec", "memeyoung")):
         for doc in load_docs(d, coll).values():
             t0 = num(doc.get("t")) if isinstance(doc, dict) else None
@@ -1789,6 +1807,21 @@ def candle_items(d, now):
                 items += [((ci, key == "out"), {"pool": p.get("pair"), "since": t0, "hours": span, "key": key}) for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]
     items.sort(key=lambda x: x[0])
     return [it for _, it in items][:CANDLE_MAX_ITEMS]
+
+
+def hold_check(d, p, chk=None, cpx=None):
+    """The take-profit of a held coin on its pool's minute candles (candles/<pool>_hold.txt) since the last check: closes only (a wick
+    sells nothing), measured against GeckoTerminal's own price at the entry (cpx: the first close at or after the entry minute), so the
+    gap between DexScreener's entry price and the candles cannot fake a sale; a close over CANDLE_MAX_X times the entry is a glitch.
+    -> {"hit": the minute it sold (ms) or None, "chk": where the next check starts, "cpx": the candle entry price}"""
+    t0 = num(p.get("entryAt")) or num(p.get("t")) or 0
+    cands = [c for c in load_candles(d, str(p.get("pair") or ""), "hold") if c[0] >= t0 - 60_000 and c[4] > 0]
+    if not cands:
+        return {"hit": None, "chk": chk, "cpx": cpx}
+    cpx = cpx or cands[0][4]
+    since = max(t0 - 60_000, num(chk) or 0)
+    hit = next((c[0] for c in cands if c[0] >= since and 1.0 + HOLD_TP <= c[4] / cpx <= CANDLE_MAX_X), None)
+    return {"hit": hit, "chk": cands[-1][0] + 60_000, "cpx": cpx}
 
 
 def load_candles(d, pool, key):
@@ -2041,8 +2074,10 @@ def scan(d, pos, pairs, now, w):
             risk[a] = dict(risk[a], dev=pr.get("dev") or {}, gp=pr.get("gp") or {}, cm=pr.get("cm") or {}, gi=pr.get("gi") or {}, hl=pr.get("hl") or {}, vt=pr.get("vt") or {}, dp=pr.get("dp") or {})
     news, cg, wallets = load_news(d, now), load_cg(d), wallet_table(d)
     tbs, board = load_top_buyers(d), load_leaderboard(d)
-    held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9}
-    recent = {p.get("addr") for p in pos.values() if now - (num(p.get("t")) or 0) < REPICK_DAYS * DAY}
+    # positions of pick mode keep their coins out of the next picks; the coins recommend mode holds stay nameable (the tip record
+    # goes on; a repeat tip of a held coin buys nothing)
+    held = {p.get("addr") for p in pos.values() if p["_left"] > 1e-9 and p.get("grp") != "hold"}
+    recent = {p.get("addr") for p in pos.values() if now - (num(p.get("t")) or 0) < REPICK_DAYS * DAY and p.get("grp") != "hold"}
     sym_mc, pub = {}, load_publicity(d, now)
     mkt = load_json(os.path.join(d, "market.json"), {}) or {}
     mkt = mkt if isinstance(mkt, dict) else {}
@@ -2372,7 +2407,7 @@ def snap_result(c, pairs):
 
 
 def curve_point(pos_docs, exit_docs, px, t):
-    g = {k: {"net": 0.0, "n": 0} for k in ("pick", "rand", "early", "erand")}
+    g = {k: {"net": 0.0, "n": 0} for k in ("pick", "rand", "early", "erand", "hold")}
     for pid, p in pos_docs.items():
         grp = p.get("grp")
         if grp not in g or (num(p.get("t")) or 0) > t:
@@ -2388,9 +2423,10 @@ def curve_point(pos_docs, exit_docs, px, t):
         g[grp]["n"] += 1
     for v in g.values():
         v["net"] = round(v["net"], 2)
-    return {"t": t, "bot": round(g["pick"]["net"] + g["early"]["net"], 2), "rand": round(g["rand"]["net"] + g["erand"]["net"], 2),
-            "nBot": g["pick"]["n"] + g["early"]["n"], "nRand": g["rand"]["n"] + g["erand"]["n"], "g": g, "rule": RULE,
-            "budget": BUDGET, "equity": round(BUDGET + g["pick"]["net"] + g["early"]["net"], 2)}
+    bot = g["pick"]["net"] + g["early"]["net"] + g["hold"]["net"]
+    return {"t": t, "bot": round(bot, 2), "rand": round(g["rand"]["net"] + g["erand"]["net"], 2),
+            "nBot": g["pick"]["n"] + g["early"]["n"] + g["hold"]["n"], "nRand": g["rand"]["n"] + g["erand"]["n"], "g": g, "rule": RULE,
+            "budget": BUDGET, "equity": round(BUDGET + bot, 2)}
 
 
 # ---------------------------------------------------------------- the run
@@ -2404,7 +2440,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     marks = load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}
     miss = dict(marks.get("miss") or {})
     asked = mode
-    if recommend:                       # recommend mode: scan and rank as for a pick, but write recommendations instead of positions
+    if recommend:                       # recommend mode: scan and rank as for a pick, write recommendations and hold them (grp "hold")
         mode, room = "pick", PICKS_PER_RUN
     else:
         room = pick_room(state, pos, now, force)[0] if mode == "pick" else 0   # --force: a manual pick run (the bankroll still caps it)
@@ -2421,26 +2457,40 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         writes.append({"collection": coll, "doc_id": doc_id, "file": fn})
         emitted.setdefault(coll, {})[doc_id] = data
 
+    def book_exit(pid, p, frac, px, why, **extra):
+        """Sell `frac` of position `pid` at price `px` (0 = gone): what comes back after the sell fee, as a memeexit doc."""
+        ticket = num(p.get("ticket")) or TICKET
+        entry, invested = num(p.get("px")), ticket - fee(ticket)
+        gross = invested * frac * (px / entry) if entry and px else 0.0
+        cash = max(0.0, gross - fee(gross)) if gross > 0 else 0.0
+        k = len(p["_exits"]) + 1 + sum(1 for x in exits_done if x["id"] == pid)
+        emit("memeexit", "%s-%d" % (pid, k), dict({"pos": pid, "t": now, "px": px or 0, "frac": round(frac, 6), "why": why,
+                                                   "eur": round(cash, 2), "grp": p.get("grp"), "rule": RULE}, **extra))
+        exits_done.append({"id": pid, "sym": p.get("sym"), "grp": p.get("grp"), "why": why, "frac": frac,
+                           "eur": round(cash, 2), "mult": (px / entry) if entry and px else 0, "ticket": ticket})
+
     # ---------- exits ----------
-    new_marks = {"t": now, "px": {}, "liq": {}, "miss": {}}
+    new_marks = {"t": now, "px": {}, "liq": {}, "miss": {}, "chk": {}, "cpx": {}}
     for pid, p in sorted(pos.items()):
         left = p["_left"]
         if left <= 1e-9:
             continue
-        ticket = num(p.get("ticket")) or TICKET
-        entry, invested = num(p.get("px")), ticket - fee(ticket)
+        entry = num(p.get("px"))
         pr = pairs.get(p.get("addr"))
         price, liq = (num(pr.get("priceUsd")), num(pr.get("liquidityUsd"))) if pr else (None, None)
-        k = len(p["_exits"]) + 1
 
-        def sell(frac, px, why):
-            gross = invested * frac * (px / entry) if entry and px else 0.0
-            cash = max(0.0, gross - fee(gross)) if gross > 0 else 0.0
-            emit("memeexit", "%s-%d" % (pid, k), {"pos": pid, "t": now, "px": px or 0, "frac": round(frac, 6), "why": why,
-                                                  "eur": round(cash, 2), "grp": p.get("grp"), "rule": RULE})
-            exits_done.append({"id": pid, "sym": p.get("sym"), "grp": p.get("grp"), "why": why, "frac": frac,
-                               "eur": round(cash, 2), "mult": (px / entry) if entry and px else 0, "ticket": ticket})
+        def sell(frac, px, why, **extra):
+            book_exit(pid, p, frac, px, why, **extra)
 
+        if p.get("grp") == "hold":
+            # the take-profit first: a close at +HOLD_TP since the last check is a sale at that minute, whatever the price is now
+            hc = hold_check(d, p, (marks.get("chk") or {}).get(pid), (marks.get("cpx") or {}).get(pid))
+            if hc["hit"] and entry:
+                sell(left, entry * (1.0 + HOLD_TP), "tp", at=hc["hit"])
+                continue
+            for k2 in ("chk", "cpx"):
+                if hc[k2]:
+                    new_marks[k2][pid] = hc[k2]
         if not price or not entry:
             miss[pid] = int(miss.get(pid, 0)) + 1
             if miss[pid] >= 2 or (pr and liq is not None and liq < 1000):
@@ -2451,6 +2501,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             continue
         if liq is not None and liq < 1000:
             sell(left, 0.0, "rug"); continue
+        if p.get("grp") == "hold":       # the exit gates need this run's scan: after it, see "held coins" below
+            new_marks["px"][pid] = price; new_marks["liq"][pid] = liq
+            continue
         mult, age_d = price / entry, (now - num(p.get("t"))) / DAY
         half_done = any(e.get("why") == "target" for e in p["_exits"])
         if mult <= STOP_MULT:
@@ -2579,8 +2632,47 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 ok_l, ltxt = loose_view(risk.get(r["a"]))
                 young.append(dict(rec(r, rtxt, ok_r), floor=(ltxt if ok_l is False else ("clears the relaxed floor" if ok_l else "no report")),
                                   ageMin=int(60 * r["basic"]["age_h"]), gates=[fail_text(k) for k in r["fails"] if k != "young"]))
+            # ---------- held coins: the exit gates on this scan, then the named coins bought while a paper slot is free ----------
+            by_addr = {r["a"]: r for r in rows}
+            sold_now = {x["id"] for x in exits_done}
+            for pid, p in sorted(pos.items()):
+                if p.get("grp") != "hold" or p["_left"] <= 1e-9 or pid in sold_now:
+                    continue
+                px_now = num((pairs.get(p.get("addr")) or {}).get("priceUsd"))
+                bad = [k for k in (by_addr[p["addr"]]["fails"] if p.get("addr") in by_addr else []) if k in HOLD_EXIT_GATES]
+                if px_now and bad:
+                    book_exit(pid, p, p["_left"], px_now, "filters", gates=bad)
+                elif px_now and now - (num(p.get("t")) or now) >= HOLD_MAX_H * 3_600_000:
+                    book_exit(pid, p, p["_left"], px_now, "time")
+            for pid in {x["id"] for x in exits_done}:
+                for k2 in ("px", "liq", "miss", "chk", "cpx"):
+                    new_marks[k2].pop(pid, None)
+            cur = positions_from(dict(load_docs(d, "memepos"), **emitted.get("memepos", {})), dict(load_docs(d, "memeexit"), **emitted.get("memeexit", {})))
+            holding = {p.get("addr") for p in cur.values() if p.get("grp") == "hold" and p["_left"] > 1e-9}
+            cooling = {p.get("addr") for p in cur.values() if p.get("grp") == "hold" and p["_exits"] and now - (num(p["_exits"][-1].get("t")) or 0) < HOLD_COOL_H * 3_600_000}
+            n_open_bot = sum(1 for p in cur.values() if p.get("grp") in BOT_GROUPS and p["_left"] > 1e-9)
+            slots = list(bankroll(cur)["tickets"])[:max(0, int(BUDGET // TICKET) - n_open_bot)]
+            pa, bought = priced_at(d, now), {}
+            for r, rtxt in chosen:
+                a, pr = r["a"], r["pr"]
+                if a in holding:
+                    bought[a] = "held"
+                    continue
+                if tiers.get(a) == "watch" or a in cooling or not slots:
+                    bought[a] = "watch coin" if tiers.get(a) == "watch" else ("sold less than %d hours ago" % HOLD_COOL_H if a in cooling else "no free paper slot")
+                    continue
+                ticket_i = slots.pop(0)
+                pid = "%s-h-%s-%s" % (day, slug(pr.get("symbol")), a[:6])
+                emit("memepos", pid, {"grp": "hold", "addr": a, "sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48],
+                                      "pair": pr.get("pairAddress"), "dex": pr.get("dexId"), "t": now, "entryAt": pa if (pa and pr.get("fresh")) else now,
+                                      "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"],
+                                      "rank": r.get("rank"), "tier": tiers.get(a), "why": why_text(r) + "; " + rtxt, "safety": rtxt, "x": x_link(pr), "xKnown": True,
+                                      "f": pos_factors(r["f"]), "src": (pr.get("tags") or [])[:12], "risk": risk_doc(risk.get(a)), "ticket": ticket_i, "rule": RULE,
+                                      "rec": run_id, "tp": HOLD_TP})
+                new_marks["px"][pid] = r["basic"]["price"]; new_marks["liq"][pid] = r["basic"]["liq"]
+                bought[a] = ticket_i
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
-            emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True) for r, rtxt in chosen],
+            emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [dict(rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True), bought=bought.get(r["a"])) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
                                           "runnersUp": runners[:8], "young": young, "youngOf": len(young_rows(rows, held, recent)), "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
             if young:    # the new launches get the same 1 h / 24 h record, so the "do the newest coins do better" question is answered coin by coin
@@ -2590,7 +2682,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 emit("memerec", run_id, {"t": now, "rule": RULE, "pricedAt": priced_at(d, now), "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
                                                                             "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"], "zp": r.get("zp"), "up": r.get("up"), "tier": tiers.get(r["a"])} for r, _ in chosen]})
             picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "score": r["sc"], "tier": tiers.get(r["a"]),
-                            "why": ("%s pick; " % tiers.get(r["a"]) if tiers.get(r["a"]) != "strong" else "") + why_text(r) + "; " + rtxt} for r, rtxt in chosen]
+                            "bought": bought.get(r["a"]), "why": ("%s pick; " % tiers.get(r["a"]) if tiers.get(r["a"]) != "strong" else "") + why_text(r) + "; " + rtxt} for r, rtxt in chosen]
             chosen = []
         elif recommend:
             chosen = []
@@ -2774,7 +2866,11 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if sk:
             parts.append(sk[0]["why"])
         elif rs:
-            parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + " for the next %s; nothing bought (recommend mode)." % HORIZON)
+            buys = [x for x in rs if isinstance(x.get("bought"), (int, float)) and not isinstance(x.get("bought"), bool)]
+            other = ["%s %s" % (x["sym"], "already held" if x.get("bought") == "held" else "not bought: " + str(x.get("bought"))) for x in rs if x not in buys and x.get("bought")]
+            parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + " for the next %s" % HORIZON +
+                         ("; bought as a paper position: %s" % ", ".join("%s (%.2f)" % (x["sym"], x["bought"]) for x in buys) if buys else "") +
+                         ("; %s" % "; ".join(other) if other else "") + ("." if (buys or other) else "; nothing bought (recommend mode)."))
         elif recommend:
             parts.append("No recommendation: no top coin had a clean safety report." if gated else "No recommendation: nothing passed the gates.")
         elif ps:
@@ -2800,7 +2896,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if n_open and not exits_done:
             parts.append("Nothing hit a sell rule.")
     if exits_done:
-        parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in ("pick", "early") else "random", x["why"], x["eur"]) for x in exits_done) + ".")
+        parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in BOT_GROUPS else "random", {"tp": "take-profit +%d%%" % round(100 * HOLD_TP), "filters": "failed the filters"}.get(x["why"], x["why"]), x["eur"]) for x in exits_done) + ".")
     if rec_scored:
         parts.append("Track record: %d earlier tip%s priced again after %s: %s." % (len(rec_scored), "s" if len(rec_scored) > 1 else "", eval_text(),
                      ", ".join("%s %.2fx (%+.2f per 20)" % (o["sym"], o["mult"], o["eur"]) for o in rec_scored)))

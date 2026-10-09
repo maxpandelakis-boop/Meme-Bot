@@ -133,6 +133,12 @@ class Mock:
             return 200, {"ok": True}
         if getattr(self, "ds_dead", False) and path.startswith("/api.dexscreener.com/") and ("/latest/dex/search" in path or "/tokens/v1/" in path or "/token-boosts/" in path):
             return 200, ({"pairs": []} if "/latest/dex/search" in path else [])
+        if path.startswith("/__spike"):          # the middle candle of a coin's pool closes this many times the price (0: back to +35%)
+            self.by_a[q["a"][0]]["spike"] = float(q["x"][0]) or None
+            return 200, {"ok": True}
+        if path.startswith("/__chg"):            # a coin's 1-hour price change as DexScreener reports it
+            self.by_a[q["a"][0]]["chg"][1] = float(q["h1"][0])
+            return 200, {"ok": True}
         if path.startswith("/__mult"):
             c = self.by_a[q["a"][0]]; c["mult"] = float(q["m"][0]); c["gone"] = q.get("gone", ["0"])[0] == "1"
             return 200, {"ok": True}
@@ -193,7 +199,7 @@ class Mock:
             for i in range(lim):
                 ts = before - i * 60 * agg
                 hi = px * (3.0 if i == lim // 2 else 1.02)
-                close = px * (1.35 if i == lim // 2 else 1.0)    # one candle in the middle closes at +35%: a close-based take-profit sells there up to +30%, not +50%
+                close = px * (((c or {}).get("spike") or 1.35) if i == lim // 2 else 1.0)    # one candle in the middle closes at +35%: a close-based take-profit sells there up to +30%, not +50%
                 lst.append([ts, px, hi, px * 0.9, close, 1000.0])
             return 200, {"data": {"attributes": {"ohlcv_list": lst}}}
         if path.startswith("/api.geckoterminal.com/api/v2/networks/solana/tokens/multi/"):
@@ -637,14 +643,45 @@ def main():
     merged, mtags, _ = M.merge_pairs(md_)
     check(merged.get(a_m, {}).get("priceUsd") == 0.002 and merged[a_m].get("fresh") and merged[a_m].get("nPairs") == 1 and not mtags.get(a_m), "a fresh row overrides the scan's row without counting as another pair or source")
     shutil.rmtree(md_, ignore_errors=True)
-    check(not os.path.isdir(os.path.join(rd, "db", "memepos")), "recommend mode opened no position")
     page = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
+    load_dir = lambda dd, coll: {os.path.basename(f)[:-5]: json.load(open(f)) for f in glob.glob(os.path.join(dd, "db", coll, "*.json"))}
+    hp = load_dir(rd, "memepos")
+    note_r = (json.load(open(os.path.join(rd, "db", "memebot", "state.json"))).get("note") or "")
+    check(len(hp) == 2 and all(p.get("grp") == "hold" and p.get("ticket") == 20.0 and M.num(p.get("px")) and p.get("pair") for p in hp.values())
+          and sorted(p["addr"] for p in hp.values()) == sorted(c["addr"] for c in rec.get("picks", [])) and all(c.get("bought") == 20.0 for c in rec.get("picks", []))
+          and "bought as a paper position" in note_r and "How a coin is sold" in page and "sold the first minute a candle closes 40% above the entry" in page and "paper position" in page,
+          "recommend mode holds the two named coins as paper positions, 20 each (%s)" % [(p.get("sym"), p.get("ticket")) for p in hp.values()])
     check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
     old_rec = rec
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 120000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
     same = lambda a, b: [c["addr"] for c in a.get("picks", [])] == [c["addr"] for c in b.get("picks", [])]
     check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s -> %s; %s)" % ([c["sym"] for c in old_rec.get("picks", [])], [c["sym"] for c in rec2.get("picks", [])], (r.stderr.strip().splitlines() or ["?"])[-1][:100]))
+    check(len(load_dir(rd, "memepos")) == 2 and all(c.get("bought") == "held" for c in rec2.get("picks", [])) and not load_dir(rd, "memeexit"),
+          "a repeat tip of a held coin buys nothing and sells nothing (still 2 positions, %s)" % [c.get("bought") for c in rec2.get("picks", [])])
+    # the sell rule, in a copy: one held coin's pool closes a candle at +60% between the runs (take-profit), the other one is down 60% in the last hour (fails the crash filter)
+    xd = tempfile.mkdtemp(prefix="memebot-hold-")
+    shutil.copytree(os.path.join(rd, "db"), os.path.join(xd, "db"))
+    (pa_id, pa), (pb_id, pb) = sorted(hp.items())
+    chg_b = next(c for c in mock.coins if c["a"] == pb["addr"])["chg"][1]
+    urllib.request.urlopen(url + "/__spike?a=%s&x=1.6" % pa["addr"]).read()
+    urllib.request.urlopen(url + "/__chg?a=%s&h1=-60" % pb["addr"]).read()
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", xd, "--mock", url, "--now", str(T0 + H), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    urllib.request.urlopen(url + "/__spike?a=%s&x=0" % pa["addr"]).read()
+    urllib.request.urlopen(url + "/__chg?a=%s&h1=%s" % (pb["addr"], chg_b)).read()
+    xe = load_dir(xd, "memeexit")
+    ea = [e for e in xe.values() if e.get("pos") == pa_id]; eb = [e for e in xe.values() if e.get("pos") == pb_id]
+    page_x = open(os.path.join(xd, "report.html"), encoding="utf-8").read() if os.path.exists(os.path.join(xd, "report.html")) else ""
+    rec_x = json.load(open(os.path.join(xd, "db", "memebot", "recommend.json")))
+    again = [c for c in rec_x.get("picks", []) if c["addr"] == pa["addr"]]
+    check(r.returncode == 0 and len(ea) == 1 and ea[0]["why"] == "tp" and abs(ea[0]["eur"] - 26.06) < 0.01 and M.num(ea[0].get("at"))
+          and len(eb) == 1 and eb[0]["why"] == "filters" and "crash" in (eb[0].get("gates") or []) and "take-profit +40%" in page_x and "failed the filters (crashed)" in page_x
+          and all(c.get("bought") == "sold less than 24 hours ago" for c in again),
+          "held coins are sold by the rule: a candle close at +60%% sells at +40%% (26.06 back), a 60%% fall in the last hour fails the crash filter (%s; %s)" % (
+              [(e["why"], e["eur"]) for e in ea + eb], (r.stderr.strip().splitlines() or ["ok"])[-1][:100] if r.returncode else "ok"))
+    hc = M.hold_check(xd, {"pair": "NOPOOL", "t": T0}, None, None)
+    check(hc == {"hit": None, "chk": None, "cpx": None}, "no candles for a held coin: no take-profit, the next check starts where this one would have")
+    shutil.rmtree(xd, ignore_errors=True)
 
     print("== DexScreener out: Jupiter and GeckoTerminal data stand in, the scan still names a coin")
     sd = tempfile.mkdtemp(prefix="memebot-standin-")
