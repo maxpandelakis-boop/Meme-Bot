@@ -193,7 +193,8 @@ class Mock:
             for i in range(lim):
                 ts = before - i * 60 * agg
                 hi = px * (3.0 if i == lim // 2 else 1.02)
-                lst.append([ts, px, hi, px * 0.9, px, 1000.0])
+                close = px * (1.35 if i == lim // 2 else 1.0)    # one candle in the middle closes at +35%: a close-based take-profit sells there up to +30%, not +50%
+                lst.append([ts, px, hi, px * 0.9, close, 1000.0])
             return 200, {"data": {"attributes": {"ohlcv_list": lst}}}
         if path.startswith("/api.geckoterminal.com/api/v2/networks/solana/tokens/multi/"):
             addrs = path.rsplit("/", 1)[1].split(",")
@@ -571,6 +572,20 @@ def main():
           and lp.get("cv") == M.CANDLE_V and M.stale_check({"h": 1.0, "late": True, "picks": [{"sym": "O", "mult": 1.01, "eur": -1.4, "fromCandles": True}]}, 1.0)
           and not M.stale_check(l1, 1.0),
           "a 1 h check priced 8 h late was priced again from the window's candles (%sx, peak %sx, checked %s h late)" % (lp.get("mult"), lp.get("hi"), l1.get("checkedH")))
+    pth = [[0, 1.0, 1.3, 0.95, 1.25], [5, 1.0, 1.1, 0.9, 1.0], [20, 1.0, 1.9, 1.0, 1.05], [21, 1.05, 1.3, 1.0, 1.22], [40, 1.2, 1.6, 1.1, 1.55], [59, 0.5, 0.6, 0.4, 0.45]]
+    o_tp = M.with_tp({"sym": "T", "mult": 0.45, "eur": M.tip_net(0.45), "path": pth, "cv": M.CANDLE_V}, 18.0)
+    # entry price at minute 18: minute 0's +25% close came before it, the 1.9x at minute 20 is a wick; the close of 1.22 at 21 sells +10% and +20%, 1.55 at 40 sells +30% and +50%
+    check(o_tp["tpMin"] == {"10": 21, "20": 21, "30": 40, "50": 40} and o_tp["tpx"]["20"] == M.tip_net(1.2) == 2.22 and o_tp["tpx"]["50"] == M.tip_net(1.5) and o_tp["tpFrom"] == 18.0
+          and M.take_profit(pth, 0.45, 0.6, 18.0) == (0.45, None) and M.with_tp({"mult": 1.0, "path": pth}, None).get("tpx") is None
+          and M.entry_min({"t": 1000, "pricedAt": 1000 + 23 * 60000}) == 23.0 and M.entry_min({"t": 1000}, {"note": "Prices of 16 candidates refreshed 26 minutes after the scan started, right before the pick."}) == 26.0
+          and M.entry_min({"t": 1000}, {"note": "Scanned 900 coins."}) is None and M.entry_min({"t": 1000, "pricedAt": 1000 + 5 * H}) is None,
+          "take-profit replay: a close after the entry price sells at the level; wicks and candles before the entry do not (%s)" % o_tp.get("tpMin"))
+    bdoc = {"t": 1000, "outs": {"1": {"picks": [{"sym": "T", "mult": 0.45, "eur": M.tip_net(0.45), "path": pth, "cv": M.CANDLE_V}, {"sym": "N", "mult": 1.0, "eur": -1.62}]}}}
+    bnew, bch = M.backfill_tp(bdoc, 18.0)
+    bo = bnew["outs"]["1"]["picks"]
+    check(bch and bo[0]["tpMin"]["20"] == 21 and "tpx" not in bo[1] and "tpx" not in bdoc["outs"]["1"]["picks"][0] and not M.backfill_tp(bnew, 18.0)[1] and not M.backfill_tp(bdoc, None)[1]
+          and "sold at +20% after 21 min: +2.22" in R_.peak_txt(dict(bo[0], hi=1.9)) and R_.tp_val(bo[1]) is None and "tpx" not in lp,
+          "results priced before the replay get it once from their stored path; a tip whose entry time is unknown gets none")
     rec = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(rd, "db", "memebot", "recommend.json")) else {}
     check(r.returncode == 0 and len(rec.get("picks", [])) == 2 and r.stdout.count("RECOMMEND") == 2, "recommend cycle wrote 2 recommendations (%s)" % [p["sym"] for p in rec.get("picks", [])])
     vt_files = glob.glob(os.path.join(rd, "vt", "vt_*.txt"))
@@ -763,8 +778,25 @@ def main():
                        and all(pth[k][0] < pth[k + 1][0] for k in range(len(pth) - 1)))
     check(with_peak and all(o.get("cv") == M.CANDLE_V and okp(o.get("path")) for o in with_peak),
           "every candle-priced result keeps its window's minute path, oldest first from minute 0, for exit-rule replays (%s candles in the first)" % (len(with_peak[0].get("path") or []) if with_peak else "-"))
-    check(with_peak and all(o.get("tp") is not None and o["hi"] >= 2.5 for o in with_peak) and "peak" in page2 and "selling at +50% when hit" in page2,
-          "the minute candles give each result its peak and the +50%% take-profit outcome (%d of %d with candles)" % (len(with_peak), len(y1)))
+    check(with_peak and all(o.get("tp") is not None and o["hi"] >= 2.5 for o in with_peak) and "peak" in page2 and "selling at +20% when reached" in page2,
+          "the minute candles give each result its peak and the take-profit outcome (%d of %d with candles)" % (len(with_peak), len(y1)))
+
+    def tp_ok(o):
+        if not isinstance(o.get("tpx"), dict) or set(o["tpx"]) != {M.tp_key(lv) for lv in M.TP_LEVELS} or M.num(o.get("tpFrom")) is None:
+            return False
+        for lv in M.TP_LEVELS:
+            m, at = M.take_profit(o["path"], o["mult"], lv, o["tpFrom"])
+            if (o.get("tpMin") or {}).get(M.tp_key(lv)) != at or o["tpx"][M.tp_key(lv)] != (M.tip_net(m) if at is not None else o["eur"]):
+                return False
+        return True
+    recs2 = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
+    out_c = [o for doc in recs2 for o in (doc.get("out") or {}).get("picks", []) if o.get("path")]
+    tp_all = with_peak + out_c + [o for doc in recs2 for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", []) if o.get("path")]
+    first = [doc for doc in recs2 + yd if M.num(doc.get("t")) == T0]     # the second cycle's fake clock runs hours ahead of the refresh's real one: no pricedAt there
+    check(first and all(M.num(doc.get("pricedAt")) and 0 <= M.num(doc["pricedAt"]) - T0 <= H for doc in first) and tp_all and all(tp_ok(o) for o in tp_all)
+          and any("20" in (o.get("tpMin") or {}) and "50" not in o["tpMin"] for o in tp_all) and out_c and len(out_c) == len(scored)
+          and "Take-profit levels, 1 h later" in page2 and "sold at +30%" in page2 and "after %d min" % tp_all[0]["tpMin"]["20"] in page2,
+          "every result with candles (1 h, and now the horizon too: %d of %d) is replayed at +10/+20/+30/+50%% from the entry price on (%s)" % (len(out_c), len(scored), tp_all[0].get("tpMin") if tp_all else "-"))
     one_h = [o for doc in recs for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
     check(recs and scored and one_h and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next scan starts about" in page2 and "1 h later" in page2 and "24 h later" in page2,
           "the tips were recorded and priced again at 1 h and at the horizon (%d docs, %d scored, %d at 1 h)" % (len(recs), len(scored), len(one_h)))

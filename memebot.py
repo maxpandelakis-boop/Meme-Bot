@@ -1668,7 +1668,9 @@ def settled(res, hours):
 
 CANDLE_MAX_X = 30.0  # a peak over this many times the entry price inside a window is not believed (two glitches in the first night were 4,121x and 22,310x)
 CANDLE_WICK_X = 5.0  # a candle high more than this many times above the window's best close (or a low that far below its worst close) is a wick glitch: the close stands in
-TAKE_PROFIT = 0.5   # the "sell at the peak" question, made testable: what 20 made when sold at +50% as soon as the window hit it
+TAKE_PROFIT = 0.5   # the first take-profit question (kept in the data as "tp"): what 20 made when sold at +50% as soon as a candle HIGH hit it
+TP_LEVELS = (0.10, 0.20, 0.30, 0.50)   # paper take-profit: every result with candles is also scored as if sold the first minute a candle CLOSED this far above the entry
+TP_RULE = 0.20                         # the page's headline among them; the other levels stand next to it, so the record shows which one works
 PATH_MAX = 160      # candles kept per window with each result ("path"), so exit rules (take profit, stop loss, trailing stops) can be replayed later
 CANDLE_V = 2        # results priced from candles sorted oldest first carry cv=2; a late check priced before (newest-first candles) is priced again
 
@@ -1691,22 +1693,100 @@ def candle_path(inside, t0, px0):
     return out
 
 
+def tp_key(level):
+    return str(int(round(100 * level)))
+
+
+def take_profit(path, hold, level, start_min=0.0):
+    """A paper take-profit replayed on a result's candle path: (multiple, minute) when a candle CLOSED at 1 + level or above at
+    or after start_min (the minute the entry price was taken), sold at exactly 1 + level (a sell order at that price fills there,
+    not higher); else (hold, None): held to the check. Closes, not highs, so one wick in a thin pool is no sale, and candles
+    before the entry price do not count (a rise the tip had before it was named is no profit anyone could take)."""
+    for c in path or []:
+        if isinstance(c, (list, tuple)) and len(c) >= 5 and num(c[0]) is not None and num(c[0]) >= start_min and (num(c[4]) or 0) >= 1.0 + level:
+            return 1.0 + level, int(num(c[0]))
+    return hold, None
+
+
+def tip_net(m):
+    """What a 20 ticket became at multiple m, after the simulated buy and sell fees."""
+    return round((max(0.0, (TICKET - fee(TICKET)) * m - fee((TICKET - fee(TICKET)) * m)) if m > 0 else 0.0) - TICKET, 2)
+
+
+def with_tp(o, start_min):
+    """A result with a candle path gets the take-profit replay at every TP_LEVELS level: tpx {"20": what 20 made, ...} (sold
+    at the level, else held to the check) and tpMin {"20": the minute after the tip it sold, ...} for the levels that sold."""
+    mult = num(o.get("mult"))
+    if not o.get("path") or mult is None or start_min is None:
+        return o
+    tpx, tpm = {}, {}
+    for lv in TP_LEVELS:
+        m, at = take_profit(o["path"], mult, lv, start_min)
+        tpx[tp_key(lv)] = tip_net(m) if at is not None else num(o.get("eur"))
+        if at is not None:
+            tpm[tp_key(lv)] = at
+    return dict(o, tpx=tpx, tpMin=tpm, tpFrom=round(start_min, 1))
+
+
+def entry_min(doc, run=None):
+    """Minutes from the scan start (the tip's t) to the moment its entry price was taken: the refresh right before the pick
+    (pricedAt), for older tips the run's own note ("refreshed N minutes after the scan started"); None when unknown, and then
+    no take-profit is replayed."""
+    t0, pa = num(doc.get("t")), num(doc.get("pricedAt"))
+    if t0 and pa and 0 <= pa - t0 <= 3_600_000:
+        return (pa - t0) / 60_000.0
+    m = re.search(r"refreshed (\d+) minutes? after the scan started", str((run or {}).get("note") or ""))
+    return float(m.group(1)) if m and int(m.group(1)) <= 60 else None
+
+
+def backfill_tp(doc, start_min):
+    """Results priced before the take-profit replay existed get it from their stored candle path. -> (doc, changed)"""
+    if start_min is None:
+        return doc, False
+    changed = False
+
+    def fix(res):
+        nonlocal changed
+        if not isinstance(res, dict) or not isinstance(res.get("picks"), list):
+            return res
+        picks = [with_tp(o, start_min) if isinstance(o, dict) and o.get("path") and "tpx" not in o and (num(o.get("cv")) or 0) >= CANDLE_V else o for o in res["picks"]]
+        if any(a is not b for a, b in zip(picks, res["picks"])):
+            changed = True
+            return dict(res, picks=picks)
+        return res
+    outs = doc.get("outs") if isinstance(doc.get("outs"), dict) else {}
+    new = dict(doc, outs={k: fix(v) for k, v in outs.items()}) if outs else dict(doc)
+    if isinstance(doc.get("out"), dict):
+        new["out"] = fix(doc["out"])
+    return (new, True) if changed else (doc, False)
+
+
+def priced_at(d, now):
+    """When the candidates' prices were refreshed right before the pick (fresh.json), or None (no refresh in this run)."""
+    fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
+    t = num(fresh.get("t")) if isinstance(fresh, dict) else None
+    return int(t) if t and 0 <= t - now <= 3_600_000 else None
+
+
 def candle_items(d, now):
-    """The pools whose minute candles the next price check needs: tips and new launches with a 1 h or 24 h mark due."""
+    """The pools whose minute candles the next price check needs: tips and new launches with a 1 h, 24 h or horizon mark
+    due. The horizon check's window runs up to this run (its price is this run's); the tips come first, the new launches'
+    horizon checks last."""
     items = []
-    for coll in ("memerec", "memeyoung"):
+    for ci, coll in enumerate(("memerec", "memeyoung")):
         for doc in load_docs(d, coll).values():
-            if not isinstance(doc, dict) or str(doc.get("rule") or RULE) != RULE:
+            t0 = num(doc.get("t")) if isinstance(doc, dict) else None
+            if not t0 or str(doc.get("rule") or RULE) != RULE:
                 continue
             for key, hours, _ in tip_due(doc, now):
-                if key == "out":
-                    continue
-                items += [{"pool": p.get("pair"), "since": num(doc.get("t")), "hours": hours} for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]
-    return items[:CANDLE_MAX_ITEMS]
+                span = round((now - t0) / 3_600_000, 3) if key == "out" else hours
+                items += [((ci, key == "out"), {"pool": p.get("pair"), "since": t0, "hours": span, "key": key}) for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]
+    items.sort(key=lambda x: x[0])
+    return [it for _, it in items][:CANDLE_MAX_ITEMS]
 
 
-def load_candles(d, pool, hours):
-    fn = os.path.join(d, "candles", "%s_%d.txt" % (pool, int(hours)))
+def load_candles(d, pool, key):
+    fn = os.path.join(d, "candles", "%s_%s.txt" % (pool, key))
     out = []
     try:
         with open(fn, encoding="utf-8") as f:
@@ -2498,10 +2578,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
                                           "runnersUp": runners[:8], "young": young, "youngOf": len(young_rows(rows, held, recent)), "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
             if young:    # the new launches get the same 1 h / 24 h record, so the "do the newest coins do better" question is answered coin by coin
-                emit("memeyoung", run_id, {"t": now, "rule": RULE, "picks": [{"sym": y["sym"], "addr": y["addr"], "pair": y.get("pair"), "px": y.get("px"), "mc": y.get("mc"),
+                emit("memeyoung", run_id, {"t": now, "rule": RULE, "pricedAt": priced_at(d, now), "picks": [{"sym": y["sym"], "addr": y["addr"], "pair": y.get("pair"), "px": y.get("px"), "mc": y.get("mc"),
                                                                             "score": y.get("score"), "ageMin": y.get("ageMin"), "ok": y.get("ok"), "launchpad": y.get("launchpad")} for y in young]})
             if chosen:   # the track record: every recommendation is priced again EVAL_H later (see rec_outcomes)
-                emit("memerec", run_id, {"t": now, "rule": RULE, "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
+                emit("memerec", run_id, {"t": now, "rule": RULE, "pricedAt": priced_at(d, now), "picks": [{"sym": str(r["pr"].get("symbol") or "?")[:24], "addr": r["a"], "pair": r["pr"].get("pairAddress"),
                                                                             "px": r["basic"]["price"], "mc": r["basic"]["mc"], "score": r["sc"], "zp": r.get("zp"), "up": r.get("up"), "tier": tiers.get(r["a"])} for r, _ in chosen]})
             picks_done += [{"grp": "recommend", "sym": r["pr"].get("symbol"), "name": r["pr"].get("name"), "addr": r["a"], "score": r["sc"], "tier": tiers.get(r["a"]),
                             "why": ("%s pick; " % tiers.get(r["a"]) if tiers.get(r["a"]) != "strong" else "") + why_text(r) + "; " + rtxt} for r, rtxt in chosen]
@@ -2586,16 +2666,20 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     # check already is (the first night's outage lasted two runs and turned a tip's 1 h check into "gone" at 0.00x), so every due
     # check waits for the next run that has DexScreener data
     dex_n = dex_rows(pairs)
+    run_docs = load_docs(d, "memeruns")
     for coll, rid, doc in [(c, k, v) for c in ("memerec", "memeyoung") for k, v in load_docs(d, c).items()]:
         t0 = num(doc.get("t"))
         if not isinstance(doc, dict) or not t0 or str(doc.get("rule") or RULE) != RULE:
             continue
+        smin = entry_min(doc, run_docs.get(rid))          # candles before the entry price was taken never sell (take-profit replay)
+        doc, changed = backfill_tp(doc, smin)
         due = tip_due(doc, now)
         if due and dex_n < MIN_SCAN_FOR_REC:
             tips_postponed += len(due)
+            if changed:
+                emit(coll, rid, doc)
             continue
-        changed = False
-        net = lambda m: round((max(0.0, (TICKET - fee(TICKET)) * m - fee((TICKET - fee(TICKET)) * m)) if m > 0 else 0.0) - TICKET, 2)
+        net = tip_net
         for key, hours, _ in due:
             late = key != "out" and now - t0 > (hours + LATE_H) * 3_600_000
             prev = ((doc.get("outs") or {}).get(key) or {}) if key != "out" else {}
@@ -2605,9 +2689,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 px0 = num(p.get("px"))
                 if not px0:
                     continue
-                cands = load_candles(d, str(p["pair"]), hours) if key != "out" and p.get("pair") else []
-                hi, lo = window_extremes(cands, t0, hours)
-                inside = [c for c in cands if t0 <= c[0] <= t0 + hours * 3_600_000]
+                span = (now - t0) / 3_600_000 if key == "out" else hours     # the horizon check is priced now: its window runs up to now
+                cands = load_candles(d, str(p["pair"]), key) if p.get("pair") else []
+                hi, lo = window_extremes(cands, t0, span)
+                inside = [c for c in cands if t0 <= c[0] <= t0 + span * 3_600_000]
                 last_close = inside[-1][4] if inside else None
                 if late:
                     # too late for the price of the day: the window's own candles price it (the last close inside the window is
@@ -2625,6 +2710,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                             o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
                             o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]
                             o["path"] = candle_path(inside, t0, px0)
+                            o = with_tp(o, smin)
                         outs.append(o)
                     elif now - t0 >= (hours + LATE_RETRY_H) * 3_600_000:
                         outs.append({"sym": p.get("sym"), "missed": True})
@@ -2639,14 +2725,15 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     px1 = 0.0                        # the horizon check has no candle fallback: no price anywhere this long after the horizon is gone
                 mult = (px1 / px0) if px1 else 0.0
                 o = {"sym": p.get("sym"), "mult": round(mult, 4), "eur": net(mult), "gone": not px1}
-                if key != "out" and p.get("pair"):
+                if p.get("pair"):
                     # the candles must agree with the prices the run itself saw: a last close far from the end price (or a peak over
                     # CANDLE_MAX_X of the entry) means the pool's candles are in another unit or a thin-pool glitch, and they are dropped
                     sane = hi and lo and hi / px0 <= CANDLE_MAX_X and (not px1 or not last_close or 1.0 / 3 <= last_close / px1 <= 3.0)
                     if sane:
                         o["hi"], o["lo"] = round(hi / px0, 4), round(lo / px0, 4)
-                        o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]   # sold at +50% the moment it was hit, else held to the end
+                        o["tp"] = net(1.0 + TAKE_PROFIT) if hi / px0 >= 1.0 + TAKE_PROFIT else o["eur"]   # sold at +50% the moment a high hit it, else held to the end
                         o["path"], o["cv"] = candle_path(inside, t0, px0), CANDLE_V
+                        o = with_tp(o, smin)      # sold at each TP_LEVELS level the first minute a close reached it after the entry, else held
                 outs.append(o)
             if not outs:
                 continue

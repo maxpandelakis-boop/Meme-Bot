@@ -145,7 +145,9 @@ had priced hours late is treated as open and priced again from the candles.
 
 The last section of the page answers that in one line: every coin the bot named, priced again 1 hour later (and at the
 profile's horizon and 24 hours later), summed up as fake money with 20 in each tip after fees: how many went up, how many
-went to zero, the total on the money staked and the average per 20, plus what the +50% take-profit rule would have made.
+went to zero, the total on the money staked and the average per 20, plus what the +20% take-profit would have made
+(sold the first minute a candle closed at +20% after the entry price, else held) and a line per window that sets every
+take-profit level (+10%, +20%, +30%, +50%) against holding on the same tips.
 A chart draws the running total tip by tip against the break-even line, and the summary of each run carries the same
 verdict ("Is the bot making money? No, not so far: ...").
 
@@ -167,20 +169,30 @@ the wallet sample does before it moves a pick. It is a sample, capped at 150 sec
 
 ### Minute paths for exit rules
 
-Every 1 h and 24 h result priced from candles also keeps its window's candles relative to the entry price, oldest first
+Every 1 h, 24 h and horizon result priced from candles also keeps its window's candles relative to the entry price, oldest first
 (`path`: minutes after the tip, open, high, low, close; glitch wicks replaced by the close, as for the peak; `cv: 2`).
 GeckoTerminal sends the newest candle first; until 2026-10-08 13:10 UTC nothing sorted them, so the "last close" of a late
 check was the window's first close. Late checks priced that way are priced again by the next run. `research/check_exits.py` replays take-profit,
 stop-loss and trailing-stop rules on them for the tips and the new launches, so "sell at +20%, stop at -20%" and the
 like are measured on the bot's own coins rather than argued about.
 
-### Peaks and the take-profit question
+### Peaks and the take-profit (selling early)
 
 For every tip and every listed new launch, the next runs also fetch the minute candles of its pool (GeckoTerminal
-OHLCV, `candles/<pool>_<hours>.txt`) for the 1 h and 24 h windows, so each result carries the peak and the trough
-inside the window (`hi`, `lo`) and what 20 made when sold at +50% the moment the window hit it (`tp`, otherwise held
-to the end). The hour-by-hour list and the new-launches tab show "peak 5.9x · sold at +50%: +8.95" next to the plain
-result, and the header lines say how many results reached +50% and what that rule averaged.
+OHLCV, `candles/<pool>_<key>.txt`, key `1`, `24` or `out`) for the 1 h, 24 h and horizon windows (the horizon window
+runs up to the run that prices it), so each result carries the peak and the trough inside the window (`hi`, `lo`).
+
+The bot looks once an hour, so it cannot sell in between; the candles replay the sale instead (paper only). For every
+level in `TP_LEVELS` (+10%, +20%, +30%, +50%) a result gets `tpx` (what 20 made, after fees) and `tpMin` (the minute
+after the tip it sold): sold at exactly the level the first minute a candle **closed** there, else held to the check.
+Two rules keep it honest. Closes, not highs: one wick in a thin pool is no sale. And only candles after the entry price
+count: the tip's price is refreshed 15 to 30 minutes after the scan starts (`pricedAt` with each tip; older tips take the
+minutes from their run's note), and a rise before that was nobody's profit. Results priced before this existed get the
+replay from their stored path. The page's headline is `TP_RULE` (+20%): "peak 1.6x · sold at +20% after 23 min: +2.22"
+next to the plain result, the verdict, a tile, a column and a chart line; the "Is the bot making money?" section adds a
+line per window with every level against holding on the same tips, so the record shows which level pays. After the fees
+(0.81 a trade at 20) +10% leaves about +0.30, +20% about +2.22, +30% about +4.14 and +50% about +7.98 per 20. The first
+version (`tp`: sold at +50% when a candle *high* reached it, from the scan start) stays in the data.
 
 ### New launches tab
 

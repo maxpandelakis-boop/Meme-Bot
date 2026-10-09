@@ -439,15 +439,17 @@ def ds_tokens(http, d, addrs, start=0, prefix="tokens"):
 
 
 def candles(http, d, items):
-    """Minute candles for the pools of the tips and new launches that are due for their 1 h or 24 h price check
-    (GeckoTerminal OHLCV, base token in USD) -> candles/<pool>_<hours>.txt rows ms|open|high|low|close|volume. With them
-    the record knows the peak and the trough inside the window, not just the price at its end."""
+    """Minute candles for the pools of the tips and new launches that are due for their 1 h, 24 h or horizon price check
+    (GeckoTerminal OHLCV, base token in USD) -> candles/<pool>_<key>.txt rows ms|open|high|low|close|volume (key "1", "24" or
+    "out"). With them the record knows the peak and the trough inside the window, not just the price at its end, and when a
+    take-profit would have sold."""
     n = 0
     for it in items[:24]:
         pool, since, hours = str(it.get("pool") or ""), num(it.get("since")), num(it.get("hours")) or 1.0
-        if not pool or not since or "api.geckoterminal.com" in http.dead:
+        key = re.sub(r"[^A-Za-z0-9]", "", str(it.get("key") or int(hours)))
+        if not pool or not since or not key or "api.geckoterminal.com" in http.dead:
             continue
-        agg = 1 if hours <= 2 else 15
+        agg = 1 if hours <= 3 else 15          # the 2 h horizon check is priced a little over 2 hours after the tip: one-minute candles still
         limit = min(1000, int((hours * 3600 + 900) / (60 * agg)) + 12)   # the request ends 15 minutes after the window: cover that too, or the window's first minutes are cut
         before = int(since / 1000 + hours * 3600 + 900)
         j = http.get(GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (pool, agg, limit, before))
@@ -457,7 +459,7 @@ def candles(http, d, items):
                 rows.append(row(int(num(c[0]) * 1000), num(c[1]), num(c[2]), num(c[3]), num(c[4]), num(c[5]) if len(c) > 5 else None))
         if rows:
             os.makedirs(os.path.join(d, "candles"), exist_ok=True)
-            with open(os.path.join(d, "candles", "%s_%d.txt" % (pool, int(hours))), "w", encoding="utf-8") as f:
+            with open(os.path.join(d, "candles", "%s_%s.txt" % (pool, key)), "w", encoding="utf-8") as f:
                 f.write("\n".join(rows) + "\n")
             n += 1
     http.log("  candles %d of %d pools" % (n, min(len(items), 24)))
@@ -1532,7 +1534,7 @@ def addrs_arg(a):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["sources", "deep", "tokens", "refresh", "risk", "news", "candles"])
-    ap.add_argument("--items", default="", help="candles: a JSON file with [{pool, since, hours}]")
+    ap.add_argument("--items", default="", help="candles: a JSON file with [{pool, since, hours, key}]")
     ap.add_argument("--dir", default="mb")
     ap.add_argument("--light", action="store_true")
     ap.add_argument("--addrs", default="")

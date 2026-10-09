@@ -1002,13 +1002,30 @@ def no_coin_reason(note):
     return "no coin named"
 
 
+def tp_val(o, level=None):
+    """What 20 made in a result under the paper take-profit at `level` (default TP_RULE): sold the first minute a candle closed
+    there after the entry price was taken, else held to the check. None when the result has no replay (no candles)."""
+    tpx = o.get("tpx") if isinstance(o.get("tpx"), dict) else None
+    return M.num(tpx.get(M.tp_key(M.TP_RULE if level is None else level))) if tpx else None
+
+
+def tp_sold(o, level=None):
+    """The minute after the tip the take-profit at `level` sold, or None (not reached, or no candles)."""
+    tpm = o.get("tpMin") if isinstance(o.get("tpMin"), dict) else {}
+    return M.num(tpm.get(M.tp_key(M.TP_RULE if level is None else level)))
+
+
+def tp_pct():
+    return round(100 * M.TP_RULE)
+
+
 def peak_txt(o):
-    """' · peak 5.9x · +50% take-profit +8.95' when the candles of the window are known."""
+    """' · peak 5.9x · sold at +20% after 23 min: +2.22' when the candles of the window are known."""
     if M.num(o.get("hi")) is None:
         return ""
     s = " · peak %s" % fmt_mult(o.get("hi"))
-    if M.num(o.get("tp")) is not None and M.num(o.get("hi")) >= 1.0 + M.TAKE_PROFIT:
-        s += " · sold at +%d%%: %s" % (round(100 * M.TAKE_PROFIT), fmt_amt(o.get("tp"), True))
+    if tp_sold(o) is not None and tp_val(o) is not None:
+        s += " · sold at +%d%% after %d min: %s" % (tp_pct(), tp_sold(o), fmt_amt(tp_val(o), True))
     return s
 
 
@@ -1029,12 +1046,27 @@ def odd_cell(cont, o, hours):
 
 
 def tp_stats(outs):
-    """What 20 made when sold at +TAKE_PROFIT the moment the window hit it (else held to the end), over the results that have candles."""
-    known = [o for o in outs if M.num(o.get("tp")) is not None]
+    """What 20 made when sold at +TP_RULE the first minute a candle closed there after the entry (else held to the end), over the
+    results that have candles."""
+    known = [o for o in outs if tp_val(o) is not None]
     if not known:
         return ""
-    hit = sum(1 for o in known if (M.num(o.get("hi")) or 0) >= 1.0 + M.TAKE_PROFIT)
-    return "selling at +%d%% when hit (%d of %d reached it): average %s per 20" % (round(100 * M.TAKE_PROFIT), hit, len(known), fmt_amt(sum(M.num(o["tp"]) for o in known) / len(known), True))
+    hit = sum(1 for o in known if tp_sold(o) is not None)
+    return "selling at +%d%% when reached (%d of %d did): average %s per 20" % (tp_pct(), hit, len(known), fmt_amt(sum(tp_val(o) for o in known) / len(known), True))
+
+
+def tp_levels_txt(pts, label):
+    """Every take-profit level against holding, on the same results (the ones with candles): which level would have paid."""
+    known = [o for _, o in pts if tp_val(o) is not None]
+    if not known:
+        return ""
+    held = sum(M.num(o["eur"]) for o in known)
+    bits = ["held to the end %s" % fmt_amt(held, True)]
+    for lv in M.TP_LEVELS:
+        tot = sum(tp_val(o, lv) for o in known)
+        bits.append("sold at +%d%% %s (%d sold)" % (round(100 * lv), fmt_amt(tot, True), sum(1 for o in known if tp_sold(o, lv) is not None)))
+    return ('<p class="note">Take-profit levels, %s, on the %d tip%s with minute candles (sold the first minute a candle closed at the level after the entry price, else held; fees included): %s.</p>'
+            % (E(label), len(known), "" if len(known) == 1 else "s", " · ".join(bits)))
 
 
 def compound_chain(recs, key="1"):
@@ -1075,9 +1107,9 @@ def profit_stats(pts):
     tot = sum(M.num(o["eur"]) for _, o in pts)
     up = sum(1 for _, o in pts if M.num(o["eur"]) > 0)
     zero = sum(1 for _, o in pts if o.get("gone") or (M.num(o.get("mult")) or 0) < 0.02)
-    tp = [M.num(o["tp"]) for _, o in pts if M.num(o.get("tp")) is not None]
-    tp_tot = sum((M.num(o["tp"]) if M.num(o.get("tp")) is not None else M.num(o["eur"])) for _, o in pts)   # sold at +TAKE_PROFIT where the candles are known, else held to the end
-    hit = sum(1 for _, o in pts if (M.num(o.get("hi")) or 0) >= 1.0 + M.TAKE_PROFIT)
+    tp = [tp_val(o) for _, o in pts if tp_val(o) is not None]
+    tp_tot = sum((tp_val(o) if tp_val(o) is not None else M.num(o["eur"])) for _, o in pts)   # sold at +TP_RULE where the candles are known, else held to the end
+    hit = sum(1 for _, o in pts if tp_sold(o) is not None)
     return {"n": n, "tot": tot, "up": up, "zero": zero, "tp": tp, "tpTot": tp_tot, "hit": hit}
 
 
@@ -1094,20 +1126,21 @@ def profit_section(D):
     verdict = ('<p class="verdict %s"><strong>%s.</strong> %d tip%s priced %s: %d went up, %d went to zero, together <strong>%s</strong> on %s staked (%s per 20).%s</p>' % (
         "good" if yes else "bad", "Yes, so far" if yes else "No, not so far", s["n"], "s" if s["n"] != 1 else "", label, s["up"], s["zero"],
         fmt_amt(s["tot"], True), fmt_amt(staked), fmt_amt(s["tot"] / s["n"], True),
-        (" Sold at +%d%% the moment a window hit it (%d of %d did; %d had candles, the rest held to the end): %s together." % (round(100 * M.TAKE_PROFIT), s["hit"], s["n"], len(s["tp"]), fmt_amt(s["tpTot"], True))) if s["tp"] else ""))
+        (" Sold at +%d%% the first minute a candle closed there after the entry (%d of %d did; %d had candles, the rest held to the end): %s together." % (tp_pct(), s["hit"], s["n"], len(s["tp"]), fmt_amt(s["tpTot"], True))) if s["tp"] else ""))
     tiles = [tile("Profit so far, %s" % label, fmt_amt(s["tot"], True), "%d tips · %s staked · fake money, after fees" % (s["n"], fmt_amt(staked)), lead=True),
              tile("Tips that went up", "%d of %d" % (s["up"], s["n"]), "a profit after fees needs about +8.5%"),
              tile("Tips that went to zero", "%d of %d" % (s["zero"], s["n"]), "under 2% of the entry price")]
     if s["tp"]:
-        tiles.append(tile("Sold at +%d%% when hit" % round(100 * M.TAKE_PROFIT), fmt_amt(s["tpTot"], True), "%d of %d tips reached it · %d had candles, the rest held to the end" % (s["hit"], s["n"], len(s["tp"]))))
+        tiles.append(tile("Sold at +%d%% when reached" % tp_pct(), fmt_amt(s["tpTot"], True), "%d of %d tips reached it · %d had candles, the rest held to the end" % (s["hit"], s["n"], len(s["tp"]))))
     html_ = '<section class="hero">%s</section>' % "".join(tiles)
     trs = []
     for key_, hours_, label_, pts_ in rows:
         st_ = profit_stats(pts_)
-        trs.append('<tr><td>%s</td><td class="n" data-k="tips priced">%d</td><td class="n" data-k="went up">%d</td><td class="n" data-k="to zero">%d</td><td class="n" data-k="together"><span class="%s">%s</span></td><td class="n" data-k="per 20">%s</td><td class="n" data-k="sold at +50%% when hit">%s</td></tr>' % (
-            E(label_), st_["n"], st_["up"], st_["zero"], "good" if st_["tot"] > 0 else "bad", fmt_amt(st_["tot"], True), fmt_amt(st_["tot"] / st_["n"], True),
+        trs.append('<tr><td>%s</td><td class="n" data-k="tips priced">%d</td><td class="n" data-k="went up">%d</td><td class="n" data-k="to zero">%d</td><td class="n" data-k="together"><span class="%s">%s</span></td><td class="n" data-k="per 20">%s</td><td class="n" data-k="sold at +%d%% when reached">%s</td></tr>' % (
+            E(label_), st_["n"], st_["up"], st_["zero"], "good" if st_["tot"] > 0 else "bad", fmt_amt(st_["tot"], True), fmt_amt(st_["tot"] / st_["n"], True), tp_pct(),
             (fmt_amt(st_["tpTot"], True) + " (%d of %d with candles)" % (len(st_["tp"]), st_["n"])) if st_["tp"] else "–"))
-    table = '<div class="tbl"><table><thead><tr><th>priced</th><th class="n">tips</th><th class="n">went up</th><th class="n">to zero</th><th class="n">together</th><th class="n">per 20</th><th class="n">sold at +%d%% when hit</th></tr></thead><tbody>%s</tbody></table></div>' % (round(100 * M.TAKE_PROFIT), "".join(trs))
+    table = '<div class="tbl"><table><thead><tr><th>priced</th><th class="n">tips</th><th class="n">went up</th><th class="n">to zero</th><th class="n">together</th><th class="n">per 20</th><th class="n">sold at +%d%% when reached</th></tr></thead><tbody>%s</tbody></table></div>' % (tp_pct(), "".join(trs))
+    table += "".join(tp_levels_txt(pts_, label_) for _, _, label_, pts_ in rows)
     chart = ""
     by_t = {}
     for t, o in pts:                       # a scan that named two coins is one point: the running total after that scan
@@ -1116,10 +1149,10 @@ def profit_section(D):
         run, run_tp, series, series_tp = 0.0, 0.0, [], []
         for t in sorted(by_t):
             run += sum(M.num(o["eur"]) for o in by_t[t])
-            run_tp += sum((M.num(o["tp"]) if M.num(o.get("tp")) is not None else M.num(o["eur"])) for o in by_t[t])
+            run_tp += sum((tp_val(o) if tp_val(o) is not None else M.num(o["eur"])) for o in by_t[t])
             series.append((t, round(run, 2)))
             series_tp.append((t, round(run_tp, 2)))
-        ser = [("profit %s, sold at the end" % label, "s1", series)] + ([("sold at +%d%% when hit" % round(100 * M.TAKE_PROFIT), "s2", series_tp)] if s["tp"] else [])
+        ser = [("profit %s, sold at the end" % label, "s1", series)] + ([("sold at +%d%% when reached" % tp_pct(), "s2", series_tp)] if s["tp"] else [])
         legend = ('<div class="legend">%s<span class="ref-leg">break-even</span></div>' % "".join('<span style="--c:var(--%s)">%s</span>' % (cls, E(name)) for name, cls, _ in ser)) if len(ser) > 1 else '<div class="legend"><span class="ref-leg">break-even</span></div>'
         chart = chart_box(line_chart(ser, 0.0, WIDE, ref_label="break-even", aria_label="Running profit of the tips"), line_chart(ser, 0.0, NARROW, ref_label="break-even", aria_label="Running profit of the tips"), legend)
     chain = compound_chain(D.get("track_all") or D.get("track") or [])
