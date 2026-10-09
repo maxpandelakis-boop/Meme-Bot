@@ -580,6 +580,16 @@ def main():
           and M.entry_min({"t": 1000, "pricedAt": 1000 + 23 * 60000}) == 23.0 and M.entry_min({"t": 1000}, {"note": "Prices of 16 candidates refreshed 26 minutes after the scan started, right before the pick."}) == 26.0
           and M.entry_min({"t": 1000}, {"note": "Scanned 900 coins."}) is None and M.entry_min({"t": 1000, "pricedAt": 1000 + 5 * H}) is None,
           "take-profit replay: a close after the entry price sells at the level; wicks and candles before the entry do not (%s)" % o_tp.get("tpMin"))
+    spk = M.GATE_SPIKE
+    try:      # the 2h profile's spike cap, checked in this process without switching the whole profile
+        M.GATE_SPIKE = M.PROFILES["2h"]["GATE_SPIKE"]
+        g_base = {"price": 0.001, "mc": 500_000.0, "liq": 60_000.0, "vol24": 400_000.0, "age_h": 10.0}
+        g_pr = {"symbol": "HOTX", "name": "Hot", "dexId": "pumpswap", "chgH1": 5.0, "chgH6": 95.0, "chgH24": 300.0}
+        g_hot, g_calm = M.gates(g_pr, g_base, {}), M.gates(dict(g_pr, chgH6=40.0), g_base, {})
+    finally:
+        M.GATE_SPIKE = spk
+    check("spike" in g_hot and "spike" not in g_calm and M.PROFILES["2h"]["GATE_SPIKE"]["chgH6"] == 90.0,
+          "2h profile: a coin up 95% in 6 hours is still in its pump and fails the spike gate, one up 40% does not")
     bdoc = {"t": 1000, "outs": {"1": {"picks": [{"sym": "T", "mult": 0.45, "eur": M.tip_net(0.45), "path": pth, "cv": M.CANDLE_V}, {"sym": "N", "mult": 1.0, "eur": -1.62}]}}}
     bnew, bch = M.backfill_tp(bdoc, 18.0)
     bo = bnew["outs"]["1"]["picks"]

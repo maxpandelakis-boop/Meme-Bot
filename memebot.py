@@ -169,10 +169,16 @@ PROFILES = {
         # market-cap band in both halves of the data (-2.39 per 20, 3.7% to zero) and gave the bot its two near-total losses
         # (BULLCRAFT, OMEN); coins 3 to 6 hours old lost -5.61 per 20 with 11.6% to zero. With both floors raised the current gate's
         # pick improved from -1.39 to -1.13 per 20 (k=1) and the gate's coins as a whole from -2.03 to -1.32, in both halves.
+        # A coin up 90% or more in the last 6 hours is still in its pump, and that is where the tips died (2026-10-09 review of 50
+        # tips): 5 of the 7 coins that went to zero or lost most of it within 2 hours (PPAV, Mr Beast, SPAWN, GOMOCAT, CatTok) had
+        # risen 95-297% in 6 hours; of the winners only ECSTASY had (+119%, it made +0.69), not Babem (+30%), CLAUDIA or OWLNIGHT.
+        # In the big test (76,019 coin results, 49 scans) such coins 6-24 hours old fell below half their price within 2 hours 2.6
+        # times as often (20.0% vs 7.8%; 16.7% vs 4.3% among the gate passers; in both halves of the data; coin bootstrap of the
+        # difference +5 to +23 points). They also multiply more often, so the average gain is not proven, only the crash risk.
         "RULE": "m9-2h", "GATE_MC": (100_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 6.0, "GATE_MAX_AGE_H": 24.0,
         "GATE_MIN_BUYRATIO1H": None, "GATE_MIN_VOL1SHARE": None, "GATE_CRASH": {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0},
         "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0, "MIN_LP_LOCKED": 90.0, "MAX_CREATOR_PCT": 5.0,
-        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 600.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
+        "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 90.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,

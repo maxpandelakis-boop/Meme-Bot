@@ -286,11 +286,19 @@ walk-forward test runs; on GitHub Actions that is about a day of hourly scans. I
 
 `--horizon 24h` (default) looks for coins that survive a day: liquidity, holders, no crash, re-priced 24 hours later.
 `--horizon 2h` looks for coins that may pump in the next two hours: 6 to 24 hours old, market cap $100k to $2M, at least
-$15k of liquidity and of 24h volume, no crash or spike, no whale above 20%, at most 10 insider wallets; buys versus sells
+$15k of liquidity and of 24h volume, no crash, not up 90% or more in the last 6 hours (or 200% in the last hour), no whale
+above 20%, at most 10 insider wallets; buys versus sells
 and the last hour's volume share are scored, not gated (the gate audit showed they rejected 11,000 coins a scan while a
 high buyer ratio went with going to zero); scored by momentum
 and holder growth; every scan is re-priced 2 hours later, so the learned weights target exactly that outcome. Each profile
 learns only from its own results. Expect most 2-hour picks to lose and a few to multiply; the big test shows the split.
+
+The 6-hour cap came from the review of the first 50 tips (2026-10-09): 5 of the 7 coins that went to zero or lost most
+of it within 2 hours had already risen 95-297% in the 6 hours before the tip; of the winners only ECSTASY had (+0.69).
+In the big test, coins 6 to 24 hours old that were up 90% or more in 6 hours fell below half their price within 2 hours
+2.6 times as often as the rest (20% against 8%, in both halves of the data). They also multiply more often, so the cap is
+proven to cut crashes, not yet to raise the average. A coin that rugs out of a calm climb (CLAUDIA, +44% over 14 hours,
+then -99.5% within one hour on 2026-10-09) shows nothing in these numbers beforehand; only an exit rule protects against that.
 
 The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
 off), so a running laptop picks up updates without anyone touching it.
