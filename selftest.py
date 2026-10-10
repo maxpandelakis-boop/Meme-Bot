@@ -712,15 +712,17 @@ def main():
           and sorted(p["addr"] for p in youngs.values()) == sorted(y["addr"] for y in yrec[:5]) and all(p.get("ticket") == M.YOUNG_TICKET == 3.0 for p in youngs.values())
           and [y.get("bought") for y in yrec[:5]] == [3.0] * 5 and all("bought" not in y for y in yrec[5:])
           and all(p.get("paper") == M.PAPER_RULE and M.num(p.get("px")) and p.get("pair") and p.get("t") == T0 for p in hp.values())
-          and all(re.match(r"^\d{4}-\d\d-\d\dT\d{4}-[hy]-", pid) for pid in hp) and all(M.num(p.get("ageMin")) is not None for p in youngs.values())
+          and all(re.match(r"^\d{4}-\d\d-\d\dT\d{6}-[hy]-", pid) for pid in hp) and all(M.num(p.get("ageMin")) is not None for p in youngs.values())
           and st_r.get("paperRule") == M.PAPER_RULE and st_r.get("paperSince") == T0 and (st_r.get("paper") or {}).get("invested") == 65.0 and (st_r.get("paper") or {}).get("nOpen") == 6
-          and "bought as a paper position: %s (50.00)" % rec["picks"][0]["sym"] in note_r and "New launches: bought" in note_r,
+          and "bought as a paper position: %s (50\u00a0€)" % rec["picks"][0]["sym"] in note_r and "New launches: bought" in note_r and "for 3\u00a0€ each" in note_r
+          and "(1 top pick, 5 new launches)" in note_r,
           "one cycle buys the top pick for 50 and the first 5 new launches for 3 each, the second pick and the other new launches stay tips (%s; %s)" % (
               [(p.get("sym"), p.get("grp"), p.get("ticket")) for p in hp.values()], [(y.get("sym"), y.get("bought")) for y in yrec[:7]]))
     curve_r = sorted(load_dir(rd, "memecurve").values(), key=lambda c: c["t"])
     check("How a coin is sold" in page and "the first minute candle that closes at 11 times the entry price" in page and "Failing a filter sells nothing" in page
-          and "bought for 50 €" in page and "bought for 3 €" in page and "top pick · 50 €" in page and "new launch · 3 €" in page and "profit/loss since the restart" in page
-          and "held 0 min of 6h" in page and 'class="tk st"' in page and "sells +1000%" in page and "paper position" in page and "1 top pick · 5 new launches" in page
+          and "bought for 50\u00a0€" in page and "bought for 3\u00a0€" in page and "top pick · 50\u00a0€" in page and "new launch · 3\u00a0€" in page and "profit/loss since the restart" in page
+          and "held 0 min of 6h" in page and 'class="tk st"' in page and "sells +1000%" in page and "stop −30%" in page and "paper position" in page and "1 top pick · 5 new launches" in page
+          and "sold at the first scan after about" in page and "at the latest" not in page and "sells when a minute candle closes at" in page
           and curve_r and curve_r[-1].get("paper", {}).get("invested") == 65.0 and set(curve_r[-1]["paper"]) == {"invested", "back", "open", "pnl", "n"},
           "page: the paper account, one row per position with its group and ticket, the price bar from the stop to the take-profit, the 6-hour clock, the rule text; the curve doc carries the account")
     check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
@@ -843,12 +845,13 @@ def main():
     again = [pid for pid, p in Pz.items() if p.get("addr") == tp_c["addr"] and pid != old1]
     old_back = round(max(0.0, (20 - M.fee(20)) * 1.3 - M.fee((20 - M.fee(20)) * 1.3)), 2)
     check(rz.returncode == 0 and resets == sorted([(old1, old_back), ("old-gone", 0.0)]) and abs(next(e["px"] for e in ze.values() if e["pos"] == old1) - now_px) < 1e-12
-          and st_z.get("paperRule") == M.PAPER_RULE and st_z.get("paperSince") == T0 + 3 * 60000 and "restarted under the rule" in (st_z.get("note") or "")
+          and st_z.get("paperRule") == M.PAPER_RULE and st_z.get("paperSince") == T0 + 3 * 60000 and "restarted under the new rules (the top pick for 50\u00a0€, new launches for 3\u00a0€, sold at +1000%, \u2212" in (st_z.get("note") or "")
           and len(again) == 1 and Pz[again[0]].get("grp") == "hold" and Pz[again[0]].get("ticket") == 50.0 and not Pz[again[0]]["_exits"] and len(Pz[old1]["_exits"]) == 1
           and sum(1 for p in Pz.values() if p.get("grp") == "young") == 5 and (st_z.get("paper") or {}).get("invested") == 65.0 and (st_z.get("paper") or {}).get("n") == 6,
           "the restart closed the two open old positions at this run's price with the old fees (%s), and the coin of one was bought again under a new id (%s, not %s)" % (resets, again, old1))
     check("Before the restart (5 trades)" in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
-          and "48-hour limit" in page_z and "old rule · 20 €" in page_z and "old rule · 17.27 €" in page_z and "Closed trades (0)" in page_z and "65.00" in page_z
+          and "48-hour limit" in page_z and "old rule · 20\u00a0€" in page_z and "old rule · 17.27\u00a0€" in page_z and "Closed trades (0)" in page_z and "65.00" in page_z
+          and "bought before the paper account restarted on " in page_z and "bought under the rules before" not in page_z
           and "nothing sold yet" in page_z and "−3.1% on 65.00 invested" in page_z,
           "page: the account counts from the restart, the five old trades sit behind the fold with their old rule and reasons")
     rz2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", zd, "--now", str(T0 + 4 * 60000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
@@ -862,6 +865,80 @@ def main():
     stz = subprocess.run([PY, os.path.join(HERE, "bot.py"), "status", "--dir", zd], capture_output=True, text=True)
     check(stz.returncode == 0 and "paper account since the restart (%s): invested 65.00" % M.PAPER_RULE in stz.stdout, "status prints the paper account (%s)" % (stz.stdout.splitlines()[1:2] or ["-"])[0][:110])
     shutil.rmtree(zd, ignore_errors=True)
+
+    # without candles the run's own price decides: any price at 11x or more is a take-profit booked at exactly 11x (CANDLE_MAX_X
+    # guards against glitch candles only); a restart run without a price for an old position books its last marked price, 0 only
+    # when it never had one
+    pd_ = tempfile.mkdtemp(prefix="memebot-runpx-")
+    for coll in ("memepos", "memeexit", "memebot", "memecurve"):
+        os.makedirs(os.path.join(pd_, "db", coll))
+    os.makedirs(os.path.join(pd_, "candles"))
+    a35, a12, a_old, a_old0 = "5" * 44, "6" * 44, "7" * 44, "8" * 44
+    pdocs = {"rp-35": {"grp": "young", "addr": a35, "sym": "RUN35", "t": T0, "px": 1.0, "ticket": 3.0, "rule": M.RULE, "paper": M.PAPER_RULE, "pair": "NOPOOL35"},
+             "rp-12": {"grp": "hold", "addr": a12, "sym": "RUN12", "t": T0, "px": 2.0, "ticket": 50.0, "rule": M.RULE, "paper": M.PAPER_RULE, "pair": "NOPOOL12"},
+             "rp-old": {"grp": "hold", "addr": a_old, "sym": "OLDMK", "t": T0 - 10 * H, "px": 0.002, "ticket": 20.0, "rule": M.RULE, "tp": 0.4},
+             "rp-old0": {"grp": "hold", "addr": a_old0, "sym": "OLDNONE", "t": T0 - 10 * H, "px": 0.002, "ticket": 20.0, "rule": M.RULE, "tp": 0.4}}
+    for pid, doc in pdocs.items():
+        json.dump(doc, open(os.path.join(pd_, "db", "memepos", pid + ".json"), "w"))
+    json.dump({"rule": M.RULE}, open(os.path.join(pd_, "db", "memebot", "state.json"), "w"))
+    json.dump({"t": T0, "px": {"rp-35": 1.0, "rp-12": 2.0, "rp-old": 0.0026}, "liq": {}, "miss": {}, "chk": {}, "cpx": {}}, open(os.path.join(pd_, "db", "memebot", "marks.json"), "w"))
+    json.dump([{"address": a, "symbol": sym, "name": sym, "dexId": "raydium", "pairAddress": "P" + a[:10], "priceUsd": px_, "liquidityUsd": 50000, "marketCap": 1e6, "volH24": 1e5, "chainId": "solana"}
+               for a, sym, px_ in ((a35, "RUN35", 35.0), (a12, "RUN12", 24.0))], open(os.path.join(pd_, "pairs.json"), "w"))
+    rp = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "run", "--dir", pd_, "--mode", "pick", "--recommend", "--now", str(T0 + H)], capture_output=True, text=True, cwd=HERE)
+    pex = {}
+    if rp.returncode == 0:
+        for w_ in json.load(open(os.path.join(pd_, "out", "manifest.json"))):
+            if w_["collection"] == "memeexit":
+                e_ = json.load(open(w_["file"]))
+                pex[e_["pos"]] = e_
+    e35, e12, e_old, e_old0 = (pex.get(k) or {} for k in ("rp-35", "rp-12", "rp-old", "rp-old0"))
+    check(rp.returncode == 0 and e35.get("why") == "tp" and e35.get("px") == 11.0 and e35.get("eur") == round(M.pos_value(pdocs["rp-35"], 1.0, 11.0), 2) == 31.58 and "at" not in e35
+          and e12.get("why") == "tp" and e12.get("px") == 22.0 and e12.get("eur") == round(M.pos_value(pdocs["rp-12"], 1.0, 11.0), 2),
+          "no candles: a run price of 35x is a take-profit booked at 11x (%s back for 3), 12x as well (%s back for 50) (%s)" % (
+              e35.get("eur"), e12.get("eur"), (rp.stderr.strip().splitlines() or ["ok"])[-1][:100] if rp.returncode else "ok"))
+    check(e_old.get("why") == "reset" and e_old.get("px") == 0.0026 and e_old.get("eur") == round(M.pos_value(pdocs["rp-old"], 1.0, 1.3), 2) == 24.14
+          and e_old0.get("why") == "reset" and e_old0.get("px") == 0 and e_old0.get("eur") == 0,
+          "the restart without a price this run books an old position at its last marked price (%s back), and at 0 only when it never had one (%s)" % (
+              e_old.get("eur"), e_old0.get("eur")))
+    shutil.rmtree(pd_, ignore_errors=True)
+    # exits grouped by position once: positions_from and curve_point read the exit docs once instead of once per position and give
+    # what a pass per position gave; the closed-trades fold lists the newest CLOSED_SHOWN with the count per reason over all of them
+    class CountingDocs(dict):
+        n = 0
+
+        def values(self):
+            CountingDocs.n += 1
+            return dict.values(self)
+    whys = ("tp", "stop", "time", "rug")
+    many_pos = {"m%04d" % i: {"grp": "young", "addr": "x", "sym": "MANY%d" % i, "t": T0 + i, "px": 1.0, "ticket": 3.0, "rule": M.RULE, "paper": M.PAPER_RULE} for i in range(250)}
+    many_ex = CountingDocs({"m%04d-1" % i: {"pos": "m%04d" % i, "t": T0 + H + i, "px": 0.5, "frac": 1.0, "why": whys[i % 4], "eur": 1.0, "grp": "young"} for i in range(250)})
+    pf = M.positions_from(many_pos, many_ex)
+    n_pf = CountingDocs.n
+    cp = M.curve_point(many_pos, many_ex, {}, T0 + 2 * H, T0)
+    n_cp = CountingDocs.n - n_pf
+    same_ex = all(pf[pid]["_exits"] == sorted([e for e in dict.values(many_ex) if e.get("pos") == pid], key=lambda e: e.get("t", 0)) and pf[pid]["_left"] == 0.0 for pid in many_pos)
+    check(n_pf == 1 and n_cp == 2 and same_ex and cp["g"]["young"]["n"] == 250 and cp["g"]["young"]["net"] == -500.0 and cp["paper"]["n"] == 250 and cp["paper"]["pnl"] == -500.0
+          and cp["equity"] == M.BUDGET and M.exit_word("manual", "young") == "sold by hand",
+          "the exits are grouped by position once (%d pass for positions_from, %d for curve_point, the same exits as a pass per position); the curve's equity is pick mode's bankroll only" % (n_pf, n_cp))
+    md2 = tempfile.mkdtemp(prefix="memebot-many-")
+    for coll, docs_ in (("memepos", many_pos), ("memeexit", dict(many_ex))):
+        os.makedirs(os.path.join(md2, "db", coll))
+        for k, v in docs_.items():
+            json.dump(v, open(os.path.join(md2, "db", coll, k + ".json"), "w"))
+    os.makedirs(os.path.join(md2, "db", "memebot"))
+    json.dump({"paperSince": T0, "paperRule": M.PAPER_RULE}, open(os.path.join(md2, "db", "memebot", "state.json"), "w"))
+    D_many = R_.collect(md2, T0 + 2 * H)
+    fold = R_.closed_fold(D_many["paper"]["closed"])
+    check(len(D_many["paper"]["closed"]) == 250 and fold.count("<tr><td>") == R_.CLOSED_SHOWN == 100 and "<strong>MANY249</strong>" in fold and "<strong>MANY149</strong>" not in fold
+          and "250 sold, by reason: " in fold and "stop-loss −30% (63)" in fold and "take-profit +1000% (63)" in fold and "6-hour limit (62)" in fold
+          and "rug: the price or the liquidity is gone (62)" in fold and "the newest 100 are listed below" in fold,
+          "the closed-trades fold lists the newest 100 of 250 and counts all 250 by reason")
+    yd = {"rec": {"young": [{"sym": "Y%d" % i, "name": "y", "addr": "Y%d" % i, "ageMin": 10, "score": 50, "bought": 3.0 if i < 5 else None} for i in range(7)]},
+          "open": [{"p": {"grp": "young", "addr": "Y6", "paper": M.PAPER_RULE, "t": T0, "ticket": 3.0}, "ticket": 3.0, "pnl": -0.2}], "now": T0, "young_hist": []}
+    ysec = R_.young_section(yd)
+    check(ysec.count("already held</span>") == 1 and ysec.count("bought for 3\u00a0€</span>") == 5,
+          "a held new launch below the first five is marked already held on the tab too")
+    shutil.rmtree(md2, ignore_errors=True)
 
     print("== DexScreener out: Jupiter and GeckoTerminal data stand in, the scan still names a coin")
     sd = tempfile.mkdtemp(prefix="memebot-standin-")

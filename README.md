@@ -162,8 +162,9 @@ sold it may be bought again the next time it is named. Every position is sold, a
   a close over 30x is a glitch.
 * **stop-loss -30%** (`HOLD_STOP`): the first minute candle that closes at 70% of `cpx` or lower, booked at that close
   (a crash through the level fills worse, never better). Whichever of the two levels closes first wins. A run without
-  new candles for the coin checks both levels on its own DexScreener price.
-* **time**: the first run 6 hours after the buy (`HOLD_MAX_H`, counted from 15 minutes before, like the tip checks), at its price.
+  new candles for the coin checks both levels on its own DexScreener price (any price at 11x or more is a take-profit,
+  booked at 11x: the 30x glitch guard is for candles only).
+* **time**: the first scan after about 6 hours (`HOLD_MAX_H`, counted from 15 minutes before, like the tip checks), at its price.
 * **a rug**: no price in two runs in a row, or the pool's liquidity under $1,000 (sold at 0).
 
 Failing a filter sells nothing any more. Paper trades pay 1% per trade, at least 0.10 (`PAPER_FEE_PCT`, `PAPER_FEE_MIN`);
@@ -171,9 +172,11 @@ the tip record, the big test and the training keep 0.5%, at least 0.81, so their
 every open position are fetched each hour, held coins first (up to 60 pools, beside the scan).
 
 The account restarted from zero with v2: the first run that finds another `paperRule` in `state.json` closes every
-position the old rule still held at that run's price (why `reset`, old fees) and writes `paperSince`; from then on the page's
+position the old rule still held at that run's price (without one, at its last marked price; 0 only when it never had
+one; why `reset`, old fees) and writes `paperSince`; from then on the page's
 account (invested, returned, open value, profit/loss, the curve from `memecurve` "paper") counts only positions bought at or
 after it, and the older trades sit behind a fold "Before the restart". Nothing is deleted, and the restart happens once.
+Each closed-trades fold counts its trades by reason and lists the newest 100.
 
 ### Is the bot making money?
 

@@ -107,7 +107,7 @@ HOLD_TP = 10.0           # take-profit +1000%: the first minute candle that CLOS
                          # DexScreener's price cannot fake a sale); booked at exactly 11x the entry price
 HOLD_STOP = 0.30         # stop-loss -30%: the first minute candle that closes at 0.70x cpx or below; booked at min(close/cpx, 0.70) x the
                          # entry price (a crash through the level fills worse, never better). Without candles this run, both on the run's price
-HOLD_MAX_H = 6.0         # time: the first run 6 hours after the buy sells at that run's price. Rug (no price twice, liquidity under $1,000) stays
+HOLD_MAX_H = 6.0         # time: the first run after about 6 hours (from TIP_SLACK_H before) sells at that run's price. Rug (no price twice, liquidity under $1,000) stays
 HOLD_COOL_H = 0.0        # no cooldown after a sale any more; failing a filter sells nothing any more either
 PAPER_FEE_PCT, PAPER_FEE_MIN = 0.01, 0.10   # paper positions pay 1%, at least 0.10, per trade; the tip record, the big test and the
                          # training keep FEE_PCT/FEE_MIN so their history stays comparable
@@ -241,6 +241,11 @@ def fee(amount):
     return max(FEE_PCT * amount, FEE_MIN) if amount > 0 else 0.0
 
 
+def eur_text(v):
+    """A paper amount as the user named the tickets: 50 €, 3 €, 16.38 € (a no-break space keeps the € with its number)."""
+    return ("%g\u00a0€" % v) if v == int(v) else ("%.2f\u00a0€" % v)
+
+
 def paper_fee(amount):
     """A paper position's fee per trade: 1%, at least 0.10."""
     return max(PAPER_FEE_PCT * amount, PAPER_FEE_MIN) if amount > 0 else 0.0
@@ -291,11 +296,21 @@ def x_link(pr):
 
 
 # ---------------------------------------------------------------- saved state
+def exits_by_pos(exit_docs):
+    """The exit docs grouped by their position id, once (in the docs' own order): every lookup of a position's exits is then a dict
+    lookup instead of a pass over every exit ever booked (thousands after a few weeks of the paper account)."""
+    by = {}
+    for e in exit_docs.values():
+        by.setdefault(e.get("pos"), []).append(e)
+    return by
+
+
 def positions(d):
     pos, exits = load_docs(d, "memepos"), load_docs(d, "memeexit")
+    by = exits_by_pos(exits)
     for pid, p in pos.items():
         p["_id"] = pid
-        p["_exits"] = sorted([e for e in exits.values() if e.get("pos") == pid], key=lambda e: e.get("t", 0))
+        p["_exits"] = sorted(by.get(pid, []), key=lambda e: e.get("t", 0))
         p["_left"] = max(0.0, 1.0 - sum(num(e.get("frac")) or 0 for e in p["_exits"]))
     return pos
 
@@ -2466,7 +2481,8 @@ def snap_result(c, pairs):
 
 
 EXIT_WORDS = {"tp": "take-profit +%d%%" % round(100 * HOLD_TP), "stop": "stop-loss -%d%%" % round(100 * HOLD_STOP), "time": "%d-hour limit" % round(HOLD_MAX_H),
-              "rug": "rug: the price or the liquidity is gone", "reset": "closed at the restart", "filters": "failed the filters"}
+              "rug": "rug: the price or the liquidity is gone", "reset": "closed at the restart", "filters": "failed the filters",
+              "manual": "sold by hand"}
 
 
 def exit_word(why, grp):
@@ -2479,12 +2495,13 @@ def curve_point(pos_docs, exit_docs, px, t, since=None):
     what was paid (each position with its own fees), the pick-mode bankroll's equity, and "paper": the paper account since the
     restart (paper_account at this run's prices), which the page draws as profit or loss since the restart."""
     g = {k: {"net": 0.0, "n": 0} for k in ("pick", "rand", "early", "erand", "hold", "young")}
+    by = exits_by_pos(exit_docs)
     for pid, p in pos_docs.items():
         grp = p.get("grp")
         if grp not in g or (num(p.get("t")) or 0) > t:
             continue
         ticket, entry = num(p.get("ticket")) or TICKET, num(p.get("px"))
-        ex = [e for e in exit_docs.values() if e.get("pos") == pid and (num(e.get("t")) or 0) <= t]
+        ex = [e for e in by.get(pid, []) if (num(e.get("t")) or 0) <= t]
         left = max(0.0, 1.0 - sum(num(e.get("frac")) or 0 for e in ex))
         cash, last, open_val = sum(num(e.get("eur")) or 0 for e in ex), num((px or {}).get(pid)), 0.0
         if left > 1e-6 and last and entry:
@@ -2497,7 +2514,7 @@ def curve_point(pos_docs, exit_docs, px, t, since=None):
     acct = paper_account(positions_from(pos_docs, exit_docs), since, px)
     return {"t": t, "bot": round(bot, 2), "rand": round(g["rand"]["net"] + g["erand"]["net"], 2),
             "nBot": sum(g[k]["n"] for k in BOT_GROUPS), "nRand": g["rand"]["n"] + g["erand"]["n"], "g": g, "rule": RULE,
-            "budget": BUDGET, "equity": round(BUDGET + bot, 2),
+            "budget": BUDGET, "equity": round(BUDGET + sum(g[k]["net"] for k in BANK_GROUPS), 2),
             "paper": {k: acct[k] for k in ("invested", "back", "open", "pnl", "n")}}
 
 
@@ -2542,7 +2559,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
 
     # ---------- exits ----------
     # a new paper rule restarts the paper account once: every open paper position bought under an older rule is closed at this run's
-    # price (0 when there is none) with why "reset" and its own (old) fees; from then on the account counts positions from paperSince
+    # price (without one, at its last marked price; 0 only when it never had one) with why "reset" and its own (old) fees; from then on
+    # the account counts positions from paperSince
     restart = str(state.get("paperRule") or "") != PAPER_RULE
     paper_since = int(min([now] + [num(p.get("t")) or now for p in pos.values() if p.get("paper") == PAPER_RULE])) if restart else int(num(state.get("paperSince")) or now)
     n_reset = 0
@@ -2560,7 +2578,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
 
         paper = p.get("grp") in PAPER_GROUPS
         if paper and restart and p.get("paper") != PAPER_RULE:
-            sell(left, price or 0.0, "reset"); n_reset += 1
+            sell(left, price or num((marks.get("px") or {}).get(pid)) or 0.0, "reset"); n_reset += 1
             continue
         hc = {"fresh": False}
         if paper:
@@ -2584,9 +2602,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             sell(left, 0.0, "rug"); continue
         mult, age_d = price / entry, (now - (num(p.get("t")) or now)) / DAY
         if paper:
-            # no candle came in this run: the take-profit and the stop are checked on the run's own price; then the 6-hour limit (counted
-            # from TIP_SLACK_H before it, like the tip checks: the hourly run 6 hours later may start a minute early)
-            if not hc["fresh"] and 1.0 + HOLD_TP <= mult <= CANDLE_MAX_X:
+            # no candle came in this run: the take-profit and the stop are checked on the run's own price (no upper bound: CANDLE_MAX_X
+            # guards against glitch candles only, and the sale is booked at 11x anyway); then the 6-hour limit, counted from TIP_SLACK_H
+            # before it like the tip checks, so it sells at the first scan after about 6 hours (the hourly run 6 hours later may start early)
+            if not hc["fresh"] and mult >= 1.0 + HOLD_TP:
                 sell(left, entry * (1.0 + HOLD_TP), "tp")
             elif not hc["fresh"] and mult <= 1.0 - HOLD_STOP:
                 sell(left, price, "stop")
@@ -2734,10 +2753,13 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             cooling = {p.get("addr") for p in cur.values() if p.get("grp") in PAPER_GROUPS and p["_exits"] and now - (num(p["_exits"][-1].get("t")) or 0) < HOLD_COOL_H * 3_600_000}
             pa, bought = priced_at(d, now), {}
 
+            pid_t = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%dT%H%M%S")
+
             def buy(r, grp, ticket, rtxt, **extra):
-                """One paper position: its id carries the run's minute, so a coin bought again later never shares an id (or exits) with its old position."""
+                """One paper position: its id carries the run's second, so a coin bought again later (even by a run started in the same
+                minute) never shares an id (or exits) with its old position."""
                 a, pr = r["a"], r["pr"]
-                pid = "%s-%s-%s-%s" % (run_id, "h" if grp == "hold" else "y", slug(pr.get("symbol")), a[:6])
+                pid = "%s-%s-%s-%s" % (pid_t, "h" if grp == "hold" else "y", slug(pr.get("symbol")), a[:6])
                 emit("memepos", pid, {"grp": grp, "addr": a, "sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48],
                                       "pair": pr.get("pairAddress"), "dex": pr.get("dexId"), "t": now, "entryAt": pa if (pa and pr.get("fresh")) else now,
                                       "px": r["basic"]["price"], "mc": r["basic"]["mc"], "liq": r["basic"]["liq"], "vol": r["basic"]["vol24"], "score": r["sc"],
@@ -2957,12 +2979,12 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             buys = [x for x in rs if isinstance(x.get("bought"), (int, float)) and not isinstance(x.get("bought"), bool)]
             other = ["%s %s" % (x["sym"], "already held" if x.get("bought") == "held" else "not bought: " + str(x.get("bought"))) for x in rs if x not in buys and x.get("bought")]
             parts.append("Recommended " + ", ".join("%s (score %.0f)" % (x["sym"], x["score"]) for x in rs) + " for the next %s" % HORIZON +
-                         ("; bought as a paper position: %s" % ", ".join("%s (%.2f)" % (x["sym"], x["bought"]) for x in buys) if buys else "") +
+                         ("; bought as a paper position: %s" % ", ".join("%s (%s)" % (x["sym"], eur_text(x["bought"])) for x in buys) if buys else "") +
                          ("; %s" % "; ".join(other) if other else "") + ("." if (buys or other) else "; nothing bought (recommend mode)."))
             ys = [x for x in picks_done if x["grp"] == "young"]
             yb = [x for x in ys if x.get("bought") != "held"]
             if ys:
-                parts.append("New launches: " + ("bought %s for %.2f each" % (", ".join(str(x["sym"]) for x in yb), YOUNG_TICKET) if yb else "nothing new bought") +
+                parts.append("New launches: " + ("bought %s for %s each" % (", ".join(str(x["sym"]) for x in yb), eur_text(YOUNG_TICKET)) if yb else "nothing new bought") +
                              ("; already held: %s" % ", ".join(str(x["sym"]) for x in ys if x not in yb) if len(yb) < len(ys) else "") + ".")
         elif recommend:
             parts.append("No recommendation: no top coin had a clean safety report." if gated else "No recommendation: nothing passed the gates.")
@@ -2989,8 +3011,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         if n_open and not exits_done:
             parts.append("Nothing hit a sell rule.")
     if n_reset:
-        parts.append("The paper account restarted under the rule %s: %d position%s bought under the old rule %s closed at this run's price (reset)."
-                     % (PAPER_RULE, n_reset, "" if n_reset == 1 else "s", "was" if n_reset == 1 else "were"))
+        parts.append("The paper account restarted under the new rules (the top pick for %s, new launches for %s, sold at +%d%%, \u2212%d%% or at the first scan "
+                     "after about %d hours): %d position%s bought under the old rule %s closed at this run's price (reset)."
+                     % (eur_text(TOP_TICKET), eur_text(YOUNG_TICKET), round(100 * HOLD_TP), round(100 * HOLD_STOP), round(HOLD_MAX_H),
+                        n_reset, "" if n_reset == 1 else "s", "was" if n_reset == 1 else "were"))
     if exits_done:
         parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in BOT_GROUPS else "random", exit_word(x["why"], x["grp"]), x["eur"]) for x in exits_done) + ".")
     if rec_scored:
@@ -3020,8 +3044,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     cash_after = bankroll(pos_after)
     acct = paper_account(pos_after, paper_since, new_marks["px"])
     if recommend:
-        parts.append("Paper account since the restart: %d open (%d top pick, %d new launches), invested %.2f, %.2f back, %.2f if sold now, %+.2f." % (
-            acct["nOpen"], acct["nTop"], acct["nYoung"], acct["invested"], acct["back"], acct["open"], acct["pnl"]))
+        parts.append("Paper account since the restart: %d open (%d top pick, %d new launch%s), invested %.2f, %.2f back, %.2f if sold now, %+.2f." % (
+            acct["nOpen"], acct["nTop"], acct["nYoung"], "" if acct["nYoung"] == 1 else "es", acct["invested"], acct["back"], acct["open"], acct["pnl"]))
     else:
         parts.append("Bankroll: %.2f free of %.0f, %d open." % (cash_after["free"], BUDGET, cash_after["open"]))
     note = " ".join(parts)
@@ -3047,9 +3071,10 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
 def positions_from(pos_docs, exit_docs):
     """positions() over in-memory docs (saved docs plus the ones this run just emitted)."""
     pos = {pid: dict(p) for pid, p in pos_docs.items()}
+    by = exits_by_pos(exit_docs)
     for pid, p in pos.items():
         p["_id"] = pid
-        p["_exits"] = sorted([e for e in exit_docs.values() if e.get("pos") == pid], key=lambda e: e.get("t", 0))
+        p["_exits"] = sorted(by.get(pid, []), key=lambda e: e.get("t", 0))
         p["_left"] = max(0.0, 1.0 - sum(num(e.get("frac")) or 0 for e in p["_exits"]))
     return pos
 

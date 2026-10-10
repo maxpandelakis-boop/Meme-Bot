@@ -423,7 +423,8 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     for p in r["picks"]:
         if p["grp"] == "skipped":
             print("  SKIPPED  " + p["why"]); continue
-        print("  %s %-10s %-6s score %5.1f  %s" % ("RECOMMEND" if p["grp"] == "recommend" else "BUY ", p["sym"], p["grp"], p["score"], p.get("addr")))
+        held = p["grp"] == "young" and not (isinstance(p.get("bought"), (int, float)) and not isinstance(p.get("bought"), bool))   # a new launch already held
+        print("  %s %-10s %-6s score %5.1f  %s" % ("RECOMMEND" if p["grp"] == "recommend" else ("HELD" if held else "BUY "), p["sym"], p["grp"], p["score"], p.get("addr")))
         if p.get("why"):
             print("       " + p["why"])
     for e in r["exits"]:
@@ -752,8 +753,8 @@ def status(d):
     print("bankroll: %.2f free of %.0f  (spent %.2f, came back %.2f, %d open)" % (cash["free"], cash["budget"], cash["spent"], cash["back"], cash["open"]))
     if state.get("paperRule"):
         a = M.paper_account(pos, M.num(state.get("paperSince")), marks.get("px") or {})
-        print("paper account since the restart (%s): invested %.2f, came back %.2f, open %.2f, %+.2f  (%d open: %d top pick, %d new launches; %d closed: %d won, %d lost)" % (
-            state["paperRule"], a["invested"], a["back"], a["open"], a["pnl"], a["nOpen"], a["nTop"], a["nYoung"], a["nClosed"], a["won"], a["lost"]))
+        print("paper account since the restart (%s): invested %.2f, came back %.2f, open %.2f, %+.2f  (%d open: %d top pick, %d new launch%s; %d closed: %d won, %d lost)" % (
+            state["paperRule"], a["invested"], a["back"], a["open"], a["pnl"], a["nOpen"], a["nTop"], a["nYoung"], "" if a["nYoung"] == 1 else "es", a["nClosed"], a["won"], a["lost"]))
     equity = cash["free"]
     for pid, p in sorted(pos.items(), key=lambda kv: kv[1].get("t") or 0):
         ticket, entry = M.num(p.get("ticket")) or M.TICKET, M.num(p.get("px"))
