@@ -10,7 +10,7 @@ scores every snapshotted coin and the weights get learned. GMGN is mocked as blo
 In recommend mode the paper account buys the top pick for 50 and the first five new launches for 3 in one cycle, sells them at
 +1000% (11x), -30%, after 6 hours or as a rug (never for a failed filter), and its restart closes the old rule's positions once.
 """
-import glob, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
+import contextlib, glob, html, io, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,6 +55,9 @@ class Mock:
         self.by_a = {c["a"]: c for c in self.coins}
         self.now = T0
         self.hits = {}
+        self.log, self.search_n, self.ds429, self.on_rc = [], 30, False, None    # the launch spotter's checks: every path asked, fewer search hits, 429s, a RugCheck hook
+        self.wall = None          # a fixed wall clock (s) for the one answer stamped with the time of the request (Bitquery), so runs can be compared
+        self.hook = None          # the launch spotter's checks: hook(path) -> (code, body) answers a request instead of the mock (None: the mock answers)
 
     def pair(self, c):
         px = 0.0 if c["gone"] else c["px"] * c["mult"]
@@ -84,7 +87,7 @@ class Mock:
             c = self.by_a.get(mint)
             if not c:
                 return 200, {"data": {"Solana": {"DEXTradeByTokens": []}}}
-            stamp = lambda i: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 300 * i))
+            stamp = lambda i: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime((self.wall or time.time()) - 300 * i))
             trades = [{"Block": {"Time": stamp(i)}, "Trade": {"Side": {"Type": "buy" if i % 3 else "sell"}, "Amount": "1000", "AmountInUSD": str(50 + 10 * i), "PriceInUSD": "0.05",
                                                           "Account": {"Owner": "W%s%s" % (mint[:30], chr(65 + i) * 2)}, "Dex": {"ProtocolName": "pump_amm", "ProtocolFamily": "Pumpswap"}}, "Transaction": {"Signer": "S%s" % mint[:40]}}
                       for i in range(24)]
@@ -126,6 +129,11 @@ class Mock:
 
     def handle(self, path, query):
         self.hits[path.split("/")[1]] = self.hits.get(path.split("/")[1], 0) + 1
+        self.log.append(path)
+        if self.hook:
+            got = self.hook(path)
+            if got is not None:
+                return got
         q = urllib.parse.parse_qs(query)
         if "/__429" in path:
             self.n429 = getattr(self, "n429", 0) + 1
@@ -160,11 +168,13 @@ class Mock:
                 return 200, ([{"type": "tokenProfile", "status": "approved", "paymentTimestamp": T0 - 5 * H}] + ([{"type": "tokenAd", "status": "approved", "paymentTimestamp": T0 - H}] if i % 6 == 0 else [])) if i % 3 == 0 else []
             if p == "/latest/dex/search":
                 kw = q.get("q", [""])[0]
-                hits = [c for c in self.coins if c["kw"] == kw][:30]
+                hits = [c for c in self.coins if c["kw"] == kw][:self.search_n]
                 if not hits:
-                    rng = random.Random(kw); hits = rng.sample(self.coins, 30)
+                    rng = random.Random(kw); hits = rng.sample(self.coins, self.search_n)
                 return 200, {"pairs": [self.pair(c) for c in hits]}
             if p.startswith("/tokens/v1/solana/"):
+                if self.ds429:
+                    return 429, {"error": "rate limited"}
                 out = []
                 for a in p.rsplit("/", 1)[1].split(","):
                     if a in self.by_a and not self.by_a[a]["gone"]:
@@ -253,6 +263,8 @@ class Mock:
             items = "".join("<item><title>%s coin %s in the news</title><pubDate>%s</pubDate></item>" % (c["name"], c["sym"], time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime(T0 / 1000 - 3600 * i))) for i, c in enumerate(self.coins[8:12]))
             return 200, '<?xml version="1.0"?><rss version="2.0"><channel><title>g</title>%s</channel></rss>' % items
         m = re.match(r"^/api\.rugcheck\.xyz/v1/tokens/([^/]+)/report$", path)
+        if m and self.on_rc:
+            self.on_rc(path)
         if m and m.group(1) in self.by_a:
             c = self.by_a[m.group(1)]
             return 200, {"mint": c["a"], "score": 1500, "score_normalised": 12, "risks": c["risks"], "totalHolders": 1234, "tokenMeta": {"mutable": False},
@@ -349,6 +361,998 @@ def serve(mock):
     return srv
 
 
+TRADER_COLLS = ("memeyoung", "memerec", "memesnap", "memesnapres", "memepos", "memeexit", "memecurve", "memeruns", "memeweights")
+WALL_KEYS = ("pricedAt", "entryAt", "note", "paidAgeH", "tweetAgeH", "vt.ageH")   # fields the scan derives from the wall clock, not the fake one
+
+
+def trader_files(d):
+    """Every file the trader writes or reads back: the docs of check 1 of the spotter's build spec."""
+    out = {}
+    for coll in TRADER_COLLS:
+        for f in glob.glob(os.path.join(d, "db", coll, "*.json")):
+            out[os.path.relpath(f, d)] = f
+    for f in [os.path.join(d, "db", "memebot", n + ".json") for n in ("recommend", "state", "marks", "train")] + [os.path.join(d, "pairs.json"), os.path.join(d, "universe.json")]:
+        if os.path.exists(f):
+            out[os.path.relpath(f, d)] = f
+    return out
+
+
+def leaf_diff(a, b):
+    """The key names under which two JSON values differ."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        out = set()
+        for k in set(a) | set(b):
+            if a.get(k) != b.get(k):
+                sub = leaf_diff(a.get(k), b.get(k))
+                out |= {k} if sub == {"<value>"} else sub
+        return out
+    if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+        return set().union(*[leaf_diff(x, y) for x, y in zip(a, b)]) if a else set()
+    return set() if a == b else {"<value>"}
+
+
+def masked(v, keys):
+    if isinstance(v, dict):
+        return {k: masked(x, keys) for k, x in v.items() if k not in keys}
+    if isinstance(v, list):
+        return [masked(x, keys) for x in v]
+    return v
+
+
+@contextlib.contextmanager
+def profile(name):
+    """memebot's rules switched to a profile in this process, and back afterwards (apply_profile alone cannot go back to 24h)."""
+    import memebot as M
+    keys = set(M.PROFILES["2h"]) | {"HORIZON"}
+    saved = {k: getattr(M, k) for k in keys if hasattr(M, k)}
+    try:
+        M.apply_profile(name)
+        yield M
+    finally:
+        for k, v in saved.items():
+            setattr(M, k, v)
+
+
+WALL = T0 / 1000.0 + 300     # the frozen wall clock of the runs compared in check 1
+
+
+def frozen_env(e, base):
+    """The environment of a run whose wall clock (time.time) stands still at WALL: a sitecustomize module on PYTHONPATH (in base/frozen, the test's own
+    temporary folder, removed with it) sets it in every Python process
+    of the cycle. The mock's answers that depend on the time (creator sales, the on-chain sample, tweet ages, DEX-paid ages, Bitquery) and the features
+    computed from them then come out the same in every run, so two runs differ only where their code does (the hash seed is fixed too: some
+    weights tie, and their order in a note followed the set order of the process)."""
+    d = os.path.join(base, "frozen")
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "sitecustomize.py"), "w") as f:
+        f.write("import os, time\n_t = float(os.environ.get('MEMEBOT_TEST_WALL') or 0)\nif _t:\n    time.time = lambda: _t\n    time.time_ns = lambda: int(_t * 1e9)\n")
+    return dict(e, PYTHONPATH=d + (os.pathsep + e["PYTHONPATH"] if e.get("PYTHONPATH") else ""), MEMEBOT_TEST_WALL=repr(WALL), PYTHONHASHSEED="0")   # and set orders
+
+
+def spot_cycle(d, env=None, code=HERE, search_n=4, remote=None, frozen=False):
+    """One recommend cycle (2h profile, fake clock T0) on a fresh mock whose keyword searches find only search_n coins each, so the price desk
+    and the launch spotter both ask DexScreener for hundreds of addresses at the same time; frozen: the wall clock stands still (frozen_env).
+    Returns (process, seconds, mock)."""
+    mock = Mock()
+    mock.search_n = search_n
+    srv = serve(mock)
+    e = dict(os.environ, MEMEBOT_PAUSE="0")
+    e.update(env or {})
+    if frozen:
+        e = frozen_env(e, os.path.dirname(os.path.abspath(d)))
+        mock.wall = WALL
+    if remote:
+        e.update(MEMEBOT_LIVE="1", RESULTS_URL=remote)
+    t = time.time()
+    p = subprocess.run([PY, os.path.join(code, "bot.py"), "cycle", "--dir", d, "--mock", "http://127.0.0.1:%d" % srv.server_address[1], "--now", str(T0), "--recommend", "--horizon", "2h"],
+                       capture_output=True, text=True, encoding="utf-8", env=e)
+    srv.shutdown()
+    srv.server_close()
+    return p, time.time() - t, mock
+
+
+def git_live(remote):
+    r = subprocess.run(["git", "-C", remote, "show", "live:live.json"], capture_output=True, text=True, encoding="utf-8")
+    try:
+        return json.loads(r.stdout or "{}")
+    except ValueError:
+        return {}
+
+
+def b58(rng, suffix="pump"):
+    return "".join(rng.choice(ALPH) for _ in range(44 - len(suffix))) + suffix
+
+
+def spotter_checks(check):
+    """The launch spotter (radar.py) and the early list on the New launches tab: checks 1 to 14 of its build spec."""
+    import memebot as M
+    import fetch as F
+    import bot as B
+    import report as R
+    import radar as RD
+    rid = lambda t: time.strftime("%Y-%m-%dT%H%M", time.gmtime(t / 1000))
+    tmp = tempfile.mkdtemp(prefix="memebot-spot-")
+
+    print("== launch spotter 1: the trader's docs are the same with the spotter on and off")
+    remote_on, remote_off = os.path.join(tmp, "live-on.git"), os.path.join(tmp, "live-off.git")
+    for r_ in (remote_on, remote_off):
+        subprocess.run(["git", "init", "-q", "--bare", r_], check=True)
+    da, dc, db_ = (os.path.join(tmp, x) for x in ("off-a", "on-c", "off-b"))
+    pa, sa, _ = spot_cycle(da, {"MEMEBOT_EARLY": "0"}, frozen=True)
+    pc, sc, _ = spot_cycle(dc, {"MEMEBOT_EARLY": "1"}, remote=remote_on, frozen=True)
+    os.makedirs(db_, exist_ok=True)       # the second off run starts with a stale early list of an hour ago in its folder
+    json.dump({"v": 1, "t": T0 - H, "state": "listed", "rcState": "done", "coins": [{"addr": "StaLe" + "1" * 39, "sym": "STALE"}]}, open(os.path.join(db_, "young_early.json"), "w"))
+    pb, sb, _ = spot_cycle(db_, {"MEMEBOT_EARLY": "0"}, remote=remote_off, frozen=True)
+    fa, fb, fc = trader_files(da), trader_files(db_), trader_files(dc)
+    noise = set()
+    for k in set(fa) & set(fb):
+        noise |= leaf_diff(json.load(open(fa[k], encoding="utf-8")), json.load(open(fb[k], encoding="utf-8")))
+    raw = lambda f: open(f, "rb").read()
+    diffs = {k: sorted(leaf_diff(json.load(open(fa[k], encoding="utf-8")), json.load(open(fc[k], encoding="utf-8")))) or ["<bytes>"] for k in set(fa) & set(fc) if raw(fa[k]) != raw(fc[k])}
+    print("  noise between two runs without the spotter: %s; cycles %.1f s off, %.1f s on" % (sorted(noise), sa, sc))
+    check(pa.returncode == pb.returncode == pc.returncode == 0 and set(fa) == set(fb) == set(fc) and len(fa) > 15 and noise <= set(WALL_KEYS) and not diffs
+          and os.path.isfile(os.path.join(tmp, "frozen", "sitecustomize.py")) and not os.path.exists(os.path.join(tempfile.gettempdir(), "memebot-frozen-%d" % os.getpid())),
+          "the trader's %d docs (positions, tips, new launches, snapshots, weights, state, pairs.json, universe.json) are byte for byte the same with the"
+          " spotter on and off, no field masked %s" % (len(fa), diffs or ""))
+    off_c = json.load(open(os.path.join(dc, "db", "memebot", "office.json"), encoding="utf-8"))
+    off_a = json.load(open(os.path.join(da, "db", "memebot", "office.json"), encoding="utf-8"))
+    spot_a = {a["id"]: a for a in off_c["agents"]}.get("spotter") or {}
+    check(spot_a.get("bg") is True and spot_a.get("status") == "done" and "new launch" in (spot_a.get("out") or "") and "spotter" not in {a["id"] for a in off_a["agents"]}
+          and glob.glob(os.path.join(dc, "db", "memeearly", "*.json")) and not glob.glob(os.path.join(da, "db", "memeearly", "*.json")) and not os.path.exists(os.path.join(da, "young_early.json")),
+          "only the office record (the spotter's desk: %s), spotter.json and db/memeearly differ" % spot_a.get("out"))
+
+    print("== launch spotter 2: fetch.py's two new keyword arguments change nothing for the old callers")
+    h_ = F.Http(None, pause=0)
+    srv2 = serve(Mock())
+    u2 = "http://127.0.0.1:%d" % srv2.server_address[1]
+    mk = Mock()
+    addrs2 = [c["a"] for c in mk.coins[:40]] + ["JUPXFALLBACK" + "1" * 32]
+    dd = [os.path.join(tmp, "ds%d" % i) for i in range(3)]
+    F.ds_tokens(F.Http(u2, pause=0), dd[0], addrs2)
+    F.ds_tokens(F.Http(u2, pause=0), dd[1], addrs2, 0, "tokens", jup=True)
+    hj = F.Http(u2, pause=0)
+    F.ds_tokens(hj, dd[2], addrs2, jup=False)
+    files = lambda x: {os.path.relpath(f, x): open(f, "rb").read() for f in glob.glob(os.path.join(x, "**", "*"), recursive=True) if os.path.isfile(f)}
+    rr = [os.path.join(tmp, "rc%d" % i) for i in range(3)]
+    F.rc_reports(F.Http(u2, pause=0), rr[0], addrs2[:5])
+    F.rc_reports(F.Http(u2, pause=0), rr[1], addrs2[:5], until=None)
+    hr = F.Http(u2, pause=0)
+    F.rc_reports(hr, rr[2], addrs2[:5], until=time.time() - 1)
+    rows = lambda x: sorted(l for f in glob.glob(os.path.join(x, "risk", "*.txt")) for l in open(f, encoding="utf-8"))
+    check(files(dd[0]) == files(dd[1]) and "pairs/jupx_002.txt" in files(dd[0]) and "pairs/jupx_002.txt" not in files(dd[2]) and hj.n == 2
+          and rows(rr[0]) == rows(rr[1]) and len(rows(rr[0])) == 5 and hr.n == 0 and not rows(rr[2]),
+          "ds_tokens without jup writes the same files as before (the Jupiter fallback included), jup=False asks only DexScreener; rc_reports without until is unchanged,"
+          " an until in the past asks nothing")
+    srv2.shutdown()
+    srv2.server_close()
+
+    print("== launch spotter 3: radar.py uses memebot's own rules, under their own names")
+    src = open(os.path.join(HERE, "radar.py"), encoding="utf-8").read()
+    pinned = ("apply_profile", "cmd_gather", "load_pairs", "load_side", "load_lists", "merge_pairs", "positions", "scan", "young_rows", "dex_rows", "risk_view",
+              "launchpad_of", "x_link", "parse_ms", "num", "B58", "RULE", "PRIOR", "PAPER_GROUPS", "YOUNG_MIN_LIQ", "MIN_SCAN_FOR_REC", "PF_COLS", "GT_COLS", "JUP_COLS")
+    used_m = set(re.findall(r"\bM\.([A-Za-z_][A-Za-z0-9_]*)", src))
+    used_f = set(re.findall(r"\bF\.([A-Za-z_][A-Za-z0-9_]*)", src))
+    check(all("M.%s" % n in src and hasattr(M, n) for n in pinned) and all(hasattr(M, n) for n in used_m) and all(hasattr(F, n) for n in used_f)
+          and "blended_weights" not in used_m and not re.search(r"^\s*def (scan|young_rows|cmd_gather|risk_view)\b", src, re.M),
+          "radar.py calls %d memebot names (%d pinned) and %d fetch names, every one of them exists, none is copied, and it never calls blended_weights" % (len(used_m), len(pinned), len(used_f)))
+
+    print("== launch spotter 4-9: folder and request isolation, pick, filter parity, held coins, the DexScreener guard, RugCheck")
+    rmock = Mock()
+    rmock.search_n = 4
+    rsrv = serve(rmock)
+    ru = "http://127.0.0.1:%d" % rsrv.server_address[1]
+    fx = os.path.join(tmp, "fixture")
+    os.makedirs(fx)
+    subprocess.run([PY, os.path.join(HERE, "fetch.py"), "sources", "--dir", fx, "--mock", ru, "--pause", "0"], capture_output=True, text=True, encoding="utf-8")
+    subprocess.run([PY, os.path.join(HERE, "memebot.py"), "gather", "--dir", fx, "--now", str(T0)], capture_output=True, text=True, encoding="utf-8")
+    best_fx, _, _ = M.merge_pairs(fx)
+    full_fx = {a for a, p in best_fx.items() if not p.get("px_only") and not p.get("dexId") == "jupiter"}
+    searched = [c["a"] for c in rmock.coins if c["a"] in full_fx]
+    nonfull = [c["a"] for c in rmock.coins if c["a"] not in full_fx]
+    prev_addrs = [nonfull[-1], searched[0], nonfull[-2]]     # the second one has a full search pair: never asked
+
+    def snap(x):
+        out = {}
+        for sub in ("pairs", "risk", "db"):
+            for f in glob.glob(os.path.join(x, sub, "**", "*"), recursive=True):
+                if os.path.isfile(f):
+                    out[os.path.relpath(f, x)] = open(f, "rb").read()
+        for n in ("pairs.json", "universe.json"):
+            out[n] = open(os.path.join(x, n), "rb").read()
+        return out
+
+    def early_run(x, env=None, now=T0, ago=0, url=ru):
+        e = dict(os.environ, MEMEBOT_PAUSE="0")
+        e.update(env or {})
+        t = time.time()
+        p = subprocess.run([PY, os.path.join(HERE, "radar.py"), "early", "--dir", x, "--now", str(now), "--t0", str(int(time.time() * 1000) - ago), "--horizon", "2h", "--mock", url],
+                           capture_output=True, text=True, encoding="utf-8", env=e)
+        try:
+            j = json.loads(p.stdout)
+        except ValueError:
+            j = {}
+        doc = json.load(open(os.path.join(x, "young_early.json"), encoding="utf-8")) if os.path.exists(os.path.join(x, "young_early.json")) else {}
+        return p, j, doc, time.time() - t
+
+    e0 = os.path.join(tmp, "early0")          # a first run picks two listed coins: one becomes a held new launch, one a pick-mode position
+    shutil.copytree(fx, e0)
+    _, _, doc0, _ = early_run(e0)
+    held_a, pick_a = (doc0.get("coins") or [{}, {}])[0].get("addr"), (doc0.get("coins") or [{}, {}])[1].get("addr")
+    os.makedirs(os.path.join(fx, "db", "memepos"))
+    os.makedirs(os.path.join(fx, "db", "memeearly"))
+    json.dump({"grp": "young", "addr": held_a, "sym": "HELD", "t": T0 - H, "px": 0.001, "ticket": 3.0, "paper": M.PAPER_RULE, "rule": "m9-2h"}, open(os.path.join(fx, "db", "memepos", "y-held.json"), "w"))
+    json.dump({"grp": "pick", "addr": pick_a, "sym": "PICK", "t": T0 - H, "px": 0.001, "ticket": 20.0, "rule": "m9-2h"}, open(os.path.join(fx, "db", "memepos", "p-pick.json"), "w"))
+    prev_id = rid(T0 - H)
+    json.dump({"v": 1, "t": T0 - H, "id": prev_id, "coins": [{"addr": a, "p60": None} for a in prev_addrs]}, open(os.path.join(fx, "db", "memeearly", prev_id + ".json"), "w"))
+    ex = os.path.join(tmp, "early")
+    shutil.copytree(fx, ex)
+    before = snap(ex)
+    listed0 = {os.path.relpath(f, ex) for f in glob.glob(os.path.join(ex, "**", "*"), recursive=True) if os.path.isfile(f)}
+    seen_rc = []
+    rmock.on_rc = lambda path: seen_rc.append(json.load(open(os.path.join(ex, "young_early.json"), encoding="utf-8")) if os.path.exists(os.path.join(ex, "young_early.json")) and not seen_rc else None)
+    n0 = len(rmock.log)
+    p4, j4, doc4, secs4 = early_run(ex)
+    rmock.on_rc = None
+    asked = rmock.log[n0:]
+    after = snap(ex)
+    new = sorted(os.path.relpath(f, ex) for f in glob.glob(os.path.join(ex, "**", "*"), recursive=True) if os.path.isfile(f) and os.path.relpath(f, ex) not in listed0)
+    ds_n = sum(1 for x in asked if x.startswith("/api.dexscreener.com/tokens/v1/solana/"))
+    print("  spotter: %s in %.1f s; %d requests (%d DexScreener)" % (json.dumps(j4)[:300], secs4, len(asked), ds_n))
+    check(p4.returncode == 0 and after == before and all(n == "young_early.json" or n.startswith("radar" + os.sep) for n in new) and "young_early.json" in new
+          and all(x.startswith("/api.dexscreener.com/tokens/v1/solana/") or re.match(r"^/api\.rugcheck\.xyz/v1/tokens/[^/]+/report(/summary)?$", x) for x in asked)
+          and 0 < ds_n <= 47 and ds_n == j4.get("requests") == -(-doc4.get("asked", 0) // 30),
+          "radar.py early leaves pairs/, risk/, pairs.json, universe.json and db/ as they were, writes only radar/ and young_early.json, and asks only DexScreener"
+          " tokens/v1 (%d requests for %d addresses) and RugCheck reports" % (ds_n, doc4.get("asked", 0)))
+    ind = os.path.join(ex, "radar", "in")
+    ep = os.path.join(tmp, "pick")
+    shutil.copytree(fx, ep)
+    ind0, _ = RD.sandbox(ep)
+    with profile("2h"):
+        picked, nfull = RD.pick(ind0, prev_addrs)
+        cap0 = RD.EARLY_MAX_ADDRS
+        RD.EARLY_MAX_ADDRS = 40
+        try:
+            capped, _ = RD.pick(ind0, prev_addrs)
+        finally:
+            RD.EARLY_MAX_ADDRS = cap0
+        pf_grad = [r["address"] for r in M.pipe_rows(os.path.join(ind0, "pf", "graduated.txt"), M.PF_COLS)]
+        sources = {a for sub, cols in (("pf", M.PF_COLS), ("gt", M.GT_COLS), ("jup", M.JUP_COLS)) for a in M.load_side(ind0, sub, cols)[0]} | {a for v in M.load_lists(ind0).values() for a in v}
+        first_grad = next(a for a in pf_grad if a not in full_fx and a not in prev_addrs)
+    check(picked[:2] == [prev_addrs[0], prev_addrs[2]] and picked[2] == first_grad and not set(picked) & full_fx and set(picked) - set(prev_addrs) <= sources
+          and len(capped) == 40 and len(picked) == len(set(picked)) == doc4.get("asked"),
+          "pick: the previous early list first (its coin with a full search pair left out), then pump.fun's graduated coins; only source-list addresses, none twice,"
+          " none a keyword search already priced; the cap holds (%d asked, %d full search pairs)" % (len(picked), nfull))
+    with profile("2h"):
+        w4, _ = RD.weights(ex, "2h")
+        rows4, _, held4, recent4, risk4 = M.scan(ind, M.positions(ex), M.load_pairs(ind), doc4["at"], w4)
+        yr = M.young_rows(rows4, held4, recent4)
+        views = {r["a"]: M.risk_view(risk4.get(r["a"])) for r in yr[:20]}
+    coins4 = doc4.get("coins") or []
+    check(doc4.get("state") == "listed" and [c["addr"] for c in coins4] == [r["a"] for r in yr[:20]] and doc4.get("n") == len(yr) and [c["k"] for c in coins4] == list(range(1, len(coins4) + 1))
+          and all(c["ageMin"] == int(60 * r["basic"]["age_h"]) for c, r in zip(coins4, yr)),
+          "the early list is memebot's young_rows on the sandbox at the spotter's clock, in the same order (%d of %d shown)" % (len(coins4), len(yr)))
+    check(held_a and any(c["addr"] == held_a and c["held"] is True for c in coins4) and pick_a not in {c["addr"] for c in coins4} and all(c["held"] is False for c in coins4 if c["addr"] != held_a),
+          "a coin the paper account holds (new launch) is listed and marked held; a pick-mode position's coin is left out, as scan() does")
+    check(seen_rc and isinstance(seen_rc[0], dict) and seen_rc[0].get("rcState") == "pending" and all(c.get("rc") is None for c in seen_rc[0].get("coins") or [{"rc": 1}])
+          and doc4.get("rcState") == "done" and all((c["rc"]["level"], c["rc"]["text"]) == ((("danger" if "danger" in views[c["addr"]][1].lower() else "warn"), views[c["addr"]][1][:120]) if views[c["addr"]][0] is False
+                                                                                         else ("clean", "RugCheck: no danger flags") if views[c["addr"]][0] else ("none", "no RugCheck report")) for c in coins4)
+          and glob.glob(os.path.join(ind, "risk", "reports_*.txt")) and not glob.glob(os.path.join(ex, "risk", "*")) and j4.get("rcGot") == len(coins4),
+          "v1 is written before the first RugCheck request (all pending), v2 carries memebot's risk_view for each coin; the reports land in radar/in/risk (%s)" % (
+              sorted({c["rc"]["level"] for c in coins4})))
+    prev_j = json.load(open(os.path.join(ex, "radar", "prev.json"), encoding="utf-8"))
+    check(prev_j.get("id") == prev_id and prev_j.get("at") == doc4.get("at") and set(prev_j.get("coins") or {}) == set(prev_addrs)
+          and all("px" in v or v.get("gone") for v in prev_j["coins"].values()),
+          "the previous early list is priced again at the spotter's clock (radar/prev.json, %d coins)" % len(prev_j.get("coins") or {}))
+    # the spotter's own clock end to end: a run that starts 5 minutes after the cycle's start lists its coins at about minute 5, each as old as it is then
+    ec = os.path.join(tmp, "eclock")
+    shutil.copytree(fx, ec)
+    pcl, jcl, doccl, _ = early_run(ec, ago=5 * 60_000)
+    ccl, lag = doccl.get("coins") or [], (doccl.get("at") or 0) - T0
+    check(pcl.returncode == 0 and 5 * 60_000 <= lag < 6 * 60_000 and ccl and jcl.get("at") == doccl.get("at")
+          and all(0 <= (doccl["at"] - c["born"]) / 60_000 - c["ageMin"] < 1.001 for c in ccl),
+          "started 5 minutes into the cycle, the spotter lists its coins at minute %.1f of the cycle's clock, each one as old as its pair is then" % (lag / 60_000))
+    # one DexScreener error makes no coin gone: a 500 on the request that carries the previous list leaves those coins unknown, and the list partial
+    e5 = os.path.join(tmp, "ds500")
+    shutil.copytree(fx, e5)
+    hit5 = []
+
+    def first500(path):
+        if "/tokens/v1/" in path and not hit5:
+            hit5.append(path)
+            return 500, {"error": "boom"}
+    rmock.hook = first500
+    p5, j5, doc5, _ = early_run(e5)
+    rmock.hook = None
+    prev5 = json.load(open(os.path.join(e5, "radar", "prev.json"), encoding="utf-8")) if os.path.exists(os.path.join(e5, "radar", "prev.json")) else {}
+    check(p5.returncode == 0 and hit5 and prev_addrs[0] in hit5[0] and doc5.get("state") == "listed" and doc5.get("partial") is True and "without an answer" in (doc5.get("why") or "")
+          and set(prev5.get("coins") or {}) == {searched[0]} and "px" in prev5["coins"][searched[0]],
+          "a DexScreener 500 on the request with the previous list marks none of its coins gone (they stay unknown: %s), and the list says partial (%s)" % (
+              sorted(prev5.get("coins") or {}) == [searched[0]], doc5.get("why")))
+    # the edge cases, on a sandbox built by hand at an exact clock: 60 minutes old, under $5k, on the curve, list-only, born after the scan started, held
+    with profile("2h"):
+        ed = os.path.join(tmp, "edge")
+        ein = os.path.join(ed, "radar", "in")
+        for sub in ("pairs", "pf", "jup"):
+            os.makedirs(os.path.join(ein, sub))
+        os.makedirs(os.path.join(ed, "db", "memepos"))
+        at, now_e = T0 + 7 * 60_000, T0 + 2 * 60_000
+        erng = random.Random(11)
+        A = {k: b58(erng) for k in ("old", "low", "curve", "nodex", "new", "ok", "held", "pick")}
+
+        def pr(a, sym, born, liq, dex="pumpswap"):
+            return F.ds_row({"chainId": "solana", "dexId": dex, "pairAddress": a[:30] + "Pair1", "baseToken": {"address": a, "symbol": sym, "name": sym.title()}, "priceUsd": "0.0001",
+                             "marketCap": 90000, "fdv": 90000, "liquidity": {"usd": liq}, "volume": {"h24": 60000, "h6": 50000, "h1": 30000}, "priceChange": {"m5": 5, "h1": 10, "h6": 10, "h24": 10},
+                             "txns": {"h24": {"buys": 300, "sells": 200}, "h6": {"buys": 200, "sells": 150}, "h1": {"buys": 100, "sells": 80}}, "pairCreatedAt": born})
+        open(os.path.join(ein, "pairs", "search_edge.txt"), "w").write("\n".join([
+            pr(A["old"], "OLDE", at - 60 * 60_000, 20000), pr(A["low"], "LOWE", at - 30 * 60_000, 4999), pr(A["curve"], "CURVE", at - 10 * 60_000, 20000, "pumpfun"),
+            pr(A["new"], "NEWE", at - 3 * 60_000, 20000), pr(A["ok"], "OKE", at - 20 * 60_000, 20000), pr(A["held"], "HELDE", at - 25 * 60_000, 20000),
+            pr(A["pick"], "PICKE", at - 15 * 60_000, 20000)]) + "\n")
+        open(os.path.join(ein, "pf", "graduated.txt"), "w").write(F.row(A["ok"], "OKE", "Oke", 90000, 50, 180000, 3, False, True, at - 3 * H, None, None, None) + "\n")
+        jrow = [A["nodex"], "NODEX", "Nodex", 0.0001, 90000, 90000, 20000] + [None] * 5 + [time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime((at - 20 * 60_000) / 1000))] + [None] * 15
+        open(os.path.join(ein, "jup", "trending1h.txt"), "w").write(F.row(*jrow) + "\n")
+        json.dump({"grp": "young", "addr": A["held"], "t": now_e - H, "px": 0.0001, "ticket": 3.0, "paper": M.PAPER_RULE}, open(os.path.join(ed, "db", "memepos", "y.json"), "w"))
+        json.dump({"grp": "pick", "addr": A["pick"], "t": now_e - H, "px": 0.0001, "ticket": 20.0}, open(os.path.join(ed, "db", "memepos", "p.json"), "w"))
+        RD.gather(ein, at)
+        ecoins, en, _ = RD.listing(ed, ein, at, dict(M.PRIOR))
+        erows, _, eheld, erecent, _ = M.scan(ein, M.positions(ed), M.load_pairs(ein), at, dict(M.PRIOR))
+        eparity = [r["a"] for r in M.young_rows(erows, eheld, erecent)]
+    by = {c["addr"]: c for c in ecoins}
+    check(set(by) == {A["new"], A["ok"], A["held"]} and [c["addr"] for c in ecoins] == eparity and by[A["new"]]["ageMin"] == 3 and by[A["new"]]["born"] > now_e
+          and by[A["ok"]]["minted"] == at - 3 * H and by[A["ok"]]["launchpad"] == "pump.fun" and by[A["held"]]["held"] is True and by[A["new"]]["minted"] is None,
+          "edge cases at an exact clock: a coin born after the scan started is listed %d min old; 60 minutes old, $4,999, on the launch curve, list-only and a"
+          " pick-mode coin are not; pump.fun's createdAt fills minted" % by.get(A["new"], {}).get("ageMin", -1))
+    # the DexScreener guard: a 429 stops the spotter's DexScreener calls at once (no wait), the list comes from the search pairs
+    e8 = os.path.join(tmp, "ds429")
+    shutil.copytree(fx, e8)
+    rmock.ds429 = True
+    n0 = len(rmock.log)
+    p8, j8, doc8, secs8 = early_run(e8)
+    rmock.ds429 = False
+    ds8 = sum(1 for x in rmock.log[n0:] if "/tokens/v1/" in x)
+    prev8 = json.load(open(os.path.join(e8, "radar", "prev.json"), encoding="utf-8")) if os.path.exists(os.path.join(e8, "radar", "prev.json")) else {}
+    check(p8.returncode == 0 and secs8 < 5 and ds8 == 1 and doc8.get("partial") is True and doc8.get("dsWaits") == 1 and doc8.get("requests") == 1 and doc8.get("state") == "listed"
+          and doc8.get("coins") and "rate limit" in (doc8.get("why") or "") and set(prev8.get("coins") or {}) == {searched[0]},
+          "the first DexScreener 429 stops the spotter's DexScreener calls with no wait (%.1f s, %d request): partial, listed from the search pairs;"
+          " the previous list's coins it never answered for are not marked gone" % (secs8, ds8))
+    e8b = os.path.join(tmp, "small")
+    shutil.copytree(fx, e8b)
+    for f in sorted(glob.glob(os.path.join(e8b, "pairs", "search_*.txt")))[2:]:
+        os.remove(f)
+    rmock.ds_dead = True
+    p8b, j8b, doc8b, _ = early_run(e8b)
+    rmock.ds_dead = False
+    check(p8b.returncode == 0 and doc8b.get("state") == "small" and doc8b.get("coins") == [] and (doc8b.get("pairs") or 0) < M.MIN_SCAN_FOR_REC,
+          "under %d DexScreener pairs there is no early list (state small, %s pairs)" % (M.MIN_SCAN_FOR_REC, doc8b.get("pairs")))
+    # RugCheck that never answers: the list keeps its coins, RugCheck ends at its time cap (shortened here)
+    from http.server import ThreadingHTTPServer
+
+    class Hang(BaseHTTPRequestHandler):
+        def do_GET(self):
+            u = urllib.parse.urlsplit(self.path)
+            if u.path.startswith("/api.rugcheck.xyz/"):
+                threading.Event().wait(15)
+            code, body = rmock.handle(u.path, u.query)
+            raw = (body if isinstance(body, str) else json.dumps(body)).encode()
+            try:
+                self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+            except OSError:
+                pass
+
+        def log_message(self, *a):
+            pass
+    hsrv = ThreadingHTTPServer(("127.0.0.1", 0), Hang)
+    hsrv.daemon_threads = True
+    threading.Thread(target=hsrv.serve_forever, daemon=True).start()
+    e9 = os.path.join(tmp, "rchang")
+    shutil.copytree(fx, e9)
+    p9, j9, doc9, secs9 = early_run(e9, {"MEMEBOT_EARLY_RC_S": "2"}, url="http://127.0.0.1:%d" % hsrv.server_address[1])
+    hsrv.shutdown()
+    t9 = sorted(c["rc"]["text"] for c in doc9.get("coins") or [])
+    check(p9.returncode == 0 and doc9.get("rcState") == "down" and doc9.get("state") == "listed" and doc9.get("coins") and all(c["rc"]["level"] == "none" for c in doc9["coins"]) and secs9 < 15
+          and t9.count("RugCheck did not answer") == 1 and t9.count("RugCheck: not checked") == len(t9) - 1,
+          "RugCheck that never answers ends at the spotter's RugCheck cap: rcState down, the coin asked reads 'RugCheck did not answer', the others"
+          " 'RugCheck: not checked', the list stays (%.1f s with a 2 s cap)" % secs9)
+    bad_rc = {c["addr"] for c in coins4[:2]}
+    rc_runs = []
+    for bad in (bad_rc, None):        # RugCheck answers 502 for two coins, then for every coin
+        er = os.path.join(tmp, "rc502-%d" % len(rc_runs))
+        shutil.copytree(fx, er)
+        rmock.hook = lambda path, bad=bad: ((502, {"error": "bad gateway"}) if re.match(r"^/api\.rugcheck\.xyz/v1/tokens/[^/]+/report", path)
+                                          and (bad is None or path.split("/")[4] in bad) else None)
+        rc_runs.append(early_run(er)[2])
+        rmock.hook = None
+    r5a, r5b = rc_runs
+    unans = lambda doc: {c["addr"] for c in doc.get("coins") or [] if (c.get("rc") or {}).get("text") == "RugCheck did not answer"}
+    check(r5a.get("rcState") == "partial" and unans(r5a) == bad_rc and all(c["rc"]["level"] != "none" for c in r5a.get("coins") or [] if c["addr"] not in bad_rc)
+          and r5b.get("rcState") == "down" and unans(r5b) == {c["addr"] for c in r5b.get("coins") or []} and r5b.get("coins"),
+          "RugCheck answering 502 is not 'no report': two coins read 'RugCheck did not answer' and the list is partial; when every request fails it is down")
+
+    print("== launch spotter 9b: the spotter's own request rules (SpotHttp): a 429 on any try, the pause after an error, each try inside the deadline")
+    plan, seen_q = [], []
+
+    class Seq(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen_q.append(self.path)
+            act = plan.pop(0) if plan else "200"
+            if act == "drop":          # the connection closes with no answer
+                self.close_connection = True
+                return
+            if act == "hang":
+                threading.Event().wait(4)
+                act = "200"
+            raw = b"[]" if act == "200" else b'{"error":"x"}'
+            try:
+                self.send_response(int(act)); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+            except OSError:
+                pass
+
+        def log_message(self, *a):
+            pass
+    qsrv = ThreadingHTTPServer(("127.0.0.1", 0), Seq)
+    qsrv.daemon_threads = True
+    threading.Thread(target=qsrv.serve_forever, daemon=True).start()
+    qu = "http://127.0.0.1:%d" % qsrv.server_address[1]
+    dsu = F.DS + "/tokens/v1/solana/" + "1" * 44
+    sleeps, sleep0 = [], time.sleep
+    time.sleep = sleeps.append            # the pauses are noted, not waited
+    try:
+        qlog = []
+        h1 = RD.SpotHttp(qu, pause=0.3, tries=2)
+        h1.log = qlog.append
+        plan[:] = ["drop", "429"]
+        r1, n1 = h1.get(dsu), len(seen_q)
+        r1b = h1.get(dsu)
+        ok1 = (r1 is None and r1b is None and n1 == 2 and len(seen_q) == 2 and RD.DS_HOST in h1.dead and h1.limited_by.get(RD.DS_HOST) == 1
+               and any("429 rate limited by api.dexscreener.com" in x for x in qlog) and not any("waiting" in x for x in qlog))
+        seen_q.clear(); sleeps.clear()
+        h2 = RD.SpotHttp(qu, pause=0.3, tries=2)
+        h2.log = lambda x: None
+        ua, ub, uc = (F.RC + "/tokens/%s/report" % k for k in ("A" * 44, "B" * 44, "C" * 44))
+        plan[:] = ["500", "404", "200"]
+        r2 = [h2.get(u) for u in (ua, ub, uc)]
+        ok2 = r2 == [None, None, []] and len(seen_q) == 3 and sleeps == [0.3, 0.3, 0.3] and h2.tried == {ua, ub, uc} and h2.heard == {ub, uc}
+        seen_q.clear()
+        h3 = RD.SpotHttp(qu, pause=0, tries=2)
+        h3.log = lambda x: None
+        plan[:] = ["hang", "hang"]
+        h3.until = time.time() + 1.5
+        t3 = time.time()
+        r3 = h3.get(dsu)
+        el3, n3 = time.time() - t3, len(seen_q)
+        seen_q.clear()
+        h4 = RD.SpotHttp(qu, pause=0, tries=1)
+        h4.log = lambda x: None
+        plan[:] = ["drop", "200"]
+        r4 = h4.get(dsu)
+        n4 = len(seen_q)
+    finally:
+        time.sleep = sleep0
+        plan[:] = []
+        qsrv.shutdown()
+    check(ok1, "a 429 on the second try (after a dropped connection) gives DexScreener up at once and counts: no wait, no 'waiting' in the log, no later request")
+    check(ok2, "the pause follows every answer, a 500 and a 404 too; a 404 counts as RugCheck's answer, a 500 as none")
+    check(r3 is None and n3 == 1 and 1.2 < el3 < 2.4 and r4 is None and n4 == 1,
+          "each try's timeout is what is left of the deadline and no retry starts without time for it (%.1f s for a 1.5 s deadline, %d request);"
+          " radar.py check's client tries once (%d request)" % (el3, n3, n4))
+    # the request budget at full scale: EARLY_MAX_ADDRS addresses take 45 DexScreener requests of at most 30 addresses
+    brng = random.Random(17)
+    big = [b58(brng) for _ in range(RD.EARLY_MAX_ADDRS)]
+    bdir = os.path.join(tmp, "budget")
+    os.makedirs(os.path.join(bdir, "pairs"))
+    n0 = len(rmock.log)
+    with contextlib.redirect_stderr(io.StringIO()):
+        why_b, ans_b = RD.fetch_pairs(RD.SpotHttp(ru, pause=0), bdir, big, time.time() + 120)
+    breq = [x for x in rmock.log[n0:] if "/tokens/v1/" in x]
+    check(why_b is None and len(breq) == 45 and max(len(x.rsplit("/", 1)[1].split(",")) for x in breq) == 30 and ans_b == set(big),
+          "at the cap of %d addresses the spotter asks DexScreener %d times, 30 addresses at most each" % (RD.EARLY_MAX_ADDRS, len(breq)))
+
+    print("== launch spotter 10: bot.py's wiring (a failed, a hanging and a switched-off spotter, a stale early list, early_doc)")
+    lb = git_live(remote_off)
+    off_b = json.load(open(os.path.join(db_, "db", "memebot", "office.json"), encoding="utf-8"))
+    check(not os.path.exists(os.path.join(db_, "young_early.json")) and (lb.get("young") or {}).get("state") == "off" and (lb.get("young") or {}).get("why") == "early list switched off"
+          and (lb.get("young") or {}).get("t") == T0 and "STALE" not in json.dumps(lb) and "spotter" not in {a["id"] for a in off_b["agents"]} and "young" not in off_b
+          and "radar.py" not in pb.stderr,
+          "MEMEBOT_EARLY=0 starts no spotter and the live view says the early list is off; a stale early list of an earlier cycle is deleted at the start and never pushed")
+    code = os.path.join(tmp, "code")
+    os.makedirs(code)
+    for n in ("bot.py", "memebot.py", "fetch.py", "report.py"):
+        shutil.copy(os.path.join(HERE, n), code)
+    with open(os.path.join(code, "radar.py"), "w") as f:      # stand-ins for the spotter: one that fails (and whose check fails too), one that never ends
+        f.write("import json, os, sys, time\n"
+                "a = sys.argv\nd = a[a.index('--dir') + 1]; now = int(a[a.index('--now') + 1])\n"
+                "open(os.path.join(d, 'stub.pid'), 'w').write(str(os.getpid()))\n"
+                "if (os.environ.get('STUB') == 'sleep' and a[1] == 'early') or (os.environ.get('STUB') == 'checksleep' and a[1] == 'check'):\n    time.sleep(600)\n"
+                "if a[1] == 'early':\n    json.dump({'v': 1, 't': now, 'state': 'failed', 'why': 'stub failed', 'coins': []}, open(os.path.join(d, 'young_early.json'), 'w'))\n"
+                "print('{\"state\": \"failed\", \"why\": \"stub failed\"}')\nsys.stderr.write('stub %s failed\\n' % a[1])\nsys.exit(1)\n")
+    df, ds_ = os.path.join(tmp, "stub-fail"), os.path.join(tmp, "stub-sleep")
+    pf, sf, _ = spot_cycle(df, {"STUB": "fail"}, code=code, frozen=True)
+    psl, ssl, _ = spot_cycle(ds_, {"STUB": "sleep"}, code=code)
+    ofs = {a["id"]: a for a in json.load(open(os.path.join(df, "db", "memebot", "office.json"), encoding="utf-8"))["agents"]}
+    osl = {a["id"]: a for a in json.load(open(os.path.join(ds_, "db", "memebot", "office.json"), encoding="utf-8"))["agents"]}
+    rec_f, rec_a = (json.load(open(os.path.join(x, "db", "memebot", "recommend.json"), encoding="utf-8")) for x in (df, da))
+    check(pf.returncode == 0 and ofs["spotter"]["status"] == "failed" and "stub failed" in ofs["spotter"]["out"] and json.load(open(os.path.join(df, "young_early.json")))["state"] == "failed"
+          and masked(rec_f, WALL_KEYS) == masked(rec_a, WALL_KEYS) and ofs["trader"]["status"] == "done" and ofs["reporter"]["status"] == "done"
+          and "radar.py check failed (exit 1), the cycle goes on" in pf.stderr and set(trader_files(df)) == set(fa),
+          "a spotter that exits 1 and a radar.py check that fails leave the cycle as without them (the same recommendations, every trader doc); the office shows the spotter failed")
+    pid = int(open(os.path.join(ds_, "stub.pid")).read())
+    try:
+        os.kill(pid, 0)
+        alive = True
+    except OSError:
+        alive = False
+    gap = osl["trader"]["start"] - osl["spotter"]["end"]
+    check(psl.returncode == 0 and osl["spotter"]["status"] == "failed" and osl["spotter"]["out"] == "still running at the trader step" and 0 <= gap < 1000 and not alive
+          and osl["trader"]["status"] == "done",
+          "a spotter still at work when the trader starts is stopped there: the trader starts %d ms later, the process is gone, the cycle goes on" % gap)
+    # a cycle that fails in a foreground step (here memebot.py shortlist, in a copy of the code) stops its spotter too: no process outlives the cycle
+    code2 = os.path.join(tmp, "code2")
+    shutil.copytree(code, code2)
+    msrc = open(os.path.join(code2, "memebot.py"), encoding="utf-8").read()
+    with open(os.path.join(code2, "memebot.py"), "w", encoding="utf-8") as f:
+        f.write("import os as _o, sys as _s\nif __name__ == '__main__' and _s.argv[1:2] == [_o.environ.get('STUB_STEP_FAIL')]:\n"
+                "    print('{\"stub\": \"%s fails\"}' % _s.argv[1]); _s.exit(3)\n" + msrc)
+    dor = os.path.join(tmp, "stub-orphan")
+    por, sor, _ = spot_cycle(dor, {"STUB": "sleep", "STUB_STEP_FAIL": "shortlist"}, code=code2)
+    oor = {a["id"]: a for a in json.load(open(os.path.join(dor, "db", "memebot", "office.json"), encoding="utf-8"))["agents"]}
+    pid_o = int(open(os.path.join(dor, "stub.pid")).read()) if os.path.exists(os.path.join(dor, "stub.pid")) else 0
+
+    def gone(pid):
+        try:
+            os.kill(pid, 0)
+            return False
+        except OSError:
+            return True
+    check(por.returncode != 0 and pid_o and gone(pid_o) and (oor.get("analyst") or {}).get("status") == "failed" and (oor.get("spotter") or {}).get("status") == "failed"
+          and (oor.get("spotter") or {}).get("out") == "stopped when the scan stopped" and "trader" not in oor and sor < 120,
+          "a cycle that fails in a foreground step (shortlist) kills its spotter before it ends: the process is gone, the office says why (%.0f s)" % sor)
+    # radar.py check sits on the scan's critical path: bot.py kills it after its time limit and goes on
+    dl = os.path.join(tmp, "limit")
+    os.makedirs(dl)
+    here0, stub0 = B.HERE, os.environ.get("STUB")
+    B.HERE, os.environ["STUB"] = code, "checksleep"
+    try:
+        t_ = time.time()
+        with contextlib.redirect_stderr(io.StringIO()) as er_:
+            rl = B.run(["radar.py", "check", "--t0", str(T0), "--horizon", "2h"], dl, T0, soft=True, limit=2)
+        el_ = time.time() - t_
+    finally:
+        B.HERE = here0
+        if stub0 is None:
+            os.environ.pop("STUB", None)
+        else:
+            os.environ["STUB"] = stub0
+    pid_l = int(open(os.path.join(dl, "stub.pid")).read()) if os.path.exists(os.path.join(dl, "stub.pid")) else 0
+    bsrc = open(os.path.join(HERE, "bot.py"), encoding="utf-8").read()
+    check(rl is None and el_ < 6 and pid_l and gone(pid_l) and "radar.py check stopped after 2 s, the cycle goes on" in er_.getvalue()
+          and "soft=True, limit=CHECK_LIMIT_S)" in bsrc and B.CHECK_LIMIT_S <= 30,
+          "a radar.py check that hangs is killed at its time limit (%.1f s for 2 s; %d s in the cycle) and the cycle goes on" % (el_, B.CHECK_LIMIT_S))
+    tmpd = os.path.join(tmp, "ed")
+    os.makedirs(tmpd)
+    pe = os.path.join(tmpd, "young_early.json")
+    good = {"v": 1, "t": T0, "id": rid(T0), "at": T0 + 270000, "state": "listed", "rcState": "done", "partial": False, "n": 2, "why": "x" * 300,
+            "coins": [{"addr": "A" * 40 + "pump", "sym": "<b>" + "S" * 40, "name": "N" * 90, "pair": "javascript:alert(1)", "x": "javascript:alert(1)", "born": T0, "ageMin": 4, "px": float("nan"),
+                       "liq": float("inf"), "mc": 5e4, "src": ["a" * 50] * 9, "held": "yes", "k": 1, "rc": {"level": "danger", "text": "t" * 300, "top1": 5}, "evil": "<script>"},
+                      {"addr": "0xBAD", "sym": "BAD"}, {"addr": "B" * 44, "x": "https://x.com/good_one/status/123", "rc": {"level": "pwned"}}]}
+
+    def w_(doc, raw=None):
+        with open(pe, "w", encoding="utf-8") as f:
+            f.write(raw if raw is not None else json.dumps(doc))
+        return B.early_doc(pe, T0)
+    c1 = w_(good)
+    big = dict(good, coins=[dict(good["coins"][2], name="\U0001f438" * 48, sym="\U0001f438" * 24, src=["\U0001f438" * 24] * 6, rc={"level": "warn", "text": "\U0001f438" * 120}) for _ in range(20)])
+    cc = (c1 or {}).get("coins") or [{}]
+    check(c1 and len(cc) == 2 and cc[0]["sym"] == "<b>" + "S" * 21 and len(cc[0]["name"]) == 48 and cc[0]["pair"] is None and cc[0]["x"] == "" and cc[0]["px"] is None and cc[0]["liq"] is None
+          and len(cc[0]["src"]) == 6 and all(len(x) == 24 for x in cc[0]["src"]) and cc[0]["held"] is False and len(cc[0]["rc"]["text"]) == 120 and "evil" not in cc[0] and len(c1["why"]) == 120
+          and cc[1]["x"] == "https://x.com/good_one/status/123" and cc[1]["rc"] is None
+          and w_(None, "{not json") is None and w_(None, "[]") is None and w_(dict(good, t=T0 - 1)) is None and w_(dict(good, state="weird")) is None and w_(dict(good, v=2)) is None
+          and w_(big) is None and B.early_doc(os.path.join(tmpd, "missing.json"), T0) is None,
+          "early_doc keeps only known keys, cuts the strings, drops a coin with a bad address, blanks a javascript: link, nulls NaN and infinity, and refuses"
+          " a malformed, other-cycle, unknown-state or over-24 KB file")
+
+    print("== launch spotter 11: the live view pushes the early list at once (the kick), and once more at the end")
+    ud = os.path.join(tmp, "liveunit")
+    os.makedirs(ud)
+    lr = os.path.join(tmp, "live-unit.git")
+    subprocess.run(["git", "init", "-q", "--bare", lr], check=True)
+    B.OFFICE = B.Office(ud, T0, "2h")
+    B.OFFICE.begin("spotter", bg=True)
+    with B.EARLY_LOCK:
+        B.EARLY.update(t=T0, doc=None, rev=B.EARLY["rev"] + 1, sig=None)
+    lv = B.Live(ud, lr)
+    v1 = dict(good, coins=[good["coins"][0]], rcState="pending", why="")
+    head0 = ""
+
+    def wait_young(pred, secs):
+        t_ = time.time()
+        while time.time() - t_ < secs:
+            j = git_live(lr)
+            if pred(j):
+                return time.time() - t_, j
+            threading.Event().wait(0.1)
+        return None, git_live(lr)
+    json.dump(v1, open(os.path.join(ud, "young_early.json"), "w"))
+    k1, l1 = wait_young(lambda j: (j.get("young") or {}).get("rcState") == "pending", 8)
+    json.dump(dict(v1, rcState="done"), open(os.path.join(ud, "young_early.json"), "w"))
+    k2, l2 = wait_young(lambda j: (j.get("young") or {}).get("rcState") == "done", 12)
+    lv.finish()
+    l3 = git_live(lr)
+    B.OFFICE.save()
+    offj = json.load(open(os.path.join(ud, "db", "memebot", "office.json")))
+    lc = git_live(remote_on)
+    check(k1 is not None and k1 < 3 and l1.get("live") is True and k2 is not None and k2 < B.LIVE_KICK + 3 and l3.get("live") is False and (l3.get("young") or {}).get("rcState") == "done"
+          and "young" not in offj and (lc.get("young") or {}).get("state") == "listed" and lc.get("live") is False and (lc.get("young") or {}).get("t") == T0
+          and "young" not in off_c,
+          "a new early list is pushed %.1f s after the file appears (not 45 s later), its RugCheck update %.1f s later; the last push (live false) carries it, in a real cycle too;"
+          " office.json never does" % (k1 or -1, k2 or -1))
+
+    print("== launch spotter 12: the record, db/memeearly")
+    dk = os.path.join(tmp, "check")
+    os.makedirs(os.path.join(dk, "db", "memebot"))
+    os.makedirs(os.path.join(dk, "db", "memeearly"))
+    os.makedirs(os.path.join(dk, "radar"))
+    cs = [c for c in rmock.coins if not c["gone"]][200:207]
+    born = lambda i: T0 - (10 + i) * 60_000
+    early_k = [{"addr": c["a"], "sym": c["sym"], "pair": c["a"][:20] + "pair", "born": born(i), "ageMin": 10 + i, "px": c["px"], "liq": c["liq"], "mc": c["mc"], "score": 50 - i, "k": i + 1,
+                "held": False, "rc": {"level": "warn", "text": "w"}} for i, c in enumerate(cs[:5] + cs[6:7])]
+    early_k[1]["born"] = T0 + 60_000
+    json.dump({"v": 1, "t": T0, "id": rid(T0), "at": T0 + 270000, "rcAt": T0 + 300000, "state": "listed", "rcState": "done", "partial": False, "rule": "m9-2h", "horizon": "2h", "n": 6,
+               "coins": early_k}, open(os.path.join(dk, "young_early.json"), "w"))
+    json.dump({"t": T0, "young": [{"addr": cs[0]["a"], "bought": 3.0}, {"addr": cs[5]["a"], "bought": "held"}]}, open(os.path.join(dk, "db", "memebot", "recommend.json"), "w"))
+    json.dump([{"address": cs[2]["a"], "priceUsd": None, "liquidityUsd": None}, {"address": cs[3]["a"], "priceUsd": 0.001, "liquidityUsd": 3000.0},
+               {"address": cs[4]["a"], "priceUsd": 0.001, "liquidityUsd": 30000.0}, {"address": cs[6]["a"], "priceUsd": 0.002, "liquidityUsd": 30000.0, "px_only": True}],
+              open(os.path.join(dk, "pairs.json"), "w"))
+    pid_ = rid(T0 - H)
+    p58, p47 = {"t": T0 - H + 58 * 60_000, "px": 9}, {"t": T0 - H + 47 * 60_000, "px": 8}     # already priced 58 and 47 minutes after it was seen
+    json.dump({"v": 1, "t": T0 - H, "id": pid_, "coins": [{"addr": cs[0]["a"], "p60": None}, {"addr": cs[1]["a"], "p60": None}, {"addr": cs[2]["a"], "p60": p58},
+                                                         {"addr": cs[3]["a"], "p60": p47}]},
+              open(os.path.join(dk, "db", "memeearly", pid_ + ".json"), "w"))
+    json.dump({"id": pid_, "t": T0 - H, "at": T0 + 260000, "coins": {cs[0]["a"]: {"px": 0.5, "liq": 9000.0}, cs[1]["a"]: {"gone": True}, cs[2]["a"]: {"px": 1.0, "liq": 1.0},
+                                                                      cs[3]["a"]: {"px": 2.0, "liq": 2.0}}},
+              open(os.path.join(dk, "radar", "prev.json"), "w"))
+    urlm = "http://127.0.0.1:%d" % rsrv.server_address[1]
+    rmock.by_a[cs[4]["a"]]["gone"] = True
+    n0 = len(rmock.log)
+    pk = subprocess.run([PY, os.path.join(HERE, "radar.py"), "check", "--dir", dk, "--now", str(T0), "--t0", str(int(time.time() * 1000)), "--horizon", "2h", "--mock", urlm],
+                        capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rmock.by_a[cs[4]["a"]]["gone"] = False
+    reqs = rmock.log[n0:]
+    me = json.load(open(os.path.join(dk, "db", "memeearly", rid(T0) + ".json"), encoding="utf-8")) if os.path.exists(os.path.join(dk, "db", "memeearly", rid(T0) + ".json")) else {}
+    mc_ = {c["addr"]: c for c in me.get("coins") or []}
+    pv = {c["addr"]: c for c in json.load(open(os.path.join(dk, "db", "memeearly", pid_ + ".json"), encoding="utf-8"))["coins"]}
+    check(pk.returncode == 0 and len(reqs) == 1 and "/tokens/v1/" in reqs[0] and me.get("id") == rid(T0) and mc_[cs[0]["a"]]["final"] == 1 and mc_[cs[0]["a"]]["bought"] == 3.0
+          and mc_[cs[0]["a"]]["out"] is None and mc_[cs[1]["a"]]["out"] == "born after the scan started" and mc_[cs[2]["a"]]["out"] == "no price at the trader step"
+          and mc_[cs[3]["a"]]["out"] == "liquidity under $5k at the trader step" and mc_[cs[4]["a"]]["out"].startswith("not on the scored list")
+          and mc_[cs[6]["a"]]["out"] == "no price at the trader step"
+          and abs(mc_[cs[0]["a"]]["p2"]["px"] - float("%.10f" % cs[0]["px"])) < 1e-15 and mc_[cs[4]["a"]]["p2"].get("gone") is True and me.get("finalOnly") == [cs[5]["a"]] and mc_[cs[0]["a"]]["rc"] == "warn"
+          and pv[cs[0]["a"]]["p60"] == {"px": 0.5, "liq": 9000.0, "t": T0 + 260000} and pv[cs[1]["a"]]["p60"] == {"gone": True, "t": T0 + 260000} and pv[cs[2]["a"]]["p60"] == p58
+          and pv[cs[3]["a"]]["p60"] == {"px": 2.0, "liq": 2.0, "t": T0 + 260000},
+          "radar.py check: one DexScreener request prices the list again (p2, a gone coin counts), the scored list's place and buy, the reason a coin is not on it"
+          " (a price-only row is no price), the coins it missed, and the previous record's price an hour later (p60: one 58 minutes after stays, one 47 minutes"
+          " after gives way to this one at 64)")
+    # the same check again with a scored list of another scan and a DexScreener that answers 500: no place, no buy, no p2 (unknown, not gone), one request
+    json.dump({"t": T0 - 1, "young": [{"addr": cs[0]["a"], "bought": 3.0}, {"addr": cs[5]["a"], "bought": "held"}]}, open(os.path.join(dk, "db", "memebot", "recommend.json"), "w"))
+    rmock.hook = lambda path: (500, {"error": "boom"}) if "/tokens/v1/" in path else None
+    n0 = len(rmock.log)
+    pk2 = subprocess.run([PY, os.path.join(HERE, "radar.py"), "check", "--dir", dk, "--now", str(T0), "--t0", str(int(time.time() * 1000)), "--horizon", "2h", "--mock", urlm],
+                         capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    rmock.hook = None
+    me2 = json.load(open(os.path.join(dk, "db", "memeearly", rid(T0) + ".json"), encoding="utf-8"))
+    check(pk2.returncode == 0 and len(rmock.log) - n0 == 1 and all(c["final"] is None and c["bought"] is None and c["p2"] is None for c in me2["coins"]) and me2.get("finalOnly") == []
+          and len(me2["coins"]) == 6,
+          "a recommend.json of another scan is not this list's fate, and a check whose one DexScreener request fails records no p2 (not gone), with no second try")
+    # which earlier record gets its hour price: 45 to 90 minutes old, the one closest to an hour
+    pdd = os.path.join(tmp, "prevdoc")
+    os.makedirs(os.path.join(pdd, "db", "memeearly"))
+
+    def put(mins):
+        t_ = T0 - mins * 60_000
+        json.dump({"v": 1, "t": t_, "id": rid(t_), "coins": []}, open(os.path.join(pdd, "db", "memeearly", rid(t_) + ".json"), "w"))
+        return t_
+    pick_t = lambda: (RD.prev_doc(pdd, T0) or {}).get("t")
+    put(30)
+    r30 = pick_t()
+    put(95)
+    r95 = pick_t()
+    t50 = put(50)
+    r50 = pick_t()
+    t62 = put(62)
+    r62 = pick_t()
+    check(r30 is None and r95 is None and r50 == t50 and r62 == t62,
+          "the previous list priced for its hour price is 45 to 90 minutes old (one of 30 or 95 minutes is not), the one closest to an hour (62 over 50)")
+    me_c = json.load(open(glob.glob(os.path.join(dc, "db", "memeearly", "*.json"))[0], encoding="utf-8"))
+    rec_c = json.load(open(os.path.join(dc, "db", "memebot", "recommend.json"), encoding="utf-8"))
+    yaddr = [y["addr"] for y in rec_c.get("young") or []]
+    m_s, m_r = re.search(r"^saved \d+ docs", pc.stderr, re.M), re.search(r"^spotter: record ", pc.stderr, re.M)
+    gi = (m_s.start() if m_s else -1, m_r.start() if m_r else -1)
+    check(me_c.get("id") == rid(T0) and all((c["final"] is None) == (c["addr"] not in yaddr) for c in me_c["coins"]) and all(yaddr[c["final"] - 1] == c["addr"] and c["bought"] == rec_c["young"][c["final"] - 1].get("bought")
+                                                                                                                    for c in me_c["coins"] if c["final"])
+          and 0 < gi[0] < gi[1] and "!db/memeearly/**" in B.SYNC_IGNORE,
+          "in a real cycle the record is written after the trader's docs are saved, with each coin's place on the scored list and its buy; it travels with the results")
+    pd = os.path.join(tmp, "prune")
+    os.makedirs(os.path.join(pd, "db", "memeearly"))
+    for n, age in (("old", 31), ("new", 29)):
+        json.dump({"t": T0 - age * 86_400_000}, open(os.path.join(pd, "db", "memeearly", n + ".json"), "w"))
+    with contextlib.redirect_stderr(io.StringIO()):
+        B.prune(pd, T0)
+    gi_ = subprocess.run(["git", "init", "-q", os.path.join(pd, "g")], capture_output=True)
+    open(os.path.join(pd, "g", ".gitignore"), "w").write(B.SYNC_IGNORE)
+    ign = subprocess.run(["git", "-C", os.path.join(pd, "g"), "check-ignore", "-q", "db/memeearly/2026-10-10T1612.json"]).returncode
+    check(sorted(os.listdir(os.path.join(pd, "db", "memeearly"))) == ["new.json"] and ign == 1, "the early-list record is pruned after 30 days and synced to the results branch")
+
+    print("== launch spotter 13: the spotter scores with the last trader's weights")
+    sp = json.load(open(os.path.join(dc, "db", "memebot", "spotter.json"), encoding="utf-8"))
+    with profile("2h"):
+        bw, _ = M.blended_weights(dc)
+        w_same, f1 = RD.weights(dc, "2h")
+        os.rename(os.path.join(dc, "db", "memebot", "spotter.json"), os.path.join(tmp, "spotter.json"))
+        w_none, f2 = RD.weights(dc, "2h")
+        json.dump(dict(sp, rule="m9"), open(os.path.join(dc, "db", "memebot", "spotter.json"), "w"))
+        w_rule, f3 = RD.weights(dc, "2h")
+        prior = dict(M.PRIOR)
+        w_x = {k: round(float(v) * 2 + 1, 4) for k, v in prior.items()}        # weights nobody would mistake for the prior
+        json.dump({"t": T0, "rule": M.RULE, "horizon": "2h", "w": w_x}, open(os.path.join(dc, "db", "memebot", "spotter.json"), "w"))
+        w_xs, fx1 = RD.weights(dc, "2h")
+        json.dump({"t": T0, "rule": M.RULE, "horizon": "24h", "w": w_x}, open(os.path.join(dc, "db", "memebot", "spotter.json"), "w"))
+        w_xh, _ = RD.weights(dc, "2h")
+        json.dump({"t": T0, "rule": "m0-other", "horizon": "2h", "w": w_x}, open(os.path.join(dc, "db", "memebot", "spotter.json"), "w"))
+        w_xr, _ = RD.weights(dc, "2h")
+    check(sp.get("t") == T0 and sp.get("rule") == "m9-2h" and sp.get("horizon") == "2h" and sp.get("w") == bw and w_same == bw and w_none == prior and w_rule == prior and "last scan" in f1,
+          "db/memebot/spotter.json holds the trader's weights (%d factors); without it, or for another rule, the spotter scores with the prior" % len(sp.get("w") or {}))
+    check(w_x != prior and w_xs == w_x and "last scan" in fx1 and w_xh == prior and w_xr == prior,
+          "weights unlike the prior in spotter.json are the ones the spotter scores with; of another profile or another rule they are not used")
+
+    print("== launch spotter 14: the New launches tab (page, script, browser)")
+    out_live, out_plain = os.path.join(tmp, "live.html"), os.path.join(tmp, "plain.html")
+    subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", dc, "--out", out_live, "--now", str(T0)], capture_output=True, env=dict(os.environ, GITHUB_REPOSITORY="Some-Owner/Meme-Bot"))
+    subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", dc, "--out", out_plain, "--now", str(T0)], capture_output=True)
+    pl, pp = open(out_live, encoding="utf-8").read(), open(out_plain, encoding="utf-8").read()
+    bare = re.sub(r'<script>\s*\(function\(\)\{\s*var MB=window\.MemebotLive=.*?</script>', "", re.sub(
+        r'<p class="note olink" data-lv data-live-link>.*?</p><div class="olive".*?<p class="note" data-lv data-live-off hidden></p></div>', "", pl, flags=re.S), flags=re.S)
+    bare = re.sub(r'<p class="note ehint">.*?</p><details class="early" data-early.*?</details>', "", bare.replace(R.EARLY_CSS, "", 1), flags=re.S)
+    box = re.search(r'<details class="early" data-early[^>]*>', pl)
+    ed_doc = json.loads(html.unescape(re.search(r'data-early-doc="([^"]*)"', box.group(0)).group(1))) if box and "data-early-doc" in box.group(0) else {}
+    fin = json.loads(html.unescape(re.search(r'data-final="([^"]*)"', box.group(0)).group(1))) if box and "data-final" in box.group(0) else {}
+    check(bare == pp and "data-early" not in pp and "ehint" not in pp and ".ecard" not in pp and "During each scan, the coins it finds under an hour old appear here about 5 minutes after it starts" in pl
+          and box and " hidden" in box.group(0) and ed_doc.get("t") == T0 and ed_doc.get("state") == "listed" and fin.get("t") == T0
+          and all(fin["coins"][a]["k"] == i for i, a in enumerate(yaddr, 1)) and R.EARLY_LABEL in html.unescape(pl) and "jup.ag" not in box.group(0)
+          and 'data-agents="scouts deep spotter"' in pl and "Launch spotter" in pl,
+          "without GITHUB_REPOSITORY the page is as before; with it the New launches tab has the hint, the hidden early box with this scan's list and each coin's"
+          " place on the scored list, and the office has the Launch spotter's desk")
+    js = R.OFFICE_LIVE_JS
+    node = shutil.which("node")
+    if node:
+        jd = tempfile.mkdtemp(prefix="memebot-js-")
+        with open(os.path.join(jd, "t.js"), "w", encoding="utf-8") as f:
+            f.write("global.window={};global.document={readyState:'complete',querySelector:function(){return null;}};\n" + js + r"""
+var MB=window.MemebotLive,M=60000,h=3600000,s=Date.UTC(2026,9,10,16,10,0),now=s+20*M,pageT=s-60*M,o={};
+function Y(t,st,x){var y={v:1,t:t,at:t+5*M,state:st,rcState:'done',partial:false,coins:st==='listed'?[{addr:'A',born:t}]:[]};for(var k in x||{})y[k]=x[k];return y;}
+function L(t,live,age,y,ags){var d={t:t,live:live,updated:now-age,agents:ags||[{id:'dispatch',status:'done'},{id:'market',status:'running'}]};if(y)d.young=y;return d;}
+var t=s+2*M,rep=[{id:'trader',status:'done'},{id:'reporter',status:'done'}],e=MB.early;
+o.s=[e(null,now,pageT,0,null,0,0,null,0),                                  // hide: nothing at all
+ e(L(t,true,20000),now,pageT,0,null,0,s,null,now),                           // wait
+ e(null,now,pageT,0,null,0,s,null,0),                                        // late: no doc of this hour 20 minutes after the start
+ e(L(t,true,20000,Y(t,'listed')),now,pageT,0,null,0,s,null,now),             // listed
+ e(L(t,true,20000,Y(t,'listed',{partial:true})),now,pageT,0,null,0,s,null,now),   // partial
+ e(L(t,true,6*M,Y(t,'listed')),now,pageT,0,null,0,s,null,now),               // paused: no update for 6 minutes
+ e(L(t,true,20000,Y(t,'listed')),now,pageT,2,null,0,s,null,now),             // paused: two failed polls
+ e(L(t,true,6*M,Y(t,'listed')),now,pageT,0,0,0,s,null,now),                  // limited: none left and nothing fresh
+ e(L(t,false,60000,Y(t,'listed'),rep),now,pageT,0,null,0,s,null,now),        // done
+ e(L(t,false,60000,Y(t,'listed'),[{id:'trader',status:'failed'}]),now,pageT,0,null,0,s,null,now),   // stopped
+ e(null,now,t,0,null,0,s,Y(t,'listed'),0),                                   // own: this page's scan, from the page
+ e(L(t,true,20000,Y(t,'empty')),now,pageT,0,null,0,s,null,now),              // empty
+ e(L(t,true,20000,Y(t,'failed',{why:'x'})),now,pageT,0,null,0,s,null,now),   // none
+ e(L(t,true,20000,Y(t,'off')),now,pageT,0,null,0,s,null,now),                // none (off)
+ e(L(t,true,20000,Y(t,'listed',{at:t-80*M})),now,pageT,0,null,0,s,null,now), // hide: the list is over 75 minutes old
+ e(L(t,true,20000,Y(t+1,'listed')),now,pageT,0,null,0,s,null,now),           // wait: a list of another scan is not this one's
+ e(L(t,false,60000,Y(t,'listed'),rep.concat([{id:'spotter',status:'failed'}])),now,pageT,0,null,0,s,null,now),   // done: a failed spotter is not a failed scan
+ e(L(t,true,20000,Y(t,'listed')),now,pageT,0,0,0,s,null,now),               // listed: fresh data shows even with no requests left
+ e(L(pageT,false,60000,Y(pageT,'listed'),rep),now,pageT,0,null,0,s,null,now)];   // own: the page's own scan in the last snapshot
+// a phone clock 10 minutes fast (F) or slow (Sl): got is when the snapshot's "updated" was first seen, moved whether it replaced an older one
+var D=L(t,true,20000,Y(t,'listed')),D7=L(t,true,7*M,Y(t,'listed')),F=now+10*M,Sl=now-10*M;
+o.age=[MB.age(D,now)/1000,MB.age(D,F,F,false)/1000,MB.age(D,F,F,true)/1000,MB.age(D7,Sl,Sl,false)/1000,MB.age(D7,Sl+5*M,Sl,false)/1000];
+o.skew=[e(D,F,pageT,0,null,0,s,null,F,false),e(D,F,pageT,0,null,0,s,null,F,true),e(D7,Sl,pageT,0,null,0,s,null,Sl,false),e(D7,Sl+5*M,pageT,0,null,0,s,null,Sl,false),
+  MB.state(D,F,pageT,0,F,true),MB.state(D,F,pageT,0)];
+o.office=MB.state(L(t,false,0,null,rep.concat([{id:'spotter',status:'failed'}])),now,pageT,0);
+function nx(doc,tt,rem,reset,fails){return Math.round((MB.next(doc,tt,s,rem,reset,fails)-tt)/1000);}
+var old=L(s-60*M,false,0,null,rep),fin=L(s+M,false,0,null,rep);
+o.n=[nx(old,s-3*M,null,0,0),nx(old,s-M,null,0,0),nx(old,s+3*M,null,0,0),nx(old,s+34*M,null,0,0),nx(old,s+36*M,null,0,0),nx(fin,s+26*M,null,0,0),nx(old,s+3*M,15,(s+23*M)/1000,0),nx(old,s+3*M,null,0,1)];
+console.log(JSON.stringify(o));
+""")
+        r_ = subprocess.run([node, os.path.join(jd, "t.js")], capture_output=True, text=True)
+        shutil.rmtree(jd, ignore_errors=True)
+        try:
+            o = json.loads(r_.stdout)
+        except ValueError:
+            o = {"err": r_.stderr[-400:]}
+        check(o.get("s") == ["hide", "wait", "late", "listed", "partial", "paused", "paused", "limited", "done", "stopped", "own", "empty", "none", "none", "hide", "wait", "done", "listed", "own"]
+              and o.get("office") == "done",
+              "the early box's states (node): hide, wait, late, listed, partial, paused, limited, done, stopped, own, empty, none; a failed spotter never makes a scan look stopped %s" % (o.get("s") or o))
+        check(o.get("age") == [20, 620, 120, 0, 300] and o.get("skew") == ["paused", "listed", "listed", "paused", "live", "paused"],
+              "a snapshot's age (node): once its 'updated' has moved, the local time since plus at most 2 minutes, so a phone 10 minutes fast reads live;"
+              " before that the phone's clock is the first guess, and a phone 10 minutes slow reads a 7-minute-old snapshot as fresh for 5 minutes at most %s %s" % (
+                  o.get("age"), o.get("skew")))
+        check(o.get("n") == [60, 75, 75, 60, 540, 540, 240, 150],
+              "the poll plan in the scan window (node): 75 s from 2 minutes before a scheduled start to 35 after it until that scan's last snapshot, the grid outside it,"
+              " stretched by GitHub's remaining requests, longer after a failed poll %s" % (o.get("n") or o))
+    else:
+        check("early:function(doc,now,pageT,fails,rem,reset,scan,own,got,moved)" in js and "MB.WIN[1]*60000" in js, "the early box's states and the scan window are in the script (node not found)")
+    check("innerHTML" not in js and "insertAdjacentHTML" not in js and "jup.ag" not in js and "B58.test(a)" in js and "rel='noopener noreferrer'" in js,
+          "the script builds the cards with createElement and textContent only, links only around a checked address, never a swap link")
+    check("if(!(same&&+o.updated===+d.updated)||!S.got)" in js and "Math.floor(n/15000)" not in js and "eages(li,li._c,y,ref)" in js and "history.replaceState(" in js
+          and "shows it below this list" in js and "goes above this list" not in js and "fate[a].b==='held'" in js and "RugCheck reports for " in js
+          and "the launch spotter found" in js and "' at '+hhmm(+y.at)" in js and "min-width:44px" in R.EARLY_CSS and "details.early.dim .ecard.old { opacity:1 }" in R.EARLY_CSS
+          and "details.early.nolist .estatus::before { display:none }" in R.EARLY_CSS,
+          "the script keeps the time a snapshot was first seen, moves the ages without rebuilding the cards, uses #new once, says the scored list comes below,"
+          " says 'already held' once, and the CSS gives the link chips 44 px of width and never dims a card twice")
+    browser_checks(check, pl, tmp)
+    rsrv.shutdown()
+    rsrv.server_close()
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def browser_checks(check, page_html, tmp):
+    """The early box in Chromium (when Playwright and a Chromium are installed): the page is served at its website address from memory, the GitHub API
+    is stubbed, every other request is refused."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("  (no Playwright: the browser checks of the early list are skipped)")
+        return
+    exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
+    pages_url, rng = "https://some-owner.github.io/Meme-Bot/", random.Random(3)
+    ms = lambda: int(time.time() * 1000)
+    now = ms()
+    t, prev = now - 6 * 60_000, now - 66 * 60_000
+    own_html = re.sub(r'data-run-t="\d+"', 'data-run-t="%d"' % T0, page_html)          # the page of the scan whose early list it carries
+    page_html = re.sub(r'data-run-t="\d+"', 'data-run-t="%d"' % prev, page_html)
+    win_html = re.sub(r'data-next-scan="\d+"', 'data-next-scan="%d"' % t, page_html)   # a page whose next scheduled scan is the one running now
+    adds = [b58(rng) for _ in range(5)]
+    born = lambda m: now - 20_000 - m * 60_000 - 30_000        # half a minute into a minute: the ages read the same for a few seconds
+    coins = [{"addr": adds[0], "sym": "<script>alert(2)</script>", "name": "<img src=x onerror=alert(1)>", "pair": "javascript:alert(3)", "x": "javascript:alert(4)", "born": born(7),
+              "ageMin": 7, "liq": 12400.0, "mc": 48100.0, "k": 2, "rc": {"level": "danger", "text": "RugCheck danger: Large Amount of LP Unlocked"}},
+             {"addr": "0xNOT<b>SOLANA", "sym": "BADADDR", "born": born(9), "ageMin": 9, "k": 1, "rc": None},
+             {"addr": adds[1], "sym": "GOOD", "name": "Good", "born": born(3), "ageMin": 3, "k": 3, "x": "https://x.com/good", "rc": {"level": "clean", "text": "RugCheck: no danger flags"}}]
+    young = {"v": 1, "t": t, "at": t + 276_000, "state": "listed", "rcState": "done", "partial": False, "minLiq": 5000, "coins": coins}
+    doc = {"v": 1, "t": t, "live": True, "updated": now - 20_000, "agents": [{"id": "dispatch", "status": "done"}, {"id": "market", "status": "running"}], "young": young}
+    stale = dict(doc, updated=now - 7 * 60_000, young=dict(young, coins=coins[:1] + [dict(coins[2], addr=adds[2], sym="OLD", born=now - 7 * 60_000 - 70 * 60_000, ageMin=70)]))
+    calls, dialogs, errs = [], [], []
+    plain = lambda: (200, doc)
+    try:
+        with sync_playwright() as pw:
+            br = pw.chromium.launch(**({"executable_path": exe} if exe else {}))
+
+            def ctx_page(w=390, skew=0, hash_="#new", html_=None, answer=plain, init=""):
+                ctx = br.new_context(viewport={"width": w, "height": 900})
+                ctx.add_init_script("(function(){var r=Date.now.bind(Date);window.__skew=%d;Date.now=function(){return r()+window.__skew;};})();%s" % (skew, init))
+
+                def handler(route):
+                    u = route.request.url
+                    if u.startswith(pages_url):
+                        route.fulfill(status=200, body=html_ or page_html, headers={"Content-Type": "text/html; charset=utf-8"})
+                    elif u.startswith("https://api.github.com/"):
+                        calls.append(u)
+                        code_, body_ = answer()
+                        route.fulfill(status=code_, body=json.dumps(body_), headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"})
+                    else:
+                        route.abort()
+                ctx.route("**/*", handler)
+                pg = ctx.new_page()
+                pg.on("dialog", lambda d: (dialogs.append(d.message), d.dismiss()))
+                pg.on("pageerror", lambda e: errs.append(str(e)[:120]))
+                pg.goto(pages_url + hash_)
+                return ctx, pg
+
+            def status(pg):
+                return pg.evaluate("(document.querySelector('[data-early-status]')||{}).textContent||''")
+
+            def wait_status(pg, text, ms_=8000):
+                try:
+                    pg.wait_for_function("t => ((document.querySelector('[data-early-status]')||{}).textContent||'').indexOf(t) >= 0", arg=text, timeout=ms_)
+                    return True
+                except Exception:
+                    return False
+            age_js = "() => Array.from(document.querySelectorAll('[data-early-list] .ehd')).map(e => e.textContent)"
+            ctx, pg = ctx_page()
+            pg.wait_for_function("document.querySelectorAll('[data-early-list] > li').length === 3", timeout=10000)
+            info = pg.evaluate("""() => { const box = document.querySelector('[data-early]'), vis = e => !!e.getClientRects().length, r = e => e.getBoundingClientRect();
+              return { young: document.getElementById('tab-young').checked, imgs: box.querySelectorAll('img,script').length, text: box.textContent, hash: location.hash,
+                hscroll: document.documentElement.scrollWidth - innerWidth, links: Array.from(box.querySelectorAll('a')).map(a => [a.getAttribute('href'), a.rel, a.target]),
+                cardLinks: Object.fromEntries(Array.from(box.querySelectorAll('[data-early-list] > li')).map(li => [li.querySelector('.es').textContent, li.querySelectorAll('a').length])),
+                minLink: Math.min(...Array.from(box.querySelectorAll('.lchip')).filter(vis).map(e => r(e).height)), minLinkW: Math.min(...Array.from(box.querySelectorAll('.lchip')).filter(vis).map(e => r(e).width)),
+                minPill: Math.min(...Array.from(box.querySelectorAll('.eorder label')).filter(vis).map(e => r(e).height)),
+                status: box.querySelector('[data-early-status]').textContent }; }""")
+            a1 = pg.evaluate(age_js)
+            # a selection in a card and the focus on a link survive the redraws: the ages change in place, the cards are not rebuilt
+            pg.evaluate("""() => { const li = document.querySelector('[data-early-list] > li'), r = document.createRange(); window.__li = li;
+              r.selectNodeContents(li.querySelector('.es')); getSelection().removeAllRanges(); getSelection().addRange(r); li.querySelector('.lchip').focus(); }""")
+            sel0 = pg.evaluate("getSelection().toString()")
+            pg.evaluate("window.__skew += 16000")
+            pg.wait_for_timeout(1500)
+            kept = pg.evaluate("[document.querySelector('[data-early-list] > li') === window.__li, getSelection().toString(), !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('li') === window.__li)]")
+            n0 = len(calls)
+            pg.evaluate("window.__skew += 180000")      # three minutes of local time pass, and the next poll brings the same snapshot again
+            for _ in range(40):
+                if len(calls) > n0:
+                    break
+                pg.wait_for_timeout(150)
+            pg.wait_for_timeout(1300)
+            a2, polled = pg.evaluate(age_js), len(calls) > n0
+            ctx.close()
+            ctx, pg = ctx_page(skew=-600_000)            # a phone clock 10 minutes behind
+            pg.wait_for_function("document.querySelectorAll('[data-early-list] > li').length === 3", timeout=10000)
+            a3 = pg.evaluate(age_js)
+            ctx.close()
+            n_calls = {}
+            for tab in ("tab-pick", "tab-young", "tab-office"):
+                calls.clear()
+                ctx, pg = ctx_page(hash_="")
+                if tab != "tab-pick":
+                    pg.click('label[for="%s"]' % tab)
+                pg.wait_for_timeout(1500)
+                n_calls[tab] = len(calls)
+                ctx.close()
+            # #new opens the tab once: the reader moves to the office and reloads, the office stays open
+            ctx, pg = ctx_page()
+            pg.wait_for_timeout(300)
+            hash_after = pg.evaluate("location.hash")
+            pg.click('label[for="tab-office"]')
+            pg.reload()
+            pg.wait_for_timeout(500)
+            tab_after = pg.evaluate("[document.getElementById('tab-office').checked, document.getElementById('tab-young').checked]")
+            ctx.close()
+            # a phone 10 minutes fast during a scan that pushes: paused at first sight at most, live once "updated" has moved
+            bump = lambda: (200, dict(doc, updated=ms() - 5000))
+            ctx, pg = ctx_page(skew=600_000, html_=win_html, answer=bump, init="window.MEMEBOT_LIVE_T={LIVE:1500};")
+            fast_ok = wait_status(pg, "Found at", 9000)
+            fast = [status(pg), pg.evaluate("document.querySelector('[data-early]').classList.contains('dim')")]
+            ctx.close()
+            # a phone 10 minutes slow and a snapshot 7 minutes old that never moves: fresh at first sight, paused after 5 minutes of local time
+            ctx, pg = ctx_page(skew=-600_000, answer=lambda: (200, stale))
+            slow0 = wait_status(pg, "Found at", 8000) and status(pg)
+            pg.evaluate("window.__skew += 302000")
+            slow_ok = wait_status(pg, "Live view paused", 5000)
+            dimmed = pg.evaluate("""() => { const op = e => { let o = 1; for (; e; e = e.parentElement) o *= +getComputedStyle(e).opacity; return o; };
+              return [document.querySelector('[data-early]').classList.contains('dim'), Array.from(document.querySelectorAll('[data-early-list] > li')).map(li => [li.classList.contains('old'), op(li)])]; }""")
+            ctx.close()
+            # a scan that has not listed yet: the box has nothing to fold
+            ctx, pg = ctx_page(answer=lambda: (200, dict(doc, young=None)))
+            wait_status(pg, "Scan running since", 8000)
+            nl = pg.evaluate("""() => { const b = document.querySelector('[data-early]'), o = b.open; b.querySelector('summary').click();
+              return [b.classList.contains('nolist'), o === b.open, getComputedStyle(b.querySelector('.estatus'), '::before').display]; }""")
+            ctx.close()
+            # the page's own list after its scan: no newer snapshot, the label and the ages are of the time the list was made
+            ctx, pg = ctx_page(html_=own_html, answer=lambda: (404, {"message": "Not Found"}))
+            own_ok = wait_status(pg, "Early list of this scan", 8000)
+            own = pg.evaluate("""() => [(document.querySelector('[data-early-label]')||{}).textContent||'', Array.from(document.querySelectorAll('[data-early-list] .ehd .chip')).map(e => e.textContent)]""")
+            ctx.close()
+            br.close()
+    except Exception as e:
+        print("  (the browser checks of the early list could not run: %s)" % str(e)[:200])
+        return
+    links = info["links"]
+    ok = (info["young"] and info["imgs"] == 0 and "<img src=x onerror=alert(1)>" in info["text"] and "<script>alert(2)</scr" in info["text"] and not dialogs
+          and info["cardLinks"].get("BADADDR") == 0 and info["cardLinks"].get("GOOD") == 7 and all(u.startswith("https://") and rel == "noopener noreferrer" and tg == "_blank" for u, rel, tg in links)
+          and not any("jup.ag" in u or "javascript" in u for u, _, _ in links) and any(u == "https://x.com/good" for u, _, _ in links)
+          and any(u == "https://dexscreener.com/solana/" + adds[0] for u, _, _ in links) and "RugCheck reports for 2 of 3" in info["status"])
+    check(ok, "browser: #new opens the tab; a coin named <img src=x onerror=alert(1)> renders as text, a bad address gets no link, a javascript: link is dropped, no swap link%s" % ("" if ok else " %s %s" % (dialogs, json.dumps(info)[:600])))
+    check(info["hscroll"] <= 0 and info["minLink"] >= 44 and info["minLinkW"] >= 44 and info["minPill"] >= 44,
+          "browser at 390 px: no sideways scroll, link chips at least 44 px tall and wide (the X chip too), order pills 44 px tall (%.0f, %.0f, %.0f)" % (info["minLink"], info["minLinkW"], info["minPill"]))
+    num_age = lambda xs: [int(m) for m in re.findall(r"pair (\d+) min old", " ".join(xs))]
+    check(len(num_age(a1)) == 3 and polled and num_age(a2) == [x + 3 for x in num_age(a1)] and num_age(a3) == num_age(a1),
+          "browser: the ages count on with local time across a poll that brings the same snapshot (%s, then %s three minutes later) and ignore a phone clock"
+          " 10 minutes off (%s)" % (num_age(a1), num_age(a2), num_age(a3)))
+    check(sel0 and kept == [True, sel0, True], "browser: a selected symbol and the focused link survive the redraws (the cards are not rebuilt every 15 s: %s)" % kept)
+    check(n_calls["tab-pick"] == 0 and n_calls["tab-young"] >= 1 and n_calls["tab-office"] >= 1 and hash_after == "" and tab_after == [True, False],
+          "browser: the page polls on the New launches and Agent office tabs, not on The pick (%s); #new is used once, a reload keeps the tab chosen" % n_calls)
+    check(fast_ok and not fast[1] and slow0 and "updated" in slow0 and slow_ok and dimmed[0] and all(o >= 0.79 for _, o in dimmed[1]) and any(old for old, _ in dimmed[1]),
+          "browser: a phone 10 minutes fast reads a pushing scan as live (%s); one 10 minutes slow reads a stalled one as paused after 5 minutes; a dimmed list"
+          " never dims an old card twice (opacities %s)" % (fast[0][:60], [round(o, 2) for _, o in dimmed[1]]))
+    check(nl[0] and nl[1] and nl[2] == "none", "browser: before the list comes the box has no fold arrow and a tap folds nothing (%s)" % nl)
+    check(own_ok and own[0].startswith("Fake money · not advice. This was the list before scoring") and "below" in own[0]
+          and any(re.search(r"min old at \d\d:\d\d", x) for x in own[1]) and not errs,
+          "browser: after its scan the page's own list says it was the list before scoring and gives the ages at the time it was made (%s) %s" % (own[1][:2], errs[:2]))
+
+
 def main():
     mock = Mock()
     srv = serve(mock)
@@ -365,9 +1369,13 @@ def main():
         if not ok:
             fails.append(what)
 
+    spot_modes = []          # each cycle's scan (full, light, none) and whether a launch spotter ran in it: never without --recommend
+
     def cycle(now, force=False, rescan=False):
         cmd = [PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(now)] + (["--force"] if force else []) + (["--rescan"] if rescan else [])
         p = subprocess.run(cmd, capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+        m_ = re.search(r"^mode: (\{.*\})$", p.stderr, re.M)
+        spot_modes.append(((json.loads(m_.group(1)).get("scan") if m_ else "?"), "radar.py" in p.stderr or os.path.exists(os.path.join(d, "young_early.json"))))
         print(p.stdout.rstrip())
         if p.returncode != 0:
             print(p.stderr[-3000:]); check(False, "cycle exited %d" % p.returncode)
@@ -404,6 +1412,20 @@ def main():
     h = F.Http(url, pause=0)
     got = h.get("https://api.dexscreener.com/__429")
     check(got == {"ok": True} and h.limited == 2 and "api.dexscreener.com" not in h.dead, "429 twice, then the answer (%s waits)" % h.limited)
+
+    print("== fetch.py tokens: a second call numbers its files on after the first, never over them")
+    tk = tempfile.mkdtemp(prefix="memebot-tokens-")
+    os.makedirs(os.path.join(tk, "pairs"))
+    first = {"tokens_000.txt": mock.coins[0], "tokens_002.txt": mock.coins[1]}      # the first call's chunk 1 had no pair, so it wrote no file
+    for name, c in first.items():
+        open(os.path.join(tk, "pairs", name), "w", encoding="utf-8").write(F.ds_row(mock.pair(c)) + "\n")
+    open(os.path.join(tk, "pairs", "jupx_003.txt"), "w").write("JUPXFALLBACK111111111111111111111111111111|0.1|1000\n")
+    old_files = {n: open(os.path.join(tk, "pairs", n), "rb").read() for n in os.listdir(os.path.join(tk, "pairs"))}
+    F.cmd_tokens(F.Http(url, pause=0, log=lambda s: None), tk, [c["a"] for c in mock.coins[40:71]] + ["JUPXFALLBACK" + "2" * 32])
+    now_files = {n: open(os.path.join(tk, "pairs", n), "rb").read() for n in os.listdir(os.path.join(tk, "pairs"))}
+    check(all(now_files.get(n) == b for n, b in old_files.items()) and {"tokens_004.txt", "tokens_005.txt", "jupx_006.txt"} <= set(now_files) and len(now_files) == 6,
+          "fetch.py tokens after an earlier call with an empty chunk writes tokens_004, tokens_005 and jupx_006 and leaves tokens_002 and jupx_003 as they were (%s)" % sorted(now_files))
+    shutil.rmtree(tk, ignore_errors=True)
 
     print("== run_jobs: workers at once, their lines in list order, a failed job stops only its worker")
     lines, ev = [], threading.Event()
@@ -619,6 +1641,8 @@ def main():
     page_live = open(os.path.join(od, "report.html"), encoding="utf-8").read() if r.returncode == 0 else ""
     bare_live = re.sub(r'<script>\s*\(function\(\)\{\s*var MB=window\.MemebotLive=.*?</script>', "", re.sub(
         r'<p class="note olink" data-lv data-live-link>.*?</p><div class="olive".*?<p class="note" data-lv data-live-off hidden></p></div>', "", page_live, flags=re.S), flags=re.S)
+    import report as R_
+    bare_live = re.sub(r'<p class="note ehint">.*?</p><details class="early" data-early.*?</details>', "", bare_live.replace(R_.EARLY_CSS, "", 1), flags=re.S)   # the early list (website only)
     check('Live during a scan: <a href="https://some-owner.github.io/Meme-Bot/">' in page_live and "https://api.github.com/repos/Some-Owner/Meme-Bot/contents/live.json?ref=live" in page_live
           and "MEMEBOT_LIVE_SRC" in page_live and 'data-agents="scouts deep"' in page_live and 'data-agent="scouts"' in page_live
           and page_plain and "Live during a scan" not in page_plain and "live.json" not in page_plain and "MEMEBOT_LIVE_SRC" not in page_plain and bare_live == page_plain,
@@ -660,9 +1684,10 @@ console.log(JSON.stringify(o));
               and o.get("liveSeen") == ["live", "paused"],
               "the page's decision (node): a live snapshot is live, after 5 minutes without an update or two failed polls paused, never finished; live false is finished,"
               " or stopped when the reporter did not finish or an agent failed; a snapshot older than the page or none hides the box %s" % (o.get("states") or o))
-        check(o.get("next") == [75, 8 * 60, 390, 60, 5 * 60, 13 * 60, 600, 8 * 60, 8 * 60, 1205, 180, 75, 150, 1800],
-              "the page's poll plan (node): 75 s while live; between scans 2 minutes before the scheduled start, 5 after it, then every 10 minutes (10 without the"
-              " schedule); after a failed poll longer; GitHub's remaining requests stretch the gap, none left waits for the reset %s" % (o.get("next") or o))
+        check(o.get("next") == [75, 8 * 60, 75, 60, 5 * 60, 13 * 60, 600, 8 * 60, 8 * 60, 1205, 180, 75, 150, 1800],
+              "the page's poll plan (node): 75 s while live and in the scan window (from 2 minutes before a scheduled start to 35 after it); between scans 2 minutes"
+              " before the scheduled start, then every 10 minutes (10 without the schedule); after a failed poll longer; GitHub's remaining requests stretch the gap,"
+              " none left waits for the reset %s" % (o.get("next") or o))
     else:
         check("state:function(doc,now,pageT,fails)" in js and "doc.live===true)return now-(+doc.updated||0)<MB.STALE&&(+fails||0)<2?'live':'paused'" in js
               and "return rep&&rep.status==='done'&&!bad?'done':'stopped'" in js and "(+doc.t||0)<pageT)return 'hide'" in js,
@@ -1337,6 +2362,10 @@ console.log(JSON.stringify(o));
     check(m_chain and int(m_chain.group(2)) >= 1, "the page says what 20 riding every tip would be now (%s)" % (m_chain.group(0)[-40:] if m_chain else "missing"))
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
     shutil.rmtree(hd, ignore_errors=True)
+
+    check(spot_modes and not any(on for _, on in spot_modes),
+          "the launch spotter starts in no scan without --recommend, light ones included (%s)" % ", ".join(sorted({m for m, _ in spot_modes})))
+    spotter_checks(check)
 
     print("== sync: page and small docs to a results branch")
     bare = tempfile.mkdtemp(prefix="memebot-bare-")

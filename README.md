@@ -241,6 +241,58 @@ from coins 6 to 24 hours old, and the training's age record (`ages` in `db/memeb
 tab) says how coins of each age did after the horizon, so the question "do the newest coins do better?" is answered by
 the record, not by a hunch. The RugCheck/GoPlus reports for them are fetched with the shortlist.
 
+### Early list on the New launches tab
+
+Fake money, not advice. A full scan takes about 26 minutes, so the scored list above shows coins that were found about 22
+minutes before the page came out. The early list closes that gap inside the scan: about 5 minutes after each hourly scan
+starts, the New launches tab on the website (keep it open, or open it with `#new` at the end of the address) shows the coins under
+an hour old that the scan's sources found, newest first (a switch sorts them in score order). RugCheck's words follow about half a
+minute later. Each card says how old the DexScreener pair is (for a pump.fun coin that is the time since it graduated) and, when
+pump.fun or LaunchLab gives it, how old the token itself is, with links to DexScreener, RugCheck, Solscan, Birdeye, GMGN, pump.fun
+and X. There is never a swap link.
+
+How it works: right after the sources step, `bot.py` starts `radar.py early` (the "Launch spotter" in the Agent office) in the
+background, next to the price desk. It copies the sources' files into `mb/radar/in`, asks DexScreener for the addresses the keyword
+searches did not price (about 31 requests, 0.6 s apart, at most 45), runs memebot's own gather, scan and new-launches filter on that
+copy with the ages measured at its own clock, and writes `mb/young_early.json`. The live view pushes it within seconds (as `young` in
+`live.json`), then once more with the RugCheck reports (at most 20 coins, 45 seconds at most). The page reads it through the same
+poll as the Agent office: while one of the two tabs is open it asks every 75 seconds from 2 minutes before a scheduled start until
+35 minutes after it, or until that scan's last push is in.
+
+The early list is not the scored list:
+- It is not scored by the full scan: no deep search, no creator check, no on-chain sample, no smart-wallet or zero model, and
+  "copy" is judged on a smaller universe. Its score uses the last scan's weights and is comparable only within the list.
+- It is only partly safety-checked: RugCheck only. A clean report reads "RugCheck: no danger flags", never "safe".
+- The paper account does not buy from it. The trader still buys the first 5 coins of the scored list at about minute 22, at the
+  refreshed price, exactly as before; the early list changes no buy, no tip and no record (`PAPER_RULE` is unchanged).
+- Its coins can differ from the scored list's. A coin born after the scan started is never on the scored list (that list only takes
+  coins older than the scan), and some coins fall under the liquidity floor, lose their price or fail a gate by the trader step.
+  After the scan the early list stays folded above the scored one, and each card says whether its coin made the scored list
+  (and was bought for 3 €) or why not.
+
+It removes the delay inside the scan, not the hourly rhythm: a coin created right after a scan's sources step is first seen by the
+next scan.
+
+Requests: about 31 DexScreener requests a scan (about 10% more than before), at most 20 RugCheck reports, and one DexScreener request
+after the trader. The spotter stops at the first DexScreener rate limit (429) without waiting, so the price desk, which shares the
+runner's address, keeps its budget; it never calls Jupiter, GeckoTerminal, pump.fun, the Solana RPC or GoPlus. It runs beside the
+desk, so the scan takes no longer; if it is still at work when the trader starts, or when the scan stops early, it is stopped there.
+A failed spotter costs only the early list. It tries a request at most twice and only when no answer came at all, waits its 0.6 s
+after error answers too, and keeps every try inside its time caps. A coin RugCheck did not answer for reads "RugCheck did not answer",
+not "no RugCheck report".
+
+The record: after the trader, `radar.py check` prices the early list once more (about minute 24, one request, one try; `bot.py`
+stops it after 30 seconds) and writes `db/memeearly/<run id>.json` (synced with the results, pruned after 30 days): each coin's price
+when seen, about 20 minutes later and about an hour later (filled by the spotter of the scan 45 to 90 minutes later that is closest
+to an hour; a coin counts as gone when DexScreener answered for it without a pair, and stays unknown when the request failed), its
+place on the scored list, its buy and why it was not on the list. After a few days it answers "is a coin seen at minute 5 a better
+buy than at minute 24?" without leaving out the coins that died in between. `db/memebot/spotter.json` keeps the trader's score weights for the next
+scan's spotter.
+
+Switch it off with the repository variable `MEMEBOT_EARLY` = `0` (Settings, Secrets and variables, Actions, Variables), or
+`MEMEBOT_EARLY=0` on a laptop. The page needs the website (it is built only when `GITHUB_REPOSITORY` is set); the first scan after an
+update has no early box yet, because the polling script comes with the page the scan before built.
+
 ## Publicity
 
 Numbers alone miss what people are talking about, so every scan also reads Reddit (the newest posts of r/CryptoMoonShots,
@@ -378,17 +430,17 @@ While a scan runs on GitHub, `bot.py cycle` (with `MEMEBOT_LIVE=1`, which the wo
 Agent office record to a branch `live` that holds a single commit with a single file, `live.json`: about every 45 seconds when it
 changed, at least once a minute even when nothing changed (a heartbeat with a fresh `"updated"`, so a quiet step is not taken
 for a dead scan), and once more when the cycle ends (`"live": false`). The training and the candle fetch running beside the scan
-report each progress line as it happens. The website's Agent office tab reads `live.json` through GitHub's API while the tab is
-open and the browser tab is in front, and marks the floor plan: a LIVE badge with the age of the snapshot, the departments at
+report each progress line as it happens. The website's Agent office tab (and the New launches tab, for the early list) reads
+`live.json` through GitHub's API while one of them is open and the browser tab is in front, and marks the floor plan: a LIVE badge with the age of the snapshot, the departments at
 work pulsing, the finished ones green, the ones still waiting dimmed, the counts, and the newest line of every agent at work.
 After the scan it says when the scan finished (or that it stopped, when no report came from it), and the website reloads itself
 once the new page is out. A live snapshot that went 5 minutes without an update, or two failed reads in a row, show "Live view
 paused, the scan may still be running", never "finished".
 
 The page reads without a token, so every request counts against the 60 an hour GitHub allows one address, an unchanged answer
-(304) too. It therefore asks every 75 seconds only while the newest snapshot is a live scan (at most 48 requests an hour), and
-between scans only 2 minutes before the next scheduled start, 5 minutes after it, then every 10 minutes (6 an hour); a 35-minute
-scan costs about 31 requests in its hour. The tabs of one browser share one reader (a reload asks nothing new). Every answer
+(304) too. It therefore asks every 75 seconds while the newest snapshot is a live scan and in the scan window, from 2 minutes
+before a scheduled start to 35 minutes after it (until that scan's last snapshot is in), so a scan that starts late is caught too;
+outside it only 2 minutes before the next scheduled start, then every 10 minutes. One open page costs about 25 to 33 requests an hour. The tabs of one browser share one reader (a reload asks nothing new). Every answer
 carries GitHub's remaining count and reset time, and the page stretches its gaps so that 10 requests stay free: two phones or
 laptops behind one address (one home Wi-Fi) slow each other down to about one read every 1.5 to 2 minutes each, and in the last
 minutes of GitHub's hour a few reads can be up to about 10 minutes apart (the page then says "paused") instead of running out. A push
@@ -427,6 +479,7 @@ to show the picks, the charts and the links in chat.
 | `bot.py` | the cycle (`cycle`, `loop`, `status`, `reset`) |
 | `fetch.py` | the sources: every API → the plain-text files the analyst reads |
 | `memebot.py` | the analyst: gates, factors, learned weights, picks, exits, big test |
+| `radar.py` | the launch spotter: the early list of new launches about five minutes into each scan, and its record |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
 | `.github/workflows/scan.yml` | the hourly GitHub Actions scan, the results branch and the website |

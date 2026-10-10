@@ -7,10 +7,14 @@ A cycle:
   3. memebot.py gather    merge everything; fetch full DexScreener data for the addresses that still lack it; gather again
   4. memebot.py shortlist RugCheck reports (and GMGN top buyers) for the best candidates
   5. memebot.py train     the training programs on the scored snapshots: walk-forward test, zero model, tuned limits (db/memebot/train)
+     radar.py early      (recommend mode, full scan) the launch spotter, beside the steps above from the end of the sources step: the
+                          coins under an hour old for the New launches tab about five minutes into the scan, before they are scored
+                          (young_early.json, pushed with the live view; MEMEBOT_EARLY=0 switches it off). It never changes a buy.
   6. memebot.py run       exits on the open positions, then the 2 best clean coins at 20 each out of the 40 bankroll (pick mode); with
                           --recommend the two best coins go to the page and the paper account buys the top pick for 50 and the first
                           5 new launches for 3 each (fake money, no budget; sold at +1000%, -30% or after 6 hours)
-  7. apply out/*.json into db/ (positions, exits, snapshots, learned weights, state)
+  7. apply out/*.json into db/ (positions, exits, snapshots, learned weights, state); radar.py check records the early list's fate
+     (db/memeearly) and db/memebot/spotter.json keeps the trader's weights for the next scan's spotter
   8. report.py        renders mb/report.html, the analysis page (open it in a browser)
 
 Usage:
@@ -30,7 +34,8 @@ Usage:
 
 MEMEBOT_LIVE=1 (the scan workflow sets it): while a cycle runs, its Agent office record goes to the one-commit branch "live" of
 the results remote (--remote, else RESULTS_URL, else the origin) about every 45 s when it changed and at least once a minute,
-for the website's live view (class Live).
+for the website's live view (class Live). The launch spotter's early list rides along in live.json as "young" and is pushed within
+seconds of being written (the kick).
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, datetime as dt
 
@@ -177,6 +182,69 @@ OFFICE = Office()    # the cycle at work puts its own record here (log() files t
 LIVE_FIRST, LIVE_EVERY, LIVE_BEAT, LIVE_WAIT = 10, 45, 60, 20   # the live view (s): the first push after the start, the least gap between two
 # pushes, a heartbeat push of an unchanged record once the last good push is this old (the page tells a quiet step from a scan that died),
 # and the most one push may take
+LIVE_KICK = 5        # s: a new early list from the spotter ("spotter", radar.py early) is pushed at once, at most this often
+EARLY = {"t": None, "doc": None, "rev": 0, "sig": None}   # this cycle's early list as the live view pushes it ("young" in live.json): the
+EARLY_LOCK = threading.Lock()                             # cycle's now, the checked doc, its revision and the file signature it came from
+EARLY_MAX_BYTES = 24000     # an early list bigger than this is not pushed (20 coins take about 10 KB)
+CHECK_LIMIT_S = 30          # radar.py check runs after the trader, on the scan's critical path: killed after this (it takes about 1 s)
+EARLY_STATES = ("listed", "empty", "small", "failed", "off")
+B58_RE = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
+X_RE = re.compile(r"^https://(www\.)?(x|twitter)\.com/[A-Za-z0-9_]{1,30}(/status/\d{1,25})?/?$")
+EARLY_NUMS = ("born", "minted", "ageMin", "px", "mc", "liq", "vol1", "vol", "chgM5", "chgH1", "buysH1", "sellsH1", "score", "k")
+EARLY_TOP = ("at", "rcAt", "minLiq", "maxAgeMin", "asked", "requests", "dsWaits", "pairs", "universe", "n")
+
+
+def early_num(v):
+    """A finite number, else None (bools are not numbers here)."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    return v if v == v and v not in (float("inf"), float("-inf")) else None
+
+
+def early_doc(path, now):
+    """The spotter's early list (young_early.json) checked for the page: a dict of version 1 for this cycle (t == now) in a known state,
+    at most 20 coins with known keys only, strings cut, addresses and X links that match their patterns (a coin with a bad address is
+    dropped), finite numbers. The clean doc, or None (missing, wrong, or over EARLY_MAX_BYTES). It never raises."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+        if not isinstance(raw, dict) or raw.get("v") != 1 or now is None or raw.get("t") != now or isinstance(raw.get("t"), bool) or raw.get("state") not in EARLY_STATES:
+            return None
+        txt = lambda v, n: (str(v) if isinstance(v, (str, int, float)) and not isinstance(v, bool) else "")[:n]
+        doc = {"v": 1, "t": raw["t"], "id": txt(raw.get("id"), 20), "state": raw["state"], "why": txt(raw.get("why"), 120),
+               "rcState": raw.get("rcState") if raw.get("rcState") in ("pending", "done", "partial", "down") else None,
+               "partial": raw.get("partial") is True, "rule": txt(raw.get("rule"), 24), "horizon": txt(raw.get("horizon"), 8)}
+        for k in EARLY_TOP:
+            doc[k] = early_num(raw.get(k))
+        coins = []
+        for c in (raw.get("coins") if isinstance(raw.get("coins"), list) else [])[:20]:
+            if not isinstance(c, dict) or not isinstance(c.get("addr"), str) or not B58_RE.match(c["addr"]):
+                continue
+            o = {"addr": c["addr"], "sym": txt(c.get("sym"), 24), "name": txt(c.get("name"), 48),
+                 "pair": c["pair"] if isinstance(c.get("pair"), str) and B58_RE.match(c["pair"]) else None,
+                 "dex": txt(c.get("dex"), 24), "launchpad": txt(c.get("launchpad"), 24),
+                 "x": c["x"] if isinstance(c.get("x"), str) and X_RE.match(c["x"]) else "",
+                 "src": [txt(s, 24) for s in (c.get("src") if isinstance(c.get("src"), list) else []) if isinstance(s, str)][:6], "held": c.get("held") is True}
+            for k in EARLY_NUMS:
+                o[k] = early_num(c.get(k))
+            rc = c.get("rc")
+            o["rc"] = ({"level": rc["level"], "text": txt(rc.get("text"), 120), "top1": early_num(rc.get("top1")), "lp": early_num(rc.get("lp"))}
+                       if isinstance(rc, dict) and rc.get("level") in ("danger", "warn", "clean", "none") else None)
+            coins.append(o)
+        doc["coins"] = coins
+        if len(json.dumps(doc, separators=(",", ":"))) > EARLY_MAX_BYTES:
+            return None
+        return doc
+    except Exception:
+        return None
+
+
+def early_set(t, doc):
+    """This cycle's early list for the live view (doc of cycle t); a list of another cycle is ignored. The next push carries it."""
+    with EARLY_LOCK:
+        if EARLY["t"] == t:
+            EARLY["doc"] = doc
+            EARLY["rev"] += 1
 
 
 def redact(s):
@@ -205,6 +273,7 @@ class Live:
         self.lock, self.plock = threading.Lock(), threading.Lock()   # lock: one push at a time; plock: the git process now running
         self.proc, self.pushed, self.said = None, None, False
         self.t0, self.tried, self.ok = time.time(), None, None        # the start, the last push begun, the last good push begun
+        self.d, self.early_pushed = os.path.abspath(d), None          # the cycle's folder (young_early.json) and the early list's revision last sent
         shutil.rmtree(self.git_dir, ignore_errors=True)
         self.thread = threading.Thread(target=self.loop, daemon=True)
         self.thread.start()
@@ -227,18 +296,45 @@ class Live:
 
     def due(self, now):
         """Whether the loop pushes now: the first push soon after the start, so the page sees the scan begin; then a changed record at
-        most every LIVE_EVERY s, and an unchanged one (a heartbeat) once the last good push is LIVE_BEAT s old."""
+        most every LIVE_EVERY s, and an unchanged one (a heartbeat) once the last good push is LIVE_BEAT s old. A new early list from the
+        spotter goes out at once (the kick), LIVE_KICK s after the last push at the earliest."""
         if not OFFICE.d:
             return False
+        with EARLY_LOCK:
+            kick = EARLY["doc"] is not None and EARLY["rev"] != self.early_pushed
+        if kick and (self.tried is None or now - self.tried >= LIVE_KICK):
+            return True
         if self.tried is None:
             return now - self.t0 >= min(LIVE_FIRST, LIVE_EVERY)
         if now - self.tried < min(LIVE_EVERY, LIVE_BEAT):
             return False
         return OFFICE.rev != self.pushed or self.ok is None or now - self.ok >= LIVE_BEAT
 
+    def watch_early(self):
+        """Looks at <dir>/young_early.json (about once a second): a new file of this cycle is checked (early_doc) and becomes the early
+        list the next push carries."""
+        try:
+            st = os.stat(os.path.join(self.d, "young_early.json"))
+            sig = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            return
+        with EARLY_LOCK:
+            t, seen = EARLY["t"], EARLY["sig"]
+        if sig == seen or t is None:
+            return
+        doc = early_doc(os.path.join(self.d, "young_early.json"), t)
+        with EARLY_LOCK:
+            if EARLY["t"] != t:          # a new cycle began meanwhile: this file is not its list
+                return
+            EARLY["sig"] = sig
+            if doc is not None:
+                EARLY["doc"] = doc
+                EARLY["rev"] += 1
+
     def loop(self):
         while not self.stop.wait(min(1.0, LIVE_EVERY / 4.0)):
             try:
+                self.watch_early()
                 if self.due(time.time()):
                     self.push(True)
             except Exception:
@@ -294,6 +390,11 @@ class Live:
                 with o.lock:
                     rev, doc = o.rev, o.doc()
                 doc.update(live=live, updated=ms())
+                with EARLY_LOCK:
+                    erev, edoc, et = EARLY["rev"], EARLY["doc"], EARLY["t"]
+                if edoc is not None and et is not None and edoc.get("t") == et:
+                    doc["young"] = edoc      # the early list of this cycle; office.json never carries it
+                self.early_pushed = erev      # tried: a push that fails is not kicked again (the regular pushes carry the list)
                 until = t + LIVE_WAIT
                 if not os.path.isdir(self.git_dir):
                     self.git(until, "init", "-q", "--bare", cut_ok=live)
@@ -331,13 +432,29 @@ class Live:
             pass
 
 
-def run(args, d, now=None, expect_json=True):
+def run(args, d, now=None, expect_json=True, soft=False, limit=None):
+    """A child command in the foreground: its progress lines are logged as they come, its JSON result returned. A failure stops the
+    cycle (the office records it), unless soft: then it is logged in one line and None comes back. limit (s): the child is killed once it
+    runs this long (a stalled name lookup is not covered by a request's own timeout), which counts as a failure."""
     cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
-    if now and args[0] == "memebot.py":
+    if now and args[0] in ("memebot.py", "radar.py"):
         cmd += ["--now", str(now)]
     env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     # the child's progress lines (stderr) are shown as they happen; its result (stdout) is collected
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
+    cut = []
+    timer = None
+    if limit:
+        def stop():
+            if p.poll() is None:
+                cut.append(1)
+                try:
+                    p.kill()
+                except Exception:
+                    pass
+        timer = threading.Timer(limit, stop)
+        timer.daemon = True
+        timer.start()
     out = []
     t = threading.Thread(target=lambda: out.append(p.stdout.read()))
     t.start()
@@ -345,7 +462,13 @@ def run(args, d, now=None, expect_json=True):
         log(line.rstrip())
     t.join()
     p.wait()
+    if timer:
+        timer.cancel()
     stdout = out[0] if out else ""
+    if soft and p.returncode != 0:
+        log("%s %s, the cycle goes on: %s" % (" ".join(args[:2]), ("stopped after %g s" % limit) if cut else "failed (exit %s)" % p.returncode,
+                                             " ".join(stdout.split())[-300:]))
+        return None
     if p.returncode != 0:
         OFFICE.fail()
         raise SystemExit("%s failed:\n%s" % (" ".join(cmd[1:3]), stdout[-2000:]))
@@ -354,16 +477,19 @@ def run(args, d, now=None, expect_json=True):
     try:
         return json.loads(stdout)
     except ValueError:
+        if soft:
+            log("%s printed no JSON, the cycle goes on" % " ".join(args[:2]))
+            return None
         OFFICE.fail()
         raise SystemExit("%s printed no JSON:\n%s" % (args[0], stdout[-2000:]))
 
 
-def start_bg(args, d, now=None, agent=None):
+def start_bg(args, d, now=None, agent=None, on_exit=None):
     """A child command started beside the rest of the cycle: its progress lines (stderr) and its result (stdout) go to files
     and are read when it is awaited (finish_bg), so the cycle's own log stays in order. A waiter thread notes when the process
-    really exits (job["end"], ms), for the Agent office record of agent."""
+    really exits (job["end"], ms), for the Agent office record of agent, and then calls on_exit(job) (its errors are swallowed)."""
     cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
-    if now and args[0] == "memebot.py":
+    if now and args[0] in ("memebot.py", "radar.py"):
         cmd += ["--now", str(now)]
     base = os.path.join(d, "bg-" + re.sub(r"[^a-z0-9]+", "-", " ".join(args[:2]).lower()).strip("-"))
     out, err = open(base + ".out", "w", encoding="utf-8"), open(base + ".err", "w", encoding="utf-8")
@@ -372,7 +498,15 @@ def start_bg(args, d, now=None, agent=None):
     BG_JOBS.append(job)
     OFFICE.begin(agent, bg=True)
     try:
-        job["waiter"] = threading.Thread(target=lambda: (p.wait(), job.update(end=ms())), daemon=True)
+        def wait():
+            p.wait()
+            job.update(end=ms())
+            if on_exit:
+                try:
+                    on_exit(job)
+                except Exception:
+                    pass
+        job["waiter"] = threading.Thread(target=wait, daemon=True)
         job["waiter"].start()
         job["tail"] = threading.Thread(target=tail_bg, args=(job, OFFICE), daemon=True)
         job["tail"].start()
@@ -413,11 +547,28 @@ def tail_bg(job, office):
         pass
 
 
+def stop_spotter(job, why):
+    """Kills the launch spotter if it is still at work (why: its office phrase) and waits until its waiter has filed its result, so the
+    record saved next already says so. Its early list is of no use once the scan stops or the trader starts."""
+    try:
+        if job["p"].poll() is None:
+            job["killed"] = why
+            job["p"].kill()
+        job["p"].wait(5)
+        if job.get("waiter"):
+            job["waiter"].join(5)
+    except Exception:
+        pass
+
+
 def stop_tails():
     """The tails of the background jobs not yet awaited stop filing lines (a cycle that stops early: the record it saves is the one it
-    ends with, and no tail outlives its cycle in bot.py loop). The jobs themselves run on as before."""
+    ends with, and no tail outlives its cycle in bot.py loop). The jobs themselves run on as before, except the launch spotter: it is
+    killed (Office.fail calls this first, so a cycle that fails in any step stops its spotter too)."""
     while BG_JOBS:
         job = BG_JOBS.pop()
+        if job.get("agent") == "spotter":
+            stop_spotter(job, "stopped when the scan stopped")
         try:
             job["stop"].set()
             with job["lock"]:      # once closed, the tail files nothing more and ends at its next turn (no wait here)
@@ -464,12 +615,13 @@ def finish_bg(job):
 
 KEEP_RESULTS_DAYS = 60      # scored snapshot chunks older than this leave the cache (the training does not need older coins)
 KEEP_RAW_DAYS = 3           # a raw snapshot chunk that was never scored by then never will be (its coins never got a price)
+KEEP_EARLY_DAYS = 30        # the early-list record (db/memeearly, radar.py check)
 
 
 def prune(d, now):
     """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted."""
     gone = 0
-    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS)):
+    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS), ("memeearly", KEEP_EARLY_DAYS)):
         for fn in glob.glob(os.path.join(d, "db", sub, "*.json")):
             try:
                 t = (json.load(open(fn, encoding="utf-8")) or {}).get("t")
@@ -517,7 +669,7 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     try:
         return cycle_steps(d, force, offline, mock, now, push, remote, branch, rescan, recommend, horizon)
     finally:
-        stop_tails()
+        stop_tails()          # a cycle that stops early stops its launch spotter too (the list is of no use without the cycle)
         if live:
             live.finish()
 
@@ -528,6 +680,12 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
     t0 = ms()
     now = int(now or t0)      # one clock for the whole cycle, so gather asks for exactly the coins run() will score
     o = OFFICE = Office(d, t0, horizon)    # who did what, on the real clock: db/memebot/office.json for the Agent office tab
+    for old in (os.path.join(d, "young_early.json"), os.path.join(d, "young_early.json.tmp")):   # the last cycle's early list is never this one's
+        if os.path.exists(old):
+            os.remove(old)
+    shutil.rmtree(os.path.join(d, "radar"), ignore_errors=True)
+    with EARLY_LOCK:
+        EARLY.update(t=now, doc=None, rev=EARLY["rev"] + 1, sig=None)
     o.begin("dispatch")
     extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else []) + ["--horizon", horizon]
     mode = run(["memebot.py", "mode"] + extra, d, now)
@@ -544,7 +702,7 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
         os.remove(train_out)
     train_job = start_bg(["memebot.py", "train", "--horizon", horizon, "--out", train_out], d, now, "trainer") if (mode["pick"] or mode["bigTestDue"]) else None
     fetch = lambda args, expect_json=True: run(["fetch.py"] + args + (["--mock", mock] if mock else []), d, expect_json=expect_json)
-    candle_job = None
+    candle_job = spot = None
     if not offline:
         o.begin("scouts")
         if mode["scan"] in ("full", "light"):
@@ -562,6 +720,15 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
             with open(items_file, "w", encoding="utf-8") as f:
                 json.dump(mode["candles"], f)
             candle_job = start_bg(["fetch.py", "candles", "--items", items_file] + (["--mock", mock] if mock else []), d, agent="candles")
+        # the launch spotter: the coins under an hour old for the New launches tab about five minutes into the scan (radar.py). It
+        # works in its own folder beside the price desk and never changes what the trader reads; a failure costs only the early list
+        early_on = os.environ.get("MEMEBOT_EARLY", "1") != "0"
+        if recommend and mode["pick"] and mode["scan"] == "full" and early_on:
+            spot = start_bg(["radar.py", "early", "--t0", str(t0), "--horizon", horizon] + (["--mock", mock] if mock else []), d, now, "spotter",
+                            on_exit=lambda job: spot_done(o, job, now))
+        else:
+            early_set(now, {"v": 1, "t": now, "state": "off", "coins": [], "why": "early list switched off" if not early_on else (
+                "light scan" if mode["scan"] == "light" else ("no scan this run, only prices" if mode["scan"] != "full" else "not a recommend scan"))})
     o.begin("market")
     g = run(["memebot.py", "gather"], d, now)
     if not offline and mode["scan"] in ("full", "light"):
@@ -577,6 +744,9 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
         g = run(["memebot.py", "gather"], d, now)
     log("gather: %d coins (%d with full DEX data), coverage %.0f%%, lists %s" % (g["coins"], g["fullData"], 100 * g["coverage"], g["lists"]))
     o.done("market", lambda: "%s coins, coverage %.0f%%" % (commas(g["coins"]), 100 * g["coverage"]))
+    if spot and spot["p"].poll() is not None:      # the spotter is done long before the market step: its lines go to the log in one block
+        finish_bg(spot)
+        spot = None
     if mode["pick"] or mode["bigTestSaveDue"]:
         o.begin("analyst")
         s = run(["memebot.py", "shortlist"] + extra, d, now)
@@ -640,12 +810,34 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
             t = run(["memebot.py", "train", "--horizon", horizon], d, now)
             log("training: " + t["note"])
             o.done("trainer", train_said, "fallback")
+    if spot:
+        if spot["p"].poll() is None:      # still at work when the trader starts: stopped, the scan does not wait for it
+            stop_spotter(spot, "still running at the trader step")
+            finish_bg(spot)
+            o.done("spotter", "still running at the trader step", "failed")
+            with EARLY_LOCK:
+                empty = EARLY["doc"] is None
+            if empty:
+                early_set(now, {"v": 1, "t": now, "state": "failed", "why": "the early list did not finish", "coins": []})
+        else:
+            finish_bg(spot)
+        spot = None
     o.begin("trader")
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     for x in re.split(r"(?<=\.)\s+(?=[A-Z])", str(r.get("note") or "") if isinstance(r, dict) else ""):
         o.line(x)            # the run's note, one sentence a line: what it picked, sold and learned
     n = apply_out(d)
     log("saved %d docs" % n)
+    if isinstance(r, dict) and isinstance(r.get("weights"), dict):      # the next scan's spotter scores with these (it never trains itself)
+        try:
+            sys.path.insert(0, HERE)
+            import memebot as M
+            with open(os.path.join(d, "db", "memebot", "spotter.json"), "w", encoding="utf-8") as f:
+                json.dump({"t": now, "rule": (M.PROFILES.get(horizon) or {}).get("RULE") or M.RULE, "horizon": horizon, "w": r["weights"]}, f, separators=(",", ":"))
+        except Exception as e:
+            log("spotter weights not saved: %s" % e)
+    if os.path.exists(os.path.join(d, "young_early.json")):     # the early list's record: its coins priced again, their fate on the scored list
+        run(["radar.py", "check", "--t0", str(t0), "--horizon", horizon] + (["--mock", mock] if mock else []), d, now, soft=True, limit=CHECK_LIMIT_S)
     prune(d, now)
     # a scored snapshot's raw copy is not needed anymore (the result doc carries everything the learning reads)
     try:
@@ -687,6 +879,32 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
     return r
 
 
+def spot_done(o, job, now):
+    """The launch spotter's result phrase for the Agent office, when its process exits (called by its waiter thread)."""
+    try:
+        with open(job["out"].name, encoding="utf-8", errors="replace") as f:
+            j = json.loads(f.read() or "null")
+    except (OSError, ValueError):
+        j = None
+    rc = job["p"].returncode
+    if job.get("killed"):          # stopped by the cycle (stop_spotter): that is the phrase, whatever it printed
+        o.done("spotter", job["killed"], "failed", end=job.get("end"))
+        return
+    j = j if isinstance(j, dict) else {}
+    st, mins = j.get("state"), ((j["at"] - now) / 60000.0) if isinstance(j.get("at"), (int, float)) else None
+    calls = "%d DexScreener call%s" % (j.get("requests") or 0, "" if j.get("requests") == 1 else "s")
+    if st == "listed":
+        said = "%d new launch%s at minute %.1f · RugCheck reports for %d of %d · %s" % (j.get("n") or 0, "" if j.get("n") == 1 else "es", mins or 0, j.get("rcGot") or 0, j.get("shown") or 0, calls) + (
+            " · %s" % (str(j.get("why") or "") or "DexScreener stopped early")[:60] if j.get("partial") else "")
+    elif st == "empty":
+        said = "no coin under an hour old with the minimum liquidity at minute %.1f · %s" % (mins or 0, calls)
+    elif st == "small":
+        said = "too few DexScreener pairs for a list · %s" % calls
+    else:
+        said = "no early list: %s" % (j.get("why") or "exit %s" % rc)
+    o.done("spotter", said, "done" if rc == 0 else "failed", end=job.get("end"))
+
+
 def trader_said(r):
     """The paper trader's result phrase for the Agent office: what it named or bought, and what it sold."""
     recs = [str(p.get("sym")) for p in r["picks"] if p.get("grp") == "recommend"]
@@ -717,6 +935,8 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memerec/**
 !db/memeyoung/
 !db/memeyoung/**
+!db/memeearly/
+!db/memeearly/**
 """
 
 

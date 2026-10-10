@@ -369,7 +369,7 @@ def collect(d, now):
     young_hist = sorted([r for r in M.load_docs(d, "memeyoung").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))[:48]
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
     office = M.load_json(os.path.join(d, "db", "memebot", "office.json"), None)
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state, "paper": paper,
+    return {"dir": d, "now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state, "paper": paper,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -536,7 +536,7 @@ def chart_box(wide, narrow, legend=""):
 # ---------------------------------------------------------------- the agent office: the worker steps of one hourly scan, drawn as a team
 OFFICE_DEPTS = (   # key, name, colour (page tokens only, so dark and light both work; neighbours on both floor plans stay apart), agent ids; ring order, clockwise from the top left
     ("ops", "Operations", "color-mix(in oklch,var(--s1) 30%,var(--bad-mark))", ("dispatch",)),
-    ("scouts", "Scouts", "color-mix(in oklch,var(--s1) 50%,var(--s3))", ("scouts", "deep")),
+    ("scouts", "Scouts", "color-mix(in oklch,var(--s1) 50%,var(--s3))", ("scouts", "deep", "spotter")),
     ("chart", "Chart desk", "var(--warn-mark)", ("candles",)),
     ("market", "Market data", "color-mix(in oklch,var(--s1) 65%,var(--bad-mark))", ("market", "refresh")),
     ("analysts", "Analysts", "var(--s3)", ("analyst",)),
@@ -554,6 +554,8 @@ OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services 
     "market": ("Price desk", "prices every coin found: DexScreener pairs first, Jupiter prices for the rest", ("DexScreener", "Jupiter")),
     "analyst": ("Gatekeeper", "runs the gates, scores the coins and shortlists the best for the safety checks", ()),
     "deep": ("Deep searcher", "searches DexScreener with more keywords when only a few coins passed the gates", ("DexScreener",)),
+    "spotter": ("Launch spotter", "lists the coins under an hour old about five minutes into the scan, for the New launches tab, before they are scored",
+                ("DexScreener", "RugCheck")),
     "safety": ("Safety officers", "checks each shortlisted coin: RugCheck, GoPlus, the creator's wallet, on-chain trades, the community and the first buyers",
                ("RugCheck", "GoPlus", "GeckoTerminal", "Jupiter", "Solana RPC", "CoinGecko", "StockTwits", "X", "Telegram", "DexScreener", "GMGN")),
     "refresh": ("Price refresher", "fetches fresh prices for the candidates right before the pick", ("DexScreener",)),
@@ -844,6 +846,41 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
 @media (max-width:370px) { .tabbar label { padding:8px 6px; font-size:13px } }
 """ + "@container (max-width:%dpx) { .track .tl.at { display:none } }\n" % (TRACK_AT_MIN_W - 1) + OFFICE_CSS + "\n"
 
+# the early list on the New launches tab (only on a page built with GITHUB_REPOSITORY, so a page built elsewhere stays as it was): one column
+# of cards on a phone, two from 760px; tap targets of at least 44px; the page's own colour tokens, so light and dark both work; nothing moves
+EARLY_CSS = r"""
+.ehint { margin:0 }
+details.early { background:var(--surface); border:1px solid var(--line); border-radius:8px; min-width:0 }
+details.early > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:6px 12px; min-height:44px; padding:8px 14px; cursor:pointer; font-size:var(--fs-s); color:var(--fg) }
+details.early > summary::-webkit-details-marker { display:none }
+details.early > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:8px }
+.estatus { min-width:0; overflow-wrap:anywhere; text-wrap:pretty } .estatus::before { content:"›"; display:inline-block; margin-right:8px; color:var(--muted); transform:rotate(0deg) }
+details.early[open] .estatus::before { transform:rotate(90deg) }
+.obadge.eb { flex:none; padding:2px 10px; font-size:var(--fs-xs); letter-spacing:.06em; background:color-mix(in srgb,var(--accent) 12%,var(--surface)); color:var(--accent) }
+.ebody { display:grid; gap:10px; padding:12px 14px 14px; min-width:0; border-top:1px solid var(--line2) }
+.eorder { display:flex; flex-wrap:wrap; gap:8px }
+.eorder label { position:relative; display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:var(--fs-s); font-weight:500; color:var(--fg2); background:var(--surface) }
+.eorder input { position:absolute; opacity:0; pointer-events:none }
+.eorder label:has(input:checked) { color:var(--accent); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface)) }
+.eorder label:has(input:focus-visible) { outline:2px solid var(--accent); outline-offset:2px }
+.ecards { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:10px }
+@media (min-width:760px) { .ecards { grid-template-columns:repeat(2,minmax(0,1fr)) } }
+.ecard { border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:grid; gap:6px; min-width:0; align-content:start }
+details.early.dim .ecards, .ecard.old { opacity:.8 } details.early.dim .ecard.old { opacity:1 } .ecard.old { border-style:dashed }
+details.early.nolist > summary { cursor:default } details.early.nolist .estatus::before { display:none }
+.ehd { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; min-width:0 }
+.ehd .ek { flex:none; min-width:18px; color:var(--muted); font:500 var(--fs-s) var(--mono) }
+.ehd .es { flex:none; max-width:45%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; font-size:16px }
+.ehd .enm { flex:1 1 72px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--fg2); font-size:var(--fs-s) }
+.ehd .chip { flex:none }
+.eline { margin:0; font:var(--fs-s)/1.45 var(--mono); color:var(--fg2); overflow-wrap:anywhere } .eline span { white-space:nowrap }
+.ecard .chips .chip { white-space:normal; overflow-wrap:anywhere }
+.elinks { display:flex; flex-wrap:wrap; gap:8px }
+.lchip { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; box-sizing:border-box; padding:0 11px; border:1px solid var(--line); border-radius:999px; font-size:var(--fs-s); font-weight:500; color:var(--accent); background:var(--surface); text-decoration:none }
+.lchip:hover { border-color:var(--accent); text-decoration:none } .lchip:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+@media (prefers-reduced-motion: reduce) { .estatus::before { transition:none } }
+"""
+
 JS = r"""
 (function(){
   var tip=document.createElement('div');tip.className='tip';document.body.appendChild(tip);
@@ -881,28 +918,69 @@ JS = r"""
 # without an update, or two failed polls in a row, read "paused". It only sets attributes and texts on the elements office_floor and
 # office_panel mark with data-agent / data-agents, the SVG stays as drawn. The open tab and department survive the website's reloads
 # (sessionStorage), and the website reloads once when a newer scan has finished and its page is out (4 minutes after its end).
-# A 404 (no branch "live" yet) counts as no snapshot, not as a failure. window.MemebotLive holds the two decisions (what to show, when
-# to poll next) for the tests; window.MEMEBOT_LIVE_SRC and window.MEMEBOT_LIVE_T (times in ms) point it elsewhere in tests.
+# A 404 (no branch "live" yet) counts as no snapshot, not as a failure. window.MemebotLive holds the decisions (what to show, when
+# to poll next, what the early list shows) for the tests; window.MEMEBOT_LIVE_SRC and window.MEMEBOT_LIVE_T (times in ms) point it elsewhere in tests.
+# The New launches tab polls the same file (one poll for both tabs): live.json "young" is the early list of the scan running now, which
+# bot.py pushes within seconds of its launch spotter writing it, about 5 minutes into the scan. In the scan window (2 minutes before a
+# scheduled start to 35 after it, until that scan's last push) the page polls every 75 s, so a scan that starts late is caught too.
+# Coin ages are counted from live.json's "updated" plus the local time since that "updated" was first seen here, never from the phone's
+# clock; whether a snapshot is fresh is judged the same way once its "updated" has moved, the phone's clock is only the first guess.
+# The cards are built with createElement and textContent only, once per new list, order or state (the ages change in place, so a
+# selection or the focus survives); links come from fixed templates and an address that passes the base58 check, never a swap link.
+# #new opens the tab once (the hash is dropped, so a reload keeps the tab the reader chose).
 OFFICE_LIVE_JS = r"""
 (function(){
-var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RESERVE:10,GRID:[-2,5,15,25,35,45],
+var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RESERVE:10,GRID:[-2,5,15,25,35,45],WIN:[-2,35],EARLY_OLD:4500000,LAG:120000,
+  // how old a snapshot is (ms). got: the local time its "updated" was first seen here; moved: it replaced an older "updated" of the same
+  // scan, so the scan is pushing and the phone's clock is not needed: the local time since then, plus the delay it was seen with (at
+  // most LAG). Before that, the phone's clock is the first guess (never less than the local time since). Without got: the phone's clock.
+  age:function(doc,now,got,moved){var up=+(doc&&doc.updated)||0,loc=got>0?Math.max(0,now-got):null;
+    return loc==null?now-up:moved?loc+Math.min(MB.LAG,Math.max(0,got-up)):Math.max(loc,now-up);},
   // what the box shows for the newest snapshot: hide (none, or older than this page's run), live, paused (a live one older than
   // STALE by its "updated", or two failed polls in a row: the scan may still run), done, stopped (no report came from it)
-  state:function(doc,now,pageT,fails){
+  state:function(doc,now,pageT,fails,got,moved){
     if(!doc||typeof doc!=='object'||!Array.isArray(doc.agents)||(+doc.t||0)<pageT)return 'hide';
-    if(doc.live===true)return now-(+doc.updated||0)<MB.STALE&&(+fails||0)<2?'live':'paused';
+    if(doc.live===true)return MB.age(doc,now,got,moved)<MB.STALE&&(+fails||0)<2?'live':'paused';
     if(doc.live!==false)return 'hide';
     var rep=null,bad=false;
-    doc.agents.forEach(function(a){if(a&&a.id==='reporter')rep=a;if(a&&a.status==='failed')bad=true;});
+    doc.agents.forEach(function(a){if(a&&a.id==='reporter')rep=a;if(a&&a.status==='failed'&&a.id!=='spotter')bad=true;});   // a failed early list is not a failed scan
     return rep&&rep.status==='done'&&!bad?'done':'stopped';
+  },
+  // the early list a snapshot carries: live.json "young" of the same scan, or null
+  young:function(doc){var y=doc&&typeof doc==='object'?doc.young:null;return y&&typeof y==='object'&&Array.isArray(y.coins)&&+y.t>0&&+y.t===+doc.t?y:null;},
+  // what the New launches tab's early box shows (section "states" of the build spec): doc is the newest snapshot, own the page's own early
+  // list (its scan is pageT), got and moved as for age() (coin ages and the 75-minute limit never use the phone's clock)
+  early:function(doc,now,pageT,fails,rem,reset,scan,own,got,moved){
+    var M=60000,h=3600000,y=MB.young(doc),k,s,live=!!(doc&&typeof doc==='object'&&Array.isArray(doc.agents)&&(+doc.t||0)>pageT);
+    if(live){
+      var up=+doc.updated||0,srv=up+(got?Math.max(0,now-got):0),fresh=doc.live===true&&MB.age(doc,now,got,moved)<MB.STALE&&(+fails||0)<2;
+      if(srv-(y?(+y.at||+y.t):+doc.t)>MB.EARLY_OLD)return 'hide';
+      if(doc.live===true){
+        if(rem===0&&!fresh)return 'limited';
+        if(!fresh)return 'paused';
+        if(!y)return 'wait';
+        return y.state==='listed'?(y.partial===true?'partial':'listed'):y.state==='empty'?'empty':'none';
+      }
+      if(doc.live!==false||!y||y.state!=='listed')return 'hide';
+      var rep=null;doc.agents.forEach(function(a){if(a&&a.id==='reporter')rep=a;});
+      return rep&&rep.status==='done'?'done':'stopped';
+    }
+    var o=y&&+y.t===pageT?y:(own&&typeof own==='object'&&+own.t===pageT?own:null);
+    if(o&&pageT>0&&o.state==='listed'&&Array.isArray(o.coins))return 'own';
+    if(scan>0){k=Math.floor((now-scan)/h);s=scan+k*h;       // the last scheduled start: its scan should have reported by now
+      if(now>=s+12*M&&now<=s+35*M&&Math.max(doc&&typeof doc==='object'?+doc.t||0:0,pageT)<s-5*M)return rem===0?'limited':'late';}
+    return 'hide';
   },
   // when the next poll is due (ms): LIVE after a live snapshot; else the next grid point (minutes from a scheduled start, scan: the
   // next one when the page was made), IDLE without it; a failed poll waits longer; stretched to keep RESERVE requests until the reset
-  next:function(doc,now,scan,rem,reset,fails){
-    var h=3600000,t=now+MB.IDLE,k,i,g,k0=Math.floor((now-scan)/h);
-    if(doc&&typeof doc==='object'&&doc.live===true&&now-(+doc.updated||0)<MB.STALE)t=now+MB.LIVE;
+  next:function(doc,now,scan,rem,reset,fails,got,moved){
+    var h=3600000,t=now+MB.IDLE,k,i,g,s,k0=Math.floor((now-scan)/h);
+    if(doc&&typeof doc==='object'&&doc.live===true&&MB.age(doc,now,got,moved)<MB.STALE)t=now+MB.LIVE;
     else if(scan>0&&MB.GRID.length){t=Infinity;
-      for(k=k0-1;k<=k0+1;k++)for(i=0;i<MB.GRID.length;i++){g=scan+k*h+MB.GRID[i]*60000;if(g>now+30000&&g<t)t=g;}}
+      for(k=k0-1;k<=k0+1;k++){s=scan+k*h;
+        for(i=0;i<MB.GRID.length;i++){g=s+MB.GRID[i]*60000;if(g>now+30000&&g<t)t=g;}
+        // the scan window: every LIVE from 2 minutes before a scheduled start to 35 after it, until a last snapshot of that scan is in
+        if(now>=s+MB.WIN[0]*60000&&now<=s+MB.WIN[1]*60000&&!(doc&&typeof doc==='object'&&doc.live===false&&(+doc.t||0)>=s-300000))t=Math.min(t,now+MB.LIVE);}}
     if(fails>0)t=Math.max(t,now+Math.min(1800000,MB.LIVE*Math.pow(2,fails)));
     if(rem!=null&&rem>=0&&reset>0){var left=Math.min(h,Math.max(0,reset*1000-now));t=Math.max(t,now+(rem>MB.RESERVE?left/(rem-MB.RESERVE):left+5000));}
     return t;
@@ -914,12 +992,15 @@ function go(){
   var pageT=+box.getAttribute('data-run-t')||0,scan=+box.getAttribute('data-next-scan')||0,home=box.getAttribute('data-pages')||'',tz=box.getAttribute('data-tz'),tzn=box.getAttribute('data-tzn');
   try{names=JSON.parse(box.getAttribute('data-names'))||{};}catch(e){}
   var all=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
-  var office=document.querySelector('.office'),tab=document.getElementById('tab-office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
+  var office=document.querySelector('.office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
+  var tabs=['tab-office','tab-young'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the polls run while one of them is open
   // S: the newest snapshot, when the next poll is due, the failed polls in a row and GitHub's rate-limit numbers, shared by the tabs
-  var S={doc:null,next:0,fails:0,rem:null,reset:0,at:0},busy=false,shown=null,keep={};
+  var S={doc:null,next:0,fails:0,rem:null,reset:0,at:0,got:0,moved:false},busy=false,shown=null,keep={};
   function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'&&+s.at>S.at&&typeof s.next==='number'){S=s;return true;}}catch(e){}return false;}
   function save(){S.at=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
   try{keep=JSON.parse(sessionStorage.getItem('memebot-keep'))||{};}catch(e){}
+  if(location.hash==='#new'&&document.getElementById('tab-young')){keep.tab='tab-young';try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}
+    try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}     // once: a reload keeps the tab the reader chose
   all('input[name="tab"],input[name="odept"]').forEach(function(r){if(keep[r.name]===r.id)r.checked=true;
     r.addEventListener('change',function(){keep[r.name]=r.id;try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}poll();});});
   function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:tz})+' '+tzn;}catch(e){return new Date(ms).toTimeString().slice(0,5);}}
@@ -929,8 +1010,113 @@ function go(){
   function el(tag,text,kids){var e=document.createElement(tag);if(text)e.textContent=text;(kids||[]).forEach(function(k){e.appendChild(k);});return e;}
   function last(a){return a&&Array.isArray(a.lines)&&a.lines.length?String(a.lines[a.lines.length-1]):'';}
   function now(){return Date.now();}
+  // the early list on the New launches tab: this page's own list and the scored list's verdict on each coin come with the page
+  var ebox=document.querySelector('[data-early]'),eT=0,own=null,fin=null,eorder='new',eKey=null,eCards=null,eLabel=null;
+  var B58=/^[1-9A-HJ-NP-Za-km-z]{32,48}$/,XL=/^https:\/\/(www\.)?(x|twitter)\.com\/[A-Za-z0-9_]{1,30}(\/status\/\d{1,25})?\/?$/;
+  if(ebox){eT=+ebox.getAttribute('data-run-t')||0;
+    try{own=JSON.parse(ebox.getAttribute('data-early-doc')||'null');}catch(e){}
+    try{fin=JSON.parse(ebox.getAttribute('data-final')||'null');}catch(e){}
+    try{var eo=localStorage.getItem('memebot-early-order');if(eo==='new'||eo==='score')eorder=eo;}catch(e){}
+    all('input[name="eorder"]',ebox).forEach(function(r){r.checked=r.value===eorder;
+      r.addEventListener('change',function(){if(!r.checked)return;eorder=r.value;try{localStorage.setItem('memebot-early-order',eorder);}catch(e){}eCards=null;try{drawEarly();}catch(x){}});});
+    eLabel=ebox.querySelector('[data-early-label]');if(eLabel)eLabel._t=eLabel.textContent;
+    var esum=ebox.querySelector('summary');if(esum)esum.addEventListener('click',function(e){if(ebox.classList.contains('nolist'))e.preventDefault();});}   // nothing to fold
+  function isn(v){return typeof v==='number'&&isFinite(v);}
+  function str(v,n){return (typeof v==='string'||isn(v)?String(v):'').slice(0,n);}
+  function usd(v){if(!isn(v))return '?';var a=Math.abs(v),f=function(x){return x.toFixed(1).replace(/\.0$/,'');};
+    return '$'+(a>=1e9?f(v/1e9)+'B':a>=1e6?f(v/1e6)+'M':a>=1e3?f(v/1e3)+'k':v.toFixed(0));}
+  function pc(v){return isn(v)?(v>0?'+':v<0?'−':'')+Math.round(Math.abs(v))+'%':'?';}
+  function dur(m){return m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
+  function eur(b){return (b%1===0?String(b):b.toFixed(2))+' €';}
+  function chip(text,cls){var c=el('span',text);c.className='chip'+(cls?' '+cls:'');return c;}
+  function link(name,url){var a=el('a',name);a.className='lchip';a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;}
+  // a card's age chip and token age at the server's time ref (null: at the time the list was made): set when the card is built and
+  // again on every tick, only where the text changes, so a selection or the focus in the card survives
+  function eages(li,c,y,ref){
+    var born=isn(c.born)?c.born:null,age=born!=null&&ref!=null?(ref-born)/60000:(isn(c.ageMin)?c.ageMin:null),old=ref!=null&&age!=null&&age>=60;
+    var t=age==null?'pair age unknown':old?'over 1 h now':'pair '+Math.max(0,Math.floor(age))+' min old'+(ref==null&&isn(+y.at)?' at '+hhmm(+y.at):'');
+    var ce=li._age,cls='chip'+(age!=null&&!old&&age<=10?' neutral':'');
+    if(ce.textContent!==t)ce.textContent=t;if(ce.className!==cls)ce.className=cls;
+    if(li.classList.contains('old')!==old)li.classList.toggle('old',old);
+    var tm=isn(c.minted)?((ref!=null?ref:+y.at)-c.minted)/60000:NaN;
+    if(li._tok&&isFinite(tm)){t='token '+dur(tm)+' old'+(str(c.launchpad,24)?' ('+str(c.launchpad,24)+')':'');if(li._tok.textContent!==t)li._tok.textContent=t;}
+  }
+  function ecard(c,i,y,ref,fate){
+    var li=el('li'),a=str(c.addr,48),born=isn(c.born)?c.born:null;
+    li.className='ecard';li._age=chip('');
+    var hd=el('div','',[el('span',String(i)),el('span',str(c.sym,24)||'?'),el('span',str(c.name,48)),li._age]);
+    hd.className='ehd';hd.children[0].className='ek';hd.children[1].className='es';hd.children[2].className='enm';li.appendChild(hd);
+    var l2=[],tok=isn(c.minted)&&(ref!=null||isn(+y.at));
+    if(tok)l2.push('');                                             // the token's age: filled by eages
+    if(str(c.dex,24))l2.push(str(c.dex,24));
+    l2.push('liq '+usd(c.liq),'mc '+usd(c.mc));
+    [l2,['1h vol '+usd(c.vol1),'5m '+pc(c.chgM5),'1h buys '+(isn(c.buysH1)?Math.round(c.buysH1):'?')+' / sells '+(isn(c.sellsH1)?Math.round(c.sellsH1):'?')]].forEach(function(l,n){
+      var p=el('p');p.className='eline';l.forEach(function(x,j){if(j)p.appendChild(document.createTextNode(' · '));p.appendChild(el('span',x));});li.appendChild(p);   // a line breaks between its facts
+      if(!n&&tok)li._tok=p.firstChild;});
+    var ch=el('div'),rc=c.rc&&typeof c.rc==='object'?c.rc:null,lv=rc?rc.level:null;ch.className='chips';
+    ch.appendChild(chip(lv==='clean'?'RugCheck: no danger flags':lv==='none'?(str(rc.text,120)||'no RugCheck report'):(lv==='danger'||lv==='warn')?(str(rc.text,120)||'RugCheck'):
+      (y.rcState==='pending'?'RugCheck: checking…':'RugCheck: not checked'),lv==='danger'?'bad':lv==='warn'?'warn':''));
+    var fh=fate&&fate[a]&&typeof fate[a]==='object'&&fate[a].b==='held';      // the scored list's chip says it already
+    if(c.held===true&&!fh)ch.appendChild(chip('paper: already held'));
+    if(fate){var f=fate[a],on=f&&typeof f==='object'&&isn(f.k);
+      var out=f&&typeof f==='object'?str(f.out,120):'',late=born!=null&&born>+y.t;
+      if(late&&(!out||out==='born after the scan started'))out='born after the scan started (the scored list only takes coins older than the scan)';
+      ch.appendChild(chip(on?'on the scored list #'+f.k+(isn(f.b)?' · bought '+eur(f.b):f.b==='held'?' · already held':''):
+        /^not on the scored list/.test(out)?out:'not on the scored list'+(out?': '+out:''),on?'neutral':''));}
+    li.appendChild(ch);
+    if(B58.test(a)){var lk=el('div');lk.className='elinks';      // fixed templates around a checked address; no swap link
+      lk.appendChild(link('DexScreener','https://dexscreener.com/solana/'+(typeof c.pair==='string'&&B58.test(c.pair)?c.pair:a)));
+      lk.appendChild(link('RugCheck','https://rugcheck.xyz/tokens/'+a));lk.appendChild(link('Solscan','https://solscan.io/token/'+a));
+      lk.appendChild(link('Birdeye','https://birdeye.so/token/'+a+'?chain=solana'));lk.appendChild(link('GMGN','https://gmgn.ai/sol/token/'+a));
+      if(/pump$/.test(a))lk.appendChild(link('pump.fun','https://pump.fun/coin/'+a));
+      if(typeof c.x==='string'&&XL.test(c.x))lk.appendChild(link('X',c.x));
+      li.appendChild(lk);}
+    li._c=c;eages(li,c,y,ref);
+    return li;
+  }
+  function drawEarly(){
+    if(!ebox)return;
+    var n=now(),doc=S.doc,st=MB.early(doc,n,eT,S.fails,S.rem,S.reset,scan,own,S.got,S.moved),py=MB.young(doc);
+    ebox.hidden=st==='hide';
+    if(st==='hide')return;
+    var y=st==='own'?(py&&+py.t===eT?py:own):py,coins=y&&Array.isArray(y.coins)?y.coins.filter(function(c){return c&&typeof c==='object';}).slice(0,20):[];
+    var list=!!y&&y.state==='listed'&&['listed','partial','paused','limited','done','stopped','own'].indexOf(st)>=0,M_=60000;
+    var key=(st==='own'?'own':'live')+':'+(y?y.t:doc&&doc.t);if(key!==eKey){eKey=key;ebox.open=st!=='own';}
+    ebox.classList.toggle('dim',['paused','limited','stopped'].indexOf(st)>=0);
+    var up=doc&&typeof doc==='object'?+(doc.updated||doc.end)||0:0,seen=y&&isn(y.at)?hhmm(y.at):'?',sc=y?+y.t:(doc?+doc.t||0:0);
+    var nrc=coins.filter(function(c){return c.rc&&typeof c.rc==='object'&&c.rc.level&&c.rc.level!=='none';}).length;
+    var rcw=!y?'':y.rcState==='pending'?' · RugCheck checking…':y.rcState==='down'?' · RugCheck did not answer':' · RugCheck reports for '+nrc+' of '+coins.length,txt;
+    if(st==='wait')txt='Scan running since '+hhmm(+doc.t)+'. The early list comes about 5 minutes after the start (about '+hhmm(+doc.t+5*M_)+').';
+    else if(st==='late')txt="This hour's scan has not reported yet (it may have started late). If none started, the safety net starts one at about :40.";
+    else if(st==='listed'||st==='partial'){var s=Math.max(0,Math.round(MB.age(doc,n,S.got,S.moved)/1000));
+      txt='Found at '+seen+' by the scan running now, with the prices of that time · updated '+(s<120?s+' s':Math.round(s/60)+' min')+' ago'+rcw+
+        (st==='partial'?' · '+(str(y.why,120).replace(/\.$/,'')||'DexScreener stopped early: some coins may be missing'):'');}
+    else if(st==='paused')txt='Live view paused: no update since '+hhmm(up)+(list?'. The list is from '+seen+'; the scan may still be running.':'; the scan may still be running.');
+    else if(st==='limited')txt="GitHub's hourly limit for this connection is used up; next try at "+hhmm(S.next)+'.';
+    else if(st==='done')txt='The scan finished at '+hhmm(up)+'. Its scored list is being published'+(home&&location.href.indexOf(home)===0?'; the page reloads by itself and shows it below this list.':' and shows below this list on the website.');
+    else if(st==='stopped'){var tr=doc.agents.filter(function(a){return a&&a.id==='trader';})[0];
+      txt='The scan stopped at '+hhmm(up)+'. No scored list'+(tr&&tr.status==='done'?'':' and no paper buys')+' came from it; this is only what the launch spotter found at '+seen+'.';}
+    else if(st==='own'){var nf=fin&&typeof fin==='object'&&+fin.t===+y.t&&fin.coins&&typeof fin.coins==='object'?coins.filter(function(c){var f=fin.coins[c.addr];return !(f&&isn(f.k));}).length:null;
+      txt='Early list of this scan · seen '+seen+' · '+coins.length+' coin'+(coins.length===1?'':'s')+(nf!=null?' ('+nf+' not on the scored list)':'');}
+    else if(st==='empty')txt='No coin under an hour old with at least '+usd(isn(y.minLiq)?y.minLiq:5000)+' of liquidity at '+seen+'. The scored list comes with the report, about '+hhmm(sc+28*M_)+'.';
+    else txt='No early list this scan: '+(str(y&&y.why,120).replace(/\.$/,'')||'no reason given')+'. The scored list comes with the report, about '+hhmm(sc+28*M_)+'.';
+    var stl=ebox.querySelector('[data-early-status]');if(stl.textContent!==txt)stl.textContent=txt;
+    var body=ebox.querySelector('.ebody');if(body)body.style.display=list?'':'none';     // without a list the status line says it all, and nothing folds
+    if(ebox.classList.contains('nolist')===list)ebox.classList.toggle('nolist',!list);
+    if(eLabel){var lt=st==='own'?"Fake money · not advice. This was the list before scoring (RugCheck only; the creator's wallet was checked later). "+
+      'The paper account bought from the scored list below, not from this list.':eLabel._t;if(eLabel.textContent!==lt)eLabel.textContent=lt;}
+    var cl=ebox.querySelector('[data-early-list]'),ck=list?[y.t,y.at,y.rcAt,y.rcState,eorder,st,coins.length,fin?1:0].join('|'):'';
+    // the server's clock now: the snapshot's time plus the local time since its "updated" was first seen (null: the page's own list)
+    var ref=list&&py&&y===py&&S.got&&isn(+doc.updated)?+doc.updated+Math.max(0,n-S.got):null;
+    if(ck===eCards){Array.prototype.forEach.call(cl.children,function(li){if(li._c)eages(li,li._c,y,ref);});return;}   // the ages move in place
+    eCards=ck;cl.textContent='';
+    if(!list)return;
+    coins.sort(eorder==='score'?function(a,b){return (+a.k||99)-(+b.k||99);}:function(a,b){return (+b.born||0)-(+a.born||0)||(+a.k||99)-(+b.k||99);});
+    var fate=st==='own'&&fin&&typeof fin==='object'&&+fin.t===+y.t&&fin.coins&&typeof fin.coins==='object'?fin.coins:null;
+    coins.forEach(function(c,i){cl.appendChild(ecard(c,i+1,y,ref,fate));});
+  }
   function draw(){
-    var st=MB.state(S.doc,now(),pageT,S.fails),on=st==='live',doc=S.doc,ags=on?doc.agents.filter(function(a){return a&&a.id;}):[],by={};
+    var st=MB.state(S.doc,now(),pageT,S.fails,S.got,S.moved),on=st==='live',doc=S.doc,ags=on?doc.agents.filter(function(a){return a&&a.id;}):[],by={};
     ags.forEach(function(a){by[a.id]=a;});
     shown=st;box.hidden=st==='hide';
     all('[data-live-link]').forEach(function(e){e.hidden=on;});
@@ -965,11 +1151,12 @@ function go(){
     tick();
   }
   function tick(){
-    var st=MB.state(S.doc,now(),pageT,S.fails);if(st!==shown)return draw();
-    if(st==='live'){var s=Math.max(0,Math.round((now()-(+S.doc.updated||0))/1000));badge.textContent='LIVE · updated '+(s<120?s+' s':Math.round(s/60)+' min')+' ago';}
+    try{drawEarly();}catch(e){}
+    var st=MB.state(S.doc,now(),pageT,S.fails,S.got,S.moved);if(st!==shown)return draw();
+    if(st==='live'){var s=Math.max(0,Math.round(MB.age(S.doc,now(),S.got,S.moved)/1000));badge.textContent='LIVE · updated '+(s<120?s+' s':Math.round(s/60)+' min')+' ago';}
   }
   function poll(){
-    if(busy||document.visibilityState!=='visible'||(tab&&!tab.checked))return;
+    if(busy||document.visibilityState!=='visible'||(tabs.length&&!tabs.some(function(t){return t.checked;})))return;
     if(load())draw();
     if(now()<S.next)return;
     busy=true;S.next=now()+MB.TIMEOUT+5000;save();          // claimed: the other tabs wait for this answer
@@ -982,9 +1169,10 @@ function go(){
       return r.text();
     }).then(function(t){if(t==null)return null;var j=JSON.parse(t);if(j&&typeof j.content==='string'&&j.encoding==='base64')j=decode(j.content);   // the JSON envelope, if the raw type is not honoured
       if(!j||typeof j!=='object'||!Array.isArray(j.agents))throw 0;return j;}),cut])
-    .then(function(d){S.doc=d;S.fails=0;},function(){S.fails=(+S.fails||0)+1;})
+    .then(function(d){var o=S.doc,same=!!(o&&d&&+o.t===+d.t);     // got: when this "updated" was first seen here (the same snapshot again changes nothing)
+      if(!(same&&+o.updated===+d.updated)||!S.got){S.moved=same&&S.got>0;S.got=now();}S.doc=d;S.fails=0;},function(){S.fails=(+S.fails||0)+1;})
     .then(function(){clearTimeout(tm);if(rem!=null){S.rem=rem;S.reset=reset;}
-      S.next=MB.next(S.doc,now(),scan,S.rem,S.reset,S.fails);save();busy=false;try{draw();}catch(e){}});
+      S.next=MB.next(S.doc,now(),scan,S.rem,S.reset,S.fails,S.got,S.moved);save();busy=false;try{draw();}catch(e){}});
   }
   window.addEventListener('storage',function(e){if(e.key===KEY&&load())try{draw();}catch(x){}});
   setInterval(function(){poll();try{tick();}catch(e){}},1000);
@@ -1648,10 +1836,59 @@ def young_section(D):
     else:
         body = '<div class="empty">No scan yet.</div>'
     body = '<h3>The record by age</h3>%s<h3>This scan</h3>%s%s' % (age_record(D.get("train")), body, young_history(D))
+    if live_repo():
+        body = early_box(D, young, held) + body
     h2 = ("%d new launch%s under an hour old" % (n_all, "" if n_all == 1 else "es")) if rc else "New launches"
     if n_all > len(young) and young:
         h2 += " (the %d best shown)" % len(young)
     return section(E(h2), head, body)
+
+
+EARLY_LABEL = ("Fake money · not advice. Not scored by the full scan yet and only partly safety-checked: RugCheck only, the creator's wallet is "
+               "checked later. The paper account buys from the scored list at about minute 22, not from this list.")
+
+
+def early_box(D, young, held):
+    """The early list on the New launches tab (a page built on GitHub Actions only): the hint line, and a box the live script fills while a
+    scan runs with the coins its launch spotter found about five minutes in (live.json "young"), before they are scored. It carries this
+    scan's own early list (data-early-doc, checked as bot.py checks what it pushes) and each coin's fate on the scored list (data-final),
+    so after the scan the list stays folded above the scored one. Nothing here is a trade: no swap link, and the label says how it is bought."""
+    now = D["now"]
+    nxt = next_scan_ms(now) + 5 * 60_000
+    hint = ('<p class="note ehint">During each scan, the coins it finds under an hour old appear here about 5 minutes after it starts, before they are '
+            'scored (next: about %s %s). Keep this tab open.</p>') % (E(local(nxt).strftime("%H:%M")), TZ_NAME)
+    doc = None
+    path = os.path.join(D.get("dir") or "", "young_early.json")
+    if D.get("dir") and os.path.exists(path):
+        try:
+            import bot as B
+            doc = B.early_doc(path, now)
+        except Exception:
+            doc = None
+    rc = D.get("rec") or {}
+    final = {}
+    if M.num(rc.get("t")):
+        coins = {}
+        for k, c in enumerate(young, 1):
+            b = c.get("bought")
+            coins[str(c.get("addr"))] = {"k": k, "b": b if (isinstance(b, (int, float)) and not isinstance(b, bool)) or b == "held" else ("held" if c.get("addr") in held else None)}
+        rid = dt.datetime.fromtimestamp(M.num(rc["t"]) / 1000, dt.timezone.utc).strftime("%Y-%m-%dT%H%M")
+        rec_e = M.load_json(os.path.join(D.get("dir") or "", "db", "memeearly", rid + ".json"), None) if D.get("dir") else None
+        for c in (rec_e.get("coins") or []) if isinstance(rec_e, dict) and rec_e.get("t") == rc.get("t") else []:
+            if isinstance(c, dict) and c.get("out") and str(c.get("addr")) not in coins:
+                coins[str(c.get("addr"))] = {"out": str(c["out"])[:120]}
+        final = {"t": rc.get("t"), "coins": coins}
+    attrs = ' data-run-t="%d"' % int(M.num(now) or 0)
+    if doc:
+        attrs += ' data-early-doc="%s"' % E(json.dumps(doc, separators=(",", ":"), ensure_ascii=False))
+    if final:
+        attrs += ' data-final="%s"' % E(json.dumps(final, separators=(",", ":"), ensure_ascii=False))
+    box = ('<details class="early" data-early%s hidden><summary><span class="estatus" data-early-status></span><span class="obadge eb">EARLY</span></summary>'
+           '<div class="ebody"><p class="note" data-early-label>%s</p>'
+           '<div class="eorder" role="radiogroup" aria-label="Order of the early list">'
+           '<label><input type="radio" name="eorder" value="new" checked>Newest first</label><label><input type="radio" name="eorder" value="score">Score order</label></div>'
+           '<ol class="ecards" data-early-list></ol></div></details>') % (attrs, E(EARLY_LABEL))
+    return hint + box
 
 
 SCAN_MINUTE_UTC = 10      # the scheduled scan starts at this minute of every hour (.github/workflows/scan.yml); a run takes about 15 minutes
@@ -2288,6 +2525,7 @@ def office_data(D):
     by = {a["id"]: a for a in ags}
     depts = []
     for key, name, col, ids in OFFICE_DEPTS + (OFFICE_BRAIN,):
+        ids = [i for i in ids if i != "spotter" or i in by]     # the launch spotter's desk only in a run it worked in (older records draw as before)
         mem = [by.get(i) or dict(zip(("name", "job", "tools"), office_meta(i)), id=i, s=None, e=None, st="absent", bg=False, out="", lines=[], waits={}, blocked=[],
                                  ran=False, open=False, secs=0.0) for i in ids]
         sts = {m["st"] for m in mem}
@@ -2805,7 +3043,7 @@ def render(data, fragment=False):
         E(fmt_dt(now)), E(st.get("rule") or M.RULE), E(M.HORIZON), TZ_NAME))
     content = '<div class="wrap">%s</div>\n<script>%s</script>' % ("\n".join(body), JS)
     head_html = ('<title>%s</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap">\n'
-                 '<style>%s</style>') % (E(TITLE), CSS)
+                 '<style>%s</style>') % (E(TITLE), CSS + (EARLY_CSS if live_repo() and D.get("rec") else ""))
     if fragment:
         return head_html + "\n" + content
     return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n%s\n</head>\n<body>\n%s\n</body>\n</html>\n' % (head_html, content)

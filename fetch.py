@@ -449,8 +449,9 @@ def ds_search(http, d, keywords):
     return total
 
 
-def ds_tokens(http, d, addrs, start=0, prefix="tokens"):
-    """Full pair data for a list of token addresses, 30 per request -> pairs/<prefix>_<k>.txt. Returns rows written."""
+def ds_tokens(http, d, addrs, start=0, prefix="tokens", jup=True):
+    """Full pair data for a list of token addresses, 30 per request -> pairs/<prefix>_<k>.txt. Returns rows written. jup=False: no
+    Jupiter price fallback for the addresses DexScreener had no pair for (the launch spotter asks DexScreener only)."""
     addrs = [a for a in dict.fromkeys(a for a in addrs if addr_of(a))]
     total, k, got = 0, start, set()
     for i in range(0, len(addrs), 30):
@@ -462,7 +463,7 @@ def ds_tokens(http, d, addrs, start=0, prefix="tokens"):
             got.add(r.split("|", 1)[0])
     http.log("  dexscreener %s: %d pairs for %d addresses" % (prefix, total, len(addrs)))
     missing = [a for a in addrs if a not in got]
-    if missing and "lite-api.jup.ag" not in http.dead:
+    if jup and missing and "lite-api.jup.ag" not in http.dead:
         jup_prices(http, d, missing, k, prefix)
     return total
 
@@ -569,9 +570,12 @@ def rc_row(mint, rep):
                ";".join(danger) or None, ";".join(warn) or None, ";".join(addrs) or None)
 
 
-def rc_reports(http, d, addrs):
+def rc_reports(http, d, addrs, until=None):
+    """RugCheck reports for addrs -> risk/reports_<s>.txt; until (epoch s): no new report is asked after it (the launch spotter's cap)."""
     rows = []
     for i, a in enumerate(addrs):
+        if until and time.time() > until:
+            break
         if i and i % 25 == 0:
             http.log("  rugcheck %d/%d reports" % (i, len(addrs)))
         rep = http.get(RC + "/tokens/%s/report" % a)
@@ -1075,8 +1079,10 @@ def cmd_sources(http, d, light=False):
 
 
 def cmd_tokens(http, d, addrs):
-    start = len(glob.glob(os.path.join(d, "pairs", "tokens_*.txt")))
-    return ds_tokens(http, d, addrs, start)
+    """pairs/tokens_<k>.txt for addrs, numbered on from the highest tokens_/jupx_ file already there: a chunk with no pair writes no file,
+    so counting the files (as before) could reuse a number and overwrite an earlier call's pairs (the deep step's second call)."""
+    ks = [int(m.group(1)) for m in (re.match(r"^(?:tokens|jupx)_(\d+)\.txt$", os.path.basename(f)) for f in glob.glob(os.path.join(d, "pairs", "*.txt"))) if m]
+    return ds_tokens(http, d, addrs, max(ks) + 1 if ks else 0)
 
 
 DEV_COLS = ("address", "devWallet", "devPct", "mintAuthOff", "freezeAuthOff", "jupHolders", "organic", "txs3h", "devSold", "devSellAgeMin", "topHoldersPct")

@@ -101,6 +101,7 @@ jobs:
         if: steps.recent.outputs.skip != 'true'
         env:
           MEMEBOT_LIVE: '1'          # the office record goes to the branch "live" (RESULTS_URL) every 45 s to 60 s while the scan runs: the website shows it live
+          MEMEBOT_EARLY: ${{ vars.MEMEBOT_EARLY || '1' }}   # the early list of new launches (radar.py); the repository variable MEMEBOT_EARLY=0 switches it off
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
       - name: Export the big-test results to the bigtest branch for offline research (once a day at the 06 UTC scan, or when asked)
         if: steps.recent.outputs.skip != 'true'
