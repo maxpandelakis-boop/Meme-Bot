@@ -227,7 +227,7 @@ def early_doc(path, now):
             return None
         txt = lambda v, n: (str(v) if isinstance(v, (str, int, float)) and not isinstance(v, bool) else "")[:n]
         doc = {"v": 1, "t": raw["t"], "id": txt(raw.get("id"), 20), "state": raw["state"], "why": txt(raw.get("why"), 120),
-               "rcState": raw.get("rcState") if raw.get("rcState") in ("pending", "done", "partial", "down") else None,
+               "rcState": raw.get("rcState") if raw.get("rcState") in ("pending", "done", "partial", "down") else None, "rcWhy": txt(raw.get("rcWhy"), 120),
                "partial": raw.get("partial") is True, "rule": txt(raw.get("rule"), 24), "horizon": txt(raw.get("horizon"), 8)}
         for k in EARLY_TOP:
             doc[k] = early_num(raw.get(k))
@@ -266,9 +266,10 @@ def live_put(key, value):
     """HOOK for extra top-level keys of this cycle's live record, e.g. live_put("young", doc) for the launch spotter's early New launches
     list: live.json on the branch "live" and the app's live store (row current; row status gets its count and newest age) carry it from
     their next write on, which comes within APP_EVERY s. None removes the key. A cycle starts with none. The value is copied (as JSON)
-    at once, so the caller may change its own object afterwards; a value that is not JSON is left out (and False returned)."""
+    at once, so the caller may change its own object afterwards; a value that is not strict JSON (an object JSON cannot hold, a loop, NaN
+    or infinity, which the live store would refuse) is left out and False returned."""
     try:
-        value = None if value is None else json.loads(json.dumps(value, default=str))
+        value = None if value is None else json.loads(json.dumps(value, allow_nan=False))
     except (TypeError, ValueError):
         return False
     with LIVE_EXTRA_LOCK:
@@ -336,6 +337,44 @@ def early_set(t, doc):
         EARLY["rev"] += 1
         live_put("young", doc)        # under EARLY_LOCK: an older list never overtakes a newer one on its way to the live record
         return True
+
+
+RC_UNFINISHED = "RugCheck did not finish: the launch spotter was stopped"
+
+
+def early_unfinished(d, t, why=RC_UNFINISHED):
+    """A list of this cycle still waiting for RugCheck when its spotter is gone (killed, or the cycle ended) says so: rcState "partial"
+    with the reason (rcWhy) in young_early.json and in the live views, so the page never shows "checking..." for the rest of the hour.
+    True when it marked one. It never raises."""
+    try:
+        path = os.path.join(d, "young_early.json")
+        doc = early_doc(path, t) if os.path.exists(path) else None
+        with EARLY_LOCK:
+            live = EARLY["doc"] if EARLY["t"] == t else None
+        doc = doc or live
+        if not isinstance(doc, dict) or doc.get("rcState") != "pending":
+            return False
+        doc = dict(doc, rcState="partial", rcWhy=str(why)[:120])
+        if os.path.exists(path):
+            raw = read_json(path)
+            if isinstance(raw, dict) and raw.get("t") == t and raw.get("rcState") == "pending":
+                raw.update(rcState="partial", rcWhy=doc["rcWhy"])
+                with open(path + ".tmp", "w", encoding="utf-8") as f:
+                    json.dump(raw, f, separators=(",", ":"))
+                os.replace(path + ".tmp", path)
+        early_set(t, doc)
+        return True
+    except Exception:
+        return False
+
+
+def read_json(path):
+    """A JSON file's content, or None (missing or not JSON)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
 
 
 def young_published(doc):
@@ -867,6 +906,9 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
         return cycle_steps(d, force, offline, mock, now, push, remote, branch, rescan, recommend, horizon)
     finally:
         stop_tails()          # a cycle that stops early stops its launch spotter too (the list is of no use without the cycle)
+        with EARLY_LOCK:
+            et = EARLY["t"]
+        early_unfinished(d, et)      # a list still waiting for RugCheck says it did not finish, in the file and in the last push
         until = time.time() + LIVE_WAIT      # the last writes and the notifications on their way: LIVE_WAIT s at most, together
         if live:
             live.finish(until)
@@ -1022,7 +1064,7 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
                 empty = EARLY["doc"] is None and doc is None
             if empty:
                 early_set(now, {"v": 1, "t": now, "state": "failed", "why": "the early list did not finish", "coins": []})
-            elif doc:
+            elif not early_unfinished(d, now, "RugCheck did not finish: the launch spotter was still at work when the scoring began"):
                 early_set(now, doc)        # its last list, in case the watcher has not taken it yet
         else:
             finish_bg(spot)

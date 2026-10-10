@@ -76,8 +76,8 @@ class SpotHttp(F.Http):
       - a 429 on any try gives the host up for the run at once, with no wait (the desk shares the address, not this counter);
       - the pause after every answer, a 5xx or a 404 too, so a host that answers with errors is not asked 45 times in a second;
       - no request outlasts the step's deadline (until, epoch s): each try's timeout is what is left of it, and none starts after it.
-    ok: the last request got a JSON answer. heard: the URLs that got a real answer (JSON, or an HTTP error under 500 other than a 429:
-    RugCheck's 404 means "no report"). tried: the URLs asked at all."""
+    ok: the last request got a JSON answer. heard: the URLs that got a real answer (JSON, or a 404: RugCheck's "no report"; a 401, 403,
+    410, 451, 429 or 5xx says nothing about the coin). tried: the URLs asked at all."""
 
     def __init__(self, mock=None, pause=EARLY_DS_PAUSE, tries=2):
         F.Http.__init__(self, mock, pause)
@@ -110,7 +110,7 @@ class SpotHttp(F.Http):
                         self.dead.add(host)
                     return None
                 self.log("  ! %s %s" % (e.code, u[:110]))
-                if e.code < 500:
+                if e.code == 404:            # a real answer: RugCheck has no report; a 401, 403, 410, 451 or 5xx is no answer about the coin
                     self.heard.add(u)
                 if e.code in (401, 403, 404, 410, 451):
                     self._fail(host, hard=e.code != 404)
@@ -314,7 +314,8 @@ def listing(d, ind, at, w):
 
 def rc_word(http, a, rk):
     """RugCheck's words for one listed coin: its report's (rc_of), "no RugCheck report" only when RugCheck really answered without one
-    (a 404), else whether it did not answer (a 5xx, a timeout) or was not asked (the time cap, or a coin the re-ranking brought in)."""
+    (a 404), else whether it did not answer (a 401, 403, 410, 451, 5xx or a timeout) or was not asked (the time cap, or a coin the
+    re-ranking brought in)."""
     urls = [F.RC + "/tokens/%s/report%s" % (a, s) for s in ("", "/summary")]
     if isinstance(rk, dict) or any(u in http.heard for u in urls):
         return rc_of(rk)
@@ -412,8 +413,8 @@ def cmd_early(d, now, t0, horizon, mock):
                 px = M.num((p or {}).get("priceUsd"))
                 if p and px and px > 0:
                     pc[a] = {"px": px, "liq": M.num(p.get("liquidityUsd"))}
-                elif a in answered:        # DexScreener answered for it with no pair; a coin it did not answer for is unknown, not gone
-                    pc[a] = {"gone": True}
+                elif p is not None or a in answered:    # a pair with no price (a keyword search's too), or DexScreener answered for it with no pair:
+                    pc[a] = {"gone": True}              # gone; a coin it did not answer for and no search priced is unknown, not gone
             write_json(os.path.join(d, "radar", "prev.json"), {"id": prev.get("id"), "t": prev.get("t"), "at": at, "coins": pc})
             say("the early list of %s priced again: %d of %d still have a price, %d gone" % (
                 prev.get("id"), sum(1 for v in pc.values() if not v.get("gone")), len(prev_addrs), sum(1 for v in pc.values() if v.get("gone"))))
@@ -427,7 +428,7 @@ def cmd_early(d, now, t0, horizon, mock):
         if not written or doc.get("state") not in ("listed", "empty"):
             doc.update(state="failed", coins=[], n=0)
         elif doc.get("rcState") == "pending":
-            doc["rcState"] = "partial"
+            doc.update(rcState="partial", rcWhy="RugCheck did not finish: the launch spotter failed")
         try:
             write_json(out_path, doc)
         except Exception:

@@ -7,9 +7,11 @@ create databases and roles (trust or a password in PGPASSWORD); it makes and dro
 
 What it proves: anon reads live and app_config, saves and removes a subscription only through save_push_sub / drop_push_sub, and
 can neither read push_subs or app_secret nor write live or app_config; the 25-row cap pushes out the row seen longest ago (never the
-phone, which saves itself at every start) and at most 6 new subscriptions an hour are taken; keys of the wrong form are refused; service_role does what the bot does; the script runs twice
-without an error and keeps the data; a project set up with the first version of the script (one-argument save_push_sub, direct
-inserts) is upgraded in place."""
+phone, which saves itself at every start), and rows no notification has reached before any that one has (so a stranger's made-up rows
+never push out a phone that got a notification); at most 6 new subscriptions an hour are taken, also from 40 calls at the same moment
+on 40 connections; keys of the wrong form are refused; service_role does what the bot does (marks delivered and counts failures); the
+script runs twice without an error and keeps the data; a project set up with the first version of the script (one-argument
+save_push_sub, direct inserts) is upgraded in place."""
 import json, os, subprocess, sys
 
 SOCK, PORT = sys.argv[1], sys.argv[2]
@@ -168,6 +170,37 @@ def main():
     check(stored == 5 and refused and all("too many new subscriptions this hour" in x.stderr for x in refused) and r.returncode == 0 and r2.stdout.strip() == "false"
           and w.startswith("25|t|t|"),
           "at most 6 new subscriptions an hour: a flood of 40 stores 6, the phone stays and can still save itself (%d stored, %s)" % (stored + 1, w), r.stderr)
+    # 40 calls at the same moment, each on its own connection and in its own transaction (as PostgREST runs them): still at most 6 new
+    ok("delete from public.push_subs; insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '2 days', now() - interval '10 minutes');"
+       % (q(phone), lit(phone)), "service_role")
+    at = ok("select (clock_timestamp() + interval '2 seconds')::text;", "service_role").stdout.strip()
+    procs = []
+    for i in range(300, 340):
+        a = ["psql", "-h", SOCK, "-p", PORT, "-U", "postgres", "-d", db, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-t", "-A"]
+        procs.append(subprocess.Popen(a, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        procs[-1].stdin.write("set role anon;\nselect pg_sleep_until('%s');\nselect public.save_push_sub(%s);\n" % (at, lit(sub(i))))
+        procs[-1].stdin.close()
+    errs = [p_.stderr.read() if p_.wait() != 0 else "" for p_ in procs]
+    n_ok = sum(1 for e in errs if not e)
+    w = ok("select count(*), count(*) filter (where created > now() - interval '1 hour'), bool_or(endpoint = %s) from public.push_subs;" % q(phone), "service_role").stdout.strip()
+    check(n_ok == 6 and w == "7|6|t" and all("too many new subscriptions this hour" in e for e in errs if e),
+          "40 calls at the same moment on 40 connections (as anon): 6 are stored, 34 refused, the phone stays (%d stored; rows, new, phone: %s)" % (n_ok, w))
+    # a persistent stranger: 24 made-up rows saved over the last hours and kept fresh, the phone not opened for three days but reached by a notification
+    ok("delete from public.push_subs;", "service_role")
+    for i in range(400, 424):
+        ok("insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '5 hours', now() - interval '%d minutes');" % (q(sub(i)), lit(sub(i)), i - 400), "service_role")
+    ok("insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '9 days', now() - interval '3 days');" % (q(phone), lit(phone)), "service_role")
+    r_d = ok("update public.push_subs set delivered = now() - interval '1 day', fails = 0 where endpoint = %s;" % q(phone), "service_role")
+    r_a = ok("update public.push_subs set delivered = now() where endpoint = %s;" % q(sub(400)), "anon")
+    r_n = ok("select public.save_push_sub(%s);" % lit(sub(450)), "anon")
+    w = ok("select count(*), bool_or(endpoint = %s), bool_or(endpoint = %s), bool_or(endpoint = %s) from public.push_subs;" % (q(phone), q(sub(450)), q(sub(423))), "service_role").stdout.strip()
+    check(r_d.returncode == 0 and r_a.returncode != 0 and "permission denied" in r_a.stderr and r_n.returncode == 0 and w == "25|t|t|f",
+          "rows no notification reached go first: a stranger's 25th row pushes out the oldest made-up row, never the phone a notification reached, even unopened"
+          " for three days; only the secret key marks a row delivered (%s)" % w)
+    ok("update public.push_subs set fails = fails + 1 where endpoint = %s;" % q(phone), "service_role")
+    r_f = ok("select fails, delivered is not null from public.push_subs where endpoint = %s;" % q(phone), "service_role")
+    check(r_f.stdout.strip() == "1|t", "service_role counts a subscription's failures (the scan deletes it after 3 in a row at its own push host)", r_f.stderr + r_f.stdout)
+    ok("delete from public.push_subs; insert into public.push_subs (endpoint, sub) values (%s, %s), (%s, %s);" % (q(sub(200)), lit(sub(200)), q(sub(5)), lit(sub(5))), "service_role")
     r = ok("select public.drop_push_sub(%s);" % lit(sub(200)), "anon")
     r2 = ok("select count(*) from public.push_subs where endpoint = %s;" % q(sub(200)), "service_role")
     check(r.returncode == 0 and r2.stdout.strip() == "0", "anon removes a subscription through drop_push_sub", r.stderr + r2.stdout)

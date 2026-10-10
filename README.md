@@ -470,7 +470,8 @@ On the list: ... Fake money only, nothing is bought for real."; tapping it opens
 How it works: a free Supabase project is the live store. While the scan runs, `bot.py` writes a small `status` row every 5 seconds
 (and the whole live record, `current`, when it changes) with the secret key; the page reads them with the publishable key while it
 is open, every 4 seconds while a scan is live and every 30 seconds otherwise, and falls back to the GitHub live view above when
-Supabase does not answer. A page left open all day reads about 1 GB a month, well inside the free plan's 5 GB. The notification
+Supabase does not answer. A page left open and visible all day reads about 1.2 to 1.7 GB a month (the status rows about 1 GB, the
+`current` row 0.3 to 0.7 GB, depending on how long the early list is), well inside the free plan's 5 GB. The notification
 keys (VAPID) are made by the first scan and kept in Supabase; `sw.js` shows the notifications on older iOS versions. The scan
 installs the push sender from `supabase/push-requirements.txt`, where every package is pinned with its sha256 (made by
 `supabase/pin_push.py`), so a run gets exactly those files or no notifications that run.
@@ -480,8 +481,10 @@ Set it up once (about 15 minutes, all from the phone):
 1. **Supabase project:** on supabase.com, sign up (Continue with GitHub works; the Free plan needs no card) and make a new
    project: name `meme-bot`, region Europe, keep **Enable Data API** on, leave **Automatically expose new tables** off.
 2. **Tables:** open `supabase/setup.sql` on GitHub, tap **Raw**, select all and copy. In Supabase open **SQL Editor → New
-   query**, paste, tap **Run** ("Success. No rows returned"). Running it again later is harmless, and needed once after an
-   update of that file (it keeps your data).
+   query**, paste, tap **Run** ("Success. No rows returned"). Supabase may warn that the query has destructive operations (the
+   script drops and re-creates its own functions, rules and triggers, and removes malformed rows): confirm, that is expected.
+   Running it again later is harmless, and needed once after an update of that file (it keeps your data). The SQL is not in
+   `supabase/migrations` and there is no `supabase/config.toml`, so Supabase's GitHub integration never applies anything by itself.
 3. **Keys:** in Supabase open **Project Settings → API Keys**. Copy the **publishable key** (`sb_publishable_...`) and, under
    Secret keys, reveal and copy the **secret key** (`sb_secret_...`). The project URL is `https://<ref>.supabase.co`, where
    `<ref>` is the id in the dashboard address (the **Connect** button shows it too).
@@ -509,11 +512,16 @@ Limits:
 - `python3 app.py check` (with the two `SUPABASE_` variables for the URL and the secret key set) says what is set up, without
   printing any key.
 - The publishable key is public (it is in the page): anyone can read the live rows, which the public website shows anyway, and
-  can save a subscription. The table keeps at most 25 (a new one pushes out the one seen longest ago) and takes at most 6 new ones
-  an hour; the phone saves itself every time the app opens, so it is among the newest, and the scan deletes rows whose keys are no
-  keys. A determined stranger could still crowd it out over hours: opening the app saves it again. Supabase's Security Advisor flags the two
-  functions `save_push_sub` and `drop_push_sub` (security definer, callable with the publishable key): that is on purpose, they
-  are the only way in and they check what they store.
+  can save a subscription. The table keeps at most 25 and takes at most 6 new ones an hour, also when many calls come at the same
+  moment (`save_push_sub` takes new rows one at a time under a lock). When a new row needs room, the rows no notification has ever
+  reached go first, then the one seen longest ago. The scan marks a row delivered when a push service accepted a notification for it
+  (with the secret key; a stranger cannot), so once the phone got its first notification, made-up rows cannot push it out; only a
+  stranger with two dozen real, working subscriptions could, over hours, and opening the app saves the phone again. Until its first
+  notification the phone counts like any other row, so turn notifications on and keep the app opened now and then. The scan deletes
+  rows whose keys are no keys and rows whose own push host could not be reached at all three notifications in a row (never for a
+  failure at Apple's, Google's or Mozilla's push service, which would be the runner's or theirs); any other error keeps the row and
+  the log says it once. Supabase's Security Advisor flags the two functions `save_push_sub` and `drop_push_sub` (security definer,
+  callable with the publishable key): that is on purpose, they are the only way in and they check what they store.
 
 ## The analysis page
 

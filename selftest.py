@@ -673,6 +673,26 @@ def spotter_checks(check):
           and set(prev5.get("coins") or {}) == {searched[0]} and "px" in prev5["coins"][searched[0]],
           "a DexScreener 500 on the request with the previous list marks none of its coins gone (they stay unknown: %s), and the list says partial (%s)" % (
               sorted(prev5.get("coins") or {}) == [searched[0]], doc5.get("why")))
+    # a coin of the previous list that only a keyword search priced, and whose pair shows no price, is gone (never unknown): it is not asked again
+    e5z = os.path.join(tmp, "prevzero")
+    shutil.copytree(fx, e5z)
+    zeroed = 0
+    for f in glob.glob(os.path.join(e5z, "pairs", "search_*.txt")):
+        rows_ = open(f, encoding="utf-8").read().split("\n")
+        for i_, line in enumerate(rows_):
+            cells = line.split("|")
+            if cells and cells[0] == searched[0] and len(cells) > 5:
+                cells[5] = "0"
+                rows_[i_] = "|".join(cells)
+                zeroed += 1
+        open(f, "w", encoding="utf-8").write("\n".join(rows_))
+    n0z = len(rmock.log)
+    p5z, _, doc5z, _ = early_run(e5z)
+    prev5z = json.load(open(os.path.join(e5z, "radar", "prev.json"), encoding="utf-8")) if os.path.exists(os.path.join(e5z, "radar", "prev.json")) else {}
+    check(p5z.returncode == 0 and zeroed and (prev5z.get("coins") or {}).get(searched[0]) == {"gone": True} and not any(searched[0] in x for x in rmock.log[n0z:])
+          and all("px" in v or v.get("gone") for v in (prev5z.get("coins") or {}).values()),
+          "a coin of the previous list priced only by a keyword search whose pair shows price 0 is recorded gone, not unknown (it is not asked again: %s)" % (
+              (prev5z.get("coins") or {}).get(searched[0])))
     # the edge cases, on a sandbox built by hand at an exact clock: 60 minutes old, under $5k, on the curve, list-only, born after the scan started, held
     with profile("2h"):
         ed = os.path.join(tmp, "edge")
@@ -771,6 +791,18 @@ def spotter_checks(check):
     check(r5a.get("rcState") == "partial" and unans(r5a) == bad_rc and all(c["rc"]["level"] != "none" for c in r5a.get("coins") or [] if c["addr"] not in bad_rc)
           and r5b.get("rcState") == "down" and unans(r5b) == {c["addr"] for c in r5b.get("coins") or []} and r5b.get("coins"),
           "RugCheck answering 502 is not 'no report': two coins read 'RugCheck did not answer' and the list is partial; when every request fails it is down")
+    # RugCheck answers that are no answer about the coin (401, 403, 410, 451) read "RugCheck did not answer"; only a 404 is "no RugCheck report"
+    rc_codes = {}
+    for code_ in (401, 403, 404, 410, 451):
+        a_ = coins4[0]["addr"]
+        rmock.hook = lambda path, code_=code_: (code_, {"error": "x"}) if re.match(r"^/api\.rugcheck\.xyz/v1/tokens/[^/]+/report", path) else None
+        h_ = RD.SpotHttp(ru, 0, 2)        # the spotter's own client (RD.setup would also set the profile and fetch's limits in this process)
+        with contextlib.redirect_stderr(io.StringIO()):
+            F.rc_reports(h_, os.path.join(tmp, "rcwords-%d" % code_), [a_], until=time.time() + 10)
+        rc_codes[code_] = RD.rc_word(h_, a_, None)["text"]
+        rmock.hook = None
+    check(rc_codes == {401: "RugCheck did not answer", 403: "RugCheck did not answer", 404: "no RugCheck report", 410: "RugCheck did not answer", 451: "RugCheck did not answer"},
+          "RugCheck answering 401, 403, 410 or 451 reads 'RugCheck did not answer', only a 404 reads 'no RugCheck report' %s" % rc_codes)
 
     print("== launch spotter 9b: the spotter's own request rules (SpotHttp): a 429 on any try, the pause after an error, each try inside the deadline")
     plan, seen_q = [], []
@@ -866,6 +898,11 @@ def spotter_checks(check):
         f.write("import json, os, sys, time\n"
                 "a = sys.argv\nd = a[a.index('--dir') + 1]; now = int(a[a.index('--now') + 1])\n"
                 "open(os.path.join(d, 'stub.pid'), 'w').write(str(os.getpid()))\n"
+                "if os.environ.get('STUB') == 'rcsleep' and a[1] == 'early':\n"     # a listed list written, then stuck in RugCheck until it is killed
+                "    cs = [{'addr': x * 40 + 'pump', 'sym': x * 3, 'born': now - 60000, 'ageMin': 1, 'k': i + 1} for i, x in enumerate('AB')]\n"
+                "    json.dump({'v': 1, 't': now, 'id': 'stub', 'at': now + 1000, 'state': 'listed', 'rcState': 'pending', 'partial': False, 'n': 2, 'coins': cs},"
+                " open(os.path.join(d, 'young_early.json.tmp'), 'w'))\n    os.replace(os.path.join(d, 'young_early.json.tmp'), os.path.join(d, 'young_early.json'))\n"
+                "    time.sleep(600)\n"
                 "if (os.environ.get('STUB') == 'sleep' and a[1] == 'early') or (os.environ.get('STUB') == 'checksleep' and a[1] == 'check'):\n    time.sleep(600)\n"
                 "if a[1] == 'early':\n    json.dump({'v': 1, 't': now, 'state': 'failed', 'why': 'stub failed', 'coins': []}, open(os.path.join(d, 'young_early.json'), 'w'))\n"
                 "print('{\"state\": \"failed\", \"why\": \"stub failed\"}')\nsys.stderr.write('stub %s failed\\n' % a[1])\nsys.exit(1)\n")
@@ -910,6 +947,22 @@ def spotter_checks(check):
     check(por.returncode != 0 and pid_o and gone(pid_o) and (oor.get("analyst") or {}).get("status") == "failed" and (oor.get("spotter") or {}).get("status") == "failed"
           and (oor.get("spotter") or {}).get("out") == "stopped when the scan stopped" and "trader" not in oor and sor < 120,
           "a cycle that fails in a foreground step (shortlist) kills its spotter before it ends: the process is gone, the office says why (%.0f s)" % sor)
+    # a spotter killed while RugCheck is still on its way: the list says RugCheck did not finish, in young_early.json and in the last push,
+    # whether the trader step stops it or the cycle fails (the page never shows "checking..." for the rest of the hour)
+    rc_out = []
+    for name_, env_, code_ in (("trader", {"STUB": "rcsleep"}, code), ("fail", {"STUB": "rcsleep", "STUB_STEP_FAIL": "shortlist"}, code2)):
+        dr_, rr_ = os.path.join(tmp, "stub-rc-" + name_), tempfile.mkdtemp(prefix="memebot-rc-live-")
+        subprocess.run(["git", "init", "-q", "--bare", rr_], check=True)
+        pr_, _, _ = spot_cycle(dr_, env_, code=code_, remote=rr_)
+        yr_ = json.load(open(os.path.join(dr_, "young_early.json"), encoding="utf-8")) if os.path.exists(os.path.join(dr_, "young_early.json")) else {}
+        lr_ = git_live(rr_)
+        rc_out.append((pr_.returncode, yr_.get("rcState"), yr_.get("rcWhy"), (lr_.get("young") or {}).get("rcState"), (lr_.get("young") or {}).get("rcWhy"), lr_.get("live")))
+        shutil.rmtree(rr_, ignore_errors=True)
+    (rc0, ys0, yw0, ls0, lw0, lv0), (rc1, ys1, yw1, ls1, lw1, lv1) = rc_out
+    check(rc0 == 0 and ys0 == ls0 == "partial" and yw0 == lw0 and "RugCheck did not finish" in (yw0 or "") and "scoring began" in yw0 and lv0 is False
+          and rc1 != 0 and ys1 == ls1 == "partial" and yw1 == lw1 == B.RC_UNFINISHED and lv1 is False,
+          "a spotter killed in the middle of RugCheck leaves no 'checking': young_early.json and the last live push say rcState partial with the reason, when the"
+          " trader step stops it (%r) and when the cycle fails (%r)" % (yw0, yw1))
     # radar.py check sits on the scan's critical path: bot.py kills it after its time limit and goes on
     dl = os.path.join(tmp, "limit")
     os.makedirs(dl)
@@ -1045,6 +1098,30 @@ def spotter_checks(check):
     check(pk2.returncode == 0 and len(rmock.log) - n0 == 1 and all(c["final"] is None and c["bought"] is None and c["p2"] is None for c in me2["coins"]) and me2.get("finalOnly") == []
           and len(me2["coins"]) == 6,
           "a recommend.json of another scan is not this list's fate, and a check whose one DexScreener request fails records no p2 (not gone), with no second try")
+    # radar.py check makes exactly one try: a DexScreener that drops the connection without an answer (the kind of failure the early step tries twice)
+    drops = []
+
+    class Drop(BaseHTTPRequestHandler):
+        def do_GET(self):
+            drops.append(self.path)
+            self.close_connection = True          # no status line at all: the client sees the connection closed
+
+        def log_message(self, *a):
+            pass
+    dsrv = HTTPServer(("127.0.0.1", 0), Drop)
+    threading.Thread(target=dsrv.serve_forever, daemon=True).start()
+    t_ = time.time()
+    pk3 = subprocess.run([PY, os.path.join(HERE, "radar.py"), "check", "--dir", dk, "--now", str(T0), "--t0", str(int(time.time() * 1000)), "--horizon", "2h",
+                          "--mock", "http://127.0.0.1:%d" % dsrv.server_address[1]], capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    secs_ = time.time() - t_
+    dsrv.shutdown()
+    dsrv.server_close()
+    me3 = json.load(open(os.path.join(dk, "db", "memeearly", rid(T0) + ".json"), encoding="utf-8"))
+    rsrc = open(os.path.join(HERE, "radar.py"), encoding="utf-8").read()
+    check(pk3.returncode == 0 and len(drops) == 1 and "/tokens/v1/" in drops[0] and all(c["p2"] is None for c in me3["coins"]) and secs_ < 15
+          and "http = setup(horizon, mock, tries=1)" in rsrc,
+          "radar.py check itself makes exactly one try: a DexScreener that gives no answer is asked once (%d request%s, %.1f s) and no coin gets a price or 'gone'" % (
+              len(drops), "" if len(drops) == 1 else "s", secs_))
     # which earlier record gets its hour price: 45 to 90 minutes old, the one closest to an hour
     pdd = os.path.join(tmp, "prevdoc")
     os.makedirs(os.path.join(pdd, "db", "memeearly"))
@@ -1158,6 +1235,10 @@ o.age=[MB.age(D,now)/1000,MB.age(D,F,F,false)/1000,MB.age(D,F,F,true)/1000,MB.ag
 o.skew=[e(D,F,pageT,0,null,0,s,null,F,false),e(D,F,pageT,0,null,0,s,null,F,true),e(D7,Sl,pageT,0,null,0,s,null,Sl,false),e(D7,Sl+5*M,pageT,0,null,0,s,null,Sl,false),
   MB.state(D,F,pageT,0,F,true),MB.state(D,F,pageT,0)];
 o.office=MB.state(L(t,false,0,null,rep.concat([{id:'spotter',status:'failed'}])),now,pageT,0);
+var r1={level:'clean'},r2={level:'none',text:'RugCheck did not answer'};
+o.rc=[MB.rcChip(null,'pending'),MB.rcChip(null,'partial'),MB.rcChip(null,'done'),MB.rcChip(r1,'partial'),MB.rcChip(r2,'down'),MB.rcChip({level:'none'},'done'),
+  MB.rcSum({rcState:'pending'},[{}]),MB.rcSum({rcState:'partial',rcWhy:'RugCheck did not finish: x'},[{rc:null},{rc:null}]),MB.rcSum({rcState:'partial'},[{rc:r1},{rc:null}]),
+  MB.rcSum({rcState:'partial'},[{rc:r1},{rc:r2}]),MB.rcSum({rcState:'down'},[{rc:r2}]),MB.rcSum({rcState:'done'},[{rc:r1},{rc:{level:'none'}}])];
 function nx(doc,tt,rem,reset,fails){return Math.round((MB.next(doc,tt,s,rem,reset,fails)-tt)/1000);}
 var old=L(s-60*M,false,0,null,rep),fin=L(s+M,false,0,null,rep);
 o.n=[nx(old,s-3*M,null,0,0),nx(old,s-M,null,0,0),nx(old,s+3*M,null,0,0),nx(old,s+34*M,null,0,0),nx(old,s+36*M,null,0,0),nx(fin,s+26*M,null,0,0),nx(old,s+3*M,15,(s+23*M)/1000,0),nx(old,s+3*M,null,0,1)];
@@ -1172,6 +1253,11 @@ console.log(JSON.stringify(o));
         check(o.get("s") == ["hide", "wait", "late", "listed", "partial", "paused", "paused", "limited", "done", "stopped", "own", "empty", "none", "none", "hide", "wait", "done", "listed", "own"]
               and o.get("office") == "done",
               "the early box's states (node): hide, wait, late, listed, partial, paused, limited, done, stopped, own, empty, none; a failed spotter never makes a scan look stopped %s" % (o.get("s") or o))
+        check(o.get("rc") == ["RugCheck: checking\u2026", "RugCheck did not finish", "RugCheck did not finish", "RugCheck: no danger flags", "RugCheck did not answer",
+                              "no RugCheck report", " \u00b7 RugCheck checking\u2026", " \u00b7 RugCheck did not finish", " \u00b7 RugCheck did not finish (reports for 1 of 2)",
+                              " \u00b7 RugCheck reports for 1 of 2", " \u00b7 RugCheck did not answer", " \u00b7 RugCheck reports for 1 of 2"],
+              "the early box's RugCheck words (node): 'checking' only while the spotter asks; a list whose spotter was stopped says RugCheck did not finish, on the cards"
+              " and in the status line %s" % (o.get("rc") or o))
         check(o.get("age") == [20, 620, 120, 0, 300] and o.get("skew") == ["paused", "listed", "listed", "paused", "live", "paused"],
               "a snapshot's age (node): once its 'updated' has moved, the local time since plus at most 2 minutes, so a phone 10 minutes fast reads live;"
               " before that the phone's clock is the first guess, and a phone 10 minutes slow reads a 7-minute-old snapshot as fresh for 5 minutes at most %s %s" % (
@@ -1370,11 +1456,31 @@ class Rest:
     def __init__(self):
         self.lock = threading.Lock()
         self.live, self.secret, self.config, self.subs, self.log = {}, {}, {}, {}, []
-        self.mode = "ok"
+        self.mode, self.old_subs = "ok", False         # old_subs: a table from before the delivered and fails columns
 
     def handle(self, method, path, query, headers, body):
         q = urllib.parse.parse_qs(query)
         eq = lambda k: (q.get(k) or [""])[0][3:] if (q.get(k) or [""])[0].startswith("eq.") else None
+
+        def ins(k):
+            """PostgREST's in.("a","b") with quoted values (backslash escapes), or None."""
+            v = (q.get(k) or [""])[0]
+            if not (v.startswith("in.(") and v.endswith(")")):
+                return None
+            out_, cur, quoted, esc = [], "", False, False
+            for ch in v[4:-1]:
+                if esc:
+                    cur, esc = cur + ch, False
+                elif ch == "\\" and quoted:
+                    esc = True
+                elif ch == '"':
+                    quoted = not quoted
+                elif ch == "," and not quoted:
+                    out_.append(cur)
+                    cur = ""
+                else:
+                    cur += ch
+            return out_ + [cur]
         with self.lock:
             self.log.append({"t": time.time(), "m": method, "p": path, "q": query, "apikey": headers.get("apikey"), "auth": headers.get("Authorization"),
                              "ua": headers.get("User-Agent") or "", "prefer": headers.get("Prefer") or "", "body": body})
@@ -1402,10 +1508,24 @@ class Rest:
                     k = eq("key")
                     return 200, [{"value": table[k]}] if k in table else []
             if path == "/rest/v1/push_subs":
+                eps = ins("endpoint")
+                eps = eps if eps is not None else [eq("endpoint")]
                 if method == "DELETE":
-                    self.subs.pop(eq("endpoint"), None)
+                    for e_ in eps:
+                        self.subs.pop(e_, None)
                     return 204, None
-                return 200, [dict(r) for r in self.subs.values()]
+                if method == "PATCH":
+                    for e_ in eps:
+                        if e_ in self.subs:
+                            self.subs[e_].update(j or {})
+                    return 204, None
+                order = (q.get("order") or [""])[0]
+                if self.old_subs and ("delivered" in order or "fails" in (q.get("select") or [""])[0]):
+                    return 400, {"code": "42703", "message": "column push_subs.delivered does not exist"}
+                rows = [dict(r) for r in self.subs.values()]
+                if order.startswith("delivered.desc"):
+                    rows.sort(key=lambda r: r.get("delivered") or "", reverse=True)      # stable: the delivered ones first, newest first
+                return 200, rows
             return 404, {"message": "no such table"}
 
 
@@ -1844,10 +1964,40 @@ def app_tests(check, mock, url):
         seen_out.append(p.stdout + p.stderr)
         got = [g["name"] for g in sink.got[g0:]]
         left = sorted(e.rsplit("/", 1)[-1] for e in rest.subs)
-        check(out and out.get("sent") == 1 and out.get("bad") == 25 and out.get("failed") == 1 and got == ["phone"] and left == ["neterr", "phone"] and took < 8
-              and len([e for e in rest.log[n0:] if e["m"] == "DELETE"]) == 25 and "25 unusable and deleted" in p.stderr,
-              "24 junk rows and a key pywebpush cannot use ahead of the phone: deleted without a request or a pause, the phone gets the pick in %.1f s; a network error is tried "
-              "once more and kept (%s)" % (took, out))
+        ph_ep, ne_ep = sb + "/push/phone", "http://127.0.0.1:9/push/neterr"
+        gets = [e for e in rest.log[n0:] if e["m"] == "GET" and e["p"] == "/rest/v1/push_subs"]
+        check(out and out.get("sent") == 1 and out.get("bad") == 24 and out.get("failed") == 2 and got == ["phone"] and left == ["neterr", "phone", "valerr"] and took < 6
+              and len([e for e in rest.log[n0:] if e["m"] == "DELETE"]) == 24 and "24 unusable and deleted" in p.stderr and p.stderr.count("the subscription stays") == 1,
+              "24 rows whose keys are no keys ahead of the phone: deleted without a request or a pause, the phone gets the pick in %.1f s; a key pywebpush cannot use"
+              " (keys_ok passed) keeps its row and is said once; a network error is not tried again and kept (%s)" % (took, out))
+        check(rest.subs.get(ph_ep, {}).get("delivered") and rest.subs[ph_ep].get("fails") == 0 and rest.subs.get(ne_ep, {}).get("fails") == 1
+              and not rest.subs.get(sb + "/push/valerr", {}).get("delivered") and gets and "order=delivered.desc.nullslast,seen.desc" in gets[0]["q"],
+              "the phone the push reached is marked delivered (the size cap keeps it ahead of strangers' rows) and served first next time; the row whose own host"
+              " gave no answer counts one failure (%s)" % {k.rsplit("/", 1)[-1]: {f: v.get(f) for f in ("delivered", "fails")} for k, v in rest.subs.items()})
+        # the same row two notifications later: three in a row without an answer from its own host delete it; a row at Apple's shared host is never counted
+        res3 = []
+        for _ in range(2):
+            p, o3 = drive(code, env_app)
+            seen_out.append(p.stdout + p.stderr)
+            res3.append((o3 or {}).get("sent"))
+        code_s = ("import app\ncalls = []\napp.call = lambda m, path, body=None, prefer=None, **k: calls.append([m, path, body])\n"
+                  "rows = [{'endpoint': 'https://web.push.apple.com/QAPPLE', 'fails': 2}, {'endpoint': 'https://zz9.notify.windows.com/w/x', 'fails': 0}]\n"
+                  "app._settle([], rows, False, time.time() + 9); quiet = list(calls)\n"
+                  "app._settle([], rows, True, time.time() + 9)\n"
+                  "print(json.dumps([quiet, calls, app.own_host('https://web.push.apple.com/x'), app.own_host('https://fcm.googleapis.com/x'), app.own_host('https://a.b.notify.windows.com/x')]))\n")
+        p, os_ = drive(code_s, env_app)
+        check(res3 == [1, 1] and ne_ep not in rest.subs and ph_ep in rest.subs and sb + "/push/valerr" in rest.subs and "could not be reached 3 times in a row deleted" in p.stderr + "".join(seen_out[-2:])
+              and os_ and os_[0] == [] and len(os_[1]) == 1 and os_[1][0][0] == "PATCH" and "notify.windows.com" in urllib.parse.unquote(os_[1][0][1]) and os_[1][0][2] == {"fails": 1}
+              and os_[2:] == [False, False, True],
+              "a row whose own push host gives no answer three notifications in a row is deleted; a failure counts only when the same notification reached a push service,"
+              " and never at Apple's, Google's or Mozilla's shared host (%s)" % (os_[1] if os_ else p.stderr[-200:]))
+        # a table from before the delivered column (setup.sql not run again): the notification still goes out, the log says what to do
+        rest.old_subs = True
+        p, o4 = drive(code.replace("'MOON2'", "'MOON3'"), env_app)
+        rest.old_subs = False
+        seen_out.append(p.stdout + p.stderr)
+        check(o4 and o4.get("sent") == 1 and "run supabase/setup.sql again" in p.stderr,
+              "push_subs without the delivered column (setup.sql not run again yet): the notification still goes out and the log says to run setup.sql again")
         rest.subs.clear()
         for name in ("hung", "ok1", "ok2"):
             s_ = sub(name)
@@ -1860,7 +2010,7 @@ def app_tests(check, mock, url):
         seen_out.append(p.stdout + p.stderr)
         got = sorted(set(g["name"] for g in sink.got[g0:]))
         ok_ = bool(out and out.get("budget", 99) <= 15 and out.get("sent") == 2 and out.get("failed") == 1 and got == ["hung", "ok1", "ok2"] and took < out["budget"] + 3
-                   and "got no answer within" in p.stderr)
+                   and ("got no answer within" in p.stderr or "notification failed (net " in p.stderr))
         check(ok_, "a push service that never answers holds up its own push only: the others go out beside it and the notification ends within its %s s budget (%.1f s)%s" % (
                   (out or {}).get("budget"), took, "" if ok_ else " %s %s %s" % (out, got, p.stderr[-400:])))
         rest.subs.clear()
@@ -1915,12 +2065,16 @@ def app_tests(check, mock, url):
     code = ("import bot\ny = {'v': 1, 't': 1, 'state': 'listed', 'coins': [{'sym': 'A'}]}\nok = bot.live_put('young', y)\n"
             "y['coins'].append({'sym': 'B'}); y['state'] = 'changed'\nsig, rec = bot.live_record(True)\n"
             "loop = {}; loop['me'] = loop\nbad = bot.live_put('x', loop)\n"
-            "print(json.dumps([ok, rec['young'], bad, 'x' in bot.live_record(True)[1]]))\n")
+            "nan = bot.live_put('n', {'px': float('nan')}); inf = bot.live_put('i', [float('inf')]); obj = bot.live_put('o', {'when': time})\n"
+            "rec2 = bot.live_record(True)[1]\n"
+            "print(json.dumps([ok, rec['young'], bad, 'x' in rec2, nan, inf, obj, [k for k in ('n', 'i', 'o') if k in rec2]]))\n")
     p, out = drive(code, base)
-    check(out == [True, {"v": 1, "t": 1, "state": "listed", "coins": [{"sym": "A"}]}, False, False],
-          "live_put keeps a copy: the caller may change its own dict afterwards; a value that is not JSON is left out (%s)" % (out if out is not None else p.stderr[-200:]))
+    check(out == [True, {"v": 1, "t": 1, "state": "listed", "coins": [{"sym": "A"}]}, False, False, False, False, False, []],
+          "live_put keeps a copy: the caller may change its own dict afterwards; a value that is not strict JSON (a loop, NaN, infinity, an object JSON cannot hold) "
+          "is left out, never written as a string (%s)" % (out if out is not None else p.stderr[-200:]))
 
     # 5b. the launch spotter's early list through both live views and the "new coins" notification (radar.py and app.py together)
+    cur_e, yf = {}, {}
     if has_crypto:
         de, bare_e = os.path.join(tmp, "early"), tempfile.mkdtemp(prefix="memebot-app-early-")
         subprocess.run(["git", "init", "-q", "--bare", bare_e], check=True)
@@ -2060,11 +2214,17 @@ console.log(JSON.stringify(o));
               and o.get("fallback") == ["supabase", "github", "supabase", "github", "supabase", "github", "github"],
               "the page's transport (node): the live store with an https address and a publishable key, else the GitHub poll; a 540 falls back at once, other "
               "failures (network, CORS: no status) after two in a row %s" % ({k: o.get(k) for k in ("transport", "fallback")} if "transport" in o else o))
-        # the free plan's 5 GB of egress a month: a page left open all day costs about 1 GB (a 2.5 KB status row, 25 minutes of each hour live)
-        per_day = (24 * 25 * 60 / 4 + 24 * 35 * 60 / 30) * 2500 / 1e9 if o.get("sbNext") else 99
-        check(o.get("sbNext") == [4000, 8000, 16000, 30000, 30000, 30000, 30000, 60000, 120000] and per_day * 30 < 1.5,
+        # the free plan's 5 GB of egress a month, for a page left open and visible all day (25 minutes of each hour live): the status row every 4 s
+        # while live and every 30 s otherwise, and the row current each time its ver changes (at most every CURRENT_EVERY s while live, as sink
+        # writes it), both at the sizes this run wrote (current with a full early list of 20 coins), as JSON without compression
+        st_b = max(2500, len(json.dumps([{"doc": (rest.live.get("status") or {}).get("doc") or {}}])))
+        cur_b = max(12000, len(json.dumps([{"doc": cur_e}])) if cur_e else 21000)
+        st_gb = 30 * (24 * 25 * 60 / 4 + 24 * 35 * 60 / 30) * st_b / 1e9
+        cur_gb = 30 * (24 * 25 * 60 / A_.CURRENT_EVERY) * cur_b / 1e9
+        check(o.get("sbNext") == [4000, 8000, 16000, 30000, 30000, 30000, 30000, 60000, 120000] and st_gb + cur_gb < 2.5,
               "the page polls the live store every 4 s only while a scan is live and fresh, every 30 s otherwise (a finished, stale or missing scan), longer after "
-              "failures: a page left open all day reads about %.1f GB a month of status rows, not 2 %s" % (per_day * 30, o.get("sbNext")))
+              "failures: a page left open all day reads about %.1f GB a month, %.1f GB of status rows (%d bytes) and %.1f GB of the row current (%d bytes, read only"
+              " when its ver changes), inside the free plan's 5 GB %s" % (st_gb + cur_gb, st_gb, st_b, cur_gb, cur_b, o.get("sbNext")))
         check(o.get("merge") == [2, "Pe", 1, 9, None, "P", None, 2, None],
               "the page's snapshot from the live store is the status row with current's early list and pick of the same scan (live.json's shape), none of an older scan %s" % o.get("merge"))
         check(o.get("installed") == [True, False, True, True, False, False]
@@ -2157,9 +2317,13 @@ var o={};
           "the push sender is installed from supabase/push-requirements.txt only: %d packages, each pinned with sha256 hashes, wheels only, no other dependency; "
           "http-ece's sdist checked against its sha256; the GitHub token is not in that step" % len(pins))
     sql = open(os.path.join(HERE, "supabase", "setup.sql"), encoding="utf-8").read()
-    check("order by seen desc, created desc" in sql and "order by seen asc" not in sql and "interval '1 hour') >= 6" in sql
-          and "~ '^B[A-Za-z0-9_-]{86}=?$'" in sql and "~ '^[A-Za-z0-9_-]{22}(==)?$'" in sql,
-          "setup.sql: the 25-row cap keeps the rows seen most recently (the phone), at most 6 new subscriptions an hour, keys must look like a P-256 key and 16 bytes")
+    check("order by (delivered is not null) desc, seen desc, created desc" in sql and "order by seen asc" not in sql and "interval '1 hour') >= 6" in sql
+          and "~ '^B[A-Za-z0-9_-]{86}=?$'" in sql and "~ '^[A-Za-z0-9_-]{22}(==)?$'" in sql
+          and re.search(r"if not found then\s+perform pg_advisory_xact_lock\(7316001\);", sql)
+          and not os.path.exists(os.path.join(HERE, "supabase", "migrations")) and not os.path.exists(os.path.join(HERE, "supabase", "config.toml")),
+          "setup.sql: the 25-row cap keeps rows a notification reached first, then the ones seen most recently (the phone); at most 6 new subscriptions an hour, one at"
+          " a time under an advisory lock; keys must look like a P-256 key and 16 bytes; no supabase/migrations and no supabase/config.toml, so Supabase's GitHub"
+          " integration applies nothing by itself (the SQL is pasted into the SQL Editor)")
     pj = __import__("app").PAGE_JS
     check("iOS said no" not in pj and "from another browser" in pj and "These two apply once notifications are on." in pj and "applicationServerKey" in pj
           and "select(t,'keep')" in pj and "A.badge(d.early,d.young)" in pj and "visibilitychange',back" in pj and "The app refreshes when you come back to it" in pj

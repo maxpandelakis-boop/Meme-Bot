@@ -17,7 +17,9 @@ its subscription and its two settings (new coins, the pick) with the function sa
 and sends one Declarative Web Push message ({"web_push": 8030, "notification": {title, body, navigate}}: iOS 18.4 and newer shows it
 by itself, sw.js shows it on older systems) through pywebpush when it can be imported (else nothing is sent and the log says so once),
 SEND_THREADS at a time, NOTIFY_BUDGET s at most. A subscription the push service calls gone (404 or 410) is deleted, and so is one
-whose keys are no keys (anyone with the publishable key can save such a row): no request, no retry, no pause.
+whose keys are no keys (anyone with the publishable key can save such a row): no request, no retry, no pause. A row a push service
+accepted a notification for is marked delivered (the table's size cap keeps those first); a row whose own push host gives no answer
+at all is not tried again and is deleted after NET_FAILS such notifications in a row; any other error keeps the row.
 
 The secret key travels only in the apikey header of requests to SUPABASE_URL. No key is ever printed, written to a file or put in the
 page; every message this module prints passes through clean(), which blanks both keys.
@@ -47,6 +49,9 @@ CURRENT_EVERY = 30        # s: the least gap between two writes of the row curre
 CURRENT_LINES = 12        # lines per agent in the row current
 CURRENT_MAX = 150_000     # bytes: a bigger current row goes without the agents' lines
 MAX_SUBS = 30             # subscriptions served per notification (the table holds 25)
+NET_FAILS = 3             # notifications in a row that could not reach a subscription's own push host (DNS, refused): then it is deleted
+SHARED_HOSTS = ("web.push.apple.com", "fcm.googleapis.com", "updates.push.services.mozilla.com")   # every phone's push service: a network
+                          # failure there is this runner's or the service's, never one subscription's, and deletes nothing
 KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two notifications of this kind in one process)
     "young": (1800, "normal", 300),
     "pick": (3600, "high", 300),
@@ -470,9 +475,10 @@ def message(title, body, url, tag=None):
 
 
 def _send(wp, sub, data, ttl, urgency, topic, until=None):
-    """One push: "ok", "gone" (404/410: delete the row), "retry" (429/5xx, or the network: connection, timeout, TLS), "config"
-    (400/403/413: our keys or headers are wrong; the row stays), "bad" (pywebpush could not use the subscription at all, e.g. a key
-    that is no point on the curve: delete the row, no retry) or "error"; with the HTTP status or the error's name."""
+    """One push: "ok", "gone" (404/410: delete the row), "retry" (429/5xx: one more try after a pause), "net" (no answer at all: DNS,
+    refused, reset, timeout, TLS; no retry and no pause, counted against the row by notify), "config" (400/403/413: our keys or headers
+    are wrong; the row stays) or "error" (anything else, e.g. pywebpush could not use the subscription: the row stays and the log says it
+    once; only keys_ok decides that a row is unusable); with the HTTP status or the error's name."""
     webpush, WPE = wp
     headers = {"Authorization": vapid_auth(sub["endpoint"]), "Urgency": urgency, "Topic": topic}
     left = PUSH_TIMEOUT if until is None else max(1.0, min(PUSH_TIMEOUT, until - time.time()))
@@ -488,10 +494,10 @@ def _send(wp, sub, data, ttl, urgency, topic, until=None):
         if code in (429, 500, 502, 503, 504):
             return "retry", code
         return ("config" if code in (400, 403, 413) else "error"), code
-    except OSError as e:               # the network (requests' errors are OSErrors too): worth one more try
-        return "retry", type(e).__name__
-    except Exception as e:             # ValueError, TypeError, binascii.Error, the encryption's errors: this row can never work
-        return "bad", type(e).__name__
+    except OSError as e:               # the network (requests' errors are OSErrors too): no answer, no retry
+        return "net", type(e).__name__
+    except Exception as e:             # ValueError, TypeError, the encryption's errors: kept (keys_ok passed), said once
+        return "error", type(e).__name__
 
 
 def _sub_ok(s):
@@ -521,12 +527,58 @@ def _drop(endpoint):
         say("push: a subscription that cannot be used stays in the store (%s)" % e, once="del")
 
 
+def _in(endpoints):
+    """A PostgREST filter value for these endpoints: in.("a","b") with each one quoted (an endpoint has : / . in it), URL-encoded."""
+    q = ",".join('"%s"' % e.replace("\\", "\\\\").replace('"', '\\"') for e in endpoints)
+    return urllib.parse.quote("in.(%s)" % q, safe="")
+
+
+def own_host(endpoint):
+    """Whether a network failure can be this subscription's own fault: its push host is not one of SHARED_HOSTS (a made-up host, e.g. a
+    random subdomain of notify.windows.com that does not exist)."""
+    return (urllib.parse.urlsplit(endpoint).hostname or "") not in SHARED_HOSTS
+
+
+def _settle(ok_eps, net_rows, heard, until):
+    """After a notification, with the secret key: the rows a push reached are marked delivered (now) with no failures (the size cap keeps
+    delivered rows first, so strangers' rows never push the phone out once it got a notification); a row whose own push host could not
+    be reached counts one more failure when the same notification reached some push service (the runner's network works), and is
+    deleted at NET_FAILS in a row. Nothing here waits past until + 4 s; a failure is said once and changes nothing."""
+    try:
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        for i in range(0, len(ok_eps), 10):
+            if time.time() > until + 4:
+                return
+            call("PATCH", "push_subs?endpoint=" + _in(ok_eps[i:i + 10]), {"delivered": now, "fails": 0}, prefer="return=minimal")
+        if not heard:
+            return
+        by = {}
+        for row in net_rows:
+            if own_host(row["endpoint"]):
+                n = (row.get("fails") if isinstance(row.get("fails"), int) else 0) + 1
+                by.setdefault(n, []).append(row["endpoint"])
+        for n, eps in sorted(by.items()):
+            if time.time() > until + 4:
+                return
+            if n >= NET_FAILS:
+                call("DELETE", "push_subs?endpoint=" + _in(eps), prefer="return=minimal")
+                say("push: %d subscription%s whose push host could not be reached %d times in a row deleted" % (len(eps), "" if len(eps) == 1 else "s", NET_FAILS))
+            else:
+                call("PATCH", "push_subs?endpoint=" + _in(eps), {"fails": n}, prefer="return=minimal")
+    except StoreError as e:
+        say("push: the delivered marks were not saved (%s); run supabase/setup.sql again if it names a column" % e, once="settle")
+    except Exception as e:
+        say("push: the delivered marks were not saved (%s)" % type(e).__name__, once="settle-x")
+
+
 def notify(kind, title, body, url=None):
     """One notification of kind ("young": new coins listed, "pick": the pick is made, "test") to every saved subscription whose
     settings want it (prefs[kind] not false). The pushes go out SEND_THREADS at a time and the whole notification takes NOTIFY_BUDGET s
-    at most (a push still on its way then counts as failed). A row the push service calls gone (404, 410) or that can never work (keys
-    that are no keys) is deleted, without a retry; a 429, 5xx or network error is tried once more. At least the kind's gap between two
-    notifications of one kind (rate guard). A summary dict; it never raises."""
+    at most (a push still on its way then counts as failed). A row the push service calls gone (404, 410) or whose keys are no keys
+    (keys_ok) is deleted, without a retry; a 429 or 5xx is tried once more after a pause; a push that got no answer at all (DNS, refused)
+    is not tried again and counts against its row (_settle: deleted after NET_FAILS in a row at its own host); any other error keeps the
+    row and is said once. Rows a push reached are marked delivered. At least the kind's gap between two notifications of one kind (rate
+    guard). A summary dict; it never raises."""
     out = {"kind": kind, "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None}
     if kind not in KINDS:
         out["skipped"] = "unknown kind"
@@ -551,7 +603,14 @@ def notify(kind, title, body, url=None):
     try:
         if vapid() is None:
             raise StoreError("cryptography is missing")
-        rows = call("GET", "push_subs?select=endpoint,sub,prefs&order=seen.desc&limit=%d" % MAX_SUBS)
+        try:                 # the phones a push has reached first (setup.sql's delivered), then the ones seen most recently
+            rows = call("GET", "push_subs?select=endpoint,sub,prefs,fails&order=delivered.desc.nullslast,seen.desc&limit=%d" % MAX_SUBS)
+            marks = True
+        except StoreError as e:
+            if "HTTP 400" not in str(e):
+                raise
+            say("push: push_subs has no delivered column yet: run supabase/setup.sql again (notifications go out meanwhile)", once="nodelivered")
+            rows, marks = call("GET", "push_subs?select=endpoint,sub,prefs&order=seen.desc&limit=%d" % MAX_SUBS), False
     except StoreError as e:
         say("push: %s not sent (%s)" % (kind, e))
         out["skipped"] = "store"
@@ -602,7 +661,11 @@ def notify(kind, title, body, url=None):
             out[res] += 1
         else:
             out["failed"] += 1
-            say("push: a %s notification failed (%s %s)%s" % (kind, res, code, ": check the VAPID keys" if res == "config" else ""), once="fail-%s-%s" % (res, code))
+            say("push: a %s notification failed (%s %s)%s" % (kind, res, code, ": check the VAPID keys" if res == "config" else
+                                                            ": the subscription stays" if res == "error" else ""), once="fail-%s-%s" % (res, code))
+    if marks:
+        _settle([targets[i]["endpoint"] for i, r in enumerate(results) if r and r[0] == "ok"], [targets[i] for i, r in enumerate(results) if r and r[0] == "net"],
+                any(r and isinstance(r[1], int) for r in results), until)
     say("push: %s sent to %d of %d subscription%s%s%s%s" % (kind, out["sent"], len(targets), "" if len(targets) == 1 else "s",
                                                            ", %d gone and deleted" % out["gone"] if out["gone"] else "",
                                                            ", %d unusable and deleted" % out["bad"] if out["bad"] else "", ", %d failed" % out["failed"] if out["failed"] else ""))

@@ -930,8 +930,8 @@ JS = r"""
 # #new opens the tab once (the hash is dropped, so a reload keeps the tab the reader chose).
 # The transport: a website built with the app's live store (bot.py site puts data-sb-url and a publishable data-sb-key on <html>) reads
 # the Supabase row status instead while the page is visible (any tab): every 4 s while a scan is live, every 30 s otherwise (a new scan
-# shows within half a minute; a page left open all day reads about 1.2 to 1.3 GB a month with the row current, inside the free plan's
-# 5 GB), and the row current only when status names a new ver. The snapshot the page draws is status with current's early list ("young")
+# shows within half a minute; a page left open and visible all day reads about 1.2 to 1.7 GB a month, the row current included, inside
+# the free plan's 5 GB), and the row current only when status names a new ver. The snapshot the page draws is status with current's early list ("young")
 # and pick when current is of the same scan (MB.merge), so it has the same shape as live.json on the GitHub poll: the office view and the
 # early box draw it the same way, whichever transport brought it (one poller at a time, never both). An HTTP 540 (project paused) or two
 # failures in a row (network, CORS, any other status) fall back to the GitHub poll above, quietly, and the live store is tried again 2
@@ -974,6 +974,17 @@ var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RES
     doc.agents.forEach(function(a){if(a&&a.id==='reporter')rep=a;if(a&&a.status==='failed'&&a.id!=='spotter')bad=true;});   // a failed early list is not a failed scan
     return rep&&rep.status==='done'&&!bad?'done':'stopped';
   },
+  // RugCheck's words on a card: the coin's report, else "checking..." while the spotter still asks, else "did not finish" (the spotter was
+  // stopped or failed before RugCheck answered for it)
+  rcChip:function(rc,rcState){var lv=rc&&typeof rc==='object'?rc.level:null,t=lv?String(typeof rc.text==='string'?rc.text:'').slice(0,120):'';
+    return lv==='clean'?'RugCheck: no danger flags':lv==='none'?(t||'no RugCheck report'):lv==='danger'||lv==='warn'?(t||'RugCheck'):
+      rcState==='pending'?'RugCheck: checking…':'RugCheck did not finish';},
+  // RugCheck in the status line: checking, did not answer, did not finish (the spotter was stopped: rcWhy, or coins without words), or how
+  // many reports came
+  rcSum:function(y,coins){if(!y)return '';if(y.rcState==='pending')return ' · RugCheck checking…';if(y.rcState==='down')return ' · RugCheck did not answer';
+    var cs=(coins||[]).filter(function(c){return c&&typeof c==='object';}),got=cs.filter(function(c){return c.rc&&typeof c.rc==='object'&&c.rc.level&&c.rc.level!=='none';}).length;
+    if(y.rcState==='partial'&&(y.rcWhy||cs.some(function(c){return !(c.rc&&typeof c.rc==='object');})))return ' · RugCheck did not finish'+(got?' (reports for '+got+' of '+cs.length+')':'');
+    return ' · RugCheck reports for '+got+' of '+cs.length;},
   // the early list a snapshot carries: live.json "young" of the same scan, or null
   young:function(doc){var y=doc&&typeof doc==='object'?doc.young:null;return y&&typeof y==='object'&&Array.isArray(y.coins)&&+y.t>0&&+y.t===+doc.t?y:null;},
   // what the New launches tab's early box shows (section "states" of the build spec): doc is the newest snapshot, own the page's own early
@@ -1085,8 +1096,7 @@ function go(){
       var p=el('p');p.className='eline';l.forEach(function(x,j){if(j)p.appendChild(document.createTextNode(' · '));p.appendChild(el('span',x));});li.appendChild(p);   // a line breaks between its facts
       if(!n&&tok)li._tok=p.firstChild;});
     var ch=el('div'),rc=c.rc&&typeof c.rc==='object'?c.rc:null,lv=rc?rc.level:null;ch.className='chips';
-    ch.appendChild(chip(lv==='clean'?'RugCheck: no danger flags':lv==='none'?(str(rc.text,120)||'no RugCheck report'):(lv==='danger'||lv==='warn')?(str(rc.text,120)||'RugCheck'):
-      (y.rcState==='pending'?'RugCheck: checking…':'RugCheck: not checked'),lv==='danger'?'bad':lv==='warn'?'warn':''));
+    ch.appendChild(chip(MB.rcChip(rc,y.rcState),lv==='danger'?'bad':lv==='warn'?'warn':''));
     var fh=fate&&fate[a]&&typeof fate[a]==='object'&&fate[a].b==='held';      // the scored list's chip says it already
     if(c.held===true&&!fh)ch.appendChild(chip('paper: already held'));
     if(fate){var f=fate[a],on=f&&typeof f==='object'&&isn(f.k);
@@ -1116,8 +1126,7 @@ function go(){
     var key=(st==='own'?'own':'live')+':'+(y?y.t:doc&&doc.t);if(key!==eKey){eKey=key;ebox.open=st!=='own';}
     ebox.classList.toggle('dim',['paused','limited','stopped'].indexOf(st)>=0);
     var up=doc&&typeof doc==='object'?+(doc.updated||doc.end)||0:0,seen=y&&isn(y.at)?hhmm(y.at):'?',sc=y?+y.t:(doc?+doc.t||0:0);
-    var nrc=coins.filter(function(c){return c.rc&&typeof c.rc==='object'&&c.rc.level&&c.rc.level!=='none';}).length;
-    var rcw=!y?'':y.rcState==='pending'?' · RugCheck checking…':y.rcState==='down'?' · RugCheck did not answer':' · RugCheck reports for '+nrc+' of '+coins.length,txt;
+    var rcw=MB.rcSum(y,coins),txt;
     if(st==='wait')txt='Scan running since '+hhmm(+doc.t)+'. The early list comes about 5 minutes after the start (about '+hhmm(+doc.t+5*M_)+').';
     else if(st==='late')txt="This hour's scan has not reported yet (it may have started late). If none started, the safety net starts one at about :40.";
     else if(st==='listed'||st==='partial'){var s=Math.max(0,Math.round(MB.age(doc,n,S.got,S.moved)/1000));

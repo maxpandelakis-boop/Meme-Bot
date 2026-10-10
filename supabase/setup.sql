@@ -12,8 +12,9 @@
 --   push_subs   the phone's push subscriptions with their settings;
 --               the page saves them through save_push_sub and removes
 --               them through drop_push_sub, it can never read them;
---               at most 25 rows and 6 new ones an hour (the publishable
---               key is public), the phone's own row always stays
+--               at most 25 rows and 6 new ones an hour, also when many
+--               calls come at once (the publishable key is public); a
+--               row a notification has reached is kept ahead of the rest
 --   app_config  public settings (the VAPID public key); anyone may read
 --   app_secret  the VAPID private key; the secret key only
 -- =====================================================================
@@ -82,6 +83,10 @@ create table if not exists public.push_subs (
 -- added after the first version of this script: settings and last-seen time
 alter table public.push_subs add column if not exists prefs jsonb not null default '{"young": true, "pick": true}'::jsonb;
 alter table public.push_subs add column if not exists seen timestamptz not null default now();
+-- added later: when a notification last reached this subscription (the scan writes it with the secret key; never for a stranger's
+-- made-up row) and how many notifications in a row could not reach its push host at all (the scan deletes it at 3)
+alter table public.push_subs add column if not exists delivered timestamptz;
+alter table public.push_subs add column if not exists fails int not null default 0;
 
 -- only real push services (Apple for the iPhone; the others for desktop tests)
 alter table public.push_subs drop constraint if exists push_subs_endpoint_ok;
@@ -113,9 +118,11 @@ alter table public.push_subs add constraint push_subs_prefs_ok check (
 );
 
 -- Size cap: the publishable key is public, so the table never grows past 25 rows.
--- A new subscription keeps the 24 seen most recently and pushes out the rest:
--- the one seen longest ago goes (a dead one, usually: the app saves its own
--- subscription again every time it opens, so the phone is always among the newest).
+-- A new subscription keeps 24 and pushes out the rest: first the rows no
+-- notification has ever reached (a stranger's made-up rows never get one), then,
+-- among the others, the one seen longest ago (the app saves its own subscription
+-- again every time it opens). So once a notification has reached the phone, rows
+-- that never got one cannot push it out.
 create or replace function public.push_subs_cap()
 returns trigger
 language plpgsql
@@ -125,7 +132,7 @@ as $$
 begin
   delete from public.push_subs
    where endpoint in (select endpoint from public.push_subs
-                       order by seen desc, created desc
+                       order by (delivered is not null) desc, seen desc, created desc
                        offset 24);
   return new;
 end;
@@ -168,6 +175,14 @@ begin
      set sub = p_sub, seen = now(), prefs = coalesce(pr, prefs)
    where endpoint = ep;
   if not found then
+    perform pg_advisory_xact_lock(7316001);   -- one new subscription at a time: calls that come at the same moment wait here
+    -- a call that waited may find its row saved meanwhile (this statement sees what the others committed)
+    update public.push_subs
+       set sub = p_sub, seen = now(), prefs = coalesce(pr, prefs)
+     where endpoint = ep;
+    if found then
+      return;
+    end if;
     -- at most 6 NEW subscriptions an hour (saving one that is already there always works):
     -- a stranger with the publishable key cannot flood the table and push the phone out
     if (select count(*) from public.push_subs where created > now() - interval '1 hour') >= 6 then
