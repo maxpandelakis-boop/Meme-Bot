@@ -337,7 +337,8 @@ def collect(d, now):
     track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
     young_hist = sorted([r for r in M.load_docs(d, "memeyoung").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))[:48]
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    office = M.load_json(os.path.join(d, "db", "memebot", "office.json"), None)
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -501,6 +502,47 @@ def chart_box(wide, narrow, legend=""):
     return '<div class="chart"><div class="wide">%s</div><div class="narrow">%s</div>%s</div>' % (wide, narrow, legend)
 
 
+# ---------------------------------------------------------------- the agent office: the worker steps of one hourly scan, drawn as a team
+OFFICE_DEPTS = (   # key, name, colour (page tokens only, so dark and light both work; neighbours on both floor plans stay apart), agent ids; ring order, clockwise from the top left
+    ("ops", "Operations", "color-mix(in oklch,var(--s1) 30%,var(--bad-mark))", ("dispatch",)),
+    ("scouts", "Scouts", "color-mix(in oklch,var(--s1) 50%,var(--s3))", ("scouts", "deep")),
+    ("chart", "Chart desk", "var(--warn-mark)", ("candles",)),
+    ("market", "Market data", "color-mix(in oklch,var(--s1) 65%,var(--bad-mark))", ("market", "refresh")),
+    ("analysts", "Analysts", "var(--s3)", ("analyst",)),
+    ("safety", "Safety desk", "var(--s2)", ("safety",)),
+    ("trading", "Trading desk", "var(--s1)", ("trader",)),
+    ("report", "Reporting", "color-mix(in oklch,var(--warn-mark) 50%,var(--s3))", ("reporter",)))
+OFFICE_BRAIN = ("brain", "The Brain", "var(--accent)", ("trainer",))
+OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services it calls); the trader's job is read from the hold rule in use
+    "dispatch": ("Dispatcher", "decides what this run needs: the kind of scan, the open positions to watch, the checks that are due", ()),
+    "trainer": ("Research lab", "fits the model again on every scored coin: the walk-forward test, the zero model and the tuned limits", ()),
+    "scouts": ("Source scouts", "collects coin addresses from DEX lists, launchpads, RugCheck lists, CoinGecko, CoinMarketCap, social posts and news",
+               ("DexScreener", "GeckoTerminal", "Jupiter", "pump.fun", "Raydium", "Orca", "LaunchLab", "RugCheck", "CoinGecko", "CoinMarketCap", "Reddit", "Farcaster",
+                "Mastodon", "4chan", "news feeds", "fear & greed index", "GMGN")),
+    "candles": ("Candle keeper", "fetches minute candles for the held coins and the tips that are due for a check", ("GeckoTerminal",)),
+    "market": ("Price desk", "prices every coin found: DexScreener pairs first, Jupiter prices for the rest", ("DexScreener", "Jupiter")),
+    "analyst": ("Gatekeeper", "runs the gates, scores the coins and shortlists the best for the safety checks", ()),
+    "deep": ("Deep searcher", "searches DexScreener with more keywords when only a few coins passed the gates", ("DexScreener",)),
+    "safety": ("Safety officers", "checks each shortlisted coin: RugCheck, GoPlus, the creator's wallet, on-chain trades, the community and the first buyers",
+               ("RugCheck", "GoPlus", "GeckoTerminal", "Jupiter", "Solana RPC", "CoinGecko", "StockTwits", "X", "Telegram", "DexScreener", "GMGN")),
+    "refresh": ("Price refresher", "fetches fresh prices for the candidates right before the pick", ("DexScreener",)),
+    "trader": ("Paper trader", "", ()),
+    "reporter": ("Reporter", "writes this page", ())}
+OFFICE_HOSTS = (("launch-mint", "LaunchLab"), ("dexscreener", "DexScreener"), ("geckoterminal", "GeckoTerminal"), ("jup.ag", "Jupiter"), ("pump.fun", "pump.fun"),
+                ("raydium", "Raydium"), ("orca.so", "Orca"), ("rugcheck", "RugCheck"), ("coingecko", "CoinGecko"), ("coinmarketcap", "CoinMarketCap"), ("reddit", "Reddit"),
+                ("warpcast", "Farcaster"), ("mastodon", "Mastodon"), ("4cdn", "4chan"), ("gmgn", "GMGN"), ("gopluslabs", "GoPlus"), ("solana.com", "Solana RPC"),
+                ("stocktwits", "StockTwits"), ("twitter", "X"), ("twimg", "X"), ("alternative.me", "fear & greed index"), ("t.me", "Telegram"), ("bitquery", "Bitquery"),
+                ("lunarcrush", "LunarCrush"), ("news.google", "news feeds"), ("coindesk", "news feeds"), ("cointelegraph", "news feeds"), ("decrypt.co", "news feeds"),
+                ("theblock", "news feeds"), ("cryptoslate", "news feeds"))
+OFFICE_W = 660     # the floor plan's desktop width in CSS px: the map column beside the 360px panel
+# the department picked on the floor plan: one radio per department, so it works without scripts (like the tabs)
+OFFICE_CSS = "\n".join(
+    '#od-{0}:checked ~ .ogrid .k-{0} .halo {{ opacity:1 }} #od-{0}:checked ~ .ogrid .k-{0} .top, #od-{0}:checked ~ .ogrid .k-{0} .core {{ stroke-width:3 }} '
+    '#od-{0}:checked ~ .ogrid .wire.k-{0} {{ opacity:1; stroke-width:2.5 }} #od-{0}:checked ~ .ogrid .opanel.k-{0} {{ display:grid }} '
+    '#od-{0}:checked ~ .ogrid label[for="od-{0}"] {{ background:color-mix(in srgb,var(--accent) 7%,transparent) }} '
+    '#od-{0}:focus-visible ~ .ogrid label[for="od-{0}"] {{ outline:2px solid var(--accent); outline-offset:-2px }}'.format(k) for k, _, _, _ in OFFICE_DEPTS + (OFFICE_BRAIN,))
+
+
 # ---------------------------------------------------------------- page
 CSS = r"""
 /* Layout: one 1100px column read top to bottom. Phone first: at 390px everything fits in a 16px gutter, charts are drawn at the
@@ -569,12 +611,13 @@ details.fold > summary:hover { border-color:var(--accent) }
 .card .top { display:flex; justify-content:space-between; gap:8px 12px; align-items:center; flex-wrap:wrap }
 .card .sym { font-size:20px; font-weight:600 } .name { color:var(--fg2); font-size:var(--fs-s); margin-left:6px }
 .tabs { display:grid; gap:20px } .tabs > input { position:absolute; opacity:0; pointer-events:none }
-.tabbar { display:flex; gap:6px; border-bottom:1px solid var(--line); padding-bottom:0 }
+.tabbar { display:flex; gap:6px; border-bottom:1px solid var(--line); padding-bottom:0; min-width:0; overflow-x:auto; scrollbar-width:none }
+@media (max-width:420px) { .tabbar .tl-long { display:none } .tabbar label { padding-inline:10px } }
 .tabbar label { cursor:pointer; padding:10px 14px; border-radius:8px 8px 0 0; font-weight:500; color:var(--fg2); border:1px solid transparent; border-bottom:none; margin-bottom:-1px; display:inline-flex; gap:8px; align-items:center; min-height:44px }
 .tabbar label:hover { color:var(--fg) } .tabbar .cnt { font-size:var(--fs-xs); background:var(--chip); color:var(--fg2); border-radius:999px; padding:1px 8px }
-#tab-pick:checked ~ .tabbar label[for="tab-pick"], #tab-young:checked ~ .tabbar label[for="tab-young"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
+#tab-pick:checked ~ .tabbar label[for="tab-pick"], #tab-young:checked ~ .tabbar label[for="tab-young"], #tab-office:checked ~ .tabbar label[for="tab-office"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
 .tabbar label:focus-visible, .tabs > input:focus-visible ~ .tabbar label[for] { outline:2px solid var(--accent); outline-offset:2px }
-.pane { display:grid; gap:24px } #tab-young:checked ~ #pane-pick, #tab-pick:checked ~ #pane-young { display:none }
+.pane { display:none; gap:24px } #tab-pick:checked ~ #pane-pick, #tab-young:checked ~ #pane-young, #tab-office:checked ~ #pane-office { display:grid }
 .chips { display:flex; flex-wrap:wrap; gap:6px }
 .chip { display:inline-block; font-size:var(--fs-xs); font-weight:500; padding:3px 9px; border-radius:999px; background:var(--chip); color:var(--fg2); white-space:nowrap; line-height:1.4 }
 .chip.good { background:color-mix(in srgb,var(--good-mark) 16%,var(--surface)); color:var(--good) } .chip.bad { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
@@ -687,10 +730,54 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
 @container (min-width:640px) { .stats { grid-template-columns:repeat(6,minmax(0,1fr)) } }
 @container (min-width:430px) { .checks ul { grid-template-columns:1fr 1fr } }
 @container (min-width:880px) { .checks ul { grid-template-columns:1fr 1fr 1fr } }
-@media (prefers-reduced-motion: reduce) { .tip, details.fold > summary::after { transition:none } }
+/* the agent office (third tab): the floor plan of the last run, one department open beside it (below it on phones), the team timeline */
+.office { display:grid; gap:12px } .office > input { position:fixed; top:0; left:0; opacity:0; pointer-events:none }
+.ostrip { display:flex; flex-wrap:wrap; gap:6px }
+.ostrip span { display:inline-flex; gap:6px; align-items:baseline; padding:5px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:var(--fs-s); color:var(--fg2) }
+.ostrip b { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums } .ostrip .bad { border-color:color-mix(in srgb,var(--bad-mark) 50%,var(--line)) } .ostrip .bad b { color:var(--bad) }
+.ogrid { display:grid; gap:12px; align-items:start; grid-template-columns:minmax(0,1fr) }
+.omap { padding:12px } .ofloor { position:relative; margin-inline:auto } .chart .wide .ofloor { max-width:720px } .chart .narrow .ofloor { max-width:360px }
+.chart .ofloor .chart-svg { max-width:none }
+.ohit { position:absolute; display:block; cursor:pointer; border-radius:10px } .ohit:hover { background:color-mix(in srgb,var(--fg) 5%,transparent) }
+.ofl .wire { fill:none; stroke:var(--dc); stroke-width:1.5; stroke-dasharray:5 5; opacity:.85; animation:owire 1.6s linear infinite }
+@keyframes owire { to { stroke-dashoffset:-20 } }
+.ofl .top { fill:color-mix(in srgb,var(--dc) 22%,var(--surface)); stroke:var(--dc); stroke-width:1.25 } .ofl .side { fill:color-mix(in srgb,var(--dc) 55%,var(--bg)) }
+.ofl .halo { fill:none; stroke:var(--dc); stroke-width:2; opacity:0 }
+.ofl .dk { fill:color-mix(in srgb,var(--fg) 30%,var(--surface)) } .ofl .dks { fill:color-mix(in srgb,var(--fg) 14%,var(--bg)) }
+.ofl .mon { fill:var(--bg); stroke:color-mix(in srgb,var(--fg) 35%,var(--surface)); stroke-width:1 } .ofl .scr { fill:color-mix(in srgb,var(--dc) 75%,var(--surface)) }
+.ofl .scr.failed { fill:var(--bad-mark) } .ofl .scr.fallback { fill:var(--warn-mark) } .ofl .desk.off .scr { fill:var(--line) } .ofl .desk.off { opacity:.5 }
+.ofl .who { fill:var(--fg2) } .ofl .pill { fill:color-mix(in srgb,var(--s2) 20%,var(--surface)); stroke:var(--s2); stroke-width:1 }
+.ofl .pill-t { fill:var(--fg); font-size:11px; font-weight:500 }
+.ofl .oname { fill:var(--fg); font-size:13px; font-weight:600 } .ofl .osub { fill:var(--fg2); font-size:12px } .ofl .omut { fill:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
+.ofl .lt { font-size:11px } .ofl .lt.done { fill:var(--good-mark) } .ofl .lt.failed { fill:var(--bad-mark) } .ofl .lt.fallback { fill:var(--warn-mark) } .ofl .lt.skipped { fill:var(--muted) } .ofl .lt.running { fill:var(--accent) }
+.ofl .glow { fill:var(--accent) } .ofl .g1 { opacity:.2 } .ofl .g2 { opacity:.1 } .ofl .g3 { opacity:.05 }
+.ofl .core { fill:color-mix(in srgb,var(--accent) 16%,var(--surface)); stroke:var(--accent); stroke-width:1.5 } .ofl .hub-t { fill:var(--fg); font-size:12px; font-weight:600; letter-spacing:.08em }
+.ofl .hub-n { fill:var(--fg); font-size:14px; font-weight:600; font-variant-numeric:tabular-nums }
+.olegend span::before { border-radius:50% } .olegend .ob::before { width:22px; height:12px; border-radius:6px; background:color-mix(in srgb,var(--s2) 20%,var(--surface)); border:1px solid var(--s2) }
+.opanel { display:none; gap:12px; align-content:start }
+.opanel .ohead { display:flex; justify-content:space-between; align-items:flex-start; gap:6px 12px; flex-wrap:wrap } .opanel h3 { font-size:17px; margin:2px 0 0 }
+.oagent { display:grid; gap:10px; padding-top:12px; border-top:1px solid var(--line2) } .oagent > div, .oagent > p { min-width:0 }
+.oagent .who { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center } .oagent .who strong { font-size:15px }
+.oagent .job, .oagent .clk { margin:0; color:var(--fg2); font-size:var(--fs-s) } .oagent .clk { font-variant-numeric:tabular-nums }
+.opanel .olab { display:block; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500; margin-bottom:4px }
+.omsg { margin:0; padding:8px 10px; border-radius:6px; background:var(--chip); font-size:var(--fs-s); overflow-wrap:anywhere } .omsg.warn { border-left:3px solid var(--warn-mark) }
+.oout { margin:0; font-weight:600; overflow-wrap:anywhere } .oout + .oout { font-weight:400; font-size:var(--fs-s); color:var(--fg2); margin-top:2px }
+.oshare { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; font-size:var(--fs-xs); color:var(--fg2); font-variant-numeric:tabular-nums; margin-bottom:4px }
+.obar { display:block; height:6px; border-radius:999px; background:var(--line2); overflow:hidden } .obar i { display:block; height:100%; border-radius:999px; background:var(--s1) } .obar.bg i { background:var(--s2) }
+.olines { list-style:none; margin:0; padding:0; display:grid }
+.oline { display:grid; grid-template-columns:12px minmax(0,1fr) auto; gap:8px; align-items:baseline; padding:4px 0; border-top:1px solid var(--line2); font:var(--fs-xs)/1.45 var(--mono) }
+.oline .ic { color:var(--muted) } .oline .tx { overflow-wrap:anywhere; color:var(--fg) } .oline.warn .ic, .oline.warn .tx { color:var(--warn) }
+.oline .m { display:inline-grid; grid-template-columns:44px auto; gap:6px; align-items:center; color:var(--muted); font-family:var(--sans); font-variant-numeric:tabular-nums }
+.oline .m .obar { height:4px } .oline .m .obar i { background:var(--muted) }
+.chart-svg .gbar.fg { fill:var(--s1) } .chart-svg .gbar.bg { fill:var(--s2) } .chart-svg .gbar.failed { fill:var(--bad-mark) } .chart-svg .gbar.fallback { stroke:var(--warn-mark); stroke-width:2 }
+.chart-svg .gbar.open { fill-opacity:.45; stroke:var(--bad-mark); stroke-dasharray:3 2 } .chart-svg .lane { stroke:var(--line2); stroke-width:1 }
+.chart-svg [data-tip]:hover .gbar { opacity:.8 }
+@media (min-width:1080px) { .ogrid { grid-template-columns:minmax(0,1fr) minmax(320px,360px) } .omap { position:sticky; top:12px } }
+@media (prefers-reduced-motion: reduce) { .tip, details.fold > summary::after { transition:none } .ofl .wire { animation:none } }
 @media (max-width:700px) { .chart .wide { display:none } .chart .narrow { display:block } }
 @media (max-width:560px) {
   body { font-size:15px } h1 { font-size:21px } .wrap { gap:20px }
+  .tabbar { gap:0 } .tabbar label { padding:8px 9px; gap:5px; font-size:14px; white-space:nowrap } .tabbar .cnt { padding:1px 6px }
   .note, .why, .safety, .sec-head p, details, table, .legend, .tile .sub, header .meta, .live, .links a { font-size:14px } .chip { font-size:13px }
   .hero { grid-template-columns:1fr 1fr } .hero .tile.lead { grid-column:1 / -1 } .hero .tile:last-child:nth-child(even) { grid-column:1 / -1 } .tile.lead .value { font-size:32px }
   .ck .vl { max-width:13ch } .acct { grid-template-columns:1fr 1fr } .acct .lead { grid-column:1 / -1; border-bottom:1px solid var(--line2) } .acct > div + div { border-left:0 }
@@ -701,7 +788,8 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
   .stack table, .stack tbody, .stack tr, .stack td { display:block } .stack thead { display:none } .stack tr { padding:10px 12px; border-top:1px solid var(--line2) } .stack tr:first-child { border-top:0 }
   .stack td { border-top:0; padding:2px 0; text-align:left; white-space:normal; min-width:0; max-width:none } .stack td.n, .stack td.w, .stack td.m, .stack td.act { display:inline-block; padding-right:12px }
   .stack td.d { display:inline-block; padding-right:12px } .stack td.res { display:block } .stack td.res .r1 { display:inline } .stack td.n::before, .stack td.d::before { content:attr(data-k) " "; color:var(--muted); font-size:12px } .stack td.act { padding-top:4px } }
-"""
+@media (max-width:370px) { .tabbar label { padding:8px 6px; font-size:13px } }
+""" + OFFICE_CSS + "\n"
 
 JS = r"""
 (function(){
@@ -1894,6 +1982,393 @@ def dash_section(D):
         "".join('<div class="cell"><span class="k">%s</span><span class="v">%s</span><span class="s">%s</span></div>' % (E(k), E(v), E(sub)) for k, v, sub in cells))
 
 
+# ---------------------------------------------------------------- the agent office tab
+OFFICE_ST = ("done", "failed", "fallback", "skipped", "running")
+OFFICE_CHIP = {"done": "good", "failed": "bad", "fallback": "warn", "running": "neutral"}
+OFFICE_MODE = {"full": "a full scan", "light": "a light scan", "none": "no scan, prices for the open positions only"}
+
+
+def fmt_secs(s, short=False):
+    """A duration in plain words: '45 s', '8 min 20 s', '29 min'; short (floor plan, timeline): '8.3 min'."""
+    s = max(0, int(round(M.num(s) or 0)))
+    if s < 60:
+        return "%d s" % s
+    if s >= 600:
+        return "%d min" % round(s / 60.0)
+    if short:
+        return "%.1f min" % (s / 60.0)
+    return ("%d min %d s" % (s // 60, s % 60)) if s % 60 else "%d min" % (s // 60)
+
+
+def clock(ms):
+    return local(ms).strftime("%H:%M:%S") if M.num(ms) else "–"
+
+
+def host_tool(host):
+    """The service a host belongs to ('www.reddit.com' -> 'Reddit'); an unknown host is shown as it is."""
+    h = str(host).lower()
+    return next((t for k, t in OFFICE_HOSTS if k in h), str(host))
+
+
+def office_meta(aid):
+    """(name, job, services) of an agent; the trader's job is the hold rule in use, an unknown id keeps its id as its name."""
+    if aid == "trader":
+        return ("Paper trader", "names the pick and runs the hold rule on the paper positions: sold at +%d%%, the first scan a coin fails a filter, or after %d hours" % (
+            round(100 * M.HOLD_TP), round(M.HOLD_MAX_H)), ())
+    return OFFICE_AGENTS.get(aid, (aid.replace("_", " ").capitalize(), "", ()))
+
+
+def office_word(a):
+    if a["st"] == "running":
+        return "writing this page" if a["id"] == "reporter" else "at work"
+    return "did not run" if a["st"] == "absent" else ("never finished" if a.get("open") else a["st"])
+
+
+def office_data(D):
+    """office.json made ready to draw: the agents in run order with their seconds, each department with its agents and one rolled-up light,
+    the run's span, how many agents worked at once and the department opened first (the slowest agent's). None without an agent."""
+    O = D.get("office")
+    if not isinstance(O, dict):
+        return None
+    ags = []
+    for a in O.get("agents") or []:
+        if not isinstance(a, dict) or not a.get("id"):
+            continue
+        s, e, st = M.num(a.get("start")), M.num(a.get("end")), str(a.get("status") or "")
+        waits = a.get("waits") if isinstance(a.get("waits"), dict) else {}
+        lines = a.get("lines") if isinstance(a.get("lines"), list) else []
+        blocked = a.get("blocked") if isinstance(a.get("blocked"), list) else []
+        ags.append({"id": str(a["id"]), "s": s, "e": e, "st": st if st in OFFICE_ST else ("done" if s and e else "skipped"), "bg": bool(a.get("bg")),
+                    "out": str(a.get("out") or ""), "lines": [str(x)[:200] for x in lines if x is not None][-60:],
+                    "waits": {str(k): int(M.num(v)) for k, v in waits.items() if M.num(v)}, "blocked": [str(h) for h in blocked if h]})
+    if not ags:
+        return None
+    marks = [x for a in ags for x in (a["s"], a["e"]) if x]
+    t0 = M.num(O.get("t")) or (min(marks) if marks else 0)
+    t1 = max([M.num(O.get("end")) or 0] + marks)
+    t1 = t1 if t1 > t0 else t0 + 1000
+    for a in ags:
+        a["ran"] = bool(a["s"]) and a["st"] != "skipped"
+        a["open"] = a["ran"] and not a["e"] and a["st"] != "running"     # started and never finished: failed, its bar runs to the end of the run
+        a["st"] = "failed" if a["open"] else a["st"]
+        a["secs"] = max(0.0, ((a["e"] or t1) - a["s"]) / 1000.0) if a["ran"] else 0.0
+        a["name"], a["job"], a["tools"] = office_meta(a["id"])
+    by = {a["id"]: a for a in ags}
+    depts = []
+    for key, name, col, ids in OFFICE_DEPTS + (OFFICE_BRAIN,):
+        mem = [by.get(i) or dict(zip(("name", "job", "tools"), office_meta(i)), id=i, s=None, e=None, st="absent", bg=False, out="", lines=[], waits={}, blocked=[],
+                                 ran=False, open=False, secs=0.0) for i in ids]
+        sts = {m["st"] for m in mem}
+        light = "failed" if "failed" in sts else ("fallback" if "fallback" in sts else ("running" if "running" in sts else ("done" if any(m["ran"] for m in mem) else "skipped")))
+        word = "at work" if light == "running" else (light if light != "skipped" or "skipped" in sts else "did not run")
+        depts.append({"key": key, "name": name, "col": col, "agents": mem, "light": light, "word": word,
+                      "secs": sum(m["secs"] for m in mem), "n": len(mem), "nbg": sum(1 for m in mem if m["bg"])})
+    peak = cur = 0
+    for _, k in sorted([(a["s"], 1) for a in ags if a["ran"]] + [(a["e"] or t1, -1) for a in ags if a["ran"]]):    # an end sorts before a start at the same ms
+        cur += k
+        peak = max(peak, cur)
+    slow = max([a for a in ags if a["ran"]], key=lambda a: a["secs"], default=None)
+    pick = next((d["key"] for d in depts if slow and any(m is slow for m in d["agents"])), None) or next((d["key"] for d in depts if d["light"] != "skipped"), "ops")
+    return {"t0": t0, "t1": t1, "agents": ags, "depts": depts[:-1], "brain": depts[-1], "peak": peak, "pick": pick, "mode": str(O.get("mode") or "")}
+
+
+def office_pts(*p):
+    return " ".join("%.1f,%.1f" % xy for xy in p)
+
+
+def office_desk(x, y, a):
+    """One desk: the desk top, a monitor (lit in the department colour while its agent ran, red if it failed, dark if it did not run),
+    the agent in front of it, and a 'beside' tag over an agent that ran in its own process beside the others."""
+    scr = a["st"] if a["st"] in ("failed", "fallback") else ""
+    out = ['<g class="desk%s">' % ("" if a["ran"] else " off"),
+           '<polygon class="dks" points="%s"/>' % office_pts((x - 15, y), (x, y + 7.5), (x + 15, y), (x + 15, y + 3), (x, y + 10.5), (x - 15, y + 3)),
+           '<polygon class="dk" points="%s"/>' % office_pts((x - 15, y), (x, y - 7.5), (x + 15, y), (x, y + 7.5)),
+           '<rect class="mon" x="%.1f" y="%.1f" width="18" height="13" rx="1.5"/><rect class="scr %s" x="%.1f" y="%.1f" width="15" height="10" rx="1"/>' % (x - 9, y - 15, scr, x - 7.5, y - 13.5)]
+    if a["ran"]:
+        out.append('<circle class="who" cx="%.1f" cy="%.1f" r="3.2"/><ellipse class="who" cx="%.1f" cy="%.1f" rx="5.5" ry="3.2"/>' % (x, y + 11, x, y + 17))
+    if a["bg"]:
+        out.append('<rect class="pill" x="%.1f" y="%.1f" width="46" height="15" rx="7.5"/><text class="pill-t" x="%.1f" y="%.1f" text-anchor="middle">beside</text>' % (x - 23, y - 33, x, y - 22))
+    return "".join(out) + "</g>"
+
+
+def office_floor(info, T, width):
+    """The office floor as inline SVG in CSS pixels, with one tap area per department (an HTML label over the SVG, placed in percent).
+    Wide: the Brain in the middle of a ring of eight platforms, each wired to the hub at the vertex that faces it, its words on the side
+    away from the wire. Narrow (phone): the Brain on top, the platforms in two columns below it, wired along a spine between the columns.
+    No wire crosses any words in either layout."""
+    narrow = width < 400
+    depts, b = info["depts"], info["brain"]
+    places = []
+    if narrow:
+        hw, hh, ext, step = 64, 30, 6, 21
+        hx, hy, rx, ry = width / 2.0, 64, 118, 50
+        top0, rowh = 134, 152           # a row: its name, the platform, two badge lines; the gap to the next row is wider than the gaps inside it
+        height = top0 + rowh * ((len(depts) + 1) // 2)
+        for i, d in enumerate(depts):
+            x0, y0 = (i % 2) * width / 2.0, top0 + (i // 2) * rowh
+            cx, cy = x0 + width / 4.0, y0 + 70
+            base = cy + hh + ext
+            places.append((d, (x0, y0, width / 2.0, rowh), cx, cy, ((cx + hw, cy) if i % 2 == 0 else (cx - hw, cy)), [(y0 + 24, "name"), (base + 18, "count"), (base + 34, "time")]))
+        hub_cell = (0, 0, width, top0 - 4)
+    else:
+        hw, hh, ext, step = 80, 37, 8, 26
+        cw = width / 3.0
+        rows = ((0, 168), (168, 176), (344, 168))      # the words of a platform sit closer to it than to the platform above
+        height = 512
+        hx, hy, rx, ry = width / 2.0, 256, 98, 56
+        ring = ((0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2), (0, 1))
+        for i, d in enumerate(depts[:8]):
+            col, row = ring[i]
+            x0, (y0, ch) = col * cw, rows[row]
+            cx = x0 + cw / 2
+            if row == 2:
+                cy = y0 + 50
+                base = cy + hh + ext
+                texts = [(base + 22, "name"), (base + 39, "agents"), (base + 55, "time")]
+            else:
+                cy = y0 + (110 if row == 0 else 116)
+                pad = 0 if row == 0 else 16
+                texts = [(y0 + pad + 18, "name"), (y0 + pad + 35, "agents"), (y0 + pad + 51, "time")]
+            anchor = (cx + hw, cy) if col == 0 else ((cx - hw, cy) if col == 2 else ((cx, cy + hh + ext) if row == 0 else (cx, cy - hh)))
+            places.append((d, (x0, y0, cw, ch), cx, cy, anchor, texts))
+        hub_cell = (cw, 168, cw, 176)
+    out = ['<svg class="chart-svg ofl" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="The office floor: the Brain in the middle, one platform per department">' % (
+        width, height, width, height)]
+    if narrow:
+        out.append('<path class="wire" style="--dc:var(--accent)" d="M%.1f %.1f V%.1f"/>' % (hx, hy + ry, places[-1][3]))
+        out += ['<path class="wire k-%s" style="--dc:%s" d="M%.1f %.1f H%.1f"/>' % (d["key"], d["col"], hx, cy, ax) for d, _, _, cy, (ax, _), _ in places]
+    else:
+        out += ['<path class="wire k-%s" style="--dc:%s" d="M%.1f %.1f L%.1f %.1f"/>' % (d["key"], d["col"], hx, hy, ax, ay) for d, _, _, _, (ax, ay), _ in places]
+    for d, _, cx, cy, _, texts in places:
+        out.append('<g class="plat k-%s" style="--dc:%s">' % (d["key"], d["col"]))
+        out.append('<polygon class="halo" points="%s"/>' % office_pts((cx, cy - hh - 7), (cx + hw + 14, cy + ext / 2), (cx, cy + hh + ext + 7), (cx - hw - 14, cy + ext / 2)))
+        out.append('<polygon class="side" points="%s"/>' % office_pts((cx - hw, cy), (cx, cy + hh), (cx + hw, cy), (cx + hw, cy + ext), (cx, cy + hh + ext), (cx - hw, cy + ext)))
+        out.append('<polygon class="top" points="%s"/>' % office_pts((cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy)))
+        n = len(d["agents"])
+        for j, a in enumerate(d["agents"]):
+            out.append(office_desk(cx + (j - (n - 1) / 2.0) * 2 * step, cy - 4, a))
+        nb = "%d agent%s" % (n, "" if n == 1 else "s") + ((" · %d beside" % d["nbg"]) if d["nbg"] and n > 1 else (" · beside" if d["nbg"] else ""))
+        words = {"name": '<tspan class="lt %s">●</tspan> %s' % (d["light"], E(d["name"])), "agents": E(" · ".join(a["name"] for a in d["agents"])), "count": E(nb),
+                 "time": E(("%s · %s" % (fmt_secs(d["secs"], True), d["word"])) if d["secs"] else d["word"])}
+        for y, k in texts:
+            out.append('<text class="%s" x="%.1f" y="%.1f" text-anchor="middle">%s</text>' % ("oname" if k == "name" else ("omut" if k == "time" else "osub"), cx, y, words[k]))
+        out.append("</g>")
+    tr = b["agents"][0]
+    rows_n, scans_n = int(M.num((T or {}).get("rows")) or 0), int(M.num((T or {}).get("scans")) or 0)
+    out.append('<g class="plat hub k-brain">%s<ellipse class="core" cx="%.1f" cy="%.1f" rx="%d" ry="%d"/>' % (
+        "".join('<ellipse class="glow %s" cx="%.1f" cy="%.1f" rx="%.1f" ry="%.1f"/>' % (c, hx, hy, rx * k, ry * k) for c, k in (("g3", 1.24), ("g2", 1.13), ("g1", 1.05))), hx, hy, rx, ry))
+    hub_lines = [(hy - 22, "hub-t", '<tspan class="lt %s">●</tspan> THE BRAIN' % b["light"]),
+                 (hy - 3, "hub-n", ("%s coin results" % fmt_int(rows_n)) if rows_n else "no training yet"),
+                 (hy + 14, "osub", ("from %d scans" % scans_n) if scans_n else "it learns from scored scans"),
+                 (hy + 31, "omut", "%s · %s" % (E(tr["name"]), "beside" if tr["bg"] and tr["ran"] else E(office_word(tr))))]
+    out += ['<text class="%s" x="%.1f" y="%.1f" text-anchor="middle">%s</text>' % (c, hx, y, t) for y, c, t in hub_lines]
+    out.append("</g></svg>")
+    hits = [(b, hub_cell)] + [(d, cell) for d, cell, _, _, _, _ in places]
+    for d, (x, y, w, h) in hits:
+        tip = "%s: %s" % (d["name"], "; ".join("%s %s%s" % (a["name"], office_word(a), (" in %s" % fmt_secs(a["secs"])) if a["ran"] else "") for a in d["agents"]))
+        out.append('<label class="ohit" for="od-%s" title="%s" style="left:%.3f%%;top:%.3f%%;width:%.3f%%;height:%.3f%%"><span class="sr">%s</span></label>' % (
+            d["key"], E(tip), 100.0 * x / width, 100.0 * y / height, 100.0 * w / width, 100.0 * h / height, E(d["name"])))
+    return "".join(out)
+
+
+def office_gantt(info, width):
+    """The team timeline: one lane per agent across the run, a bar from its start to its end (agents that ran beside the others in the
+    second colour, a failed one in red), the time it took after the bar, minutes since the start on the axis."""
+    narrow = width < 400
+    rows = info["agents"]
+    ml, mr, lane, mt, mb = (102, 52, 24, 4, 26) if narrow else (132, 70, 26, 4, 28)
+    pw, n = width - ml - mr, len(rows)
+    height = mt + lane * n + mb
+    t0, t1 = info["t0"], info["t1"]
+    span = (t1 - t0) / 60000.0
+    X = lambda ms: ml + max(0.0, min(1.0, (ms - t0) / float(t1 - t0))) * pw
+    out = ['<svg class="chart-svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="Team timeline: when each agent worked during the last run">' % (width, height, width, height)]
+    ticks, _ = clean_ticks(0, span, 3 if narrow else 6)
+    for tk in ticks:
+        if tk > span * 1.0001:
+            continue
+        x = ml + tk / span * pw
+        out.append('<line class="grid" x1="%.1f" y1="%d" x2="%.1f" y2="%d"/><text class="tick" x="%.1f" y="%d" text-anchor="middle">%s</text>' % (
+            x, mt, x, mt + lane * n, x, height - 8, "%g min" % tk))
+    for i, a in enumerate(rows):
+        y = mt + i * lane
+        out.append('<text class="label" x="%d" y="%.1f" text-anchor="end">%s</text>' % (ml - 8, y + lane / 2.0 + 4, E(a["name"])))
+        if not a["ran"]:
+            out.append('<text class="tick" x="%d" y="%.1f">%s</text>' % (ml + 4, y + lane / 2.0 + 4, E(office_word(a))))
+            continue
+        x0 = X(a["s"])
+        w = max(2.0, X(a["e"] or t1) - x0)
+        cls = "gbar %s%s" % ("bg" if a["bg"] else "fg", " open" if a["open"] else (" " + a["st"] if a["st"] in ("failed", "fallback") else ""))
+        tip = "%s · %s · %s · %s%s" % (a["name"], ("%s to %s" % (clock(a["s"]), clock(a["e"]))) if a["e"] else "started %s" % clock(a["s"]), fmt_secs(a["secs"]), office_word(a),
+                                       " · beside the others" if a["bg"] else "")
+        out.append('<g data-tip="%s"><rect class="%s" x="%.1f" y="%.1f" width="%.1f" height="14" rx="3"/></g>' % (E(tip), cls, x0, y + (lane - 14) / 2.0, w))
+        out.append('<text class="tick" x="%.1f" y="%.1f">%s</text>' % (x0 + w + 6, y + lane / 2.0 + 4, fmt_secs(a["secs"], True)))
+    out.append("</svg>")
+    return "".join(out)
+
+
+def office_latest(lines):
+    """The most telling of an agent's lines: its own summary if it wrote one, else the first host it gave up on, else what it named, else its
+    last warning, else its last line that is not housekeeping."""
+    for pat, k in ((r"\d+ requests,", -1), (r"giving up on", 0), (r"^(Recommended|No recommendation)", 0)):
+        hit = [ln for ln in lines if re.search(pat, ln)]
+        if hit:
+            return hit[k]
+    warn = [ln for ln in lines if ln.startswith("!")]
+    real = [ln for ln in lines if not re.match(r"(saved \d+ docs|report: )", ln)]
+    return (warn or real or lines or [""])[-1]
+
+
+def office_line(ln):
+    """A progress line as a row; a warning ('! ...') gets the warning mark, a line with 'k of n' a small meter."""
+    warn = ln.startswith("!")
+    tx = ln.lstrip("! ") if warn else ln
+    m = re.search(r"(\d[\d,]*) of (\d[\d,]*)", tx)
+    k, n = (int(m.group(1).replace(",", "")), int(m.group(2).replace(",", ""))) if m else (0, 0)
+    meter = ('<span class="m"><span class="obar"><i style="width:%.0f%%"></i></span>%s</span>' % (100.0 * k / n, pct(100.0 * k / n))) if 0 < n and k <= n else "<span></span>"
+    return '<li class="oline%s"><span class="ic">%s</span><span class="tx">%s</span>%s</li>' % (" warn" if warn else "", "!" if warn else "›", E(tx), meter)
+
+
+TOOL_WORDS = {   # words in an agent's progress lines that show it called a service this run (a line need not name the host)
+    "GeckoTerminal": ("geckoterminal", "candles "), "Jupiter": ("jupiter", "creator check"), "Solana RPC": ("public rpc", "solana.com", "on-chain"),
+    "DexScreener": ("dexscreener", "dex paid"), "news feeds": ("news ", "headlines"), "fear & greed index": ("fear & greed",), "X": (" x ", "source tweets"),
+    "Telegram": ("telegram",), "StockTwits": ("stocktwits",), "CoinGecko": ("coingecko",), "CoinMarketCap": ("coinmarketcap",), "RugCheck": ("rugcheck",),
+    "GoPlus": ("goplus",), "GMGN": ("gmgn",), "Reddit": ("reddit",), "Farcaster": ("farcaster",), "Mastodon": ("mastodon",), "4chan": ("4chan",),
+    "pump.fun": ("pump.fun",), "Raydium": ("raydium",), "Orca": ("orca",), "LaunchLab": ("launchlab",)}
+
+
+def office_tools(a):
+    """The services an agent called this run as chips with their state: blocked, rate-limit waits or ok (problems first). Only a service its
+    lines show it called is marked ok; the others it is wired to are named once below, without a state."""
+    names = list(a["tools"])
+    waits, blocked = {}, set()
+    for h, k in a["waits"].items():
+        t = host_tool(h)
+        waits[t] = waits.get(t, 0) + k
+        names += [] if t in names else [t]
+    for h in a["blocked"]:
+        t = host_tool(h)
+        blocked.add(t)
+        names += [] if t in names else [t]
+    if not names:
+        return "<p class=\"note\">no outside calls: it works on the bot's own files</p>"
+    text = " " + " ".join(a["lines"]).lower() + " "
+    seen = lambda t: t in blocked or waits.get(t) or any(w in text for w in TOOL_WORDS.get(t, (t.lower(),)))
+    used = [t for t in names if a["ran"] and seen(t)]
+    rest = [t for t in names if t not in used]
+    rank = lambda t: 0 if t in blocked else (1 if waits.get(t) else 2)
+    chips = []
+    for t in sorted(used, key=rank):
+        if t in blocked:
+            cls, state = "bad", "blocked"
+        elif waits.get(t):
+            cls, state = "warn", "%d rate-limit wait%s" % (waits[t], "" if waits[t] == 1 else "s")
+        else:
+            cls, state = "", "ok"
+        chips.append('<span class="chip %s">%s · %s</span>' % (cls, E(t), state))
+    idle = ('<p class="note">%s %s</p>' % ("Wired to" if not used else "Also wired to, no line about it this run:", E(", ".join(rest)))) if rest else ""
+    return ('<div class="chips">%s</div>' % "".join(chips) if chips else "") + idle
+
+
+def office_pick(D, t_run):
+    """The trader's output line from recommend.json: the coin it named and what happened to the paper position (with the run's time when
+    the pick on the page comes from another run than this log)."""
+    rc = D.get("rec") or {}
+    if not rc:
+        return ""
+    picks = [c for c in rc.get("picks") or [] if isinstance(c, dict)]
+    t_rec = M.num(rc.get("t"))
+    lead = ("The pick on this page (from the run at %s)" % fmt_when(t_rec, D["now"])) if t_rec and t_run and abs(t_rec - t_run) > 120_000 else "The pick"
+    if not picks:
+        return "%s: none, %s" % (lead, rc.get("reason") or "nothing passed the gates")
+    c, b = picks[0], picks[0].get("bought")
+    tail = ("bought for %s" % fmt_amt(b)) if isinstance(b, (int, float)) and not isinstance(b, bool) else ("already held" if b == "held" else (("not bought: %s" % b) if b else ""))
+    return "%s: %s (score %.0f)%s%s" % (lead, c.get("sym") or "?", M.num(c.get("score")) or 0, (" and %d more" % (len(picks) - 1)) if len(picks) > 1 else "", (", " + tail) if tail else "")
+
+
+def office_panel(d, info, D):
+    """The department opened on the floor plan: its agents, each with its job, its clock times, its output and latest message, the services
+    it called and its progress lines (the skills), the bar of each agent's share of the run."""
+    run_s = (info["t1"] - info["t0"]) / 1000.0
+    n, nbg = d["n"], d["nbg"]
+    sub = "%d agent%s" % (n, "" if n == 1 else "s") + ((" · %d ran beside the others" % nbg) if nbg and n > 1 else (" · ran beside the others" if nbg else ""))
+    sub += (" · %s at work" % fmt_secs(d["secs"])) if d["secs"] else ""
+    parts = ['<div class="ohead"><div><span class="olab">%s</span><h3>%s</h3></div><span class="chip %s">%s</span></div><p class="note">%s</p>' % (
+        "the hub" if d["key"] == "brain" else "department", E(d["name"]), OFFICE_CHIP.get(d["light"], ""), E(d["word"]), E(sub))]
+    if d["key"] == "brain":
+        T = D.get("train") or {}
+        rows_n = int(M.num(T.get("rows")) or 0)
+        parts.append('<p class="note">%s</p>' % (E("The trained model and the scored history every pick is judged with: %s coin results from %d scans, %s of them went to zero within %s." % (
+            fmt_int(rows_n), int(M.num(T.get("scans")) or 0), fmt_int(T.get("zeros") or 0), horizon_text())) if rows_n else "No training yet: the Brain fills once the first scans are scored."))
+    for a in d["agents"]:
+        who = '<div class="who"><strong>%s</strong><span class="chip %s">%s</span>%s</div>' % (
+            E(a["name"]), OFFICE_CHIP.get(a["st"], ""), E(office_word(a)), '<span class="chip neutral">ran beside the others</span>' if a["bg"] else "")
+        job = ('<p class="job">%s</p>' % E(a["job"])) if a["job"] else ""
+        if not a["ran"]:
+            parts.append('<div class="oagent">%s%s<p class="clk">%s this run</p></div>' % (who, job, "skipped" if a["st"] == "skipped" else "not needed"))
+            continue
+        clk = ("%s to %s %s · %s" % (clock(a["s"]), clock(a["e"]), TZ_NAME, fmt_secs(a["secs"])) if a["e"] else
+               "started %s %s, never finished · %s until the run ended" % (clock(a["s"]), TZ_NAME, fmt_secs(a["secs"])))
+        pick = office_pick(D, info["t0"]) if a["id"] == "trader" else ""
+        latest = office_latest(a["lines"])
+        lines = [office_line(ln) for ln in a["lines"]]
+        more = ('<details class="fold-lite"><summary>%d more step%s</summary><ul class="olines">%s</ul></details>' % (len(lines) - 6, "" if len(lines) == 7 else "s", "".join(lines[6:]))) if len(lines) > 6 else ""
+        share = 100.0 * a["secs"] / run_s if run_s else 0
+        parts.append(
+            '<div class="oagent">%s%s<p class="clk">%s</p>'
+            '<div><span class="olab">Output</span><p class="oout">%s</p>%s</div>%s'
+            '<div><span class="olab">Connected tools</span>%s</div>'
+            '<div><span class="olab">Skills · %d step%s</span><div class="oshare"><span class="obar%s"><i style="width:%.1f%%"></i></span><span>%s of the run</span></div><ul class="olines">%s</ul>%s</div></div>' % (
+                who, job, E(clk), E(a["out"] or "–"), ('<p class="oout">%s</p>' % E(pick)) if pick else "",
+                ('<div><span class="olab">Latest message</span><p class="omsg%s">%s</p></div>' % (" warn" if latest.startswith("!") else "", E(latest.lstrip("! ") if latest.startswith("!") else latest))) if latest else "",
+                office_tools(a), len(lines), "" if len(lines) == 1 else "s", " bg" if a["bg"] else "", min(100.0, share), pct(share), "".join(lines[:6]), more))
+    return '<div class="card opanel k-%s">%s</div>' % (d["key"], "".join(parts))
+
+
+def office_section(D):
+    """The agent office tab: the worker steps of the last run as a team at work (db/memebot/office.json, written by bot.py each cycle):
+    a status strip, the floor plan with the Brain in the middle, one department opened beside it (CSS only: radio + label, so the
+    fragment works without scripts; the slowest agent's department opens first) and the team timeline."""
+    info = office_data(D)
+    if not info:
+        return section("Agent office", "each step of the hourly scan as an agent at work · fake money",
+                       '<div class="empty">No agent log yet: the first run with the new code fills this tab with what each step of the scan did, how long it took and which services it called.</div>')
+    ags, T = info["agents"], D.get("train") or {}
+    run_s = (info["t1"] - info["t0"]) / 1000.0
+    head = "%d agent%s · %s from the start of the run to this page%s · fake money" % (
+        len(ags), "" if len(ags) == 1 else "s", fmt_secs(run_s), (" · up to %d at work at once" % info["peak"]) if info["peak"] > 1 else "")
+    count = lambda f: sum(1 for a in ags if f(a))
+    cells = [("All", len(ags), ""), ("Done", count(lambda a: a["st"] == "done"), ""), ("Ran beside", count(lambda a: a["bg"]), ""),
+             ("Failed", count(lambda a: a["st"] == "failed"), "bad"), ("Skipped", count(lambda a: a["st"] == "skipped"), "")]
+    if count(lambda a: a["st"] == "running"):
+        cells.insert(2, ("At work", count(lambda a: a["st"] == "running"), ""))
+    nfb = count(lambda a: a["st"] == "fallback")
+    if nfb:
+        cells.insert(2, ("Fallback", nfb, ""))
+    strip = '<div class="ostrip">%s</div>' % "".join('<span class="%s">%s <b>%d</b></span>' % (c if k else "", E(lab), k) for lab, k, c in cells)
+    note = "The run of %s%s. Each department is one step of the scan, the Brain in the middle is the trained model and the scored history. Tap a department to see what its agents did." % (
+        fmt_when(info["t0"], D["now"]), (", " + OFFICE_MODE[info["mode"]]) if info["mode"] in OFFICE_MODE else "")
+    every = info["depts"] + [info["brain"]]
+    home = {m["id"]: d["name"] for d in every for m in d["agents"]}
+    radios = "".join('<input type="radio" name="odept" id="od-%s"%s aria-label="%s">' % (d["key"], " checked" if d["key"] == info["pick"] else "", E(d["name"])) for d in every)
+    legend = ('<div class="legend olegend"><span style="--c:var(--good-mark)">done</span><span style="--c:var(--accent)">at work</span><span style="--c:var(--warn-mark)">fallback</span><span style="--c:var(--bad-mark)">failed</span>'
+              '<span style="--c:var(--muted)">skipped</span><span class="ob">beside: ran in its own process, at the same time as the others</span></div>')
+    floor = '<div class="chart omap"><div class="wide"><div class="ofloor">%s</div></div><div class="narrow"><div class="ofloor">%s</div></div>%s</div>' % (
+        office_floor(info, T, OFFICE_W), office_floor(info, T, NARROW), legend)
+    panels = '<div class="opanels">%s</div>' % "".join(office_panel(d, info, D) for d in every)
+    nfail = count(lambda a: a["st"] == "failed")
+    g_leg = '<div class="legend"><span style="--c:var(--s1)">in turn</span><span style="--c:var(--s2)">beside the others</span>%s</div>' % (
+        '<span style="--c:var(--bad-mark)">failed</span>' if nfail else "")
+    table = '<details><summary>Table view</summary><div class="tbl stack"><table><thead><tr><th>agent</th><th>department</th><th>start</th><th>end</th><th class="n">took</th><th>status</th><th>result</th></tr></thead><tbody>%s</tbody></table></div></details>' % "".join(
+        '<tr><td><strong>%s</strong></td><td class="d" data-k="department">%s</td><td class="d" data-k="start">%s</td><td class="d" data-k="end">%s</td><td class="n" data-k="took">%s</td><td class="d" data-k="status">%s</td><td>%s</td></tr>' % (
+            E(a["name"]), E(home.get(a["id"], "–")), clock(a["s"]), clock(a["e"]),
+            fmt_secs(a["secs"]) if a["ran"] else "–", E(office_word(a) + (", beside the others" if a["bg"] else "")), E(a["out"] or "–")) for a in ags)
+    timeline = '<h3>Team timeline</h3><p class="note">minutes since the run started at %s · one lane per agent, so you see who worked at the same time</p>%s%s' % (
+        E(clock(info["t0"]) + " " + TZ_NAME), chart_box(office_gantt(info, WIDE), office_gantt(info, NARROW), g_leg), table)
+    body = '%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div>%s' % (strip, E(note), radios, floor, panels, timeline)
+    return section("Agent office", head, body)
+
+
 def render(data, fragment=False):
     D = data
     st, cash, now = D["state"], D["cash"], D["now"]
@@ -2016,13 +2491,15 @@ def render(data, fragment=False):
     body = [head]
     tabs = ""
     if D.get("rec"):
-        # two tabs: the pick (and its track record) and the new launches under an hour old; CSS-only, so the fragment works without scripts
+        # three tabs: the pick (and its track record), the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_young = safe("new launches", lambda: young_section(D))
-        tabs = ('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young">'
-                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New launches &lt;1h <span class="cnt">%d</span></label></div>'
-                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div></div>' % (n_young, pane_pick, pane_young))
+        pane_office = safe("agent office", lambda: office_section(D))
+        tabs = ('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
+                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New <span class="tl-long">launches </span>&lt;1h <span class="cnt">%d</span></label>'
+                '<label for="tab-office" role="tab">Agent office</label></div>'
+                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div></div>' % (n_young, pane_pick, pane_young, pane_office))
     rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
     rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     shown = []

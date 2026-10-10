@@ -378,12 +378,41 @@ def main():
     check(r.returncode == 0 and "Traceback" not in r.stderr, "fetch.py writes coin names with emoji under an ASCII locale")
     shutil.rmtree(enc_dir, ignore_errors=True)
 
+    print("== sources on five workers at once: the same files and the same log as one after another")
+    runs = []
+    for serial in ("1", "0"):
+        src_dir = tempfile.mkdtemp(prefix="memebot-src-")
+        r = subprocess.run([PY, os.path.join(HERE, "fetch.py"), "sources", "--dir", src_dir, "--mock", url, "--pause", "0"], capture_output=True, text=True, encoding="utf-8",
+                           env=dict(os.environ, MEMEBOT_SERIAL_SOURCES=serial))
+        runs.append((r.returncode, r.stderr, {os.path.relpath(f, src_dir): open(f, "rb").read() for f in glob.glob(os.path.join(src_dir, "**", "*"), recursive=True) if os.path.isfile(f)}))
+        shutil.rmtree(src_dir, ignore_errors=True)
+    check(runs[0][0] == runs[1][0] == 0 and len(runs[0][2]) > 400 and runs[0][2] == runs[1][2] and runs[0][1] == runs[1][1],
+          "fetch.py sources: %d files and %d log lines, byte for byte the same on five workers as one after another" % (len(runs[1][2]), len(runs[1][1].splitlines())))
+
     print("== rate limit: a 429 is waited out, not given up on")
     sys.path.insert(0, HERE); import fetch as F, time as T
     F.time.sleep = lambda s: None                     # no real waiting in the test
     h = F.Http(url, pause=0)
     got = h.get("https://api.dexscreener.com/__429")
     check(got == {"ok": True} and h.limited == 2 and "api.dexscreener.com" not in h.dead, "429 twice, then the answer (%s waits)" % h.limited)
+
+    print("== run_jobs: workers at once, their lines in list order, a failed job stops only its worker")
+    lines, ev = [], threading.Event()
+    hj = F.Http(url, pause=0, log=lines.append)
+    def first():                                      # waits for the other worker's job: only returns True if both ran at once
+        hj.log("a1 start"); hj.log("a1 saw b: %s" % ev.wait(5)); return 1
+    def second():
+        hj.log("b"); ev.set(); return 2
+    got = F.run_jobs(hj, [("a", first), ("b", second), ("a", lambda: hj.log("a2") or 3)])
+    check(got == [1, 2, 3] and lines == ["a1 start", "a1 saw b: True", "b", "a2"], "two workers ran at once and the log kept the list order (%s)" % "; ".join(lines))
+    lines.clear()
+    def boom():
+        hj.log("x1"); raise ValueError("x")
+    try:
+        F.run_jobs(hj, [("x", boom), ("y", lambda: hj.log("y1")), ("x", lambda: hj.log("x2"))]); err = None
+    except ValueError as e:
+        err = e
+    check(err is not None and lines == ["x1", "y1"], "a job that raises stops its own worker, the other finishes, the error is raised (%s)" % "; ".join(lines))
 
     print("== public RPC throttled: the creator check stops at half the waits, a failed call is unknown")
     class Throttled:                                  # every RPC call is a 429 that post() counted; Jupiter answers
@@ -560,6 +589,22 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", empty], capture_output=True, text=True)
     check(r.returncode == 0 and "No open positions" in open(os.path.join(empty, "report.html")).read(), "page renders for an empty db")
     shutil.rmtree(empty, ignore_errors=True)
+    od = tempfile.mkdtemp(prefix="memebot-office-")     # the agent office tab from a hand-made office.json: the slowest agent's department opens first
+    os.makedirs(os.path.join(od, "db", "memebot"))
+    json.dump({"t": T0, "rule": M.RULE, "picks": [], "reason": "nothing passed the gates"}, open(os.path.join(od, "db", "memebot", "recommend.json"), "w"))
+    json.dump({"v": 1, "t": T0, "end": T0 + 600_000, "mode": "full", "agents": [
+        {"id": "trainer", "start": T0, "end": T0 + 300_000, "status": "done", "bg": True, "lines": ["walk-forward"], "out": "train.json"},
+        {"id": "scouts", "start": T0, "end": T0 + 500_000, "status": "done", "lines": ["rugcheck reports 3 of 4", "! giving up on gmgn.ai for this run"],
+         "waits": {"www.reddit.com": 2}, "blocked": ["gmgn.ai"], "out": "<b>12 coins</b>"},
+        {"id": "safety", "start": T0 + 500_000, "end": None, "status": "running", "lines": ["rugcheck reports 3 of 4"], "out": ""},
+        {"id": "reporter", "start": T0 + 500_000, "end": None, "status": "failed", "lines": [], "out": ""}]}, open(os.path.join(od, "db", "memebot", "office.json"), "w"))
+    r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", od], capture_output=True, text=True)
+    page_o = open(os.path.join(od, "report.html"), encoding="utf-8").read() if r.returncode == 0 else ""
+    check('id="tab-office"' in page_o and 'id="od-scouts" checked' in page_o and "GMGN · blocked" in page_o and "Reddit · 2 rate-limit waits" in page_o
+          and "&lt;b&gt;12 coins" in page_o and "<b>12" not in page_o and "never finished" in page_o and "up to 2 at work at once" in page_o and "could not be rendered" not in page_o
+          and "At work <b>1</b>" in page_o and "Skipped <b>0</b>" in page_o and not re.search(r"(^|[\s}])\.ok\s*\{", page_o, re.M),
+          "agent office tab: floor plan, the slowest department open, tool states, an unfinished and an agent still at work, escaped output, no page-wide style clash")
+    shutil.rmtree(od, ignore_errors=True)
     print("== recommend mode: a fresh db, full scan, two recommendations, no positions")
     rd = tempfile.mkdtemp(prefix="memebot-rec-")
     os.makedirs(os.path.join(rd, "db", "memerec"))
@@ -807,7 +852,7 @@ def main():
     check(young and all(0 <= M.num(y.get("ageMin")) < 60 and y.get("addr") and "upP" in y and "floor" in y and y.get("liq", 0) >= M.YOUNG_MIN_LIQ for y in young)
           and all(y["addr"] not in {c["addr"] for c in rec.get("picks", [])} for y in young) and rec.get("youngOf", 0) >= len(young),
           "new launches under an hour old are listed with odds and safety, none of them picked (%d of %d: %s)" % (len(young), rec.get("youngOf", 0), [(y.get("sym"), y.get("ageMin")) for y in young[:4]]))
-    check('id="tab-young"' in page and "New launches &lt;1h" in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
+    check('id="tab-young"' in page and 'New <span class="tl-long">launches </span>&lt;1h' in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
           "page has the new-launches tab with the coins, their cards and the age record")
     rk_young = [y for y in young if isinstance(y.get("risk"), dict) and y["risk"]]
     check(rk_young, "the new launches got safety reports with the shortlist (%d of %d)" % (len(rk_young), len(young)))
@@ -816,6 +861,32 @@ def main():
     check(r.returncode == 0 and res and "Big test" in r.stdout, "the snapshot was scored 2 hours later (%d result docs)" % len(res))
     check("candles fetched beside the scan" in r.stderr and "(beside the scan," in r.stderr and not os.path.exists(os.path.join(hd, "train.next.json")),
           "the minute candles and the training ran beside the scan, and the new training doc was swapped in before the pick")
+    off_f = os.path.join(hd, "db", "memebot", "office.json")
+    off = json.load(open(off_f, encoding="utf-8")) if os.path.exists(off_f) else {}
+    ag = {a.get("id"): a for a in off.get("agents") or []}
+    check({"dispatch", "scouts", "market", "analyst", "trainer", "trader"} <= set(ag) and all(isinstance(a.get("start"), int) and isinstance(a.get("end"), int) and a["start"] <= a["end"] for a in ag.values())
+          and ag["trainer"].get("bg") is True and ag.get("candles", {}).get("bg") is True and ag.get("reporter", {}).get("status") == "done" and off.get("rule") == "m9-2h" and off.get("mode") == "full"
+          and "gmgn.ai" in ag["scouts"].get("blocked", []) and all(len(a.get("lines") or []) <= 60 for a in ag.values()) and ag["market"].get("out"),
+          "office.json records who did what in the cycle: each step with its times, lines, blocked hosts and result (%s)" % ", ".join("%s %s" % (a.get("id"), a.get("status")) for a in off.get("agents") or []))
+    import bot as B_
+    ud = tempfile.mkdtemp(prefix="memebot-officeunit-")
+    o_ = B_.Office(ud, 1000, "2h")
+    o_.begin("scouts")
+    for ln in ("! 429 rate limited by www.reddit.com, waiting 5s", "! 403 https://api.rugcheck.xyz/v1/tokens/x/report",
+               "! giving up on api.mainnet-beta.solana.com for this run: rate limited 40 times", "! giving up on gmgn.ai for this run"):
+        o_.line(ln)
+    for i in range(80):
+        o_.line("line %d" % i)
+    o_.begin("candles", bg=True)
+    o_.begin("candles")              # its background run failed: redone in the foreground
+    o_.done("scouts")
+    o_.fail()
+    a_ = {a["id"]: a for a in json.load(open(os.path.join(ud, "db", "memebot", "office.json"))).get("agents") or []}
+    check(a_["scouts"]["waits"] == {"www.reddit.com": 1, "api.mainnet-beta.solana.com": 40} and a_["scouts"]["blocked"] == ["gmgn.ai"] and len(a_["scouts"]["lines"]) == 60
+          and a_["candles"]["bg"] is False and a_["candles"]["status"] == "failed" and all(a["status"] in ("done", "failed", "skipped", "fallback", "running") for a in a_.values())
+          and not os.path.exists(os.path.join(ud, "db", "memebot", "office.json.tmp")),
+          "the office recorder counts waits, marks only hosts it gave up on as blocked, keeps 60 lines, records a foreground redo and a stopped cycle")
+    shutil.rmtree(ud, ignore_errors=True)
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
     scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
     page2 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
@@ -871,7 +942,8 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "sync", "--dir", d, "--remote", bare], capture_output=True, text=True)
     check(r.returncode == 0, "bot.py sync pushes (%s)" % (r.stderr.strip().splitlines() or ["?"])[-1][:100])
     ls = subprocess.run(["git", "-C", bare, "ls-tree", "-r", "--name-only", "results"], capture_output=True, text=True).stdout.split()
-    check("report.html" in ls and any(x.startswith("db/memepos/") for x in ls) and any(x.startswith("db/memebot/") for x in ls), "results branch holds report.html and the small docs (%d files)" % len(ls))
+    check("report.html" in ls and any(x.startswith("db/memepos/") for x in ls) and any(x.startswith("db/memebot/") for x in ls) and "db/memebot/office.json" in ls,
+          "results branch holds report.html and the small docs, office.json among them (%d files)" % len(ls))
     check(not any(x.startswith(("db/memesnap/", "db/memesnapres/")) for x in ls), "the big snapshots stay local")
     r2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "sync", "--dir", d, "--remote", bare], capture_output=True, text=True)
     check(r2.returncode == 0 and "nothing new" in r2.stderr, "a second sync with no changes is a no-op push")

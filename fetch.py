@@ -18,13 +18,14 @@ Sources (what it writes into --dir):
   LunarCrush    social.json, only when LUNARCRUSH_API_KEY is set
 
 Usage:
-  python3 fetch.py sources --dir mb [--light]      -> clears the source dirs and refetches every source (light: fewer pages)
+  python3 fetch.py sources --dir mb [--light]      -> clears the source dirs and refetches every source (light: fewer pages);
+                                                      five workers at once, one per group of hosts (MEMEBOT_SERIAL_SOURCES=1: one after another)
   python3 fetch.py tokens  --dir mb --addrs a,b,c  -> pairs/tokens_<k>.txt for those addresses (or --from-gather gather.json)
   python3 fetch.py risk    --dir mb --addrs a,b,c  -> risk/reports.txt (+ tb/<addr>.txt from GMGN) for those addresses
   python3 fetch.py news    --dir mb                -> news.json only
   --mock http://127.0.0.1:8765  rewrites every URL to <mock>/<host>/<path> (used by selftest.py)
 """
-import argparse, html, math, email.utils, glob, json, os, re, shutil, sys, time, urllib.error, urllib.parse, urllib.request, datetime as dt
+import argparse, html, math, email.utils, glob, json, os, re, shutil, sys, threading, time, urllib.error, urllib.parse, urllib.request, datetime as dt
 import xml.etree.ElementTree as ET
 import concurrent.futures
 
@@ -132,16 +133,52 @@ HOST_429 = {"frontend-api-v3.pump.fun": (2, 5, 15), "api.geckoterminal.com": (20
 
 
 class Http:
-    """GET with retries, polite pacing and a circuit breaker per host (3 hard failures -> that host is skipped for the run)."""
+    """GET with retries, polite pacing and a circuit breaker per host (3 hard failures -> that host is skipped for the run).
+    Safe to share between threads (cmd_sources runs its sources on several): the counters and per-host dicts change under one
+    lock, and a host's cooldown and gap are waited out under that host's own lock, so threads sharing a host still keep its pace."""
 
     def __init__(self, mock=None, pause=0.25, log=None):
         self.mock, self.pause, self.dead, self.fails, self.n = (mock or "").rstrip("/"), pause, set(), {}, 0
         self.cooldown, self.limited = {}, 0
+        self.lock, self.gates, self.local = threading.Lock(), {}, threading.local()
         self.log = log or (lambda s: print(s, file=sys.stderr, flush=True))
         self.last_progress = 0
         self.last_at = {}
         self.limited_by = {}
         self.nonjson = {}
+
+    @property
+    def log(self):
+        """Where progress lines go: the log this thread's job set (run_jobs), else the one given."""
+        return getattr(self.local, "log", None) or self._log
+
+    @log.setter
+    def log(self, f):
+        self._log = f
+
+    def _pace(self, host):
+        """Before each request: wait out a rate-limit cooldown and the host's minimum gap, then count the request. One thread per
+        host at a time, so the gap holds between threads as it does between the requests of one."""
+        with self.lock:
+            gate = self.gates.setdefault(host, threading.Lock())
+        with gate:
+            if self.cooldown.get(host, 0) > time.time():      # a rate limit hit a moment ago: wait it out instead of hammering
+                time.sleep(max(0.0, self.cooldown[host] - time.time()))
+            gap = HOST_GAP.get(host, 0.0) if not self.mock else 0.0
+            if gap and host in self.last_at:                     # hosts with a per-minute budget are paced, whatever the global pause
+                time.sleep(max(0.0, self.last_at[host] + gap - time.time()))
+            with self.lock:
+                self.n += 1
+                self.last_at[host] = time.time()
+
+    def absorb(self, other):
+        """Add another client's requests, rate-limit waits and dead hosts to this one (the keyword-search threads' own clients)."""
+        with self.lock:
+            self.n += other.n
+            self.limited += other.limited
+            self.dead |= other.dead
+            for host, k in other.limited_by.items():
+                self.limited_by[host] = self.limited_by.get(host, 0) + k
 
     def url(self, u):
         if not self.mock:
@@ -157,24 +194,20 @@ class Http:
         hdr.update(headers or {})
         wait = 1.0
         for i in range(tries):
-            if self.cooldown.get(host, 0) > time.time():      # a rate limit hit a moment ago: wait it out instead of hammering
-                time.sleep(max(0.0, self.cooldown[host] - time.time()))
-            gap = HOST_GAP.get(host, 0.0) if not self.mock else 0.0
-            if gap and host in self.last_at:                     # hosts with a per-minute budget are paced, whatever the global pause
-                time.sleep(max(0.0, self.last_at[host] + gap - time.time()))
+            self._pace(host)
             try:
-                self.n += 1
-                self.last_at[host] = time.time()
                 with urllib.request.urlopen(urllib.request.Request(self.url(u), headers=hdr), timeout=TIMEOUT) as r:
                     raw = r.read()
-                self.fails[host] = 0
+                with self.lock:
+                    self.fails[host] = 0
                 time.sleep(self.pause)
                 if kind == "json":
                     try:
                         return json.loads(raw.decode("utf-8", "replace"))
                     except ValueError:
-                        self.nonjson[host] = self.nonjson.get(host, 0) + 1
-                        if self.nonjson[host] <= 2:      # a 200 that is not JSON (a block page, a maintenance page): say so, with the start of the body
+                        with self.lock:
+                            self.nonjson[host] = k = self.nonjson.get(host, 0) + 1
+                        if k <= 2:      # a 200 that is not JSON (a block page, a maintenance page): say so, with the start of the body
                             self.log("  ! %s answered with something that is not JSON (HTTP %s): %r" % (host, getattr(r, "status", "?"), raw[:100].decode("utf-8", "replace")))
                         return None
                 return raw.decode("utf-8", "replace")
@@ -182,12 +215,9 @@ class Http:
                 if e.code == 429 and i + 1 < tries:
                     pause = HOST_429.get(host, (10, 30, 60))[min(i, 2)]   # DexScreener's limits are per minute: back off for real
                     self.log("  ! 429 rate limited by %s, waiting %ds" % (host, pause))
-                    self.cooldown[host] = time.time() + pause
-                    self.limited += 1
-                    self.limited_by[host] = self.limited_by.get(host, 0) + 1
-                    if self.limited_by[host] >= HOST_MAX_429.get(host, MAX_429_PER_HOST):
-                        self.dead.add(host)
-                        self.log("  ! giving up on %s for this run: rate limited %d times" % (host, self.limited_by[host]))
+                    with self.lock:
+                        self.cooldown[host] = time.time() + pause
+                    if self._limited(host):
                         return None
                     time.sleep(pause)
                     continue
@@ -214,17 +244,12 @@ class Http:
         hdr = {"User-Agent": UA, "Content-Type": "application/json", "Accept": "application/json"}
         hdr.update(headers or {})
         for i in range(tries):
-            if self.cooldown.get(host, 0) > time.time():
-                time.sleep(max(0.0, self.cooldown[host] - time.time()))
-            gap = HOST_GAP.get(host, 0.0) if not self.mock else 0.0
-            if gap and host in self.last_at:
-                time.sleep(max(0.0, self.last_at[host] + gap - time.time()))
+            self._pace(host)
             try:
-                self.n += 1
-                self.last_at[host] = time.time()
                 with urllib.request.urlopen(urllib.request.Request(self.url(u), data=body, headers=hdr, method="POST"), timeout=TIMEOUT) as r:
                     raw = r.read()
-                self.fails[host] = 0
+                with self.lock:
+                    self.fails[host] = 0
                 time.sleep(self.pause)
                 try:
                     out = json.loads(raw.decode("utf-8", "replace"))
@@ -253,21 +278,26 @@ class Http:
         return None
 
     def _limited(self, host):
-        """A 429 from host: count it; True once the host has used up its waits for this run (it is then skipped, as in get())."""
-        self.limited += 1
-        self.limited_by[host] = self.limited_by.get(host, 0) + 1
-        if self.limited_by[host] >= HOST_MAX_429.get(host, MAX_429_PER_HOST):
-            if host not in self.dead:
+        """A 429 from host: count it; True once the host has used up its waits for this run (it is then skipped)."""
+        with self.lock:
+            self.limited += 1
+            self.limited_by[host] = k = self.limited_by.get(host, 0) + 1
+            over = k >= HOST_MAX_429.get(host, MAX_429_PER_HOST)
+            first = over and host not in self.dead
+            if first:
                 self.dead.add(host)
-                self.log("  ! giving up on %s for this run: rate limited %d times" % (host, self.limited_by[host]))
-            return True
-        return False
+        if first:
+            self.log("  ! giving up on %s for this run: rate limited %d times" % (host, k))
+        return over
 
     def _fail(self, host, hard):
         if hard:
-            self.fails[host] = self.fails.get(host, 0) + 1
-            if self.fails[host] >= 3:
-                self.dead.add(host)
+            with self.lock:
+                self.fails[host] = k = self.fails.get(host, 0) + 1
+                first = k >= 3 and host not in self.dead
+                if first:
+                    self.dead.add(host)
+            if first:
                 self.log("  ! giving up on %s for this run" % host)
 
 
@@ -386,34 +416,33 @@ def ds_probe(http):
 
 def ds_search(http, d, keywords):
     """DexScreener keyword searches -> pairs/search_<kw>.txt, one file per keyword. Long lists run on SEARCH_THREADS threads, each
-    with its own Http (own pacing and breaker); their counters and dead hosts are merged back into `http`."""
+    with its own Http (own pacing and breaker); their counters and dead hosts are merged back into `http`. Progress lines go to the
+    calling thread's log, taken once here so the search threads use it too (cmd_sources gives each job its own)."""
     def one(h, kw):
         data = h.get(DS + "/latest/dex/search?q=" + urllib.parse.quote(kw))
         rows = [r for r in (ds_row(p) for p in ((data or {}).get("pairs") or [])) if r]
         return write_rows(d, "pairs", "search_%s.txt" % re.sub(r"[^a-z0-9]", "", kw.lower())[:14], rows)
-    total = 0
+    total, log = 0, http.log
     if len(keywords) <= 40 or "api.dexscreener.com" in http.dead:
         for i, kw in enumerate(keywords):
             total += one(http, kw)
             if (i + 1) % 20 == 0:
-                http.log("  dexscreener search %d/%d keywords, %d pairs so far" % (i + 1, len(keywords), total))
+                log("  dexscreener search %d/%d keywords, %d pairs so far" % (i + 1, len(keywords), total))
     else:
-        workers = [Http(http.mock, http.pause if http.mock else max(http.pause, SEARCH_PAUSE), http.log) for _ in range(SEARCH_THREADS)]
-        done = [0]
+        workers = [Http(http.mock, http.pause if http.mock else max(http.pause, SEARCH_PAUSE), log) for _ in range(SEARCH_THREADS)]
+        done, lock = [0], threading.Lock()
         def job(i, kw):
             n = one(workers[i % SEARCH_THREADS], kw)
-            done[0] += 1
-            if done[0] % 100 == 0:
-                http.log("  dexscreener search %d/%d keywords" % (done[0], len(keywords)))
+            with lock:
+                done[0] += 1
+                k = done[0]
+            if k % 100 == 0:
+                log("  dexscreener search %d/%d keywords" % (k, len(keywords)))
             return n
         with concurrent.futures.ThreadPoolExecutor(max_workers=SEARCH_THREADS) as ex:
             total = sum(ex.map(lambda ik: job(*ik), enumerate(keywords)))
         for w in workers:
-            http.n += w.n
-            http.limited += w.limited
-            http.dead |= w.dead
-            for host, k in w.limited_by.items():
-                http.limited_by[host] = http.limited_by.get(host, 0) + k
+            http.absorb(w)
     http.log("  dexscreener search: %d pairs from %d keywords%s" % (total, len(keywords), (" on %d threads" % SEARCH_THREADS) if len(keywords) > 40 else ""))
     if total == 0 and len(keywords) >= 20:
         ds_probe(http)
@@ -444,6 +473,8 @@ def candles(http, d, items):
     "out"). With them the record knows the peak and the trough inside the window, not just the price at its end, and when a
     take-profit would have sold."""
     n = 0
+    if items and not http.mock:      # its own process starts right after the sources step, whose GeckoTerminal worker may have asked a moment ago
+        time.sleep(HOST_GAP.get("api.geckoterminal.com", 0.0))
     for it in items[:24]:
         pool, since, hours = str(it.get("pool") or ""), num(it.get("since")), num(it.get("hours")) or 1.0
         key = re.sub(r"[^A-Za-z0-9]", "", str(it.get("key") or int(hours)))
@@ -922,33 +953,120 @@ def cmd_deep(http, d):
     return n
 
 
+class Relay:
+    """Progress lines of jobs that run at the same time, printed in the order the jobs are listed: the first unfinished job's lines
+    as they come, a later job's once every job before it is done. The log then reads line for line as if they ran in turn."""
+
+    def __init__(self, out, n):
+        self.out, self.lock, self.held, self.done, self.head = out, threading.Lock(), [[] for _ in range(n)], [False] * n, 0
+
+    def sink(self, k):
+        def log(s):
+            with self.lock:
+                if k == self.head:
+                    self.out(s)
+                else:
+                    self.held[k].append(s)
+        return log
+
+    def finish(self, k):
+        with self.lock:
+            self.done[k] = True
+            while self.head < len(self.done) and self.done[self.head]:
+                self.head += 1
+                if self.head < len(self.held):
+                    for s in self.held[self.head]:
+                        self.out(s)
+                    self.held[self.head] = []
+
+
+def run_jobs(http, jobs, serial=False):
+    """Run (worker, fn) jobs and return their results in list order. The jobs of one worker run one after another in list order,
+    the workers at once, one thread each (serial: everything on this thread, in list order). A job that raises stops its worker;
+    the others finish, then the first error is raised again."""
+    if serial:
+        return [fn() for _, fn in jobs]
+    out, errs, relay = [None] * len(jobs), {}, Relay(http.log, len(jobs))
+
+    def worker(name):
+        mine = [k for k, (w, _) in enumerate(jobs) if w == name]
+        try:
+            for k in mine:
+                http.local.log = relay.sink(k)
+                try:
+                    out[k] = jobs[k][1]()
+                except Exception as e:
+                    errs[k] = e
+                    break
+                finally:
+                    relay.finish(k)
+        finally:
+            http.local.log = None
+            for k in mine:          # the jobs a failed one left undone: their turn in the log passes
+                relay.finish(k)
+
+    names = list(dict.fromkeys(w for w, _ in jobs))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(names)) as ex:
+        list(ex.map(worker, names))
+    if errs:
+        raise errs[min(errs)]
+    return out
+
+
+CG_SPACING = 45.0    # seconds between the sources step's three CoinGecko lookups: one after another they sat minutes apart, and the keyless
+                     # limit from GitHub's addresses is a few calls a minute (three waits skip CoinGecko for the run)
+
+
+def cg_spaced(http, fn):
+    """fn once CG_SPACING seconds have passed since the last CoinGecko request (not against the mock)."""
+    if not http.mock:
+        last = http.last_at.get("api.coingecko.com")
+        if last:
+            time.sleep(max(0.0, last + CG_SPACING - time.time()))
+    return fn()
+
+
 def cmd_sources(http, d, light=False):
+    """Every source once. The sources run as five workers at the same time, one per group of hosts: DexScreener (lists, then the
+    keyword searches), GeckoTerminal (paced pages), the social feeds and the news, CoinGecko (its three lookups CG_SPACING apart)
+    and the quick lists; inside a worker one after another in the order below. No source reads what another wrote and no two
+    workers call the same host, so every host gets the same requests in the same order with at least the same gaps and back-off,
+    every file comes out the same, and the log keeps this order (Relay). One after another took ~8 min 20 s in production;
+    together they take about as long as GeckoTerminal alone (~4 min). The candle fetch that follows in its own process waits one
+    GeckoTerminal gap before its first request.
+    MEMEBOT_SERIAL_SOURCES=1 runs them one after another on this thread, as before."""
     os.makedirs(d, exist_ok=True)
     clear_sources(d)
     http.log("sources (%s):" % ("light" if light else "full"))
-    lists = ds_lists(http)
-    lists["rcNew"] = rc_new(http)
-    lists["rcTrending"] = rc_list(http, "trending")
-    lists["rcRecent"] = rc_list(http, "recent")
-    lists["rcVerified"] = rc_list(http, "verified")
-    lists["rayVol"] = ray_top(http)
-    lists["orcaVol"] = orca_top(http)
-    lists.update(launchlab(http, d))
-    market(http, d)
-    lists["reddit"] = reddit(http, d)          # publicity: what people post about, what CoinGecko and CoinMarketCap list
-    lists["cgMeme"] = cg_meme(http, d)
-    lists["cmcGain"] = cmc(http, d)
-    write_json(d, "lists.json", lists)
-    ds_search(http, d, KEYWORDS[:60] if light else KEYWORDS)
-    gt_pools(http, d, pages=3 if light else 8)
-    cg_trending(http, d)
-    jup_tokens(http, d, light)
-    news(http, d)
-    lunarcrush(http, d, os.environ.get("LUNARCRUSH_API_KEY"))
+    lc_key = os.environ.get("LUNARCRUSH_API_KEY")
+    jobs = [("ds", "*", lambda: ds_lists(http)),
+            ("lists", "rcNew", lambda: rc_new(http)),
+            ("lists", "rcTrending", lambda: rc_list(http, "trending")),
+            ("lists", "rcRecent", lambda: rc_list(http, "recent")),
+            ("lists", "rcVerified", lambda: rc_list(http, "verified")),
+            ("lists", "rayVol", lambda: ray_top(http)),
+            ("lists", "orcaVol", lambda: orca_top(http)),
+            ("lists", "*", lambda: launchlab(http, d)),
+            ("cg", None, lambda: market(http, d)),
+            ("social", "reddit", lambda: reddit(http, d)),          # publicity: what people post about, what CoinGecko and CoinMarketCap list
+            ("cg", "cgMeme", lambda: cg_spaced(http, lambda: cg_meme(http, d))),
+            ("lists", "cmcGain", lambda: cmc(http, d)),
+            ("ds", None, lambda: ds_search(http, d, KEYWORDS[:60] if light else KEYWORDS)),
+            ("gt", None, lambda: gt_pools(http, d, pages=3 if light else 8)),
+            ("cg", None, lambda: cg_spaced(http, lambda: cg_trending(http, d))),
+            ("lists", None, lambda: jup_tokens(http, d, light)),
+            ("social", None, lambda: news(http, d)),
+            ("lists", None, lambda: lunarcrush(http, d, lc_key))]
     if not light:
-        pf_coins(http, d)
-        gm_rank(http, d)
-        gm_wallets(http, d)
+        jobs += [("lists", None, lambda: pf_coins(http, d)), ("lists", None, lambda: gm_rank(http, d)), ("lists", None, lambda: gm_wallets(http, d))]
+    got = run_jobs(http, [(w, fn) for w, _, fn in jobs], serial=os.environ.get("MEMEBOT_SERIAL_SOURCES") == "1")
+    lists = {}
+    for (_, k, _), r in zip(jobs, got):
+        if k == "*":
+            lists.update(r)
+        elif k:
+            lists[k] = r
+    write_json(d, "lists.json", lists)
     http.log("  %d requests, %d rate-limit waits, hosts skipped: %s" % (http.n, http.limited, ", ".join(sorted(http.dead)) or "none"))
 
 

@@ -336,8 +336,11 @@ off), so a running laptop picks up updates without anyone touching it.
 ## How big the scan is
 
 There is no cap: a full scan takes everything the public sources return, then runs the deep search (another 368 keyword
-searches on DexScreener) on top, about 12,000 coins from 850 lists; the keyword searches run on three threads, so a scan
-takes about eight minutes. Scored snapshot chunks older than 60 days and raw chunks that never got scored are pruned
+searches on DexScreener) on top, about 12,000 coins from 850 lists. The sources run as five workers at once, one per group
+of hosts (DexScreener, GeckoTerminal, the social feeds and news, CoinGecko, the quick lists), and the keyword searches on three
+threads, so the sources step takes about as long as GeckoTerminal's paced pages alone, about four minutes instead of eight one
+after another; every host gets the same requests in the same order with at least the same gaps either way (CoinGecko's three
+lookups 45 s apart), and `MEMEBOT_SERIAL_SOURCES=1` runs them one after another. Scored snapshot chunks older than 60 days and raw chunks that never got scored are pruned
 from the Actions cache. More is not better: of those, roughly
 10,000 have under $15k of daily volume and never reach the gates, and the free APIs allow no more requests per minute
 (GeckoTerminal about six from GitHub's shared addresses, DexScreener 30 pairs per search).

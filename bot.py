@@ -26,14 +26,131 @@ Usage:
                                                             the picks can be read elsewhere; cycle/loop --push does it after each cycle
   python3 bot.py reset                                      wipe db/ (positions, history, learned weights) and start again with 40
 """
-import argparse, glob, json, os, re, shutil, subprocess, sys, time, datetime as dt
+import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, datetime as dt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable or "python3"
 
 
-def log(s):
+def log(s, agent=None):
+    """A progress line on stderr; the Agent office record files it under agent (default: the step at work)."""
     print(s, file=sys.stderr, flush=True)
+    OFFICE.line(s, agent)
+
+
+def ms():
+    return int(time.time() * 1000)
+
+
+def commas(v):
+    return "{:,}".format(int(v))
+
+
+class Office:
+    """Who did what in one cycle, for the Agent office tab (db/memebot/office.json): per worker step (agent) its start and end,
+    its progress lines, its rate-limit waits per host, the hosts it gave up on and one result phrase. It only watches: every
+    method swallows its own errors, so the record never changes or stops a cycle. Office() without a folder records nothing."""
+
+    def __init__(self, d=None, t=None, horizon=None):
+        self.d, self.t, self.horizon, self.rule, self.mode, self.cur, self.agents = d, t, horizon, None, None, None, {}
+        try:
+            if d:
+                if HERE not in sys.path:
+                    sys.path.insert(0, HERE)
+                import memebot as M
+                self.rule = (M.PROFILES.get(horizon) or {}).get("RULE") or M.RULE
+        except Exception:
+            pass
+
+    def begin(self, aid, bg=False):
+        """aid starts now; a background one works beside the step at work. An agent that ran before works again (a background
+        job redone in the foreground) and keeps its start and lines."""
+        try:
+            if self.d and aid:
+                a = self.agents.setdefault(aid, {"id": aid, "start": ms(), "end": None, "status": "running", "bg": bg, "lines": [], "waits": {}, "blocked": [], "out": ""})
+                if not bg:
+                    if a["bg"]:      # its background run failed: the foreground redo is what held up the pick
+                        a.update(bg=False, start=ms(), end=None, status="running")
+                    self.cur = aid
+        except Exception:
+            pass
+
+    def line(self, s, aid=None):
+        """A progress line of aid (default: the step at work), with the rate-limit waits and the hosts given up on that it names.
+        The first 30 and the last 30 lines are kept; the counts see every line."""
+        try:
+            a = self.agents.get(aid or self.cur)
+            s = " ".join(s.split()) if isinstance(s, str) else ""
+            if not a or not s:
+                return
+            a["lines"].append(s[:200])
+            if len(a["lines"]) > 90:
+                del a["lines"][30:-30]
+            m = re.search(r"! 429 rate limited by ([^\s,]+)", s)
+            if m:
+                a["waits"][m.group(1)] = a["waits"].get(m.group(1), 0) + 1
+            m = re.search(r"giving up on ([^\s,:]+)", s)
+            if m:
+                host = m.group(1)
+                k = re.search(r"rate limited (\d+) times", s)
+                if k:                # a host that waits too often is dropped: its waits, not a block (POST waits print no line of their own)
+                    a["waits"][host] = max(a["waits"].get(host, 0), int(k.group(1)))
+                elif host not in a["blocked"]:
+                    a["blocked"].append(host)
+        except Exception:
+            pass
+
+    def result(self, aid, out):
+        """aid's result phrase: text, or a function that builds it from the step's JSON (a slip there costs only the phrase)."""
+        try:
+            if aid in self.agents:
+                self.agents[aid]["out"] = str(out() if callable(out) else out)[:200]
+        except Exception:
+            pass
+
+    def done(self, aid, out=None, status="done", end=None):
+        """aid finished (end: when its process really exited, for a background job); status done, failed, skipped or fallback."""
+        try:
+            a = self.agents.get(aid)
+            if not a:
+                return
+            a["end"], a["status"] = int(end or ms()), status
+            if self.cur == aid:
+                self.cur = None
+        except Exception:
+            return
+        if out is not None:
+            self.result(aid, out)
+
+    def fail(self):
+        """The step at work failed and the cycle stops: the record says so, for the background jobs still at work too."""
+        self.done(self.cur, status="failed")
+        for aid, a in list(self.agents.items()):
+            if a.get("status") == "running":
+                self.done(aid, status="failed")
+        self.save()
+
+    def save(self):
+        """db/memebot/office.json, written whole and then swapped in; it travels with the other db/memebot docs on sync."""
+        try:
+            if not self.d:
+                return
+            agents = [dict(a, lines=a["lines"] if len(a["lines"]) <= 60 else a["lines"][:30] + a["lines"][-30:], waits=dict(a["waits"]), blocked=list(a["blocked"]))
+                      for a in self.agents.values()]
+            doc = {"v": 1, "t": self.t, "end": ms(), "horizon": self.horizon, "rule": self.rule, "mode": self.mode, "agents": agents}
+            path = os.path.join(self.d, "db", "memebot", "office.json")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(doc, f, separators=(",", ":"))
+            os.replace(path + ".tmp", path)
+        except Exception:
+            try:
+                os.remove(os.path.join(self.d, "db", "memebot", "office.json.tmp"))
+            except Exception:
+                pass
+
+
+OFFICE = Office()    # the cycle at work puts its own record here (log() files the lines under its steps)
 
 
 def run(args, d, now=None, expect_json=True):
@@ -44,7 +161,6 @@ def run(args, d, now=None, expect_json=True):
     # the child's progress lines (stderr) are shown as they happen; its result (stdout) is collected
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
     out = []
-    import threading
     t = threading.Thread(target=lambda: out.append(p.stdout.read()))
     t.start()
     for line in p.stderr:
@@ -53,45 +169,58 @@ def run(args, d, now=None, expect_json=True):
     p.wait()
     stdout = out[0] if out else ""
     if p.returncode != 0:
+        OFFICE.fail()
         raise SystemExit("%s failed:\n%s" % (" ".join(cmd[1:3]), stdout[-2000:]))
     if not expect_json:
         return stdout
     try:
         return json.loads(stdout)
     except ValueError:
+        OFFICE.fail()
         raise SystemExit("%s printed no JSON:\n%s" % (args[0], stdout[-2000:]))
 
 
-def start_bg(args, d, now=None):
+def start_bg(args, d, now=None, agent=None):
     """A child command started beside the rest of the cycle: its progress lines (stderr) and its result (stdout) go to files
-    and are read when it is awaited (finish_bg), so the cycle's own log stays in order."""
+    and are read when it is awaited (finish_bg), so the cycle's own log stays in order. A waiter thread notes when the process
+    really exits (job["end"], ms), for the Agent office record of agent."""
     cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
     if now and args[0] == "memebot.py":
         cmd += ["--now", str(now)]
     base = os.path.join(d, "bg-" + re.sub(r"[^a-z0-9]+", "-", " ".join(args[:2]).lower()).strip("-"))
     out, err = open(base + ".out", "w", encoding="utf-8"), open(base + ".err", "w", encoding="utf-8")
     p = subprocess.Popen(cmd, stdout=out, stderr=err, text=True, encoding="utf-8", errors="replace", env=dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
-    return {"p": p, "out": out, "err": err, "t0": time.time(), "name": " ".join(args[:2])}
+    job = {"p": p, "out": out, "err": err, "t0": time.time(), "name": " ".join(args[:2]), "agent": agent}
+    OFFICE.begin(agent, bg=True)
+    try:
+        job["waiter"] = threading.Thread(target=lambda: (p.wait(), job.update(end=ms())), daemon=True)
+        job["waiter"].start()
+    except Exception:
+        pass
+    return job
 
 
 def finish_bg(job):
     """Wait for a background command, log its progress lines now, and return its JSON result (None when it failed)."""
     job["p"].wait()
+    if job.get("waiter"):
+        job["waiter"].join(5)
+    job["end"] = job.get("end") or ms()
     job["out"].close()
     job["err"].close()
     with open(job["err"].name, encoding="utf-8", errors="replace") as f:
         for line in f:
-            log(line.rstrip())
+            log(line.rstrip(), job["agent"])
     with open(job["out"].name, encoding="utf-8", errors="replace") as f:
         text = f.read()
     job["secs"] = time.time() - job["t0"]
     if job["p"].returncode != 0:
-        log("%s failed in the background (exit %s): %s" % (job["name"], job["p"].returncode, text[-500:]))
+        log("%s failed in the background (exit %s): %s" % (job["name"], job["p"].returncode, text[-500:]), job["agent"])
         return None
     try:
         return json.loads(text)
     except ValueError:
-        log("%s printed no JSON in the background: %s" % (job["name"], text[-500:]))
+        log("%s printed no JSON in the background: %s" % (job["name"], text[-500:]), job["agent"])
         return None
 
 
@@ -144,35 +273,49 @@ def chunk_addrs(g):
 
 
 def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
+    global OFFICE
     os.makedirs(d, exist_ok=True)
-    now = int(now or time.time() * 1000)      # one clock for the whole cycle, so gather asks for exactly the coins run() will score
+    t0 = ms()
+    now = int(now or t0)      # one clock for the whole cycle, so gather asks for exactly the coins run() will score
+    o = OFFICE = Office(d, t0, horizon)    # who did what, on the real clock: db/memebot/office.json for the Agent office tab
+    o.begin("dispatch")
     extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else []) + ["--horizon", horizon]
     mode = run(["memebot.py", "mode"] + extra, d, now)
-    log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
+    print("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}), file=sys.stderr, flush=True)
+    o.line(str(mode.get("why") or ""))
+    o.mode = mode.get("scan")
+    o.done("dispatch", lambda: " · ".join([{"full": "full scan", "light": "light scan"}.get(mode["scan"], "prices only")] + ["recommend"] * bool(recommend)
+                                          + ["%d open positions" % mode["open"]] * bool(mode.get("open")) + ["%s big-test coins due" % commas(mode["bigTestDueCoins"])] * bool(mode.get("bigTestDueCoins"))))
     # the training reads only the scored snapshots and the tip record, which nothing in this cycle writes before the run step:
     # it runs beside the fetching from the start and its doc is swapped in right before the pick, so every step before the pick
     # reads the last run's train.json exactly as when the training ran at the end (the minutes it takes hide behind the network)
     train_out = os.path.join(d, "train.next.json")
     if os.path.exists(train_out):     # left by a cycle that died before its pick: never swap in an old doc
         os.remove(train_out)
-    train_job = start_bg(["memebot.py", "train", "--horizon", horizon, "--out", train_out], d, now) if (mode["pick"] or mode["bigTestDue"]) else None
+    train_job = start_bg(["memebot.py", "train", "--horizon", horizon, "--out", train_out], d, now, "trainer") if (mode["pick"] or mode["bigTestDue"]) else None
     fetch = lambda args, expect_json=True: run(["fetch.py"] + args + (["--mock", mock] if mock else []), d, expect_json=expect_json)
     candle_job = None
     if not offline:
+        o.begin("scouts")
         if mode["scan"] in ("full", "light"):
             fetch(["sources"] + (["--light"] if mode["scan"] == "light" else []), expect_json=False)
+            o.done("scouts")
         else:
             # only prices: drop the old source files so the gather asks for exactly the open positions and the due big-test coins
             import fetch as F
             F.clear_sources(d, F.SOURCE_DIRS, ("lists.json",))
+            o.done("scouts", "only prices this run: no scan", "skipped")
         if (mode["pick"] or mode["bigTestSaveDue"]) and mode.get("candles"):
             # the minute candles of the held coins and of the tips due for a check are known before the scan (memebot.py mode):
-            # fetched beside it, after the sources step, which clears the candles folder; GeckoTerminal is done with by then
+            # fetched beside it, after the sources step, which clears the candles folder (the fetch keeps GeckoTerminal's gap to the sources' last request)
             items_file = os.path.join(d, "candles.json")
             with open(items_file, "w", encoding="utf-8") as f:
                 json.dump(mode["candles"], f)
-            candle_job = start_bg(["fetch.py", "candles", "--items", items_file] + (["--mock", mock] if mock else []), d)
+            candle_job = start_bg(["fetch.py", "candles", "--items", items_file] + (["--mock", mock] if mock else []), d, agent="candles")
+    o.begin("market")
     g = run(["memebot.py", "gather"], d, now)
+    if not offline and mode["scan"] in ("full", "light"):
+        o.result("scouts", lambda: "%s coins found" % commas(g["coins"]))
     need = chunk_addrs(g)
     asked = set(need)                                      # DexScreener was asked about these once; the deep pass asks only about new addresses
     if need and not offline:
@@ -183,10 +326,14 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
         fetch(["tokens", "--from-gather", need_file])
         g = run(["memebot.py", "gather"], d, now)
     log("gather: %d coins (%d with full DEX data), coverage %.0f%%, lists %s" % (g["coins"], g["fullData"], 100 * g["coverage"], g["lists"]))
+    o.done("market", lambda: "%s coins, coverage %.0f%%" % (commas(g["coins"]), 100 * g["coverage"]))
     if mode["pick"] or mode["bigTestSaveDue"]:
+        o.begin("analyst")
         s = run(["memebot.py", "shortlist"] + extra, d, now)
         log("shortlist: %d of %d gated coins get a RugCheck report; best: %s" % (s["n"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
+        o.done("analyst", lambda: "%s coins passed the gates; best: %s" % (commas(s["gated"]), ", ".join(str(x) for x in s["pick"][:3]) or "none"))
         if mode["pick"] and mode["scan"] == "full" and not offline and s["gated"] < M_DEEP_SCAN_BELOW():
+            o.begin("deep")
             log("only %d coins passed the gates: searching deeper" % s["gated"])
             fetch(["deep"])
             g = run(["memebot.py", "gather"], d, now)
@@ -198,37 +345,55 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
                 g = run(["memebot.py", "gather"], d, now)
             s = run(["memebot.py", "shortlist"] + extra, d, now)
             log("after the deep search: %d coins, %d gated; best: %s" % (g["coins"], s["gated"], ", ".join(str(x) for x in s["pick"][:6])))
+            o.done("deep", lambda: "%s coins, %s passed the gates" % (commas(g["coins"]), commas(s["gated"])))
         if s["shortlist"] and not offline:
+            o.begin("safety")
             meta_file = os.path.join(d, "shortmeta.json")
             with open(meta_file, "w", encoding="utf-8") as f:
                 json.dump(s.get("meta") or {}, f)
-            fetch(["risk", "--addrs", ",".join(s["shortlist"]), "--meta", meta_file])
+            rk = fetch(["risk", "--addrs", ",".join(s["shortlist"]), "--meta", meta_file])
+            o.done("safety", lambda: "%d coins checked, %d RugCheck reports" % (len(s["shortlist"]), rk["reports"]))
         if not offline and s.get("candles") and not candle_job:
             # minute candles for the tips and new launches due for their 1 h / 24 h check: the record learns the peak inside the window
+            o.begin("candles")
             items_file = os.path.join(d, "candles.json")
             with open(items_file, "w", encoding="utf-8") as f:
                 json.dump(s["candles"], f)
-            fetch(["candles", "--items", items_file])
+            cn = fetch(["candles", "--items", items_file])
+            o.done("candles", lambda: "%d of %d pools of minute candles" % (cn["pools"], len(s["candles"])))
         if mode["pick"] and not offline and s.get("refresh"):
             # the market moved during the scan: fresh prices for the candidates, then merge again, then decide
-            fetch(["refresh", "--addrs", ",".join(s["refresh"])])
+            o.begin("refresh")
+            rf = fetch(["refresh", "--addrs", ",".join(s["refresh"])])
             g = run(["memebot.py", "gather"], d, now)
+            o.done("refresh", lambda: "%d fresh pairs for %d candidates" % (rf["rows"], len(s["refresh"])))
     if candle_job:
         c = finish_bg(candle_job)
         if c is None:          # the background fetch failed: fetch them now, as before (the held coins' take-profit needs them)
-            fetch(["candles", "--items", os.path.join(d, "candles.json")])
+            o.begin("candles")
+            c = fetch(["candles", "--items", os.path.join(d, "candles.json")])
+            o.done("candles", lambda: "%d of %d pools of minute candles, fetched again after the scan" % (c["pools"], len(mode["candles"])), "fallback")
         else:
-            log("candles fetched beside the scan in %.0f s" % candle_job["secs"])
+            log("candles fetched beside the scan in %.0f s" % candle_job["secs"], "candles")
+            o.done("candles", lambda: "%d of %d pools of minute candles" % (c["pools"], len(mode["candles"])), end=candle_job["end"])
     if train_job:
         # the training ran on the scored snapshots beside the fetching: the run reads the zero model and the tuned limits
         t = finish_bg(train_job)
+        train_said = lambda: ("%s coin results from %d scans%s%s" % (commas(t["rows"]), t["scans"], " · zero model" if t.get("zeroModel") else "", " · tuned limits" if t.get("tunedWhy") else "")
+                              if t["rows"] else "no scored snapshots yet: nothing to learn from")
         if t is not None and os.path.exists(train_out):
             os.replace(train_out, os.path.join(d, "db", "memebot", "train.json"))
-            log("training: %s (beside the scan, %.0f s)" % (t["note"], train_job["secs"]))
+            log("training: %s (beside the scan, %.0f s)" % (t["note"], train_job["secs"]), "trainer")
+            o.done("trainer", train_said, end=train_job["end"])
         else:                  # it failed beside the scan: train now, as before
+            o.begin("trainer")
             t = run(["memebot.py", "train", "--horizon", horizon], d, now)
             log("training: " + t["note"])
+            o.done("trainer", train_said, "fallback")
+    o.begin("trader")
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
+    for x in re.split(r"(?<=\.)\s+(?=[A-Z])", str(r.get("note") or "") if isinstance(r, dict) else ""):
+        o.line(x)            # the run's note, one sentence a line: what it picked, sold and learned
     n = apply_out(d)
     log("saved %d docs" % n)
     prune(d, now)
@@ -241,11 +406,17 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
                     os.remove(raw)
     except (OSError, ValueError):
         pass
+    o.done("trader", lambda: trader_said(r))
+    o.begin("reporter")
+    o.save()                 # the page shows its own builder at work; the copy saved after it is the complete one that syncs
     try:
         import report as R
-        log("report: %s" % R.build(d, now=now, horizon=horizon))
+        log("report: %s" % os.path.basename(R.build(d, now=now, horizon=horizon)))
+        o.done("reporter", "this page")
     except Exception as e:   # the page must never break a cycle
         log("report failed: %s" % e)
+        o.done("reporter", "no page this run", "failed")
+    o.save()
     print(r["note"])
     for p in r["picks"]:
         if p["grp"] == "skipped":
@@ -263,6 +434,14 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
         except SystemExit as e:   # a failed push must not stop the loop
             log("sync failed: %s" % e)
     return r
+
+
+def trader_said(r):
+    """The paper trader's result phrase for the Agent office: what it named or bought, and what it sold."""
+    recs = [str(p.get("sym")) for p in r["picks"] if p.get("grp") == "recommend"]
+    buys = [p for p in r["picks"] if p.get("grp") not in ("recommend", "skipped")]
+    said = (["recommended " + ", ".join(recs)] if recs else []) + (["%d bought" % len(buys)] if buys else []) + (["%d sold" % len(r["exits"])] if r["exits"] else [])
+    return " · ".join(said) or "no pick, nothing sold"
 
 
 SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs travel; the big snapshots stay local
