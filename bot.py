@@ -36,6 +36,16 @@ MEMEBOT_LIVE=1 (the scan workflow sets it): while a cycle runs, its Agent office
 the results remote (--remote, else RESULTS_URL, else the origin) about every 45 s when it changed and at least once a minute,
 for the website's live view (class Live). The launch spotter's early list rides along in live.json as "young" and is pushed within
 seconds of being written (the kick).
+
+The iPhone app (app.py, supabase/setup.sql, README "iPhone app"): with SUPABASE_URL and SUPABASE_SECRET_KEY set as well, the same live
+record also goes to the app's live store every 5 s while it changes (class AppFeed, beside the git pushes), the scan sends a push
+notification when the pick is made (app.notify_pick after the trader step) and when the early New launches list is first published
+(young_published), and bot.py site puts the store's address and publishable key (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) into the page.
+Without those variables nothing of it runs and nothing touches the network.
+The launch spotter's list reaches both live views through two hooks: the live view's watcher (Live.watch_early) checks each new
+young_early.json (early_doc) and hands it to live_put("young", doc), so live.json and the app's live store (row current, and its count
+and newest age in row status) carry it; the first push or write that carries a listed list calls young_published(doc), which sends the
+"new coins" notification once per cycle.
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, datetime as dt
 
@@ -181,10 +191,15 @@ class Office:
 OFFICE = Office()    # the cycle at work puts its own record here (log() files the lines under its steps)
 LIVE_FIRST, LIVE_EVERY, LIVE_BEAT, LIVE_WAIT = 10, 45, 60, 20   # the live view (s): the first push after the start, the least gap between two
 # pushes, a heartbeat push of an unchanged record once the last good push is this old (the page tells a quiet step from a scan that died),
-# and the most one push may take
+# and the most one push may take (also the most the end of a cycle waits for the last writes and notifications)
 LIVE_KICK = 5        # s: a new early list from the spotter ("spotter", radar.py early) is pushed at once, at most this often
-EARLY = {"t": None, "doc": None, "rev": 0, "sig": None}   # this cycle's early list as the live view pushes it ("young" in live.json): the
+EARLY = {"t": None, "doc": None, "rev": 0, "sig": None}   # this cycle's early list as both live views carry it ("young", live_put): the
 EARLY_LOCK = threading.Lock()                             # cycle's now, the checked doc, its revision and the file signature it came from
+APP_FIRST, APP_EVERY, APP_BEAT = 2, 5, 30   # the app's live store (s): the first write after the start, the least gap between two writes of a
+# changed record, a heartbeat once the last good write is this old (failed writes back off: APP_EVERY doubled per failure, at most 80 s)
+LIVE_EXTRA, LIVE_EXTRA_LOCK, LIVE_EXTRA_REV = {}, threading.Lock(), [0]   # extra keys of this cycle's live record (live_put)
+APP_JOBS = []         # this cycle's notifications on their way (app_bg): the end of the cycle waits for them, LIVE_WAIT s at most
+YOUNG_SENT = {"t": None}   # the cycle whose "new coins" notification went out (young_published sends one per cycle)
 EARLY_MAX_BYTES = 24000     # an early list bigger than this is not pushed (20 coins take about 10 KB)
 CHECK_LIMIT_S = 30          # radar.py check runs after the trader, on the scan's critical path: killed after this (it takes about 1 s)
 EARLY_STATES = ("listed", "empty", "small", "failed", "off")
@@ -239,12 +254,119 @@ def early_doc(path, now):
         return None
 
 
+# and the most one push may take (also the most the end of a cycle waits for the last writes and notifications)
+APP_FIRST, APP_EVERY, APP_BEAT = 2, 5, 30   # the app's live store (s): the first write after the start, the least gap between two writes of a
+# changed record, a heartbeat once the last good write is this old (failed writes back off: APP_EVERY doubled per failure, at most 80 s)
+LIVE_EXTRA, LIVE_EXTRA_LOCK, LIVE_EXTRA_REV = {}, threading.Lock(), [0]   # extra keys of this cycle's live record (live_put)
+APP_JOBS = []         # this cycle's notifications on their way (app_bg): the end of the cycle waits for them, LIVE_WAIT s at most
+YOUNG_SENT = {"t": None}   # the cycle whose "new coins" notification went out (young_published sends one per cycle)
+
+
+def live_put(key, value):
+    """HOOK for extra top-level keys of this cycle's live record, e.g. live_put("young", doc) for the launch spotter's early New launches
+    list: live.json on the branch "live" and the app's live store (row current; row status gets its count and newest age) carry it from
+    their next write on, which comes within APP_EVERY s. None removes the key. A cycle starts with none. The value is copied (as JSON)
+    at once, so the caller may change its own object afterwards; a value that is not JSON is left out (and False returned)."""
+    try:
+        value = None if value is None else json.loads(json.dumps(value, default=str))
+    except (TypeError, ValueError):
+        return False
+    with LIVE_EXTRA_LOCK:
+        if value is None:
+            LIVE_EXTRA.pop(key, None)
+        else:
+            LIVE_EXTRA[key] = value
+        LIVE_EXTRA_REV[0] += 1
+    return True
+
+
+def live_sig():
+    """What the live views compare to see a changed record: the office record's revision and the extras' revision."""
+    return OFFICE.rev, LIVE_EXTRA_REV[0]
+
+
+def live_record(live):
+    """(signature, record): the office record (office.json's keys) with the extras of live_put, "live" and "updated" (ms). Both live views
+    send this record; the launch spotter's list rides in it as "young"."""
+    with OFFICE.lock:
+        rev, doc = OFFICE.rev, OFFICE.doc()
+    with LIVE_EXTRA_LOCK:
+        sig, extra = (rev, LIVE_EXTRA_REV[0]), dict(LIVE_EXTRA)
+    doc.update(extra)
+    doc.update(live=live, updated=ms())
+    return sig, doc
+
+
+def app_mod():
+    """app.py when the app's live store is set up (SUPABASE_URL and SUPABASE_SECRET_KEY), else None: without them it is not even imported."""
+    if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY")):
+        return None
+    try:
+        if HERE not in sys.path:
+            sys.path.insert(0, HERE)
+        import app as A
+        return A if A.enabled() else None
+    except Exception:
+        return None
+
+
+def app_bg(name, *args):
+    """app.<name>(*args) (a notification) on a daemon thread beside the cycle; the cycle's end waits for it (LIVE_WAIT s at most). Nothing
+    without the app's live store."""
+    A = app_mod()
+    if not A:
+        return None
+    try:
+        t = threading.Thread(target=lambda: getattr(A, name)(*args), daemon=True)
+        t.start()
+        APP_JOBS.append(t)
+        return t
+    except Exception:
+        return None
+
+
 def early_set(t, doc):
-    """This cycle's early list for the live view (doc of cycle t); a list of another cycle is ignored. The next push carries it."""
+    """This cycle's early list (doc of cycle t; None removes it) for both live views: it goes to live_put("young", doc), so live.json and
+    the app's live store carry it from their next push or write on (the git push at once: the kick). A list of another cycle is
+    ignored. True when it was taken."""
     with EARLY_LOCK:
-        if EARLY["t"] == t:
-            EARLY["doc"] = doc
-            EARLY["rev"] += 1
+        if t is None or EARLY["t"] != t:
+            return False
+        EARLY["doc"] = doc
+        EARLY["rev"] += 1
+        live_put("young", doc)        # under EARLY_LOCK: an older list never overtakes a newer one on its way to the live record
+        return True
+
+
+def young_published(doc):
+    """HOOK for the launch spotter: called once the early New launches list of this cycle is first published (the doc both live views
+    carry as "young"): by the live view's git push and by AppFeed after their first push or write that carries a listed list. It sends
+    the "new coins" push notification (app.notify_young) beside the cycle, once per cycle (later versions of the list, e.g. with
+    RugCheck, send nothing), and only for a list with coins (state "listed" when the doc names one) of this cycle. It never raises;
+    without the app's live store it does nothing."""
+    try:
+        if not isinstance(doc, dict) or not [c for c in (doc.get("coins") or []) if isinstance(c, dict)] or doc.get("state", "listed") != "listed":
+            return False
+        with EARLY_LOCK:
+            et = EARLY["t"]
+        if et is not None and doc.get("t") != et:       # a list of another cycle
+            return False
+        with LIVE_EXTRA_LOCK:
+            if YOUNG_SENT["t"] == OFFICE.t:
+                return False
+            YOUNG_SENT["t"] = OFFICE.t
+        return app_bg("notify_young", doc) is not None
+    except Exception:
+        return False
+
+
+def pick_brief(rec, now):
+    """This cycle's top recommendation in a few keys for the live record ("pick"), or None (no pick, or the recommendation of an earlier run)."""
+    if not isinstance(rec, dict) or rec.get("t") != now or not isinstance(rec.get("picks"), list) or not rec["picks"] or not isinstance(rec["picks"][0], dict):
+        return None
+    p = rec["picks"][0]
+    return {"t": now, "sym": str(p.get("sym") or "?")[:24], "name": str(p.get("name") or "")[:48], "score": p.get("score") if isinstance(p.get("score"), (int, float)) else None,
+            "tier": p.get("tier"), "addr": str(p.get("addr") or "")[:64]}
 
 
 def redact(s):
@@ -265,32 +387,41 @@ class Live:
     when the last good push is a minute old (a step can go minutes without a new line), and once more at the end. It pushes from a git
     folder of its own (<dir>/live.git, made fresh each cycle) and only watches: the pushes run on a daemon thread, a push is killed
     after 20 s, the end cuts a push still running short and waits at most 20 s for the last one, the first error is printed (never
-    filed in the record) and every error is swallowed."""
+    filed in the record) and every error is swallowed. The record is live_record's (the office record plus the extras of live_put).
+    With the app's live store set up (app_mod) an AppFeed writes the same record there on a thread of its own; without a remote the
+    git pushes stay off and only the AppFeed runs."""
 
-    def __init__(self, d, remote):
+    def __init__(self, d, remote, app=None):
         self.git_dir, self.remote = os.path.join(os.path.abspath(d), "live.git"), remote
         self.stop, self.cut = threading.Event(), threading.Event()    # stop: the loop ends; cut: only the last snapshot may still go out
         self.lock, self.plock = threading.Lock(), threading.Lock()   # lock: one push at a time; plock: the git process now running
         self.proc, self.pushed, self.said = None, None, False
         self.t0, self.tried, self.ok = time.time(), None, None        # the start, the last push begun, the last good push begun
         self.d, self.early_pushed = os.path.abspath(d), None          # the cycle's folder (young_early.json) and the early list's revision last sent
-        shutil.rmtree(self.git_dir, ignore_errors=True)
-        self.thread = threading.Thread(target=self.loop, daemon=True)
+        self.feed = AppFeed(app) if app else None                    # the app's live store, on a thread of its own
+        if remote:
+            shutil.rmtree(self.git_dir, ignore_errors=True)
+        self.thread = threading.Thread(target=self.loop, daemon=True)   # it watches the early list for both live views; it pushes only with a remote
         self.thread.start()
 
     @staticmethod
     def start(d, remote=None):
-        """The live view of this cycle, or None: MEMEBOT_LIVE is not 1, or no remote is known (--remote, else RESULTS_URL, else the origin)."""
+        """The live view of this cycle, or None: MEMEBOT_LIVE is not 1, or neither a remote (--remote, else RESULTS_URL, else the origin)
+        nor the app's live store (app_mod) is known."""
         try:
             if os.environ.get("MEMEBOT_LIVE") != "1":
                 return None
             remote = remote or os.environ.get("RESULTS_URL") or origin_url()
-            if not remote:
+            A = app_mod()
+            if not remote and not A:
                 print("live view: off, no remote to push to", file=sys.stderr, flush=True)
                 return None
-            print("live view: the office goes to branch live of %s every %d s while it changes, at least every %d s" % (redact(remote), LIVE_EVERY, LIVE_BEAT),
-                  file=sys.stderr, flush=True)
-            return Live(d, remote)
+            if remote:
+                print("live view: the office goes to branch live of %s every %d s while it changes, at least every %d s" % (redact(remote), LIVE_EVERY, LIVE_BEAT),
+                      file=sys.stderr, flush=True)
+            if A:
+                print("live view: the app's live store gets it every %d s while it changes, at least every %d s" % (APP_EVERY, APP_BEAT), file=sys.stderr, flush=True)
+            return Live(d, remote, A)
         except Exception:
             return None
 
@@ -308,11 +439,11 @@ class Live:
             return now - self.t0 >= min(LIVE_FIRST, LIVE_EVERY)
         if now - self.tried < min(LIVE_EVERY, LIVE_BEAT):
             return False
-        return OFFICE.rev != self.pushed or self.ok is None or now - self.ok >= LIVE_BEAT
+        return live_sig() != self.pushed or self.ok is None or now - self.ok >= LIVE_BEAT
 
     def watch_early(self):
         """Looks at <dir>/young_early.json (about once a second): a new file of this cycle is checked (early_doc) and becomes the early
-        list the next push carries."""
+        list both live views carry (live_put("young", doc)): the next git push (at once: the kick) and the app's next write."""
         try:
             st = os.stat(os.path.join(self.d, "young_early.json"))
             sig = (st.st_mtime_ns, st.st_size)
@@ -330,12 +461,13 @@ class Live:
             if doc is not None:
                 EARLY["doc"] = doc
                 EARLY["rev"] += 1
+                live_put("young", doc)
 
     def loop(self):
         while not self.stop.wait(min(1.0, LIVE_EVERY / 4.0)):
             try:
                 self.watch_early()
-                if self.due(time.time()):
+                if self.remote and self.due(time.time()):
                     self.push(True)
             except Exception:
                 pass
@@ -387,14 +519,10 @@ class Live:
                 if not o.d:
                     return
                 t = self.tried = time.time()
-                with o.lock:
-                    rev, doc = o.rev, o.doc()
-                doc.update(live=live, updated=ms())
                 with EARLY_LOCK:
-                    erev, edoc, et = EARLY["rev"], EARLY["doc"], EARLY["t"]
-                if edoc is not None and et is not None and edoc.get("t") == et:
-                    doc["young"] = edoc      # the early list of this cycle; office.json never carries it
-                self.early_pushed = erev      # tried: a push that fails is not kicked again (the regular pushes carry the list)
+                    erev = EARLY["rev"]
+                rev, doc = live_record(live)      # the office record with this cycle's early list ("young", live_put); office.json never carries it
+                self.early_pushed = erev          # tried: a push that fails is not kicked again (the regular pushes carry the list)
                 until = t + LIVE_WAIT
                 if not os.path.isdir(self.git_dir):
                     self.git(until, "init", "-q", "--bare", cut_ok=live)
@@ -403,6 +531,8 @@ class Live:
                 commit = self.git(until, "-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "commit-tree", tree, "-m", "live office " + ("at work" if live else "done"), cut_ok=live)
                 self.git(until, "push", "-q", "--force", self.remote, commit + ":refs/heads/live", cut_ok=live)
                 self.pushed, self.ok = rev, t
+                if isinstance(doc.get("young"), dict):
+                    young_published(doc["young"])     # the first listed early list is out: the "new coins" notification (once per cycle)
             except Exception as e:
                 if live and self.cut.is_set():       # cut short so the last snapshot goes out at once: not an error
                     return
@@ -410,26 +540,87 @@ class Live:
                     self.said = True
                     print("live view: push failed, the cycle goes on (%s)" % redact(" ".join(str(e).split()))[:300], file=sys.stderr, flush=True)
 
-    def finish(self):
+    def finish(self, until=None):
         """The last snapshot ("live": false): a push still running is killed first (it would hold the last one up), then the last one
-        goes out off the main thread, waited for at most LIVE_WAIT s and killed after that."""
+        goes out off the main thread, beside the app's last write; both waited for until `until` (LIVE_WAIT s from now) and the push
+        killed after that."""
         try:
+            until = until or time.time() + LIVE_WAIT
             self.stop.set()
             self.cut.set()
-            with self.plock:
-                p = self.proc
-            if p:
-                self.kill(p)
-            t = threading.Thread(target=self.push, args=(False,), daemon=True)
-            t.start()
-            t.join(LIVE_WAIT)
-            if t.is_alive():
+            jobs = [self.feed.finish()] if self.feed else []
+            if self.remote:
+                with self.plock:
+                    p = self.proc
+                if p:
+                    self.kill(p)
+                t = threading.Thread(target=self.push, args=(False,), daemon=True)
+                t.start()
+                jobs.append(t)
+            for t in jobs:
+                t.join(max(0.0, until - time.time()))
+            if self.remote and jobs[-1].is_alive():
                 with self.plock:
                     p = self.proc
                 if p:
                     self.kill(p)
         except Exception:
             pass
+
+
+class AppFeed:
+    """The live record (live_record) written to the app's live store (app.sink: Supabase rows status and current) while a cycle runs, on a
+    daemon thread of its own beside the git pushes of Live: about APP_FIRST s after the start, then every APP_EVERY s while the record
+    changes, a heartbeat once the last good write is APP_BEAT s old, and the last one ("live": false) at the end (finish). After its first
+    write it makes sure the VAPID keys exist (app.prepare: the app can subscribe before the first notification), and after a write of a
+    record that first carries a listed early New launches list it sends the "new coins" notification (young_published). app.sink cuts
+    each request off after a few seconds, prints its first failure and never raises; app.prepare runs on a daemon thread of its own."""
+
+    def __init__(self, A):
+        self.A, self.stop, self.lock = A, threading.Event(), threading.Lock()
+        self.t0, self.tried, self.ok, self.sent, self.fails = time.time(), None, None, None, 0
+        self.thread = threading.Thread(target=self.loop, daemon=True)
+        self.thread.start()
+
+    def due(self, now):
+        if not OFFICE.d:
+            return False
+        if self.tried is None:
+            return now - self.t0 >= APP_FIRST
+        if now - self.tried < min(80, APP_EVERY * 2 ** min(self.fails, 4)):
+            return False
+        return live_sig() != self.sent or self.ok is None or now - self.ok >= APP_BEAT
+
+    def loop(self):
+        prepared = False
+        while not self.stop.wait(1.0):
+            try:
+                if self.due(time.time()):
+                    self.write(True)
+                if self.tried is not None and not prepared and not self.stop.is_set():
+                    prepared = True          # on a thread of its own: up to five store requests, the status writes go on meanwhile (the end does not wait for it)
+                    threading.Thread(target=self.A.prepare, daemon=True).start()
+            except Exception:
+                pass
+
+    def write(self, live):
+        with self.lock:
+            sig, doc = live_record(live)
+            t = self.tried = time.time()
+            ok = self.A.sink(doc)
+            if ok:
+                self.sent, self.ok, self.fails = sig, t, 0
+            else:
+                self.fails += 1
+        if ok and isinstance(doc.get("young"), dict):
+            young_published(doc["young"])
+
+    def finish(self):
+        """The last write ("live": false) on a thread of its own (Live.finish waits for it); the loop stops first."""
+        self.stop.set()
+        t = threading.Thread(target=self.write, args=(False,), daemon=True)
+        t.start()
+        return t
 
 
 def run(args, d, now=None, expect_json=True, soft=False, limit=None):
@@ -665,13 +856,22 @@ def chunk_addrs(g):
 def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
     """One cycle (cycle_steps); with MEMEBOT_LIVE=1 its office record is pushed while it runs and once more when it ends, failed or not.
     A cycle that stops early stops the tails of its background jobs first."""
+    with EARLY_LOCK:                 # no early list until cycle_steps names this cycle's (the watcher never takes the last cycle's file)
+        EARLY.update(t=None, doc=None, sig=None, rev=EARLY["rev"] + 1)
+    with LIVE_EXTRA_LOCK:
+        LIVE_EXTRA.clear()
+        LIVE_EXTRA_REV[0] += 1
+    del APP_JOBS[:]
     live = Live.start(d, remote)
     try:
         return cycle_steps(d, force, offline, mock, now, push, remote, branch, rescan, recommend, horizon)
     finally:
         stop_tails()          # a cycle that stops early stops its launch spotter too (the list is of no use without the cycle)
+        until = time.time() + LIVE_WAIT      # the last writes and the notifications on their way: LIVE_WAIT s at most, together
         if live:
-            live.finish()
+            live.finish(until)
+        for t in list(APP_JOBS):
+            t.join(max(0.0, until - time.time()))
 
 
 def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
@@ -686,6 +886,7 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
     shutil.rmtree(os.path.join(d, "radar"), ignore_errors=True)
     with EARLY_LOCK:
         EARLY.update(t=now, doc=None, rev=EARLY["rev"] + 1, sig=None)
+        live_put("young", None)
     o.begin("dispatch")
     extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else []) + ["--horizon", horizon]
     mode = run(["memebot.py", "mode"] + extra, d, now)
@@ -815,10 +1016,14 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
             stop_spotter(spot, "still running at the trader step")
             finish_bg(spot)
             o.done("spotter", "still running at the trader step", "failed")
+            path = os.path.join(d, "young_early.json")
+            doc = early_doc(path, now) if os.path.exists(path) else None
             with EARLY_LOCK:
-                empty = EARLY["doc"] is None
+                empty = EARLY["doc"] is None and doc is None
             if empty:
                 early_set(now, {"v": 1, "t": now, "state": "failed", "why": "the early list did not finish", "coins": []})
+            elif doc:
+                early_set(now, doc)        # its last list, in case the watcher has not taken it yet
         else:
             finish_bg(spot)
         spot = None
@@ -849,6 +1054,16 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
     except (OSError, ValueError):
         pass
     o.done("trader", lambda: trader_said(r))
+    if recommend and mode["pick"]:
+        # the iPhone app: this scan's pick rides in the live record and goes out as a push notification (app.py; nothing without its secrets)
+        try:
+            rec = json.load(open(os.path.join(d, "db", "memebot", "recommend.json"), encoding="utf-8"))
+        except (OSError, ValueError):
+            rec = None
+        brief = pick_brief(rec, now)
+        if brief:
+            live_put("pick", brief)
+            app_bg("notify_pick", rec)
     o.begin("reporter")
     o.save()                 # the page shows its own builder at work; the copy saved after it is the complete one that syncs
     try:
@@ -1124,34 +1339,70 @@ SITE_NOTICE = ('<div class="live"><span><strong>Live</strong> · rebuilt after e
                '<a class="btn" href="%s" target="_blank" rel="noopener">Scan now</a>'
                '<small>The page reloads itself. Scan now opens GitHub: tap “Run workflow” there and come back in about ten minutes.</small></div>')
 SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" href="manifest.webmanifest">\n'
-             '<link rel="icon" href="icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="icon-180.png">\n'
+             '<link rel="icon" href="icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">\n'
              '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="Meme-Bot">\n'
-             '<meta http-equiv="refresh" content="900">\n')
-SITE_SCRIPT = ('<script>(function(){var t=Date.now();document.addEventListener("visibilitychange",function(){'
+             '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n')
+# the page reloads itself every 15 minutes in a browser tab (as the meta refresh did before) but not in the installed app, where a
+# reload would cut the tab and the scroll position and can interrupt the notifications prompt: the app shows the scan live instead,
+# and the live script reloads it once a newer report is out; both reload when the page comes back after 5 minutes away
+SITE_SCRIPT = ('<script>(function(){var t=Date.now(),app=navigator.standalone===true||!!(window.matchMedia&&matchMedia('
+               '"(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)").matches);'
+               'if(!app)setTimeout(function(){location.reload();},900000);document.addEventListener("visibilitychange",function(){'
                'if(!document.hidden&&Date.now()-t>300000){location.reload();}});})();</script>')
 SITE_ICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#2a78d6"/>'
              '<rect x="20" y="55" width="14" height="25" rx="3" fill="#fff"/><rect x="43" y="40" width="14" height="40" rx="3" fill="#fff"/>'
              '<rect x="66" y="25" width="14" height="55" rx="3" fill="#fff"/></svg>')
 
 
+def site_store():
+    """(url, publishable key) of the app's live store for the page, from SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, or None. Only a
+    publishable key (sb_publishable_...) goes into the page; a secret key or a JWT is refused and the log says why, never the key."""
+    url, key = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/"), (os.environ.get("SUPABASE_PUBLISHABLE_KEY") or "").strip()
+    if not url and not key:
+        return None
+    sys.path.insert(0, HERE)
+    import app as A
+    if not url or not key:
+        log("site: the app's live store stays off: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are both needed (%s is missing)" % ("SUPABASE_URL" if not url else "SUPABASE_PUBLISHABLE_KEY"))
+        return None
+    verdict, why = A.page_key_verdict(key)
+    if verdict != "ok":
+        log("site: SUPABASE_PUBLISHABLE_KEY is NOT put in the page: %s" % why)
+        return None
+    if not re.fullmatch(r"https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{1,5})?", url):
+        log("site: the app's live store stays off: SUPABASE_URL is not an address like https://<ref>.supabase.co")
+        return None
+    return url, key
+
+
 def site(d, out="site", repo=None):
     """A folder for a static web host (GitHub Pages): the page as index.html with the tags that let a phone put it on the home
-    screen like an app, an auto-refresh, a "Scan now" link to the Actions page, a web-app manifest and icons."""
+    screen like an app, an auto-refresh, a "Scan now" link to the Actions page, a web-app manifest, icons and sw.js (the installed
+    app's service worker: notifications). With SUPABASE_URL and a publishable SUPABASE_PUBLISHABLE_KEY the page also reads the app's
+    live store (data-sb-url and data-sb-key on <html>); in the installed app PAGE_JS (app.py) adds the bottom tab bar and notifications."""
+    sys.path.insert(0, HERE)
+    import app as A
     page = os.path.join(d, "report.html")
     if not os.path.exists(page):
-        sys.path.insert(0, HERE)
         import report as R
         R.build(d)
     h = open(page, encoding="utf-8").read()
     repo = re.sub(r"^(https?://)[^/@]*@", r"\1", (repo or origin_url()).strip())   # no credentials in the link
     repo = repo[:-4] if repo.endswith(".git") else repo
+    st = site_store()
+    if st:
+        import html as H
+        h = h.replace('<html lang="en">', '<html lang="en" data-sb-url="%s" data-sb-key="%s">' % (H.escape(st[0], True), H.escape(st[1], True)), 1)
     h = h.replace("</title>", "</title>\n" + SITE_TAGS, 1)
+    h = h.replace("</head>", "<style>%s</style>\n</head>" % A.PAGE_CSS, 1)
     if repo:
         h = h.replace('<div class="wrap">', '<div class="wrap">' + SITE_NOTICE % (repo + "/actions/workflows/scan.yml"), 1)
-    h = h.replace("</body>", SITE_SCRIPT + "</body>", 1)
+    h = h.replace("</body>", SITE_SCRIPT + "<script>%s</script>" % A.PAGE_JS + "</body>", 1)
+    m = re.match(r"https://github\.com/([A-Za-z0-9-]+)/([A-Za-z0-9._-]+)/?$", repo or "")
+    scope = "/" if m and m.group(2).lower() == m.group(1).lower() + ".github.io" else "/%s/" % (m.group(2) if m else "Meme-Bot")
     os.makedirs(out, exist_ok=True)
-    files = {"index.html": h, "icon.svg": SITE_ICON, ".nojekyll": "",
-             "manifest.webmanifest": json.dumps({"name": "Meme-Bot Ledger", "short_name": "Meme-Bot", "start_url": "./", "scope": "./",
+    files = {"index.html": h, "icon.svg": SITE_ICON, ".nojekyll": "", "sw.js": A.SW_JS,
+             "manifest.webmanifest": json.dumps({"id": scope, "name": "Meme-Bot Ledger", "short_name": "Meme-Bot", "start_url": "./", "scope": "./",
                                                  "display": "standalone", "background_color": "#f5f6f8", "theme_color": "#2a78d6",
                                                  "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
                                                            {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
@@ -1161,13 +1412,13 @@ def site(d, out="site", repo=None):
             f.write(text)
     for n in (180, 192, 512):
         with open(os.path.join(out, "icon-%d.png" % n), "wb") as f:
-            f.write(icon_png(n))
-    log("site: %s (%d files, scan link %s)" % (out, len(files) + 3, "yes" if repo else "none: no git origin and no --repo"))
+            f.write(icon_png(n, opaque=n == 180))      # the apple-touch-icon: a full square (iOS paints see-through corners black and rounds it itself)
+    log("site: %s (%d files, scan link %s, app live store %s)" % (out, len(files) + 3, "yes" if repo else "none: no git origin and no --repo", "on" if st else "off"))
     return out
 
 
-def icon_png(n):
-    """The icon as a PNG without any image library: a blue rounded square with three white bars, n x n pixels."""
+def icon_png(n, opaque=False):
+    """The icon as a PNG without any image library: a blue rounded square with three white bars, n x n pixels (opaque: a full square)."""
     import struct, zlib
     bg, fg = (42, 120, 214), (255, 255, 255)
     bars = [(0.20, 0.55, 0.34, 0.80), (0.43, 0.40, 0.57, 0.80), (0.66, 0.25, 0.80, 0.80)]   # x0, y0, x1, y1 as fractions of n
@@ -1177,7 +1428,7 @@ def icon_png(n):
         row = bytearray([0])   # PNG filter byte: none
         for x in range(n):
             cx = min(max(x + 0.5, r), n - r); cy = min(max(y + 0.5, r), n - r)
-            if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > r * r:   # outside the rounded corners: transparent
+            if not opaque and (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > r * r:   # outside the rounded corners: transparent
                 row += b"\0\0\0\0"; continue
             px = bg
             for x0, y0, x1, y1 in bars:

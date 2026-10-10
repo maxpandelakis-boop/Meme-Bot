@@ -453,6 +453,61 @@ laptop loop and the schedule together: when both push, the later push wins and t
 The Actions cache keeps the big-test snapshots and results for seven days of inactivity; losing it wipes the big-test
 history and the learned weights (the page and the recommendations survive on the results branch).
 
+### iPhone app
+
+The website can live on the iPhone's Home Screen like an app, all on free plans: a bottom tab bar (Pick, New coins, Office,
+Account), the Agent office and the New launches list live within seconds while the hourly scan runs, and push notifications
+when the new coins are listed (about five minutes into the scan) and when the pick is made. Fake money only: nothing is bought
+for real, and no notification is a trade. In a normal browser tab the page looks and works as before.
+
+How it works: a free Supabase project is the live store. While the scan runs, `bot.py` writes a small `status` row every 5 seconds
+(and the whole live record, `current`, when it changes) with the secret key; the page reads them with the publishable key while it
+is open, every 4 seconds while a scan is live and every 30 seconds otherwise, and falls back to the GitHub live view above when
+Supabase does not answer. A page left open all day reads about 1 GB a month, well inside the free plan's 5 GB. The notification
+keys (VAPID) are made by the first scan and kept in Supabase; `sw.js` shows the notifications on older iOS versions. The scan
+installs the push sender from `supabase/push-requirements.txt`, where every package is pinned with its sha256 (made by
+`supabase/pin_push.py`), so a run gets exactly those files or no notifications that run.
+
+Set it up once (about 15 minutes, all from the phone):
+
+1. **Supabase project:** on supabase.com, sign up (Continue with GitHub works; the Free plan needs no card) and make a new
+   project: name `meme-bot`, region Europe, keep **Enable Data API** on, leave **Automatically expose new tables** off.
+2. **Tables:** open `supabase/setup.sql` on GitHub, tap **Raw**, select all and copy. In Supabase open **SQL Editor → New
+   query**, paste, tap **Run** ("Success. No rows returned"). Running it again later is harmless, and needed once after an
+   update of that file (it keeps your data).
+3. **Keys:** in Supabase open **Project Settings → API Keys**. Copy the **publishable key** (`sb_publishable_...`) and, under
+   Secret keys, reveal and copy the **secret key** (`sb_secret_...`). The project URL is `https://<ref>.supabase.co`, where
+   `<ref>` is the id in the dashboard address (the **Connect** button shows it too).
+4. **GitHub secrets:** on github.com open the repository's **Settings → Secrets and variables → Actions → New repository
+   secret** (on a phone: **aA → Request Desktop Website** first) and add three: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+   `SUPABASE_SECRET_KEY`. The secret key goes nowhere else: `bot.py` puts only a publishable key into the page and refuses a
+   secret one.
+5. **One scan:** wait for the next hourly scan or press **Run workflow**. It makes the notification keys and builds the website
+   with the live store.
+6. **Install:** open `https://maxpandelakis-boop.github.io/Meme-Bot/` in **Safari**, tap **Share → Add to Home Screen** (keep
+   **Open as Web App** on), then open **Meme-Bot** from the Home Screen.
+7. **Notifications:** in the app open **Account** (or tap the bell), tap **Turn on notifications** and allow them. The two
+   switches choose which ones arrive: new coins listed, the pick made.
+
+Limits:
+
+- Notifications need iOS 16.4 or newer and the app opened from the Home Screen; a Safari tab cannot get them.
+- A **Focus** mode (Do Not Disturb, Sleep) hides them: allow Meme-Bot in that Focus's settings.
+- iOS sometimes ends a subscription without a word. If notifications stop arriving, open **Account**, tap **Turn off
+  notifications**, then **Turn on notifications** again.
+- The pick notification comes a few minutes before the website has the new report (GitHub Pages publishes it after the scan);
+  the app shows a "New pick" note in the meantime.
+- Supabase pauses a free project after a week without activity; the hourly scans keep it awake. A paused project shows no live
+  view in the app (it falls back to GitHub's); resume it in the Supabase dashboard.
+- `python3 app.py check` (with the two `SUPABASE_` variables for the URL and the secret key set) says what is set up, without
+  printing any key.
+- The publishable key is public (it is in the page): anyone can read the live rows, which the public website shows anyway, and
+  can save a subscription. The table keeps at most 25 (a new one pushes out the one seen longest ago) and takes at most 6 new ones
+  an hour; the phone saves itself every time the app opens, so it is among the newest, and the scan deletes rows whose keys are no
+  keys. A determined stranger could still crowd it out over hours: opening the app saves it again. Supabase's Security Advisor flags the two
+  functions `save_push_sub` and `drop_push_sub` (security definer, callable with the publishable key): that is on purpose, they
+  are the only way in and they check what they store.
+
 ## The analysis page
 
 Every cycle ends by rendering `mb/report.html` (also `python3 bot.py report`); on GitHub it becomes the website. In
@@ -481,6 +536,8 @@ to show the picks, the charts and the links in chat.
 | `memebot.py` | the analyst: gates, factors, learned weights, picks, exits, big test |
 | `radar.py` | the launch spotter: the early list of new launches about five minutes into each scan, and its record |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
+| `app.py` | the iPhone app: the live store (Supabase), push notifications, the installed app's script and `sw.js` |
+| `supabase/setup.sql` | the one-time setup of the Supabase project (tables, access rules); `supabase/test_setup.py` tests it on PostgreSQL; `supabase/push-requirements.txt` pins the push sender with hashes (`supabase/pin_push.py` makes it) |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
 | `.github/workflows/scan.yml` | the hourly GitHub Actions scan, the results branch and the website |
 

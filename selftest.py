@@ -9,9 +9,14 @@ while the money is deployed, exits (half at 2x, stop at -50%, 3-day time limit) 
 scores every snapshotted coin and the weights get learned. GMGN is mocked as blocked (403) to exercise the circuit breaker.
 In recommend mode the paper account buys the top pick for 50 and the first five new launches for 3 in one cycle, sells them at
 +1000% (11x), -30%, after 6 hours or as a rug (never for a failed filter), and its restart closes the old rule's positions once.
+The iPhone app (app_tests): the live store against a local stand-in for Supabase's REST API, push notifications against a local push
+service (the real pywebpush when it is installed, else a stand-in with the same call), bot.py's live feed and hooks, the site step's key
+guard, the page's decisions and sw.js in node, and supabase/setup.sql on PostgreSQL when MEMEBOT_PG=<host or socket folder>:<port> is set.
 """
 import contextlib, glob, html, io, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
+
+REAL_SLEEP = time.sleep      # the fetch tests make time.sleep a no-op for the whole process; the slow stand-ins below need a real one
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
@@ -1353,6 +1358,668 @@ def browser_checks(check, page_html, tmp):
           "browser: after its scan the page's own list says it was the list before scoring and gives the ages at the time it was made (%s) %s" % (own[1][:2], errs[:2]))
 
 
+# ------------------------------------------------------------------------------------------------ the iPhone app (app.py, sw.js, the page)
+
+APP_SECRET = "sb_secret_TESTsecretKEY_0123456789abcdef"     # the test's secret key: it must never show in any output, file or page
+
+
+class Rest:
+    """A local stand-in for Supabase's REST API (PostgREST) with the tables of supabase/setup.sql: it checks the secret key in the apikey
+    header, notes every request and can play a paused project (HTTP 540) or an error that echoes the key."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.live, self.secret, self.config, self.subs, self.log = {}, {}, {}, {}, []
+        self.mode = "ok"
+
+    def handle(self, method, path, query, headers, body):
+        q = urllib.parse.parse_qs(query)
+        eq = lambda k: (q.get(k) or [""])[0][3:] if (q.get(k) or [""])[0].startswith("eq.") else None
+        with self.lock:
+            self.log.append({"t": time.time(), "m": method, "p": path, "q": query, "apikey": headers.get("apikey"), "auth": headers.get("Authorization"),
+                             "ua": headers.get("User-Agent") or "", "prefer": headers.get("Prefer") or "", "body": body})
+            if self.mode == "paused":
+                return 540, {"message": "project paused"}
+            if self.mode == "echo":
+                return 500, {"code": "XX000", "message": "bad apikey %s" % headers.get("apikey")}
+            if headers.get("apikey") != APP_SECRET or headers.get("Authorization"):
+                return 401, {"code": "PGRST301", "message": "no valid key"}
+            j = json.loads(body) if body else None
+            if path == "/rest/v1/live":
+                if method == "POST":
+                    old = self.live.get(j["id"])
+                    now_ms = int(time.time() * 1000)
+                    self.live[j["id"]] = {"id": j["id"], "doc": j["doc"], "ver": max(now_ms, old["ver"] + 1) if old else now_ms}
+                    return 201, None
+                rid = eq("id")
+                return 200, [r for k, r in self.live.items() if rid is None or k == rid]
+            for name, table, merge in (("app_secret", self.secret, False), ("app_config", self.config, True)):
+                if path == "/rest/v1/" + name:
+                    if method == "POST":
+                        if merge or j["key"] not in table:
+                            table[j["key"]] = j["value"]
+                        return 201, None
+                    k = eq("key")
+                    return 200, [{"value": table[k]}] if k in table else []
+            if path == "/rest/v1/push_subs":
+                if method == "DELETE":
+                    self.subs.pop(eq("endpoint"), None)
+                    return 204, None
+                return 200, [dict(r) for r in self.subs.values()]
+            return 404, {"message": "no such table"}
+
+
+class PushSink:
+    """A local push service: answers each endpoint with the status set for it (201 by default) and notes what came (decrypted with the
+    subscription's key when the real pywebpush encrypted it)."""
+
+    def __init__(self):
+        self.codes, self.keys, self.got, self.lock = {}, {}, [], threading.Lock()
+
+    def handle(self, path, headers, body):
+        name = path.rsplit("/", 1)[-1]
+        data = body
+        if name in self.keys and headers.get("Content-Encoding") == "aes128gcm":
+            try:
+                import http_ece
+                data = http_ece.decrypt(body, private_key=self.keys[name][0], auth_secret=self.keys[name][1], version="aes128gcm")
+            except Exception as e:
+                data = ("undecryptable: %s" % e).encode()
+        with self.lock:
+            self.got.append({"name": name, "headers": {k.lower(): v for k, v in headers.items()}, "data": data.decode("utf-8", "replace")})
+        return self.codes.get(name, 201)
+
+
+def serve_app(rest, sink):
+    class Hd(BaseHTTPRequestHandler):
+        def _go(self):
+            u = urllib.parse.urlsplit(self.path)
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            if u.path.startswith("/push/"):
+                code = sink.handle(u.path, self.headers, body)
+                if code == "hang":            # a push service that never answers
+                    REAL_SLEEP(40)
+                    return
+                self.send_response(code); self.send_header("Content-Length", "0"); self.end_headers()
+                return
+            if u.path.startswith("/mode/"):   # a test process switches the store's behaviour
+                rest.mode = u.path[6:]
+                self.send_response(204); self.end_headers()
+                return
+            if rest.mode == "dribble":        # a store that answers a byte a second: per-socket timeouts never fire
+                with rest.lock:
+                    rest.log.append({"t": time.time(), "m": self.command, "p": u.path, "q": u.query, "apikey": self.headers.get("apikey"),
+                                     "auth": self.headers.get("Authorization"), "ua": "", "prefer": "", "body": body.decode("utf-8") if body else ""})
+                try:
+                    self.send_response(200); self.send_header("Content-Length", "100"); self.end_headers(); self.wfile.flush()
+                    for _ in range(100):
+                        self.wfile.write(b" "); self.wfile.flush(); REAL_SLEEP(1.0)
+                except OSError:
+                    pass
+                return
+            code, out = rest.handle(self.command, u.path, u.query, self.headers, body.decode("utf-8") if body else "")
+            raw = json.dumps(out).encode() if out is not None else b""
+            self.send_response(code)
+            if raw:
+                self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+
+        do_GET = do_POST = do_DELETE = do_PATCH = _go
+
+        def log_message(self, *a):
+            pass
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), Hd)      # a slow answer holds up its own request only
+    srv.daemon_threads = True
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+FAKE_PYWEBPUSH = '''"""A stand-in for pywebpush 2.5.0 (same call, same exception; no encryption): the test's push service reads the JSON as sent."""
+import urllib.error, urllib.request
+
+
+class WebPushException(Exception):
+    def __init__(self, message, response=None):
+        self.message, self.response = message, response
+
+    @property
+    def status_code(self):
+        return getattr(self.response, "status_code", None)
+
+
+class _R:
+    def __init__(self, code, text):
+        self.status_code, self.text = code, text
+
+
+def webpush(subscription_info, data=None, vapid_private_key=None, vapid_claims=None, content_encoding="aes128gcm", curl=False, timeout=None,
+            ttl=0, verbose=False, headers=None, requests_session=None):
+    h = dict(headers or {})
+    h["TTL"] = str(ttl or 0)
+    h["X-Timeout"] = str(timeout)
+    req = urllib.request.Request(subscription_info["endpoint"], data=(data or "").encode("utf-8"), method="POST", headers=h)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout or 5) as r:
+            return _R(r.status, "")
+    except urllib.error.HTTPError as e:
+        raise WebPushException("Push failed: %d" % e.code, response=_R(e.code, ""))
+'''
+
+
+def b64u(b):
+    import base64
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+
+
+def app_tests(check, mock, url):
+    """The iPhone app: app.py against a local PostgREST stand-in and a local push service, bot.py's live feed and hooks, the site step's
+    key guard and files, the page's decisions and sw.js in node, and supabase/setup.sql on PostgreSQL when MEMEBOT_PG is set."""
+    import importlib.util
+    print("== iPhone app: live store, push notifications, the installed app")
+    rest, sink = Rest(), PushSink()
+    srv = serve_app(rest, sink)
+    sb = "http://127.0.0.1:%d" % srv.server_address[1]
+    tmp = tempfile.mkdtemp(prefix="memebot-app-")
+    fake = os.path.join(tmp, "fakepush")
+    os.makedirs(fake)
+    with open(os.path.join(fake, "pywebpush.py"), "w") as f:
+        f.write(FAKE_PYWEBPUSH)
+    nopush = os.path.join(tmp, "nopush")
+    os.makedirs(nopush)
+    with open(os.path.join(nopush, "pywebpush.py"), "w") as f:
+        f.write("raise ImportError('pywebpush is not installed (test)')\n")
+    real = importlib.util.find_spec("pywebpush") is not None and importlib.util.find_spec("http_ece") is not None
+    has_crypto = importlib.util.find_spec("cryptography") is not None
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    base.update(PYTHONUTF8="1", MEMEBOT_PAUSE="0")
+    env_app = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=APP_SECRET)
+    if not real:
+        env_app["PYTHONPATH"] = fake + os.pathsep + base.get("PYTHONPATH", "")
+
+    def drive(code, env, timeout=120):
+        p = subprocess.run([PY, "-c", "import sys, json, time, os; sys.path.insert(0, %r)\n" % HERE + code], capture_output=True, text=True, env=env, timeout=timeout)
+        try:
+            out = json.loads((p.stdout.strip().splitlines() or ["null"])[-1])
+        except ValueError:
+            out = None
+        return p, out
+
+    seen_out = []        # every output of a process that had the secret key: none may contain it
+
+    # 1. without the variables: nothing is imported that is not stdlib, nothing goes to the network
+    p, out = drive("import app\nprint(json.dumps([app.enabled(), app.sink({'t': 1, 'agents': []}), app.notify('pick', 'a', 'b'), app.prepare()]))",
+                   dict(base, SUPABASE_URL=sb))
+    check(p.returncode == 0 and out == [False, False, {"kind": "pick", "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": "no live store"}, None] and not rest.log,
+          "app.py without SUPABASE_SECRET_KEY: off, no request, no error (%s)" % (out if out is not None else p.stderr[-200:]))
+    bare = tempfile.mkdtemp(prefix="memebot-app-bare-")
+    subprocess.run(["git", "init", "-q", "--bare", bare], check=True)
+    d0 = os.path.join(tmp, "plain")
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d0, "--mock", url, "--now", str(mock.now), "--recommend"], capture_output=True, text=True,
+                       env=dict(base, MEMEBOT_LIVE="1", RESULTS_URL=bare, SUPABASE_URL=sb, SUPABASE_PUBLISHABLE_KEY="sb_publishable_x1234567890"))
+    check(r.returncode == 0 and not rest.log and "app's live store" not in r.stderr and "app:" not in r.stderr and "live view: the office goes to branch live" in r.stderr,
+          "a live cycle without the secret key: the git live view as before, not one request to the live store, no app line in the log")
+
+    # 2. the sink: rows status and current, current on its own cadence; the key in the apikey header only
+    rec = {"v": 1, "t": 1000, "live": True, "updated": 1, "end": 2, "horizon": "2h", "mode": "full",
+           "agents": [{"id": "market", "status": "running", "bg": False, "start": 1, "end": None, "lines": ["l%d" % i for i in range(40)], "out": "x" * 300, "waits": {}, "blocked": []}],
+           "young": {"v": 1, "t": 1000, "state": "listed", "coins": [{"sym": "AAA", "ageMin": 5}, {"sym": "BBB", "ageMin": 12}]}}
+    code = ("import app, copy\nrec = json.loads(%r)\nt = 5000.0\nout = []\n" % json.dumps(rec) +
+            "def w(r, dt):\n    out.append(app.sink(r, now=t + dt))\n" +
+            "r2 = copy.deepcopy(rec); r2['updated'] = 2\n"
+            "r3 = copy.deepcopy(r2); r3['agents'][0]['lines'].append('new line')\n"
+            "r4 = copy.deepcopy(r3); r4['young']['coins'].append({'sym': 'CCC', 'ageMin': 1})\n"
+            "r5 = copy.deepcopy(r4); r5['agents'][0]['lines'].append('later')\n"
+            "r6 = copy.deepcopy(r5); r6['live'] = False\n"
+            "for r, dt in ((rec, 0), (r2, 5), (r3, 10), (r4, 12), (r5, 20), (r5, 45), (r6, 46)):\n    w(r, dt)\n"
+            "print(json.dumps(out))\n")
+    n0 = len(rest.log)
+    p, out = drive(code, env_app)
+    seen_out.append(p.stdout + p.stderr)
+    writes = [(e["q"].split("on_conflict")[0], json.loads(e["body"])["id"]) for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live"]
+    rows = [w[1] for w in writes]
+    st, cur = (rest.live.get("status") or {}).get("doc") or {}, (rest.live.get("current") or {}).get("doc") or {}
+    check(out == [True] * 7 and rows == ["current", "status", "status", "status", "current", "status", "status", "current", "status", "current", "status"],
+          "sink: current at the start, then only when the early list changed, 30 s after the last one, or at the end; status every time (%s)" % ",".join(r[0] for r in rows))
+    check(st.get("live") is False and st.get("ver") == cur.get("ver") and isinstance(st.get("ver"), int) and st.get("young") == {"n": 3, "newest": 1, "state": "listed", "at": None, "t": 1000}
+          and st["agents"][0]["lines"] == ["later"] and len(st["agents"][0]["out"]) == 120 and len(json.dumps(st)) < 2000
+          and cur.get("young", {}).get("coins", [{}])[-1].get("sym") == "CCC" and len(cur["agents"][0]["lines"]) == 12 and cur["agents"][0]["lines"][-1] == "later",
+          "status is small (%d bytes: last line, short result, the early list's count and newest age) and names current's ver; current carries young and 12 lines per agent" % len(json.dumps(st)))
+    lg = rest.log[n0:]
+    check(lg and all(e["apikey"] == APP_SECRET and e["auth"] is None and "Mozilla" not in e["ua"] for e in lg) and all(APP_SECRET not in e["q"] for e in lg)
+          and all("resolution=merge-duplicates" in e["prefer"] for e in lg if e["m"] == "POST"),
+          "every request carries the secret key in the apikey header only (no Authorization, not in the URL), with a non-browser User-Agent; writes are upserts")
+    code = ("import app\nrec = json.loads(%r)\nrec.pop('young')\nout = [app.sink(rec, now=100.0)]\n" % json.dumps(rec) +
+            "rec['agents'][0]['lines'].append('trader done')\nout.append(app.sink(rec, now=103.0))\n"
+            "rec['pick'] = {'t': 1000, 'sym': 'MOON1', 'name': 'Moon One', 'score': 81.6, 'tier': 'strong'}\nout.append(app.sink(rec, now=105.0))\n"
+            "print(json.dumps(out))\n")
+    n0 = len(rest.log)
+    p, out = drive(code, env_app)
+    seen_out.append(p.stdout + p.stderr)
+    rows = [json.loads(e["body"])["id"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live"]
+    st, cur = (rest.live.get("status") or {}).get("doc") or {}, (rest.live.get("current") or {}).get("doc") or {}
+    check(out == [True] * 3 and rows == ["current", "status", "status", "current", "status"] and cur.get("pick", {}).get("sym") == "MOON1"
+          and st.get("pick") == {"sym": "MOON1", "t": 1000, "score": 81.6} and st.get("ver") == cur.get("ver"),
+          "sink: a new pick writes current at once (not 30 s later), so a tap on the pick notification finds it; status carries the pick with its score (%s)" % ",".join(rows))
+    rest.mode = "echo"
+    p, out = drive("import app\nprint(json.dumps([app.sink({'t': 7, 'agents': []}), app.sink({'t': 7, 'agents': [{'id': 'x'}]})]))", env_app)
+    rest.mode = "paused"
+    p2, out2 = drive("import app\nprint(json.dumps([app.sink({'t': 8, 'agents': []}), app.prepare()]))", env_app)
+    rest.mode = "ok"
+    seen_out += [p.stdout + p.stderr, p2.stdout + p2.stderr]
+    check(out == [False, False] and APP_SECRET not in p.stdout + p.stderr and "bad apikey ***" in p.stderr and p.stderr.count("app: live store: writing the row status failed") == 1
+          and out2 == [False, None] and "HTTP 540" in p2.stderr and "paused" in p2.stderr,
+          "a failing store never raises: an error that echoes the key prints it blanked, once; a paused project (540) says so")
+
+    rest.mode = "dribble"
+    code = ("import app, threading\nt0 = time.time()\nerr = None\ntry:\n    app.call('GET', 'live?select=id')\nexcept app.StoreError as e:\n    err = str(e)\nt1 = time.time() - t0\n"
+            "t0 = time.time()\nok1 = app.sink({'t': 9, 'live': True, 'agents': [{'id': 'x'}]})\nt2 = time.time() - t0\n"
+            "rest_ok = %r\n" % sb + "import urllib.request\nurllib.request.urlopen(rest_ok + '/mode/ok', timeout=5).read()\n"
+            "t0 = time.time()\nok2 = app.sink({'t': 9, 'live': False, 'agents': [{'id': 'x'}]})\nt3 = time.time() - t0\n"
+            "print(json.dumps({'err': err, 't1': t1, 'ok1': ok1, 't2': t2, 'ok2': ok2, 't3': t3, 'total': app.CALL_TOTAL}))\n")
+    p, out = drive(code, env_app)
+    rest.mode = "ok"
+    seen_out.append(p.stdout + p.stderr)
+    out = out or {}
+    ok_ = bool(out.get("err") and "no complete answer within" in out["err"] and out["t1"] < out["total"] + 2 and out.get("ok1") is False and out["t2"] < 2 * out["total"] + 4
+               and out.get("ok2") is True and out["t3"] < 2)
+    check(ok_, "a store that answers a byte a second: each request is cut off after %s s (%.1f s; a sink %.1f s), the next write goes out at once when the store is back (%.1f s)%s" % (
+              out.get("total"), out.get("t1", -1), out.get("t2", -1), out.get("t3", -1), "" if ok_ else " %s %s" % (out, p.stderr[-400:])))
+
+    # 3. VAPID: made once, kept in the store, reused
+    if has_crypto:
+        n0 = len(rest.log)
+        p, out = drive("import app\nprint(json.dumps(app.prepare()))", env_app)
+        p2, out2 = drive("import app\nprint(json.dumps(app.prepare()))", env_app)
+        seen_out += [p.stdout + p.stderr, p2.stdout + p2.stderr]
+        priv = rest.secret.get("vapid_private_key") or ""
+        posts = [e for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/app_secret"]
+        check(isinstance(out, str) and out == out2 == rest.config.get("vapid_public_key") and len(out) == 87 and out.startswith("B") and len(priv) == 43 and len(posts) == 1
+              and "resolution=ignore-duplicates" in posts[0]["prefer"] and "made the VAPID key pair" in p.stderr and "made" not in p2.stderr
+              and priv not in p.stdout + p.stderr + p2.stdout + p2.stderr,
+              "VAPID: the pair is made on first use (private key in app_secret, public key in app_config), reused by the next run, never printed")
+    else:
+        print("  SKIP VAPID and push checks: cryptography is not installed here (pywebpush brings it on the runner)")
+
+    # 4. push: the right JSON to the right subscriptions, gone ones deleted, settings respected, a rate guard
+    if has_crypto:
+        def sub(name, base=None):
+            """A subscription with real keys (a P-256 point and 16 random bytes): app.py deletes rows whose keys are no keys."""
+            from cryptography.hazmat.primitives.asymmetric import ec
+            from cryptography.hazmat.primitives import serialization
+            k = ec.generate_private_key(ec.SECP256R1())
+            auth = os.urandom(16)
+            if real:
+                sink.keys[name] = (k, auth)
+            p256 = b64u(k.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint))
+            return {"endpoint": (base or sb) + "/push/" + name, "expirationTime": None, "keys": {"p256dh": p256, "auth": b64u(auth)}}
+        for name, prefs in (("both", {"young": True, "pick": True}), ("noPick", {"young": True, "pick": False}), ("noYoung", {"young": False, "pick": True}),
+                            ("gone", {"young": True, "pick": True}), ("lost", {"young": True, "pick": True}), ("busy", {"young": True, "pick": True})):
+            s_ = sub(name)
+            rest.subs[s_["endpoint"]] = {"endpoint": s_["endpoint"], "sub": s_, "prefs": prefs}
+        sink.codes.update(gone=410, lost=404, busy=503)
+        n0, g0 = len(rest.log), len(sink.got)
+        code = ("import app\nr1 = app.notify_pick({'t': 1, 'picks': [{'sym': 'MOON1', 'name': 'Moon One', 'score': 81.6, 'tier': 'strong'}]})\n"
+                "r2 = app.notify_pick({'t': 1, 'picks': [{'sym': 'MOON1'}]})\n"
+                "r3 = app.notify_young({'state': 'listed', 'coins': [{'sym': 'A1'}, {'sym': 'B2'}, {'sym': 'C3'}, {'sym': 'D4\\n'}]})\n"
+                "r4 = app.notify_young({'state': 'listed', 'coins': []})\n"
+                "print(json.dumps([r1, r2, r3, r4]))\n")
+        t_ = time.time()
+        p, out = drive(code, env_app)
+        took = time.time() - t_
+        seen_out.append(p.stdout + p.stderr)
+        got = sink.got[g0:]
+        picks = [g for g in got if '"tag":"pick"' in g["data"]]
+        youngs = [g for g in got if '"tag":"young"' in g["data"]]
+        pj = json.loads(next((g["data"] for g in picks if g["name"] == "both"), "{}") or "{}")
+        yj = json.loads(next((g["data"] for g in youngs if g["name"] == "both"), "{}") or "{}")
+        home = "https://maxpandelakis-boop.github.io/Meme-Bot/"
+        check(pj.get("web_push") == 8030 and pj.get("notification", {}).get("title") == "New pick: MOON1" and pj["notification"].get("navigate") == home + "#tab-pick"
+              and "Paper trading only, nothing is bought for real." in pj["notification"].get("body", "") and "score 82" in pj["notification"]["body"]
+              and yj.get("notification", {}).get("title") == "New coins listed" and yj["notification"].get("navigate") == home + "#tab-young"
+              and "4 new launches under an hour old: A1, B2, C3 and 1 more." in yj["notification"].get("body", ""),
+              "push (%s pywebpush): Declarative Web Push JSON (web_push 8030, a title, a body that says paper only, navigate an absolute URL in /Meme-Bot/)" % ("real" if real else "a stand-in for"))
+        names_p, names_y = sorted(g["name"] for g in picks), sorted(g["name"] for g in youngs)
+        check(names_p == ["both", "busy", "busy", "gone", "lost", "noYoung"] and names_y == ["both", "busy", "busy", "noPick"] and out and out[0]["sent"] == 2 and out[0]["gone"] == 2
+              and out[0]["failed"] == 1 and out[1]["skipped"] == "rate guard" and out[2]["sent"] == 2 and out[3] == {"skipped": "no coins"}
+              and sink.codes and all(sb + "/push/" + n not in rest.subs for n in ("gone", "lost")) and sb + "/push/both" in rest.subs and sb + "/push/busy" in rest.subs
+              and len([e for e in rest.log[n0:] if e["m"] == "DELETE"]) == 2,
+              "settings respected (no pick for noPick, no young for noYoung, nothing for gone ones now), 404 and 410 deleted, a 503 retried once and kept, a second pick right away held back by the rate guard (%s)" % ", ".join(names_p))
+        hp = next((g["headers"] for g in picks if g["name"] == "both"), {})
+        hy = next((g["headers"] for g in youngs if g["name"] == "both"), {})
+        jwt_ok, claims = False, {}
+        try:
+            from cryptography.hazmat.primitives.asymmetric import ec, utils
+            from cryptography.hazmat.primitives import hashes
+            import base64
+            dec = lambda s: base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+            m = re.fullmatch(r"vapid t=([\w-]+)\.([\w-]+)\.([\w-]+),k=([\w-]+)", hp.get("authorization", ""))
+            pub = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), dec(m.group(4)))
+            sig = dec(m.group(3))
+            pub.verify(utils.encode_dss_signature(int.from_bytes(sig[:32], "big"), int.from_bytes(sig[32:], "big")), (m.group(1) + "." + m.group(2)).encode(), ec.ECDSA(hashes.SHA256()))
+            claims = json.loads(dec(m.group(2)))
+            jwt_ok = m.group(4) == rest.config.get("vapid_public_key") and json.loads(dec(m.group(1))) == {"typ": "JWT", "alg": "ES256"}
+        except Exception as e:
+            claims = {"error": str(e)}
+        check(jwt_ok and claims.get("aud") == sb and claims.get("sub") == "https://maxpandelakis-boop.github.io" and 0 < claims.get("exp", 0) - time.time() <= 24 * 3600
+              and hp.get("ttl") == "3600" and hp.get("urgency") == "high" and hp.get("topic") == "pick" and hy.get("ttl") == "1800" and hy.get("urgency") == "normal"
+              and (real or hp.get("x-timeout") == "10"),
+              "VAPID header: an ES256 JWT that the stored public key verifies (aud the push service, sub the bare site origin, exp within 24 h); TTL, Urgency and Topic per kind")
+        n0 = len(sink.got)
+        p, out = drive("import app\nprint(json.dumps(app.notify('pick', 'x', 'y')))", dict(env_app, PYTHONPATH=nopush, MEMEBOT_PUSH_LIB=nopush))
+        seen_out.append(p.stdout + p.stderr)
+        check(out and out.get("skipped") == "no pywebpush" and len(sink.got) == n0 and "pywebpush is not installed" in p.stderr,
+              "without pywebpush nothing is sent and the log says so")
+
+        # junk rows: anyone with the publishable key can save strings that only look like keys (they pass setup.sql's format check)
+        kept = dict(rest.subs)
+        rest.subs.clear()
+        for i in range(24):
+            ep = sb + "/push/junk%02d" % i
+            rest.subs[ep] = {"endpoint": ep, "sub": {"endpoint": ep, "keys": {"p256dh": "B" + "x" * 86, "auth": "a" * 22}}, "prefs": {"young": True, "pick": True}}
+        for name, host in (("valerr", None), ("neterr", "http://127.0.0.1:9"), ("phone", None)):
+            s_ = sub(name, host)
+            rest.subs[s_["endpoint"]] = {"endpoint": s_["endpoint"], "sub": s_, "prefs": {"young": True, "pick": True}}
+        n0, g0 = len(rest.log), len(sink.got)
+        t_ = time.time()
+        code = ("import app\nw = app._webpush()\n"
+                "def wp(sub, *a, **k):\n    if sub['endpoint'].endswith('/valerr'):\n        raise ValueError('Could not deserialize key data')   # as pywebpush does on a key it cannot use\n"
+                "    return w[0](sub, *a, **k)\napp._webpush = lambda: (wp, w[1])\n"
+                "print(json.dumps(app.notify_pick({'t': 1, 'picks': [{'sym': 'MOON2', 'score': 70}]})))")
+        p, out = drive(code, env_app)
+        took = time.time() - t_
+        seen_out.append(p.stdout + p.stderr)
+        got = [g["name"] for g in sink.got[g0:]]
+        left = sorted(e.rsplit("/", 1)[-1] for e in rest.subs)
+        check(out and out.get("sent") == 1 and out.get("bad") == 25 and out.get("failed") == 1 and got == ["phone"] and left == ["neterr", "phone"] and took < 8
+              and len([e for e in rest.log[n0:] if e["m"] == "DELETE"]) == 25 and "25 unusable and deleted" in p.stderr,
+              "24 junk rows and a key pywebpush cannot use ahead of the phone: deleted without a request or a pause, the phone gets the pick in %.1f s; a network error is tried "
+              "once more and kept (%s)" % (took, out))
+        rest.subs.clear()
+        for name in ("hung", "ok1", "ok2"):
+            s_ = sub(name)
+            rest.subs[s_["endpoint"]] = {"endpoint": s_["endpoint"], "sub": s_, "prefs": {"young": True, "pick": True}}
+        sink.codes["hung"] = "hang"
+        g0 = len(sink.got)
+        t_ = time.time()
+        p, out = drive("import app\nr = app.notify_young({'state': 'listed', 'coins': [{'sym': 'A1'}]})\nr['budget'] = app.NOTIFY_BUDGET\nprint(json.dumps(r))", env_app)
+        took = time.time() - t_
+        seen_out.append(p.stdout + p.stderr)
+        got = sorted(set(g["name"] for g in sink.got[g0:]))
+        ok_ = bool(out and out.get("budget", 99) <= 15 and out.get("sent") == 2 and out.get("failed") == 1 and got == ["hung", "ok1", "ok2"] and took < out["budget"] + 3
+                   and "got no answer within" in p.stderr)
+        check(ok_, "a push service that never answers holds up its own push only: the others go out beside it and the notification ends within its %s s budget (%.1f s)%s" % (
+                  (out or {}).get("budget"), took, "" if ok_ else " %s %s %s" % (out, got, p.stderr[-400:])))
+        rest.subs.clear()
+        rest.subs.update(kept)
+
+    # 5. bot.py: a live cycle feeds the store on its own cadence and sends the pick notification; the hooks for the launch spotter
+    d1 = os.path.join(tmp, "live")
+    n0, g0 = len(rest.log), len(sink.got)
+    t_ = time.time()
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d1, "--mock", url, "--now", str(mock.now), "--recommend"], capture_output=True, text=True,
+                       env=dict(env_app, MEMEBOT_LIVE="1", RESULTS_URL=bare, SUPABASE_PUBLISHABLE_KEY="sb_publishable_x1234567890"))
+    seen_out.append(r.stdout + r.stderr)
+    lw = [e for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live"]
+    sts = [(e["t"], json.loads(e["body"])["doc"]) for e in lw if json.loads(e["body"])["id"] == "status"]
+    gaps = [round(b[0] - a[0], 1) for a, b in zip(sts, sts[1:-1])]
+    last = sts[-1][1] if sts else {}
+    curd = (rest.live.get("current") or {}).get("doc") or {}
+    off = json.load(open(os.path.join(d1, "db", "memebot", "office.json"), encoding="utf-8")) if os.path.exists(os.path.join(d1, "db", "memebot", "office.json")) else {}
+    check(r.returncode == 0 and "live view: the app's live store gets it every 5 s" in r.stderr and len(sts) >= 2 and sts[0][0] - t_ < 6 and all(g >= 4.5 for g in gaps)
+          and sts[0][1].get("live") is True and last.get("live") is False and last.get("t") == off.get("t") and {a["id"] for a in last.get("agents") or []} == {a["id"] for a in off.get("agents") or []}
+          and curd.get("live") is False and curd.get("pick", {}).get("sym") and last.get("pick", {}).get("sym") == curd["pick"]["sym"],
+          "a live cycle writes status about every 5 s (first after %.1f s, gaps %s s), the last one live false with the office's agents; current carries the pick" % (
+              (sts[0][0] - t_) if sts else -1, gaps))
+    picks = [g for g in sink.got[g0:] if '"tag":"pick"' in g["data"]]
+    rec_doc = json.load(open(os.path.join(d1, "db", "memebot", "recommend.json"), encoding="utf-8")) if os.path.exists(os.path.join(d1, "db", "memebot", "recommend.json")) else {}
+    sym = ((rec_doc.get("picks") or [{}])[0]).get("sym")
+    check(sym and [g["name"] for g in picks].count("both") == 1 and ("New pick: %s" % sym) in picks[0]["data"] and "push: pick sent to" in r.stderr,
+          "the pick notification goes out once after the trader step (%s)" % sym)
+    code = ("import bot, app\nd = %r\nbot.OFFICE = bot.Office(d, 4242, '2h'); bot.OFFICE.begin('scouts')\n" % os.path.join(tmp, "hook") +
+            "app.prepare = lambda: time.sleep(9)\n"          # a slow store while the VAPID keys are made: the status writes must not wait for it
+            "os.makedirs(d, exist_ok=True)\nlive = bot.Live(d, None, app)\ntime.sleep(2.6)\n"
+            "y1 = {'v': 1, 't': 4242, 'state': 'listed', 'coins': [{'sym': 'NEW1', 'ageMin': 3}, {'sym': 'NEW2', 'ageMin': 8}]}\n"
+            "bot.live_put('young', y1)\ntime.sleep(5.5)\n"
+            "bot.live_put('young', dict(y1, rc='done'))\ntime.sleep(5.5)\n"
+            "again = bot.young_published(y1)\n"
+            "for t in list(bot.APP_JOBS): t.join(20)\n"
+            "slow = app.sink\napp.sink = lambda rec, now=None: (time.sleep(30), slow(rec))[1]\n"
+            "t0 = time.time(); live.finish(time.time() + 2); took = time.time() - t0\n"
+            "print(json.dumps({'again': again, 'took': took}))\n")
+    n0, g0 = len(rest.log), len(sink.got)
+    p, out = drive(code, env_app)
+    seen_out.append(p.stdout + p.stderr)
+    ys = [g for g in sink.got[g0:] if '"tag":"young"' in g["data"]]
+    stw = [json.loads(e["body"])["doc"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "status"]
+    stt = [e["t"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "status"]
+    gaps = [round(b - a, 1) for a, b in zip(stt, stt[1:3])]
+    check(len(gaps) == 2 and max(gaps) < 6.6, "the VAPID keys are made on a thread of their own: a slow store there does not hold up the status writes (gaps %s s)" % gaps)
+    check(out and out["again"] is False and out["took"] < 4 and [g["name"] for g in ys].count("both") == 1 and "2 new launches under an hour old: NEW1, NEW2." in ys[0]["data"]
+          and any((s.get("young") or {}).get("n") == 2 for s in stw) and ((rest.live.get("current") or {}).get("doc") or {}).get("young", {}).get("rc") == "done",
+          "hooks: live_put('young', doc) reaches both rows within seconds, its first listing sends one 'new coins' notification (a second version and "
+          "young_published again send none); the end waits for a hung store %.1f s, not more" % (out or {}).get("took", -1))
+    code = ("import bot\ny = {'v': 1, 't': 1, 'state': 'listed', 'coins': [{'sym': 'A'}]}\nok = bot.live_put('young', y)\n"
+            "y['coins'].append({'sym': 'B'}); y['state'] = 'changed'\nsig, rec = bot.live_record(True)\n"
+            "loop = {}; loop['me'] = loop\nbad = bot.live_put('x', loop)\n"
+            "print(json.dumps([ok, rec['young'], bad, 'x' in bot.live_record(True)[1]]))\n")
+    p, out = drive(code, base)
+    check(out == [True, {"v": 1, "t": 1, "state": "listed", "coins": [{"sym": "A"}]}, False, False],
+          "live_put keeps a copy: the caller may change its own dict afterwards; a value that is not JSON is left out (%s)" % (out if out is not None else p.stderr[-200:]))
+
+    # 6. the site: the publishable-key guard, sw.js, the manifest id, the opaque apple-touch-icon
+    sd = os.path.join(tmp, "site")
+    guard = []
+    jwt = lambda role: "eyJhbGciOiJIUzI1NiJ9." + b64u(json.dumps({"role": role, "iss": "supabase"}).encode()) + ".c2ln"
+    for key, u, want, said in (("sb_publishable_OKkey_1234567890", "https://abcref.supabase.co", True, "app live store on"),
+                               (APP_SECRET, "https://abcref.supabase.co", False, "NOT put in the page: it is a SECRET key"),
+                               (jwt("service_role"), "https://abcref.supabase.co", False, "a JWT with the role service_role"),
+                               (jwt("anon"), "https://abcref.supabase.co", False, "a legacy anon key"),
+                               ("sb_publishable_OKkey_1234567890", "http://abcref.supabase.co", False, "SUPABASE_URL is not an address like https://<ref>.supabase.co"),
+                               ("sb_publishable_OKkey_1234567890", "", False, "SUPABASE_URL is missing")):
+        shutil.rmtree(sd, ignore_errors=True)
+        r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "site", "--dir", d1, "--out", sd, "--repo", "https://github.com/maxpandelakis-boop/Meme-Bot"], capture_output=True, text=True,
+                           env=dict(base, SUPABASE_URL=u, SUPABASE_PUBLISHABLE_KEY=key, SUPABASE_SECRET_KEY=APP_SECRET))
+        seen_out.append(r.stdout + r.stderr)
+        idx = open(os.path.join(sd, "index.html"), encoding="utf-8").read() if os.path.exists(os.path.join(sd, "index.html")) else ""
+        has = ('data-sb-url="%s" data-sb-key="%s"' % (u, key)) in idx
+        guard.append(r.returncode == 0 and has == want and said in r.stderr and (want or ("data-sb-url" not in idx.split("<head>")[0] and key not in idx and key not in r.stderr)))
+        if want:
+            files = sorted(os.listdir(sd))
+            man = json.load(open(os.path.join(sd, "manifest.webmanifest"), encoding="utf-8"))
+            sw = open(os.path.join(sd, "sw.js"), encoding="utf-8").read()
+            png = open(os.path.join(sd, "icon-180.png"), "rb").read()
+            import zlib
+            raw = zlib.decompress(png[png.index(b"IDAT") + 4:png.index(b"IEND") - 8])
+            alphas = {raw[i * (180 * 4 + 1) + 1 + x * 4 + 3] for i in range(180) for x in range(180)}
+            app_ok = (man.get("id") == "/Meme-Bot/" and man.get("scope") == "./" and "sw.js" in files and "self.addEventListener('push'" in sw and alphas == {255}
+                      and '<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">' in idx and 'http-equiv="refresh"' not in idx and "window.MemebotApp" in idx
+                      and "html.app .tabbar" in idx and 'data-app="account"' in idx)
+    r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "site", "--dir", d1, "--out", sd, "--repo", "https://github.com/someone/other-repo"], capture_output=True, text=True, env=base)
+    man2 = json.load(open(os.path.join(sd, "manifest.webmanifest"), encoding="utf-8")) if r.returncode == 0 else {}
+    idx2 = open(os.path.join(sd, "index.html"), encoding="utf-8").read() if r.returncode == 0 else "data-sb-url="
+    check('<html lang="en">' in idx2 and 'data-sb-url="' not in idx2 and "app live store off" in r.stderr and "app's live store stays off" not in r.stderr,
+          "site without the Supabase variables: no live store in the page, nothing said about it but 'off'")
+    check(guard == [True] * 6, ("%s " % guard if not all(guard) else "") + "site: only a publishable key (sb_publishable_) goes into the page; a secret key, a service_role or anon JWT, an http address are refused and the log says why without the key")
+    check(app_ok and man2.get("id") == "/other-repo/", "site: sw.js beside index.html, manifest id /Meme-Bot/ (the repository's folder), an opaque apple-touch-icon, no meta refresh, the app's script and style")
+
+    # 7. the secret key (and the VAPID private key) never in any output, file, page or the live branch
+    priv = rest.secret.get("vapid_private_key") or "no-private-key-made"
+    blobs = list(seen_out)
+    for root_ in (tmp, bare):
+        for dp, dn, fn in os.walk(root_):
+            for n in fn:
+                try:
+                    blobs.append(open(os.path.join(dp, n), "rb").read().decode("utf-8", "replace"))
+                except OSError:
+                    pass
+    blobs.append(subprocess.run(["git", "-C", bare, "show", "live:live.json"], capture_output=True, text=True).stdout)
+    check(len(blobs) > 50 and not any(APP_SECRET in b or priv in b for b in blobs) and "live" in subprocess.run(["git", "-C", bare, "branch", "--list"], capture_output=True, text=True).stdout,
+          "the secret key and the VAPID private key are in no output, no file of the run folders, no page and not on the branch live (%d outputs and files read)" % len(blobs))
+
+    # 8. the page's decisions and sw.js in node
+    node = shutil.which("node")
+    if node:
+        import report as R_
+        import app as A_
+        jd = os.path.join(tmp, "js")
+        os.makedirs(jd)
+        with open(os.path.join(jd, "page.js"), "w", encoding="utf-8") as f:
+            f.write("global.window={};global.document={readyState:'complete',querySelector:function(){return null;}};global.navigator={};\n" + R_.OFFICE_LIVE_JS + A_.PAGE_JS + r"""
+var MB=window.MemebotLive,A=window.MemebotApp,o={};
+var U='https://abcdefghijklmnopqrst.supabase.co',K='sb_publishable_AbC_12-3';
+o.transport=[MB.transport(U,K,'gh'),MB.transport(U+'/',K,''),MB.transport(U,'sb_secret_x','gh'),MB.transport(U,'eyJx.y.z','gh'),MB.transport('http://x.supabase.co',K,'gh'),
+  MB.transport('https://x.supabase.co/rest/v1',K,'gh'),MB.transport('',K,''),MB.transport(U,K+'"><script>','gh')];
+o.fallback=[MB.fallback(200,0),MB.fallback(540,1),MB.fallback(0,1),MB.fallback(0,2),MB.fallback(500,1),MB.fallback(401,2),MB.fallback(404,3)];
+var T0=1e12,LV={live:true,updated:T0-2000,t:5,agents:[]},OLD={live:true,updated:T0-MB.STALE-1,t:5,agents:[]},END={live:false,updated:T0-2000,t:5,agents:[]};
+o.sbNext=[MB.sbNext(T0,0,LV)-T0,MB.sbNext(T0,1,LV)-T0,MB.sbNext(T0,2,LV)-T0,MB.sbNext(T0,9,LV)-T0,MB.sbNext(T0,0,END)-T0,MB.sbNext(T0,0,OLD)-T0,MB.sbNext(T0,0,null)-T0,
+  MB.sbNext(T0,1,END)-T0,MB.sbNext(T0,9,END)-T0];
+var ST={t:5,live:true,ver:9,agents:[{id:'a'}],young:{n:2,newest:3,state:'listed'},pick:{sym:'P',t:5,score:70}},
+  CUR={t:5,ver:9,agents:[],young:{t:5,state:'listed',coins:[{sym:'A'},{sym:'B'}]},pick:{t:5,sym:'P',name:'Pe',score:70,tier:'strong'}};
+var m1=MB.merge(ST,CUR),m2=MB.merge(ST,{t:4,young:{coins:[{sym:'OLD'}]},pick:{sym:'OLD',t:4}}),m3=MB.merge(ST,null);
+o.merge=[m1.young.coins.length,m1.pick.name,m1.agents.length,m1.ver,m2.young,m2.pick.sym,m3.young,ST.young.n,MB.merge(null,CUR)];
+var mm=function(hit){return function(q){return {matches:hit&&q.indexOf('display-mode: '+hit)>=0};};};
+o.installed=[A.installed({standalone:true},null),A.installed({standalone:false},mm(null)),A.installed({},mm('fullscreen')),A.installed({},mm('standalone')),
+  A.installed({},function(){throw new Error('x');}),A.installed({},null)];
+var B={sw:true,push:true,notif:true,store:true,key:'k',perm:'default',sub:null,saved:false,error:''},S=function(o2){return A.pushState(Object.assign({},B,o2));};
+o.push=[S({}),S({sub:{},saved:true}),S({perm:'denied'}),S({push:false}),S({sw:false}),S({notif:false}),S({store:false}),S({key:null}),S({error:'x'}),S({sub:{},saved:false,error:'x'}),A.pushState(null),
+  S({sub:{},saved:false,perm:'granted'}),S({sub:{},saved:false,perm:'granted',error:'x'}),S({sub:{},saved:false,perm:'default'})];
+o.count=[A.count({coins:[{sym:'A'},{sym:'B'},null]}),A.count({n:6,newest:4}),A.count({state:'listed'}),A.count(null),A.count({coins:[]})];
+o.pick=[A.pick({pick:{sym:'S',t:9}},{pick:{sym:'C',t:9}},5).sym,A.pick({pick:null},{pick:{sym:'C',t:9}},5).sym,A.pick({pick:{sym:'S',t:4}},{pick:{sym:'C',t:3}},5),A.pick(null,null,5),
+  A.pick({pick:{sym:'',t:9}},null,5)];
+o.tab=[A.tab('#tab-young'),A.tab('tab-account'),A.tab('#tab-pick'),A.tab('#tab-x'),A.tab('#pane-young'),A.tab('')];
+o.store=[!!A.store(U,K),!!A.store(U,'sb_secret_x'),!!A.store('http://x.co',K)];
+console.log(JSON.stringify(o));
+""")
+        r = subprocess.run([node, os.path.join(jd, "page.js")], capture_output=True, text=True)
+        try:
+            o = json.loads(r.stdout)
+        except ValueError:
+            o = {"err": r.stderr[-400:]}
+        check(o.get("transport") == ["supabase", "supabase", "github", "github", "github", "github", "none", "github"]
+              and o.get("fallback") == ["supabase", "github", "supabase", "github", "supabase", "github", "github"],
+              "the page's transport (node): the live store with an https address and a publishable key, else the GitHub poll; a 540 falls back at once, other "
+              "failures (network, CORS: no status) after two in a row %s" % ({k: o.get(k) for k in ("transport", "fallback")} if "transport" in o else o))
+        # the free plan's 5 GB of egress a month: a page left open all day costs about 1 GB (a 2.5 KB status row, 25 minutes of each hour live)
+        per_day = (24 * 25 * 60 / 4 + 24 * 35 * 60 / 30) * 2500 / 1e9 if o.get("sbNext") else 99
+        check(o.get("sbNext") == [4000, 8000, 16000, 30000, 30000, 30000, 30000, 60000, 120000] and per_day * 30 < 1.5,
+              "the page polls the live store every 4 s only while a scan is live and fresh, every 30 s otherwise (a finished, stale or missing scan), longer after "
+              "failures: a page left open all day reads about %.1f GB a month of status rows, not 2 %s" % (per_day * 30, o.get("sbNext")))
+        check(o.get("merge") == [2, "Pe", 1, 9, None, "P", None, 2, None],
+              "the page's snapshot from the live store is the status row with current's early list and pick of the same scan (live.json's shape), none of an older scan %s" % o.get("merge"))
+        check(o.get("installed") == [True, False, True, True, False, False]
+              and o.get("push") == ["off", "on", "denied", "unsupported", "unsupported", "unsupported", "nostore", "nokey", "error", "error", "unsupported", "on", "error", "off"]
+              and o.get("tab") == ["young", "account", "pick", None, None, None] and o.get("store") == [True, False, False],
+              "the installed app (node): navigator.standalone or a standalone/fullscreen display mode; the notifications control says off, on, denied, not supported, "
+              "not set up, not ready or the error; deep links pick a tab %s" % ({k: o.get(k) for k in ("installed", "push")} if "push" in o else o))
+        check(o.get("push", [None] * 14)[11:] == ["on", "error", "off"] and o.get("count") == [2, 6, None, None, 0] and o.get("pick") == ["S", "C", None, None, None],
+              "the installed app (node): a subscription that exists with the permission granted stays On when only the quiet save at the start failed (a failed tap is "
+              "the error); the New coins count from the list's coins or the status brief; the New pick note from the status row as soon as the notification, else current %s" % (
+                  {k: o.get(k) for k in ("count", "pick")}))
+        with open(os.path.join(jd, "sw.js"), "w", encoding="utf-8") as f:
+            f.write(r"""
+var H={},shown=[],posted=[],opened=[],focused=0,store={},deleted=[],netOK=true,wins=[];
+global.self={location:new URL('https://maxpandelakis-boop.github.io/Meme-Bot/sw.js'),addEventListener:function(n,f){H[n]=f;},skipWaiting:function(){},
+  registration:{showNotification:function(t,o){shown.push([t,o]);return Promise.resolve();}},
+  clients:{claim:function(){return Promise.resolve();},matchAll:function(){return Promise.resolve(wins);},openWindow:function(u){opened.push(u);return Promise.resolve();}}};
+global.caches={keys:function(){return Promise.resolve(['memebot-page-v0','memebot-page-v1','other-app']);},delete:function(k){deleted.push(k);return Promise.resolve(true);},
+  open:function(){return Promise.resolve({put:function(k,r){return r.text().then(function(t){store[k]=t;});}});},
+  match:function(k){return Promise.resolve(store[k]!==undefined?new Response(store[k]):undefined);}};
+global.fetch=function(u){return netOK?Promise.resolve(new Response('<html lang="en"><body><div class="wrap">NEW</div></body></html>',{status:200})):Promise.reject(new TypeError('offline'));};
+""" + A_.SW_JS + r"""
+function ev(extra){var p=[];return Object.assign({waitUntil:function(x){p.push(x);},respondWith:function(x){p.push(x);this.res=x;},done:function(){return Promise.all(p);}},extra);}
+function data(x){return {json:function(){return JSON.parse(x);},text:function(){return x;}};}
+var o={};
+(async function(){
+  var e=ev({});H.activate(e);await e.done();o.deleted=deleted;
+  var push=async function(d){var e=ev({data:d});H.push(e);await e.done();return shown[shown.length-1];};
+  o.decl=await push(data(JSON.stringify({web_push:8030,notification:{title:'New pick: MOON1',body:'b',navigate:'https://maxpandelakis-boop.github.io/Meme-Bot/#tab-pick',lang:'en',tag:'pick'}})));
+  o.outside=await push(data(JSON.stringify({web_push:8030,notification:{title:'T',navigate:'https://evil.example/#x'}})));
+  o.text=await push(data('hello there'));o.none=await push(null);o.nul=await push(data('null'));
+  var click=async function(url){var e=ev({notification:{data:{url:url},close:function(){}}});H.notificationclick(e);await e.done();};
+  wins=[];await click('https://maxpandelakis-boop.github.io/Meme-Bot/#tab-young');o.opened=opened.slice();
+  wins=[{url:'https://maxpandelakis-boop.github.io/Meme-Bot/',focus:function(){focused++;return Promise.resolve(this);},postMessage:function(m){posted.push(m);}}];
+  await click('https://evil.example/');o.focused=focused;o.posted=posted;
+  var nav=async function(url,mode){var e=ev({request:{url:url,method:'GET',mode:mode||'navigate'}});H.fetch(e);if(!e.res)return null;var r=await e.res;await new Promise(function(r){setTimeout(r,10);});return r?await r.text():'';};
+  netOK=true;o.online=await nav('https://maxpandelakis-boop.github.io/Meme-Bot/?x=1');
+  netOK=false;o.offline=await nav('https://maxpandelakis-boop.github.io/Meme-Bot/index.html');
+  o.other=await nav('https://maxpandelakis-boop.github.io/Meme-Bot/icon-180.png','no-cors');o.otherPage=await nav('https://maxpandelakis-boop.github.io/Other/');
+  console.log(JSON.stringify(o));
+})().catch(function(e){console.log(JSON.stringify({err:String(e&&e.stack||e)}));});
+""")
+        r = subprocess.run([node, os.path.join(jd, "sw.js")], capture_output=True, text=True)
+        try:
+            o = json.loads(r.stdout)
+        except ValueError:
+            o = {"err": r.stderr[-400:]}
+        home = "https://maxpandelakis-boop.github.io/Meme-Bot/"
+        check(o.get("deleted") == ["memebot-page-v0"] and o.get("decl", [None, {}])[0] == "New pick: MOON1" and o["decl"][1].get("data", {}).get("url") == home + "#tab-pick"
+              and o["decl"][1].get("body") == "b" and o.get("outside", [None, {}])[1].get("data", {}).get("url") == home and o.get("text", [None, {}])[0] == "Meme-Bot"
+              and o["text"][1].get("body") == "hello there" and o.get("none", [None])[0] == "Meme-Bot" and o.get("nul", [None])[0] == "Meme-Bot",
+              "sw.js (node): every push shows a notification (declarative JSON, plain text, no data, null), its link stays inside /Meme-Bot/; old caches go %s" % (o.get("err") or ""))
+        check(o.get("opened") == [home + "#tab-young"] and o.get("focused") == 1 and o.get("posted") == [{"type": "memebot-open", "url": home}]
+              and "NEW" in (o.get("online") or "") and 'data-offline="1"' in (o.get("offline") or "") and "Offline." in (o.get("offline") or "") and "not the current one" in (o.get("offline") or "")
+              and o.get("other") is None and o.get("otherPage") is None,
+              "sw.js (node): a tap opens the app at the link or brings the open app forward and tells it the tab; the page comes from the network, offline the last copy marked as not current")
+    else:
+        print("  SKIP the page's decisions and sw.js in node: node not found")
+
+    # 9a. links stay inside the website; the push library comes after the standard library; the pinned install; setup.sql's guards
+    code = ("import app\nh = app.site_url()\nus = ['#tab-young', h + '../evil/', h + '%2e%2e/evil/', h + '%2E%2e/x', h + 'a/./b', h + '..%5cevil', h + 'x\\\\..\\\\y',\n"
+            "      'https://evil.example/', 'javascript:alert(1)', '//evil.example/x', h + 'a..b/#tab-x']\nprint(json.dumps([app.in_scope(u) for u in us]))\n")
+    p, out = drive(code, base)
+    home = "https://maxpandelakis-boop.github.io/Meme-Bot/"
+    check(out == [home + "#tab-young"] + [home] * 9 + [home + "a..b/#tab-x"],
+          "notification links: a dot segment (.., ., %%2e), a backslash or another site always opens the website itself (%s)" % (out if out is not None else p.stderr[-200:]))
+    lib = os.path.join(tmp, "pushlib")
+    os.makedirs(lib, exist_ok=True)
+    with open(os.path.join(lib, "textwrap.py"), "w") as f:
+        f.write("raise ImportError('a push library must never shadow the standard library')\n")
+    code = ("import sysconfig, app\napp._push_path()\nimport textwrap\nlib = os.environ['MEMEBOT_PUSH_LIB']\ni = sys.path.index(lib)\n"
+            "std = [k for k, p_ in enumerate(sys.path) if p_ and os.path.realpath(p_).startswith(os.path.realpath(sysconfig.get_paths()['stdlib']))]\n"
+            "import site as S\nsd = {os.path.realpath(x) for x in S.getsitepackages() + [S.getusersitepackages()]}\n"
+            "site = [k for k, p_ in enumerate(sys.path) if p_ and os.path.realpath(p_) in sd]\n"
+            "print(json.dumps([textwrap.__file__.startswith(os.path.dirname(os.__file__)), i > max(std), all(i < k for k in site if sys.path[k] != lib)]))\n")
+    p, out = drive(code, dict(base, MEMEBOT_PUSH_LIB=lib))
+    check(out == [True, True, True], "the push library (MEMEBOT_PUSH_LIB) goes right after the standard library: it shadows no standard module and its pinned versions "
+          "come before the system's site-packages %s" % (out if out is not None else p.stderr[-200:]))
+    wf = open(os.path.join(HERE, ".github", "workflows", "scan.yml"), encoding="utf-8").read()
+    step = wf[wf.index("- name: Install the push sender"):wf.index("- name: Scan and recommend")]
+    reqf = open(os.path.join(HERE, "supabase", "push-requirements.txt"), encoding="utf-8").read()
+    pins = re.findall(r"^([A-Za-z0-9_.-]+)==([^ \n]+) \\\n((?:    --hash=sha256:[0-9a-f]{64}(?: \\\n)?)+)", reqf, re.M)
+    reqs = [l for l in reqf.splitlines() if l and not l.startswith(("#", " "))]
+    ece = re.search(r"http_ece-1\.2\.1\.tar\.gz\s+sha256 ([0-9a-f]{64})", reqf)
+    check(all(x in step for x in ("--require-hashes", "--only-binary=:all:", "--no-deps", "-r supabase/push-requirements.txt", "RESULTS_URL: ''", "sha256sum -c", "app._push_path()"))
+          and "pip install $opts \"pywebpush" not in step and len(pins) == len(reqs) >= 15 and ("pywebpush", "2.5.0") in [(n, v) for n, v, _ in pins]
+          and {"cryptography", "requests", "aiohttp", "py-vapid", "urllib3"} <= {n for n, _, _ in pins} and ece and ece.group(1) in step,
+          "the push sender is installed from supabase/push-requirements.txt only: %d packages, each pinned with sha256 hashes, wheels only, no other dependency; "
+          "http-ece's sdist checked against its sha256; the GitHub token is not in that step" % len(pins))
+    sql = open(os.path.join(HERE, "supabase", "setup.sql"), encoding="utf-8").read()
+    check("order by seen desc, created desc" in sql and "order by seen asc" not in sql and "interval '1 hour') >= 6" in sql
+          and "~ '^B[A-Za-z0-9_-]{86}=?$'" in sql and "~ '^[A-Za-z0-9_-]{22}(==)?$'" in sql,
+          "setup.sql: the 25-row cap keeps the rows seen most recently (the phone), at most 6 new subscriptions an hour, keys must look like a P-256 key and 16 bytes")
+    pj = __import__("app").PAGE_JS
+    check("iOS said no" not in pj and "from another browser" in pj and "These two apply once notifications are on." in pj and "applicationServerKey" in pj
+          and "select(t,'keep')" in pj and "[data-early]" in pj and "visibilitychange',back" in pj and "The app refreshes when you come back to it" in pj
+          and "\u2014" not in pj and "Add to Home Screen from Safari first" not in pj,
+          "the installed app's texts and habits: neutral subscribe errors, the right advice when push is missing, the switches marked as for later while off, "
+          "each tab keeps its scroll position, the subscription's own key compared, the live count only with the live list, no reload promise the app does not keep")
+
+    # 9. supabase/setup.sql on PostgreSQL (MEMEBOT_PG=<host or socket folder>:<port>)
+    pg = os.environ.get("MEMEBOT_PG")
+    if pg and ":" in pg:
+        h_, port_ = pg.rsplit(":", 1)
+        r = subprocess.run([PY, os.path.join(HERE, "supabase", "test_setup.py"), h_, port_], capture_output=True, text=True, timeout=300)
+        n_ok = r.stdout.count("  PASS ")
+        check(r.returncode == 0 and "SQL ALL PASS" in r.stdout, "supabase/setup.sql on PostgreSQL: %d checks (anon reads live and app_config, uses only save_push_sub and drop_push_sub, "
+              "never reads push_subs or app_secret, never writes live; idempotent; upgrades the first version) %s" % (n_ok, "" if r.returncode == 0 else r.stdout[-600:]))
+    else:
+        print("  SKIP supabase/setup.sql on PostgreSQL: set MEMEBOT_PG=<host or socket folder>:<port> to run supabase/test_setup.py")
+    srv.shutdown()
+    shutil.rmtree(tmp, ignore_errors=True)
+    shutil.rmtree(bare, ignore_errors=True)
+
+
 def main():
     mock = Mock()
     srv = serve(mock)
@@ -1360,8 +2027,8 @@ def main():
     d = tempfile.mkdtemp(prefix="memebot-test-")
     os.environ["LUNARCRUSH_API_KEY"] = "test"
     os.environ["BITQUERY_TOKEN"] = "test"
-    for k in ("MEMEBOT_LIVE", "RESULTS_URL", "GITHUB_REPOSITORY"):   # the test never pushes a live view, and its pages are built as on a laptop
-        os.environ.pop(k, None)
+    for k in ("MEMEBOT_LIVE", "RESULTS_URL", "GITHUB_REPOSITORY", "SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_PUBLISHABLE_KEY", "MEMEBOT_PUSH_LIB", "MEMEBOT_SITE_URL"):
+        os.environ.pop(k, None)     # the test never pushes a live view or writes to a live store, and its pages are built as on a laptop
     fails = []
 
     def check(ok, what):
@@ -2420,6 +3087,8 @@ console.log(JSON.stringify(o));
           "bot.py summary prints Markdown (%s)" % (r.stdout.strip().splitlines() or ["?"])[1][:60])
     shutil.rmtree(sd, ignore_errors=True)
     shutil.rmtree(os.path.join(d, ".git"), ignore_errors=True)
+
+    app_tests(check, mock, url)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:

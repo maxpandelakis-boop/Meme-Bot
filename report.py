@@ -928,14 +928,42 @@ JS = r"""
 # The cards are built with createElement and textContent only, once per new list, order or state (the ages change in place, so a
 # selection or the focus survives); links come from fixed templates and an address that passes the base58 check, never a swap link.
 # #new opens the tab once (the hash is dropped, so a reload keeps the tab the reader chose).
+# The transport: a website built with the app's live store (bot.py site puts data-sb-url and a publishable data-sb-key on <html>) reads
+# the Supabase row status instead while the page is visible (any tab): every 4 s while a scan is live, every 30 s otherwise (a new scan
+# shows within half a minute; a page left open all day reads about 1.2 to 1.3 GB a month with the row current, inside the free plan's
+# 5 GB), and the row current only when status names a new ver. The snapshot the page draws is status with current's early list ("young")
+# and pick when current is of the same scan (MB.merge), so it has the same shape as live.json on the GitHub poll: the office view and the
+# early box draw it the same way, whichever transport brought it (one poller at a time, never both). An HTTP 540 (project paused) or two
+# failures in a row (network, CORS, any other status) fall back to the GitHub poll above, quietly, and the live store is tried again 2
+# minutes later. Every answer, and every change of what the early box shows, goes out as the window event "memebot-live" (detail: via,
+# status: the snapshot, current: the whole record, state: the office's state, early: the early box's state, young: the early list) for
+# the installed app's tab bar; MemebotLive.current() is the newest whole record.
 OFFICE_LIVE_JS = r"""
 (function(){
 var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RESERVE:10,GRID:[-2,5,15,25,35,45],WIN:[-2,35],EARLY_OLD:4500000,LAG:120000,
+  SB_EVERY:4000,SB_IDLE:30000,SB_TIMEOUT:8000,SB_RETRY:120000,SB_FAILS:2,
   // how old a snapshot is (ms). got: the local time its "updated" was first seen here; moved: it replaced an older "updated" of the same
   // scan, so the scan is pushing and the phone's clock is not needed: the local time since then, plus the delay it was seen with (at
   // most LAG). Before that, the phone's clock is the first guess (never less than the local time since). Without got: the phone's clock.
   age:function(doc,now,got,moved){var up=+(doc&&doc.updated)||0,loc=got>0?Math.max(0,now-got):null;
     return loc==null?now-up:moved?loc+Math.min(MB.LAG,Math.max(0,got-up)):Math.max(loc,now-up);},
+  // which transport the page uses: supabase when it carries the live store's https address and a publishable key, else github when
+  // it has the box for the branch "live", else none
+  transport:function(url,key,src){
+    if(/^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?\/?$/.test(String(url||''))&&/^sb_publishable_[A-Za-z0-9_-]+$/.test(String(key||'')))return 'supabase';
+    return src?'github':'none';
+  },
+  // after a poll of the live store (status: the HTTP status, 0 for no answer: network, CORS or timeout; fails: failures in a row, this
+  // one included): stay with supabase, or fall back to github (540: the project is paused; SB_FAILS failures in a row)
+  fallback:function(status,fails){return status>=200&&status<300?'supabase':status===540||fails>=MB.SB_FAILS?'github':'supabase';},
+  // when the next poll of the live store is due (ms): SB_EVERY while the snapshot is a live scan updated within STALE (by age(), so a
+  // phone clock that is off does not slow it down), else SB_IDLE; doubled per failure in a row, up to 30 s (live) or 2 minutes
+  sbNext:function(now,fails,doc,got,moved){var live=!!(doc&&typeof doc==='object'&&doc.live===true&&MB.age(doc,now,got,moved)<MB.STALE),f=Math.max(0,Math.min(10,+fails||0));
+    return now+Math.min(live?30000:120000,(live?MB.SB_EVERY:MB.SB_IDLE)*Math.pow(2,f));},
+  // the snapshot from the live store: the row status (fresh every few seconds; of the early list and the pick it has only a brief) with
+  // the early list and the pick of the row current when that is of the same scan, else no early list
+  merge:function(st,cur){if(!st||typeof st!=='object')return st;var d={},k,same=!!(cur&&typeof cur==='object'&&cur.t===st.t);for(k in st)d[k]=st[k];
+    d.young=same&&cur.young&&typeof cur.young==='object'?cur.young:null;if(same&&cur.pick&&typeof cur.pick==='object')d.pick=cur.pick;return d;},
   // what the box shows for the newest snapshot: hide (none, or older than this page's run), live, paused (a live one older than
   // STALE by its "updated", or two failed polls in a row: the scan may still run), done, stopped (no report came from it)
   state:function(doc,now,pageT,fails,got,moved){
@@ -993,7 +1021,10 @@ function go(){
   try{names=JSON.parse(box.getAttribute('data-names'))||{};}catch(e){}
   var all=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   var office=document.querySelector('.office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
-  var tabs=['tab-office','tab-young'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the polls run while one of them is open
+  var tabs=['tab-office','tab-young'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open
+  var root=document.documentElement,sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
+  var mode=MB.transport(sbUrl,sbKey,src),SB={next:0,fails:0,busy:false,ver:null,cur:null,back:0};
+  MB.via=function(){return mode;};MB.current=function(){return mode==='supabase'?SB.cur:S.doc;};
   // S: the newest snapshot, when the next poll is due, the failed polls in a row and GitHub's rate-limit numbers, shared by the tabs
   var S={doc:null,next:0,fails:0,rem:null,reset:0,at:0,got:0,moved:false},busy=false,shown=null,keep={};
   function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'&&+s.at>S.at&&typeof s.next==='number'){S=s;return true;}}catch(e){}return false;}
@@ -1002,7 +1033,7 @@ function go(){
   if(location.hash==='#new'&&document.getElementById('tab-young')){keep.tab='tab-young';try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}     // once: a reload keeps the tab the reader chose
   all('input[name="tab"],input[name="odept"]').forEach(function(r){if(keep[r.name]===r.id)r.checked=true;
-    r.addEventListener('change',function(){keep[r.name]=r.id;try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}poll();});});
+    r.addEventListener('change',function(){keep[r.name]=r.id;try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}step();});});
   function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:tz})+' '+tzn;}catch(e){return new Date(ms).toTimeString().slice(0,5);}}
   function decode(b64){var s=atob(String(b64||'').replace(/\s+/g,'')),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return JSON.parse(new TextDecoder('utf-8').decode(u));}
   function word(a){var s=a&&a.status;return !a?'wait':s==='running'?'work':s==='failed'?'fail':'done';}
@@ -1011,7 +1042,7 @@ function go(){
   function last(a){return a&&Array.isArray(a.lines)&&a.lines.length?String(a.lines[a.lines.length-1]):'';}
   function now(){return Date.now();}
   // the early list on the New launches tab: this page's own list and the scored list's verdict on each coin come with the page
-  var ebox=document.querySelector('[data-early]'),eT=0,own=null,fin=null,eorder='new',eKey=null,eCards=null,eLabel=null;
+  var ebox=document.querySelector('[data-early]'),eT=0,own=null,fin=null,eorder='new',eKey=null,eCards=null,eLabel=null,eSent=null;
   var B58=/^[1-9A-HJ-NP-Za-km-z]{32,48}$/,XL=/^https:\/\/(www\.)?(x|twitter)\.com\/[A-Za-z0-9_]{1,30}(\/status\/\d{1,25})?\/?$/;
   if(ebox){eT=+ebox.getAttribute('data-run-t')||0;
     try{own=JSON.parse(ebox.getAttribute('data-early-doc')||'null');}catch(e){}
@@ -1077,6 +1108,7 @@ function go(){
   function drawEarly(){
     if(!ebox)return;
     var n=now(),doc=S.doc,st=MB.early(doc,n,eT,S.fails,S.rem,S.reset,scan,own,S.got,S.moved),py=MB.young(doc);
+    var es=st+'|'+(py?py.t+'|'+py.coins.length:'');if(es!==eSent){eSent=es;emit();}      // the installed app's tab badge follows what this box shows
     ebox.hidden=st==='hide';
     if(st==='hide')return;
     var y=st==='own'?(py&&+py.t===eT?py:own):py,coins=y&&Array.isArray(y.coins)?y.coins.filter(function(c){return c&&typeof c==='object';}).slice(0,20):[];
@@ -1169,15 +1201,44 @@ function go(){
       return r.text();
     }).then(function(t){if(t==null)return null;var j=JSON.parse(t);if(j&&typeof j.content==='string'&&j.encoding==='base64')j=decode(j.content);   // the JSON envelope, if the raw type is not honoured
       if(!j||typeof j!=='object'||!Array.isArray(j.agents))throw 0;return j;}),cut])
-    .then(function(d){var o=S.doc,same=!!(o&&d&&+o.t===+d.t);     // got: when this "updated" was first seen here (the same snapshot again changes nothing)
-      if(!(same&&+o.updated===+d.updated)||!S.got){S.moved=same&&S.got>0;S.got=now();}S.doc=d;S.fails=0;},function(){S.fails=(+S.fails||0)+1;})
+    .then(took,function(){S.fails=(+S.fails||0)+1;})
     .then(function(){clearTimeout(tm);if(rem!=null){S.rem=rem;S.reset=reset;}
       S.next=MB.next(S.doc,now(),scan,S.rem,S.reset,S.fails,S.got,S.moved);save();busy=false;try{draw();}catch(e){}});
   }
-  window.addEventListener('storage',function(e){if(e.key===KEY&&load())try{draw();}catch(x){}});
-  setInterval(function(){poll();try{tick();}catch(e){}},1000);
-  document.addEventListener('visibilitychange',poll);
-  load();draw();poll();
+  // a snapshot came (either transport): got is when this "updated" was first seen here (the same snapshot again changes nothing)
+  function took(d){var o=S.doc,same=!!(o&&d&&+o.t===+d.t);
+    if(!(same&&+o.updated===+d.updated)||!S.got){S.moved=same&&S.got>0;S.got=now();}S.doc=d;S.fails=0;emit();}
+  function emit(){try{var n=now();window.dispatchEvent(new CustomEvent('memebot-live',{detail:{via:mode,status:S.doc,current:mode==='supabase'?SB.cur:S.doc,
+    state:MB.state(S.doc,n,pageT,S.fails,S.got,S.moved),early:ebox?MB.early(S.doc,n,eT,S.fails,S.rem,S.reset,scan,own,S.got,S.moved):'none',young:MB.young(S.doc)}}));}catch(e){}}
+  // the live store: one GET of a row with the publishable key in the apikey header (never Authorization); rejects with the HTTP status (0: no answer)
+  function sbGet(id){
+    var ac=window.AbortController?new AbortController():null,tm;
+    var cut=new Promise(function(ok,no){tm=setTimeout(function(){if(ac)ac.abort();no(0);},MB.SB_TIMEOUT);});
+    return Promise.race([fetch(sbUrl+'/rest/v1/live?select=doc&id=eq.'+id,{headers:{apikey:sbKey,Accept:'application/json'},cache:'no-store',signal:ac?ac.signal:undefined})
+      .then(function(r){if(!r.ok)throw r.status||0;return r.json();},function(){throw 0;}),cut]).then(function(rows){clearTimeout(tm);
+      var d=Array.isArray(rows)&&rows[0]&&rows[0].doc;return d&&typeof d==='object'&&Array.isArray(d.agents)?d:null;},function(e){clearTimeout(tm);throw typeof e==='number'?e:0;});
+  }
+  function sbPoll(){
+    if(SB.busy||document.visibilityState!=='visible'||now()<SB.next)return;
+    SB.busy=true;
+    sbGet('status').then(function(st){
+      if(st&&st.ver!=null&&st.ver!==SB.ver)return sbGet('current').then(function(c){SB.cur=c;SB.ver=st.ver;return st;});
+      return st;
+    }).then(function(st){SB.fails=0;took(MB.merge(st,SB.cur));},function(code){
+      SB.fails++;
+      if(MB.fallback(typeof code==='number'?code:0,SB.fails)==='github'){mode='github';SB.back=now()+MB.SB_RETRY;S.fails=0;S.next=0;}   // quietly: the GitHub poll takes over
+      else S.fails=SB.fails;
+    }).then(function(){SB.busy=false;SB.next=MB.sbNext(now(),SB.fails,S.doc,S.got,S.moved);try{draw();}catch(e){}});
+  }
+  function step(){
+    if(mode==='github'&&SB.back&&now()>=SB.back&&MB.transport(sbUrl,sbKey,'')==='supabase'){mode='supabase';SB.back=0;SB.next=0;}   // the live store again
+    if(mode==='supabase')sbPoll();else poll();
+  }
+  window.addEventListener('storage',function(e){if(mode==='github'&&e.key===KEY&&load())try{draw();}catch(x){}});
+  setInterval(function(){step();try{tick();}catch(e){}},1000);
+  document.addEventListener('visibilitychange',step);
+  if(mode!=='supabase')load();
+  draw();step();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
 })();
@@ -1189,6 +1250,12 @@ def tile(label, value, sub="", lead=False, delta=None):
     if delta is not None:
         d = '<span class="delta %s">%s%s</span>' % ("good" if delta > 0 else ("bad" if delta < 0 else ""), fmt_amt(delta, True), " since start" if lead else "")
     return '<div class="tile%s"><div class="label">%s</div><div class="value">%s%s</div>%s</div>' % (" lead" if lead else "", E(label), E(value), d, ('<div class="sub">%s</div>' % E(sub)) if sub else "")
+
+
+def app_tab(html_, tab):
+    """html_ (one section, fold or box) marked for the installed app's tab bar (app.py PAGE_JS): the app shows it on that tab only; a browser
+    ignores the mark."""
+    return re.sub(r"^<(section|details|div)\b", r'<\1 data-app="%s"' % tab, html_, count=1) if html_ else html_
 
 
 def fold(title, summary, inner, open_=False):
@@ -3018,10 +3085,13 @@ def render(data, fragment=False):
         account = section("Paper account", "fake money, no budget · every scan buys the top pick for %s and the first %d new launches for %s each · counted since the restart" % (
                               fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET)),
                           safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
-        shown = [tabs, account, safe("profit", lambda: profit_section(D))]
+        shown = [tabs, app_tab(account, "account"), app_tab(safe("profit", lambda: profit_section(D)), "pick")]
         rest.append(safe("candidates", candidates))
     elif tabs:
         body.append(tabs)
+        # the installed app's Account tab (bot.py site, app.py PAGE_JS) needs something to show before the first paper trade; a browser never shows it
+        body.append('<div class="empty" data-app="account" data-app-only hidden>No paper trades yet: every scan buys its top pick for %s and the first %d new launches for %s each (fake money, nothing is bought for real).</div>' % (
+            E(fmt_eur(M.TOP_TICKET)), M.YOUNG_BUY_N, E(fmt_eur(M.YOUNG_TICKET))))
     else:
         rest += [safe("hero", hero), safe("equity curve", curve), safe("bought coins", bought), safe("closed trades", closed), safe("candidates", candidates)]
     w_html = safe("weights", lambda: weights_section(D))
@@ -3033,10 +3103,10 @@ def render(data, fragment=False):
         # the page answers one question: which coin, why, and the numbers behind it; everything else sits behind one tap
         body += [x for x in shown if x]
         n_scan = D["scan_n"] or M.num((D.get("rec") or {}).get("scanned")) or 0
-        body.append(fold("Details: training, big test, all candidates, weights, run log", "%s coins in the last scan" % fmt_int(n_scan) + (" · %s coin results scored" % fmt_int(scored) if scored else ""),
-                         '<div class="rest">%s</div>' % "\n".join(x for x in rest if x)))
+        body.append(app_tab(fold("Details: training, big test, all candidates, weights, run log", "%s coins in the last scan" % fmt_int(n_scan) + (" · %s coin results scored" % fmt_int(scored) if scored else ""),
+                                 '<div class="rest">%s</div>' % "\n".join(x for x in rest if x)), "pick"))
         if not (D.get("rec") and D["pos"]):
-            body.append(safe("profit", lambda: profit_section(D)))  # the tip record, every tip priced again (with positions it sits above the details)
+            body.append(app_tab(safe("profit", lambda: profit_section(D)), "pick"))  # the tip record, every tip priced again (with positions it sits above the details)
     else:
         body += [x for x in rest if x]
     body.append('<footer><span>generated %s</span><span>rule %s · %s profile</span><span>fees simulated at 0.5%%, minimum 0.81 per trade (paper account: 1%%, minimum 0.10)</span><span>prices from DexScreener at the time of each run</span><span>times in %s</span></footer>' % (
