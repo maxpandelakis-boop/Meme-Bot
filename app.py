@@ -615,17 +615,20 @@ def _sym(v):
 
 
 def notify_young(doc):
-    """The "new coins" notification for the early New launches list (the doc the live record carries as "young"): how many, the first
-    three symbols; it opens the New coins tab. Nothing when the list is empty."""
+    """The "new coins" notification for the early New launches list (the doc the live record carries as "young"): how many coins it lists,
+    how old the newest one was when it was found, the first three symbols, and that it is fake money; it opens the New coins tab.
+    Nothing when the list is empty."""
     if not isinstance(doc, dict):
         return {"skipped": "no list"}
     coins = [c for c in (doc.get("coins") if isinstance(doc.get("coins"), list) else []) if isinstance(c, dict)]
     if not coins:
         return {"skipped": "no coins"}
     n = len(coins)
+    ages = [_num(c.get("ageMin")) for c in coins if _num(c.get("ageMin")) is not None and _num(c.get("ageMin")) >= 0]
     syms = ", ".join(_sym(c.get("sym")) for c in coins[:3]) + (" and %d more" % (n - 3) if n > 3 else "")
-    body = "%d new launch%s under an hour old: %s. Paper trading only, nothing is bought for real." % (n, "" if n == 1 else "es", syms)
-    return notify("young", "New coins listed", body, "#tab-young")
+    body = "%sOn the list: %s, %sunder an hour old and not scored yet. Fake money only, nothing is bought for real." % (
+        ("The newest is %d min old. " % int(min(ages))) if ages else "", syms, "all " if n > 1 else "")
+    return notify("young", "%d new coin%s listed" % (n, "" if n == 1 else "s"), body, "#tab-young")
 
 
 TIER_WORDS = {"weak": "weak pick, the best available", "fallback": "fallback pick, momentum rules relaxed", "risky": "risky, nothing clean this scan"}
@@ -786,6 +789,9 @@ var A=window.MemebotApp={TABS:['pick','young','office','account'],
   // the early list's count for the New coins tab: its coins (live.json and the merged snapshot) or the status row's brief
   count:function(y){if(!y||typeof y!=='object')return null;if(Array.isArray(y.coins))return y.coins.filter(function(c){return c&&typeof c==='object';}).length;
     return typeof y.n==='number'&&y.n>=0?Math.floor(y.n):null;},
+  // the New coins tab's badge follows the early box (report.py's live script, MemebotLive.early): while the box shows a scan's early list
+  // (listed, partial, paused, limited, done, stopped) the badge is that list's count; else null (the page's own count of its scored list)
+  badge:function(early,y){return ['listed','partial','paused','limited','done','stopped'].indexOf(early)>=0?A.count(y):null;},
   // the pick for the "New pick" note: the snapshot's (status, so it is there as soon as the notification) or current's, of a scan newer
   // than this page, with a symbol
   pick:function(st,cur,pageT){var c=[st&&st.pick,cur&&cur.pick];for(var i=0;i<c.length;i++){var p=c[i];
@@ -934,14 +940,14 @@ function startPush(){
     });
   }).catch(function(e){P.error=P.error||why(e);}).then(function(){P.ready=true;render();});
 }
-// ---- the live store's news (report.py's live script sends it): the office's live dot, the new coins count, a new pick
-// The count on New coins is the live early list's only when the page shows that list live (the launch spotter's box, [data-early]);
-// else the page's own count, so the badge never says more than the tab shows.
+// ---- the live news (report.py's live script sends it after every answer of either transport, and whenever the early box changes what it
+// shows): the office's live dot (the office view's own state), the New coins count, a new pick. The count on New coins is the early list's
+// while the early box shows it (A.badge), else the page's own count, so the badge never says more than the tab shows.
 function onLive(e){
   var d=e&&e.detail||{},st=d.status,c=d.current,MB=window.MemebotLive,live=false;
-  try{live=!!(st&&MB&&MB.state(st,Date.now(),pageT,0)==='live');}catch(x){}
+  try{live=typeof d.state==='string'?d.state==='live':!!(st&&MB&&MB.state(st,Date.now(),pageT,0)==='live');}catch(x){}
   mark('office','ab-dot',live);
-  var k=live&&doc.querySelector('[data-early]')?A.count(st.young):null,n=k!=null?String(k):baseCnt;mark('young','ab-cnt',!!n&&n!=='0',n);
+  var k=A.badge(d.early,d.young),n=k!=null?String(k):baseCnt;mark('young','ab-cnt',!!n&&n!=='0',n);
   var pk=A.pick(st,c,pageT),pane=doc.getElementById('pane-pick'),ban=doc.querySelector('.applive');
   if(pk&&pane){if(!ban){ban=el('p','applive');pane.insertBefore(ban,pane.firstChild);}
     ban.textContent='New pick from the scan that just ran: '+String(pk.sym).slice(0,24)+(typeof pk.score==='number'?', score '+Math.round(pk.score):'')+'. The full report follows in a few minutes. Paper trading only.';}
@@ -957,6 +963,7 @@ function init(){
     var cnt=doc.querySelector('.tabbar label[for="tab-young"] .cnt');baseCnt=cnt?cnt.textContent.trim():'';mark('young','ab-cnt',!!baseCnt&&baseCnt!=='0',baseCnt);
   }
   all('[data-app-only]').forEach(function(e){e.hidden=false;});
+  var eh=doc.querySelector('.ehint');if(eh&&store)eh.textContent=eh.textContent.replace(/ Keep this tab open\.$/,' With notifications on, this iPhone tells you when they are here.');
   var sec=card();if(tabs)sec.setAttribute('data-app','account');
   var spot=doc.querySelector('[data-app~="account"]')||doc.querySelector('.wrap > footer');if(spot)spot.parentNode.insertBefore(sec,spot);
   if(hdr){ui.bell=el('button','appbell');ui.bell.type='button';ui.bell.innerHTML=ICON.bell;hdr.appendChild(ui.bell);

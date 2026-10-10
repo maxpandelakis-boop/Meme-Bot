@@ -1430,6 +1430,117 @@ class PushSink:
         return self.codes.get(name, 201)
 
 
+def app_browser_checks(check, sd, young):
+    """The installed app in Chromium (when Playwright and a Chromium are installed): the website built by bot.py site with the live store is
+    served at its address from sd, Supabase's REST API is stubbed with a scan running now that carries young (the spotter's list), GitHub's API
+    is counted, every other request is refused. navigator.standalone is true, as in the app opened from the Home Screen."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("  (no Playwright: the browser checks of the installed app are skipped)")
+        return
+    exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
+    pages_url, sb_url = "https://maxpandelakis-boop.github.io/Meme-Bot/", "https://abcref.supabase.co"
+    ms = lambda: int(time.time() * 1000)
+    now = ms()
+    t = now - 6 * 60_000
+    files = {n: open(os.path.join(sd, n), "rb").read() for n in os.listdir(sd) if os.path.isfile(os.path.join(sd, n))}
+    files["index.html"] = re.sub(rb'data-run-t="\d+"', b'data-run-t="%d"' % (now - 66 * 60_000), files["index.html"])
+    sh = t - young["t"]
+    y = dict(young, t=t, at=(young.get("at") or young["t"]) + sh, rcAt=(young["rcAt"] + sh) if young.get("rcAt") else None,
+             coins=[dict(c, born=(c["born"] + sh) if c.get("born") else None, minted=(c["minted"] + sh) if c.get("minted") else None) for c in young["coins"]])
+    n = len(y["coins"])
+    ags = [{"id": "dispatch", "status": "done", "lines": ["full scan"]}, {"id": "scouts", "status": "done", "lines": []},
+           {"id": "spotter", "status": "done", "bg": True, "lines": ["%d new launches" % n]}, {"id": "market", "status": "running", "lines": ["prices"]}]
+    st = {"rows": {}}
+
+    def scan(live, ver):
+        a = ags if live else ags[:3] + [{"id": "market", "status": "done"}, {"id": "trader", "status": "done"}, {"id": "reporter", "status": "done"}]
+        cur = {"v": 1, "t": t, "live": live, "updated": ms() - 3000, "horizon": "24h", "mode": "full", "agents": a, "young": y, "ver": ver}
+        stt = dict(cur, young={"n": n, "newest": min(c.get("ageMin") or 99 for c in y["coins"]), "state": "listed", "at": y["at"], "t": t})
+        st["rows"] = {"status": stt, "current": cur}
+    scan(True, 1)
+    calls = {"status": 0, "current": 0, "github": 0, "other": []}
+    errs = []
+    try:
+        with sync_playwright() as pw:
+            br = pw.chromium.launch(**({"executable_path": exe} if exe else {}))
+            ctx = br.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+            ctx.add_init_script("Object.defineProperty(Navigator.prototype,'standalone',{get:function(){return true;}});")
+            cors = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "apikey, content-type, accept, prefer", "Access-Control-Allow-Methods": "GET, POST, OPTIONS"}
+
+            def handler(route):
+                u, m = route.request.url, route.request.method
+                if u.startswith(pages_url):
+                    name = urllib.parse.urlsplit(u).path[len("/Meme-Bot/"):] or "index.html"
+                    ct = {"html": "text/html; charset=utf-8", "js": "text/javascript", "svg": "image/svg+xml", "png": "image/png", "webmanifest": "application/manifest+json"}
+                    if name in files:
+                        route.fulfill(status=200, body=files[name], headers={"Content-Type": ct.get(name.rsplit(".", 1)[-1], "application/octet-stream")})
+                    else:
+                        route.fulfill(status=404, body="")
+                elif u.startswith(sb_url + "/rest/v1/"):
+                    if m == "OPTIONS":
+                        route.fulfill(status=204, headers=cors)
+                        return
+                    q = urllib.parse.parse_qs(urllib.parse.urlsplit(u).query)
+                    rid = (q.get("id") or [""])[0].replace("eq.", "")
+                    if "/rest/v1/live" in u and rid in st["rows"]:
+                        calls[rid] += 1
+                        route.fulfill(status=200, body=json.dumps([{"doc": st["rows"][rid]}]), headers=dict(cors, **{"Content-Type": "application/json"}))
+                    else:
+                        route.fulfill(status=200, body="[]", headers=dict(cors, **{"Content-Type": "application/json"}))
+                elif u.startswith("https://api.github.com/"):
+                    calls["github"] += 1
+                    route.fulfill(status=404, body="{}", headers={"Access-Control-Allow-Origin": "*"})
+                else:
+                    calls["other"].append(u[:60])
+                    route.abort()
+            ctx.route("**/*", handler)
+            pg = ctx.new_page()
+            pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
+            pg.goto(pages_url)
+            pg.wait_for_selector(".appbar", timeout=8000)
+            got_badge = True
+            try:
+                pg.wait_for_function("n => ((document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')||{}).textContent||'') === String(n)", arg=n, timeout=10000)
+            except Exception:
+                got_badge = False
+            pg.click('.appbar button[data-tab="young"]')
+            try:
+                pg.wait_for_function("n => document.querySelectorAll('[data-early-list] > li').length === n", arg=n, timeout=8000)
+            except Exception:
+                pass
+            info = pg.evaluate("""() => { const b = document.querySelector('[data-early]'), r = e => e.getBoundingClientRect(), pane = document.getElementById('pane-young');
+              const scored = pane ? Array.from(pane.querySelectorAll('h3')).find(h => /This scan/.test(h.textContent)) : null;
+              return { app: document.documentElement.classList.contains('app'), young: (document.getElementById('tab-young')||{}).checked, hidden: b ? b.hidden : null,
+                cards: document.querySelectorAll('[data-early-list] > li').length, status: b ? b.querySelector('[data-early-status]').textContent : '',
+                above: !!(b && scored && r(b).bottom <= r(scored).top), dot: !!document.querySelector('.appbar [data-tab="office"] .ab-dot'),
+                hscroll: document.documentElement.scrollWidth - innerWidth, hint: (document.querySelector('.ehint')||{}).textContent || '' }; }""")
+            pg.click('.appbar button[data-tab="office"]')
+            pg.wait_for_timeout(1200)
+            office = pg.evaluate("[(document.querySelector('[data-live-badge]')||{}).textContent||'', document.querySelectorAll('[data-agent][data-live]').length]")
+            scan(False, 2)          # the scan ends: the status row names a new ver, the page fetches current once more
+            pg.click('.appbar button[data-tab="young"]')
+            done_ok = True
+            try:
+                pg.wait_for_function("() => ((document.querySelector('[data-early-status]')||{}).textContent||'').indexOf('The scan finished at') === 0", timeout=12000)
+            except Exception:
+                done_ok = False
+            after = pg.evaluate("[((document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')||{}).textContent||''), !!document.querySelector('.appbar [data-tab=\"office\"] .ab-dot'), document.querySelectorAll('[data-early-list] > li').length]")
+            br.close()
+    except Exception as e:
+        print("  (the browser checks of the installed app could not run: %s)" % str(e)[:200])
+        return
+    check(got_badge and info["app"] and info["young"] and info["hidden"] is False and info["cards"] == n and info["status"].startswith("Found at") and info["above"]
+          and info["dot"] and info["hscroll"] <= 0 and "With notifications on" in info["hint"] and not errs,
+          "installed app (Chromium, live store): the New coins tab shows the spotter's early list (%d cards, '%s...') above the scored list, its badge says %d, "
+          "the Office tab has its live dot %s" % (info["cards"], info["status"][:24], n, ("" if not errs else errs[:2])))
+    check(office[0].startswith("LIVE") and office[1] >= 3 and done_ok and after == [str(n), False, n] and calls["current"] == 2 and calls["status"] >= 2 and calls["github"] == 0,
+          "installed app: the same snapshot feeds the office view (%r) and the early box; when the scan ends the box says so and keeps the list, the office dot goes; "
+          "one poller only: %d status reads, current only per new ver (%d), no GitHub poll (%d)%s" % (office[0][:20], calls["status"], calls["current"], calls["github"],
+              "" if done_ok and after == [str(n), False, n] else " %s %s %s" % (done_ok, after, office)))
+
+
 def serve_app(rest, sink):
     class Hd(BaseHTTPRequestHandler):
         def _go(self):
@@ -1661,7 +1772,7 @@ def app_tests(check, mock, url):
         n0, g0 = len(rest.log), len(sink.got)
         code = ("import app\nr1 = app.notify_pick({'t': 1, 'picks': [{'sym': 'MOON1', 'name': 'Moon One', 'score': 81.6, 'tier': 'strong'}]})\n"
                 "r2 = app.notify_pick({'t': 1, 'picks': [{'sym': 'MOON1'}]})\n"
-                "r3 = app.notify_young({'state': 'listed', 'coins': [{'sym': 'A1'}, {'sym': 'B2'}, {'sym': 'C3'}, {'sym': 'D4\\n'}]})\n"
+                "r3 = app.notify_young({'state': 'listed', 'coins': [{'sym': 'A1', 'ageMin': 12}, {'sym': 'B2', 'ageMin': 4}, {'sym': 'C3'}, {'sym': 'D4\\n'}]})\n"
                 "r4 = app.notify_young({'state': 'listed', 'coins': []})\n"
                 "print(json.dumps([r1, r2, r3, r4]))\n")
         t_ = time.time()
@@ -1676,9 +1787,11 @@ def app_tests(check, mock, url):
         home = "https://maxpandelakis-boop.github.io/Meme-Bot/"
         check(pj.get("web_push") == 8030 and pj.get("notification", {}).get("title") == "New pick: MOON1" and pj["notification"].get("navigate") == home + "#tab-pick"
               and "Paper trading only, nothing is bought for real." in pj["notification"].get("body", "") and "score 82" in pj["notification"]["body"]
-              and yj.get("notification", {}).get("title") == "New coins listed" and yj["notification"].get("navigate") == home + "#tab-young"
-              and "4 new launches under an hour old: A1, B2, C3 and 1 more." in yj["notification"].get("body", ""),
-              "push (%s pywebpush): Declarative Web Push JSON (web_push 8030, a title, a body that says paper only, navigate an absolute URL in /Meme-Bot/)" % ("real" if real else "a stand-in for"))
+              and yj.get("notification", {}).get("title") == "4 new coins listed" and yj["notification"].get("navigate") == home + "#tab-young"
+              and yj["notification"].get("body", "") == "The newest is 4 min old. On the list: A1, B2, C3 and 1 more, all under an hour old and not scored yet. "
+                                                        "Fake money only, nothing is bought for real.",
+              "push (%s pywebpush): Declarative Web Push JSON (web_push 8030, a title, a body that says paper only, navigate an absolute URL in /Meme-Bot/); "
+              "the new coins one names the count and the newest age, says fake money and opens the New coins tab" % ("real" if real else "a stand-in for"))
         names_p, names_y = sorted(g["name"] for g in picks), sorted(g["name"] for g in youngs)
         check(names_p == ["both", "busy", "busy", "gone", "lost", "noYoung"] and names_y == ["both", "busy", "busy", "noPick"] and out and out[0]["sent"] == 2 and out[0]["gone"] == 2
               and out[0]["failed"] == 1 and out[1]["skipped"] == "rate guard" and out[2]["sent"] == 2 and out[3] == {"skipped": "no coins"}
@@ -1795,7 +1908,7 @@ def app_tests(check, mock, url):
     stt = [e["t"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "status"]
     gaps = [round(b - a, 1) for a, b in zip(stt, stt[1:3])]
     check(len(gaps) == 2 and max(gaps) < 6.6, "the VAPID keys are made on a thread of their own: a slow store there does not hold up the status writes (gaps %s s)" % gaps)
-    check(out and out["again"] is False and out["took"] < 4 and [g["name"] for g in ys].count("both") == 1 and "2 new launches under an hour old: NEW1, NEW2." in ys[0]["data"]
+    check(out and out["again"] is False and out["took"] < 4 and [g["name"] for g in ys].count("both") == 1 and '"title":"2 new coins listed"' in ys[0]["data"] and "The newest is 3 min old. On the list: NEW1, NEW2, all under an hour old" in ys[0]["data"]
           and any((s.get("young") or {}).get("n") == 2 for s in stw) and ((rest.live.get("current") or {}).get("doc") or {}).get("young", {}).get("rc") == "done",
           "hooks: live_put('young', doc) reaches both rows within seconds, its first listing sends one 'new coins' notification (a second version and "
           "young_published again send none); the end waits for a hung store %.1f s, not more" % (out or {}).get("took", -1))
@@ -1806,6 +1919,39 @@ def app_tests(check, mock, url):
     p, out = drive(code, base)
     check(out == [True, {"v": 1, "t": 1, "state": "listed", "coins": [{"sym": "A"}]}, False, False],
           "live_put keeps a copy: the caller may change its own dict afterwards; a value that is not JSON is left out (%s)" % (out if out is not None else p.stderr[-200:]))
+
+    # 5b. the launch spotter's early list through both live views and the "new coins" notification (radar.py and app.py together)
+    if has_crypto:
+        de, bare_e = os.path.join(tmp, "early"), tempfile.mkdtemp(prefix="memebot-app-early-")
+        subprocess.run(["git", "init", "-q", "--bare", bare_e], check=True)
+        n0, g0 = len(rest.log), len(sink.got)
+        env_e = {k: v for k, v in env_app.items() if k not in ("MEMEBOT_PAUSE",)}
+        p, _, _ = spot_cycle(de, env=dict(env_e, MEMEBOT_EARLY_RC_S="8"), remote=bare_e)
+        seen_out.append(p.stdout + p.stderr)
+        import bot as B_
+        yf = B_.early_doc(os.path.join(de, "young_early.json"), T0) or {}
+        lj = git_live(bare_e)
+        cur_e = ((rest.live.get("current") or {}).get("doc") or {})
+        sts_e = [json.loads(e["body"])["doc"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "status"]
+        curs_e = [json.loads(e["body"])["doc"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "current"]
+        addrs = [c["addr"] for c in yf.get("coins") or []]
+        ys_e = [json.loads(g["data"]) for g in sink.got[g0:] if '"tag":"young"' in g["data"] and g["name"] == "both"]
+        first = next((c.get("young") for c in curs_e if isinstance(c.get("young"), dict) and c["young"].get("state") == "listed"), None) or {}
+        n1 = len(first.get("coins") or [])
+        newest = min([c["ageMin"] for c in first.get("coins") or [] if isinstance(c.get("ageMin"), int)] or [-1])
+        yn = (ys_e[0].get("notification") or {}) if ys_e else {}
+        check(p.returncode == 0 and yf.get("state") == "listed" and len(addrs) >= 2 and [c["addr"] for c in (lj.get("young") or {}).get("coins") or []] == addrs
+              and [c["addr"] for c in (cur_e.get("young") or {}).get("coins") or []] == addrs and cur_e.get("young") == lj.get("young") == yf
+              and any((s_.get("young") or {}).get("n") == len(addrs) and (s_.get("young") or {}).get("state") == "listed" for s_ in sts_e),
+              "the launch spotter's early list reaches both live views through live_put('young', doc): live.json and the live store's row current carry the same "
+              "list as young_early.json (%d coins, RugCheck %s), row status its count" % (len(addrs), yf.get("rcState")))
+        check(len(ys_e) == 1 and n1 >= 1 and yn.get("title") == "%d new coin%s listed" % (n1, "" if n1 == 1 else "s") and newest >= 0
+              and yn.get("body", "").startswith("The newest is %d min old. On the list: " % newest) and "Fake money only, nothing is bought for real." in yn.get("body", "")
+              and yn.get("navigate", "").endswith("/Meme-Bot/#tab-young") and "push: young sent to" in p.stderr,
+              "young_published sends the new coins notification once per scan when the first listed early list is out (%r, %r), opening the New coins tab" % (
+                  yn.get("title"), yn.get("body", "")[:60]))
+        seen_out.append(json.dumps(lj))
+        shutil.rmtree(bare_e, ignore_errors=True)
 
     # 6. the site: the publishable-key guard, sw.js, the manifest id, the opaque apple-touch-icon
     sd = os.path.join(tmp, "site")
@@ -1842,6 +1988,19 @@ def app_tests(check, mock, url):
           "site without the Supabase variables: no live store in the page, nothing said about it but 'off'")
     check(guard == [True] * 6, ("%s " % guard if not all(guard) else "") + "site: only a publishable key (sb_publishable_) goes into the page; a secret key, a service_role or anon JWT, an http address are refused and the log says why without the key")
     check(app_ok and man2.get("id") == "/other-repo/", "site: sw.js beside index.html, manifest id /Meme-Bot/ (the repository's folder), an opaque apple-touch-icon, no meta refresh, the app's script and style")
+
+    # 6b. the installed app in Chromium: the live store feeds the office view and the early box on the New coins tab, the tab badge follows the list
+    if has_crypto and yf.get("coins"):
+        sd2 = os.path.join(tmp, "site-app")
+        r1 = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", de, "--out", os.path.join(de, "report.html"), "--now", str(T0)], capture_output=True, text=True,
+                            env=dict(base, GITHUB_REPOSITORY="maxpandelakis-boop/Meme-Bot"))
+        r2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "site", "--dir", de, "--out", sd2, "--repo", "https://github.com/maxpandelakis-boop/Meme-Bot"], capture_output=True, text=True,
+                            env=dict(base, SUPABASE_URL="https://abcref.supabase.co", SUPABASE_PUBLISHABLE_KEY="sb_publishable_OKkey_1234567890", SUPABASE_SECRET_KEY=APP_SECRET))
+        seen_out += [r1.stdout + r1.stderr, r2.stdout + r2.stderr]
+        if r1.returncode == 0 and r2.returncode == 0:
+            app_browser_checks(check, sd2, yf)
+        else:
+            check(False, "the installed app's page could not be built: %s %s" % (r1.stderr[-200:], r2.stderr[-200:]))
 
     # 7. the secret key (and the VAPID private key) never in any output, file, page or the live branch
     priv = rest.secret.get("vapid_private_key") or "no-private-key-made"
@@ -1885,6 +2044,7 @@ var B={sw:true,push:true,notif:true,store:true,key:'k',perm:'default',sub:null,s
 o.push=[S({}),S({sub:{},saved:true}),S({perm:'denied'}),S({push:false}),S({sw:false}),S({notif:false}),S({store:false}),S({key:null}),S({error:'x'}),S({sub:{},saved:false,error:'x'}),A.pushState(null),
   S({sub:{},saved:false,perm:'granted'}),S({sub:{},saved:false,perm:'granted',error:'x'}),S({sub:{},saved:false,perm:'default'})];
 o.count=[A.count({coins:[{sym:'A'},{sym:'B'},null]}),A.count({n:6,newest:4}),A.count({state:'listed'}),A.count(null),A.count({coins:[]})];
+var Y3={coins:[{sym:'A'},{sym:'B'},{sym:'C'}]};o.badge=['listed','partial','paused','limited','done','stopped','wait','own','hide','empty','none','late',undefined].map(function(e){return A.badge(e,Y3);}).concat([A.badge('listed',null)]);
 o.pick=[A.pick({pick:{sym:'S',t:9}},{pick:{sym:'C',t:9}},5).sym,A.pick({pick:null},{pick:{sym:'C',t:9}},5).sym,A.pick({pick:{sym:'S',t:4}},{pick:{sym:'C',t:3}},5),A.pick(null,null,5),
   A.pick({pick:{sym:'',t:9}},null,5)];
 o.tab=[A.tab('#tab-young'),A.tab('tab-account'),A.tab('#tab-pick'),A.tab('#tab-x'),A.tab('#pane-young'),A.tab('')];
@@ -1912,10 +2072,12 @@ console.log(JSON.stringify(o));
               and o.get("tab") == ["young", "account", "pick", None, None, None] and o.get("store") == [True, False, False],
               "the installed app (node): navigator.standalone or a standalone/fullscreen display mode; the notifications control says off, on, denied, not supported, "
               "not set up, not ready or the error; deep links pick a tab %s" % ({k: o.get(k) for k in ("installed", "push")} if "push" in o else o))
-        check(o.get("push", [None] * 14)[11:] == ["on", "error", "off"] and o.get("count") == [2, 6, None, None, 0] and o.get("pick") == ["S", "C", None, None, None],
+        check(o.get("push", [None] * 14)[11:] == ["on", "error", "off"] and o.get("count") == [2, 6, None, None, 0] and o.get("pick") == ["S", "C", None, None, None]
+              and o.get("badge") == [3, 3, 3, 3, 3, 3, None, None, None, None, None, None, None, None],
               "the installed app (node): a subscription that exists with the permission granted stays On when only the quiet save at the start failed (a failed tap is "
-              "the error); the New coins count from the list's coins or the status brief; the New pick note from the status row as soon as the notification, else current %s" % (
-                  {k: o.get(k) for k in ("count", "pick")}))
+              "the error); the New coins count from the list's coins or the status brief, on the tab bar only while the early box shows that list (listed, partial, "
+              "paused, limited, done, stopped), else the page's own count; the New pick note from the status row as soon as the notification, else current %s" % (
+                  {k: o.get(k) for k in ("count", "pick", "badge")}))
         with open(os.path.join(jd, "sw.js"), "w", encoding="utf-8") as f:
             f.write(r"""
 var H={},shown=[],posted=[],opened=[],focused=0,store={},deleted=[],netOK=true,wins=[];
@@ -2000,7 +2162,7 @@ var o={};
           "setup.sql: the 25-row cap keeps the rows seen most recently (the phone), at most 6 new subscriptions an hour, keys must look like a P-256 key and 16 bytes")
     pj = __import__("app").PAGE_JS
     check("iOS said no" not in pj and "from another browser" in pj and "These two apply once notifications are on." in pj and "applicationServerKey" in pj
-          and "select(t,'keep')" in pj and "[data-early]" in pj and "visibilitychange',back" in pj and "The app refreshes when you come back to it" in pj
+          and "select(t,'keep')" in pj and "A.badge(d.early,d.young)" in pj and "visibilitychange',back" in pj and "The app refreshes when you come back to it" in pj
           and "\u2014" not in pj and "Add to Home Screen from Safari first" not in pj,
           "the installed app's texts and habits: neutral subscribe errors, the right advice when push is missing, the switches marked as for later while off, "
           "each tab keeps its scroll position, the subscription's own key compared, the live count only with the live list, no reload promise the app does not keep")

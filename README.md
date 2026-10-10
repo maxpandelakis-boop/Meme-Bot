@@ -257,7 +257,9 @@ searches did not price (about 31 requests, 0.6 s apart, at most 45), runs memebo
 copy with the ages measured at its own clock, and writes `mb/young_early.json`. The live view pushes it within seconds (as `young` in
 `live.json`), then once more with the RugCheck reports (at most 20 coins, 45 seconds at most). The page reads it through the same
 poll as the Agent office: while one of the two tabs is open it asks every 75 seconds from 2 minutes before a scheduled start until
-35 minutes after it, or until that scan's last push is in.
+35 minutes after it, or until that scan's last push is in. With the iPhone app set up (below), the same list also goes to the app's
+live store (`live_put("young", doc)`: one live record for both), the app reads it from there within seconds, and the first listed
+list of each scan sends one "new coins" notification.
 
 The early list is not the scored list:
 - It is not scored by the full scan: no deep search, no creator check, no on-chain sample, no smart-wallet or zero model, and
@@ -459,6 +461,11 @@ The website can live on the iPhone's Home Screen like an app, all on free plans:
 Account), the Agent office and the New launches list live within seconds while the hourly scan runs, and push notifications
 when the new coins are listed (about five minutes into the scan) and when the pick is made. Fake money only: nothing is bought
 for real, and no notification is a trade. In a normal browser tab the page looks and works as before.
+
+The New coins tab shows the launch spotter's early list (above) at the top, in all its states, above the scored list, and its badge
+on the tab bar counts the coins of that list while the list is shown (otherwise the coins of the scored list). The "new coins"
+notification goes out once a scan, when the first early list with coins is out: "9 new coins listed", "The newest is 4 min old.
+On the list: ... Fake money only, nothing is bought for real."; tapping it opens the New coins tab.
 
 How it works: a free Supabase project is the live store. While the scan runs, `bot.py` writes a small `status` row every 5 seconds
 (and the whole live record, `current`, when it changes) with the secret key; the page reads them with the publishable key while it
