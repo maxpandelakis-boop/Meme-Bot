@@ -814,6 +814,8 @@ def main():
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--mock", url, "--now", str(T0 + 3 * H), "--recommend", "--horizon", "2h"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     res = glob.glob(os.path.join(hd, "db", "memesnapres", "*.json"))
     check(r.returncode == 0 and res and "Big test" in r.stdout, "the snapshot was scored 2 hours later (%d result docs)" % len(res))
+    check("candles fetched beside the scan" in r.stderr and "(beside the scan," in r.stderr and not os.path.exists(os.path.join(hd, "train.next.json")),
+          "the minute candles and the training ran beside the scan, and the new training doc was swapped in before the pick")
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
     scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
     page2 = open(os.path.join(hd, "report.html"), encoding="utf-8").read()

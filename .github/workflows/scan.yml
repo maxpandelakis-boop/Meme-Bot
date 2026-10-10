@@ -1,7 +1,7 @@
 # The bot on GitHub's own servers: no laptop needed.
 # Runs every hour at :10 UTC, started by the hourly routine of the Claude session through the GitHub API (a cron start on
 # GitHub's own scheduler comes 10 to 20 minutes late), and whenever you press "Run workflow" (github.com -> Actions -> Meme-Bot
-# scan). The cron below is the safety net: it fires at :25 and does nothing when a scan started in the last 45 minutes.
+# scan). The cron below is the safety net: it fires at :25 and does nothing when this hour's scan was started.
 # Each run restores the bot's state from the results branch, scans ~12,000 coins, names the best coin for the next two hours,
 # pushes report.html + the small docs back to the results branch and shows the picks in the run's summary.
 # When GitHub Pages is switched on (Settings -> Pages -> Source: GitHub Actions; needs a public repository on the free plan),
@@ -11,7 +11,7 @@ name: Meme-Bot scan
 run-name: "${{ inputs.source == 'hourly' && 'Hourly scan' || (github.event_name == 'schedule' && 'Safety-net scan' || 'Scan now') }} · ${{ inputs.horizon || '2h' }} profile${{ inputs.rescan && ' · fresh snapshot' || '' }}"
 on:
   schedule:
-    - cron: '25 * * * *'            # UTC, the safety net only: the routine starts the real scan at :10; a scheduled run that finds a scan from the last 45 minutes skips itself
+    - cron: '25 * * * *'            # UTC, the safety net only: the routine starts the real scan at :10; a scheduled run that finds this hour's scan skips itself
   workflow_dispatch:
     inputs:
       horizon:
@@ -41,7 +41,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 40              # a full scan takes 20 to 27 minutes; the wallet-flow sample added up to 2.5
+    timeout-minutes: 55              # a full scan took 32 to 41 minutes on 2026-10-10 (the training and the candles ran after the fetching then)
     outputs:
       skipped: ${{ steps.recent.outputs.skip }}
     env:
@@ -52,22 +52,27 @@ jobs:
       HORIZON: ${{ github.event.inputs.horizon || '2h' }}
       RESCAN: ${{ github.event.inputs.rescan == 'true' && '--rescan' || '' }}
     steps:
-      - name: Safety net only - skip when a scan started in the last 45 minutes
+      - name: Safety net only - skip when this hour's scan was started
         id: recent
         if: github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          since=$(date -u -d '45 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
-          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml/runs?per_page=15"
-          n=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api" \
-              | jq -r --arg s "$since" --argjson me "$GITHUB_RUN_ID" '[.workflow_runs[] | select(.id != $me and .created_at > $s and (.status == "queued" or .status == "in_progress" or .conclusion == "success"))] | length')
+          # measured from this run's own creation (it fires at :25, GitHub starts it 10 to 20 minutes late, and it may wait behind a
+          # running scan): a scan started by hand or by the routine in the 40 minutes before it, still waiting, running or done well,
+          # is this hour's scan. Other safety-net runs do not count: one that skipped itself also ends as a success.
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml/runs?per_page=20"
+          runs=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api")
+          mine=$(echo "$runs" | jq -r --argjson me "$GITHUB_RUN_ID" '[.workflow_runs[] | select(.id == $me) | .created_at][0] // empty')
+          t=$(date -u -d "${mine:-now}" +%s)
+          since=$(date -u -d "@$((t - 2400))" +%Y-%m-%dT%H:%M:%SZ)
+          n=$(echo "$runs" | jq -r --arg s "$since" --argjson me "$GITHUB_RUN_ID" '[.workflow_runs[] | select(.id != $me and .event != "schedule" and .created_at > $s and (.status != "completed" or .conclusion == "success"))] | length')
           if [ "${n:-0}" -gt 0 ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "A scan started in the last 45 minutes (the hourly routine did its job): this safety-net run does nothing." >> "$GITHUB_STEP_SUMMARY"
+            echo "This hour's scan was started (the hourly routine did its job): this safety-net run does nothing." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "No scan in the last 45 minutes: the safety net runs the scan." >> "$GITHUB_STEP_SUMMARY"
+            echo "No scan was started this hour: the safety net runs the scan." >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/checkout@v4
         if: steps.recent.outputs.skip != 'true'

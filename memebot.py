@@ -344,7 +344,8 @@ def cmd_mode(d, now, force=False, snapshot=False, recommend=False):
     # recommend mode always scans everything: a button press minutes after the last scan still deserves the whole universe
     print(json.dumps({"pick": room > 0, "room": room, "why": why, "scan": "full" if (sd or recommend) else ("light" if room > 0 else "none"), "bigTestSaveDue": sd,
                       "bigTestDue": len(due), "bigTestDueCoins": sum(len(sn["coins"]) for sn in due.values()),
-                      "open": sum(1 for p in pos.values() if p["_left"] > 1e-9), "cash": bankroll(pos)}))
+                      "open": sum(1 for p in pos.values() if p["_left"] > 1e-9), "cash": bankroll(pos),
+                      "candles": candle_items(d, now)}))   # known before the scan: bot.py fetches them beside it
 
 
 def eval_text():
@@ -1900,7 +1901,7 @@ def tune(tested, wf, base_rate):
     return tuned, zero_grid, score_grid, why
 
 
-def cmd_train(d, now):
+def cmd_train(d, now, out=None):
     """The training programs, all on the scored snapshots of this profile: the walk-forward test of the ranking, the zero
     model, the limit grids, the gate audit, the factor splits and the real tip record. Writes db/memebot/train.json, which
     the next runs read (zero model and tuned limits), and prints the summary."""
@@ -1963,8 +1964,10 @@ def cmd_train(d, now):
             doc["note"] += " Ranked by trained odds alone (profit chance minus zero chance), the best coin per scan averaged %s." % stat(bo)
     path = os.path.join(d, "db", "memebot")
     os.makedirs(path, exist_ok=True)
-    with open(os.path.join(path, "train.json"), "w", encoding="utf-8") as f:
+    dest = out or os.path.join(path, "train.json")    # out: bot.py trains beside the fetching and swaps the new doc in right before the pick
+    with open(dest + ".tmp", "w", encoding="utf-8") as f:
         json.dump(doc, f, separators=(",", ":"))
+    os.replace(dest + ".tmp", dest)                   # written whole, then swapped in: a command reading it meanwhile sees the old one
     short = {k: doc[k] for k in ("rows", "scans", "zeros", "tested", "walkForward", "tuned", "tunedWhy", "note", "tips")}
     short["zeroModel"], short["upModel"] = bool(doc["zeroModel"]), bool(doc["upModel"])
     print(json.dumps(short, indent=1))
@@ -2997,6 +3000,7 @@ def main():
     ap.add_argument("--snapshot", action="store_true", help="manual rescan: save a big-test snapshot of this scan even if the last one is recent")
     ap.add_argument("--recommend", action="store_true", help="no buys: write the two best clean coins to memebot/recommend instead of opening positions")
     ap.add_argument("--horizon", default=os.environ.get("MEMEBOT_HORIZON", "24h"), choices=sorted(PROFILES), help="rule profile: 24h (survive a day) or 2h (pump in the next two hours)")
+    ap.add_argument("--out", default="", help="train: write the training doc to this file instead of db/memebot/train.json")
     a = ap.parse_args()
     apply_profile(a.horizon)
     now = int(a.now if a.now else time.time() * 1000)
@@ -3007,7 +3011,7 @@ def main():
     elif a.cmd == "shortlist":
         cmd_shortlist(a.dir, now, a.force, a.snapshot, a.recommend)
     elif a.cmd == "train":
-        cmd_train(a.dir, now)
+        cmd_train(a.dir, now, a.out or None)
     elif a.cmd == "learn":
         cmd_learn(a.dir)
     elif a.cmd == "analyze":

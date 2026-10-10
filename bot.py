@@ -62,6 +62,39 @@ def run(args, d, now=None, expect_json=True):
         raise SystemExit("%s printed no JSON:\n%s" % (args[0], stdout[-2000:]))
 
 
+def start_bg(args, d, now=None):
+    """A child command started beside the rest of the cycle: its progress lines (stderr) and its result (stdout) go to files
+    and are read when it is awaited (finish_bg), so the cycle's own log stays in order."""
+    cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
+    if now and args[0] == "memebot.py":
+        cmd += ["--now", str(now)]
+    base = os.path.join(d, "bg-" + re.sub(r"[^a-z0-9]+", "-", " ".join(args[:2]).lower()).strip("-"))
+    out, err = open(base + ".out", "w", encoding="utf-8"), open(base + ".err", "w", encoding="utf-8")
+    p = subprocess.Popen(cmd, stdout=out, stderr=err, text=True, encoding="utf-8", errors="replace", env=dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
+    return {"p": p, "out": out, "err": err, "t0": time.time(), "name": " ".join(args[:2])}
+
+
+def finish_bg(job):
+    """Wait for a background command, log its progress lines now, and return its JSON result (None when it failed)."""
+    job["p"].wait()
+    job["out"].close()
+    job["err"].close()
+    with open(job["err"].name, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            log(line.rstrip())
+    with open(job["out"].name, encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    job["secs"] = time.time() - job["t0"]
+    if job["p"].returncode != 0:
+        log("%s failed in the background (exit %s): %s" % (job["name"], job["p"].returncode, text[-500:]))
+        return None
+    try:
+        return json.loads(text)
+    except ValueError:
+        log("%s printed no JSON in the background: %s" % (job["name"], text[-500:]))
+        return None
+
+
 KEEP_RESULTS_DAYS = 60      # scored snapshot chunks older than this leave the cache (the training does not need older coins)
 KEEP_RAW_DAYS = 3           # a raw snapshot chunk that was never scored by then never will be (its coins never got a price)
 
@@ -116,7 +149,15 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
     extra = (["--force"] if force else []) + (["--snapshot"] if rescan else []) + (["--recommend"] if recommend else []) + ["--horizon", horizon]
     mode = run(["memebot.py", "mode"] + extra, d, now)
     log("mode: %s" % json.dumps({k: mode[k] for k in ("pick", "room", "why", "scan", "bigTestSaveDue", "bigTestDue", "open")}))
+    # the training reads only the scored snapshots and the tip record, which nothing in this cycle writes before the run step:
+    # it runs beside the fetching from the start and its doc is swapped in right before the pick, so every step before the pick
+    # reads the last run's train.json exactly as when the training ran at the end (the minutes it takes hide behind the network)
+    train_out = os.path.join(d, "train.next.json")
+    if os.path.exists(train_out):     # left by a cycle that died before its pick: never swap in an old doc
+        os.remove(train_out)
+    train_job = start_bg(["memebot.py", "train", "--horizon", horizon, "--out", train_out], d, now) if (mode["pick"] or mode["bigTestDue"]) else None
     fetch = lambda args, expect_json=True: run(["fetch.py"] + args + (["--mock", mock] if mock else []), d, expect_json=expect_json)
+    candle_job = None
     if not offline:
         if mode["scan"] in ("full", "light"):
             fetch(["sources"] + (["--light"] if mode["scan"] == "light" else []), expect_json=False)
@@ -124,6 +165,13 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             # only prices: drop the old source files so the gather asks for exactly the open positions and the due big-test coins
             import fetch as F
             F.clear_sources(d, F.SOURCE_DIRS, ("lists.json",))
+        if (mode["pick"] or mode["bigTestSaveDue"]) and mode.get("candles"):
+            # the minute candles of the held coins and of the tips due for a check are known before the scan (memebot.py mode):
+            # fetched beside it, after the sources step, which clears the candles folder; GeckoTerminal is done with by then
+            items_file = os.path.join(d, "candles.json")
+            with open(items_file, "w", encoding="utf-8") as f:
+                json.dump(mode["candles"], f)
+            candle_job = start_bg(["fetch.py", "candles", "--items", items_file] + (["--mock", mock] if mock else []), d)
     g = run(["memebot.py", "gather"], d, now)
     need = chunk_addrs(g)
     asked = set(need)                                      # DexScreener was asked about these once; the deep pass asks only about new addresses
@@ -155,7 +203,7 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             with open(meta_file, "w", encoding="utf-8") as f:
                 json.dump(s.get("meta") or {}, f)
             fetch(["risk", "--addrs", ",".join(s["shortlist"]), "--meta", meta_file])
-        if not offline and s.get("candles"):
+        if not offline and s.get("candles") and not candle_job:
             # minute candles for the tips and new launches due for their 1 h / 24 h check: the record learns the peak inside the window
             items_file = os.path.join(d, "candles.json")
             with open(items_file, "w", encoding="utf-8") as f:
@@ -165,10 +213,21 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
             # the market moved during the scan: fresh prices for the candidates, then merge again, then decide
             fetch(["refresh", "--addrs", ",".join(s["refresh"])])
             g = run(["memebot.py", "gather"], d, now)
-    if mode["pick"] or mode["bigTestDue"]:
-        # the training programs run on the scored snapshots before every pick: the run reads the zero model and the tuned limits
-        t = run(["memebot.py", "train", "--horizon", horizon], d, now)
-        log("training: " + t["note"])
+    if candle_job:
+        c = finish_bg(candle_job)
+        if c is None:          # the background fetch failed: fetch them now, as before (the held coins' take-profit needs them)
+            fetch(["candles", "--items", os.path.join(d, "candles.json")])
+        else:
+            log("candles fetched beside the scan in %.0f s" % candle_job["secs"])
+    if train_job:
+        # the training ran on the scored snapshots beside the fetching: the run reads the zero model and the tuned limits
+        t = finish_bg(train_job)
+        if t is not None and os.path.exists(train_out):
+            os.replace(train_out, os.path.join(d, "db", "memebot", "train.json"))
+            log("training: %s (beside the scan, %.0f s)" % (t["note"], train_job["secs"]))
+        else:                  # it failed beside the scan: train now, as before
+            t = run(["memebot.py", "train", "--horizon", horizon], d, now)
+            log("training: " + t["note"])
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     n = apply_out(d)
     log("saved %d docs" % n)
