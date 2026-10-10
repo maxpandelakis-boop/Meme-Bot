@@ -793,7 +793,7 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
 .oagent { display:grid; gap:10px; padding-top:12px; border-top:1px solid var(--line2) } .oagent > div, .oagent > p { min-width:0 }
 .oagent .who { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center } .oagent .who strong { font-size:15px }
 .oagent .job, .oagent .clk { margin:0; color:var(--fg2); font-size:var(--fs-s) } .oagent .clk { font-variant-numeric:tabular-nums }
-.opanel .olab { display:block; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500; margin-bottom:4px }
+.opanel .olab, .olive .olab { display:block; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500; margin-bottom:4px }
 .omsg { margin:0; padding:8px 10px; border-radius:6px; background:var(--chip); font-size:var(--fs-s); overflow-wrap:anywhere } .omsg.warn { border-left:3px solid var(--warn-mark) }
 .oout { margin:0; font-weight:600; overflow-wrap:anywhere } .oout + .oout { font-weight:400; font-size:var(--fs-s); color:var(--fg2); margin-top:2px }
 .oshare { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; font-size:var(--fs-xs); color:var(--fg2); font-variant-numeric:tabular-nums; margin-bottom:4px }
@@ -806,8 +806,27 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
 .chart-svg .gbar.fg { fill:var(--s1) } .chart-svg .gbar.bg { fill:var(--s2) } .chart-svg .gbar.failed { fill:var(--bad-mark) } .chart-svg .gbar.fallback { stroke:var(--warn-mark); stroke-width:2 }
 .chart-svg .gbar.open { fill-opacity:.45; stroke:var(--bad-mark); stroke-dasharray:3 2 } .chart-svg .lane { stroke:var(--line2); stroke-width:1 }
 .chart-svg [data-tip]:hover .gbar { opacity:.8 }
+/* the live view (a page built on GitHub Actions polls the branch "live" while a scan runs): without the script only the line with the website shows */
+[data-lv][hidden] { display:none !important } .olink a { color:var(--accent); overflow-wrap:anywhere }
+.olive { display:grid; gap:10px; padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--surface) } .olive p { margin:0 }
+.olive .olv-head { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center }
+.obadge { display:inline-flex; align-items:center; gap:8px; padding:4px 12px; border-radius:999px; background:color-mix(in srgb,var(--bad-mark) 14%,var(--surface)); color:var(--bad);
+  font-size:var(--fs-s); font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap }
+.obadge i { width:8px; height:8px; border-radius:50%; background:var(--bad-mark); animation:opulse 1.6s ease-in-out infinite }
+.onow { margin:0; padding:0; list-style:none; display:grid; gap:4px; font-size:var(--fs-s); color:var(--fg2) } .onow li { overflow-wrap:anywhere } .onow b { color:var(--fg); font-weight:600; margin-right:6px }
+@keyframes opulse { 50% { opacity:.3 } } @keyframes ohalo { 0%, 100% { opacity:.15 } 50% { opacity:.85 } }
+.office[data-live] .ofl .plat[data-live="wait"] { opacity:.45 } .office[data-live] .ofl .plat[data-live="work"] .halo { animation:ohalo 2s ease-in-out infinite }
+.office[data-live] .ofl .hub[data-live="work"] .g1 { animation:opulse 2s ease-in-out infinite }
+.office[data-live] .ofl .desk[data-live] { opacity:1 } .office[data-live] .ofl .plat:not([data-live="wait"]) .desk[data-live="wait"] { opacity:.5 }
+.office[data-live] .ofl .desk[data-live="wait"] .scr { fill:var(--line) } .office[data-live] .ofl .desk[data-live="done"] .scr { fill:var(--good-mark) }
+.office[data-live] .ofl .desk[data-live="fail"] .scr { fill:var(--bad-mark) } .office[data-live] .ofl .desk[data-live="work"] .scr { fill:var(--accent); animation:opulse 1.2s ease-in-out infinite }
+.office[data-live] .ofl [data-live="work"] .lt { fill:var(--accent) } .office[data-live] .ofl [data-live="done"] .lt { fill:var(--good-mark) }
+.office[data-live] .ofl [data-live="fail"] .lt { fill:var(--bad-mark) } .office[data-live] .ofl [data-live="wait"] .lt { fill:var(--muted) }
+.office[data-live] .opanel [data-st]::before { content:"last run: " }
 @media (min-width:1080px) { .ogrid { grid-template-columns:minmax(0,1fr) minmax(320px,360px) } .omap { position:sticky; top:12px } }
-@media (prefers-reduced-motion: reduce) { .tip, details.fold > summary::after { transition:none } .ofl .wire { animation:none } }
+@media (prefers-reduced-motion: reduce) { .tip, details.fold > summary::after { transition:none } .ofl .wire { animation:none }
+  .obadge i, .office[data-live] .ofl .plat[data-live] .halo, .office[data-live] .ofl .hub[data-live] .g1, .office[data-live] .ofl .desk[data-live] .scr { animation:none }
+  .office[data-live] .ofl .plat[data-live="work"] .halo { opacity:.7 } }
 @media (max-width:700px) { .chart .wide { display:none } .chart .narrow { display:block } }
 @media (max-width:560px) {
   body { font-size:15px } h1 { font-size:21px } .wrap { gap:20px }
@@ -846,6 +865,133 @@ JS = r"""
   document.addEventListener('mousemove',handle);
   document.addEventListener('click',handle);
   document.addEventListener('mouseleave',hide);
+})();
+"""
+
+
+# the live view of the agent office: reads live.json on the branch "live" (bot.py pushes it while a scan runs: every 45 s when it changed,
+# at least once a minute) through GitHub's contents API, only while the browser tab is visible and the office tab is open. The page
+# sends no token, so every answer counts against the 60 requests an hour GitHub allows one address, a 304 too: it sends no ETag
+# and asks for the raw file (Accept: application/vnd.github.raw+json, a header that needs no CORS preflight). It polls every 75 s while
+# the newest snapshot is a live scan (at most 48 an hour); after the scan only on a grid around the hourly schedule: 2 minutes before
+# the next scheduled start, 5 minutes after it (the scan starts a minute or two late and its first push is out by then), then every 10 minutes (6 an hour). GitHub's
+# X-RateLimit-Remaining and -Reset stretch every gap so the address keeps 10 requests (other pages and devices behind it slow down
+# instead of running out), a failed or 20 s slow fetch backs off, and the tabs of one browser share one poll and its answer through
+# localStorage (a reload asks nothing new). It says "finished" only for a snapshot with "live": false; a live one that went 5 minutes
+# without an update, or two failed polls in a row, read "paused". It only sets attributes and texts on the elements office_floor and
+# office_panel mark with data-agent / data-agents, the SVG stays as drawn. The open tab and department survive the website's reloads
+# (sessionStorage), and the website reloads once when a newer scan has finished and its page is out (4 minutes after its end).
+# A 404 (no branch "live" yet) counts as no snapshot, not as a failure. window.MemebotLive holds the two decisions (what to show, when
+# to poll next) for the tests; window.MEMEBOT_LIVE_SRC and window.MEMEBOT_LIVE_T (times in ms) point it elsewhere in tests.
+OFFICE_LIVE_JS = r"""
+(function(){
+var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RESERVE:10,GRID:[-2,5,15,25,35,45],
+  // what the box shows for the newest snapshot: hide (none, or older than this page's run), live, paused (a live one older than
+  // STALE by its "updated", or two failed polls in a row: the scan may still run), done, stopped (no report came from it)
+  state:function(doc,now,pageT,fails){
+    if(!doc||typeof doc!=='object'||!Array.isArray(doc.agents)||(+doc.t||0)<pageT)return 'hide';
+    if(doc.live===true)return now-(+doc.updated||0)<MB.STALE&&(+fails||0)<2?'live':'paused';
+    if(doc.live!==false)return 'hide';
+    var rep=null,bad=false;
+    doc.agents.forEach(function(a){if(a&&a.id==='reporter')rep=a;if(a&&a.status==='failed')bad=true;});
+    return rep&&rep.status==='done'&&!bad?'done':'stopped';
+  },
+  // when the next poll is due (ms): LIVE after a live snapshot; else the next grid point (minutes from a scheduled start, scan: the
+  // next one when the page was made), IDLE without it; a failed poll waits longer; stretched to keep RESERVE requests until the reset
+  next:function(doc,now,scan,rem,reset,fails){
+    var h=3600000,t=now+MB.IDLE,k,i,g,k0=Math.floor((now-scan)/h);
+    if(doc&&typeof doc==='object'&&doc.live===true&&now-(+doc.updated||0)<MB.STALE)t=now+MB.LIVE;
+    else if(scan>0&&MB.GRID.length){t=Infinity;
+      for(k=k0-1;k<=k0+1;k++)for(i=0;i<MB.GRID.length;i++){g=scan+k*h+MB.GRID[i]*60000;if(g>now+30000&&g<t)t=g;}}
+    if(fails>0)t=Math.max(t,now+Math.min(1800000,MB.LIVE*Math.pow(2,fails)));
+    if(rem!=null&&rem>=0&&reset>0){var left=Math.min(h,Math.max(0,reset*1000-now));t=Math.max(t,now+(rem>MB.RESERVE?left/(rem-MB.RESERVE):left+5000));}
+    return t;
+  }};
+function go(){
+  var box=document.querySelector('[data-live-src]');if(!box||!window.fetch||!window.Promise)return;
+  var T=window.MEMEBOT_LIVE_T;if(T&&typeof T==='object')Object.keys(T).forEach(function(k){MB[k]=T[k];});
+  var src=window.MEMEBOT_LIVE_SRC||box.getAttribute('data-live-src'),KEY='memebot-live '+src,names={};
+  var pageT=+box.getAttribute('data-run-t')||0,scan=+box.getAttribute('data-next-scan')||0,home=box.getAttribute('data-pages')||'',tz=box.getAttribute('data-tz'),tzn=box.getAttribute('data-tzn');
+  try{names=JSON.parse(box.getAttribute('data-names'))||{};}catch(e){}
+  var all=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+  var office=document.querySelector('.office'),tab=document.getElementById('tab-office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
+  // S: the newest snapshot, when the next poll is due, the failed polls in a row and GitHub's rate-limit numbers, shared by the tabs
+  var S={doc:null,next:0,fails:0,rem:null,reset:0,at:0},busy=false,shown=null,keep={};
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'&&+s.at>S.at&&typeof s.next==='number'){S=s;return true;}}catch(e){}return false;}
+  function save(){S.at=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+  try{keep=JSON.parse(sessionStorage.getItem('memebot-keep'))||{};}catch(e){}
+  all('input[name="tab"],input[name="odept"]').forEach(function(r){if(keep[r.name]===r.id)r.checked=true;
+    r.addEventListener('change',function(){keep[r.name]=r.id;try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}poll();});});
+  function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:tz})+' '+tzn;}catch(e){return new Date(ms).toTimeString().slice(0,5);}}
+  function decode(b64){var s=atob(String(b64||'').replace(/\s+/g,'')),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return JSON.parse(new TextDecoder('utf-8').decode(u));}
+  function word(a){var s=a&&a.status;return !a?'wait':s==='running'?'work':s==='failed'?'fail':'done';}
+  function mark(e,v){if(v)e.setAttribute('data-live',v);else e.removeAttribute('data-live');}
+  function el(tag,text,kids){var e=document.createElement(tag);if(text)e.textContent=text;(kids||[]).forEach(function(k){e.appendChild(k);});return e;}
+  function last(a){return a&&Array.isArray(a.lines)&&a.lines.length?String(a.lines[a.lines.length-1]):'';}
+  function now(){return Date.now();}
+  function draw(){
+    var st=MB.state(S.doc,now(),pageT,S.fails),on=st==='live',doc=S.doc,ags=on?doc.agents.filter(function(a){return a&&a.id;}):[],by={};
+    ags.forEach(function(a){by[a.id]=a;});
+    shown=st;box.hidden=st==='hide';
+    all('[data-live-link]').forEach(function(e){e.hidden=on;});
+    all('[data-live-on]',box).forEach(function(e){e.hidden=!on;});off.hidden=on;
+    all('[data-static-strip]').forEach(function(e){e.hidden=on;});
+    if(office)mark(office,on?'on':'');
+    all('[data-agent]').forEach(function(e){mark(e,on&&word(by[e.getAttribute('data-agent')]));});
+    all('[data-agents]').forEach(function(e){var w=e.getAttribute('data-agents').split(' ').map(function(i){return word(by[i]);});
+      mark(e,on&&(['work','fail','done'].filter(function(k){return w.indexOf(k)>=0;})[0]||'wait'));});
+    all('[data-word]').forEach(function(t){var v=t.closest('[data-agents]');v=v&&v.getAttribute('data-live');if(t._w==null)t._w=t.textContent;
+      t.textContent=on&&v?t.getAttribute('data-word')+{work:'at work now',done:'done this run',fail:'failed this run',wait:'waiting'}[v]:t._w;});
+    all('[data-live-chip]').forEach(function(c){var w=word(by[c.getAttribute('data-live-chip')]);c.hidden=!on;
+      c.className='chip '+({work:'neutral',done:'good',fail:'bad'}[w]||'');c.textContent={work:'at work now',done:'done this run',fail:'failed this run',wait:'waiting'}[w];});
+    all('[data-live-line]').forEach(function(p){var a=by[p.getAttribute('data-live-line')],l=last(a);p.hidden=!(on&&word(a)==='work'&&l);p.textContent=l?'Now: '+l:'';});
+    if(on){
+      var n=function(w){return ags.filter(function(a){return word(a)===w;}).length;},work=ags.filter(function(a){return word(a)==='work';});
+      var strip=box.querySelector('[data-live-strip]'),list=box.querySelector('[data-live-now]');strip.textContent='';list.textContent='';
+      [['All',ags.length],['At work',n('work')],['Done',n('done')],['Ran beside',ags.filter(function(a){return a.bg;}).length],['Failed',n('fail')],
+       ['Waiting',Object.keys(names).filter(function(i){return !by[i];}).length]].forEach(function(c){
+        var sp=el('span',c[0]+' ',[el('b',String(c[1]))]);if(c[0]==='Failed'&&c[1])sp.className='bad';strip.appendChild(sp);});
+      (work.length?work:[null]).forEach(function(a){list.appendChild(a?el('li','',[el('b',names[a.id]||a.id),document.createTextNode(last(a)||'started')]):el('li','between two steps'));});
+    }else if(st!=='hide'){
+      var up=+(doc.updated||doc.end)||0,newer=(+doc.t||0)>pageT,site=!!home&&location.href.indexOf(home)===0;
+      off.textContent=st==='paused'?'Live view paused: no update since '+hhmm(up)+', the scan may still be running.':
+        st==='stopped'?'The last scan stopped at '+hhmm(up)+(newer?', so no new report came from it.':'.')+' The office goes live again during the next scan.':
+        newer?'The last scan finished at '+hhmm(up)+(site?', the page refreshes when the new report is published.':', after this page was made: the website has its report.'):
+        'The last scan finished at '+hhmm(up)+'; this page shows it. The office goes live again during the next scan.';
+      if(st==='done'&&newer&&site&&now()-up>240000){
+        try{if(sessionStorage.getItem('memebot-reloaded')!==String(doc.t)){sessionStorage.setItem('memebot-reloaded',String(doc.t));location.reload();}}catch(e){}
+      }
+    }
+    tick();
+  }
+  function tick(){
+    var st=MB.state(S.doc,now(),pageT,S.fails);if(st!==shown)return draw();
+    if(st==='live'){var s=Math.max(0,Math.round((now()-(+S.doc.updated||0))/1000));badge.textContent='LIVE · updated '+(s<120?s+' s':Math.round(s/60)+' min')+' ago';}
+  }
+  function poll(){
+    if(busy||document.visibilityState!=='visible'||(tab&&!tab.checked))return;
+    if(load())draw();
+    if(now()<S.next)return;
+    busy=true;S.next=now()+MB.TIMEOUT+5000;save();          // claimed: the other tabs wait for this answer
+    var ac=window.AbortController?new AbortController():null,tm,rem=null,reset=0;
+    var cut=new Promise(function(ok,no){tm=setTimeout(function(){if(ac)ac.abort();no(0);},MB.TIMEOUT);});
+    Promise.race([fetch(src,{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store',signal:ac?ac.signal:undefined}).then(function(r){
+      var h=r.headers.get('X-RateLimit-Remaining');if(h!=null&&h!==''&&!isNaN(+h)){rem=+h;reset=+r.headers.get('X-RateLimit-Reset')||0;}
+      if(r.status===404)return null;          // no live branch yet: no snapshot, not a failure (the polls stay on the schedule)
+      if(!r.ok)throw 0;
+      return r.text();
+    }).then(function(t){if(t==null)return null;var j=JSON.parse(t);if(j&&typeof j.content==='string'&&j.encoding==='base64')j=decode(j.content);   // the JSON envelope, if the raw type is not honoured
+      if(!j||typeof j!=='object'||!Array.isArray(j.agents))throw 0;return j;}),cut])
+    .then(function(d){S.doc=d;S.fails=0;},function(){S.fails=(+S.fails||0)+1;})
+    .then(function(){clearTimeout(tm);if(rem!=null){S.rem=rem;S.reset=reset;}
+      S.next=MB.next(S.doc,now(),scan,S.rem,S.reset,S.fails);save();busy=false;try{draw();}catch(e){}});
+  }
+  window.addEventListener('storage',function(e){if(e.key===KEY&&load())try{draw();}catch(x){}});
+  setInterval(function(){poll();try{tick();}catch(e){}},1000);
+  document.addEventListener('visibilitychange',poll);
+  load();draw();poll();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
 })();
 """
 
@@ -2166,7 +2312,7 @@ def office_desk(x, y, a):
     """One desk: the desk top, a monitor (lit in the department colour while its agent ran, red if it failed, dark if it did not run),
     the agent in front of it, and a 'beside' tag over an agent that ran in its own process beside the others."""
     scr = a["st"] if a["st"] in ("failed", "fallback") else ""
-    out = ['<g class="desk%s">' % ("" if a["ran"] else " off"),
+    out = ['<g class="desk%s" data-agent="%s">' % ("" if a["ran"] else " off", E(a["id"])),
            '<polygon class="dks" points="%s"/>' % office_pts((x - 15, y), (x, y + 7.5), (x + 15, y), (x + 15, y + 3), (x, y + 10.5), (x - 15, y + 3)),
            '<polygon class="dk" points="%s"/>' % office_pts((x - 15, y), (x, y - 7.5), (x + 15, y), (x, y + 7.5)),
            '<rect class="mon" x="%.1f" y="%.1f" width="18" height="13" rx="1.5"/><rect class="scr %s" x="%.1f" y="%.1f" width="15" height="10" rx="1"/>' % (x - 9, y - 15, scr, x - 7.5, y - 13.5)]
@@ -2226,7 +2372,7 @@ def office_floor(info, T, width):
     else:
         out += ['<path class="wire k-%s" style="--dc:%s" d="M%.1f %.1f L%.1f %.1f"/>' % (d["key"], d["col"], hx, hy, ax, ay) for d, _, _, _, (ax, ay), _ in places]
     for d, _, cx, cy, _, texts in places:
-        out.append('<g class="plat k-%s" style="--dc:%s">' % (d["key"], d["col"]))
+        out.append('<g class="plat k-%s" style="--dc:%s" data-agents="%s">' % (d["key"], d["col"], E(" ".join(a["id"] for a in d["agents"]))))
         out.append('<polygon class="halo" points="%s"/>' % office_pts((cx, cy - hh - 7), (cx + hw + 14, cy + ext / 2), (cx, cy + hh + ext + 7), (cx - hw - 14, cy + ext / 2)))
         out.append('<polygon class="side" points="%s"/>' % office_pts((cx - hw, cy), (cx, cy + hh), (cx + hw, cy), (cx + hw, cy + ext), (cx, cy + hh + ext), (cx - hw, cy + ext)))
         out.append('<polygon class="top" points="%s"/>' % office_pts((cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy)))
@@ -2237,17 +2383,18 @@ def office_floor(info, T, width):
         words = {"name": '<tspan class="lt %s">●</tspan> %s' % (d["light"], E(d["name"])), "agents": E(" · ".join(a["name"] for a in d["agents"])), "count": E(nb),
                  "time": E(("%s · %s" % (fmt_secs(d["secs"], True), d["word"])) if d["secs"] else d["word"])}
         for y, k in texts:
-            out.append('<text class="%s" x="%.1f" y="%.1f" text-anchor="middle">%s</text>' % ("oname" if k == "name" else ("omut" if k == "time" else "osub"), cx, y, words[k]))
+            out.append('<text class="%s" x="%.1f" y="%.1f" text-anchor="middle"%s>%s</text>' % ("oname" if k == "name" else ("omut" if k == "time" else "osub"), cx, y,
+                                                                                         ' data-word=""' if k == "time" else "", words[k]))
         out.append("</g>")
     tr = b["agents"][0]
     rows_n, scans_n = int(M.num((T or {}).get("rows")) or 0), int(M.num((T or {}).get("scans")) or 0)
-    out.append('<g class="plat hub k-brain">%s<ellipse class="core" cx="%.1f" cy="%.1f" rx="%d" ry="%d"/>' % (
-        "".join('<ellipse class="glow %s" cx="%.1f" cy="%.1f" rx="%.1f" ry="%.1f"/>' % (c, hx, hy, rx * k, ry * k) for c, k in (("g3", 1.24), ("g2", 1.13), ("g1", 1.05))), hx, hy, rx, ry))
+    out.append('<g class="plat hub k-brain" data-agents="%s">%s<ellipse class="core" cx="%.1f" cy="%.1f" rx="%d" ry="%d"/>' % (
+        E(" ".join(a["id"] for a in b["agents"])), "".join('<ellipse class="glow %s" cx="%.1f" cy="%.1f" rx="%.1f" ry="%.1f"/>' % (c, hx, hy, rx * k, ry * k) for c, k in (("g3", 1.24), ("g2", 1.13), ("g1", 1.05))), hx, hy, rx, ry))
     hub_lines = [(hy - 22, "hub-t", '<tspan class="lt %s">●</tspan> THE BRAIN' % b["light"]),
                  (hy - 3, "hub-n", ("%s coin results" % fmt_int(rows_n)) if rows_n else "no training yet"),
                  (hy + 14, "osub", ("from %d scans" % scans_n) if scans_n else "it learns from scored scans"),
                  (hy + 31, "omut", "%s · %s" % (E(tr["name"]), "beside" if tr["bg"] and tr["ran"] else E(office_word(tr))))]
-    out += ['<text class="%s" x="%.1f" y="%.1f" text-anchor="middle">%s</text>' % (c, hx, y, t) for y, c, t in hub_lines]
+    out += ['<text class="%s" x="%.1f" y="%.1f" text-anchor="middle"%s>%s</text>' % (c, hx, y, (' data-word="%s · "' % E(tr["name"])) if c == "omut" else "", t) for y, c, t in hub_lines]
     out.append("</g></svg>")
     hits = [(b, hub_cell)] + [(d, cell) for d, cell, _, _, _, _ in places]
     for d, (x, y, w, h) in hits:
@@ -2382,7 +2529,7 @@ def office_panel(d, info, D):
     n, nbg = d["n"], d["nbg"]
     sub = "%d agent%s" % (n, "" if n == 1 else "s") + ((" · %d ran beside the others" % nbg) if nbg and n > 1 else (" · ran beside the others" if nbg else ""))
     sub += (" · %s at work" % fmt_secs(d["secs"])) if d["secs"] else ""
-    parts = ['<div class="ohead"><div><span class="olab">%s</span><h3>%s</h3></div><span class="chip %s">%s</span></div><p class="note">%s</p>' % (
+    parts = ['<div class="ohead"><div><span class="olab">%s</span><h3>%s</h3></div><span class="chip %s" data-st>%s</span></div><p class="note">%s</p>' % (
         "the hub" if d["key"] == "brain" else "department", E(d["name"]), OFFICE_CHIP.get(d["light"], ""), E(d["word"]), E(sub))]
     if d["key"] == "brain":
         T = D.get("train") or {}
@@ -2390,11 +2537,12 @@ def office_panel(d, info, D):
         parts.append('<p class="note">%s</p>' % (E("The trained model and the scored history every pick is judged with: %s coin results from %d scans, %s of them went to zero within %s." % (
             fmt_int(rows_n), int(M.num(T.get("scans")) or 0), fmt_int(T.get("zeros") or 0), horizon_text())) if rows_n else "No training yet: the Brain fills once the first scans are scored."))
     for a in d["agents"]:
-        who = '<div class="who"><strong>%s</strong><span class="chip %s">%s</span>%s</div>' % (
-            E(a["name"]), OFFICE_CHIP.get(a["st"], ""), E(office_word(a)), '<span class="chip neutral">ran beside the others</span>' if a["bg"] else "")
+        who = '<div class="who"><strong>%s</strong><span class="chip %s" data-st>%s</span>%s<span class="chip" data-lv data-live-chip="%s" hidden></span></div>' % (
+            E(a["name"]), OFFICE_CHIP.get(a["st"], ""), E(office_word(a)), '<span class="chip neutral">ran beside the others</span>' if a["bg"] else "", E(a["id"]))
+        who += '<p class="omsg" data-lv data-live-line="%s" hidden></p>' % E(a["id"])
         job = ('<p class="job">%s</p>' % E(a["job"])) if a["job"] else ""
         if not a["ran"]:
-            parts.append('<div class="oagent">%s%s<p class="clk">%s this run</p></div>' % (who, job, "skipped" if a["st"] == "skipped" else "not needed"))
+            parts.append('<div class="oagent" data-agent="%s">%s%s<p class="clk">%s this run</p></div>' % (E(a["id"]), who, job, "skipped" if a["st"] == "skipped" else "not needed"))
             continue
         clk = ("%s to %s %s · %s" % (clock(a["s"]), clock(a["e"]), TZ_NAME, fmt_secs(a["secs"])) if a["e"] else
                "started %s %s, never finished · %s until the run ended" % (clock(a["s"]), TZ_NAME, fmt_secs(a["secs"])))
@@ -2404,24 +2552,59 @@ def office_panel(d, info, D):
         more = ('<details class="fold-lite"><summary>%d more step%s</summary><ul class="olines">%s</ul></details>' % (len(lines) - 6, "" if len(lines) == 7 else "s", "".join(lines[6:]))) if len(lines) > 6 else ""
         share = 100.0 * a["secs"] / run_s if run_s else 0
         parts.append(
-            '<div class="oagent">%s%s<p class="clk">%s</p>'
+            '<div class="oagent" data-agent="%s">%s%s<p class="clk">%s</p>'
             '<div><span class="olab">Output</span><p class="oout">%s</p>%s</div>%s'
             '<div><span class="olab">Connected tools</span>%s</div>'
             '<div><span class="olab">Skills · %d step%s</span><div class="oshare"><span class="obar%s"><i style="width:%.1f%%"></i></span><span>%s of the run</span></div><ul class="olines">%s</ul>%s</div></div>' % (
-                who, job, E(clk), E(a["out"] or "–"), ('<p class="oout">%s</p>' % E(pick)) if pick else "",
+                E(a["id"]), who, job, E(clk), E(a["out"] or "–"), ('<p class="oout">%s</p>' % E(pick)) if pick else "",
                 ('<div><span class="olab">Latest message</span><p class="omsg%s">%s</p></div>' % (" warn" if latest.startswith("!") else "", E(latest.lstrip("! ") if latest.startswith("!") else latest))) if latest else "",
                 office_tools(a), len(lines), "" if len(lines) == 1 else "s", " bg" if a["bg"] else "", min(100.0, share), pct(share), "".join(lines[:6]), more))
     return '<div class="card opanel k-%s">%s</div>' % (d["key"], "".join(parts))
 
 
+def live_repo():
+    """owner/repo of the GitHub repository the page is built in (GITHUB_REPOSITORY, set on GitHub Actions), or None: the live view of the
+    agent office reads the repository's branch "live", so a page built elsewhere goes without it."""
+    r = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    return r if re.fullmatch(r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+", r) else None
+
+
+def pages_url(repo):
+    """The repository's GitHub Pages address: https://<owner>.github.io/<repo>/ (the owner's own <owner>.github.io repository sits at the root)."""
+    owner, name = repo.split("/")
+    host = owner.lower() + ".github.io"
+    return "https://%s/" % host if name.lower() == host else "https://%s/%s/" % (host, name)
+
+
+def office_live(info, repo, now=None):
+    """The live view's parts: the line under the header that names the website, a hidden box the script fills (the LIVE badge, the status
+    strip and who is at work right now while a scan runs; after it when the last scan finished or stopped, or that the live view is
+    paused) and the script. data-next-scan (the next scheduled start) times its rare polls between the scans."""
+    url = pages_url(repo)
+    names = json.dumps({k: office_meta(k)[0] for k in OFFICE_AGENTS}, separators=(",", ":"))
+    top = ('<p class="note olink" data-lv data-live-link>Live during a scan: <a href="%s">%s</a></p>'
+           '<div class="olive" data-lv data-live-src="%s" data-pages="%s" data-tz="%s" data-tzn="%s" data-run-t="%d" data-next-scan="%d" data-names="%s" hidden>'
+           '<p class="olv-head" data-lv data-live-on><span class="obadge"><i></i><span data-live-badge>LIVE</span></span>'
+           '<span class="note">the map shows the scan at work now; the panels and the timeline below are from the last finished run</span></p>'
+           '<div class="ostrip" data-lv data-live-on data-live-strip></div>'
+           '<div data-lv data-live-on><span class="olab">Right now</span><ul class="onow" data-live-now></ul></div>'
+           '<p class="note" data-lv data-live-off hidden></p></div>') % (
+        E(url), E(url), E("https://api.github.com/repos/%s/contents/live.json?ref=live" % repo), E(url), "Europe/Berlin" if TZ_NAME == "Berlin" else "UTC", TZ_NAME,
+        int(M.num((info or {}).get("t0")) or 0), next_scan_ms(now) if now else 0, E(names))
+    return top, "<script>%s</script>" % OFFICE_LIVE_JS
+
+
 def office_section(D):
     """The agent office tab: the worker steps of the last run as a team at work (db/memebot/office.json, written by bot.py each cycle):
     a status strip, the floor plan with the Brain in the middle, one department opened beside it (CSS only: radio + label, so the
-    fragment works without scripts; the slowest agent's department opens first) and the team timeline."""
+    fragment works without scripts; the slowest agent's department opens first) and the team timeline. A page built on GitHub Actions
+    also names the website and carries the live view, which marks the floor plan while a scan runs."""
     info = office_data(D)
+    repo = live_repo()
+    live_top, live_js = office_live(info, repo, D.get("now")) if repo else ("", "")
     if not info:
-        return section("Agent office", "each step of the hourly scan as an agent at work · fake money",
-                       '<div class="empty">No agent log yet: the first run with the new code fills this tab with what each step of the scan did, how long it took and which services it called.</div>')
+        return section("Agent office", "each step of the hourly scan as an agent at work · fake money", live_top +
+                       '<div class="empty">No agent log yet: the first run with the new code fills this tab with what each step of the scan did, how long it took and which services it called.</div>' + live_js)
     ags, T = info["agents"], D.get("train") or {}
     run_s = (info["t1"] - info["t0"]) / 1000.0
     head = "%d agent%s · %s from the start of the run to this page%s · fake money" % (
@@ -2434,7 +2617,7 @@ def office_section(D):
     nfb = count(lambda a: a["st"] == "fallback")
     if nfb:
         cells.insert(2, ("Fallback", nfb, ""))
-    strip = '<div class="ostrip">%s</div>' % "".join('<span class="%s">%s <b>%d</b></span>' % (c if k else "", E(lab), k) for lab, k, c in cells)
+    strip = '<div class="ostrip" data-lv data-static-strip>%s</div>' % "".join('<span class="%s">%s <b>%d</b></span>' % (c if k else "", E(lab), k) for lab, k, c in cells)
     note = "The run of %s%s. Each department is one step of the scan, the Brain in the middle is the trained model and the scored history. Tap a department to see what its agents did." % (
         fmt_when(info["t0"], D["now"]), (", " + OFFICE_MODE[info["mode"]]) if info["mode"] in OFFICE_MODE else "")
     every = info["depts"] + [info["brain"]]
@@ -2454,7 +2637,7 @@ def office_section(D):
             fmt_secs(a["secs"]) if a["ran"] else "–", E(office_word(a) + (", beside the others" if a["bg"] else "")), E(a["out"] or "–")) for a in ags)
     timeline = '<h3>Team timeline</h3><p class="note">minutes since the run started at %s · one lane per agent, so you see who worked at the same time</p>%s%s' % (
         E(clock(info["t0"]) + " " + TZ_NAME), chart_box(office_gantt(info, WIDE), office_gantt(info, NARROW), g_leg), table)
-    body = '%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div>%s' % (strip, E(note), radios, floor, panels, timeline)
+    body = '%s%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div>%s%s' % (live_top, strip, E(note), radios, floor, panels, timeline, live_js)
     return section("Agent office", head, body)
 
 

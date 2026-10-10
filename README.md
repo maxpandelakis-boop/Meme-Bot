@@ -372,6 +372,29 @@ put it on the home screen like an app. The `pages` job publishes it with GitHub 
 **Change visibility → Public** (Pages is a paid feature on private repositories) and **Pages → Source: GitHub Actions**.
 Until then the `pages` job fails and the run still counts as green.
 
+### Watching a scan live
+
+While a scan runs on GitHub, `bot.py cycle` (with `MEMEBOT_LIVE=1`, which the workflow sets on the scan step only) pushes the
+Agent office record to a branch `live` that holds a single commit with a single file, `live.json`: about every 45 seconds when it
+changed, at least once a minute even when nothing changed (a heartbeat with a fresh `"updated"`, so a quiet step is not taken
+for a dead scan), and once more when the cycle ends (`"live": false`). The training and the candle fetch running beside the scan
+report each progress line as it happens. The website's Agent office tab reads `live.json` through GitHub's API while the tab is
+open and the browser tab is in front, and marks the floor plan: a LIVE badge with the age of the snapshot, the departments at
+work pulsing, the finished ones green, the ones still waiting dimmed, the counts, and the newest line of every agent at work.
+After the scan it says when the scan finished (or that it stopped, when no report came from it), and the website reloads itself
+once the new page is out. A live snapshot that went 5 minutes without an update, or two failed reads in a row, show "Live view
+paused, the scan may still be running", never "finished".
+
+The page reads without a token, so every request counts against the 60 an hour GitHub allows one address, an unchanged answer
+(304) too. It therefore asks every 75 seconds only while the newest snapshot is a live scan (at most 48 requests an hour), and
+between scans only 2 minutes before the next scheduled start, 5 minutes after it, then every 10 minutes (6 an hour); a 35-minute
+scan costs about 31 requests in its hour. The tabs of one browser share one reader (a reload asks nothing new). Every answer
+carries GitHub's remaining count and reset time, and the page stretches its gaps so that 10 requests stay free: two phones or
+laptops behind one address (one home Wi-Fi) slow each other down to about one read every 1.5 to 2 minutes each, and in the last
+minutes of GitHub's hour a few reads can be up to about 10 minutes apart (the page then says "paused") instead of running out. A push
+that fails or takes longer than 20 seconds is given up and the scan goes on. Inside claude.ai the page cannot reach GitHub and
+stays as it was, with the website's address; opened from a file it reads GitHub like the website does.
+
 Costs: a public repository has unlimited Actions minutes; a private one has 2000 a month, which a full scan every two
 hours (about 10 minutes a run, 12 runs a day) exceeds, so a private repository needs a 4-hour schedule. Never run the
 laptop loop and the schedule together: when both push, the later push wins and the other machine's docs are dropped.

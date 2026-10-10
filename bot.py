@@ -27,6 +27,10 @@ Usage:
                                                             the "results" branch of this repository's origin), so the page and
                                                             the picks can be read elsewhere; cycle/loop --push does it after each cycle
   python3 bot.py reset                                      wipe db/ (positions, history, learned weights) and start again with 40
+
+MEMEBOT_LIVE=1 (the scan workflow sets it): while a cycle runs, its Agent office record goes to the one-commit branch "live" of
+the results remote (--remote, else RESULTS_URL, else the origin) about every 45 s when it changed and at least once a minute,
+for the website's live view (class Live).
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, datetime as dt
 
@@ -55,6 +59,7 @@ class Office:
 
     def __init__(self, d=None, t=None, horizon=None):
         self.d, self.t, self.horizon, self.rule, self.mode, self.cur, self.agents = d, t, horizon, None, None, None, {}
+        self.rev, self.lock = 0, threading.RLock()     # rev counts the changes (the live view pushes a changed record only); the lock serves the threads that file and read it
         try:
             if d:
                 if HERE not in sys.path:
@@ -68,12 +73,14 @@ class Office:
         """aid starts now; a background one works beside the step at work. An agent that ran before works again (a background
         job redone in the foreground) and keeps its start and lines."""
         try:
-            if self.d and aid:
-                a = self.agents.setdefault(aid, {"id": aid, "start": ms(), "end": None, "status": "running", "bg": bg, "lines": [], "waits": {}, "blocked": [], "out": ""})
-                if not bg:
-                    if a["bg"]:      # its background run failed: the foreground redo is what held up the pick
-                        a.update(bg=False, start=ms(), end=None, status="running")
-                    self.cur = aid
+            with self.lock:
+                if self.d and aid:
+                    a = self.agents.setdefault(aid, {"id": aid, "start": ms(), "end": None, "status": "running", "bg": bg, "lines": [], "waits": {}, "blocked": [], "out": ""})
+                    if not bg:
+                        if a["bg"]:      # its background run failed: the foreground redo is what held up the pick
+                            a.update(bg=False, start=ms(), end=None, status="running")
+                        self.cur = aid
+                    self.rev += 1
         except Exception:
             pass
 
@@ -81,24 +88,26 @@ class Office:
         """A progress line of aid (default: the step at work), with the rate-limit waits and the hosts given up on that it names.
         The first 30 and the last 30 lines are kept; the counts see every line."""
         try:
-            a = self.agents.get(aid or self.cur)
-            s = " ".join(s.split()) if isinstance(s, str) else ""
-            if not a or not s:
-                return
-            a["lines"].append(s[:200])
-            if len(a["lines"]) > 90:
-                del a["lines"][30:-30]
-            m = re.search(r"! 429 rate limited by ([^\s,]+)", s)
-            if m:
-                a["waits"][m.group(1)] = a["waits"].get(m.group(1), 0) + 1
-            m = re.search(r"giving up on ([^\s,:]+)", s)
-            if m:
-                host = m.group(1)
-                k = re.search(r"rate limited (\d+) times", s)
-                if k:                # a host that waits too often is dropped: its waits, not a block (POST waits print no line of their own)
-                    a["waits"][host] = max(a["waits"].get(host, 0), int(k.group(1)))
-                elif host not in a["blocked"]:
-                    a["blocked"].append(host)
+            with self.lock:
+                a = self.agents.get(aid or self.cur)
+                s = " ".join(s.split()) if isinstance(s, str) else ""
+                if not a or not s:
+                    return
+                a["lines"].append(s[:200])
+                if len(a["lines"]) > 90:
+                    del a["lines"][30:-30]
+                self.rev += 1
+                m = re.search(r"! 429 rate limited by ([^\s,]+)", s)
+                if m:
+                    a["waits"][m.group(1)] = a["waits"].get(m.group(1), 0) + 1
+                m = re.search(r"giving up on ([^\s,:]+)", s)
+                if m:
+                    host = m.group(1)
+                    k = re.search(r"rate limited (\d+) times", s)
+                    if k:                # a host that waits too often is dropped: its waits, not a block (POST waits print no line of their own)
+                        a["waits"][host] = max(a["waits"].get(host, 0), int(k.group(1)))
+                    elif host not in a["blocked"]:
+                        a["blocked"].append(host)
         except Exception:
             pass
 
@@ -106,40 +115,52 @@ class Office:
         """aid's result phrase: text, or a function that builds it from the step's JSON (a slip there costs only the phrase)."""
         try:
             if aid in self.agents:
-                self.agents[aid]["out"] = str(out() if callable(out) else out)[:200]
+                said = str(out() if callable(out) else out)[:200]
+                with self.lock:
+                    self.agents[aid]["out"] = said
+                    self.rev += 1
         except Exception:
             pass
 
     def done(self, aid, out=None, status="done", end=None):
         """aid finished (end: when its process really exited, for a background job); status done, failed, skipped or fallback."""
         try:
-            a = self.agents.get(aid)
-            if not a:
-                return
-            a["end"], a["status"] = int(end or ms()), status
-            if self.cur == aid:
-                self.cur = None
+            with self.lock:
+                a = self.agents.get(aid)
+                if not a:
+                    return
+                a["end"], a["status"] = int(end or ms()), status
+                if self.cur == aid:
+                    self.cur = None
+                self.rev += 1
         except Exception:
             return
         if out is not None:
             self.result(aid, out)
 
     def fail(self):
-        """The step at work failed and the cycle stops: the record says so, for the background jobs still at work too."""
+        """The step at work failed and the cycle stops: the record says so, for the background jobs still at work too (their tails stop
+        first, so the record saved here is the one the cycle ends with)."""
+        stop_tails()
         self.done(self.cur, status="failed")
         for aid, a in list(self.agents.items()):
             if a.get("status") == "running":
                 self.done(aid, status="failed")
         self.save()
 
+    def doc(self):
+        """The record as office.json holds it, copied under the lock (the live view adds two keys to it)."""
+        with self.lock:
+            agents = [dict(a, lines=list(a["lines"]) if len(a["lines"]) <= 60 else a["lines"][:30] + a["lines"][-30:], waits=dict(a["waits"]), blocked=list(a["blocked"]))
+                      for a in self.agents.values()]
+            return {"v": 1, "t": self.t, "end": ms(), "horizon": self.horizon, "rule": self.rule, "mode": self.mode, "agents": agents}
+
     def save(self):
         """db/memebot/office.json, written whole and then swapped in; it travels with the other db/memebot docs on sync."""
         try:
             if not self.d:
                 return
-            agents = [dict(a, lines=a["lines"] if len(a["lines"]) <= 60 else a["lines"][:30] + a["lines"][-30:], waits=dict(a["waits"]), blocked=list(a["blocked"]))
-                      for a in self.agents.values()]
-            doc = {"v": 1, "t": self.t, "end": ms(), "horizon": self.horizon, "rule": self.rule, "mode": self.mode, "agents": agents}
+            doc = self.doc()
             path = os.path.join(self.d, "db", "memebot", "office.json")
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path + ".tmp", "w", encoding="utf-8") as f:
@@ -153,6 +174,161 @@ class Office:
 
 
 OFFICE = Office()    # the cycle at work puts its own record here (log() files the lines under its steps)
+LIVE_FIRST, LIVE_EVERY, LIVE_BEAT, LIVE_WAIT = 10, 45, 60, 20   # the live view (s): the first push after the start, the least gap between two
+# pushes, a heartbeat push of an unchanged record once the last good push is this old (the page tells a quiet step from a scan that died),
+# and the most one push may take
+
+
+def redact(s):
+    """A remote URL (or a message naming one) without the credentials in it."""
+    return re.sub(r"(https?://)[^/@\s]*@", r"\1", str(s))
+
+
+def origin_url():
+    """This code folder's git origin ('' when there is none): where sync and the live view push by default."""
+    p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+
+class Live:
+    """The office record pushed while a cycle runs, for the page's live view; only with MEMEBOT_LIVE=1, which the scan workflow sets.
+    It force-pushes a branch "live" that holds one commit with one file, live.json (office.json's keys plus "live": true, false on the
+    last one, and "updated", ms): about 10 s after the start, then every 45 s when the record changed, a heartbeat with a fresh "updated"
+    when the last good push is a minute old (a step can go minutes without a new line), and once more at the end. It pushes from a git
+    folder of its own (<dir>/live.git, made fresh each cycle) and only watches: the pushes run on a daemon thread, a push is killed
+    after 20 s, the end cuts a push still running short and waits at most 20 s for the last one, the first error is printed (never
+    filed in the record) and every error is swallowed."""
+
+    def __init__(self, d, remote):
+        self.git_dir, self.remote = os.path.join(os.path.abspath(d), "live.git"), remote
+        self.stop, self.cut = threading.Event(), threading.Event()    # stop: the loop ends; cut: only the last snapshot may still go out
+        self.lock, self.plock = threading.Lock(), threading.Lock()   # lock: one push at a time; plock: the git process now running
+        self.proc, self.pushed, self.said = None, None, False
+        self.t0, self.tried, self.ok = time.time(), None, None        # the start, the last push begun, the last good push begun
+        shutil.rmtree(self.git_dir, ignore_errors=True)
+        self.thread = threading.Thread(target=self.loop, daemon=True)
+        self.thread.start()
+
+    @staticmethod
+    def start(d, remote=None):
+        """The live view of this cycle, or None: MEMEBOT_LIVE is not 1, or no remote is known (--remote, else RESULTS_URL, else the origin)."""
+        try:
+            if os.environ.get("MEMEBOT_LIVE") != "1":
+                return None
+            remote = remote or os.environ.get("RESULTS_URL") or origin_url()
+            if not remote:
+                print("live view: off, no remote to push to", file=sys.stderr, flush=True)
+                return None
+            print("live view: the office goes to branch live of %s every %d s while it changes, at least every %d s" % (redact(remote), LIVE_EVERY, LIVE_BEAT),
+                  file=sys.stderr, flush=True)
+            return Live(d, remote)
+        except Exception:
+            return None
+
+    def due(self, now):
+        """Whether the loop pushes now: the first push soon after the start, so the page sees the scan begin; then a changed record at
+        most every LIVE_EVERY s, and an unchanged one (a heartbeat) once the last good push is LIVE_BEAT s old."""
+        if not OFFICE.d:
+            return False
+        if self.tried is None:
+            return now - self.t0 >= min(LIVE_FIRST, LIVE_EVERY)
+        if now - self.tried < min(LIVE_EVERY, LIVE_BEAT):
+            return False
+        return OFFICE.rev != self.pushed or self.ok is None or now - self.ok >= LIVE_BEAT
+
+    def loop(self):
+        while not self.stop.wait(min(1.0, LIVE_EVERY / 4.0)):
+            try:
+                if self.due(time.time()):
+                    self.push(True)
+            except Exception:
+                pass
+
+    @staticmethod
+    def kill(p):
+        try:
+            os.killpg(p.pid, 9)
+        except Exception:
+            try:
+                p.kill()
+            except Exception:
+                pass
+
+    def git(self, until, *a, stdin=None, cut_ok=True):
+        """One git command on the live folder, killed with its children when the push's time is up (or by finish, unless cut_ok is
+        False: the last push); its output, or an error."""
+        with self.plock:
+            if cut_ok and self.cut.is_set():
+                raise RuntimeError("cut short by the end of the cycle")
+            p = subprocess.Popen(["git", "--git-dir", self.git_dir] + list(a), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 env=dict(os.environ, GIT_TERMINAL_PROMPT="0"), start_new_session=True)
+            self.proc = p
+        try:
+            out, err = p.communicate(stdin, timeout=max(0.1, until - time.time()))
+        except subprocess.TimeoutExpired:
+            self.kill(p)
+            try:
+                p.wait(2)
+            except Exception:
+                pass
+            raise RuntimeError("git %s took longer than %d s" % (a[0], LIVE_WAIT))
+        finally:
+            with self.plock:
+                if self.proc is p:
+                    self.proc = None
+        if cut_ok and self.cut.is_set():
+            raise RuntimeError("cut short by the end of the cycle")
+        if p.returncode != 0:
+            raise RuntimeError("git %s: %s" % (a[0], (err or out).decode("utf-8", "replace").strip()[-300:]))
+        return out.decode("utf-8", "replace").strip()
+
+    def push(self, live):
+        with self.lock:      # one push at a time, so the last one always lands last
+            if live and self.cut.is_set():
+                return
+            try:
+                o = OFFICE
+                if not o.d:
+                    return
+                t = self.tried = time.time()
+                with o.lock:
+                    rev, doc = o.rev, o.doc()
+                doc.update(live=live, updated=ms())
+                until = t + LIVE_WAIT
+                if not os.path.isdir(self.git_dir):
+                    self.git(until, "init", "-q", "--bare", cut_ok=live)
+                blob = self.git(until, "hash-object", "-w", "--stdin", stdin=json.dumps(doc, separators=(",", ":")).encode("utf-8"), cut_ok=live)
+                tree = self.git(until, "mktree", stdin=("100644 blob %s\tlive.json\n" % blob).encode("utf-8"), cut_ok=live)
+                commit = self.git(until, "-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "commit-tree", tree, "-m", "live office " + ("at work" if live else "done"), cut_ok=live)
+                self.git(until, "push", "-q", "--force", self.remote, commit + ":refs/heads/live", cut_ok=live)
+                self.pushed, self.ok = rev, t
+            except Exception as e:
+                if live and self.cut.is_set():       # cut short so the last snapshot goes out at once: not an error
+                    return
+                if not self.said:
+                    self.said = True
+                    print("live view: push failed, the cycle goes on (%s)" % redact(" ".join(str(e).split()))[:300], file=sys.stderr, flush=True)
+
+    def finish(self):
+        """The last snapshot ("live": false): a push still running is killed first (it would hold the last one up), then the last one
+        goes out off the main thread, waited for at most LIVE_WAIT s and killed after that."""
+        try:
+            self.stop.set()
+            self.cut.set()
+            with self.plock:
+                p = self.proc
+            if p:
+                self.kill(p)
+            t = threading.Thread(target=self.push, args=(False,), daemon=True)
+            t.start()
+            t.join(LIVE_WAIT)
+            if t.is_alive():
+                with self.plock:
+                    p = self.proc
+                if p:
+                    self.kill(p)
+        except Exception:
+            pass
 
 
 def run(args, d, now=None, expect_json=True):
@@ -192,14 +368,62 @@ def start_bg(args, d, now=None, agent=None):
     base = os.path.join(d, "bg-" + re.sub(r"[^a-z0-9]+", "-", " ".join(args[:2]).lower()).strip("-"))
     out, err = open(base + ".out", "w", encoding="utf-8"), open(base + ".err", "w", encoding="utf-8")
     p = subprocess.Popen(cmd, stdout=out, stderr=err, text=True, encoding="utf-8", errors="replace", env=dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
-    job = {"p": p, "out": out, "err": err, "t0": time.time(), "name": " ".join(args[:2]), "agent": agent}
+    job = {"p": p, "out": out, "err": err, "t0": time.time(), "name": " ".join(args[:2]), "agent": agent, "filed": 0, "lock": threading.Lock(), "stop": threading.Event()}
+    BG_JOBS.append(job)
     OFFICE.begin(agent, bg=True)
     try:
         job["waiter"] = threading.Thread(target=lambda: (p.wait(), job.update(end=ms())), daemon=True)
         job["waiter"].start()
+        job["tail"] = threading.Thread(target=tail_bg, args=(job, OFFICE), daemon=True)
+        job["tail"].start()
     except Exception:
         pass
     return job
+
+
+BG_JOBS = []         # the background jobs started and not yet awaited: a cycle that stops early stops their tails (stop_tails)
+
+
+def tail_bg(job, office):
+    """Files each new progress line of a background job under its agent while the job runs, so the live view sees it at work. It splits
+    and decodes the lines as finish_bg's read of the whole file does, and finish_bg files the ones it did not reach: the record ends the same.
+    It ends once the process exited and the file is read to its end, or when stop_tails (a cycle that stops) or finish_bg stops it."""
+    try:
+        with open(job["err"].name, "rb") as f:
+            buf = b""
+            while not job["stop"].is_set():
+                exited = job["p"].poll() is not None      # asked before the read: all it wrote before it exited is in the file by then
+                got = f.read()
+                buf += got or b""
+                k = buf.rfind(b"\n") + 1
+                if k:                # whole lines only: up to the last \n, so a \r\n is never cut in two
+                    lines = [ln for ln in re.split(r"\r\n|\r|\n", buf[:k].decode("utf-8", "replace"))[:-1] if ln.split()]
+                    buf = buf[k:]
+                    with job["lock"]:
+                        if job.get("closed"):
+                            return
+                        for ln in lines:
+                            office.line(ln, job["agent"])
+                            job["filed"] += 1
+                if not got:
+                    if exited:
+                        return
+                    job["stop"].wait(1)
+    except Exception:
+        pass
+
+
+def stop_tails():
+    """The tails of the background jobs not yet awaited stop filing lines (a cycle that stops early: the record it saves is the one it
+    ends with, and no tail outlives its cycle in bot.py loop). The jobs themselves run on as before."""
+    while BG_JOBS:
+        job = BG_JOBS.pop()
+        try:
+            job["stop"].set()
+            with job["lock"]:      # once closed, the tail files nothing more and ends at its next turn (no wait here)
+                job["closed"] = True
+        except Exception:
+            pass
 
 
 def finish_bg(job):
@@ -210,9 +434,21 @@ def finish_bg(job):
     job["end"] = job.get("end") or ms()
     job["out"].close()
     job["err"].close()
+    if job in BG_JOBS:
+        BG_JOBS.remove(job)
+    filed = 0
+    if job.get("tail"):
+        job["stop"].set()
+        job["tail"].join(5)
+        with job["lock"]:
+            job["closed"], filed = True, job["filed"]
     with open(job["err"].name, encoding="utf-8", errors="replace") as f:
-        for line in f:
-            log(line.rstrip(), job["agent"])
+        for line in f:           # the cycle's log gets the job's lines now, in one block; the record gets the ones the tail did not file
+            print(line.rstrip(), file=sys.stderr, flush=True)
+            if line.split():
+                filed -= 1
+                if filed < 0:
+                    OFFICE.line(line.rstrip(), job["agent"])
     with open(job["out"].name, encoding="utf-8", errors="replace") as f:
         text = f.read()
     job["secs"] = time.time() - job["t0"]
@@ -275,6 +511,18 @@ def chunk_addrs(g):
 
 
 def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
+    """One cycle (cycle_steps); with MEMEBOT_LIVE=1 its office record is pushed while it runs and once more when it ends, failed or not.
+    A cycle that stops early stops the tails of its background jobs first."""
+    live = Live.start(d, remote)
+    try:
+        return cycle_steps(d, force, offline, mock, now, push, remote, branch, rescan, recommend, horizon)
+    finally:
+        stop_tails()
+        if live:
+            live.finish()
+
+
+def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, remote=None, branch="results", rescan=False, recommend=False, horizon="24h"):
     global OFFICE
     os.makedirs(d, exist_ok=True)
     t0 = ms()
@@ -489,9 +737,8 @@ def sync(d, remote=None, branch="results"):
         git("init", "-q", check=True)
         git("symbolic-ref", "HEAD", "refs/heads/" + branch, check=True)
     if not remote:
-        p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace")
-        remote = p.stdout.strip()
-        if p.returncode != 0 or not remote:
+        remote = origin_url()
+        if not remote:
             raise SystemExit("no --remote given and this folder has no git origin to reuse")
     if git("remote", "get-url", "origin").returncode != 0:
         git("remote", "add", "origin", remote, check=True)
@@ -676,10 +923,7 @@ def site(d, out="site", repo=None):
         import report as R
         R.build(d)
     h = open(page, encoding="utf-8").read()
-    if not repo:
-        p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace")
-        repo = p.stdout.strip() if p.returncode == 0 else ""
-    repo = re.sub(r"^(https?://)[^/@]*@", r"\1", repo.strip())   # no credentials in the link
+    repo = re.sub(r"^(https?://)[^/@]*@", r"\1", (repo or origin_url()).strip())   # no credentials in the link
     repo = repo[:-4] if repo.endswith(".git") else repo
     h = h.replace("</title>", "</title>\n" + SITE_TAGS, 1)
     if repo:

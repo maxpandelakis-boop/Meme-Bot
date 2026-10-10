@@ -3,7 +3,9 @@
 # GitHub's own scheduler comes 10 to 20 minutes late), and whenever you press "Run workflow" (github.com -> Actions -> Meme-Bot
 # scan). The cron below is the safety net: it fires at :25 and does nothing when this hour's scan was started.
 # Each run restores the bot's state from the results branch, scans ~12,000 coins, names the best coin for the next two hours,
-# pushes report.html + the small docs back to the results branch and shows the picks in the run's summary.
+# pushes report.html + the small docs back to the results branch and shows the picks in the run's summary. While the scan runs,
+# bot.py force-pushes the Agent office record to the one-commit branch "live" (every 45 s when it changed, at least once a minute);
+# the website's office tab reads it.
 # When GitHub Pages is switched on (Settings -> Pages -> Source: GitHub Actions; needs a public repository on the free plan),
 # the second job publishes the page as a website that phones can keep on the home screen.
 # Fake money only: nothing is bought anywhere.
@@ -33,7 +35,7 @@ on:
         type: boolean
         default: false
 permissions:
-  contents: write
+  contents: write                    # the results branch, the bigtest branch and the one-commit "live" branch the scan pushes while it runs
   actions: write                     # the tidy-up step deletes old runs of this workflow
 concurrency:
   group: memebot-scan              # a button press while a scheduled run is going waits for it instead of racing it
@@ -97,6 +99,8 @@ jobs:
       - name: Scan and recommend
         id: scan
         if: steps.recent.outputs.skip != 'true'
+        env:
+          MEMEBOT_LIVE: '1'          # the office record goes to the branch "live" (RESULTS_URL) every 45 s to 60 s while the scan runs: the website shows it live
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
       - name: Export the big-test results to the bigtest branch for offline research (once a day at the 06 UTC scan, or when asked)
         if: steps.recent.outputs.skip != 'true'

@@ -356,6 +356,8 @@ def main():
     d = tempfile.mkdtemp(prefix="memebot-test-")
     os.environ["LUNARCRUSH_API_KEY"] = "test"
     os.environ["BITQUERY_TOKEN"] = "test"
+    for k in ("MEMEBOT_LIVE", "RESULTS_URL", "GITHUB_REPOSITORY"):   # the test never pushes a live view, and its pages are built as on a laptop
+        os.environ.pop(k, None)
     fails = []
 
     def check(ok, what):
@@ -611,6 +613,60 @@ def main():
           and "&lt;b&gt;12 coins" in page_o and "<b>12" not in page_o and "never finished" in page_o and "up to 2 at work at once" in page_o and "could not be rendered" not in page_o
           and "At work <b>1</b>" in page_o and "Skipped <b>0</b>" in page_o and not re.search(r"(^|[\s}])\.ok\s*\{", page_o, re.M),
           "agent office tab: floor plan, the slowest department open, tool states, an unfinished and an agent still at work, escaped output, no page-wide style clash")
+    r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", od, "--now", str(T0 + H)], capture_output=True, text=True, env=dict(os.environ))
+    page_plain = open(os.path.join(od, "report.html"), encoding="utf-8").read() if r.returncode == 0 else ""
+    r = subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", od, "--now", str(T0 + H)], capture_output=True, text=True, env=dict(os.environ, GITHUB_REPOSITORY="Some-Owner/Meme-Bot"))
+    page_live = open(os.path.join(od, "report.html"), encoding="utf-8").read() if r.returncode == 0 else ""
+    bare_live = re.sub(r'<script>\s*\(function\(\)\{\s*var MB=window\.MemebotLive=.*?</script>', "", re.sub(
+        r'<p class="note olink" data-lv data-live-link>.*?</p><div class="olive".*?<p class="note" data-lv data-live-off hidden></p></div>', "", page_live, flags=re.S), flags=re.S)
+    check('Live during a scan: <a href="https://some-owner.github.io/Meme-Bot/">' in page_live and "https://api.github.com/repos/Some-Owner/Meme-Bot/contents/live.json?ref=live" in page_live
+          and "MEMEBOT_LIVE_SRC" in page_live and 'data-agents="scouts deep"' in page_live and 'data-agent="scouts"' in page_live
+          and page_plain and "Live during a scan" not in page_plain and "live.json" not in page_plain and "MEMEBOT_LIVE_SRC" not in page_plain and bare_live == page_plain,
+          "the office tab carries the live script and the website line only when GITHUB_REPOSITORY is set; without them the page is the same")
+    import report as R_
+    js = R_.OFFICE_LIVE_JS
+    check("If-None-Match" not in page_live and "Accept:'application/vnd.github.raw+json'" in js and "j.encoding==='base64'" in js and "AbortController" in js and "if(r.status===404)return null;" in js
+          and "TIMEOUT:20000" in js and "LIVE:75000" in js and "IDLE:600000" in js and "STALE:300000" in js and "GRID:[-2,5,15,25,35,45]" in js and "localStorage" in js
+          and 'data-next-scan="%d"' % R_.next_scan_ms(T0 + H) in page_live and "Live view paused: no update since " in js and "The last scan stopped at " in js
+          and js.count("'The last scan finished at '") == 2 and "st==='done'&&newer&&site" in js,
+          "the live script asks for the raw file without an ETag (no CORS preflight), times a fetch out after 20 s, polls on the schedule and says paused or stopped")
+    node = shutil.which("node")
+    if node:      # the script's two decisions, run in node: what the box shows and when the next poll is due
+        jd = tempfile.mkdtemp(prefix="memebot-js-")
+        with open(os.path.join(jd, "t.js"), "w", encoding="utf-8") as f:
+            f.write("global.window={};global.document={readyState:'complete',querySelector:function(){return null;}};\n" + js + r"""
+var MB=window.MemebotLive,now=Date.UTC(2026,9,10,12,0,0),scan=Date.UTC(2026,9,10,12,10,0),pageT=now-3600000,M=60000,o={},st=MB.state;
+function snap(live,age,ags,t){return {t:t||now-20*M,live:live,updated:now-age,agents:ags||[{id:'dispatch',status:'done'},{id:'market',status:'running'}]};}
+var done=[{id:'trader',status:'done'},{id:'reporter',status:'done'}];
+o.states=[st(snap(true,30000),now,pageT,0),st(snap(true,200000),now,pageT,0),st(snap(true,301000),now,pageT,0),st(snap(true,30000),now,pageT,1),st(snap(true,30000),now,pageT,2),
+  st(snap(false,0,done),now,pageT,0),st(snap(false,0,done),now,pageT,3),st(snap(false,0,[{id:'trader',status:'failed'}]),now,pageT,0),
+  st(snap(false,0,[{id:'trader',status:'done'},{id:'reporter',status:'failed'}]),now,pageT,0),st(snap(false,0,[{id:'market',status:'failed'},{id:'reporter',status:'done'}]),now,pageT,0),
+  st(snap(false,0,done,pageT-1),now,pageT,0),st(snap(true,30000,null,pageT-1),now,pageT,0),st(null,now,pageT,0),st({t:now,agents:[]},now,pageT,0)];
+var seen={};for(var a=0;a<4*3600000;a+=7000)for(var k=0;k<6;k++)seen[st(snap(true,a),now,pageT,k)]=1;o.liveSeen=Object.keys(seen).sort();
+function nx(doc,t,sc,rem,reset,fails){var v=MB.next(doc,t,sc,rem,reset,fails);return Math.round((v-t)/1000);}
+var off=snap(false,0,done);
+o.next=[nx(snap(true,30000),now,scan,null,0,0),nx(off,now,scan,null,0,0),nx(off,now+8.5*M,scan,null,0,0),nx(off,now+14*M,scan,null,0,0),nx(off,now+50*M,scan,null,0,0),
+  nx(off,now+3*3600000+55*M,scan,null,0,0),nx(off,now,0,null,0,0),nx(null,now,scan,null,0,0),nx(snap(true,400000),now,scan,null,0,0),nx(snap(true,30000),now,scan,0,now/1000+1200,1),
+  nx(snap(true,30000),now,scan,20,now/1000+1800,0),nx(snap(true,30000),now,scan,59,now/1000+3590,0),nx(snap(true,30000),now,scan,null,0,1),nx(off,now,scan,null,0,9)];
+console.log(JSON.stringify(o));
+""")
+        r = subprocess.run([node, os.path.join(jd, "t.js")], capture_output=True, text=True)
+        shutil.rmtree(jd, ignore_errors=True)
+        try:
+            o = json.loads(r.stdout)
+        except ValueError:
+            o = {"err": r.stderr[-300:]}
+        check(o.get("states") == ["live", "live", "paused", "live", "paused", "done", "done", "stopped", "stopped", "stopped", "hide", "hide", "hide", "hide"]
+              and o.get("liveSeen") == ["live", "paused"],
+              "the page's decision (node): a live snapshot is live, after 5 minutes without an update or two failed polls paused, never finished; live false is finished,"
+              " or stopped when the reporter did not finish or an agent failed; a snapshot older than the page or none hides the box %s" % (o.get("states") or o))
+        check(o.get("next") == [75, 8 * 60, 390, 60, 5 * 60, 13 * 60, 600, 8 * 60, 8 * 60, 1205, 180, 75, 150, 1800],
+              "the page's poll plan (node): 75 s while live; between scans 2 minutes before the scheduled start, 5 after it, then every 10 minutes (10 without the"
+              " schedule); after a failed poll longer; GitHub's remaining requests stretch the gap, none left waits for the reset %s" % (o.get("next") or o))
+    else:
+        check("state:function(doc,now,pageT,fails)" in js and "doc.live===true)return now-(+doc.updated||0)<MB.STALE&&(+fails||0)<2?'live':'paused'" in js
+              and "return rep&&rep.status==='done'&&!bad?'done':'stopped'" in js and "(+doc.t||0)<pageT)return 'hide'" in js,
+              "the page's decision (string checks, node not found): live false is finished or stopped, a stale live snapshot paused, an older one hidden")
     shutil.rmtree(od, ignore_errors=True)
     print("== recommend mode: a fresh db, full scan, two recommendations, no positions")
     rd = tempfile.mkdtemp(prefix="memebot-rec-")
@@ -1098,6 +1154,140 @@ def main():
           and a_["candles"]["bg"] is False and a_["candles"]["status"] == "failed" and all(a["status"] in ("done", "failed", "skipped", "fallback", "running") for a in a_.values())
           and not os.path.exists(os.path.join(ud, "db", "memebot", "office.json.tmp")),
           "the office recorder counts waits, marks only hosts it gave up on as blocked, keeps 60 lines, records a foreground redo and a stopped cycle")
+    import contextlib, io
+    go_f, job_f = os.path.join(ud, "go"), os.path.join(ud, "job.py")    # a background job's lines reach the record while it runs, and it ends as read at the end
+    with open(job_f, "w") as f:
+        f.write("import os, sys, time\nw = sys.stderr.buffer\nw.write(b'first\\n'); w.flush()\nw.write('second \\u00fc\\r\\n'.encode()); w.flush()\nw.write(b'a\\rb\\n\\n  \\n'); w.flush()\n"
+                "while not os.path.exists(%r): time.sleep(0.05)\nw.write(b'! 429 rate limited by api.geckoterminal.com, waiting 5s\\nno newline'); w.flush()\nprint('{\"pools\": 3}')\n" % go_f)
+    B_.OFFICE = B_.Office(ud, 1000, "2h")
+    job = B_.start_bg([job_f, "x"], ud, agent="candles")
+    t_ = time.time()
+    while time.time() - t_ < 10 and len(B_.OFFICE.agents["candles"]["lines"]) < 4:
+        time.sleep(0.05)
+    mid = list(B_.OFFICE.agents["candles"]["lines"]) if job["p"].poll() is None else []
+    open(go_f, "w").close()
+    with contextlib.redirect_stderr(io.StringIO()):      # finish_bg echoes the job's lines into the cycle's log
+        got = B_.finish_bg(job)
+    ref = B_.Office(ud, 1000, "2h")
+    ref.begin("candles", bg=True)
+    for ln in open(job["err"].name, encoding="utf-8", errors="replace"):
+        ref.line(ln.rstrip(), "candles")
+    check(mid == ["first", "second \u00fc", "a", "b"] and got == {"pools": 3} and B_.OFFICE.agents["candles"]["lines"] == ref.agents["candles"]["lines"]
+          and len(ref.agents["candles"]["lines"]) == 6 and B_.OFFICE.agents["candles"]["waits"] == {"api.geckoterminal.com": 1},
+          "a background job's lines reach the office while it runs (%d before it ended) and the record ends as if read at the end" % len(mid))
+    job2_f, job3_f, go3 = os.path.join(ud, "job2.py"), os.path.join(ud, "job3.py"), os.path.join(ud, "go3")
+    with open(job2_f, "w") as f:
+        f.write("import sys\nsys.stderr.write('one\\ntwo\\n')\nprint('{\"ok\": 1}')\n")
+    with open(job3_f, "w") as f:
+        f.write("import os, sys, time\nsys.stderr.write('before\\n'); sys.stderr.flush()\nwhile not os.path.exists(%r): time.sleep(0.05)\nsys.stderr.write('after\\n')\n" % go3)
+    B_.OFFICE = B_.Office(ud, 1000, "2h")
+    job2 = B_.start_bg([job2_f, "x"], ud, agent="trainer")
+    job2["p"].wait()
+    job2["tail"].join(5)
+    ended = not job2["tail"].is_alive()
+    with contextlib.redirect_stderr(io.StringIO()):
+        got2 = B_.finish_bg(job2)
+    job3 = B_.start_bg([job3_f, "x"], ud, agent="candles")
+    t_ = time.time()
+    while time.time() - t_ < 10 and B_.OFFICE.agents["candles"]["lines"] != ["before"]:
+        time.sleep(0.05)
+    B_.OFFICE.fail()                 # the step at work failed: the cycle stops, its record is saved, the tails stop filing
+    open(go3, "w").close()
+    job3["p"].wait()
+    time.sleep(1.5)
+    saved3 = {a["id"]: a for a in json.load(open(os.path.join(ud, "db", "memebot", "office.json"))).get("agents") or []}
+    check(ended and got2 == {"ok": 1} and B_.OFFICE.agents["trainer"]["lines"] == ["one", "two"] and B_.OFFICE.agents["candles"]["lines"] == ["before"]
+          and saved3["candles"]["lines"] == ["before"] and saved3["candles"]["status"] == "failed" and not job3["tail"].is_alive() and not B_.BG_JOBS,
+          "a background job's tail ends once its process exited and its file is read; a stopped cycle stops the tails, so the record saved is the one it ends with")
+    job3["out"].close()
+    job3["err"].close()
+    B_.OFFICE = B_.Office(ud, 1000, "2h")
+    B_.OFFICE.begin("candles", bg=True)
+    B_.OFFICE.line("first", "candles")
+    lb = os.path.join(ud, "live-remote.git")
+    subprocess.run(["git", "init", "-q", "--bare", lb], check=True)
+    git_show = lambda: json.loads(subprocess.run(["git", "-C", lb, "show", "live:live.json"], capture_output=True, text=True).stdout or "{}")
+    git_head = lambda: subprocess.run(["git", "-C", lb, "rev-parse", "-q", "--verify", "live"], capture_output=True, text=True).stdout.strip()
+    def wait_head(other, secs):                            # the branch's commit once it is not `other`, or "" after secs
+        t_ = time.time()
+        while time.time() - t_ < secs:
+            h = git_head()
+            if h and h != other:
+                return h
+            time.sleep(0.02)
+        return ""
+    every0, beat0, wait0 = B_.LIVE_EVERY, B_.LIVE_BEAT, B_.LIVE_WAIT
+    B_.LIVE_EVERY, B_.LIVE_BEAT = 0.2, 1.5                 # the pushing thread at a fast pace: a changed record at once, an unchanged one as a heartbeat
+    lv = B_.Live(ud, lb)
+    h1 = wait_head("", 10)
+    t1, l1 = time.time(), git_show()
+    time.sleep(0.6)
+    h2 = git_head()                                        # nothing changed and the last push is young: no push
+    h3 = wait_head(h1, 5)                                  # nothing changed, the last push is LIVE_BEAT old: the heartbeat
+    beat, l3 = time.time() - t1, git_show()
+    B_.OFFICE.line("one more", "candles")
+    t2 = time.time()
+    h4 = wait_head(h3, 5)
+    quick, l4 = time.time() - t2, git_show()
+    lv.finish()
+    l5 = git_show()
+    n_commits = subprocess.run(["git", "-C", lb, "rev-list", "--count", "live"], capture_output=True, text=True).stdout.strip()
+    B_.LIVE_EVERY, B_.LIVE_BEAT = every0, beat0
+    check(l1.get("live") is True and isinstance(l1.get("updated"), int) and [a["id"] for a in l1.get("agents") or []] == ["candles"] and h2 == h1
+          and h3 and 1.0 < beat < 4 and l3.get("live") is True and l3.get("updated", 0) - l1["updated"] >= 1300 and l3.get("agents") == l1.get("agents")
+          and h4 and quick < 1.0 and l4["agents"][0]["lines"][-1] == "one more" and l5.get("live") is False and l5["agents"][0]["lines"][-1] == "one more" and n_commits == "1",
+          "the live view pushes a changed record at once, an unchanged one only as a heartbeat (%.1f s after the last push, the same record with a fresh updated), "
+          "ends with live false on a one-commit branch" % beat)
+    err_ = io.StringIO()
+    fake = os.path.join(ud, "fakebin")
+    os.makedirs(fake)
+    with open(os.path.join(fake, "git"), "w") as f:
+        f.write("#!/bin/sh\nsleep 30\n")
+    os.chmod(os.path.join(fake, "git"), 0o755)
+    path0 = os.environ["PATH"]
+    with contextlib.redirect_stderr(err_):
+        lv2 = B_.Live(ud, os.path.join(ud, "no-such-remote.git"))
+        lv2.stop.set()
+        lv2.push(True); lv2.push(True); lv2.finish()
+        os.environ["PATH"], B_.LIVE_WAIT = fake + os.pathsep + path0, 1
+        t_ = time.time()
+        try:
+            lv_h = B_.Live(ud, lb)
+            lv_h.stop.set()
+            lv_h.push(True)
+        finally:
+            os.environ["PATH"], B_.LIVE_WAIT = path0, wait0
+        hung = time.time() - t_
+    check(err_.getvalue().count("live view: push failed") == 2 and hung < 3,
+          "a failed or hung push is logged once and given up (%.1f s)" % hung)
+    hang = os.path.join(ud, "hang")                        # a push that hangs while the cycle ends: cut short, the last snapshot goes out at once
+    fake2 = os.path.join(ud, "fakebin2")
+    os.makedirs(fake2)
+    with open(os.path.join(fake2, "git"), "w") as f:
+        f.write('#!/bin/sh\nif [ "$3" = push ] && [ -e "%s" ]; then sleep 30; fi\nexec "%s" "$@"\n' % (hang, shutil.which("git")))
+    os.chmod(os.path.join(fake2, "git"), 0o755)
+    open(hang, "w").close()
+    err3 = io.StringIO()
+    os.environ["PATH"], B_.LIVE_WAIT = fake2 + os.pathsep + path0, 5
+    try:
+        lv3 = B_.Live(ud, lb)
+        lv3.stop.set()
+        th_ = threading.Thread(target=lv3.push, args=(True,), daemon=True)
+        th_.start()
+        t_ = time.time()
+        while time.time() - t_ < 5 and not (lv3.proc and lv3.proc.args[3:4] == ["push"]):
+            time.sleep(0.02)
+        os.remove(hang)
+        t_ = time.time()
+        with contextlib.redirect_stderr(err3):
+            lv3.finish()
+        cut = time.time() - t_
+        th_.join(5)
+    finally:
+        os.environ["PATH"], B_.LIVE_WAIT = path0, wait0
+    l6 = git_show()
+    check(cut < 3 and not th_.is_alive() and l6.get("live") is False and l6.get("updated", 0) > l5.get("updated", 0) and "push failed" not in err3.getvalue(),
+          "the end of a cycle kills a push still hanging and sends the last snapshot at once (%.1f s, the wait limit is 5 s)" % cut)
     shutil.rmtree(ud, ignore_errors=True)
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]
     scored = [o for doc in recs for o in (doc.get("out") or {}).get("picks", [])]
@@ -1159,9 +1349,29 @@ def main():
     check(not any(x.startswith(("db/memesnap/", "db/memesnapres/")) for x in ls), "the big snapshots stay local")
     r2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "sync", "--dir", d, "--remote", bare], capture_output=True, text=True)
     check(r2.returncode == 0 and "nothing new" in r2.stderr, "a second sync with no changes is a no-op push")
-    r3 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(T0 + 100 * H), "--push", "--remote", bare], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    spy = tempfile.mkdtemp(prefix="memebot-gitspy-")       # a git that notes every call, so the test sees what the cycle asked of git
+    with open(os.path.join(spy, "git"), "w") as f:
+        f.write('#!/bin/sh\necho "$@" >> "%s"\nexec "%s" "$@"\n' % (os.path.join(spy, "calls.log"), shutil.which("git")))
+    os.chmod(os.path.join(spy, "git"), 0o755)
+    r3 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(T0 + 100 * H), "--push", "--remote", bare], capture_output=True, text=True,
+                        env=dict(os.environ, MEMEBOT_PAUSE="0", RESULTS_URL=bare, PATH=spy + os.pathsep + os.environ["PATH"]))
     check(r3.returncode == 0 and "sync: new commit" in r3.stderr, "cycle --push syncs after the cycle")
+    calls = open(os.path.join(spy, "calls.log")).read() if os.path.exists(os.path.join(spy, "calls.log")) else ""
+    heads = subprocess.run(["git", "-C", bare, "branch", "--list"], capture_output=True, text=True).stdout.split()
+    check(calls and not re.search(r"live\.git|refs/heads/live|live\.json", calls) and "live" not in heads and not os.path.exists(os.path.join(d, "live.git")) and "live view" not in r3.stderr,
+          "a cycle without MEMEBOT_LIVE never touches git for the live view (%d git calls, all for the sync)" % len(calls.splitlines()))
+    r4 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", d, "--mock", url, "--now", str(T0 + 101 * H)], capture_output=True, text=True,
+                        env=dict(os.environ, MEMEBOT_PAUSE="0", MEMEBOT_LIVE="1", RESULTS_URL=bare))
+    lj = json.loads(subprocess.run(["git", "-C", bare, "show", "live:live.json"], capture_output=True, text=True).stdout or "{}")
+    files = subprocess.run(["git", "-C", bare, "ls-tree", "--name-only", "live"], capture_output=True, text=True).stdout.split()
+    n_live = subprocess.run(["git", "-C", bare, "rev-list", "--count", "live"], capture_output=True, text=True).stdout.strip()
+    off4 = json.load(open(os.path.join(d, "db", "memebot", "office.json"), encoding="utf-8"))
+    check(r4.returncode == 0 and "live view: the office goes to branch live" in r4.stderr and "push failed" not in r4.stderr and files == ["live.json"] and n_live == "1"
+          and lj.get("live") is False and isinstance(lj.get("updated"), int) and lj.get("t") == off4.get("t") and lj.get("agents") == off4.get("agents")
+          and {"dispatch", "trader", "reporter"} <= {a.get("id") for a in lj.get("agents") or []},
+          "with MEMEBOT_LIVE=1 a cycle pushes live.json to the branch live of RESULTS_URL, the last one live false with the office's agents (%s)" % ", ".join(a.get("id", "?") for a in lj.get("agents") or []))
     shutil.rmtree(bare, ignore_errors=True)
+    shutil.rmtree(spy, ignore_errors=True)
 
     print("== site: a folder for GitHub Pages")
     sd = tempfile.mkdtemp(prefix="memebot-site-")
