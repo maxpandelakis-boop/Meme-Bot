@@ -7,6 +7,8 @@ What it proves: the fetch layer parses every source's response shape into the pi
 universe, the scan gates and scores them, exactly two coins get bought for 20 each out of the 40 bankroll, no third buy happens
 while the money is deployed, exits (half at 2x, stop at -50%, 3-day time limit) return money to the bankroll, the 24h big test
 scores every snapshotted coin and the weights get learned. GMGN is mocked as blocked (403) to exercise the circuit breaker.
+In recommend mode the paper account buys the top pick for 50 and the first five new launches for 3 in one cycle, sells them at
++1000% (11x), -30%, after 6 hours or as a rug (never for a failed filter), and its restart closes the old rule's positions once.
 """
 import glob, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -136,6 +138,9 @@ class Mock:
         if path.startswith("/__spike"):          # the middle candle of a coin's pool closes this many times the price (0: back to +35%)
             self.by_a[q["a"][0]]["spike"] = float(q["x"][0]) or None
             return 200, {"ok": True}
+        if path.startswith("/__nocandle"):       # a coin's pool sends no minute candles (on=1) or does again (on=0)
+            self.by_a[q["a"][0]]["nocandle"] = q.get("on", ["1"])[0] == "1"
+            return 200, {"ok": True}
         if path.startswith("/__chg"):            # a coin's 1-hour price change as DexScreener reports it
             self.by_a[q["a"][0]]["chg"][1] = float(q["h1"][0])
             return 200, {"ok": True}
@@ -193,6 +198,8 @@ class Mock:
         if "/api.geckoterminal.com/api/v2/networks/solana/pools/" in path and "/ohlcv/" in path:
             pool = path.split("/pools/")[1].split("/")[0]
             c = next((x for x in self.coins if x["a"][:20] + "pair" == pool), None)
+            if c and c.get("nocandle"):
+                return 200, {"data": {"attributes": {"ohlcv_list": []}}}
             before = int((q.get("before_timestamp") or [str(int(T0 / 1000) + 4500)])[0]); agg = int((q.get("aggregate") or ["1"])[0]); lim = int((q.get("limit") or ["70"])[0])
             px = (c["px"] * c["mult"]) if c else 0.001
             lst = []
@@ -691,42 +698,170 @@ def main():
     page = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
     load_dir = lambda dd, coll: {os.path.basename(f)[:-5]: json.load(open(f)) for f in glob.glob(os.path.join(dd, "db", coll, "*.json"))}
     hp = load_dir(rd, "memepos")
-    note_r = (json.load(open(os.path.join(rd, "db", "memebot", "state.json"))).get("note") or "")
-    check(len(hp) == 2 and all(p.get("grp") == "hold" and p.get("ticket") == 20.0 and M.num(p.get("px")) and p.get("pair") for p in hp.values())
-          and sorted(p["addr"] for p in hp.values()) == sorted(c["addr"] for c in rec.get("picks", [])) and all(c.get("bought") == 20.0 for c in rec.get("picks", []))
-          and "bought as a paper position" in note_r and "How a coin is sold" in page and "sold the first minute a candle closes 40% above the entry" in page and "paper position" in page,
-          "recommend mode holds the two named coins as paper positions, 20 each (%s)" % [(p.get("sym"), p.get("ticket")) for p in hp.values()])
+    st_r = json.load(open(os.path.join(rd, "db", "memebot", "state.json")))
+    note_r = st_r.get("note") or ""
+    tops = {pid: p for pid, p in hp.items() if p.get("grp") == "hold"}
+    youngs = {pid: p for pid, p in hp.items() if p.get("grp") == "young"}
+    yrec = rec.get("young") or []
+    top0 = (list(tops.values()) or [{}])[0]
+    check(M.TICKET == 20 and M.BUDGET == 40 and (M.FEE_PCT, M.FEE_MIN) == (0.005, 0.81) and M.fee(20) == 0.81 and M.paper_fee(50) == 0.5 and M.paper_fee(3) == 0.1 and M.paper_fee(0) == 0
+          and M.pos_fee({"grp": "young", "paper": M.PAPER_RULE}) is M.paper_fee and M.pos_fee({"grp": "hold"}) is M.fee and M.pos_fee({"grp": "pick", "paper": M.PAPER_RULE}) is M.fee,
+          "paper fees 1%, at least 0.10, for the paper account only; the tip record, the big test and pick mode keep 20 a ticket, 0.5% and at least 0.81")
+    check(len(tops) == 1 and top0.get("addr") == rec["picks"][0]["addr"] and top0.get("ticket") == M.TOP_TICKET == 50.0 and rec["picks"][0].get("bought") == 50.0
+          and all(c.get("bought") is None for c in rec["picks"][1:]) and len(yrec) > M.YOUNG_BUY_N == 5 and len(youngs) == 5
+          and sorted(p["addr"] for p in youngs.values()) == sorted(y["addr"] for y in yrec[:5]) and all(p.get("ticket") == M.YOUNG_TICKET == 3.0 for p in youngs.values())
+          and [y.get("bought") for y in yrec[:5]] == [3.0] * 5 and all("bought" not in y for y in yrec[5:])
+          and all(p.get("paper") == M.PAPER_RULE and M.num(p.get("px")) and p.get("pair") and p.get("t") == T0 for p in hp.values())
+          and all(re.match(r"^\d{4}-\d\d-\d\dT\d{4}-[hy]-", pid) for pid in hp) and all(M.num(p.get("ageMin")) is not None for p in youngs.values())
+          and st_r.get("paperRule") == M.PAPER_RULE and st_r.get("paperSince") == T0 and (st_r.get("paper") or {}).get("invested") == 65.0 and (st_r.get("paper") or {}).get("nOpen") == 6
+          and "bought as a paper position: %s (50.00)" % rec["picks"][0]["sym"] in note_r and "New launches: bought" in note_r,
+          "one cycle buys the top pick for 50 and the first 5 new launches for 3 each, the second pick and the other new launches stay tips (%s; %s)" % (
+              [(p.get("sym"), p.get("grp"), p.get("ticket")) for p in hp.values()], [(y.get("sym"), y.get("bought")) for y in yrec[:7]]))
+    curve_r = sorted(load_dir(rd, "memecurve").values(), key=lambda c: c["t"])
+    check("How a coin is sold" in page and "the first minute candle that closes at 11 times the entry price" in page and "Failing a filter sells nothing" in page
+          and "bought for 50 €" in page and "bought for 3 €" in page and "top pick · 50 €" in page and "new launch · 3 €" in page and "profit/loss since the restart" in page
+          and "held 0 min of 6h" in page and 'class="tk st"' in page and "sells +1000%" in page and "paper position" in page and "1 top pick · 5 new launches" in page
+          and curve_r and curve_r[-1].get("paper", {}).get("invested") == 65.0 and set(curve_r[-1]["paper"]) == {"invested", "back", "open", "pnl", "n"},
+          "page: the paper account, one row per position with its group and ticket, the price bar from the stop to the take-profit, the 6-hour clock, the rule text; the curve doc carries the account")
     check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
     old_rec = rec
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 120000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
     same = lambda a, b: [c["addr"] for c in a.get("picks", [])] == [c["addr"] for c in b.get("picks", [])]
     check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s -> %s; %s)" % ([c["sym"] for c in old_rec.get("picks", [])], [c["sym"] for c in rec2.get("picks", [])], (r.stderr.strip().splitlines() or ["?"])[-1][:100]))
-    check(len(load_dir(rd, "memepos")) == 2 and all(c.get("bought") == "held" for c in rec2.get("picks", [])) and not load_dir(rd, "memeexit"),
-          "a repeat tip of a held coin buys nothing and sells nothing (still 2 positions, %s)" % [c.get("bought") for c in rec2.get("picks", [])])
-    # the sell rule, in a copy: one held coin's pool closes a candle at +60% between the runs (take-profit), the other one is down 60% in the last hour (fails the crash filter)
+    page2r = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
+    check(len(load_dir(rd, "memepos")) == 6 and rec2["picks"][0].get("bought") == "held" and [y.get("bought") for y in (rec2.get("young") or [])[:5]] == ["held"] * 5
+          and not load_dir(rd, "memeexit") and "already held since" in page2r and "already held</span>" in page2r,
+          "a repeat tip of a held coin (top pick or new launch) buys nothing and sells nothing (still 6 positions, %s)" % [c.get("bought") for c in rec2.get("picks", []) + (rec2.get("young") or [])[:5]])
+    # the sell rules, in a copy, an hour later: the top pick's pool closes a candle at 11.5x (take-profit +1000%, booked at 11x), a new launch's
+    # at 0.5x (stop, booked at 0.5x), one falls 60% in the last hour (fails the crash filter: no sale any more), two pools send no candles
+    # while DexScreener prices them at 12x and 0.6x (the run's price decides: take-profit at 11x, stop at 0.6x)
     xd = tempfile.mkdtemp(prefix="memebot-hold-")
-    shutil.copytree(os.path.join(rd, "db"), os.path.join(xd, "db"))
-    (pa_id, pa), (pb_id, pb) = sorted(hp.items())
-    chg_b = next(c for c in mock.coins if c["a"] == pb["addr"])["chg"][1]
-    urllib.request.urlopen(url + "/__spike?a=%s&x=1.6" % pa["addr"]).read()
-    urllib.request.urlopen(url + "/__chg?a=%s&h1=-60" % pb["addr"]).read()
+    shutil.copytree(rd, xd, dirs_exist_ok=True)
+    (top_id, top), = tops.items()
+    (y0_id, y0), (y1_id, y1), (y2_id, y2), (y3_id, y3), (y4_id, y4) = [next((pid, p) for pid, p in youngs.items() if p["addr"] == y["addr"]) for y in yrec[:5]]
+    chg_1 = mock.by_a[y1["addr"]]["chg"][1]
+    ask = lambda path: urllib.request.urlopen(url + path).read()
+    ask("/__spike?a=%s&x=11.5" % top["addr"]); ask("/__spike?a=%s&x=0.5" % y0["addr"]); ask("/__chg?a=%s&h1=-60" % y1["addr"])
+    for yy, m_ in ((y3, 12), (y4, 0.6)):
+        ask("/__nocandle?a=%s&on=1" % yy["addr"]); ask("/__mult?a=%s&m=%s" % (yy["addr"], m_))
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", xd, "--mock", url, "--now", str(T0 + H), "--recommend"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
-    urllib.request.urlopen(url + "/__spike?a=%s&x=0" % pa["addr"]).read()
-    urllib.request.urlopen(url + "/__chg?a=%s&h1=%s" % (pb["addr"], chg_b)).read()
+    ask("/__spike?a=%s&x=0" % top["addr"]); ask("/__spike?a=%s&x=0" % y0["addr"]); ask("/__chg?a=%s&h1=%s" % (y1["addr"], chg_1))
+    for yy in (y3, y4):
+        ask("/__nocandle?a=%s&on=0" % yy["addr"]); ask("/__mult?a=%s&m=1" % yy["addr"])
     xe = load_dir(xd, "memeexit")
-    ea = [e for e in xe.values() if e.get("pos") == pa_id]; eb = [e for e in xe.values() if e.get("pos") == pb_id]
+    ex_of = lambda pid: [e for e in xe.values() if e.get("pos") == pid]
+    one = lambda pid: (ex_of(pid) or [{}])[0]
+    val = lambda pp, m: round(M.pos_value(pp, 1.0, m), 2)
+    near = lambda a_, b_: a_ is not None and b_ is not None and abs(a_ - b_) <= 1e-6 * max(abs(b_), 1e-12)
+    px_x = M.load_pairs(xd)
     page_x = open(os.path.join(xd, "report.html"), encoding="utf-8").read() if os.path.exists(os.path.join(xd, "report.html")) else ""
-    rec_x = json.load(open(os.path.join(xd, "db", "memebot", "recommend.json")))
-    again = [c for c in rec_x.get("picks", []) if c["addr"] == pa["addr"]]
-    check(r.returncode == 0 and len(ea) == 1 and ea[0]["why"] == "tp" and abs(ea[0]["eur"] - 26.06) < 0.01 and M.num(ea[0].get("at"))
-          and len(eb) == 1 and eb[0]["why"] == "filters" and "crash" in (eb[0].get("gates") or []) and "take-profit +40%" in page_x and "failed the filters (crashed)" in page_x
-          and all(c.get("bought") == "sold less than 24 hours ago" for c in again),
-          "held coins are sold by the rule: a candle close at +60%% sells at +40%% (26.06 back), a 60%% fall in the last hour fails the crash filter (%s; %s)" % (
-              [(e["why"], e["eur"]) for e in ea + eb], (r.stderr.strip().splitlines() or ["ok"])[-1][:100] if r.returncode else "ok"))
+    et, e0, e3, e4 = one(top_id), one(y0_id), one(y3_id), one(y4_id)
+    check(r.returncode == 0 and len(ex_of(top_id)) == 1 and et.get("why") == "tp" and near(et.get("px"), 11.0 * top["px"]) and et.get("eur") == val(top, 11.0) == 539.05 and M.num(et.get("at"))
+          and len(ex_of(y0_id)) == 1 and e0.get("why") == "stop" and near(e0.get("px"), 0.5 * y0["px"]) and e0.get("eur") == val(y0, 0.5) == 1.35 and M.num(e0.get("at")),
+          "candle closes sell: 11.5x is a take-profit booked at exactly 11x (539.05 back for 50 after paper fees), 0.5x a stop booked at the close (1.35 back for 3) (%s; %s)" % (
+              [(e.get("why"), e.get("eur")) for e in (et, e0)], (r.stderr.strip().splitlines() or ["ok"])[-1][:100] if r.returncode else "ok"))
+    check(e3.get("why") == "tp" and near(e3.get("px"), 11.0 * y3["px"]) and e3.get("eur") == val(y3, 11.0) == 31.58 and "at" not in e3
+          and e4.get("why") == "stop" and near(e4.get("px"), M.num(px_x[y4["addr"]]["priceUsd"])) and abs(e4["px"] / y4["px"] - 0.6) < 1e-3 and e4.get("eur") == val(y4, e4["px"] / y4["px"]) == 1.64,
+          "no candles this run: the run's own price decides, 12x is a take-profit at 11x (31.58 back for 3), 0.6x a stop at that price (%s)" % [(e.get("why"), e.get("eur")) for e in (e3, e4)])
+    check(not ex_of(y1_id) and M.num(px_x[y1["addr"]].get("chgH1")) == -60 and -60 <= M.GATE_CRASH["chgH1"] and not ex_of(y2_id)
+          and "take-profit +1000%" in page_x and "stop-loss −30%" in page_x and "Closed trades (4)" in page_x,
+          "a coin that fails the crash filter is not sold any more; the page names each sale by the paper rules")
+    hcd = tempfile.mkdtemp(prefix="memebot-hc-")
+    os.makedirs(os.path.join(hcd, "candles"))
+
+    def hc_(closes, chk=None, cpx=None):
+        open(os.path.join(hcd, "candles", "UPOOL_hold.txt"), "w").write("".join("%d|1|1|1|%s|1\n" % (T0 + 60000 * i, c) for i, c in enumerate(closes)))
+        return M.hold_check(hcd, {"pair": "UPOOL", "t": T0}, chk, cpx)
+    h1_, h2_, h3_, h4_, h5_ = hc_([1.0, 1.2, 40.0, 0.69, 11.2]), hc_([1.0, 1.2, 40.0, 11.2, 0.5]), hc_([2.0, 1.5, 1.39]), hc_([1.0, 0.5, 1.0], chk=T0 + 180000), hc_([1.0, 10.9, 0.71, 1.0])
+    check(h1_["why"] == "stop" and h1_["hit"] == T0 + 180000 and abs(h1_["mult"] - 0.69) < 1e-9 and h2_["why"] == "tp" and h2_["hit"] == T0 + 180000
+          and h3_["why"] == "stop" and h3_["cpx"] == 2.0 and abs(h3_["mult"] - 0.695) < 1e-9 and h4_["fresh"] is False and h4_["hit"] is None and h4_["chk"] == T0 + 180000
+          and h5_["hit"] is None and h5_["fresh"] is True and h5_["chk"] == T0 + 240000 and h5_["cpx"] == 1.0,
+          "hold_check on closes: a 40x close is a glitch, whichever of the stop and the take-profit closes first sells, 10.9x and 0.71x sell nothing, no candle since the last check is no check")
+    shutil.rmtree(hcd, ignore_errors=True)
     hc = M.hold_check(xd, {"pair": "NOPOOL", "t": T0}, None, None)
-    check(hc == {"hit": None, "chk": None, "cpx": None}, "no candles for a held coin: no take-profit, the next check starts where this one would have")
+    check(hc == {"hit": None, "why": None, "mult": None, "chk": None, "cpx": None, "fresh": False}, "no candles for a held coin: no candle sale, the run's price decides, the next check starts where this one would have")
+    # the 6-hour limit and the rug: one coin vanishes from every fetched file (no price in the next two runs), the copy runs at +5.5 h and at +6 h
+    for f in glob.glob(os.path.join(xd, "**", "*.txt"), recursive=True):
+        if os.sep + "db" + os.sep not in f:
+            lines = open(f, encoding="utf-8").read().splitlines(True)
+            open(f, "w", encoding="utf-8").write("".join(l for l in lines if not l.startswith(y2["addr"])))
+    r55 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", xd, "--now", str(T0 + 5.5 * H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    xe55 = load_dir(xd, "memeexit")
+    mk55 = json.load(open(os.path.join(xd, "db", "memebot", "marks.json")))
+    r6 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", xd, "--now", str(T0 + 6 * H), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    xe = load_dir(xd, "memeexit")
+    P6 = M.positions(xd)
+    e1, e2 = one(y1_id), one(y2_id)
+    later = [p for p in P6.values() if p["t"] > T0]
+    page_6 = open(os.path.join(xd, "report.html"), encoding="utf-8").read()
+    check(r55.returncode == 0 and r6.returncode == 0 and len(xe55) == 4 and (mk55.get("miss") or {}).get(y2_id) == 1
+          and e1.get("why") == "time" and e1.get("t") == T0 + 6 * H and e1.get("eur") == val(y1, e1["px"] / y1["px"]) and e2.get("why") == "rug" and e2.get("eur") == 0
+          and all(p["_left"] <= 1e-9 for p in P6.values() if p["t"] == T0) and all(p["_left"] > 1e-9 for p in later)
+          and "6-hour limit" in page_6 and "rug: the price or the liquidity is gone" in page_6,
+          "nothing is sold at 5.5 hours; at 6 hours the rest of the first scan's positions are sold at that run's price, a coin without a price twice is a rug, newer ones stay (%s; %d newer open)" % (
+              sorted((e.get("why"), e.get("eur")) for e in (e1, e2)), len(later)))
+    acct6 = json.load(open(os.path.join(xd, "db", "memebot", "state.json"))).get("paper") or {}
+    a6 = M.paper_account(P6, T0, json.load(open(os.path.join(xd, "db", "memebot", "marks.json"))).get("px"))
+    check(acct6 == a6 and a6["back"] == round(sum(e["eur"] for e in xe.values()), 2) and a6["invested"] == round(sum(p["ticket"] for p in P6.values()), 2)
+          and a6["nClosed"] == 6 and a6["won"] == 2 and a6["lost"] == 4 and a6["nOpen"] == len(later) and abs(a6["pnl"] - (a6["back"] + a6["open"] - a6["invested"])) < 0.011,
+          "the paper account adds up: invested %.2f, back %.2f, open %.2f, %+.2f (%d won, %d lost)" % (a6["invested"], a6["back"], a6["open"], a6["pnl"], a6["won"], a6["lost"]))
     shutil.rmtree(xd, ignore_errors=True)
+    # the restart: a copy whose state predates the new rules holds old positions: the first run closes the open ones at its price ("reset"),
+    # once and only once; the account counts from then on, the old trades sit behind their own fold. The coin of an old position is named
+    # again and bought the same day under a new id, so the old position's exits never attach to it
+    zd = tempfile.mkdtemp(prefix="memebot-restart-")
+    shutil.copytree(rd, zd, dirs_exist_ok=True)
+    for coll in ("memepos", "memeexit", "memecurve"):
+        shutil.rmtree(os.path.join(zd, "db", coll), ignore_errors=True)
+        os.makedirs(os.path.join(zd, "db", coll))
+    st_z = json.load(open(os.path.join(zd, "db", "memebot", "state.json")))
+    for k in ("paperSince", "paperRule", "paper"):
+        st_z.pop(k, None)
+    json.dump(st_z, open(os.path.join(zd, "db", "memebot", "state.json"), "w"))
+    pz = M.load_pairs(zd)
+    tp_c = rec2["picks"][0]
+    now_px = M.num(pz[tp_c["addr"]]["priceUsd"])
+    day0 = time.strftime("%Y-%m-%d", time.gmtime(T0 / 1000))
+    old1 = "%s-h-%s-%s" % (day0, M.slug(tp_c["sym"]), tp_c["addr"][:6])          # the id the old rule gave a coin bought that day
+    olds = {old1: {"grp": "hold", "addr": tp_c["addr"], "sym": tp_c["sym"], "pair": tp_c.get("pair"), "t": T0 - 3 * H, "px": now_px / 1.3, "ticket": 20.0, "rule": M.RULE, "tp": 0.4},
+            "old-gone": {"grp": "hold", "addr": "1" * 44, "sym": "GONE", "t": T0 - 50 * H, "px": 0.001, "ticket": 20.0, "rule": M.RULE, "tp": 0.4},
+            "old-tp": {"grp": "hold", "addr": "2" * 44, "sym": "OLDTP", "t": T0 - 30 * H, "px": 0.001, "ticket": 20.0, "rule": M.RULE, "tp": 0.4},
+            "old-flt": {"grp": "hold", "addr": "3" * 44, "sym": "OLDFLT", "t": T0 - 20 * H, "px": 0.001, "ticket": 20.0, "rule": M.RULE, "tp": 0.4},
+            "old-time": {"grp": "hold", "addr": "4" * 44, "sym": "OLDTIME", "t": T0 - 60 * H, "px": 0.001, "ticket": 17.27, "rule": M.RULE, "tp": 0.4}}
+    for pid, doc in olds.items():
+        json.dump(doc, open(os.path.join(zd, "db", "memepos", pid + ".json"), "w"))
+    json.dump({"pos": "old-tp", "t": T0 - 29 * H, "px": 0.0014, "frac": 1.0, "why": "tp", "eur": 26.06, "grp": "hold", "at": T0 - 29 * H}, open(os.path.join(zd, "db", "memeexit", "old-tp-1.json"), "w"))
+    json.dump({"pos": "old-time", "t": T0 - 12 * H, "px": 0.0011, "frac": 1.0, "why": "time", "eur": 17.37, "grp": "hold"}, open(os.path.join(zd, "db", "memeexit", "old-time-1.json"), "w"))
+    json.dump({"pos": "old-flt", "t": T0 - 19 * H, "px": 0.0009, "frac": 1.0, "why": "filters", "gates": ["crash"], "eur": 17.0, "grp": "hold"}, open(os.path.join(zd, "db", "memeexit", "old-flt-1.json"), "w"))
+    rz = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", zd, "--now", str(T0 + 3 * 60000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    ze = load_dir(zd, "memeexit")
+    Pz = M.positions(zd)
+    st_z = json.load(open(os.path.join(zd, "db", "memebot", "state.json")))
+    page_z = open(os.path.join(zd, "report.html"), encoding="utf-8").read()
+    resets = sorted((e["pos"], e["eur"]) for e in ze.values() if e.get("why") == "reset")
+    again = [pid for pid, p in Pz.items() if p.get("addr") == tp_c["addr"] and pid != old1]
+    old_back = round(max(0.0, (20 - M.fee(20)) * 1.3 - M.fee((20 - M.fee(20)) * 1.3)), 2)
+    check(rz.returncode == 0 and resets == sorted([(old1, old_back), ("old-gone", 0.0)]) and abs(next(e["px"] for e in ze.values() if e["pos"] == old1) - now_px) < 1e-12
+          and st_z.get("paperRule") == M.PAPER_RULE and st_z.get("paperSince") == T0 + 3 * 60000 and "restarted under the rule" in (st_z.get("note") or "")
+          and len(again) == 1 and Pz[again[0]].get("grp") == "hold" and Pz[again[0]].get("ticket") == 50.0 and not Pz[again[0]]["_exits"] and len(Pz[old1]["_exits"]) == 1
+          and sum(1 for p in Pz.values() if p.get("grp") == "young") == 5 and (st_z.get("paper") or {}).get("invested") == 65.0 and (st_z.get("paper") or {}).get("n") == 6,
+          "the restart closed the two open old positions at this run's price with the old fees (%s), and the coin of one was bought again under a new id (%s, not %s)" % (resets, again, old1))
+    check("Before the restart (5 trades)" in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
+          and "48-hour limit" in page_z and "old rule · 20 €" in page_z and "old rule · 17.27 €" in page_z and "Closed trades (0)" in page_z and "65.00" in page_z
+          and "nothing sold yet" in page_z and "−3.1% on 65.00 invested" in page_z,
+          "page: the account counts from the restart, the five old trades sit behind the fold with their old rule and reasons")
+    rz2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", zd, "--now", str(T0 + 4 * 60000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
+    st_z2 = json.load(open(os.path.join(zd, "db", "memebot", "state.json")))
+    check(rz2.returncode == 0 and load_dir(zd, "memeexit") == ze and len(load_dir(zd, "memepos")) == len(Pz) and st_z2.get("paperSince") == T0 + 3 * 60000
+          and "restarted" not in (st_z2.get("note") or ""),
+          "a second run after the restart closes nothing and buys nothing more: the restart happens once")
+    dash0 = R_.dash_section({"paper": {"since": None, "acct": M.paper_account({}, None)}})
+    check("nothing held" in dash0 and "nothing bought yet" in dash0 and "nothing sold yet" in dash0 and M.paper_account(M.positions(zd), None)["n"] == 0,
+          "an account with nothing in it says so, and without a restart nothing counts in it")
+    stz = subprocess.run([PY, os.path.join(HERE, "bot.py"), "status", "--dir", zd], capture_output=True, text=True)
+    check(stz.returncode == 0 and "paper account since the restart (%s): invested 65.00" % M.PAPER_RULE in stz.stdout, "status prints the paper account (%s)" % (stz.stdout.splitlines()[1:2] or ["-"])[0][:110])
+    shutil.rmtree(zd, ignore_errors=True)
 
     print("== DexScreener out: Jupiter and GeckoTerminal data stand in, the scan still names a coin")
     sd = tempfile.mkdtemp(prefix="memebot-standin-")

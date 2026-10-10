@@ -20,7 +20,7 @@ python3 bot.py status               # bankroll, open positions, closed trades
 python3 bot.py report               # render mb/report.html, the analysis page
 python3 bot.py loop --every 30      # keep cycling every 30 minutes (Ctrl-C to stop)
 python3 bot.py loop --every 30 --push   # the same, and push the results to the repository's results branch after each cycle
-python3 bot.py loop --every 60 --recommend --push   # recommend mode: each cycle rescans, puts the two best clean coins on the page and holds them as paper positions
+python3 bot.py loop --every 60 --recommend --push   # recommend mode: each cycle rescans, puts the two best clean coins on the page, buys the top pick and 5 new launches as paper positions
 python3 bot.py loop --every 30 --recommend --push --horizon 2h   # 2-hour profile: early, small, accelerating coins, re-priced 2 hours later
 python3 bot.py cycle --force        # pick now, ignoring the 3-hour gap and the daily cap (the bankroll still caps it)
 python3 bot.py cycle --rescan       # scan the whole universe now and save it for the big test (buys only if a slot is free)
@@ -141,35 +141,39 @@ minute candles price it (the last close inside the window; the cell says "from c
 there the check stays open, for two days at most, after which it reads "not priced". A check that an older version
 had priced hours late is treated as open and priced again from the candles.
 
-### Held paper positions (recommend mode)
+### The paper account (recommend mode)
 
 The tips are a forecast record: every tip counts a fresh 20 for each window (1 h, the horizon, 24 h), and a coin named
-in 15 runs in a row counts 15 times, fees and all. What a trader would have done is buy once and hold. So recommend
-mode also holds what it names, with fake money: the first tip of a coin buys one paper position (20 of the 40 bankroll,
-at most two at once, `grp: "hold"` in `db/memepos`); a coin named again while it is held buys nothing (the card says
-"already held"), and with no free slot a tip is not bought. A held coin is sold, all of it, by the first of:
+in 15 runs in a row counts 15 times, fees and all. What a trader would have done is buy and hold. So recommend mode also
+keeps a paper account, with fake money and no budget (rule v2, `PAPER_RULE`, agreed on 2026-10-10). Every scan buys:
 
-* **take-profit** (`HOLD_TP`, +40%): the first minute a candle of its pool closes 40% above the entry. The next run reads
-  the pool's minute candles since the last check (`candles/<pool>_hold.txt`) and books the sale at exactly +40% at that
-  minute (`at`). The rise is measured on GeckoTerminal's own price at the entry minute (`cpx` in `marks.json`), so the gap
-  between DexScreener's entry price and the candles cannot book a sale that never happened. Closes, not wicks.
-* **the filters** (`HOLD_EXIT_GATES`): the first scan the coin fails one of the market gates it once passed (a crash, a
-  spike, a market cap out of range, liquidity or volume gone, wash trading, too old, a honeypot), at that run's price.
-  A data gap (no DEX pair this run) is no reason to sell.
+* **the top pick** for 50 (`TOP_TICKET`, `grp: "hold"` in `db/memepos`): the first recommendation, whatever its tier
+  (strong, weak, fallback or risky; a watch coin is never bought). The second recommendation stays a tip.
+* **the first 5 new launches** for 3 each (`YOUNG_TICKET`, `YOUNG_BUY_N`, `grp: "young"`): the first five coins of the
+  "New launches <1h" tab, in the order shown. A held one is skipped; no other coin takes its place.
+
+A coin with an open paper position (either group) is not bought again; the card and the tab say "already held". Once it is
+sold it may be bought again the next time it is named. Every position is sold, all of it, by the first of:
+
+* **take-profit +1000%** (`HOLD_TP`): the first minute candle of its pool that closes at 11 times the entry, booked at
+  exactly 11x the entry price at that minute (`at`). The next run reads the pool's minute candles since the last check
+  (`candles/<pool>_hold.txt`); the rise is measured on GeckoTerminal's own price at the entry minute (`cpx` in `marks.json`),
+  so the gap between DexScreener's entry price and the candles cannot book a sale that never happened. Closes, not wicks;
+  a close over 30x is a glitch.
+* **stop-loss -30%** (`HOLD_STOP`): the first minute candle that closes at 70% of `cpx` or lower, booked at that close
+  (a crash through the level fills worse, never better). Whichever of the two levels closes first wins. A run without
+  new candles for the coin checks both levels on its own DexScreener price.
+* **time**: the first run 6 hours after the buy (`HOLD_MAX_H`, counted from 15 minutes before, like the tip checks), at its price.
 * **a rug**: no price in two runs in a row, or the pool's liquidity under $1,000 (sold at 0).
-* **time**: 48 hours (`HOLD_MAX_H`), whatever happens.
 
-A coin sold is not bought again for 24 hours (`HOLD_COOL_H`), so a take-profit is not undone by the next tip. The sale
-goes back into the bankroll, the page shows the held coins with their sell levels and the closed ones with the reason
-("take-profit +40%", "failed the filters (crashed)"), and the "Is the bot making money?" section adds the held positions'
-result next to the tip record.
+Failing a filter sells nothing any more. Paper trades pay 1% per trade, at least 0.10 (`PAPER_FEE_PCT`, `PAPER_FEE_MIN`);
+the tip record, the big test and the training keep 0.5%, at least 0.81, so their history stays comparable. The candles of
+every open position are fetched each hour, held coins first (up to 60 pools, beside the scan).
 
-Why these rules: replayed on the data of 2026-10-09, the 16 coins the bot had named, held this way (at most two at once),
-lost −52 where the 50 separate 2-hour tickets lost −205; on every coin that passed the 2h gates in the big test (hourly
-prices) holding lost −14 over 22 positions where the 171 tickets lost −305. Holding instead of buying again every hour
-is most of the difference. The take-profit level is not settled: +40% did best in both replays, it also sits just under
-CLAUDIA's +44% peak before its rug, and without CLAUDIA no take-profit beat holding to the filters. The paper positions
-will show it.
+The account restarted from zero with v2: the first run that finds another `paperRule` in `state.json` closes every
+position the old rule still held at that run's price (why `reset`, old fees) and writes `paperSince`; from then on the page's
+account (invested, returned, open value, profit/loss, the curve from `memecurve` "paper") counts only positions bought at or
+after it, and the older trades sit behind a fold "Before the restart". Nothing is deleted, and the restart happens once.
 
 ### Is the bot making money?
 
@@ -379,8 +383,8 @@ its tier and safety verdict, the trained chance of a profit and of going to zero
 words, the safety check (RugCheck, GoPlus, creator, community), every figure behind the pick (age, liquidity, volume
 pace, buy pressure, holders, top wallets, insiders, locked liquidity, creator share and sales, authorities, sources,
 boosts, buyers vs sellers, holder growth, community counts), the sources it was seen on, the live chart and the links.
-Below it: the runners-up, the track record of every tip, the held paper positions with the bankroll (once the first one
-is bought), and one "Details" fold with the training, the big test, all candidates, the weights and the run log. Light and dark theme, phone-friendly, times in Europe/Berlin.
+Below it: the runners-up, the track record of every tip, the paper account (profit/loss since the restart, every open
+position on its stop-to-take-profit bar, the closed trades), and one "Details" fold with the training, the big test, all candidates, the weights and the run log. Light and dark theme, phone-friendly, times in Europe/Berlin.
 
 ## Sending the results somewhere else
 

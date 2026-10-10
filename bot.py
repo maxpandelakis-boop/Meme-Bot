@@ -7,7 +7,9 @@ A cycle:
   3. memebot.py gather    merge everything; fetch full DexScreener data for the addresses that still lack it; gather again
   4. memebot.py shortlist RugCheck reports (and GMGN top buyers) for the best candidates
   5. memebot.py train     the training programs on the scored snapshots: walk-forward test, zero model, tuned limits (db/memebot/train)
-  6. memebot.py run       exits on the open positions, then the 2 best clean coins at 20 each out of the 40 bankroll
+  6. memebot.py run       exits on the open positions, then the 2 best clean coins at 20 each out of the 40 bankroll (pick mode); with
+                          --recommend the two best coins go to the page and the paper account buys the top pick for 50 and the first
+                          5 new launches for 3 each (fake money, no budget; sold at +1000%, -30% or after 6 hours)
   7. apply out/*.json into db/ (positions, exits, snapshots, learned weights, state)
   8. report.py        renders mb/report.html, the analysis page (open it in a browser)
 
@@ -18,7 +20,7 @@ Usage:
   python3 bot.py loop --every 30 --recommend --push --horizon 2h   the same with the 2-hour profile: early, small, accelerating coins, re-priced 2h later
   (the loop git-pulls before each cycle and restarts itself when new code arrived; --no-update turns that off)
   python3 bot.py loop    [--every 30]                       cycles forever, every N minutes (Ctrl-C to stop)
-  python3 bot.py status                                     bankroll, open positions with their last price, closed trades, last note
+  python3 bot.py status                                     bankroll, paper account, open positions with their last price, closed trades, last note
   python3 bot.py report                                     render mb/report.html from the current db/ without a cycle
   python3 bot.py sell --all | --coin SYMBOL [--push]        close positions by hand at the last known price; the money returns to the bankroll
   python3 bot.py sync    [--remote URL] [--branch results]  push mb/report.html and the small db docs to a git branch (default:
@@ -439,7 +441,8 @@ def cycle(d, force=False, offline=False, mock="", now=None, push=False, remote=N
 def trader_said(r):
     """The paper trader's result phrase for the Agent office: what it named or bought, and what it sold."""
     recs = [str(p.get("sym")) for p in r["picks"] if p.get("grp") == "recommend"]
-    buys = [p for p in r["picks"] if p.get("grp") not in ("recommend", "skipped")]
+    buys = [p for p in r["picks"] if p.get("grp") not in ("recommend", "skipped", "young")
+            or (isinstance(p.get("bought"), (int, float)) and not isinstance(p.get("bought"), bool))]
     said = (["recommended " + ", ".join(recs)] if recs else []) + (["%d bought" % len(buys)] if buys else []) + (["%d sold" % len(r["exits"])] if r["exits"] else [])
     return " · ".join(said) or "no pick, nothing sold"
 
@@ -524,13 +527,12 @@ def sell(d, which, now=None):
             continue
         if which != "all" and str(p.get("sym", "")).lower() != which.lower():
             continue
-        ticket, entry = M.num(p.get("ticket")) or M.TICKET, M.num(p.get("px"))
+        entry = M.num(p.get("px"))
         last = M.num((marks.get("px") or {}).get(pid))
         if not last or not entry:
             log("%s: no price known yet, run a cycle first" % p.get("sym"))
             continue
-        gross = (ticket - M.fee(ticket)) * p["_left"] * last / entry
-        cash = max(0.0, gross - M.fee(gross))
+        cash = M.pos_value(p, p["_left"], last / entry)        # the position's own fees: paper fees for the paper account
         doc = {"pos": pid, "t": now, "px": last, "frac": round(p["_left"], 6), "why": "manual", "eur": round(cash, 2), "grp": p.get("grp"), "rule": M.RULE}
         os.makedirs(os.path.join(d, "db", "memeexit"), exist_ok=True)
         with open(os.path.join(d, "db", "memeexit", "%s-%d.json" % (pid, len(p["_exits"]) + 1)), "w", encoding="utf-8") as f:
@@ -748,6 +750,10 @@ def status(d):
     state = M.load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
     cash = M.bankroll(pos)
     print("bankroll: %.2f free of %.0f  (spent %.2f, came back %.2f, %d open)" % (cash["free"], cash["budget"], cash["spent"], cash["back"], cash["open"]))
+    if state.get("paperRule"):
+        a = M.paper_account(pos, M.num(state.get("paperSince")), marks.get("px") or {})
+        print("paper account since the restart (%s): invested %.2f, came back %.2f, open %.2f, %+.2f  (%d open: %d top pick, %d new launches; %d closed: %d won, %d lost)" % (
+            state["paperRule"], a["invested"], a["back"], a["open"], a["pnl"], a["nOpen"], a["nTop"], a["nYoung"], a["nClosed"], a["won"], a["lost"]))
     equity = cash["free"]
     for pid, p in sorted(pos.items(), key=lambda kv: kv[1].get("t") or 0):
         ticket, entry = M.num(p.get("ticket")) or M.TICKET, M.num(p.get("px"))
@@ -757,9 +763,8 @@ def status(d):
         if p["_left"] > 1e-9:
             val = None
             if last and entry:
-                gross = (ticket - M.fee(ticket)) * p["_left"] * last / entry
-                val = max(0.0, gross - M.fee(gross))
-                if p.get("grp") in M.BOT_GROUPS:
+                val = M.pos_value(p, p["_left"], last / entry)
+                if p.get("grp") in M.BANK_GROUPS:
                     equity += val
             print("  OPEN   %s %-10s %-5s in %.0f  now %s  %s%s" % (when, p.get("sym"), p.get("grp"), ticket,
                                                                      ("%.2fx" % (last / entry)) if last and entry else "?",

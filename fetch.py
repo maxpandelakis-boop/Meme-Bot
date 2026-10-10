@@ -467,15 +467,19 @@ def ds_tokens(http, d, addrs, start=0, prefix="tokens"):
     return total
 
 
+CANDLE_MAX_POOLS = 60      # memebot.CANDLE_MAX_ITEMS: up to 6 paper positions an hour held for 6 hours, plus the due tips
+
+
 def candles(http, d, items):
     """Minute candles for the pools of the tips and new launches that are due for their 1 h, 24 h or horizon price check
     (GeckoTerminal OHLCV, base token in USD) -> candles/<pool>_<key>.txt rows ms|open|high|low|close|volume (key "1", "24" or
-    "out"). With them the record knows the peak and the trough inside the window, not just the price at its end, and when a
-    take-profit would have sold."""
+    "out", and "hold" for the open paper positions' take-profit and stop). With them the record knows the peak and the trough inside
+    the window, not just the price at its end, and when a take-profit would have sold. At most CANDLE_MAX_POOLS pools a run (the held
+    coins come first in the list), about 10 seconds apart: the fetch runs beside the scan."""
     n = 0
     if items and not http.mock:      # its own process starts right after the sources step, whose GeckoTerminal worker may have asked a moment ago
         time.sleep(HOST_GAP.get("api.geckoterminal.com", 0.0))
-    for it in items[:24]:
+    for it in items[:CANDLE_MAX_POOLS]:
         pool, since, hours = str(it.get("pool") or ""), num(it.get("since")), num(it.get("hours")) or 1.0
         key = re.sub(r"[^A-Za-z0-9]", "", str(it.get("key") or int(hours)))
         if not pool or not since or not key or "api.geckoterminal.com" in http.dead:
@@ -493,7 +497,7 @@ def candles(http, d, items):
             with open(os.path.join(d, "candles", "%s_%s.txt" % (pool, key)), "w", encoding="utf-8") as f:
                 f.write("\n".join(rows) + "\n")
             n += 1
-    http.log("  candles %d of %d pools" % (n, min(len(items), 24)))
+    http.log("  candles %d of %d pools" % (n, min(len(items), CANDLE_MAX_POOLS)))
     return n
 
 

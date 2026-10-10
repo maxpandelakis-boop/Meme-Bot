@@ -9,8 +9,8 @@ file, no server needed). --fragment leaves out the <html>/<head>/<body> wrapper 
 Sections, in reading order: the recommendation (recommend mode), the big test (how the gated coins, the bot's top 10 and the rest
 did against the "price unchanged" baseline), bankroll and equity (hero), equity curve per run, the bought coins (open positions with
 their last price, sell levels and the bot's reasons), closed trades with their result, the top candidates of the last full scan and
-why they were not bought, the factor weights in use (with a glossary) and the run log. In recommend mode the bankroll sections and
-the reference sections fold behind a tap. Times are shown in Europe/Berlin, the bot's own trading day.
+why they were not bought, the factor weights in use (with a glossary) and the run log. In recommend mode the paper account (no
+budget, counted since its restart) takes the bankroll's place and the reference sections fold behind a tap. Times are shown in Europe/Berlin, the bot's own trading day.
 """
 import argparse, html, json, math, os, re, sys, datetime as dt
 
@@ -30,26 +30,51 @@ MINUS = "\u2212"                  # a real minus sign for every negative number 
 _flat = M.TICKET - M.fee(M.TICKET)
 FLAT = round(max(0.0, _flat - M.fee(_flat)) - M.TICKET, 2)   # what 20 becomes when the price does not move: the two fees
 WHY = {"target": "hit 2x, half sold", "stop": "−50% stop", "time": "3-day limit", "back to entry": "fell back to entry", "rug": "price gone", "manual": "sold by hand",
-       "tp": "take-profit +%d%%" % round(100 * M.HOLD_TP), "filters": "failed the filters"}
+       "tp": "take-profit", "filters": "failed the filters", "reset": "closed at the restart"}
+LEGACY_HOLD_H = 48         # the hold rule before the paper account v2 sold after 48 hours (its position docs do not say so)
 GATE_SHORT = {"crash": "crashed", "spike": "spiked", "mc": "market cap out of range", "liq": "liquidity gone", "vol": "volume dried up", "wash": "wash trading",
               "old": "too old", "honeypot": "honeypot"}
 
 
-def exit_label(e, grp=None):
-    """Why a sale happened, in words: the filters a held coin failed are named; a held coin's time limit is HOLD_MAX_H, not 3 days."""
+def exit_label(e, p=None):
+    """Why a sale happened, in words, by the rule the position was bought under: the paper account's reasons (take-profit +1000%,
+    stop-loss -30%, 6-hour limit, rug, reset); the hold rule before it (its own take-profit level, the filters it failed, 48 hours);
+    pick mode's own."""
+    p = p if isinstance(p, dict) else {}
     w = str(e.get("why") or "?")
     if w == "filters" and e.get("gates"):
         return "failed the filters (%s)" % ", ".join(GATE_SHORT.get(g, g) for g in e["gates"])
-    if w == "time" and grp == "hold":
-        return "%d-hour limit" % round(M.HOLD_MAX_H)
+    if p.get("grp") in M.PAPER_GROUPS and p.get("paper"):
+        return re.sub(r" -(?=\d)", " " + MINUS, M.exit_word(w, p.get("grp")))
+    if p.get("grp") == "hold" and w == "tp":
+        return "take-profit +%d%%" % round(100 * (M.num(p.get("tp")) or 0.4))
+    if p.get("grp") == "hold" and w == "time":
+        return "%d-hour limit" % LEGACY_HOLD_H
     return WHY.get(w, w)
 
 
+def fmt_eur(v):
+    """A paper ticket as the user named it: 50 €, 3 €."""
+    v = M.num(v)
+    return "–" if v is None else ("%g €" % v if v == int(v) else "%.2f €" % v)
+
+
+def group_tag(p):
+    """The paper position's group and ticket in one tag: top pick · 50 €, new launch · 3 €; a hold position of the rule before
+    the restart is "old rule · 20 €"."""
+    return "%s · %s" % ("old rule" if not p.get("paper") else ("new launch" if p.get("grp") == "young" else "top pick"), fmt_eur(p.get("ticket")))
+
+
 def hold_rule_text():
-    return ("One paper position per named coin, paid from the bankroll while a slot is free (at most %d at once); a coin named again while it is held buys nothing. "
-            "All of it is sold the first minute a candle closes %d%% above the entry, the first scan the coin fails a filter (%s), or after %d hours. "
-            "A coin sold is not bought again for %d hours." % (int(M.BUDGET // M.TICKET), round(100 * M.HOLD_TP), ", ".join(GATE_SHORT.get(g, g) for g in M.HOLD_EXIT_GATES),
-                                                                round(M.HOLD_MAX_H), round(M.HOLD_COOL_H)))
+    return ("Fake money, no budget. Every scan buys the top pick (the first recommendation) for %s and the first %d coins of the new-launches tab "
+            "for %s each; a coin that is already held is not bought again, and one that was sold may be bought again the next time it is named. "
+            "Each position is sold, all of it, by whichever comes first: the first minute candle that closes at %g times the entry price (take-profit "
+            "+%d%%, booked at exactly that level), the first one that closes at %d%% of it or lower (stop-loss %s%%, booked at that close: a crash "
+            "through the level fills worse, never better), %d hours after the buy (the first scan from then on, at its price), or when the price or "
+            "the liquidity is gone (rug). A scan without new candles checks both levels on its own price. Failing a filter sells nothing. "
+            "Paper fees: %g%% per trade, at least %.2f; the tip record keeps 0.5%%, at least 0.81." % (
+                fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET), 1 + M.HOLD_TP, round(100 * M.HOLD_TP), round(100 * (1 - M.HOLD_STOP)),
+                sgn("-%d" % round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H), 100 * M.PAPER_FEE_PCT, M.PAPER_FEE_MIN))
 SRC = {"kw": "search “%s”", "gt": "GeckoTerminal %s", "pf": "pump.fun %s", "list": "DexScreener %s", "jup": "Jupiter %s", "gm": "GMGN %s"}
 LIST_NAMES = {"reddit": "Reddit posts", "cgMeme": "CoinGecko meme list", "cmcGain": "CoinMarketCap gainers", "rayVol": "Raydium top pools", "llNew": "LaunchLab new", "llHot": "LaunchLab hot", "llMc": "LaunchLab biggest",
               "rcNew": "RugCheck new", "rcTrending": "RugCheck trending", "rcRecent": "RugCheck recent", "rcVerified": "RugCheck verified"}
@@ -166,15 +191,16 @@ def fmt_chg(m):
     return "–" if m is None else sgn("%+.1f%%" % (100 * (m - 1)))
 
 
-def be_mult(ticket):
-    """The price multiple at which a paper position comes back at its ticket after both fees (buy and sell)."""
+def be_mult(ticket, fee=None):
+    """The price multiple at which a position comes back at its ticket after both fees (buy and sell); fee: the position's fee model."""
+    fee = fee or M.fee
     ticket = M.num(ticket) or M.TICKET
-    net = ticket - M.fee(ticket)
+    net = ticket - fee(ticket)
     if net <= 0:
         return None
     gross = ticket
-    for _ in range(30):                  # gross - fee(gross) = ticket, solved by fixed-point iteration (the fee is flat or 0.5%)
-        gross = ticket + M.fee(gross)
+    for _ in range(30):                  # gross - fee(gross) = ticket, solved by fixed-point iteration (the fee is flat or a percentage)
+        gross = ticket + fee(gross)
     return gross / net
 
 
@@ -253,6 +279,7 @@ def collect(d, now):
     res = M.load_docs(d, "memesnapres")
     cash = M.bankroll(pos)
     px, liq_now, cpx = marks.get("px") or {}, marks.get("liq") or {}, marks.get("cpx") or {}
+    since = M.num(state.get("paperSince"))
 
     rows = []
     for pid, p in pos.items():
@@ -262,23 +289,20 @@ def collect(d, now):
         last = M.num(px.get(pid))
         if last is None and p["_left"] <= 1e-9 and exits:
             last = M.num(exits[-1].get("px"))
-        value = None
-        if p["_left"] > 1e-9 and last and entry:
-            gross = (ticket - M.fee(ticket)) * p["_left"] * last / entry
-            value = max(0.0, gross - M.fee(gross))
+        value = M.pos_value(p, p["_left"], last / entry) if p["_left"] > 1e-9 and last and entry else None
         closed = p["_left"] <= 1e-9
         pnl = back - ticket if closed else (back + (value or 0) - ticket if value is not None else None)
         whys = [str(e.get("why") or "?") for e in exits]
         half = any(w == "target" for w in whys)
         if closed:
-            status, kind = ", ".join(exit_label(e, p.get("grp")) for e in exits), ("good" if pnl > 0 else "bad")
+            status, kind = ", ".join(exit_label(e, p) for e in exits), ("good" if pnl > 0 else "bad")
         elif half:
             status, kind = "half sold at 2x", "good"
         else:
             status, kind = "open", "neutral"
         sold_at = [(M.num(e.get("px")) / entry if M.num(e.get("px")) and entry else None, (M.num(e.get("frac")) or 1) < 0.999) for e in exits]
         cands = []
-        if p.get("grp") == "hold" and not closed and p.get("pair"):     # the held coin's minute candles since the entry (the run that renders the page has them)
+        if p.get("grp") in M.PAPER_GROUPS and not closed and p.get("pair"):     # the held coin's minute candles since the entry (the run that renders the page has them)
             t_in = M.num(p.get("entryAt")) or M.num(p.get("t")) or 0
             cands = [c for c in M.load_candles(d, str(p["pair"]), "hold") if c[0] >= t_in - 60_000 and c[4] > 0]
         rows.append({"id": pid, "p": p, "ticket": ticket, "entry": entry, "back": back, "last": last, "value": value, "closed": closed, "half": half,
@@ -289,10 +313,14 @@ def collect(d, now):
     open_rows = [r for r in rows if not r["closed"]]
     closed_rows = [r for r in rows if r["closed"]]
     open_bot = [r for r in open_rows if r["bot"]]
-    unpriced = [r for r in open_bot if r["value"] is None]
-    equity = cash["free"] + sum(r["value"] or 0 for r in open_bot)
+    open_bank = [r for r in open_rows if r["p"].get("grp") in M.BANK_GROUPS]
+    unpriced = [r for r in open_bank if r["value"] is None]
+    equity = cash["free"] + sum(r["value"] or 0 for r in open_bank)      # pick mode's bankroll: the paper account has no budget
     bot_closed = [r for r in closed_rows if r["bot"]]
     wins = sum(1 for r in bot_closed if r["pnl"] > 0)
+    paper = {"since": since, "acct": M.paper_account(pos, since, px),
+             "closed": [r for r in closed_rows if since is not None and (M.num(r["p"].get("t")) or 0) >= since],
+             "old": [r for r in closed_rows if since is None or (M.num(r["p"].get("t")) or 0) < since]}
 
     # big test: chunks of the same snapshot run -> one group
     groups = {}
@@ -338,7 +366,7 @@ def collect(d, now):
     young_hist = sorted([r for r in M.load_docs(d, "memeyoung").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))[:48]
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
     office = M.load_json(os.path.join(d, "db", "memebot", "office.json"), None)
-    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state,
+    return {"now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state, "paper": paper,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed}
@@ -668,6 +696,7 @@ details.fold-lite > summary { color:var(--accent); font-weight:500; padding:4px 
 .track .now.l { transform:translateX(-7px) } .track .now.r { transform:translateX(calc(-100% + 7px)) }
 .track .now.good { color:var(--good) } .track .now.warn { color:var(--warn) } .track .now.bad { color:var(--bad) }
 .track .tl { position:absolute; top:40px; transform:translateX(-50%); font-size:var(--fs-xs); color:var(--muted); white-space:nowrap } .track .tl.end { transform:translateX(calc(-100% + 2px)); color:var(--accent) }
+.track .tl.start { transform:translateX(-1px); color:var(--bad) } .track .tl.at { transform:translateX(-1px) } .track .tk.st { width:3px; margin-left:-1.5px; background:var(--bad-mark) }
 .tleg { display:flex; flex-wrap:wrap; gap:2px 14px; font-size:var(--fs-xs); color:var(--fg2); font-variant-numeric:tabular-nums }
 .clock { display:grid; gap:4px } .clock .bar { height:4px; border-radius:999px; background:var(--line2); overflow:hidden } .clock .bar span { display:block; height:100%; background:var(--muted) }
 .clock .cap { display:flex; justify-content:space-between; flex-wrap:wrap; gap:2px 12px; font-size:var(--fs-xs); color:var(--fg2) }
@@ -880,15 +909,11 @@ def name_html(sym, name):
 def position_card(r, now):
     p = r["p"]
     sc = M.num(p.get("score"))
-    if p.get("grp") == "hold":
-        sells = "all at %s (+%d%%) · or the first scan it fails a filter" % (fmt_px((1 + M.HOLD_TP) * r["entry"]) if r["entry"] else "–", round(100 * M.HOLD_TP))
-        deadline = fmt_dt((M.num(p.get("t")) or 0) + M.HOLD_MAX_H * 3_600_000, True)
-    elif r["half"]:
+    if r["half"]:
         sells = "the rest if it falls back to %s" % fmt_px(r["entry"])
     else:
         sells = "half at %s (2x) · all at %s (−50%%)" % (fmt_px(2 * r["entry"]) if r["entry"] else "–", fmt_px(0.5 * r["entry"]) if r["entry"] else "–")
-    if p.get("grp") != "hold":
-        deadline = fmt_dt((M.num(p.get("t")) or 0) + (M.num(p.get("maxd")) or M.MAX_DAYS) * M.DAY, True)
+    deadline = fmt_dt((M.num(p.get("t")) or 0) + (M.num(p.get("maxd")) or M.MAX_DAYS) * M.DAY, True)
     kv = [("bought", fmt_dt(p.get("t"), True)), ("entry", fmt_px(r["entry"])), ("last", fmt_px(r["last"])), ("multiple", fmt_mult(r["mult"])),
           ("sells", sells), ("time limit", deadline),
           ("paid", fmt_amt(r["ticket"])), ("worth now", fmt_amt(r["value"]) if r["value"] is not None else "no price yet"), ("still held", pct(100 * p["_left"])),
@@ -1013,22 +1038,25 @@ def checks_summary(rk):
     return "%d of %d clean" % (sum(1 for r in rows if r[0] == "ok"), len(rows)) + ((" · %s: %s" % (worst[1], worst[2].split(", ")[0])) if worst else "")
 
 
-def track_bar(cur, be, tp):
-    """Where the price stands, in % since the entry, between the entry (0), break-even after both fees (be) and the take-profit (tp)."""
-    c0 = cur if cur is not None else 0.0
-    lo, hi = min(-20.0, c0 - 5), max(tp + 5, c0 + 5)
-    P = lambda v: max(0.0, min(100.0, (v - lo) / (hi - lo) * 100))
-    cls = "good" if c0 >= be else ("warn" if c0 >= 0 else "bad")
+def track_bar(m, be, stop_m, tp_m):
+    """Where the price stands, as a multiple of the entry price on a log scale from the stop (the left end) to the take-profit (the
+    right end), with the entry and break-even after both fees as ticks; the price now is a dot with its change since the entry."""
+    lo, hi = math.log(stop_m), math.log(tp_m)
+    P = lambda v: max(0.0, min(100.0, (math.log(max(v, 1e-9)) - lo) / (hi - lo) * 100))
+    cls = "good" if m is not None and m >= be else ("warn" if m is not None and m >= 1.0 else "bad")
     out = ['<div class="rail"></div>']
-    if cur is not None:
-        a, b = sorted((P(0), P(cur)))
+    if m is not None:
+        a, b = sorted((P(1.0), P(m)))
         out.append('<div class="fill %s" style="left:%.1f%%;width:%.1f%%"></div>' % (cls, a, max(b - a, 0.8)))
-    out.append('<span class="tk" style="left:%.1f%%"></span><span class="tk be" style="left:%.1f%%"></span><span class="tk tp" style="left:%.1f%%"></span>' % (P(0), P(be), P(tp)))
-    if cur is not None:
-        x = P(cur)
-        out.append('<span class="dot %s" style="left:%.1f%%"></span><span class="now %s%s" style="left:%.1f%%">%s</span>' % (cls, x, cls, " l" if x < 10 else (" r" if x > 90 else ""), x, sgn("%+.1f%%" % cur)))
-    out.append('<span class="tl" style="left:%.1f%%">entry</span><span class="tl end" style="left:%.1f%%">sells %s</span>' % (P(0), P(tp), sgn("%+.0f%%" % tp)))
-    aria = "price %s since the entry; break-even after fees at %s; sold at %s" % (sgn("%+.1f%%" % cur) if cur is not None else "unknown", sgn("%+.1f%%" % be), sgn("%+.0f%%" % tp))
+    out.append('<span class="tk st" style="left:0%%"></span><span class="tk" style="left:%.1f%%"></span><span class="tk be" style="left:%.1f%%"></span><span class="tk tp" style="left:100%%"></span>' % (P(1.0), P(be)))
+    chg = lambda v: sgn("%+.1f%%" % (100 * (v - 1)))
+    if m is not None:
+        x = P(m)
+        out.append('<span class="dot %s" style="left:%.1f%%"></span><span class="now %s%s" style="left:%.1f%%">%s</span>' % (cls, x, cls, " l" if x < 10 else (" r" if x > 90 else ""), x, chg(m)))
+    out.append('<span class="tl start" style="left:0%%">%s</span><span class="tl at" style="left:%.1f%%">entry</span><span class="tl end" style="left:100%%">sells %s</span>' % (
+        sgn("%+.0f%%" % (100 * (stop_m - 1))), P(1.0), sgn("%+.0f%%" % (100 * (tp_m - 1)))))
+    aria = "price %s since the entry, on a scale from the stop at %s to the take-profit at %s; break-even after fees at %s" % (
+        chg(m) if m is not None else "unknown", sgn("%+.0f%%" % (100 * (stop_m - 1))), sgn("%+.0f%%" % (100 * (tp_m - 1))), chg(be))
     return '<div class="track" role="img" aria-label="%s">%s</div>' % (E(aria), "".join(out))
 
 
@@ -1074,34 +1102,35 @@ def spark(cands, ref, tp_px, w=320, h=64):
 
 
 def hold_card(r, now):
-    """A held paper position as one row that opens on tap. The row: the coin, what it would bring if sold now against what it
-    cost, the price between the entry, break-even and the take-profit, and the clock. Opened: the price since the entry, the
-    facts of the buy, the safety check it was bought on, why, the links."""
+    """A paper position as one row that opens on tap. The row: the coin and its group (top pick · 50 €, new launch · 3 €), what it
+    would bring if sold now against what it cost, the price on a log scale between the stop, the entry, break-even and the
+    take-profit, and the clock. Opened: the price since the entry, the facts of the buy, the safety check it was bought on, why, the links."""
     p = r["p"]
     entry, ticket, mult, pnl = r["entry"], r["ticket"], r["mult"], r["pnl"]
-    t0 = M.num(p.get("t")) or now                         # the hold limit counts from the scan that named it (memebot.py)
+    t0 = M.num(p.get("t")) or now                         # the time limit counts from the scan that bought it (memebot.py)
     t_buy = M.num(p.get("entryAt")) or t0
-    ref = r.get("cpx") or entry                           # the take-profit is measured on the candles' own entry price
+    ref = r.get("cpx") or entry                           # the take-profit and the stop are measured on the candles' own entry price
     tp_px = (1 + M.HOLD_TP) * ref if ref else None
-    tp = 100 * (tp_px / entry - 1) if tp_px and entry else 100 * M.HOLD_TP
-    be = be_mult(ticket)
-    be_pct = 100 * (be - 1) if be else 0.0
-    cur = 100 * (mult - 1) if mult is not None else None
+    stop_px = (1 - M.HOLD_STOP) * ref if ref else None
+    k = ref / entry if ref and entry else 1.0
+    be = be_mult(ticket, M.pos_fee(p)) or 1.0
     cls = "good" if (pnl or 0) > 0 else ("bad" if (pnl or 0) < 0 else "")
     held_h = max(0.0, (now - t0) / 3_600_000)
     meta = "price %s since the entry · held %s of %dh" % (fmt_chg(mult), fmt_dur(held_h), round(M.HOLD_MAX_H))
-    leg = '<div class="tleg"><span>entry %s</span><span>now %s</span><span title="the price change at which this ticket comes back whole after the buy and the sell fee">break-even %s</span><span>sells at %s</span></div>' % (
-        fmt_px(entry), fmt_px(r["last"]), sgn("%+.1f%%" % be_pct), fmt_px(tp_px))
+    leg = ('<div class="tleg"><span>entry %s</span><span>now %s</span><span title="the price change at which this ticket comes back whole after the buy and the sell fee">'
+           'break-even %s</span><span>stop at %s</span><span>sells at %s</span></div>') % (fmt_px(entry), fmt_px(r["last"]), sgn("%+.1f%%" % (100 * (be - 1))), fmt_px(stop_px), fmt_px(tp_px))
     worth = ("worth %s if sold now, paid %s, after both fees" % (fmt_amt(r["value"]), fmt_amt(ticket))) if r["value"] is not None else "no price since the buy · paid %s" % fmt_amt(ticket)
-    kv = [("bought", fmt_dt(t_buy, True)), ("paid", fmt_amt(ticket)), ("score at buy", "%.0f · rank #%s" % (M.num(p.get("score")) or 0, p.get("rank") or "?")),
+    kv = [("bought", fmt_dt(t_buy, True)), ("paid", fmt_amt(ticket)),
+          ("score at buy", "%.0f · %s" % (M.num(p.get("score")) or 0, ("%d min old" % M.num(p["ageMin"])) if M.num(p.get("ageMin")) is not None else "rank #%s" % (p.get("rank") or "?"))),
           ("market cap at buy", fmt_money(p.get("mc"))), ("24h volume at buy", fmt_money(p.get("vol"))),
           ("liquidity", "%s → %s" % (fmt_money(p.get("liq")), fmt_money(r["liq_now"])) if r["liq_now"] is not None else fmt_money(p.get("liq")))]
     why = (p.get("why") or "").split("; RugCheck")[0]
     rk = p.get("risk") if isinstance(p.get("risk"), dict) else None
     safety = ('<details class="more"><summary>Safety check at the buy · %s</summary>%s</details>' % (E(checks_summary(rk)), checklist(rk, "Safety check at the buy"))) if safety_checks(rk) else safety_box(p.get("safety"))
-    return ('<details class="card pos hold"><summary><span class="who"><span class="sym">%s</span>%s</span><span class="plv %s">%s</span>'
+    return ('<details class="card pos hold"><summary><span class="who"><span class="sym">%s</span>%s<span class="chip">%s</span></span><span class="plv %s">%s</span>'
             '<span class="meta">%s</span>%s</summary><div class="body"><p class="worth">%s</p>%s%s%s<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></div></details>') % (
-        E(p.get("sym")), name_html(p.get("sym"), p.get("name")), cls, fmt_amt(pnl, True) if pnl is not None else "–", E(meta), track_bar(cur, be_pct, tp),
+        E(p.get("sym")), name_html(p.get("sym"), p.get("name")), E(group_tag(p)), cls, fmt_amt(pnl, True) if pnl is not None else "–", E(meta),
+        track_bar(mult, be, (1 - M.HOLD_STOP) * k, (1 + M.HOLD_TP) * k),
         E(worth), leg, time_bar(t0, now), spark(r.get("candles") or [], ref, tp_px), kv_html(kv),
         safety, ('<details class="more"><summary>Why the bot bought it</summary><p class="why">%s</p></details>' % E(why)) if why else "",
         links(p), E(p.get("addr")))
@@ -1168,10 +1197,10 @@ def rec_card(c, now, embed, peers=None, held=None):
     b = c.get("bought")
     paper = None
     if isinstance(b, (int, float)) and not isinstance(b, bool):
-        paper = "bought for %s · sold at +%d%% or the first scan it fails a filter" % (fmt_amt(b), round(100 * M.HOLD_TP))
+        paper = "bought for %s · sold at +%d%%, at %s%% or after %d hours, whichever comes first" % (fmt_eur(b), round(100 * M.HOLD_TP), sgn("-%d" % round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H))
     elif b == "held":
         hr = (held or {}).get(c.get("addr"))
-        paper = "already held from an earlier tip · not bought again"
+        paper = "already held from an earlier scan · not bought again"
         if hr:
             paper = "already held since %s (bought for %s) · %s if sold now, after fees · not bought again" % (
                 fmt_dt(M.num(hr["p"].get("entryAt")) or M.num(hr["p"].get("t")), True), fmt_amt(hr["ticket"]), fmt_amt(hr["pnl"], True) if hr["pnl"] is not None else "no price yet")
@@ -1326,7 +1355,7 @@ def rec_section(D, embed):
     if picks and t_rec and t_run and t_run - t_rec > 60_000:     # the newest run found no clean coin, so the older pick stays up: say so
         head = "from the run at %s · the latest run (%s) found no clean coin, so this older pick stays up · fake money" % (fmt_dt(t_rec, True), fmt_dt(t_run, True))
     peers = [c for c in picks + (rc.get("runnersUp") or []) if isinstance(c, dict)]
-    held = {r["p"].get("addr"): r for r in (D.get("open") or []) if r["p"].get("grp") == "hold"}
+    held = {r["p"].get("addr"): r for r in (D.get("open") or []) if r["p"].get("grp") in M.PAPER_GROUPS}
     if picks:
         body = '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed, peers, held) for c in picks)
     else:
@@ -1429,15 +1458,19 @@ def young_section(D):
     rc = D.get("rec") or {}
     young = [c for c in (rc.get("young") or []) if isinstance(c, dict)]
     n_all = int(M.num(rc.get("youngOf")) or len(young))
-    head = "coins under an hour old with a DEX pair and at least %s of liquidity at the scan · shown, never picked: the %s profile picks from coins %g to %g hours old · fake money" % (
-        fmt_money(M.YOUNG_MIN_LIQ), M.HORIZON, M.GATE_MIN_AGE_H, M.GATE_MAX_AGE_H or 0)
+    head = ("coins under an hour old with a DEX pair and at least %s of liquidity at the scan · never a pick (the %s profile picks from coins %g to %g hours old); "
+            "the first %d are bought for %s each as paper positions · fake money") % (fmt_money(M.YOUNG_MIN_LIQ), M.HORIZON, M.GATE_MIN_AGE_H, M.GATE_MAX_AGE_H or 0, M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET))
+    held = {r["p"].get("addr"): r for r in (D.get("open") or []) if r["p"].get("grp") in M.PAPER_GROUPS}
     if young:
         rows_html = []
         for i, c in enumerate(young, 1):
-            chips = '<span class="chip">%d min old</span>%s%s%s' % (int(M.num(c.get("ageMin")) or 0), safety_chip(c.get("ok"), c.get("safety")), odds_chip(c), story_chip(c))
+            b = c.get("bought")
+            buy = ('<span class="chip neutral">bought for %s</span>' % E(fmt_eur(b))) if isinstance(b, (int, float)) and not isinstance(b, bool) else (
+                '<span class="chip neutral">already held</span>' if b == "held" else "")
+            chips = '<span class="chip">%d min old</span>%s%s%s%s' % (int(M.num(c.get("ageMin")) or 0), buy, safety_chip(c.get("ok"), c.get("safety")), odds_chip(c), story_chip(c))
             rows_html.append('<tr>%s%s%s</tr>' % (coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
         body = '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
-        cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False, peers=young) for c in young)
+        cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False, peers=young, held=held) for c in young)
         body += '<details><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
         gates = [(c.get("sym"), c.get("gates") or []) for c in young if c.get("gates")]
         if gates:
@@ -1620,8 +1653,8 @@ def profit_stats(pts):
 
 def profit_section(D):
     """The tip record, the page's last word: every tip the bot named, priced again 1 h, horizon and 24 h later, summed up as
-    fake money (20 per tip, after fees), with the running total drawn over time. A test of the tips; the paper account (one
-    position per coin, sold by the hold rule) is the dashboard at the top."""
+    fake money (20 per tip, after fees), with the running total drawn over time. A test of the tips; the paper account (the top pick
+    for 50 and the first new launches for 3 each, every scan, sold by the paper rules) is the dashboard at the top."""
     rows = [r for r in profit_rows(D) if r[3]]
     if not rows:
         return ""
@@ -1635,11 +1668,10 @@ def profit_section(D):
     tiles = [tile("All tips together, %s" % label, fmt_amt(s["tot"], True), "%d tips · %s staked · fake money, after fees" % (s["n"], fmt_amt(staked)), lead=True),
              tile("Tips that went up", "%d of %d" % (s["up"], s["n"]), "a profit after fees needs about %s" % sgn("%+.1f%%" % (100 * (be_mult(M.TICKET) - 1)))),
              tile("Tips that went to zero", "%d of %d" % (s["zero"], s["n"]), "under 2% of the entry price")]
-    held = [r for r in (D.get("pos") or []) if r["p"].get("grp") == "hold"]
-    if held:      # the same tips as paper positions: one per coin, sold by the hold rule, not one 20 per tip and window
-        n_c, n_o = sum(1 for r in held if r["closed"]), sum(1 for r in held if not r["closed"])
-        tot_h = sum(r["pnl"] for r in held if r["pnl"] is not None)
-        tiles.append(tile("Held as paper positions", fmt_amt(tot_h, True), "%d sold · %d open · one position per coin, sold at +%d%% or when it fails a filter" % (n_c, n_o, round(100 * M.HOLD_TP))))
+    a = (D.get("paper") or {}).get("acct") or {}
+    if a.get("n"):      # the paper account: the tips bought as positions, sold by the paper rules, not one 20 per tip and window
+        tiles.append(tile("Paper account since the restart", fmt_amt(a["pnl"], True), "%d sold · %d open · top pick %s, new launches %s · sold at +%d%%, %s%% or after %d hours" % (
+            a["nClosed"], a["nOpen"], fmt_eur(M.TOP_TICKET), fmt_eur(M.YOUNG_TICKET), round(100 * M.HOLD_TP), sgn("-%d" % round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H))))
     html_ = '<section class="hero">%s</section>' % "".join(tiles)
     trs = []
     for key_, hours_, label_, pts_ in rows:
@@ -1664,7 +1696,7 @@ def profit_section(D):
     chain = compound_chain(D.get("track_all") or D.get("track") or [])
     note = '<p class="note">Running total of every tip in time order, 20 in each, sold %s. ' % label
     note += ('20 put into every tip one after the other, each time the whole stake, would be %s now after %d tips. ' % (fmt_amt(chain["equity"]), chain["n"])) if chain["n"] else ""
-    note += 'Fake money: every tip counts 20 per window here; the held paper positions (one per coin) are in "Open positions" and "Closed trades" and make the paper account at the top. Fees simulated at 0.5%, minimum 0.81 per trade.</p>'
+    note += 'Fake money: every tip counts 20 per window here, fees simulated at 0.5%, minimum 0.81 per trade. The paper account at the top is separate: its positions (the top pick for 50, the first new launches for 3) are in "Open positions" and "Closed trades", with paper fees of 1%, minimum 0.10.</p>'
     more = '<details class="fold-lite"><summary>With a take-profit, and how this is counted</summary>%s%s</details>' % (replay, note)
     return section("Tip record", "a test of the tips, not the paper account: every coin the bot named counted as its own 20, priced again after the window", verdict + html_ + chart + table + more)
 
@@ -1831,7 +1863,7 @@ def closed_table(rows):
         days = ((r["exit_t"] or 0) - (M.num(p.get("t")) or 0)) / 86_400_000 if r["exit_t"] else None
         sold_at = ", ".join(("%.2fx" % m if m is not None else "–") + (" (half)" if half else "") for m, half in r["sold_at"]) or "–"
         tr.append('<tr><td><strong>%s</strong>%s</td><td class="d" data-k="group">%s</td><td class="d" data-k="bought">%s</td><td class="d" data-k="sold because"><span class="chip %s">%s</span></td><td class="n" data-k="sold at">%s</td><td class="n" data-k="paid">%s</td><td class="n" data-k="came back">%s</td><td class="n" data-k="result"><span class="%s">%s</span></td><td class="n" data-k="held">%s</td></tr>' % (
-            E(p.get("sym")), name_html(p.get("sym"), p.get("name")), "bot" if r["bot"] else "random", fmt_dt(p.get("t"), True), r["kind"], E(r["status"]), E(sold_at), fmt_amt(r["ticket"]), fmt_amt(r["back"]),
+            E(p.get("sym")), name_html(p.get("sym"), p.get("name")), group_tag(p) if p.get("grp") in M.PAPER_GROUPS else ("bot" if r["bot"] else "random"), fmt_dt(p.get("t"), True), r["kind"], E(r["status"]), E(sold_at), fmt_amt(r["ticket"]), fmt_amt(r["back"]),
             "good" if r["pnl"] > 0 else "bad", fmt_amt(r["pnl"], True), ("–" if days is None else ("%.0fh" % (24 * days)) if days < 2 else ("%.1fd" % days))))
     return '<div class="tbl stack"><table><thead><tr><th>coin</th><th>group</th><th>bought</th><th>sold because</th><th class="n">sold at</th><th class="n">paid</th><th class="n">came back</th><th class="n">result</th><th class="n">held</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(tr)
 
@@ -1902,7 +1934,7 @@ def cands_table(D):
 
 
 def short_note(note):
-    return ". ".join(s for s in str(note or "").split(". ") if not s.startswith(("Weights:", "Bankroll:", "Saved all"))).strip()
+    return ". ".join(s for s in str(note or "").split(". ") if not s.startswith(("Weights:", "Bankroll:", "Paper account since", "Saved all"))).strip()
 
 
 def note_cell(note, rec_mode):
@@ -1912,7 +1944,7 @@ def note_cell(note, rec_mode):
     src = next((m.group(1) for s in sents for m in [re.search(r"from (\d+) sources", s)] if m), None)
     main, gates = [], None
     for s in sents:
-        if s.startswith(("Scanned", "Weights:", "Bankroll:", "Saved all")):
+        if s.startswith(("Scanned", "Weights:", "Bankroll:", "Paper account since", "Saved all")):
             continue
         if s.startswith("Most common gate:"):
             gates = s
@@ -1926,6 +1958,11 @@ def note_cell(note, rec_mode):
     return html_ or E(short_note(note)), src
 
 
+def n_buys(run):
+    """The buys of a run: pick mode's positions and the paper account's (a recommendation or a new launch with a ticket)."""
+    return sum(1 for p in (run.get("picks") or []) if isinstance(p, dict) and (p.get("grp") == "pick" or (isinstance(p.get("bought"), (int, float)) and not isinstance(p.get("bought"), bool))))
+
+
 def runs_table(runs, rec_mode):
     if not runs:
         return ""
@@ -1936,7 +1973,7 @@ def runs_table(runs, rec_mode):
         cell, src = note_cell(r.get("note"), rec_mode)
         tr.append('<tr><td class="w">%s</td><td class="m"><span class="chip">%s</span></td><td class="n" data-k="scanned">%s</td><td class="n" data-k="passed">%s</td><td class="n" data-k="sources">%s</td><td class="n" data-k="buys">%d</td><td class="n" data-k="sells">%d</td><td class="note-cell">%s</td></tr>' % (
             fmt_dt(r.get("t"), True), E(r.get("mode")), E(r.get("scanned") or "–"), E(r.get("passed") or "–"), E(src or "–"),
-            len([p for p in (r.get("picks") or []) if isinstance(p, dict) and p.get("grp") == "pick"]), len(r.get("exits") or []), cell))
+            n_buys(r), len(r.get("exits") or []), cell))
     return '<div class="tbl runs stack"><table><thead><tr><th>when</th><th>mode</th><th class="n">scanned</th><th class="n">passed gates</th><th class="n">sources</th><th class="n">buys</th><th class="n">sells</th><th>what happened</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(tr)
 
 
@@ -1961,25 +1998,37 @@ def fmt_when(ms, now):
 
 
 def dash_section(D):
-    """Recommend mode with paper positions: the paper account in one strip: what everything would fetch now against the 40 it
-    started with, the open positions, the free cash and the next buy, the closed trades."""
-    cash, equity = D["cash"], D["equity"]
-    budget = cash["budget"]
-    open_bot = D["open_bot"]
-    worth = sum(r["value"] or 0 for r in open_bot)
-    paid = sum(r["ticket"] * r["p"]["_left"] for r in open_bot)
-    realized = sum(r["pnl"] for r in D["bot_closed"])
-    nb, wins = len(D["bot_closed"]), D["wins"]
-    delta = equity - budget
-    tk = cash.get("tickets") or []
-    nxt = ("next buy %s" % (("2 × %s" % fmt_amt(tk[0])) if len(tk) == 2 else fmt_amt(tk[0]))) if tk else "no new buy until a sale"
-    cells = [("open positions", str(len(open_bot)), ("paid %s · worth %s" % (fmt_amt(paid), fmt_amt(worth))) if open_bot else "nothing held"),
-             ("free cash", fmt_amt(cash["free"]), nxt),
-             ("closed trades", str(nb), ("%d won · %d lost · %s" % (wins, nb - wins, fmt_amt(realized, True))) if nb else "none yet")]
-    return ('<div class="acct"><div class="lead"><span class="k">value if everything were sold now</span><span class="v">%s</span>'
-            '<span class="delta %s">%s since the start (%s)</span></div>%s</div>') % (
-        fmt_amt(equity), "good" if delta > 0 else ("bad" if delta < 0 else ""), fmt_amt(delta, True), fmt_amt(budget),
+    """Recommend mode: the paper account since the restart in one strip: the profit or loss, what went in, what came back (the
+    trades won and lost) and what the open positions would bring if everything were sold now (by group). Fake money, no budget."""
+    P = D["paper"]
+    a = P["acct"]
+    since = ("since the restart %s" % fmt_dt(P["since"], True)) if P["since"] else "since the restart"
+    cells = [("invested", fmt_amt(a["invested"]), "%d position%s bought" % (a["n"], "" if a["n"] == 1 else "s")),
+             ("returned", fmt_amt(a["back"]), ("%d closed · %d won · %d lost" % (a["nClosed"], a["won"], a["lost"])) if a["nClosed"] else "nothing sold yet"),
+             ("open value", fmt_amt(a["open"]), ("%d open · %d top pick · %d new launch%s · if everything were sold now" % (a["nOpen"], a["nTop"], a["nYoung"], "" if a["nYoung"] == 1 else "es"))
+              if a["nOpen"] else "nothing held")]
+    rate = ("%s on %s invested" % (sgn("%+.1f%%" % (100.0 * a["pnl"] / a["invested"])), fmt_amt(a["invested"]))) if a["invested"] else "nothing bought yet"
+    return ('<div class="acct"><div class="lead"><span class="k">profit/loss %s</span><span class="v">%s</span>'
+            '<span class="delta %s">%s</span><span class="s">fake money, after fees</span></div>%s</div>') % (
+        E(since), fmt_amt(a["pnl"], True), "good" if a["pnl"] > 0 else ("bad" if a["pnl"] < 0 else ""), E(rate),
         "".join('<div class="cell"><span class="k">%s</span><span class="v">%s</span><span class="s">%s</span></div>' % (E(k), E(v), E(sub)) for k, v, sub in cells))
+
+
+def paper_curve(D):
+    """The paper account's profit or loss after every run since the restart (memecurve "paper"), break-even as the reference line."""
+    since = D["paper"]["since"] or 0
+    pts = [(M.num(c["t"]), M.num(c["paper"].get("pnl"))) for c in D["curve"] if isinstance(c, dict) and M.num(c.get("t")) and M.num(c.get("t")) >= since
+           and isinstance(c.get("paper"), dict) and M.num(c["paper"].get("pnl")) is not None]
+    series = [("paper account", "s1", pts)]
+    wide = line_chart(series, 0.0, WIDE, ref_label="break-even", aria_label="Paper account profit or loss since the restart")
+    if not wide:
+        body = '<div class="empty">The curve needs two runs since the restart. It shows what came back plus what the open positions would fetch, minus what went in.</div>'
+    else:
+        body = chart_box(wide, line_chart(series, 0.0, NARROW, ref_label="break-even", aria_label="Paper account profit or loss since the restart"), "")
+        body += '<details><summary>Table view</summary><div class="tbl"><table><thead><tr><th>run</th><th class="n">profit/loss</th></tr></thead><tbody>%s</tbody></table></div></details>' % (
+            "".join('<tr><td>%s</td><td class="n">%s</td></tr>' % (fmt_dt(t), fmt_amt(v, True)) for t, v in pts))
+    sub = "profit or loss since the restart after every run: what came back plus what the open positions would fetch, minus what went in, after fees · now %s" % fmt_amt(D["paper"]["acct"]["pnl"], True)
+    return '<details class="fold-lite"><summary>Profit/loss over time</summary><p class="note">%s</p>%s</details>' % (E(sub), body)
 
 
 # ---------------------------------------------------------------- the agent office tab
@@ -2013,8 +2062,8 @@ def host_tool(host):
 def office_meta(aid):
     """(name, job, services) of an agent; the trader's job is the hold rule in use, an unknown id keeps its id as its name."""
     if aid == "trader":
-        return ("Paper trader", "names the pick and runs the hold rule on the paper positions: sold at +%d%%, the first scan a coin fails a filter, or after %d hours" % (
-            round(100 * M.HOLD_TP), round(M.HOLD_MAX_H)), ())
+        return ("Paper trader", "names the pick, buys it for %s and the first %d new launches for %s each, and sells every paper position at +%d%%, %s%% or after %d hours" % (
+            fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET), round(100 * M.HOLD_TP), sgn("-%d" % round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H)), ())
     return OFFICE_AGENTS.get(aid, (aid.replace("_", " ").capitalize(), "", ()))
 
 
@@ -2282,7 +2331,9 @@ def office_pick(D, t_run):
     if not picks:
         return "%s: none, %s" % (lead, rc.get("reason") or "nothing passed the gates")
     c, b = picks[0], picks[0].get("bought")
-    tail = ("bought for %s" % fmt_amt(b)) if isinstance(b, (int, float)) and not isinstance(b, bool) else ("already held" if b == "held" else (("not bought: %s" % b) if b else ""))
+    tail = ("bought for %s" % fmt_eur(b)) if isinstance(b, (int, float)) and not isinstance(b, bool) else ("already held" if b == "held" else (("not bought: %s" % b) if b else ""))
+    yb = [y for y in rc.get("young") or [] if isinstance(y, dict) and isinstance(y.get("bought"), (int, float)) and not isinstance(y.get("bought"), bool)]
+    tail += ("; %d new launch%s bought for %s each" % (len(yb), "" if len(yb) == 1 else "es", fmt_eur(M.YOUNG_TICKET))) if yb else ""
     return "%s: %s (score %.0f)%s%s" % (lead, c.get("sym") or "?", M.num(c.get("score")) or 0, (" and %d more" % (len(picks) - 1)) if len(picks) > 1 else "", (", " + tail) if tail else "")
 
 
@@ -2405,12 +2456,8 @@ def render(data, fragment=False):
             return fold("Paper bankroll", "%s · untouched · nothing bought, nothing sold" % fmt_amt(equity), html_)
         return html_
 
-    def curve(since=None):
+    def curve():
         docs = [c for c in D["curve"] if isinstance(c, dict) and M.num(c.get("t"))]
-        if since and sum(1 for c in docs if M.num(c["t"]) >= since) >= 2:
-            docs = [c for c in docs if M.num(c["t"]) >= since]
-        else:
-            since = None
         pts_bot = [(M.num(c["t"]), M.num(c.get("equity")) if M.num(c.get("equity")) is not None else cash["budget"] + (M.num(c.get("bot")) or 0)) for c in docs]
         series = [("bot", "s1", pts_bot)]
         if any((M.num(c.get("nRand")) or 0) > 0 for c in docs):
@@ -2424,9 +2471,7 @@ def render(data, fragment=False):
             body += ('<details><summary>Table view</summary><div class="tbl"><table><thead><tr><th>run</th><th class="n">equity</th>%s</tr></thead><tbody>%s</tbody></table></div></details>' % (
                 '<th class="n">random control</th>' if len(series) > 1 else "",
                 "".join('<tr><td>%s</td><td class="n">%s</td>%s</tr>' % (fmt_dt(t), fmt_amt(v), ('<td class="n">%s</td>' % fmt_amt(series[1][2][i][1])) if len(series) > 1 and i < len(series[1][2]) else "") for i, (t, v) in enumerate(pts_bot))))
-        sub = ("since the first held position (%s) · " % fmt_dt(since + 2 * 3_600_000, True) if since else "") + "bankroll plus what the open positions would fetch, after fees · now %s" % fmt_amt(equity)
-        if since:
-            return '<details class="fold-lite"><summary>Account value over time</summary><p class="note">%s</p>%s</details>' % (E(sub), body)
+        sub = "bankroll plus what the open positions would fetch, after fees · now %s" % fmt_amt(equity)
         if rec_mode:
             flat = pts_bot and all(abs(v - pts_bot[0][1]) < 0.005 for _, v in pts_bot)
             summary = ("flat at %s since %s" % (fmt_amt(equity), fmt_dt(pts_bot[0][0], True))) if flat else ("%s now · %s since start" % (fmt_amt(equity), fmt_amt(equity - cash["budget"], True)))
@@ -2438,14 +2483,12 @@ def render(data, fragment=False):
         head = "%d open%s · %s per coin" % (n_bot, (" plus %d random control" % n_rand) if n_rand else "", fmt_amt(cash["ticket"]))
         rule = '<details><summary>How a coin is sold</summary><p class="note">%s</p></details>' % (E(hold_rule_text()) if D.get("rec") else
                 "Half is sold at 2x (the rest if it falls back to the entry price); everything is sold at −50%, after 3 days, or when the price is gone.")
-        if D.get("rec") and not rec_mode:
-            head = "%d held · one paper position per named coin, paid from the free bankroll · fake money" % n_bot
         if D["open"]:
-            body = '<div class="cards">%s</div>' % "".join(hold_card(r, now) if r["p"].get("grp") == "hold" else position_card(r, now) for r in D["open"])
+            body = '<div class="cards">%s</div>' % "".join(hold_card(r, now) if r["p"].get("grp") in M.PAPER_GROUPS else position_card(r, now) for r in D["open"])
         elif rec_mode:
             body = '<div class="empty">No open positions: the bot holds a coin it names while a paper slot is free; nothing has been bought yet.</div>'
         elif D.get("rec"):
-            body = '<div class="empty">No open positions: the coins bought earlier are sold (see Closed trades); the next named coin is bought while a slot is free.</div>'
+            body = '<div class="empty">No open positions: the coins bought earlier are sold (see Closed trades); the next scan buys its top pick and new launches.</div>'
         else:
             body = '<div class="empty">No open positions. %s</div>' % ("The next pick run buys the two best coins when the bankroll has a free slot." if D["runs"] else "Run <code>python3 bot.py cycle</code> to start.")
         if rec_mode:
@@ -2455,9 +2498,14 @@ def render(data, fragment=False):
         return section("Bought coins", head, body + rule)
 
     def closed(inline=False):
+        if inline:        # the paper account: the trades since the restart, the ones before it behind their own fold
+            new, old = D["paper"]["closed"], D["paper"]["old"]
+            html_ = '<details class="fold-lite"><summary>Closed trades (%d) · what came back after fees</summary>%s</details>' % (len(new), safe("closed trades", lambda: closed_table(new)))
+            if old:
+                html_ += '<details class="fold-lite"><summary>Before the restart (%d trade%s)</summary><p class="note">bought under the rules before %s; not counted in the account above</p>%s</details>' % (
+                    len(old), "" if len(old) == 1 else "s", E(M.PAPER_RULE), safe("closed trades", lambda: closed_table(old)))
+            return html_
         body = safe("closed trades", lambda: closed_table(D["closed"]))
-        if inline:
-            return '<details class="fold-lite"><summary>Closed trades (%d) · what came back after fees</summary>%s</details>' % (len(D["closed"]), body)
         if rec_mode:
             return fold("Closed trades", "none yet", '<section><p class="note">what came back after fees, newest first</p>%s</section>' % body)
         return section("Closed trades", "what came back after fees, newest first", body)
@@ -2504,12 +2552,11 @@ def render(data, fragment=False):
     rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     shown = []
     if D.get("rec") and D["pos"]:
-        # recommend mode holds the coins it names: the paper account and the held coins come first, then the pick and its record,
-        # the closed trades and the curve of the account since the first held coin
-        held_t = [M.num(r["p"].get("t")) for r in D["pos"] if r["p"].get("grp") == "hold" and M.num(r["p"].get("t"))]
-        since = (min(held_t) - 2 * 3_600_000) if held_t else None
-        account = section("Paper account", "fake money · the bot holds the coins it names: one paper position per coin, paid from the 40 it started with",
-                          safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("equity curve", lambda: curve(since)))
+        # recommend mode holds the coins it names: the paper account and its open positions come first, then the pick and its record,
+        # the closed trades (the ones before the restart behind their own fold) and the account's profit or loss since the restart
+        account = section("Paper account", "fake money, no budget · every scan buys the top pick for %s and the first %d new launches for %s each · counted since the restart" % (
+                              fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET)),
+                          safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
         shown = [tabs, account, safe("profit", lambda: profit_section(D))]
         rest.append(safe("candidates", candidates))
     elif tabs:
@@ -2531,7 +2578,7 @@ def render(data, fragment=False):
             body.append(safe("profit", lambda: profit_section(D)))  # the tip record, every tip priced again (with positions it sits above the details)
     else:
         body += [x for x in rest if x]
-    body.append('<footer><span>generated %s</span><span>rule %s · %s profile</span><span>fees simulated at 0.5%%, minimum 0.81 per trade</span><span>prices from DexScreener at the time of each run</span><span>times in %s</span></footer>' % (
+    body.append('<footer><span>generated %s</span><span>rule %s · %s profile</span><span>fees simulated at 0.5%%, minimum 0.81 per trade (paper account: 1%%, minimum 0.10)</span><span>prices from DexScreener at the time of each run</span><span>times in %s</span></footer>' % (
         E(fmt_dt(now)), E(st.get("rule") or M.RULE), E(M.HORIZON), TZ_NAME))
     content = '<div class="wrap">%s</div>\n<script>%s</script>' % ("\n".join(body), JS)
     head_html = ('<title>%s</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap">\n'
