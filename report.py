@@ -154,6 +154,30 @@ def fmt_mult(v):
     return "–" if v is None else ("%.2fx" % v if v >= 0.1 else "%.3fx" % v)
 
 
+def fmt_int(v):
+    """12,345: counts with a thousands separator."""
+    v = M.num(v)
+    return "–" if v is None else format(int(round(v)), ",")
+
+
+def fmt_chg(m):
+    """A price multiple as a signed change: 1.047 -> '+4.7%'."""
+    m = M.num(m)
+    return "–" if m is None else sgn("%+.1f%%" % (100 * (m - 1)))
+
+
+def be_mult(ticket):
+    """The price multiple at which a paper position comes back at its ticket after both fees (buy and sell)."""
+    ticket = M.num(ticket) or M.TICKET
+    net = ticket - M.fee(ticket)
+    if net <= 0:
+        return None
+    gross = ticket
+    for _ in range(30):                  # gross - fee(gross) = ticket, solved by fixed-point iteration (the fee is flat or 0.5%)
+        gross = ticket + M.fee(gross)
+    return gross / net
+
+
 def local(ms):
     return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).astimezone(TZ)
 
@@ -228,7 +252,7 @@ def collect(d, now):
     snaps = M.load_docs(d, "memesnap")
     res = M.load_docs(d, "memesnapres")
     cash = M.bankroll(pos)
-    px, liq_now = marks.get("px") or {}, marks.get("liq") or {}
+    px, liq_now, cpx = marks.get("px") or {}, marks.get("liq") or {}, marks.get("cpx") or {}
 
     rows = []
     for pid, p in pos.items():
@@ -253,9 +277,14 @@ def collect(d, now):
         else:
             status, kind = "open", "neutral"
         sold_at = [(M.num(e.get("px")) / entry if M.num(e.get("px")) and entry else None, (M.num(e.get("frac")) or 1) < 0.999) for e in exits]
+        cands = []
+        if p.get("grp") == "hold" and not closed and p.get("pair"):     # the held coin's minute candles since the entry (the run that renders the page has them)
+            t_in = M.num(p.get("entryAt")) or M.num(p.get("t")) or 0
+            cands = [c for c in M.load_candles(d, str(p["pair"]), "hold") if c[0] >= t_in - 60_000 and c[4] > 0]
         rows.append({"id": pid, "p": p, "ticket": ticket, "entry": entry, "back": back, "last": last, "value": value, "closed": closed, "half": half,
                      "pnl": pnl, "status": status, "kind": kind, "mult": (last / entry) if last and entry else None, "sold_at": sold_at,
-                     "liq_now": M.num(liq_now.get(pid)), "exit_t": M.num(exits[-1].get("t")) if closed and exits else None, "bot": p.get("grp") in M.BOT_GROUPS})
+                     "liq_now": M.num(liq_now.get(pid)), "exit_t": M.num(exits[-1].get("t")) if closed and exits else None, "bot": p.get("grp") in M.BOT_GROUPS,
+                     "candles": cands, "cpx": M.num(cpx.get(pid)) or (cands[0][4] if cands else None)})
     rows.sort(key=lambda r: -(M.num(r["p"].get("t")) or 0))
     open_rows = [r for r in rows if not r["closed"]]
     closed_rows = [r for r in rows if r["closed"]]
@@ -534,7 +563,8 @@ details.fold > summary:hover { border-color:var(--accent) }
 .tip { position:fixed; pointer-events:none; background:var(--fg); color:var(--bg); font-size:var(--fs-xs); padding:6px 8px; border-radius:6px; max-width:280px; opacity:0; transition:opacity .08s; z-index:10; white-space:pre-line }
 .tip.on { opacity:1 }
 .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px }
-.cards:has(.rec) { grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr)) }
+.cards:has(.rec), .cards:has(.pos) { grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)) }
+.card.rec, .card.pos { container-type:inline-size }
 .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-width:0; display:grid; gap:12px }
 .card .top { display:flex; justify-content:space-between; gap:8px 12px; align-items:center; flex-wrap:wrap }
 .card .sym { font-size:20px; font-weight:600 } .name { color:var(--fg2); font-size:var(--fs-s); margin-left:6px }
@@ -550,7 +580,7 @@ details.fold > summary:hover { border-color:var(--accent) }
 .chip.good { background:color-mix(in srgb,var(--good-mark) 16%,var(--surface)); color:var(--good) } .chip.bad { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
 .chip.warn { background:color-mix(in srgb,var(--warn-mark) 18%,var(--surface)); color:var(--warn) }
 .chip.neutral { background:color-mix(in srgb,var(--accent) 14%,var(--surface)); color:var(--accent) }
-.odds { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px } .odds .tile .value { font-size:26px }
+.odds { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px } .odds .tile { padding:10px 12px } .odds .tile .value { font-size:22px }
 .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px 12px; font-size:var(--fs-m) }
 .kv div { min-width:0 } .kv .k { color:var(--muted); font-size:var(--fs-xs) } .kv .v { font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:500 }
 .kv .v.multi { white-space:normal } .kv .span { grid-column:1 / -1 }
@@ -566,7 +596,68 @@ a { color:var(--accent); text-decoration:none } a:hover, a:focus-visible { text-
 .links a { display:inline-flex; align-items:center; min-height:40px; padding:0 14px; border:1px solid var(--line); border-radius:999px; background:var(--chip); color:var(--accent); font-size:var(--fs-s); font-weight:500 }
 .links a:hover, .links a:focus-visible { text-decoration:none; border-color:var(--accent) } .links a:active { background:var(--line) }
 .addr { font-family:var(--mono); font-size:var(--fs-xs); color:var(--muted); overflow-wrap:anywhere }
-.tbl { overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:8px }
+.tbl { overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:8px } .tbl td .chip { white-space:normal }
+.muted, td.muted { color:var(--muted) }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+/* the paper account at the top (recommend mode with paper positions) */
+.dash { display:grid; grid-template-columns:minmax(300px,1.6fr) repeat(auto-fit,minmax(150px,1fr)); gap:12px }
+.split { display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--line2); margin-top:8px }
+.split .seg.pos, .split-leg i.pos { background:var(--s1) } .split .seg.free, .split-leg i.free { background:color-mix(in srgb,var(--s1) 28%,var(--surface)) }
+.split-leg { display:flex; flex-wrap:wrap; gap:2px 16px; font-size:var(--fs-xs); color:var(--fg2); font-variant-numeric:tabular-nums }
+.split-leg i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px }
+.status { margin:-12px 0 0; font-size:var(--fs-m); color:var(--fg2); text-wrap:pretty } .status strong { color:var(--fg); font-weight:600 }
+.status .good { color:var(--good) } .status .bad { color:var(--bad) }
+/* a held coin: the result, the price between entry, break-even and take-profit, the clock, the candles */
+.pl { display:grid; gap:2px } .pl .big { font-size:32px; font-weight:600; line-height:1.1; letter-spacing:-.01em; font-variant-numeric:tabular-nums }
+.pl .big.good { color:var(--good) } .pl .big.bad { color:var(--bad) } .pl .sub { font-size:var(--fs-s); color:var(--fg2) }
+.track { position:relative; height:56px; margin:0 4px }
+.track .rail, .track .fill { position:absolute; top:26px; height:6px; border-radius:999px } .track .rail { left:0; right:0; background:var(--line2) }
+.track .fill.good, .track .dot.good { background:var(--good-mark) } .track .fill.warn, .track .dot.warn { background:var(--warn-mark) } .track .fill.bad, .track .dot.bad { background:var(--bad-mark) }
+.track .tk { position:absolute; top:21px; height:16px; width:2px; margin-left:-1px; border-radius:1px; background:var(--fg2) }
+.track .tk.be { width:0; margin-left:0; background:none; border-left:2px dotted var(--muted) } .track .tk.tp { width:3px; margin-left:-1.5px; background:var(--accent) }
+.track .dot { position:absolute; top:22px; width:14px; height:14px; margin-left:-7px; border-radius:50%; border:3px solid var(--surface); box-shadow:0 0 0 1px var(--line) }
+.track .now { position:absolute; top:0; transform:translateX(-50%); font-size:var(--fs-s); font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums }
+.track .now.l { transform:translateX(-7px) } .track .now.r { transform:translateX(calc(-100% + 7px)) }
+.track .now.good { color:var(--good) } .track .now.warn { color:var(--warn) } .track .now.bad { color:var(--bad) }
+.track .tl { position:absolute; top:40px; transform:translateX(-50%); font-size:var(--fs-xs); color:var(--muted); white-space:nowrap } .track .tl.end { transform:translateX(calc(-100% + 2px)); color:var(--accent) }
+.tleg { display:flex; flex-wrap:wrap; gap:2px 14px; font-size:var(--fs-xs); color:var(--fg2); margin-top:-8px; font-variant-numeric:tabular-nums }
+.clock { display:grid; gap:4px } .clock .bar { height:4px; border-radius:999px; background:var(--line2); overflow:hidden } .clock .bar span { display:block; height:100%; background:var(--muted) }
+.clock .cap { display:flex; justify-content:space-between; flex-wrap:wrap; gap:2px 12px; font-size:var(--fs-xs); color:var(--fg2) }
+.spark { margin:0; display:grid; gap:4px } .spark-svg { display:block; width:100%; height:64px; overflow:visible }
+.spark-svg .line { fill:none; stroke:var(--s1); stroke-width:1.75; vector-effect:non-scaling-stroke; stroke-linejoin:round } .spark-svg .area { fill:var(--s1); opacity:.08 }
+.spark-svg .ref { stroke:var(--muted); stroke-width:1; stroke-dasharray:4 3; vector-effect:non-scaling-stroke } .spark-svg .tpl { stroke:var(--accent); stroke-width:1.5; stroke-dasharray:1 3; vector-effect:non-scaling-stroke }
+.spark figcaption { font-size:var(--fs-xs); color:var(--muted) }
+/* a recommended coin: the market strip, the paper line, the safety checklist, the grouped numbers */
+.stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px 12px; padding:10px 12px; background:var(--chip); border-radius:6px }
+.stats div { display:grid; min-width:0 } .stats .k { font-size:var(--fs-xs); color:var(--muted) }
+.stats .v { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.odds-note { margin:-6px 0 0; font-size:var(--fs-s); color:var(--warn); text-wrap:pretty }
+.paper { margin:0; padding:8px 12px; border-radius:6px; font-size:var(--fs-s); background:color-mix(in srgb,var(--accent) 9%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line)) }
+.paper .k { display:block; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--accent); font-weight:600 }
+.checks { border:1px solid var(--line); border-radius:6px; padding:10px 12px; display:grid; gap:8px }
+details.more > .checks { margin-top:8px }
+.checks-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 12px; align-items:baseline }
+.checks-head .t { font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500 } .checks-head .sum { font-size:var(--fs-s); color:var(--fg2) }
+.checks ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr; gap:6px 18px }
+.ck { display:grid; grid-template-columns:20px minmax(0,1fr) auto; gap:8px; align-items:start; font-size:var(--fs-s) }
+.ck .ic { width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:11px; font-weight:700; line-height:1 }
+.ck.ok .ic { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) } .ck.warn .ic { background:color-mix(in srgb,var(--warn-mark) 24%,var(--surface)); color:var(--warn) }
+.ck.bad .ic { background:color-mix(in srgb,var(--bad-mark) 18%,var(--surface)); color:var(--bad) } .ck.note .ic { background:color-mix(in srgb,var(--accent) 14%,var(--surface)); color:var(--accent) }
+.ck.unknown .ic { background:var(--chip); color:var(--muted) }
+.ck .lb { min-width:0; line-height:1.3 } .ck .lb small { display:block; font-size:var(--fs-xs); color:var(--muted) }
+.ck .vl { font-weight:500; text-align:right; line-height:1.3; font-variant-numeric:tabular-nums; max-width:15ch; overflow-wrap:anywhere } .ck.warn .vl { color:var(--warn) } .ck.bad .vl { color:var(--bad) }
+.ck-leg { margin:0; font-size:var(--fs-xs); color:var(--muted) }
+.groups { display:grid; gap:14px; margin-top:10px } .grp h4 { margin:0 0 6px; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500 }
+/* the history: two-line results and one square per tip */
+td.res { white-space:normal; min-width:15ch } td.res .r1 { display:block; white-space:nowrap; font-weight:500 } td.res .r2 { display:block; font-size:var(--fs-xs); color:var(--muted); margin-top:2px }
+td.res.good .r1 { color:var(--good) } td.res.bad .r1 { color:var(--bad) }
+.stripbox { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px 14px; display:grid; gap:10px }
+.strip-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 12px; align-items:baseline } .strip-head .t { font-weight:600 } .strip-head .sum { font-size:var(--fs-s); color:var(--fg2) }
+.strip { display:flex; flex-wrap:wrap; gap:4px }
+.sq { display:inline-block; width:16px; height:16px; border-radius:3px; background:var(--chip) } .strip .sq:hover { outline:2px solid var(--accent); outline-offset:1px }
+.sq.good { background:var(--good-mark) } .sq.bad { background:color-mix(in srgb,var(--bad-mark) 45%,var(--surface)) } .sq.zero { background:var(--bad-mark) }
+.sq.pend { background:none; border:1.5px dashed var(--muted) }
+.strip-leg { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:var(--fs-xs); color:var(--fg2); align-items:center } .strip-leg i.sq { width:10px; height:10px; margin-right:6px; vertical-align:-1px }
 table { border-collapse:collapse; width:100%; font-size:var(--fs-s) } th,td { text-align:left; padding:8px 12px; border-top:1px solid var(--line2); vertical-align:top }
 th { color:var(--muted); font-weight:500; font-size:var(--fs-xs); letter-spacing:.04em; text-transform:uppercase; border-top:0; white-space:nowrap }
 td.n,th.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap } td.w { white-space:nowrap } td .good { color:var(--good) } td .bad { color:var(--bad) }
@@ -578,16 +669,21 @@ details { font-size:var(--fs-s) } summary { cursor:pointer; color:var(--fg2) } d
 .runs .note-cell details { margin-top:4px } .runs .note-cell p { margin:4px 0 0 }
 footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--line); padding-top:14px; display:flex; flex-wrap:wrap; gap:4px 20px }
 :focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+/* the card's own width decides the strip and the checklist columns (after their base rules, so these win) */
+@container (min-width:640px) { .stats { grid-template-columns:repeat(6,minmax(0,1fr)) } }
+@container (min-width:430px) { .checks ul { grid-template-columns:1fr 1fr } }
+@container (min-width:880px) { .checks ul { grid-template-columns:1fr 1fr 1fr } }
 @media (prefers-reduced-motion: reduce) { .tip, details.fold > summary::after { transition:none } }
 @media (max-width:700px) { .chart .wide { display:none } .chart .narrow { display:block } }
 @media (max-width:560px) {
   body { font-size:15px } h1 { font-size:21px } .wrap { gap:20px }
   .note, .why, .safety, .sec-head p, details, table, .legend, .tile .sub, header .meta, .live, .links a { font-size:14px } .chip { font-size:13px }
-  .hero { grid-template-columns:1fr 1fr } .hero .tile.lead { grid-column:1 / -1 } .hero .tile:last-child:nth-child(even) { grid-column:1 / -1 } .tile.lead .value { font-size:32px }
+  .hero, .dash { grid-template-columns:1fr 1fr } .hero .tile.lead, .dash .tile.lead { grid-column:1 / -1 } .hero .tile:last-child:nth-child(even), .dash .tile:last-child:nth-child(even) { grid-column:1 / -1 } .tile.lead .value { font-size:32px }
+  .status { margin-top:-8px } .pl .big { font-size:28px } .ck .vl { max-width:13ch }
   .kv { grid-template-columns:1fr 1fr } .embed { height:240px } .card { gap:12px } .odds { grid-template-columns:1fr 1fr } .odds .tile:last-child { grid-column:1 / -1 }
   .stack table, .stack tbody, .stack tr, .stack td { display:block } .stack thead { display:none } .stack tr { padding:10px 12px; border-top:1px solid var(--line2) } .stack tr:first-child { border-top:0 }
   .stack td { border-top:0; padding:2px 0; text-align:left; white-space:normal; min-width:0; max-width:none } .stack td.n, .stack td.w, .stack td.m, .stack td.act { display:inline-block; padding-right:12px }
-  .stack td.d { display:inline-block; padding-right:12px } .stack td.n::before, .stack td.d::before { content:attr(data-k) " "; color:var(--muted); font-size:12px } .stack td.act { padding-top:4px } }
+  .stack td.d { display:inline-block; padding-right:12px } .stack td.res { display:block } .stack td.res .r1 { display:inline } .stack td.n::before, .stack td.d::before { content:attr(data-k) " "; color:var(--muted); font-size:12px } .stack td.act { padding-top:4px } }
 """
 
 JS = r"""
@@ -705,6 +801,201 @@ def position_card(r, now):
         links(p), E(p.get("addr")))
 
 
+# ---------------------------------------------------------------- the safety checklist and the held-coin card
+CHECK_ICON = {"ok": "✓", "warn": "!", "bad": "✕", "note": "i", "unknown": "?"}
+CHECK_WORD = {"ok": "passed", "warn": "passed only the relaxed floor", "bad": "failed", "note": "note", "unknown": "unknown"}
+
+
+def pct1(v):
+    """3.5% under 10, 24% above: small holder shares keep their decimal."""
+    v = M.num(v)
+    if v is None:
+        return "–"
+    return ("%.1f%%" % v) if 0 < v < 10 and abs(v - round(v)) >= 0.05 else "%d%%" % round(v)
+
+
+def fmt_dur(h):
+    """35 min, 5h 20m."""
+    m = int(round(max(0.0, h) * 60))
+    return ("%d min" % m) if m < 60 else "%dh %02dm" % divmod(m, 60)
+
+
+def _judge(v, at_most=None, at_most_loose=None, at_least=None, at_least_loose=None):
+    """ok within the profile's limit, warn within the relaxed floor's only, bad outside both, unknown without a value."""
+    if v is None:
+        return "unknown"
+    if at_most is not None:
+        return "ok" if v <= at_most else ("warn" if at_most_loose is not None and v <= at_most_loose else "bad")
+    return "ok" if v >= at_least else ("warn" if at_least_loose is not None and v >= at_least_loose else "bad")
+
+
+def safety_checks(rk):
+    """A stored safety report (risk_doc) -> [(state, check, value, limit)]: every check the bot runs before it names a coin, judged
+    against the active profile's limits (ok), the relaxed floor of the risky tier only (warn) or neither (bad). 'note' is worth
+    knowing but blocks nothing. [] when there is no report."""
+    rk = rk if isinstance(rk, dict) else {}
+    if M.num(rk.get("lpLocked")) is None and "danger" not in rk:
+        return []
+    dv, gp, hl, L = rk.get("dev") or {}, rk.get("gp") or {}, rk.get("hl") or {}, M.LOOSE_FLOOR
+    high = lambda *vs: max([M.num(v) for v in vs if M.num(v) is not None], default=None)
+    out = []
+    lp = M.num(rk.get("lpLocked"))
+    out.append((_judge(lp, at_least=M.MIN_LP_LOCKED, at_least_loose=L["MIN_LP_LOCKED"]), "liquidity locked", pct(lp) if lp is not None else "unknown", "at least %s" % pct(M.MIN_LP_LOCKED)))
+    top1 = high(rk.get("top1"), hl.get("top1Pct"))
+    out.append((_judge(top1, at_most=M.MAX_TOP1, at_most_loose=L["MAX_TOP1"]), "biggest wallet", pct1(top1) if top1 is not None else "unknown", "at most %s" % pct(M.MAX_TOP1)))
+    top10 = high(rk.get("top10"), hl.get("top10Pct"))
+    out.append((_judge(top10, at_most=M.MAX_TOP10, at_most_loose=L["MAX_TOP10"]), "top 10 wallets", pct1(top10) if top10 is not None else "unknown", "at most %s" % pct(M.MAX_TOP10)))
+    holders = M.num(rk.get("holdersN")) or M.num(dv.get("jupHolders"))
+    out.append((_judge(holders, at_least=M.MIN_HOLDERS, at_least_loose=L["MIN_HOLDERS"]), "holders", fmt_int(holders) if holders else "unknown", "at least %s" % fmt_int(M.MIN_HOLDERS)))
+    ins = M.num(rk.get("insiders"))
+    out.append((_judge(ins, at_most=M.MAX_INSIDERS, at_most_loose=L["MAX_INSIDERS"]), "insider wallets", fmt_int(ins) if ins is not None else "unknown", "at most %d" % M.MAX_INSIDERS))
+    creator = M.num(rk.get("creatorPct")) if M.num(rk.get("creatorPct")) is not None else M.num(dv.get("devPct"))
+    lim_c = ("at most %s, no sale in 3h" % pct(M.MAX_CREATOR_PCT)) if M.MAX_CREATOR_PCT < 100 else "no sale in 3h"
+    if M.truthy(dv.get("devSold")):
+        age = M.num(dv.get("devSellAgeMin"))
+        out.append(("bad", "creator holds", ("sold %d min ago" % age) if age is not None else "sold in the last 3h", lim_c))
+    elif creator is None:
+        out.append(("unknown", "creator holds", "unknown", lim_c))
+    else:
+        out.append(("ok" if creator <= M.MAX_CREATOR_PCT else "warn", "creator holds", pct1(creator), lim_c))
+    auth = [n for k, n in (("mintable", "supply can be minted"), ("freezable", "accounts can be frozen"), ("closable", "accounts can be closed"),
+                           ("balMutable", "balances can be rewritten"), ("nonTransferable", "cannot be transferred")) if M.truthy(gp.get(k))]
+    if (M.num(gp.get("transferFee")) or 0) > 0:
+        auth.append("transfer fee %s%%" % gp.get("transferFee"))
+    if dv.get("mintAuthOff") is not None and not M.truthy(dv.get("mintAuthOff")):
+        auth.insert(0, "mint authority active")
+    freeze_on = dv.get("freezeAuthOff") is not None and not M.truthy(dv.get("freezeAuthOff")) and not M.truthy(gp.get("freezable"))
+    if auth:
+        out.append(("bad", "mint/freeze authority", ", ".join(auth[:2]), "both given up"))
+    elif freeze_on:
+        out.append(("warn", "mint/freeze authority", "freeze still active", "both given up"))
+    elif dv.get("mintAuthOff") is None and not gp:
+        out.append(("unknown", "mint/freeze authority", "unknown", "both given up"))
+    else:
+        out.append(("ok", "mint/freeze authority", "given up", "both given up"))
+    danger = [x for x in M.names(rk, "danger") if not M.OWNERSHIP_FLAG.search(x)]
+    out.append(("bad" if danger else "ok", "danger flags", ", ".join(danger[:3]) or "none", "RugCheck: none"))
+    warn = M.names(rk, "warn")
+    block = [x for x in warn if M.RISK_WARN_BLOCK.search(x)]
+    rest = [x for x in warn if x not in block]
+    out.append(("warn" if block else ("note" if rest else "ok"), "warnings", ", ".join((block + rest)[:3]) or "none",
+                "RugCheck: no holder, creator or rug warning" if block or not rest else "RugCheck: these block nothing"))
+    if rk.get("mutable") is not None:
+        mut = M.truthy(rk.get("mutable"))
+        out.append(("note" if mut else "ok", "metadata", "can still be changed" if mut else "locked", "not a gate"))
+    return out
+
+
+def checklist(rk, title="Safety check"):
+    """The safety report as a checklist, one row per check with its value and its limit."""
+    rows = safety_checks(rk)
+    if not rows:
+        return ""
+    n = lambda s: sum(1 for r in rows if r[0] == s)
+    bits = ["%d of %d clean" % (n("ok"), len(rows))] + [txt % n(s) for s, txt in (("warn", "%d only within the relaxed floor"), ("bad", "%d failed"), ("unknown", "%d unknown")) if n(s)]
+    items = "".join('<li class="ck %s"><span class="ic" aria-hidden="true">%s</span><span class="sr">%s: </span><span class="lb">%s<small>%s</small></span><span class="vl">%s</span></li>' % (
+        s, CHECK_ICON[s], CHECK_WORD[s], E(what), E(lim), E(val)) for s, what, val, lim in rows)
+    return ('<div class="checks"><div class="checks-head"><span class="t">%s</span><span class="sum">%s</span></div><ul>%s</ul>'
+            '<p class="ck-leg">✓ within the %s profile\'s limit · ! only within the relaxed floor · ✕ fails · i worth knowing · RugCheck, Jupiter and GoPlus at the scan</p></div>') % (
+        E(title), E(" · ".join(bits)), items, E(M.HORIZON))
+
+
+def checks_summary(rk):
+    rows = safety_checks(rk)
+    if not rows:
+        return ""
+    worst = next((r for s in ("bad", "warn") for r in rows if r[0] == s), None)
+    return "%d of %d clean" % (sum(1 for r in rows if r[0] == "ok"), len(rows)) + ((" · %s: %s" % (worst[1], worst[2].split(", ")[0])) if worst else "")
+
+
+def track_bar(cur, be, tp):
+    """Where the price stands, in % since the entry, between the entry (0), break-even after both fees (be) and the take-profit (tp)."""
+    c0 = cur if cur is not None else 0.0
+    lo, hi = min(-20.0, c0 - 5), max(tp + 5, c0 + 5)
+    P = lambda v: max(0.0, min(100.0, (v - lo) / (hi - lo) * 100))
+    cls = "good" if c0 >= be else ("warn" if c0 >= 0 else "bad")
+    out = ['<div class="rail"></div>']
+    if cur is not None:
+        a, b = sorted((P(0), P(cur)))
+        out.append('<div class="fill %s" style="left:%.1f%%;width:%.1f%%"></div>' % (cls, a, max(b - a, 0.8)))
+    out.append('<span class="tk" style="left:%.1f%%"></span><span class="tk be" style="left:%.1f%%"></span><span class="tk tp" style="left:%.1f%%"></span>' % (P(0), P(be), P(tp)))
+    if cur is not None:
+        x = P(cur)
+        out.append('<span class="dot %s" style="left:%.1f%%"></span><span class="now %s%s" style="left:%.1f%%">%s</span>' % (cls, x, cls, " l" if x < 10 else (" r" if x > 90 else ""), x, sgn("%+.1f%%" % cur)))
+    out.append('<span class="tl" style="left:%.1f%%">entry</span><span class="tl end" style="left:%.1f%%">sells %s</span>' % (P(0), P(tp), sgn("%+.0f%%" % tp)))
+    aria = "price %s since the entry; break-even after fees at %s; sold at %s" % (sgn("%+.1f%%" % cur) if cur is not None else "unknown", sgn("%+.1f%%" % be), sgn("%+.0f%%" % tp))
+    return '<div class="track" role="img" aria-label="%s">%s</div>' % (E(aria), "".join(out))
+
+
+def time_bar(t_start, now):
+    held = max(0.0, (now - t_start) / 3_600_000)
+    return ('<div class="clock"><div class="bar"><span style="width:%.1f%%"></span></div><div class="cap"><span>held %s of %dh</span><span>sold %s at the latest</span></div></div>' % (
+        100 * min(1.0, held / M.HOLD_MAX_H), fmt_dur(held), round(M.HOLD_MAX_H), fmt_dt(t_start + M.HOLD_MAX_H * 3_600_000, True)))
+
+
+def spark(cands, ref, tp_px, w=320, h=64):
+    """The price since the entry from the pool's minute candles (closes): entry dashed, the take-profit dotted when it is in view."""
+    pts = [(c[0], c[4]) for c in cands if c[4] > 0]
+    if len(pts) < 3 or not ref:
+        return ""
+    k = int(math.ceil(len(pts) / 160.0))
+    pts = pts[::k] + ([pts[-1]] if (len(pts) - 1) % k else [])
+    vals = [v for _, v in pts]
+    lo, hi = min(vals + [ref]), max(vals + [ref])
+    show_tp = bool(tp_px) and tp_px <= hi * 1.08
+    if show_tp:
+        hi = max(hi, tp_px)
+    pad = (hi - lo) * 0.1 or ref * 0.02
+    lo, hi = lo - pad, hi + pad
+    t0, t1 = pts[0][0], max(pts[-1][0], pts[0][0] + 1)
+    X = lambda t: (t - t0) / (t1 - t0) * w
+    Y = lambda v: (hi - v) / (hi - lo) * h
+    line = " ".join("%s%.1f %.1f" % ("M" if i == 0 else "L", X(t), Y(v)) for i, (t, v) in enumerate(pts))
+    svg = ['<svg class="spark-svg" viewBox="0 0 %d %d" preserveAspectRatio="none" aria-hidden="true">' % (w, h),
+           '<path class="area" d="%s L%.1f %d L0 %d Z"/>' % (line, X(pts[-1][0]), h, h),
+           '<line class="ref" x1="0" x2="%d" y1="%.1f" y2="%.1f"/>' % (w, Y(ref), Y(ref))]
+    if show_tp:
+        svg.append('<line class="tpl" x1="0" x2="%d" y1="%.1f" y2="%.1f"/>' % (w, Y(tp_px), Y(tp_px)))
+    svg.append('<path class="line" d="%s"/></svg>' % line)
+    top = max(pts, key=lambda p: p[1])
+    cap = "since the entry, minute closes · dashed: entry%s · highest %s at %s" % (
+        " · dotted: sells" if show_tp else "", sgn("%+.1f%%" % (100 * (top[1] / ref - 1))), fmt_dt(top[0], True)[-5:])
+    return '<figure class="spark">%s<figcaption>%s</figcaption></figure>' % ("".join(svg), E(cap))
+
+
+def hold_card(r, now):
+    """A held paper position, top to bottom: what it would bring if sold now against what it cost, where the price stands
+    between the entry, break-even and the take-profit, how long it may still be held, the price since the entry, the facts
+    of the buy, and the safety check it was bought on."""
+    p = r["p"]
+    entry, ticket, mult, pnl = r["entry"], r["ticket"], r["mult"], r["pnl"]
+    t0 = M.num(p.get("t")) or now                         # the hold limit counts from the scan that named it (memebot.py)
+    t_buy = M.num(p.get("entryAt")) or t0
+    ref = r.get("cpx") or entry                           # the take-profit is measured on the candles' own entry price
+    tp_px = (1 + M.HOLD_TP) * ref if ref else None
+    tp = 100 * (tp_px / entry - 1) if tp_px and entry else 100 * M.HOLD_TP
+    be = be_mult(ticket)
+    be_pct = 100 * (be - 1) if be else 0.0
+    cur = 100 * (mult - 1) if mult is not None else None
+    cls = "good" if (pnl or 0) > 0 else ("bad" if (pnl or 0) < 0 else "")
+    sub = ("if sold now, after both fees · worth %s, paid %s" % (fmt_amt(r["value"]), fmt_amt(ticket))) if r["value"] is not None else "no price since the buy · paid %s" % fmt_amt(ticket)
+    pl = '<div class="pl"><div class="big %s">%s</div><div class="sub">%s</div></div>' % (cls, fmt_amt(pnl, True) if pnl is not None else "–", E(sub))
+    leg = '<div class="tleg"><span>entry %s</span><span>now %s</span><span title="the price multiple at which this ticket comes back whole after the buy and the sell fee">break-even %s</span><span>sells at %s</span></div>' % (
+        fmt_px(entry), fmt_px(r["last"]), sgn("%+.1f%%" % be_pct), fmt_px(tp_px))
+    kv = [("bought", fmt_dt(t_buy, True)), ("score", "%.0f · rank #%s" % (M.num(p.get("score")) or 0, p.get("rank") or "?")),
+          ("market cap at buy", fmt_money(p.get("mc"))), ("24h volume at buy", fmt_money(p.get("vol"))),
+          ("liquidity", "%s → %s" % (fmt_money(p.get("liq")), fmt_money(r["liq_now"])) if r["liq_now"] is not None else fmt_money(p.get("liq")))]
+    why = (p.get("why") or "").split("; RugCheck")[0]
+    rk = p.get("risk") if isinstance(p.get("risk"), dict) else None
+    safety = ('<details class="more"><summary>Safety check at the buy · %s</summary>%s</details>' % (E(checks_summary(rk)), checklist(rk, "Safety check at the buy"))) if safety_checks(rk) else safety_box(p.get("safety"))
+    return ('<article class="card pos"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s<span class="chip neutral">held</span></div></div>'
+            '%s%s%s%s%s<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></article>') % (
+        E(p.get("sym")), name_html(p.get("sym"), p.get("name")), tier_chip(p) if p.get("tier") and p.get("tier") != "strong" else "",
+        pl, track_bar(cur, be_pct, tp), leg, time_bar(t0, now), spark(r.get("candles") or [], ref, tp_px), kv_html(kv),
+        safety, ('<details class="more"><summary>Why the bot bought it</summary><p class="why">%s</p></details>' % E(why)) if why else "",
+        links(p), E(p.get("addr")))
+
+
 def tier_chip(c):
     """strong / weak / fallback: how much the recommendation is worth, in one chip."""
     t = c.get("tier") or "strong"
@@ -734,9 +1025,30 @@ def yes_no(v, yes="yes", no="no"):
     return "–" if v is None else (yes if v else no)
 
 
-def rec_card(c, now, embed):
-    """A recommended coin, top to bottom: who it is and how much the pick is worth (tier, safety), the trained odds, why the
-    bot picked it, the safety check, every number behind the pick, the sources, the live chart, the links."""
+def same_odds(c, peers):
+    """How many candidates of the scan share this coin's rounded odds, when all of them do (the model does not tell them apart), else 0."""
+    key = lambda x: (round(100 * M.num(x.get("upP"))), round(100 * (M.num(x.get("zeroP")) or 0)))
+    ps = [x for x in (peers or []) if isinstance(x, dict) and M.num(x.get("upP")) is not None]
+    return len(ps) if M.num(c.get("upP")) is not None and len(ps) >= 3 and all(key(x) == key(c) for x in ps) else 0
+
+
+# the "all numbers" groups of a card: the safety rows and the story rows by label, everything else is trading
+SAFETY_KV = {"holders", "biggest wallet", "top 10 wallets", "insider wallets", "liquidity locked", "creator holds", "creator sold in 3h", "mint authority",
+             "metadata changeable", "RugCheck score", "top 10 wallets (chain)", "GoPlus authorities", "GoPlus trusted", "LP burned (GoPlus)", "top 10 wallets (GoPlus)",
+             "launchpad", "DEX paid"}
+STORY_KV = {"source lists", "keyword hits", "community votes (RugCheck)", "CoinGecko watchlists", "X followers", "Telegram members", "StockTwits watchers",
+            "X/social 24h (LunarCrush)", "the story: source tweet", "tweet text", "theme"}
+STRIP_KV = {"age", "price", "market cap", "liquidity", "24h volume", "6h change"}       # on the card's stats strip already
+
+
+def kv_html(kv):
+    return "".join(('<div class="span"><div class="k">%s</div><div class="v multi">%s</div></div>' if len(str(v)) > 22 else '<div><div class="k">%s</div><div class="v">%s</div></div>') % (E(k), E(v)) for k, v in kv)
+
+
+def rec_card(c, now, embed, peers=None):
+    """A recommended coin, top to bottom: who it is and how much the pick is worth (tier, safety), its market in one strip, the
+    trained odds, the paper position, why the bot picked it, the safety checklist, every number behind the pick (grouped, on
+    tap), the sources, the live chart, the links."""
     f, rk = c.get("f") or {}, c.get("risk") or {}
     dv = rk.get("dev") or {}
     g = lambda k: M.num(f.get(k))
@@ -750,21 +1062,26 @@ def rec_card(c, now, embed):
         paper = "already held from an earlier tip · not bought again"
     elif b:
         paper = "not bought: %s" % b
-    tiles = [tile("Chance of a profit", pct(100 * up) if up is not None else "–", "within %s, after fees · learned from the bot's own scored scans" % hz if up is not None else "no trained model yet"),
+    tiles = [tile("Chance of a profit", pct(100 * up) if up is not None else "–", "within %s, after fees" % hz if up is not None else "no trained model yet"),
              tile("Chance of going to zero", pct(100 * zp) if zp is not None else "–", "within %s" % hz if zp is not None else "no trained model yet"),
              tile("Score", "%.0f of 100" % (M.num(c.get("score")) or 0), "rank #%s of the coins that passed the gates" % (c.get("rank") or "?"))]
+    n_same = same_odds(c, peers)
+    odds_note = ('<p class="odds-note">The same odds for all %d candidates of this scan: the model, trained on the bot\'s own scored scans, does not tell them apart here. The score ranks them.</p>' % n_same) if n_same else ""
     age = fmt_age(now - (g("ageH") or 0) * 3_600_000, now) if g("ageH") is not None else "–"
     chg = lambda k: sgn("%+.0f%%" % g(k)) if g(k) is not None else "–"
+    stats = [("price", fmt_px(c.get("px"))), ("market cap", fmt_money(c.get("mc"))), ("liquidity", fmt_money(c.get("liq"))), ("24h volume", fmt_money(c.get("vol"))),
+             ("age", age), ("6h change", chg("c6"))]
+    stats_html = '<div class="stats">%s</div>' % "".join('<div><span class="k">%s</span><span class="v">%s</span></div>' % (E(k), E(v)) for k, v in stats)
     holders = M.num(rk.get("holdersN")) or g("rc.holders") or M.num(dv.get("jupHolders"))
     creator = M.num(rk.get("creatorPct")) if M.num(rk.get("creatorPct")) is not None else M.num(dv.get("devPct"))
     sold = dv.get("devSold")
-    kv = ([("paper position", paper)] if paper else []) + [("age", age), ("price", fmt_px(c.get("px"))), ("market cap", fmt_money(c.get("mc"))), ("liquidity", fmt_money(c.get("liq"))),
+    kv = [("age", age), ("price", fmt_px(c.get("px"))), ("market cap", fmt_money(c.get("mc"))), ("liquidity", fmt_money(c.get("liq"))),
           ("liquidity ÷ cap", pct(100 * g("liqMc")) if g("liqMc") is not None else "–"), ("24h volume", fmt_money(c.get("vol"))),
           ("last hour's share of 24h volume", pct(100 * g("vol1Share")) if g("vol1Share") is not None else "–"),
           ("share of buys", pct(100 * g("buyShare")) if g("buyShare") is not None else "–"),
           ("buys ÷ sells, last hour", ("%.2fx" % g("buyRatio1h")) if g("buyRatio1h") is not None else "–"),
           ("1h change", chg("c1")), ("6h change", chg("c6")), ("24h change", chg("c24")),
-          ("holders", ("%d" % holders) if holders else "–"), ("biggest wallet", pct(rk.get("top1")) if M.num(rk.get("top1")) is not None else "–"),
+          ("holders", fmt_int(holders) if holders else "–"), ("biggest wallet", pct1(rk.get("top1")) if M.num(rk.get("top1")) is not None else "–"),
           ("top 10 wallets", pct(rk.get("top10")) if M.num(rk.get("top10")) is not None else (pct(g("rc.top10")) if g("rc.top10") is not None else "–")),
           ("insider wallets", ("%d" % M.num(rk.get("insiders"))) if M.num(rk.get("insiders")) is not None else "–"),
           ("liquidity locked", pct(rk.get("lpLocked")) if M.num(rk.get("lpLocked")) is not None else "–"),
@@ -839,14 +1156,20 @@ def rec_card(c, now, embed):
         notes = '<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero), not a clean pick.%s</p>' % (
             (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")
     chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
+    kv = [(k, v) for k, v in kv if k not in STRIP_KV]
+    groups = [(name, [(k, v) for k, v in kv if test(k)]) for name, test in (("Trading", lambda k: k not in SAFETY_KV and k not in STORY_KV),
+                                                                            ("Holders & safety", lambda k: k in SAFETY_KV), ("Story & attention", lambda k: k in STORY_KV))]
+    numbers = '<details class="more nums"><summary>All numbers (%d)</summary><div class="groups">%s</div></details>' % (
+        len(kv), "".join('<div class="grp"><h4>%s</h4><div class="kv">%s</div></div>' % (E(name), kv_html(items)) for name, items in groups if items))
+    paper_html = ('<p class="paper"><span class="k">paper position</span>%s</p>' % E(paper)) if paper else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
-            '<div class="odds">%s</div><p class="why"><strong>%s</strong> %s</p>%s%s'
-            '<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c) + odds_warn(c), safety_chip(c.get("ok")) + story_chip(c), "".join(tiles),
+            '%s<div class="odds">%s</div>%s%s<p class="why"><strong>%s</strong> %s</p>%s%s'
+            '%s%s%s%s<div class="addr">%s</div></article>') % (
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c) + odds_warn(c), safety_chip(c.get("ok")) + story_chip(c),
+        stats_html, "".join(tiles), odds_note, paper_html,
         "Why it ranks here:" if c.get("tier") == "young" else "Why the bot picked it:", E(c.get("why") or ""),
-        safety_box(c.get("safety"), c.get("ok")), notes,
-        "".join(('<div class="span"><div class="k">%s</div><div class="v multi">%s</div></div>' if len(str(v)) > 22 else '<div><div class="k">%s</div><div class="v">%s</div></div>') % (E(k), E(v)) for k, v in kv),
-        sources_row(c.get("src")), chart, links(c), E(c.get("addr")))
+        checklist(rk) or safety_box(c.get("safety"), c.get("ok")), notes,
+        numbers, sources_row(c.get("src")), chart, links(c), E(c.get("addr")))
 
 
 def coin_cell(rank, sym, name, chips):
@@ -872,7 +1195,7 @@ def rec_section(D, embed):
     h2 = {0: "No recommendation", 1: "One recommendation", 2: "Two recommendations"}.get(n, "%d recommendations" % n) + hz
     if picks and all(c.get("tier") == "watch" for c in picks):
         h2 = "No pick, one coin to watch" + hz
-    head = "fake money · the bot names coins and holds them as paper positions, nothing is bought for real · %s of %s scanned passed the gates" % (rc.get("passed") or 0, rc.get("scanned") or "–")
+    head = "fake money · the bot names coins and holds them as paper positions, nothing is bought for real · %s of %s scanned passed the gates" % (fmt_int(rc.get("passed") or 0), fmt_int(rc.get("scanned")))
     if rc.get("pickBy") == "odds":
         head += " · candidates ranked by trained odds (the training found them better than the score)"
     if M.num(rc.get("pricedAt")):
@@ -880,8 +1203,9 @@ def rec_section(D, embed):
     t_rec, t_run = M.num(rc.get("t")), M.num((D.get("state") or {}).get("lastRun"))
     if picks and t_rec and t_run and t_run - t_rec > 60_000:     # the newest run found no clean coin, so the older pick stays up: say so
         head = "from the run at %s · the latest run (%s) found no clean coin, so this older pick stays up · fake money" % (fmt_dt(t_rec, True), fmt_dt(t_run, True))
+    peers = [c for c in picks + (rc.get("runnersUp") or []) if isinstance(c, dict)]
     if picks:
-        body = '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed) for c in picks)
+        body = '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed, peers) for c in picks)
     else:
         body = '<div class="empty">No recommendation this time: %s. The closest coins and what stopped them are listed below.</div>' % E(rc.get("reason") or ("no top coin had a clean safety report" if rc.get("passed") else "nothing passed the gates"))
     runners = [c for c in (rc.get("runnersUp") or []) if isinstance(c, dict)]
@@ -955,8 +1279,7 @@ def young_history(D):
                     cells += odd
                 elif o:
                     stats[key].append(o)
-                    good = (M.num(o.get("eur")) or 0) > 0
-                    cells += '<td class="n %s" data-k="%d h later">%s · %s%s%s</td>' % ("good" if good else "bad", h, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o), candles_txt(o))
+                    cells += res_cell_html(o, h)
                 else:
                     due = t + h * 3_600_000
                     cells += '<td class="n muted" data-k="%d h later">%s</td>' % (h, ("pending · %s" % fmt_dt(due, True)) if due > now else ("pending · next scan" if now - due < 3 * 3_600_000 else "no result"))
@@ -991,7 +1314,7 @@ def young_section(D):
             chips = '<span class="chip">%d min old</span>%s%s%s' % (int(M.num(c.get("ageMin")) or 0), safety_chip(c.get("ok"), c.get("safety")), odds_chip(c), story_chip(c))
             rows_html.append('<tr>%s%s%s</tr>' % (coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
         body = '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
-        cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False) for c in young)
+        cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False, peers=young) for c in young)
         body += '<details><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
         gates = [(c.get("sym"), c.get("gates") or []) for c in young if c.get("gates")]
         if gates:
@@ -1063,6 +1386,33 @@ def peak_txt(o):
 
 def candles_txt(o):
     return ' <span class="muted" title="priced from the minute candles of the window, because the run that should have priced it came too late">· from candles</span>' if o.get("fromCandles") else ""
+
+
+def res_cell_html(o, hours):
+    """A priced result in two lines: the multiple and what 20 made, then the peak and the take-profit replay in small print."""
+    good = (M.num(o.get("eur")) or 0) > 0
+    r2 = peak_txt(o)[3:] + candles_txt(o)
+    return '<td class="n res %s" data-k="%d h later"><span class="r1">%s · %s</span>%s</td>' % (
+        "good" if good else "bad", hours, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), ('<span class="r2">%s</span>' % r2) if r2 else "")
+
+
+def tip_state(o):
+    """good / bad / zero for a priced result."""
+    if o.get("gone") or (M.num(o.get("mult")) or 0) < 0.02:
+        return "zero"
+    return "good" if (M.num(o.get("eur")) or 0) > 0 else "bad"
+
+
+def tip_strip(items, title):
+    """One square per tip, oldest left: its 1 h result as a colour (up, lost, to zero, not yet priced); hover or tap for the numbers."""
+    if not items:
+        return ""
+    n = lambda s: sum(1 for x in items if x[1] == s)
+    sq = "".join('<span class="sq %s" data-tip="%s"></span>' % (s, E(txt)) for _, s, txt in sorted(items, key=lambda x: x[0]))
+    counts = " · ".join(txt % n(s) for s, txt in (("good", "%d went up"), ("bad", "%d lost"), ("zero", "%d to zero"), ("pend", "%d not priced yet")) if n(s))
+    return ('<div class="stripbox"><div class="strip-head"><span class="t">%s</span><span class="sum">%d tips · %s</span></div><div class="strip" role="img" aria-label="%s">%s</div>'
+            '<div class="strip-leg"><span><i class="sq good"></i>went up</span><span><i class="sq bad"></i>lost</span><span><i class="sq zero"></i>went to zero</span><span><i class="sq pend"></i>not priced yet</span>'
+            '<span class="muted">20 each, after fees · oldest left</span></div></div>') % (E(title), len(items), E(counts), E("%d tips: %s" % (len(items), counts)), sq)
 
 
 def odd_cell(cont, o, hours):
@@ -1146,8 +1496,9 @@ def profit_stats(pts):
 
 
 def profit_section(D):
-    """The page's last word: is the bot making money with its picks? Every tip it named, priced again 1 h, horizon and 24 h
-    later, summed up as fake money (20 per tip, after fees), with the running total drawn over time."""
+    """The tip record, the page's last word: every tip the bot named, priced again 1 h, horizon and 24 h later, summed up as
+    fake money (20 per tip, after fees), with the running total drawn over time. A test of the tips; the paper account (one
+    position per coin, sold by the hold rule) is the dashboard at the top."""
     rows = [r for r in profit_rows(D) if r[3]]
     if not rows:
         return ""
@@ -1156,11 +1507,11 @@ def profit_section(D):
     staked = s["n"] * M.TICKET
     yes = s["tot"] > 0
     verdict = ('<p class="verdict %s"><strong>%s.</strong> %d tip%s priced %s: %d went up, %d went to zero, together <strong>%s</strong> on %s staked (%s per 20).%s</p>' % (
-        "good" if yes else "bad", "Yes, so far" if yes else "No, not so far", s["n"], "s" if s["n"] != 1 else "", label, s["up"], s["zero"],
+        "good" if yes else "bad", "Up so far" if yes else "Down so far", s["n"], "s" if s["n"] != 1 else "", label, s["up"], s["zero"],
         fmt_amt(s["tot"], True), fmt_amt(staked), fmt_amt(s["tot"] / s["n"], True),
         (" Sold at +%d%% the first minute a candle closed there after the entry (%d of %d did; %d had candles, the rest held to the end): %s together." % (tp_pct(), s["hit"], s["n"], len(s["tp"]), fmt_amt(s["tpTot"], True))) if s["tp"] else ""))
-    tiles = [tile("Profit so far, %s" % label, fmt_amt(s["tot"], True), "%d tips · %s staked · fake money, after fees" % (s["n"], fmt_amt(staked)), lead=True),
-             tile("Tips that went up", "%d of %d" % (s["up"], s["n"]), "a profit after fees needs about +8.5%"),
+    tiles = [tile("All tips together, %s" % label, fmt_amt(s["tot"], True), "%d tips · %s staked · fake money, after fees" % (s["n"], fmt_amt(staked)), lead=True),
+             tile("Tips that went up", "%d of %d" % (s["up"], s["n"]), "a profit after fees needs about %s" % sgn("%+.1f%%" % (100 * (be_mult(M.TICKET) - 1)))),
              tile("Tips that went to zero", "%d of %d" % (s["zero"], s["n"]), "under 2% of the entry price")]
     if s["tp"]:
         tiles.append(tile("Sold at +%d%% when reached" % tp_pct(), fmt_amt(s["tpTot"], True), "%d of %d tips reached it · %d had candles, the rest held to the end" % (s["hit"], s["n"], len(s["tp"]))))
@@ -1195,8 +1546,8 @@ def profit_section(D):
     chain = compound_chain(D.get("track_all") or D.get("track") or [])
     note = '<p class="note">Running total of every tip in time order, 20 in each, sold %s. ' % label
     note += ('20 put into every tip one after the other, each time the whole stake, would be %s now after %d tips. ' % (fmt_amt(chain["equity"]), chain["n"])) if chain["n"] else ""
-    note += 'Fake money: every tip counts 20 per window here; the held paper positions (one per coin) are in "Bought coins" and "Closed trades". Fees simulated at 0.5%, minimum 0.81 per trade.</p>'
-    return section("Is the bot making money?", "every coin the bot named, priced again after the window, summed up", verdict + html_ + chart + table + note)
+    note += 'Fake money: every tip counts 20 per window here; the held paper positions (one per coin) are in "Open positions" and "Closed trades" and make the paper account at the top. Fees simulated at 0.5%, minimum 0.81 per trade.</p>'
+    return section("Tip record", "a test of the tips, not the paper account: every coin the bot named counted as its own 20, priced again after the window", verdict + html_ + chart + table + note)
 
 def history_section(D):
     """Every scan of the last days, newest first: what the bot named at that hour (tier, score, the odds it gave), and
@@ -1213,7 +1564,7 @@ def history_section(D):
     def rec_for(t):
         best = min(recs, key=lambda d: abs(M.num(d["t"]) - t), default=None)
         return best if best is not None and abs(M.num(best["t"]) - t) <= 180_000 else None
-    rows, scored, n_named = [], {str(int(h)): [] for h in M.TIP_CHECKS}, 0
+    rows, scored, n_named, strip = [], {str(int(h)): [] for h in M.TIP_CHECKS}, 0, []
     for r in runs:
         t = M.num(r["t"])
         rec = rec_for(t) or {}
@@ -1235,8 +1586,7 @@ def history_section(D):
             if o:
                 if rule == M.RULE:
                     scored[key].append(o)
-                good = (M.num(o.get("eur")) or 0) > 0
-                return '<td class="n %s" data-k="%d h later">%s · %s%s%s</td>' % ("good" if good else "bad", hours, fmt_mult(o.get("mult")), fmt_amt(o.get("eur"), True), peak_txt(o), candles_txt(o))
+                return res_cell_html(o, hours)
             if rule != M.RULE:
                 return '<td class="n muted" data-k="%d h later">–</td>' % hours
             due = t + hours * 3_600_000
@@ -1254,6 +1604,14 @@ def history_section(D):
             odds = ("%s / %s" % (pct(100 * up) if up is not None else "–", pct(100 * zp) if zp is not None else "–")) if (up is not None or zp is not None) else "–"
             tier = dict(p, tier=p.get("tier") or rp.get("tier") or "strong")
             res = "".join(res_cell(p.get("sym"), str(int(h)), h) for h in M.TIP_CHECKS)
+            if rule == M.RULE:
+                c1 = ((rec.get("outs") or {}).get("1") or {}) if rec else {}
+                o1 = next((x for x in (c1.get("picks") or []) if isinstance(x, dict) and x.get("sym") == p.get("sym")), None)
+                label = "%s · %s" % (fmt_dt(t, True), p.get("sym") or "?")
+                if o1 and not odd_cell(c1, o1, 1.0) and M.num(o1.get("eur")) is not None:
+                    strip.append((t, tip_state(o1), "%s\n1 h later: %s · %s" % (label, fmt_mult(o1.get("mult")), fmt_amt(o1.get("eur"), True))))
+                else:
+                    strip.append((t, "pend", "%s\n1 h result not priced yet" % label))
             chips = tier_chip(tier) + other
             rows.append('<tr>%s<td><strong>%s</strong>%s<div class="row">%s</div></td><td class="n" data-k="score">%s</td><td class="n" data-k="odds then" title="chance of a profit / chance of going to zero, as the bot saw it then">%s</td>%s%s</tr>' % (
                 when, E(p.get("sym")), name_html(p.get("sym"), p.get("name")), chips, E("%.0f" % (M.num(p.get("score")) or 0)), E(odds), res,
@@ -1271,7 +1629,8 @@ def history_section(D):
         sub += " · 20 put into every tip one after the other (sold after 1 h, after fees) would be %s now after %d tips" % (fmt_amt(chain["equity"]), chain["n"])
     sub += " · fake money, 20 per tip, after fees"
     head = '<thead><tr><th>scan at</th><th>named</th><th class="n">score</th><th class="n">odds then</th>%s<th></th></tr></thead>' % "".join('<th class="n">%d h later</th>' % h for h in M.TIP_CHECKS)
-    body = '<div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows[:HISTORY_OPEN]))
+    body = tip_strip(strip, "Every tip of the last %d days, 1 h later" % HISTORY_DAYS)
+    body += '<div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div>' % (head, "".join(rows[:HISTORY_OPEN]))
     if len(rows) > HISTORY_OPEN:
         body += '<details><summary>Earlier scans (%d more)</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details>' % (len(rows) - HISTORY_OPEN, head, "".join(rows[HISTORY_OPEN:]))
     return section("Recommendations, hour by hour", sub, body)
@@ -1483,6 +1842,57 @@ def fmt_when(ms, now):
     return (t.strftime("%H:%M") if t.date() == n.date() else t.strftime("%b %d %H:%M")) + " " + TZ_NAME
 
 
+def dash_section(D):
+    """Recommend mode with paper positions: the paper account at a glance (what everything would fetch now, split into the
+    positions and the free cash), the open positions, the free cash and the next buy, the closed trades, and one line that
+    says what is held and what the last scan named."""
+    cash, equity = D["cash"], D["equity"]
+    budget = cash["budget"]
+    open_bot = D["open_bot"]
+    worth = sum(r["value"] or 0 for r in open_bot)
+    paid = sum(r["ticket"] * r["p"]["_left"] for r in open_bot)
+    realized = sum(r["pnl"] for r in D["bot_closed"])
+    open_pl = equity - budget - realized
+    nb, wins = len(D["bot_closed"]), D["wins"]
+    w_pos = 100.0 * worth / equity if equity > 0 else 0.0
+    delta = equity - budget
+    lead = ('<div class="tile lead"><div class="label">Paper account · everything sold now</div><div class="value">%s<span class="delta %s">%s since start</span></div>'
+            '<div class="sub">fake money · started with %s · closed trades %s · open positions %s</div>'
+            '<div class="split" aria-hidden="true"><span class="seg pos" style="width:%.1f%%"></span><span class="seg free" style="width:%.1f%%"></span></div>'
+            '<div class="split-leg"><span><i class="pos"></i>positions %s</span><span><i class="free"></i>free cash %s</span></div></div>') % (
+        fmt_amt(equity), "good" if delta > 0 else ("bad" if delta < 0 else ""), fmt_amt(delta, True), fmt_amt(budget), fmt_amt(realized, True), fmt_amt(open_pl, True),
+        w_pos, 100 - w_pos, fmt_amt(worth), fmt_amt(cash["free"]))
+    tk = cash.get("tickets") or []
+    nxt = ("next buy %s" % (("2 × %s" % fmt_amt(tk[0])) if len(tk) == 2 else fmt_amt(tk[0]))) if tk else "under %s: no new buy until a sale" % fmt_amt(M.MIN_TICKET)
+    tiles = [lead,
+             tile("Open positions", str(len(open_bot)), ("paid %s · worth %s now" % (fmt_amt(paid), fmt_amt(worth))) if open_bot else "nothing held"),
+             tile("Free cash", fmt_amt(cash["free"]), nxt),
+             tile("Closed trades", str(nb), ("%d won · %d lost · %s together" % (wins, nb - wins, fmt_amt(realized, True))) if nb else "none yet")]
+    bits = []
+    for r in open_bot:
+        pnl = r["pnl"]
+        bits.append('<strong>%s</strong> <span class="%s">%s</span> (price %s)' % (E(r["p"].get("sym")), "good" if (pnl or 0) > 0 else "bad", fmt_amt(pnl, True) if pnl is not None else "no price", fmt_chg(r["mult"])))
+    line = ("Holding " + " · ".join(bits)) if bits else "Nothing held"
+    picks = [c for c in ((D.get("rec") or {}).get("picks") or []) if isinstance(c, dict)]
+    if picks:
+        named = []
+        for c in picks:
+            b = c.get("bought")
+            if b == "held":
+                what = "already held"
+            elif isinstance(b, (int, float)) and not isinstance(b, bool):
+                what = "bought for %s" % fmt_amt(b)
+            elif b:
+                what = "not bought: %s" % b
+            else:
+                what = "watch only" if c.get("tier") == "watch" else "not bought"
+            named.append("<strong>%s</strong> (%s)" % (E(c.get("sym")), E(what)))
+        line += " · the last scan named " + ", ".join(named)
+    else:
+        line += " · the last scan named no coin"
+    return '<section class="dash">%s</section><p class="status">%s</p>' % ("".join(tiles), line)
+
+
 def render(data, fragment=False):
     D = data
     st, cash, now = D["state"], D["cash"], D["now"]
@@ -1519,11 +1929,16 @@ def render(data, fragment=False):
             return fold("Paper bankroll", "%s · untouched · nothing bought, nothing sold" % fmt_amt(equity), html_)
         return html_
 
-    def curve():
-        pts_bot = [(M.num(c["t"]), M.num(c.get("equity")) if M.num(c.get("equity")) is not None else cash["budget"] + (M.num(c.get("bot")) or 0)) for c in D["curve"] if isinstance(c, dict) and M.num(c.get("t"))]
+    def curve(since=None):
+        docs = [c for c in D["curve"] if isinstance(c, dict) and M.num(c.get("t"))]
+        if since and sum(1 for c in docs if M.num(c["t"]) >= since) >= 2:
+            docs = [c for c in docs if M.num(c["t"]) >= since]
+        else:
+            since = None
+        pts_bot = [(M.num(c["t"]), M.num(c.get("equity")) if M.num(c.get("equity")) is not None else cash["budget"] + (M.num(c.get("bot")) or 0)) for c in docs]
         series = [("bot", "s1", pts_bot)]
-        if any((M.num(c.get("nRand")) or 0) > 0 for c in D["curve"] if isinstance(c, dict)):
-            series.append(("random control", "s2", [(M.num(c["t"]), cash["budget"] + (M.num(c.get("rand")) or 0)) for c in D["curve"] if isinstance(c, dict) and M.num(c.get("t"))]))
+        if any((M.num(c.get("nRand")) or 0) > 0 for c in docs):
+            series.append(("random control", "s2", [(M.num(c["t"]), cash["budget"] + (M.num(c.get("rand")) or 0)) for c in docs]))
         wide = line_chart(series, cash["budget"], WIDE)
         if not wide:
             body = '<div class="empty">The curve needs two runs. It shows the bankroll plus the value of the open positions after every run.</div>'
@@ -1533,7 +1948,7 @@ def render(data, fragment=False):
             body += ('<details><summary>Table view</summary><div class="tbl"><table><thead><tr><th>run</th><th class="n">equity</th>%s</tr></thead><tbody>%s</tbody></table></div></details>' % (
                 '<th class="n">random control</th>' if len(series) > 1 else "",
                 "".join('<tr><td>%s</td><td class="n">%s</td>%s</tr>' % (fmt_dt(t), fmt_amt(v), ('<td class="n">%s</td>' % fmt_amt(series[1][2][i][1])) if len(series) > 1 and i < len(series[1][2]) else "") for i, (t, v) in enumerate(pts_bot))))
-        sub = "bankroll plus what the open positions would fetch, after fees · now %s" % fmt_amt(equity)
+        sub = ("since the first held position (%s) · " % fmt_dt(since + 2 * 3_600_000, True) if since else "") + "bankroll plus what the open positions would fetch, after fees · now %s" % fmt_amt(equity)
         if rec_mode:
             flat = pts_bot and all(abs(v - pts_bot[0][1]) < 0.005 for _, v in pts_bot)
             summary = ("flat at %s since %s" % (fmt_amt(equity), fmt_dt(pts_bot[0][0], True))) if flat else ("%s now · %s since start" % (fmt_amt(equity), fmt_amt(equity - cash["budget"], True)))
@@ -1546,9 +1961,9 @@ def render(data, fragment=False):
         rule = '<details><summary>How a coin is sold</summary><p class="note">%s</p></details>' % (E(hold_rule_text()) if D.get("rec") else
                 "Half is sold at 2x (the rest if it falls back to the entry price); everything is sold at −50%, after 3 days, or when the price is gone.")
         if D.get("rec") and not rec_mode:
-            head = "%d held · one paper position per named coin, %s each" % (n_bot, fmt_amt(cash["ticket"]))
+            head = "%d held · one paper position per named coin, paid from the free bankroll · fake money" % n_bot
         if D["open"]:
-            body = '<div class="cards">%s</div>' % "".join(position_card(r, now) for r in D["open"])
+            body = '<div class="cards">%s</div>' % "".join(hold_card(r, now) if r["p"].get("grp") == "hold" else position_card(r, now) for r in D["open"])
         elif rec_mode:
             body = '<div class="empty">No open positions: the bot holds a coin it names while a paper slot is free; nothing has been bought yet.</div>'
         elif D.get("rec"):
@@ -1557,7 +1972,7 @@ def render(data, fragment=False):
             body = '<div class="empty">No open positions. %s</div>' % ("The next pick run buys the two best coins when the bankroll has a free slot." if D["runs"] else "Run <code>python3 bot.py cycle</code> to start.")
         if rec_mode:
             return fold("Bought coins", "none yet", '<section><p class="note">%s</p>%s%s</section>' % (E(head), body, rule))
-        return section("Bought coins", head, body + rule)
+        return section("Open positions" if D.get("rec") else "Bought coins", head, body + rule)
 
     def closed():
         body = safe("closed trades", lambda: closed_table(D["closed"]))
@@ -1567,7 +1982,7 @@ def render(data, fragment=False):
 
     def candidates():
         if D["scan_t"]:
-            head = "%s · %d coins scanned · ranked among those that passed the gates" % (fmt_dt(D["scan_t"]), int(D["scan_n"] or 0))
+            head = "%s · %s coins scanned · ranked among those that passed the gates" % (fmt_dt(D["scan_t"]), fmt_int(D["scan_n"] or 0))
             run = D["scan_run"]
             if rec_mode:
                 head += " · nothing bought: recommend mode, the best clean coin is shown at the top of the page"
@@ -1580,7 +1995,7 @@ def render(data, fragment=False):
         else:
             head = "no full scan yet"
         inner = '<section><p class="note">%s</p>%s</section>' % (E(head), cands_table(D))
-        return fold("All coins that passed the gates", ("%d of %d scanned" % (len(D["cands"]), int(D["scan_n"] or 0))) if D["scan_t"] else "no full scan yet", inner)
+        return fold("All coins that passed the gates", ("%d of %s scanned" % (len(D["cands"]), fmt_int(D["scan_n"] or 0))) if D["scan_t"] else "no full scan yet", inner)
 
     def runlog():
         detail = ('<details><summary>Last run in detail</summary><p class="note">%s</p></details>' % E(st["note"])) if st.get("note") else ""
@@ -1592,21 +2007,27 @@ def render(data, fragment=False):
     head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real · scans every hour</div><h1>%s</h1></div>'
             '<div class="meta">updated %s%s · %s run%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(nxt), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s")
     body = [head]
+    tabs = ""
     if D.get("rec"):
         # two tabs: the pick (and its track record) and the new launches under an hour old; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_young = safe("new launches", lambda: young_section(D))
-        body.append('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young">'
-                    '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New launches &lt;1h <span class="cnt">%d</span></label></div>'
-                    '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div></div>' % (n_young, pane_pick, pane_young))
+        tabs = ('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young">'
+                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New launches &lt;1h <span class="cnt">%d</span></label></div>'
+                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div></div>' % (n_young, pane_pick, pane_young))
     rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
     rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     shown = []
     if D.get("rec") and D["pos"]:
-        # recommend mode holds the coins it names: the held coins and the bankroll are the bot's money, on the page, not behind the fold
-        shown = [safe("hero", hero), safe("equity curve", curve), safe("bought coins", bought), safe("closed trades", closed)]
+        # recommend mode holds the coins it names: the paper account and the held coins come first, then the pick and its record,
+        # the closed trades and the curve of the account since the first held coin
+        held_t = [M.num(r["p"].get("t")) for r in D["pos"] if r["p"].get("grp") == "hold" and M.num(r["p"].get("t"))]
+        since = (min(held_t) - 2 * 3_600_000) if held_t else None
+        shown = [safe("dashboard", lambda: dash_section(D)), safe("open positions", bought), tabs, safe("closed trades", closed), safe("equity curve", lambda: curve(since))]
         rest.append(safe("candidates", candidates))
+    elif tabs:
+        body.append(tabs)
     else:
         rest += [safe("hero", hero), safe("equity curve", curve), safe("bought coins", bought), safe("closed trades", closed), safe("candidates", candidates)]
     w_html = safe("weights", lambda: weights_section(D))
@@ -1617,9 +2038,10 @@ def render(data, fragment=False):
     if D.get("rec"):
         # the page answers one question: which coin, why, and the numbers behind it; everything else sits behind one tap
         body += [x for x in shown if x]
-        body.append(fold("Details: training, big test, all candidates, weights, run log", "%d coins scanned · %d coin results scored" % (int(D["scan_n"] or 0), scored),
+        n_scan = D["scan_n"] or M.num((D.get("rec") or {}).get("scanned")) or 0
+        body.append(fold("Details: training, big test, all candidates, weights, run log", "%s coins in the last scan" % fmt_int(n_scan) + (" · %s coin results scored" % fmt_int(scored) if scored else ""),
                          '<div class="rest">%s</div>' % "\n".join(x for x in rest if x)))
-        body.append(safe("profit", lambda: profit_section(D)))      # the page's last word: is the bot making money with its picks?
+        body.append(safe("profit", lambda: profit_section(D)))      # the page's last word: the tip record, every tip priced again
     else:
         body += [x for x in rest if x]
     body.append('<footer><span>generated %s</span><span>rule %s · %s profile</span><span>fees simulated at 0.5%%, minimum 0.81 per trade</span><span>prices from DexScreener at the time of each run</span><span>times in %s</span></footer>' % (
