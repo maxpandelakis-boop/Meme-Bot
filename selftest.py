@@ -16,6 +16,7 @@ guard, the page's decisions and sw.js in node, and supabase/setup.sql on Postgre
 import contextlib, glob, html, io, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 
+SKIPS = []                   # check groups that could not run here (no Playwright, no node, no PostgreSQL): the last line names how many
 REAL_SLEEP = time.sleep      # the fetch tests make time.sleep a no-op for the whole process; the slow stand-ins below need a real one
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -693,6 +694,38 @@ def spotter_checks(check):
           and all("px" in v or v.get("gone") for v in (prev5z.get("coins") or {}).values()),
           "a coin of the previous list priced only by a keyword search whose pair shows price 0 is recorded gone, not unknown (it is not asked again: %s)" % (
               (prev5z.get("coins") or {}).get(searched[0])))
+    # a coin of the previous list known only from a list's stand-in row (GeckoTerminal) without a price, while DexScreener does not answer the
+    # request that carries it: unknown, never gone (only DexScreener's answer, or its own pair without a price, makes a coin gone)
+    gt_fx = [a for a, p_ in M.load_pairs(fx).items() if p_.get("gt_only") and a not in prev_addrs]
+    e5g = os.path.join(tmp, "prevstandin")
+    shutil.copytree(fx, e5g)
+    blanked, hit5g, prev5g = 0, [], {}
+    if gt_fx:
+        g_ = gt_fx[0]
+        pi_ = M.GT_COLS.index("priceUsd")
+        for f in glob.glob(os.path.join(e5g, "gt", "*.txt")):
+            rows_ = open(f, encoding="utf-8").read().split("\n")
+            for i_, line in enumerate(rows_):
+                cells = line.split("|")
+                if cells and cells[0] == g_ and len(cells) > pi_:
+                    cells[pi_] = ""
+                    rows_[i_] = "|".join(cells)
+                    blanked += 1
+            open(f, "w", encoding="utf-8").write("\n".join(rows_))
+        json.dump({"v": 1, "t": T0 - H, "id": prev_id, "coins": [{"addr": g_, "p60": None}]}, open(os.path.join(e5g, "db", "memeearly", prev_id + ".json"), "w"))
+
+        def first500g(path):
+            if "/tokens/v1/" in path and not hit5g:
+                hit5g.append(path)
+                return 500, {"error": "boom"}
+        rmock.hook = first500g
+        p5g, _, _, _ = early_run(e5g)
+        rmock.hook = None
+        prev5g = json.load(open(os.path.join(e5g, "radar", "prev.json"), encoding="utf-8")) if os.path.exists(os.path.join(e5g, "radar", "prev.json")) else {}
+    check(gt_fx and blanked and p5g.returncode == 0 and hit5g and gt_fx[0] in hit5g[0] and prev5g.get("id") == prev_id and gt_fx[0] not in (prev5g.get("coins") or {})
+          and RD.standin({"gt_only": True}) and RD.standin({"dexId": "Jupiter"}) and RD.standin({"gm_only": True}) and RD.standin({"px_only": True}) and not RD.standin({"dexId": "raydium"}),
+          "a coin of the previous list known only from a GeckoTerminal row without a price, whose DexScreener request got a 500, stays unknown, never gone (%s)" % (
+              (prev5g.get("coins") or {}).get(gt_fx[0] if gt_fx else "", "unknown")))
     # the edge cases, on a sandbox built by hand at an exact clock: 60 minutes old, under $5k, on the curve, list-only, born after the scan started, held
     with profile("2h"):
         ed = os.path.join(tmp, "edge")
@@ -1287,7 +1320,8 @@ def browser_checks(check, page_html, tmp):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("  (no Playwright: the browser checks of the early list are skipped)")
+        SKIPS.append("the browser checks of the early list (no Playwright)")
+        print("  SKIP the browser checks of the early list: Playwright is not installed")
         return
     exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
     pages_url, rng = "https://some-owner.github.io/Meme-Bot/", random.Random(3)
@@ -1416,9 +1450,18 @@ def browser_checks(check, page_html, tmp):
             own_ok = wait_status(pg, "Early list of this scan", 8000)
             own = pg.evaluate("""() => [(document.querySelector('[data-early-label]')||{}).textContent||'', Array.from(document.querySelectorAll('[data-early-list] .ehd .chip')).map(e => e.textContent)]""")
             ctx.close()
+            # a launchpad and a DEX name of 24 characters (they come from the sources) on a 12-day-old token at 320 px: the line breaks, nothing sticks out
+            wide = dict(doc, young=dict(young, coins=[dict(coins[2], launchpad="Raydium LaunchLab Extras", dex="pumpswap-amm-v2-extended", minted=now - 12 * 86_400_000 - 3_600_000),
+                                                      dict(coins[0], launchpad="W" * 24, dex="D" * 24, minted=now - 30 * 86_400_000)]))
+            ctx, pg = ctx_page(w=320, answer=lambda: (200, wide))
+            pg.wait_for_function("document.querySelectorAll('[data-early-list] > li').length === 2", timeout=10000)
+            narrow = pg.evaluate("""() => { const box = document.querySelector('[data-early]'), r = e => e.getBoundingClientRect(), bx = r(box);
+              return { hscroll: document.documentElement.scrollWidth - innerWidth, out: Array.from(box.querySelectorAll('[data-early-list] *')).filter(e => r(e).right > bx.right + 0.5).map(e => e.className || e.tagName),
+                tok: Array.from(box.querySelectorAll('.eline')).map(e => e.textContent).filter(t => t.indexOf('token') === 0) }; }""")
+            ctx.close()
             br.close()
     except Exception as e:
-        print("  (the browser checks of the early list could not run: %s)" % str(e)[:200])
+        check(False, "the browser checks of the early list could not run (Playwright is installed; Chromium needs a short TMPDIR path): %s" % str(e)[:200])
         return
     links = info["links"]
     ok = (info["young"] and info["imgs"] == 0 and "<img src=x onerror=alert(1)>" in info["text"] and "<script>alert(2)</scr" in info["text"] and not dialogs
@@ -1442,6 +1485,9 @@ def browser_checks(check, page_html, tmp):
     check(own_ok and own[0].startswith("Fake money · not advice. This was the list before scoring") and "below" in own[0]
           and any(re.search(r"min old at \d\d:\d\d", x) for x in own[1]) and not errs,
           "browser: after its scan the page's own list says it was the list before scoring and gives the ages at the time it was made (%s) %s" % (own[1][:2], errs[:2]))
+    check(narrow["hscroll"] <= 0 and not narrow["out"] and len(narrow["tok"]) == 2 and narrow["tok"][0].startswith("token 12 days old (Raydium LaunchLab Extras) · pumpswap-amm-v2-extended"),
+          "browser at 320 px: a 24-character launchpad and DEX name on a token 12 days old break inside the card, the page never widens (%s%s)" % (
+              narrow["tok"][:1], " out: %s" % narrow["out"][:4] if narrow["out"] else ""))
 
 
 # ------------------------------------------------------------------------------------------------ the iPhone app (app.py, sw.js, the page)
@@ -1451,7 +1497,9 @@ APP_SECRET = "sb_secret_TESTsecretKEY_0123456789abcdef"     # the test's secret 
 
 class Rest:
     """A local stand-in for Supabase's REST API (PostgREST) with the tables of supabase/setup.sql: it checks the secret key in the apikey
-    header, notes every request and can play a paused project (HTTP 540) or an error that echoes the key."""
+    header, notes every request and can play a paused project (HTTP 540), an error that echoes the key, one that echoes what was sent to
+    app_secret (echobody), a slow store (slow<s>: every answer s seconds late; slowpost<s>: only the writes) or a redirect to another
+    address (redirect:<url>)."""
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -1491,6 +1539,8 @@ class Rest:
             if headers.get("apikey") != APP_SECRET or headers.get("Authorization"):
                 return 401, {"code": "PGRST301", "message": "no valid key"}
             j = json.loads(body) if body else None
+            if self.mode == "echobody" and method == "POST" and path == "/rest/v1/app_secret":
+                return 500, {"code": "XX000", "message": "could not store %s" % body}
             if path == "/rest/v1/live":
                 if method == "POST":
                     old = self.live.get(j["id"])
@@ -1546,7 +1596,7 @@ class PushSink:
             except Exception as e:
                 data = ("undecryptable: %s" % e).encode()
         with self.lock:
-            self.got.append({"name": name, "headers": {k.lower(): v for k, v in headers.items()}, "data": data.decode("utf-8", "replace")})
+            self.got.append({"name": name, "headers": {k.lower(): v for k, v in headers.items()}, "data": data.decode("utf-8", "replace"), "t": time.time()})
         return self.codes.get(name, 201)
 
 
@@ -1557,7 +1607,8 @@ def app_browser_checks(check, sd, young):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("  (no Playwright: the browser checks of the installed app are skipped)")
+        SKIPS.append("the browser checks of the installed app (no Playwright)")
+        print("  SKIP the browser checks of the installed app: Playwright is not installed")
         return
     exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
     pages_url, sb_url = "https://maxpandelakis-boop.github.io/Meme-Bot/", "https://abcref.supabase.co"
@@ -1569,15 +1620,17 @@ def app_browser_checks(check, sd, young):
     sh = t - young["t"]
     y = dict(young, t=t, at=(young.get("at") or young["t"]) + sh, rcAt=(young["rcAt"] + sh) if young.get("rcAt") else None,
              coins=[dict(c, born=(c["born"] + sh) if c.get("born") else None, minted=(c["minted"] + sh) if c.get("minted") else None) for c in young["coins"]])
+    y["coins"][0] = dict(y["coins"][0], launchpad="Raydium LaunchLab Extras", dex="pumpswap-amm-v2-extended", minted=t - 12 * 86_400_000)   # 24 characters each
     n = len(y["coins"])
     ags = [{"id": "dispatch", "status": "done", "lines": ["full scan"]}, {"id": "scouts", "status": "done", "lines": []},
            {"id": "spotter", "status": "done", "bg": True, "lines": ["%d new launches" % n]}, {"id": "market", "status": "running", "lines": ["prices"]}]
     st = {"rows": {}}
 
-    def scan(live, ver):
+    def scan(live, ver, nver=None, listed=True):
         a = ags if live else ags[:3] + [{"id": "market", "status": "done"}, {"id": "trader", "status": "done"}, {"id": "reporter", "status": "done"}]
-        cur = {"v": 1, "t": t, "live": live, "updated": ms() - 3000, "horizon": "24h", "mode": "full", "agents": a, "young": y, "ver": ver}
-        stt = dict(cur, young={"n": n, "newest": min(c.get("ageMin") or 99 for c in y["coins"]), "state": "listed", "at": y["at"], "t": t})
+        cur = {"v": 1, "t": t, "live": live, "updated": ms() - 3000, "horizon": "24h", "mode": "full", "agents": a, "young": y if listed else None, "ver": ver}
+        stt = dict(cur, young={"n": n, "newest": min(c.get("ageMin") or 99 for c in y["coins"]), "state": "listed", "at": y["at"], "t": t} if listed else None,
+                   nver=ver if nver is None else nver)
         st["rows"] = {"status": stt, "current": cur}
     scan(True, 1)
     calls = {"status": 0, "current": 0, "github": 0, "other": []}
@@ -1620,6 +1673,7 @@ def app_browser_checks(check, sd, young):
             pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
             pg.goto(pages_url)
             pg.wait_for_selector(".appbar", timeout=8000)
+            scan_btn = pg.evaluate("(() => { const b = document.querySelector('.live .btn'); return b && b.getClientRects().length ? b.getBoundingClientRect().height : 0; })()")
             got_badge = True
             try:
                 pg.wait_for_function("n => ((document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')||{}).textContent||'') === String(n)", arg=n, timeout=10000)
@@ -1636,10 +1690,11 @@ def app_browser_checks(check, sd, young):
                 cards: document.querySelectorAll('[data-early-list] > li').length, status: b ? b.querySelector('[data-early-status]').textContent : '',
                 above: !!(b && scored && r(b).bottom <= r(scored).top), dot: !!document.querySelector('.appbar [data-tab="office"] .ab-dot'),
                 hscroll: document.documentElement.scrollWidth - innerWidth, hint: (document.querySelector('.ehint')||{}).textContent || '' }; }""")
+            aria = pg.evaluate("['young', 'office'].map(t => document.querySelector('.appbar [data-tab=\"' + t + '\"]').getAttribute('aria-label'))")
             pg.click('.appbar button[data-tab="office"]')
             pg.wait_for_timeout(1200)
             office = pg.evaluate("[(document.querySelector('[data-live-badge]')||{}).textContent||'', document.querySelectorAll('[data-agent][data-live]').length]")
-            scan(False, 2)          # the scan ends: the status row names a new ver, the page fetches current once more
+            scan(False, 2, nver=1)  # the scan ends: a new ver, but its early list and pick are as before (nver): the page does not read current again
             pg.click('.appbar button[data-tab="young"]')
             done_ok = True
             try:
@@ -1647,18 +1702,78 @@ def app_browser_checks(check, sd, young):
             except Exception:
                 done_ok = False
             after = pg.evaluate("[((document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')||{}).textContent||''), !!document.querySelector('.appbar [data-tab=\"office\"] .ab-dot'), document.querySelectorAll('[data-early-list] > li').length]")
+            calls_main = dict(calls)
+            ctx.close()
+            # a tap on the "new coins" notification at 320 x 640: before the list there is no badge; once the list is in, the page scrolls to the early
+            # box, so its status line and the first coin are in view above the tab bar
+            scan(True, 3, listed=False)
+            ctx = br.new_context(viewport={"width": 320, "height": 640}, service_workers="block")
+            ctx.add_init_script("Object.defineProperty(Navigator.prototype,'standalone',{get:function(){return true;}});")
+            ctx.route("**/*", handler)
+            pg = ctx.new_page()
+            pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
+            pg.goto(pages_url + "#tab-young")
+            wait_ok = True
+            try:
+                pg.wait_for_function("() => ((document.querySelector('[data-early-status]')||{}).textContent||'').indexOf('Scan running since') === 0", timeout=10000)
+            except Exception:
+                wait_ok = False
+            nobadge = pg.evaluate("[!!document.querySelector('.appbar .ab-cnt'), document.querySelector('.appbar [data-tab=\"young\"]').getAttribute('aria-label')]")
+            scan(True, 4)
+            try:
+                pg.wait_for_function("n => document.querySelectorAll('[data-early-list] > li').length === n && window.scrollY > 0", arg=n, timeout=12000)
+            except Exception:
+                pass
+            pg.wait_for_timeout(300)
+            deep = pg.evaluate("""() => { const b = document.querySelector('[data-early]'), c = document.querySelector('[data-early-list] > li'), bar = document.querySelector('.appbar');
+              return { y: scrollY, box: b.getBoundingClientRect().top, card: c ? c.getBoundingClientRect().top : 1e9, cardEnd: c ? c.getBoundingClientRect().bottom : 1e9,
+                bar: bar.getBoundingClientRect().top, status: (b.querySelector('[data-early-status]')||{}).textContent || '', hscroll: document.documentElement.scrollWidth - innerWidth,
+                tok: Array.from(document.querySelectorAll('[data-early-list] .eline')).map(e => e.textContent).filter(t => t.indexOf('LaunchLab Extras') >= 0)[0] || '' }; }""")
+            ctx.close()
+            # a browser tab (not the installed app): the live store is read only on New launches or Agent office, and the tabs of one browser share one reader
+            scan(True, 5)
+            ctx = br.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+            ctx.add_init_script("window.MEMEBOT_LIVE_T={SB_EVERY:1000};")
+            ctx.route("**/*", handler)
+            pa = ctx.new_page()
+            c0 = calls["status"]
+            pa.goto(pages_url)
+            pa.wait_for_timeout(3000)
+            on_pick = calls["status"] - c0
+            pa.click('label[for="tab-young"]')
+            c0 = calls["status"]
+            pa.wait_for_timeout(8000)
+            one = calls["status"] - c0
+            pb = ctx.new_page()
+            pb.goto(pages_url)
+            pb.click('label[for="tab-young"]')
+            c0 = calls["status"]
+            pb.wait_for_timeout(8000)
+            two = calls["status"] - c0
+            shared = [p_.evaluate("[document.visibilityState, document.querySelectorAll('[data-early-list] > li').length, document.documentElement.classList.contains('app')]") for p_ in (pa, pb)]
             br.close()
     except Exception as e:
-        print("  (the browser checks of the installed app could not run: %s)" % str(e)[:200])
+        check(False, "the browser checks of the installed app could not run (Playwright is installed; Chromium needs a short TMPDIR path): %s" % str(e)[:200])
         return
     check(got_badge and info["app"] and info["young"] and info["hidden"] is False and info["cards"] == n and info["status"].startswith("Found at") and info["above"]
           and info["dot"] and info["hscroll"] <= 0 and "With notifications on" in info["hint"] and not errs,
           "installed app (Chromium, live store): the New coins tab shows the spotter's early list (%d cards, '%s...') above the scored list, its badge says %d, "
           "the Office tab has its live dot %s" % (info["cards"], info["status"][:24], n, ("" if not errs else errs[:2])))
-    check(office[0].startswith("LIVE") and office[1] >= 3 and done_ok and after == [str(n), False, n] and calls["current"] == 2 and calls["status"] >= 2 and calls["github"] == 0,
+    check(office[0].startswith("LIVE") and office[1] >= 3 and done_ok and after == [str(n), False, n] and calls_main["current"] == 1 and calls_main["status"] >= 2 and calls_main["github"] == 0,
           "installed app: the same snapshot feeds the office view (%r) and the early box; when the scan ends the box says so and keeps the list, the office dot goes; "
-          "one poller only: %d status reads, current only per new ver (%d), no GitHub poll (%d)%s" % (office[0][:20], calls["status"], calls["current"], calls["github"],
-              "" if done_ok and after == [str(n), False, n] else " %s %s %s" % (done_ok, after, office)))
+          "one poller only: %d status reads, current only per new nver (%d: not again for the end's new ver), no GitHub poll (%d)%s" % (
+              office[0][:20], calls_main["status"], calls_main["current"], calls_main["github"], "" if done_ok and after == [str(n), False, n] else " %s %s %s" % (done_ok, after, office)))
+    check(aria == ["New coins, %d listed now" % n, "Office, a scan is running now"] and nobadge == [False, "New coins"] and scan_btn >= 44,
+          "installed app: the New coins badge only with a scan's early list (none while the scan has not listed yet), the tabs' badge and dot read out in words"
+          " (%s), Scan now %d px tall" % (aria, scan_btn))
+    check(wait_ok and 0 < deep["y"] and -1 <= deep["box"] <= 40 and deep["card"] + 60 <= deep["bar"] and deep["status"].startswith("Found at") and deep["hscroll"] <= 0
+          and deep["tok"].startswith("token 12 days old (Raydium LaunchLab Extras) · pumpswap-amm-v2-extended"),
+          "installed app at 320 x 640, opened by the new coins notification (#tab-young): once the list is in, the page scrolls to the early box (its top at %.0f px),"
+          " the first coin's card starts above the tab bar (at %.0f px, bar at %.0f px); a 24-character launchpad never widens the page%s" % (
+              deep["box"], deep["card"], deep["bar"], "" if wait_ok and deep["tok"] and deep["y"] > 0 else " %s %s" % (wait_ok, deep)))
+    check(on_pick == 0 and one >= 3 and two <= one + 2 and shared == [["visible", n, False]] * 2,
+          "a browser tab reads the live store only on New launches or Agent office (%d reads in 3 s on The pick), and two tabs share one reader through"
+          " localStorage (%d reads in 8 s with one tab, %d with two, both showing the list)" % (on_pick, one, two))
 
 
 def serve_app(rest, sink):
@@ -1677,6 +1792,15 @@ def serve_app(rest, sink):
                 rest.mode = u.path[6:]
                 self.send_response(204); self.end_headers()
                 return
+            if rest.mode.startswith("redirect:"):   # a store address that redirects elsewhere: the secret key must not follow
+                with rest.lock:
+                    rest.log.append({"t": time.time(), "m": self.command, "p": u.path, "q": u.query, "apikey": self.headers.get("apikey"),
+                                     "auth": self.headers.get("Authorization"), "ua": "", "prefer": "", "body": ""})
+                self.send_response(302); self.send_header("Location", rest.mode[9:] + self.path); self.send_header("Content-Length", "0"); self.end_headers()
+                return
+            m_ = re.fullmatch(r"slow(post)?([0-9.]+)", rest.mode)
+            if m_ and (not m_.group(1) or self.command in ("POST", "PATCH")):   # a slow store (slowpost: only its writes): each answer this
+                REAL_SLEEP(float(m_.group(2)))                                     # many seconds late (each request on its own thread)
             if rest.mode == "dribble":        # a store that answers a byte a second: per-socket timeouts never fire
                 with rest.lock:
                     rest.log.append({"t": time.time(), "m": self.command, "p": u.path, "q": u.query, "apikey": self.headers.get("apikey"),
@@ -1690,10 +1814,13 @@ def serve_app(rest, sink):
                 return
             code, out = rest.handle(self.command, u.path, u.query, self.headers, body.decode("utf-8") if body else "")
             raw = json.dumps(out).encode() if out is not None else b""
-            self.send_response(code)
-            if raw:
-                self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+            try:                              # a client that cut its request short (app.end_sink) is gone: nothing to answer
+                self.send_response(code)
+                if raw:
+                    self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+            except OSError:
+                pass
 
         do_GET = do_POST = do_DELETE = do_PATCH = _go
 
@@ -1816,6 +1943,10 @@ def app_tests(check, mock, url):
           and st["agents"][0]["lines"] == ["later"] and len(st["agents"][0]["out"]) == 120 and len(json.dumps(st)) < 2000
           and cur.get("young", {}).get("coins", [{}])[-1].get("sym") == "CCC" and len(cur["agents"][0]["lines"]) == 12 and cur["agents"][0]["lines"][-1] == "later",
           "status is small (%d bytes: last line, short result, the early list's count and newest age) and names current's ver; current carries young and 12 lines per agent" % len(json.dumps(st)))
+    cvers = [json.loads(e["body"])["doc"].get("ver") for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "current"]
+    check(len(cvers) == 4 and st.get("nver") == cvers[1] and st.get("nver") != st.get("ver"),
+          "status names nver, the version of current whose early list or pick changed last (%s of %s): the page reads current only when that changes, not at"
+          " every 30-second write of the agents' lines" % (st.get("nver"), cvers))
     lg = rest.log[n0:]
     check(lg and all(e["apikey"] == APP_SECRET and e["auth"] is None and "Mozilla" not in e["ua"] for e in lg) and all(APP_SECRET not in e["q"] for e in lg)
           and all("resolution=merge-duplicates" in e["prefer"] for e in lg if e["m"] == "POST"),
@@ -1841,6 +1972,28 @@ def app_tests(check, mock, url):
     check(out == [False, False] and APP_SECRET not in p.stdout + p.stderr and "bad apikey ***" in p.stderr and p.stderr.count("app: live store: writing the row status failed") == 1
           and out2 == [False, None] and "HTTP 540" in p2.stderr and "paused" in p2.stderr,
           "a failing store never raises: an error that echoes the key prints it blanked, once; a paused project (540) says so")
+    # a store address that redirects elsewhere: no redirect is followed, so the other address never sees the secret key
+    other = []
+
+    class Oth(BaseHTTPRequestHandler):
+        def _go(self):
+            other.append(dict(self.headers))
+            self.send_response(200); self.send_header("Content-Length", "2"); self.end_headers(); self.wfile.write(b"[]")
+        do_GET = do_POST = _go
+
+        def log_message(self, *a):
+            pass
+    osrv = ThreadingHTTPServer(("127.0.0.1", 0), Oth)
+    threading.Thread(target=osrv.serve_forever, daemon=True).start()
+    rest.mode = "redirect:http://127.0.0.1:%d" % osrv.server_address[1]
+    p, out = drive("import app\nerrs = []\nfor m in ('GET', 'POST'):\n    try:\n        app.call(m, 'live?select=id', {'id': 'x'} if m == 'POST' else None)\n"
+                   "        errs.append(None)\n    except app.StoreError as e:\n        errs.append(str(e))\nprint(json.dumps([errs, app.sink({'t': 11, 'live': True, 'agents': []})]))", env_app)
+    rest.mode = "ok"
+    osrv.shutdown()
+    seen_out.append(p.stdout + p.stderr)
+    check(out and len(out[0]) == 2 and all(e and "HTTP 302" in e and "redirect, not followed" in e for e in out[0]) and out[1] is False and not other,
+          "a store address that answers with a redirect: the request ends there (%s), the other address gets no request and so never the secret key (%d)" % (
+              (out or [[None]])[0][0], len(other)))
 
     rest.mode = "dribble"
     code = ("import app, threading\nt0 = time.time()\nerr = None\ntry:\n    app.call('GET', 'live?select=id')\nexcept app.StoreError as e:\n    err = str(e)\nt1 = time.time() - t0\n"
@@ -1869,7 +2022,19 @@ def app_tests(check, mock, url):
               and "resolution=ignore-duplicates" in posts[0]["prefer"] and "made the VAPID key pair" in p.stderr and "made" not in p2.stderr
               and priv not in p.stdout + p.stderr + p2.stdout + p2.stderr,
               "VAPID: the pair is made on first use (private key in app_secret, public key in app_config), reused by the next run, never printed")
+        kept_secret, kept_config = dict(rest.secret), dict(rest.config)
+        rest.secret.clear()
+        rest.mode = "echobody"
+        n0 = len(rest.log)
+        p, out = drive("import app\nprint(json.dumps(app.prepare()))", env_app)
+        rest.mode = "ok"
+        seen_out.append(p.stdout + p.stderr)
+        sent_keys = [json.loads(e["body"]).get("value") for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/app_secret" and e["body"]]
+        rest.secret.clear(); rest.secret.update(kept_secret); rest.config.clear(); rest.config.update(kept_config)
+        check(out is None and sent_keys and len(sent_keys[0] or "") == 43 and sent_keys[0] not in p.stdout + p.stderr and "could not store" in p.stderr and "***" in p.stderr,
+              "VAPID: a store error that repeats what it was sent prints the newly made private key blanked (it is hidden from before it is sent, not only once stored)")
     else:
+        SKIPS.append("VAPID and push (no cryptography)")
         print("  SKIP VAPID and push checks: cryptography is not installed here (pywebpush brings it on the runner)")
 
     # 4. push: the right JSON to the right subscriptions, gone ones deleted, settings respected, a rate guard
@@ -2013,6 +2178,31 @@ def app_tests(check, mock, url):
                    and ("got no answer within" in p.stderr or "notification failed (net " in p.stderr))
         check(ok_, "a push service that never answers holds up its own push only: the others go out beside it and the notification ends within its %s s budget (%.1f s)%s" % (
                   (out or {}).get("budget"), took, "" if ok_ else " %s %s %s" % (out, got, p.stderr[-400:])))
+        # the pushes' own time starts once the keys and the subscriptions are read: a slow store while the keys are made does not use it up
+        rest.subs.clear()
+        s_ = sub("bud")
+        rest.subs[s_["endpoint"]] = {"endpoint": s_["endpoint"], "sub": s_, "prefs": {"young": True, "pick": True}}
+        kept_secret, kept_config = dict(rest.secret), dict(rest.config)
+        rest.secret.clear(); rest.config.clear()
+        rest.mode = "slow1.2"
+        g0 = len(sink.got)
+        t_ = time.time()
+        p, out = drive("import app\napp.NOTIFY_BUDGET = 4\nprint(json.dumps(app.notify_young({'state': 'listed', 'coins': [{'sym': 'A1', 'ageMin': 2}]})))", env_app)
+        took = time.time() - t_
+        rest.mode = "ok"
+        rest.secret.clear(); rest.secret.update(kept_secret); rest.config.clear(); rest.config.update(kept_config)
+        seen_out.append(p.stdout + p.stderr)
+        check(out and out.get("sent") == 1 and [g["name"] for g in sink.got[g0:]] == ["bud"] and took > 6 and "no answer" not in p.stderr and "not tried" not in p.stderr,
+              "a store that takes 1.2 s a request while the VAPID keys are made (%.1f s in all): the push still goes out, its 4 s start after the reads (%s)" % (took, out))
+        # failures are said once per kind and kind of failure: a pick failing as the new coins one did is said too
+        rest.subs.clear()
+        s_ = sub("dup")
+        rest.subs[s_["endpoint"]] = {"endpoint": s_["endpoint"], "sub": s_, "prefs": {"young": True, "pick": True}}
+        sink.codes["dup"] = 400
+        p, out = drive("import app\nprint(json.dumps([app.notify_young({'state': 'listed', 'coins': [{'sym': 'A1'}]}), app.notify_pick({'t': 1, 'picks': [{'sym': 'P1'}]})]))", env_app)
+        seen_out.append(p.stdout + p.stderr)
+        check(out and [o_.get("failed") for o_ in out] == [1, 1] and "a young notification failed (config 400)" in p.stderr and "a pick notification failed (config 400)" in p.stderr,
+              "a failure is said once per notification kind: the pick's 400 after the new coins' 400 is printed too")
         rest.subs.clear()
         rest.subs.update(kept)
 
@@ -2025,15 +2215,24 @@ def app_tests(check, mock, url):
     seen_out.append(r.stdout + r.stderr)
     lw = [e for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live"]
     sts = [(e["t"], json.loads(e["body"])["doc"]) for e in lw if json.loads(e["body"])["id"] == "status"]
-    gaps = [round(b[0] - a[0], 1) for a, b in zip(sts, sts[1:-1])]
+    # a write that carries a new early list goes out at once (the kick: right after a current with a changed list); the others are 5 s apart
+    kicked, prev_y = set(), None
+    for i_, e in enumerate(lw):
+        j_ = json.loads(e["body"])
+        if j_["id"] == "current":
+            ny = json.dumps(j_["doc"].get("young"), sort_keys=True)
+            if ny != prev_y and i_ + 1 < len(lw):
+                kicked.add(lw[i_ + 1]["t"])
+            prev_y = ny
+    gaps = [round(b[0] - a[0], 1) for a, b in zip(sts, sts[1:-1]) if b[0] not in kicked]
     last = sts[-1][1] if sts else {}
     curd = (rest.live.get("current") or {}).get("doc") or {}
     off = json.load(open(os.path.join(d1, "db", "memebot", "office.json"), encoding="utf-8")) if os.path.exists(os.path.join(d1, "db", "memebot", "office.json")) else {}
     check(r.returncode == 0 and "live view: the app's live store gets it every 5 s" in r.stderr and len(sts) >= 2 and sts[0][0] - t_ < 6 and all(g >= 4.5 for g in gaps)
           and sts[0][1].get("live") is True and last.get("live") is False and last.get("t") == off.get("t") and {a["id"] for a in last.get("agents") or []} == {a["id"] for a in off.get("agents") or []}
           and curd.get("live") is False and curd.get("pick", {}).get("sym") and last.get("pick", {}).get("sym") == curd["pick"]["sym"],
-          "a live cycle writes status about every 5 s (first after %.1f s, gaps %s s), the last one live false with the office's agents; current carries the pick" % (
-              (sts[0][0] - t_) if sts else -1, gaps))
+          "a live cycle writes status about every 5 s (first after %.1f s, gaps %s s, and %d writes at once for a new early list), the last one live false with the"
+          " office's agents; current carries the pick" % ((sts[0][0] - t_) if sts else -1, gaps, len(kicked)))
     picks = [g for g in sink.got[g0:] if '"tag":"pick"' in g["data"]]
     rec_doc = json.load(open(os.path.join(d1, "db", "memebot", "recommend.json"), encoding="utf-8")) if os.path.exists(os.path.join(d1, "db", "memebot", "recommend.json")) else {}
     sym = ((rec_doc.get("picks") or [{}])[0]).get("sym")
@@ -2062,6 +2261,92 @@ def app_tests(check, mock, url):
           and any((s.get("young") or {}).get("n") == 2 for s in stw) and ((rest.live.get("current") or {}).get("doc") or {}).get("young", {}).get("rc") == "done",
           "hooks: live_put('young', doc) reaches both rows within seconds, its first listing sends one 'new coins' notification (a second version and "
           "young_published again send none); the end waits for a hung store %.1f s, not more" % (out or {}).get("took", -1))
+    # 5a. the early list's way to the app: the file watcher has a thread of its own (a hung git push never holds up the app's copy), the app's
+    # rows take a new list at once (the kick), the "new coins" notification waits for them, and the end cuts a slow write short
+    import socket as so_
+    hang = so_.socket()
+    hang.bind(("127.0.0.1", 0))
+    hang.listen(16)
+    held_conns = []
+
+    def accept_all():
+        try:
+            while True:
+                held_conns.append(hang.accept())
+        except OSError:
+            pass
+    threading.Thread(target=accept_all, daemon=True).start()
+    early_code = ("import bot, app\nd, remote = %r, %r\nos.makedirs(d, exist_ok=True)\nbot.OFFICE = bot.Office(d, 4343, '2h'); bot.OFFICE.begin('scouts')\n"
+                  "bot.EARLY.update(t=4343, doc=None, sig=None)\napp.prepare = lambda: None\n"
+                  "def w(doc):\n    json.dump(doc, open(d + '/young_early.json.tmp', 'w'))\n    os.replace(d + '/young_early.json.tmp', d + '/young_early.json')\n"
+                  "live = bot.Live(d, remote, app)\ntime.sleep(1.5)\n"
+                  "y = {'v': 1, 't': 4343, 'state': 'listed', 'rcState': 'pending', 'coins': [{'addr': 'A' * 44, 'sym': 'HANG1', 'ageMin': 4}]}\n"
+                  "w(y); t1 = time.time(); time.sleep(4)\nw(dict(y, rcState='done')); t2 = time.time(); time.sleep(4)\n"
+                  "for t in list(bot.APP_JOBS): t.join(15)\nlive.finish(time.time() + 2)\nprint(json.dumps({'t1': t1, 't2': t2}))\n")
+    n0, g0 = len(rest.log), len(sink.got)
+    p, out = drive(early_code % (os.path.join(tmp, "hang"), "http://127.0.0.1:%d/live.git" % hang.getsockname()[1]), env_app)
+    seen_out.append(p.stdout + p.stderr)
+    curw = [(e["t"], (json.loads(e["body"])["doc"].get("young") or {}).get("rcState")) for e in rest.log[n0:]
+            if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "current"]
+    lag1 = min([t_ for t_, rs in curw if rs == "pending"] or [1e12]) - (out or {}).get("t1", 0)
+    lag2 = min([t_ for t_, rs in curw if rs == "done"] or [1e12]) - (out or {}).get("t2", 0)
+    check(out and 0 <= lag1 < 3 and 0 <= lag2 < 3 and len(held_conns) >= 1,
+          "a git push that hangs (a remote that never answers) holds up neither the early list's watcher nor the app's rows: both versions reach the row current"
+          " %.1f s and %.1f s after the file was written" % (lag1, lag2))
+    hang.close()
+    bare_n = tempfile.mkdtemp(prefix="memebot-app-bare-n-")
+    subprocess.run(["git", "init", "-q", "--bare", bare_n], check=True)
+    rest.mode = "slowpost1.5"
+    n0, g0 = len(rest.log), len(sink.got)
+    p, out = drive(early_code % (os.path.join(tmp, "order"), bare_n), env_app)
+    rest.mode = "ok"
+    seen_out.append(p.stdout + p.stderr)
+    cur_y = min([e["t"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "current"
+                 and (json.loads(e["body"])["doc"].get("young") or {}).get("coins")] or [1e12])
+    ys_n = [g for g in sink.got[g0:] if '"tag":"young"' in g["data"] and g["name"] == "both"]
+    lj_n = git_live(bare_n)
+    check(out and len(ys_n) == 1 and ys_n[0]["t"] >= cur_y and (lj_n.get("young") or {}).get("coins"),
+          "the new coins notification goes out once the app's own row current has the list (%.1f s after it), not when the faster git push has it: a tap finds"
+          " the list in the app" % ((ys_n[0]["t"] - cur_y) if ys_n and cur_y < 1e12 else -1))
+    shutil.rmtree(bare_n, ignore_errors=True)
+    rest.mode = "slow3.5"
+    n0 = len(rest.log)
+    p, out = drive("import bot, app\nd = %r\nos.makedirs(d, exist_ok=True)\nbot.OFFICE = bot.Office(d, 5151, '2h'); bot.OFFICE.begin('scouts')\n" % os.path.join(tmp, "slowend") +
+                   "app.prepare = lambda: None\nlive = bot.Live(d, None, app)\ntime.sleep(4)\n"
+                   "t0 = time.time(); live.finish(time.time() + 20); took = time.time() - t0\nprint(json.dumps({'took': took}))\n", env_app)
+    rest.mode = "ok"
+    seen_out.append(p.stdout + p.stderr)
+    stl = [json.loads(e["body"])["doc"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "status"]
+    check(out and out["took"] < 10 and stl and stl[-1].get("live") is False and stl[-1].get("t") == 5151 and not any(x_.get("live") is True for x_ in stl)
+          and "failed" not in p.stderr,
+          "a store that takes 3.5 s a request: the end cuts the write on its way short (its status is never sent) and the last status (live false) is in"
+          " within %.1f s (without the cut about 16 s; a store at 8 s a request would miss the 20 s end window)" % (out or {}).get("took", -1))
+    # the child processes (fetch.py, memebot.py, radar.py, git) never get the secret key: only bot.py itself (app.py, imported) uses it
+    envd = os.path.join(tmp, "envchild")
+    os.makedirs(envd)
+    with open(os.path.join(envd, "envcheck.py"), "w") as f:
+        f.write("import os, json\nprint(json.dumps({'secret': 'SUPABASE_SECRET_KEY' in os.environ, 'url': 'SUPABASE_URL' in os.environ}))\n")
+    p, out = drive("import bot\nbot.HERE = %r\na = bot.run(['envcheck.py'], %r)\njob = bot.start_bg(['envcheck.py'], %r, agent='candles')\n"
+                   "b = bot.finish_bg(job)\nprint(json.dumps([a, b, sorted(bot.child_env(X='1'))]))\n" % (envd, envd, envd), env_app)
+    src_b = open(os.path.join(HERE, "bot.py"), encoding="utf-8").read()
+    n_sub = len(re.findall(r"subprocess\.(?:run|Popen)\(", src_b))
+    check(out and out[:2] == [{"secret": False, "url": True}] * 2 and "SUPABASE_SECRET_KEY" not in out[2] and "X" in out[2] and "dict(os.environ" not in src_b
+          and n_sub == 6 and src_b.count("env=child_env(") + src_b.count("env=env)") == n_sub,
+          "child processes get the environment without SUPABASE_SECRET_KEY (run, start_bg, git: all %d subprocess calls of bot.py use child_env)" % n_sub)
+    # a launch spotter that ends by itself without a list (it crashed at its start) leaves a failed list, so the early box does not wait all scan
+    p, out = drive("import bot, subprocess\nd = %r\nos.makedirs(d, exist_ok=True)\nbot.OFFICE = o = bot.Office(d, 6161, '2h')\n" % os.path.join(tmp, "spotcrash") +
+                   "bot.EARLY.update(t=6161, doc=None, sig=None)\nopen(d + '/x.out', 'w').close()\no.begin('spotter', bg=True)\n"
+                   "p = subprocess.Popen([sys.executable, '-c', 'raise SystemExit(1)'])\np.wait()\n"
+                   "job = {'p': p, 'out': open(d + '/x.out'), 'end': 1}\nbot.spot_done(o, job, 6161)\na = bot.EARLY['doc']\n"
+                   "bot.EARLY.update(t=6162, doc={'v': 1, 't': 6162, 'state': 'listed', 'coins': []}, sig=None)\nbot.spot_done(o, job, 6162)\nb = bot.EARLY['doc']['state']\n"
+                   "print(json.dumps([a, b, [x.get('status') for x in o.doc()['agents'] if x.get('id') == 'spotter']]))\n", base)
+    check(out and (out[0] or {}).get("state") == "failed" and (out[0] or {}).get("t") == 6161 and "stopped without a list (exit 1)" in (out[0] or {}).get("why", "")
+          and out[1] == "listed" and out[2] == ["failed"],
+          "a launch spotter that exits by itself without a list of this scan (a crash at its start) leaves a failed early list for both live views: the box says"
+          " why instead of waiting all scan (%s); a list already taken stays" % ((out or [{}])[0] or {}).get("why"))
+    check(src_b.count("APP_FIRST, APP_EVERY, APP_BEAT =") == 1 and src_b.count("YOUNG_SENT = {") == 1 and src_b.count("APP_JOBS = []") == 1,
+          "bot.py defines its live-view constants once (no merge leftover)")
+
     code = ("import bot\ny = {'v': 1, 't': 1, 'state': 'listed', 'coins': [{'sym': 'A'}]}\nok = bot.live_put('young', y)\n"
             "y['coins'].append({'sym': 'B'}); y['state'] = 'changed'\nsig, rec = bot.live_record(True)\n"
             "loop = {}; loop['me'] = loop\nbad = bot.live_put('x', loop)\n"
@@ -2074,7 +2359,7 @@ def app_tests(check, mock, url):
           "is left out, never written as a string (%s)" % (out if out is not None else p.stderr[-200:]))
 
     # 5b. the launch spotter's early list through both live views and the "new coins" notification (radar.py and app.py together)
-    cur_e, yf = {}, {}
+    cur_e, yf, nv_e = {}, {}, 0
     if has_crypto:
         de, bare_e = os.path.join(tmp, "early"), tempfile.mkdtemp(prefix="memebot-app-early-")
         subprocess.run(["git", "init", "-q", "--bare", bare_e], check=True)
@@ -2090,6 +2375,7 @@ def app_tests(check, mock, url):
         curs_e = [json.loads(e["body"])["doc"] for e in rest.log[n0:] if e["m"] == "POST" and e["p"] == "/rest/v1/live" and json.loads(e["body"])["id"] == "current"]
         addrs = [c["addr"] for c in yf.get("coins") or []]
         ys_e = [json.loads(g["data"]) for g in sink.got[g0:] if '"tag":"young"' in g["data"] and g["name"] == "both"]
+        nv_e = len({s_.get("nver") for s_ in sts_e if s_.get("nver") is not None})        # the reads of current a page makes during this scan
         first = next((c.get("young") for c in curs_e if isinstance(c.get("young"), dict) and c["young"].get("state") == "listed"), None) or {}
         n1 = len(first.get("coins") or [])
         newest = min([c["ageMin"] for c in first.get("coins") or [] if isinstance(c.get("ageMin"), int)] or [-1])
@@ -2116,7 +2402,10 @@ def app_tests(check, mock, url):
                                (jwt("service_role"), "https://abcref.supabase.co", False, "a JWT with the role service_role"),
                                (jwt("anon"), "https://abcref.supabase.co", False, "a legacy anon key"),
                                ("sb_publishable_OKkey_1234567890", "http://abcref.supabase.co", False, "SUPABASE_URL is not an address like https://<ref>.supabase.co"),
-                               ("sb_publishable_OKkey_1234567890", "", False, "SUPABASE_URL is missing")):
+                               ("sb_publishable_OKkey_1234567890", "", False, "SUPABASE_URL is missing"),
+                               ("sb_publishable_OKkey_1234567890" + APP_SECRET, "https://abcref.supabase.co", False, "it holds a SECRET key"),   # both keys pasted into one secret
+                               ("sb_publishable_OKkey_1234567890" + jwt("service_role").replace(".", ""), "https://abcref.supabase.co", False, "it holds a JWT besides the key"),
+                               ("sb_publishable_" + "k" * 70, "https://abcref.supabase.co", False, "longer than a publishable key")):
         shutil.rmtree(sd, ignore_errors=True)
         r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "site", "--dir", d1, "--out", sd, "--repo", "https://github.com/maxpandelakis-boop/Meme-Bot"], capture_output=True, text=True,
                            env=dict(base, SUPABASE_URL=u, SUPABASE_PUBLISHABLE_KEY=key, SUPABASE_SECRET_KEY=APP_SECRET))
@@ -2140,7 +2429,12 @@ def app_tests(check, mock, url):
     idx2 = open(os.path.join(sd, "index.html"), encoding="utf-8").read() if r.returncode == 0 else "data-sb-url="
     check('<html lang="en">' in idx2 and 'data-sb-url="' not in idx2 and "app live store off" in r.stderr and "app's live store stays off" not in r.stderr,
           "site without the Supabase variables: no live store in the page, nothing said about it but 'off'")
-    check(guard == [True] * 6, ("%s " % guard if not all(guard) else "") + "site: only a publishable key (sb_publishable_) goes into the page; a secret key, a service_role or anon JWT, an http address are refused and the log says why without the key")
+    import app as A_g
+    unit = [A_g.page_key_verdict(k_, secret=sec_)[0] for k_, sec_ in (("sb_publishable_abcdefgh_sb_secret_zzzzzzzz", ""), ("sb_publishable_abcdefghSECRETVALUE1", "SECRETVALUE1"),
+                                                                     ("sb_publishable_OKkey_1234567890", "SECRETVALUE1"), ("sb_publishable_" + "k" * 65, ""), ("sb_publishable_" + "k" * 66, ""))]
+    check(guard == [True] * 9 and unit == ["refused", "refused", "ok", "ok", "refused"],
+          ("%s %s " % (guard, unit) if not all(guard) else "") + "site: only a publishable key (sb_publishable_, at most 80 characters) goes into the page; a secret key, a service_role or anon JWT,"
+          " an http address are refused, and so is a publishable key with a secret key, the secret key's value or a JWT stuck to it; the log says why without the key")
     check(app_ok and man2.get("id") == "/other-repo/", "site: sw.js beside index.html, manifest id /Meme-Bot/ (the repository's folder), an opaque apple-touch-icon, no meta refresh, the app's script and style")
 
     # 6b. the installed app in Chromium: the live store feeds the office view and the early box on the New coins tab, the tab badge follows the list
@@ -2214,17 +2508,18 @@ console.log(JSON.stringify(o));
               and o.get("fallback") == ["supabase", "github", "supabase", "github", "supabase", "github", "github"],
               "the page's transport (node): the live store with an https address and a publishable key, else the GitHub poll; a 540 falls back at once, other "
               "failures (network, CORS: no status) after two in a row %s" % ({k: o.get(k) for k in ("transport", "fallback")} if "transport" in o else o))
-        # the free plan's 5 GB of egress a month, for a page left open and visible all day (25 minutes of each hour live): the status row every 4 s
-        # while live and every 30 s otherwise, and the row current each time its ver changes (at most every CURRENT_EVERY s while live, as sink
-        # writes it), both at the sizes this run wrote (current with a full early list of 20 coins), as JSON without compression
+        # the free plan's 5 GB of egress a month, for one page left open and visible all day with a scan live 41 minutes of every hour (scan.yml:
+        # a full scan takes 32 to 41): the status row every 4 s while live and every 30 s otherwise, and the row current each time status names a
+        # new nver (as often as this scan's run changed it, at least 6 times a scan), both at the sizes this run wrote, as JSON without compression
         st_b = max(2500, len(json.dumps([{"doc": (rest.live.get("status") or {}).get("doc") or {}}])))
         cur_b = max(12000, len(json.dumps([{"doc": cur_e}])) if cur_e else 21000)
-        st_gb = 30 * (24 * 25 * 60 / 4 + 24 * 35 * 60 / 30) * st_b / 1e9
-        cur_gb = 30 * (24 * 25 * 60 / A_.CURRENT_EVERY) * cur_b / 1e9
-        check(o.get("sbNext") == [4000, 8000, 16000, 30000, 30000, 30000, 30000, 60000, 120000] and st_gb + cur_gb < 2.5,
+        st_gb = 30 * (24 * 41 * 60 / 4 + 24 * 19 * 60 / 30) * st_b / 1e9
+        cur_gb = 30 * 24 * max(6, nv_e) * cur_b / 1e9
+        check(o.get("sbNext") == [4000, 8000, 16000, 30000, 30000, 30000, 30000, 60000, 120000] and st_gb + cur_gb < 2.0 and (nv_e <= 8 or not has_crypto),
               "the page polls the live store every 4 s only while a scan is live and fresh, every 30 s otherwise (a finished, stale or missing scan), longer after "
-              "failures: a page left open all day reads about %.1f GB a month, %.1f GB of status rows (%d bytes) and %.1f GB of the row current (%d bytes, read only"
-              " when its ver changes), inside the free plan's 5 GB %s" % (st_gb + cur_gb, st_gb, st_b, cur_gb, cur_b, o.get("sbNext")))
+              "failures: one page left open all day with a scan live 41 minutes an hour reads about %.1f GB a month, %.1f GB of status rows (%d bytes) and %.2f GB"
+              " of the row current (%d bytes, read %d times a scan: only when its early list or pick changed), inside the free plan's 5 GB %s" % (
+                  st_gb + cur_gb, st_gb, st_b, cur_gb, cur_b, nv_e, o.get("sbNext")))
         check(o.get("merge") == [2, "Pe", 1, 9, None, "P", None, 2, None],
               "the page's snapshot from the live store is the status row with current's early list and pick of the same scan (live.json's shape), none of an older scan %s" % o.get("merge"))
         check(o.get("installed") == [True, False, True, True, False, False]
@@ -2236,7 +2531,7 @@ console.log(JSON.stringify(o));
               and o.get("badge") == [3, 3, 3, 3, 3, 3, None, None, None, None, None, None, None, None],
               "the installed app (node): a subscription that exists with the permission granted stays On when only the quiet save at the start failed (a failed tap is "
               "the error); the New coins count from the list's coins or the status brief, on the tab bar only while the early box shows that list (listed, partial, "
-              "paused, limited, done, stopped), else the page's own count; the New pick note from the status row as soon as the notification, else current %s" % (
+              "paused, limited, done, stopped), else no badge at all; the New pick note from the status row as soon as the notification, else current %s" % (
                   {k: o.get(k) for k in ("count", "pick", "badge")}))
         with open(os.path.join(jd, "sw.js"), "w", encoding="utf-8") as f:
             f.write(r"""
@@ -2284,6 +2579,7 @@ var o={};
               and o.get("other") is None and o.get("otherPage") is None,
               "sw.js (node): a tap opens the app at the link or brings the open app forward and tells it the tab; the page comes from the network, offline the last copy marked as not current")
     else:
+        SKIPS.append("the page's decisions in node (no node)")
         print("  SKIP the page's decisions and sw.js in node: node not found")
 
     # 9a. links stay inside the website; the push library comes after the standard library; the pinned install; setup.sql's guards
@@ -2330,6 +2626,12 @@ var o={};
           and "\u2014" not in pj and "Add to Home Screen from Safari first" not in pj,
           "the installed app's texts and habits: neutral subscribe errors, the right advice when push is missing, the switches marked as for later while off, "
           "each tab keeps its scroll position, the subscription's own key compared, the live count only with the live list, no reload promise the app does not keep")
+    import report as R_h
+    check("A.hold=function(){return !!P.busy||cur==='account';}" in pj and "MemebotApp.hold()" in R_h.OFFICE_LIVE_JS and "&&!hold){" in R_h.OFFICE_LIVE_JS
+          and "baseCnt" not in pj and ".live .btn { margin-left:auto; display:inline-flex; align-items:center; min-height:44px;" in R_h.CSS
+          and "aria-label',NAMES[t]+(c?', '+c.textContent+' listed now':'')+(d?', a scan is running now':'')" in pj,
+          "the installed app is not reloaded under a tap: never while on Account or while the notifications card is at work (it reloads at the next answer"
+          " after); the New coins badge only with a scan's early list; Scan now 44 px tall; the tabs' badge and dot read out in words")
 
     # 9. supabase/setup.sql on PostgreSQL (MEMEBOT_PG=<host or socket folder>:<port>)
     pg = os.environ.get("MEMEBOT_PG")
@@ -2340,6 +2642,7 @@ var o={};
         check(r.returncode == 0 and "SQL ALL PASS" in r.stdout, "supabase/setup.sql on PostgreSQL: %d checks (anon reads live and app_config, uses only save_push_sub and drop_push_sub, "
               "never reads push_subs or app_secret, never writes live; idempotent; upgrades the first version) %s" % (n_ok, "" if r.returncode == 0 else r.stdout[-600:]))
     else:
+        SKIPS.append("setup.sql on PostgreSQL (no MEMEBOT_PG)")
         print("  SKIP supabase/setup.sql on PostgreSQL: set MEMEBOT_PG=<host or socket folder>:<port> to run supabase/test_setup.py")
     srv.shutdown()
     shutil.rmtree(tmp, ignore_errors=True)
@@ -3422,7 +3725,7 @@ console.log(JSON.stringify(o));
 
     shutil.rmtree(d, ignore_errors=True)
     srv.shutdown()
-    print("\n%d checks failed" % len(fails) if fails else "\nALL PASS")
+    print("\n%d checks failed" % len(fails) if fails else "\nALL PASS" + (" (%d check group%s skipped: %s)" % (len(SKIPS), "" if len(SKIPS) == 1 else "s", "; ".join(SKIPS)) if SKIPS else ""))
     sys.exit(1 if fails else 0)
 
 

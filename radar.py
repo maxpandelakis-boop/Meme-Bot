@@ -18,7 +18,9 @@ scored list is out:
   e. RugCheck  reports for the listed coins (EARLY_RC_S at most) -> the list again, re-ranked, with RugCheck's words.
   f. prev      the previous early list's prices now -> radar/prev.json for the record. The previous list is the record 45 to 90
                minutes old that is closest to an hour, so a scan that runs half an hour after another never fills the hour price.
-               A coin counts as gone only when DexScreener answered the request that asked about it and had no pair for it.
+               A coin counts as gone only when DexScreener answered the request that asked about it and had no pair for it, or a
+               DexScreener pair of it (a keyword search's) has no price; a stand-in row of a list (Jupiter, GeckoTerminal, GMGN, a
+               price-only row) without a price leaves it unknown.
 
 `radar.py check` runs after the trader: one DexScreener request (one try) prices the early list again (about minute 24) and the
 record db/memeearly/<run id>.json says which coins made the scored list and were paper-bought, and why the others did not.
@@ -203,13 +205,18 @@ def prev_doc(d, now):
     return best
 
 
+def standin(p):
+    """Whether a merged pair is only a list's stand-in row (Jupiter, GeckoTerminal, GMGN, or a price-only row), not DexScreener's pair data."""
+    return bool(p.get("px_only") or p.get("gt_only") or p.get("gm_only") or str(p.get("dexId") or "").lower() == "jupiter")
+
+
 def pick(ind, prev=()):
     """The addresses to ask DexScreener about, in this order, without repeats and without the ones a keyword search already priced in
     full (gather's own rule): the previous early list, pump.fun graduated, GeckoTerminal, pump.fun new and live, Jupiter's 1-hour lists,
     the DexScreener, RugCheck and LaunchLab lists, pump.fun's biggest. At most EARLY_MAX_ADDRS. Returns (addresses, full count)."""
     lists = M.load_lists(ind)
     best, _, _ = M.merge_pairs(ind)
-    full = {a for a, p in best.items() if not p.get("px_only") and p.get("dexId") != "jupiter" and not p.get("gt_only") and not p.get("gm_only")}
+    full = {a for a, p in best.items() if not standin(p)}
     pf, ptags = M.load_side(ind, "pf", M.PF_COLS)
     gt, _ = M.load_side(ind, "gt", M.GT_COLS)
     jup, jtags = M.load_side(ind, "jup", M.JUP_COLS)
@@ -413,8 +420,9 @@ def cmd_early(d, now, t0, horizon, mock):
                 px = M.num((p or {}).get("priceUsd"))
                 if p and px and px > 0:
                     pc[a] = {"px": px, "liq": M.num(p.get("liquidityUsd"))}
-                elif p is not None or a in answered:    # a pair with no price (a keyword search's too), or DexScreener answered for it with no pair:
-                    pc[a] = {"gone": True}              # gone; a coin it did not answer for and no search priced is unknown, not gone
+                elif (p is not None and not standin(p)) or a in answered:   # a DexScreener pair with no price (a keyword search's too), or
+                    pc[a] = {"gone": True}              # DexScreener answered for it with no pair: gone. A coin it did not answer for, known only
+                                                        # from a list's stand-in row (Jupiter, GeckoTerminal, GMGN, a price-only row), is unknown
             write_json(os.path.join(d, "radar", "prev.json"), {"id": prev.get("id"), "t": prev.get("t"), "at": at, "coins": pc})
             say("the early list of %s priced again: %d of %d still have a price, %d gone" % (
                 prev.get("id"), sum(1 for v in pc.values() if not v.get("gone")), len(prev_addrs), sum(1 for v in pc.values() if v.get("gone"))))

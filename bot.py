@@ -41,11 +41,13 @@ The iPhone app (app.py, supabase/setup.sql, README "iPhone app"): with SUPABASE_
 record also goes to the app's live store every 5 s while it changes (class AppFeed, beside the git pushes), the scan sends a push
 notification when the pick is made (app.notify_pick after the trader step) and when the early New launches list is first published
 (young_published), and bot.py site puts the store's address and publishable key (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) into the page.
-Without those variables nothing of it runs and nothing touches the network.
-The launch spotter's list reaches both live views through two hooks: the live view's watcher (Live.watch_early) checks each new
-young_early.json (early_doc) and hands it to live_put("young", doc), so live.json and the app's live store (row current, and its count
-and newest age in row status) carry it; the first push or write that carries a listed list calls young_published(doc), which sends the
-"new coins" notification once per cycle.
+Without those variables nothing of it runs and nothing touches the network (and without MEMEBOT_LIVE=1 only the pick notification goes
+out: no live store, no "new coins" notification). Child processes (fetch.py, memebot.py, radar.py, git) never get SUPABASE_SECRET_KEY.
+The launch spotter's list reaches both live views through two hooks: the live view's watcher (Live.watch_early, on a thread of its
+own) checks each new young_early.json (early_doc) and hands it to live_put("young", doc), so live.json and the app's live store (row
+current, and its count and newest age in row status) carry it, both at once; the first write of the app's live store that carries a
+listed list (the first git push when there is no live store) calls young_published(doc), which sends the "new coins" notification
+once per cycle.
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, datetime as dt
 
@@ -209,6 +211,16 @@ EARLY_NUMS = ("born", "minted", "ageMin", "px", "mc", "liq", "vol1", "vol", "chg
 EARLY_TOP = ("at", "rcAt", "minLiq", "maxAgeMin", "asked", "requests", "dsWaits", "pairs", "universe", "n")
 
 
+CHILD_HIDE = ("SUPABASE_SECRET_KEY",)    # only bot.py itself uses it (app.py is imported, never run as a child): no child process gets it
+
+
+def child_env(**extra):
+    """The environment for a child process (fetch.py, memebot.py, radar.py, git): this process's without CHILD_HIDE, plus extra."""
+    env = {k: v for k, v in os.environ.items() if k not in CHILD_HIDE}
+    env.update(extra)
+    return env
+
+
 def early_num(v):
     """A finite number, else None (bools are not numbers here)."""
     if isinstance(v, bool) or not isinstance(v, (int, float)):
@@ -252,14 +264,6 @@ def early_doc(path, now):
         return doc
     except Exception:
         return None
-
-
-# and the most one push may take (also the most the end of a cycle waits for the last writes and notifications)
-APP_FIRST, APP_EVERY, APP_BEAT = 2, 5, 30   # the app's live store (s): the first write after the start, the least gap between two writes of a
-# changed record, a heartbeat once the last good write is this old (failed writes back off: APP_EVERY doubled per failure, at most 80 s)
-LIVE_EXTRA, LIVE_EXTRA_LOCK, LIVE_EXTRA_REV = {}, threading.Lock(), [0]   # extra keys of this cycle's live record (live_put)
-APP_JOBS = []         # this cycle's notifications on their way (app_bg): the end of the cycle waits for them, LIVE_WAIT s at most
-YOUNG_SENT = {"t": None}   # the cycle whose "new coins" notification went out (young_published sends one per cycle)
 
 
 def live_put(key, value):
@@ -379,7 +383,8 @@ def read_json(path):
 
 def young_published(doc):
     """HOOK for the launch spotter: called once the early New launches list of this cycle is first published (the doc both live views
-    carry as "young"): by the live view's git push and by AppFeed after their first push or write that carries a listed list. It sends
+    carry as "young"): by AppFeed after its first write that carries a listed list (the app reads its own rows, so a tap on the
+    notification finds the list there), and by the live view's git push only when there is no AppFeed. It sends
     the "new coins" push notification (app.notify_young) beside the cycle, once per cycle (later versions of the list, e.g. with
     RugCheck, send nothing), and only for a list with coins (state "listed" when the doc names one) of this cycle. It never raises;
     without the app's live store it does nothing."""
@@ -415,7 +420,7 @@ def redact(s):
 
 def origin_url():
     """This code folder's git origin ('' when there is none): where sync and the live view push by default."""
-    p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    p = subprocess.run(["git", "-C", HERE, "remote", "get-url", "origin"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=child_env())
     return p.stdout.strip() if p.returncode == 0 else ""
 
 
@@ -424,7 +429,8 @@ class Live:
     It force-pushes a branch "live" that holds one commit with one file, live.json (office.json's keys plus "live": true, false on the
     last one, and "updated", ms): about 10 s after the start, then every 45 s when the record changed, a heartbeat with a fresh "updated"
     when the last good push is a minute old (a step can go minutes without a new line), and once more at the end. It pushes from a git
-    folder of its own (<dir>/live.git, made fresh each cycle) and only watches: the pushes run on a daemon thread, a push is killed
+    folder of its own (<dir>/live.git, made fresh each cycle) and only watches: the pushes run on a daemon thread (the early list's file
+    watcher on another, so a push that hangs never holds up the list on its way to the app's live store), a push is killed
     after 20 s, the end cuts a push still running short and waits at most 20 s for the last one, the first error is printed (never
     filed in the record) and every error is swallowed. The record is live_record's (the office record plus the extras of live_put).
     With the app's live store set up (app_mod) an AppFeed writes the same record there on a thread of its own; without a remote the
@@ -440,8 +446,11 @@ class Live:
         self.feed = AppFeed(app) if app else None                    # the app's live store, on a thread of its own
         if remote:
             shutil.rmtree(self.git_dir, ignore_errors=True)
-        self.thread = threading.Thread(target=self.loop, daemon=True)   # it watches the early list for both live views; it pushes only with a remote
-        self.thread.start()
+        self.watcher = threading.Thread(target=self.watch, daemon=True)  # the early list for both live views, on a thread of its own: a git push
+        self.watcher.start()                                             # that hangs for 20 s never holds up the app's copy of the list
+        self.thread = threading.Thread(target=self.loop, daemon=True)    # the git pushes, only with a remote
+        if remote:
+            self.thread.start()
 
     @staticmethod
     def start(d, remote=None):
@@ -502,10 +511,16 @@ class Live:
                 EARLY["rev"] += 1
                 live_put("young", doc)
 
-    def loop(self):
+    def watch(self):
         while not self.stop.wait(min(1.0, LIVE_EVERY / 4.0)):
             try:
                 self.watch_early()
+            except Exception:
+                pass
+
+    def loop(self):
+        while not self.stop.wait(min(1.0, LIVE_EVERY / 4.0)):
+            try:
                 if self.remote and self.due(time.time()):
                     self.push(True)
             except Exception:
@@ -528,7 +543,7 @@ class Live:
             if cut_ok and self.cut.is_set():
                 raise RuntimeError("cut short by the end of the cycle")
             p = subprocess.Popen(["git", "--git-dir", self.git_dir] + list(a), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 env=dict(os.environ, GIT_TERMINAL_PROMPT="0"), start_new_session=True)
+                                 env=child_env(GIT_TERMINAL_PROMPT="0"), start_new_session=True)
             self.proc = p
         try:
             out, err = p.communicate(stdin, timeout=max(0.1, until - time.time()))
@@ -570,8 +585,8 @@ class Live:
                 commit = self.git(until, "-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "commit-tree", tree, "-m", "live office " + ("at work" if live else "done"), cut_ok=live)
                 self.git(until, "push", "-q", "--force", self.remote, commit + ":refs/heads/live", cut_ok=live)
                 self.pushed, self.ok = rev, t
-                if isinstance(doc.get("young"), dict):
-                    young_published(doc["young"])     # the first listed early list is out: the "new coins" notification (once per cycle)
+                if isinstance(doc.get("young"), dict) and not self.feed:
+                    young_published(doc["young"])     # (with the app's live store, its AppFeed sends it once the app's own rows carry the list)
             except Exception as e:
                 if live and self.cut.is_set():       # cut short so the last snapshot goes out at once: not an error
                     return
@@ -610,20 +625,28 @@ class Live:
 class AppFeed:
     """The live record (live_record) written to the app's live store (app.sink: Supabase rows status and current) while a cycle runs, on a
     daemon thread of its own beside the git pushes of Live: about APP_FIRST s after the start, then every APP_EVERY s while the record
-    changes, a heartbeat once the last good write is APP_BEAT s old, and the last one ("live": false) at the end (finish). After its first
-    write it makes sure the VAPID keys exist (app.prepare: the app can subscribe before the first notification), and after a write of a
-    record that first carries a listed early New launches list it sends the "new coins" notification (young_published). app.sink cuts
-    each request off after a few seconds, prints its first failure and never raises; app.prepare runs on a daemon thread of its own."""
+    changes, a new early list at once, a heartbeat once the last good write is APP_BEAT s old, and the last one ("live": false) at the
+    end (finish, which cuts a write still on its way short). After its first write it makes sure the VAPID keys exist (app.prepare: the
+    app can subscribe before the first notification), and after a write of a record that first carries a listed early New launches
+    list it sends the "new coins" notification (young_published). app.sink cuts each request off after a few seconds, prints its first
+    failure and never raises; app.prepare runs on a daemon thread of its own."""
 
     def __init__(self, A):
         self.A, self.stop, self.lock = A, threading.Event(), threading.Lock()
-        self.t0, self.tried, self.ok, self.sent, self.fails = time.time(), None, None, None, 0
+        self.t0, self.tried, self.ok, self.sent, self.fails, self.early_sent = time.time(), None, None, None, 0, None
         self.thread = threading.Thread(target=self.loop, daemon=True)
         self.thread.start()
 
     def due(self, now):
+        """Whether the loop writes now: the first write APP_FIRST s after the start; a new early list at once (the kick: the "new coins"
+        notification waits for this write, so a tap finds the list in the app); then a changed record every APP_EVERY s, an unchanged one
+        once the last good write is APP_BEAT s old, longer apart after failures."""
         if not OFFICE.d:
             return False
+        with EARLY_LOCK:
+            kick = EARLY["doc"] is not None and EARLY["rev"] != self.early_sent
+        if kick and self.fails == 0:
+            return True
         if self.tried is None:
             return now - self.t0 >= APP_FIRST
         if now - self.tried < min(80, APP_EVERY * 2 ** min(self.fails, 4)):
@@ -644,6 +667,8 @@ class AppFeed:
 
     def write(self, live):
         with self.lock:
+            with EARLY_LOCK:
+                self.early_sent = EARLY["rev"]
             sig, doc = live_record(live)
             t = self.tried = time.time()
             ok = self.A.sink(doc)
@@ -655,8 +680,13 @@ class AppFeed:
             young_published(doc["young"])
 
     def finish(self):
-        """The last write ("live": false) on a thread of its own (Live.finish waits for it); the loop stops first."""
+        """The last write ("live": false) on a thread of its own (Live.finish waits for it); the loop stops first, and a write still on its
+        way is cut off (app.end_sink), so a slow store never holds the last one up past the end's LIVE_WAIT s."""
         self.stop.set()
+        try:
+            self.A.end_sink()
+        except Exception:
+            pass
         t = threading.Thread(target=self.write, args=(False,), daemon=True)
         t.start()
         return t
@@ -669,7 +699,7 @@ def run(args, d, now=None, expect_json=True, soft=False, limit=None):
     cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
     if now and args[0] in ("memebot.py", "radar.py"):
         cmd += ["--now", str(now)]
-    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    env = child_env(PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     # the child's progress lines (stderr) are shown as they happen; its result (stdout) is collected
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
     cut = []
@@ -723,7 +753,7 @@ def start_bg(args, d, now=None, agent=None, on_exit=None):
         cmd += ["--now", str(now)]
     base = os.path.join(d, "bg-" + re.sub(r"[^a-z0-9]+", "-", " ".join(args[:2]).lower()).strip("-"))
     out, err = open(base + ".out", "w", encoding="utf-8"), open(base + ".err", "w", encoding="utf-8")
-    p = subprocess.Popen(cmd, stdout=out, stderr=err, text=True, encoding="utf-8", errors="replace", env=dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
+    p = subprocess.Popen(cmd, stdout=out, stderr=err, text=True, encoding="utf-8", errors="replace", env=child_env(PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
     job = {"p": p, "out": out, "err": err, "t0": time.time(), "name": " ".join(args[:2]), "agent": agent, "filed": 0, "lock": threading.Lock(), "stop": threading.Event()}
     BG_JOBS.append(job)
     OFFICE.begin(agent, bg=True)
@@ -1137,7 +1167,9 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
 
 
 def spot_done(o, job, now):
-    """The launch spotter's result phrase for the Agent office, when its process exits (called by its waiter thread)."""
+    """The launch spotter's result phrase for the Agent office, when its process exits (called by its waiter thread). A spotter that ended
+    by itself without a list of this cycle (none written, or one early_doc refuses) leaves a "failed" list for both live views, so the
+    early box says it instead of waiting for the rest of the scan."""
     try:
         with open(job["out"].name, encoding="utf-8", errors="replace") as f:
             j = json.loads(f.read() or "null")
@@ -1148,6 +1180,15 @@ def spot_done(o, job, now):
         o.done("spotter", job["killed"], "failed", end=job.get("end"))
         return
     j = j if isinstance(j, dict) else {}
+    try:                           # it ended without a list of this cycle (it crashed at its start): the early box says so, not "waiting"
+        path = os.path.join(o.d or "", "young_early.json")
+        with EARLY_LOCK:
+            empty = EARLY["doc"] is None
+        if empty and (not os.path.exists(path) or early_doc(path, now) is None):
+            early_set(now, {"v": 1, "t": now, "state": "failed", "coins": [],
+                            "why": "the launch spotter stopped without a list (%s)" % (str(j.get("why") or "")[:60] or "exit %s" % rc)})
+    except Exception:
+        pass
     st, mins = j.get("state"), ((j["at"] - now) / 60000.0) if isinstance(j.get("at"), (int, float)) else None
     calls = "%d DexScreener call%s" % (j.get("requests") or 0, "" if j.get("requests") == 1 else "s")
     if st == "listed":
@@ -1202,7 +1243,7 @@ def sync(d, remote=None, branch="results"):
     docs and pushes them to <remote> on <branch>; the default remote is this code repository's origin."""
     mb = os.path.abspath(d)
     os.makedirs(mb, exist_ok=True)
-    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    env = child_env(GIT_TERMINAL_PROMPT="0")
 
     def git(*a, check=False):
         p = subprocess.run(["git", "-C", mb] + list(a), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
@@ -1488,7 +1529,7 @@ def icon_png(n, opaque=False):
 def self_update():
     """git pull in the code folder; True when the code changed (the loop then restarts itself with the new code)."""
     git = lambda *x: subprocess.run(["git", "-C", HERE] + list(x), capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                    env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+                                    env=child_env(GIT_TERMINAL_PROMPT="0"))
     before = git("rev-parse", "HEAD").stdout.strip()
     if not before:
         return False

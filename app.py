@@ -4,25 +4,30 @@ notification suggests a real trade.
 
 The live store is a free Supabase project (one-time setup: supabase/setup.sql). With SUPABASE_URL and SUPABASE_SECRET_KEY set (two
 GitHub Actions secrets) the scan writes two rows of table live while it runs (bot.py, class AppFeed, calls sink):
-  status   small: t, live, updated, ver (the version of current), per agent its id, status, short result and last line, and the
-           early New launches list's count and newest age; every 5 s while it changes, at least every 30 s
+  status   small: t, live, updated, ver (the version of current), nver (the version of current whose early list or pick changed
+           last), per agent its id, status, short result and last line, and the early New launches list's count and newest age;
+           every 5 s while it changes, at least every 30 s
   current  the whole live record (the office record plus "young" and "pick" when present, each agent's last 12 lines); when it
            changed, at most every 30 s, at once when the early list or the pick changed, and at the end
-The page polls status while it is visible, every 4 s while a scan is live and every 30 s otherwise, and fetches current only when ver
-changes (report.py, OFFICE_LIVE_JS). Each request to the store is cut off after CALL_TOTAL s in all; the writes go one after another.
+The page polls status while it is visible (in a browser tab only on the New launches and Agent office tabs, one poll for all its tabs),
+every 4 s while a scan is live and every 30 s otherwise, and fetches current only when nver (the version of current whose early list
+or pick changed) changes (report.py, OFFICE_LIVE_JS). Each request to the store is cut off after CALL_TOTAL s in all; the writes go
+one after another.
 
 Push notifications go to the app installed from Safari (iOS 16.4 or newer). The VAPID key pair is made on first use and kept in the
 store: the private key in app_secret (the secret key only), the public key in app_config (the page subscribes with it). The page saves
 its subscription and its two settings (new coins, the pick) with the function save_push_sub. notify reads push_subs with the secret key
 and sends one Declarative Web Push message ({"web_push": 8030, "notification": {title, body, navigate}}: iOS 18.4 and newer shows it
 by itself, sw.js shows it on older systems) through pywebpush when it can be imported (else nothing is sent and the log says so once),
-SEND_THREADS at a time, NOTIFY_BUDGET s at most. A subscription the push service calls gone (404 or 410) is deleted, and so is one
-whose keys are no keys (anyone with the publishable key can save such a row): no request, no retry, no pause. A row a push service
-accepted a notification for is marked delivered (the table's size cap keeps those first); a row whose own push host gives no answer
-at all is not tried again and is deleted after NET_FAILS such notifications in a row; any other error keeps the row.
+SEND_THREADS at a time, NOTIFY_BUDGET s at most for the pushes (counted once the subscriptions are read). A subscription the push
+service calls gone (404 or 410) is deleted, and so is one whose keys are no keys (anyone with the publishable key can save such a
+row): no request, no retry, no pause. A row a push service accepted a notification for is marked delivered (the table's size cap
+keeps those first); a row whose own push host gives no answer at all is not tried again and is deleted after NET_FAILS such
+notifications in a row; any other error keeps the row.
 
-The secret key travels only in the apikey header of requests to SUPABASE_URL. No key is ever printed, written to a file or put in the
-page; every message this module prints passes through clean(), which blanks both keys.
+The secret key travels only in the apikey header of requests to SUPABASE_URL, and no redirect is followed (it would carry the header
+elsewhere). No key is ever printed, written to a file or put in the page; every message this module prints passes through clean(),
+which blanks both keys (a newly made VAPID private key from before it is sent).
 
 Without SUPABASE_URL and SUPABASE_SECRET_KEY nothing here touches the network. The module imports only the standard library;
 pywebpush (and cryptography, which it brings) are imported when a push or the VAPID keys need them, also from MEMEBOT_PUSH_LIB (a
@@ -67,7 +72,8 @@ class StoreError(Exception):
 _sink_lock = threading.Lock()     # the writes of the live rows, one after another (a write never overtakes an older one)
 _vapid_lock = threading.Lock()    # making or reading the VAPID keys
 _rate_lock = threading.Lock()     # the rate guard of the notifications
-_state = {"t": None, "cur_sig": None, "cur_at": 0.0, "ver": None, "news_sig": None}
+_state = {"t": None, "cur_sig": None, "cur_at": 0.0, "ver": None, "nver": None, "news_sig": None, "ending": False}
+_sink_on = []                     # the cut-off switch of the sink's request on its way (end_sink)
 _said = set()
 _last_push = {}
 _vapid = {}
@@ -94,9 +100,10 @@ def enabled():
 
 
 def clean(s):
-    """s without the secret key or the VAPID private key in it (every message of this module goes through it)."""
+    """s without the secret key or the VAPID private key in it (every message of this module goes through it): the stored one, and a
+    newly made one from before it is sent (a store's error message may repeat what it was sent)."""
     s = str(s)
-    for k in (_env("SUPABASE_SECRET_KEY"), _vapid.get("raw")):
+    for k in (_env("SUPABASE_SECRET_KEY"), _vapid.get("raw"), _vapid.get("pending")):
         if k and len(k) >= 8:
             s = s.replace(k, "***")
     return re.sub(r"sb_secret_[A-Za-z0-9_-]+", "sb_secret_***", s)
@@ -151,10 +158,11 @@ class _Cut:
     a DNS lookup never goes out late, after a newer write)."""
 
     def __init__(self):
-        self.cancel, self.conns = False, []
+        self.cancel, self.conns, self.done = False, [], threading.Event()    # done: the request ended, or it was cut off
 
     def shut(self):
         self.cancel = True
+        self.done.set()
         for c in list(self.conns):
             s = getattr(c, "sock", None)
             if s is not None:
@@ -165,7 +173,8 @@ class _Cut:
 
 
 def _opener(cut):
-    """urllib's opener (proxies from the environment as usual) whose connections report to cut."""
+    """urllib's opener (proxies from the environment as usual) whose connections report to cut. It follows no redirect: a 3xx answer
+    is a StoreError, so the apikey header never goes to an address other than SUPABASE_URL."""
     def watched(base):
         class C(base):
             def connect(self):
@@ -186,13 +195,18 @@ def _opener(cut):
     class HS(urllib.request.HTTPSHandler):
         def https_open(self, req):
             return self.do_open(tls, req, context=self._context)
-    return urllib.request.build_opener(H, HS)
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None          # never followed (it would carry the secret key to another address): the 3xx is an HTTPError
+    return urllib.request.build_opener(H, HS, NoRedirect)
 
 
-def call(method, path, body=None, prefer=None, timeout=TIMEOUT, total=CALL_TOTAL):
+def call(method, path, body=None, prefer=None, timeout=TIMEOUT, total=CALL_TOTAL, track=None):
     """One request to the live store's REST API with the secret key in the apikey header (nothing in Authorization: the new keys are
     not JWTs). The JSON answer (None when empty); a StoreError (with the HTTP status, never a key) otherwise. timeout bounds each
-    network step, total the whole request: a store that never finishes its answer is cut off after total s."""
+    network step, total the whole request: a store that never finishes its answer is cut off after total s. track: a list that holds
+    the request's cut-off switch while it runs (end_sink cuts the sink's request short)."""
     st = store()
     if not st:
         raise StoreError("the live store is not set up")
@@ -219,10 +233,20 @@ def call(method, path, body=None, prefer=None, timeout=TIMEOUT, total=CALL_TOTAL
                 box["body"] = b""
         except BaseException as e:
             box["err"] = e
+        finally:
+            cut.done.set()
     t = threading.Thread(target=go, daemon=True)
-    t.start()
-    t.join(total)
+    if track is not None:
+        track.append(cut)
+    try:
+        t.start()
+        cut.done.wait(total)
+    finally:
+        if track is not None and cut in track:
+            track.remove(cut)
     if t.is_alive():
+        if cut.cancel:           # cut off by end_sink: the last record of the scan goes out instead
+            raise StoreError("cut off by the end of the scan")
         cut.shut()
         t.join(1.0)
         raise StoreError("no complete answer within %d s" % total)
@@ -230,11 +254,13 @@ def call(method, path, body=None, prefer=None, timeout=TIMEOUT, total=CALL_TOTAL
         why = ""
         try:
             j = json.loads(box.get("body") or b"{}")
-            why = " %s" % " ".join(str(j.get(k) or "") for k in ("code", "message") if j.get(k))
+            why = "".join(" %s" % j.get(k) for k in ("code", "message") if j.get(k))
         except Exception:
             pass
         hint = {401: " (wrong key, or supabase/setup.sql not run)", 403: " (no grant: run supabase/setup.sql)", 404: " (table missing: run supabase/setup.sql)",
                 540: " (the project is paused: resume it in the Supabase dashboard)"}.get(box["code"], "")
+        if 300 <= box["code"] < 400:
+            hint = " (a redirect, not followed: SUPABASE_URL must be the project's own https://<ref>.supabase.co address)"
         raise StoreError(clean("HTTP %d%s%s" % (box["code"], why[:200], hint)))
     if "err" in box:
         e = box["err"]
@@ -250,9 +276,9 @@ def call(method, path, body=None, prefer=None, timeout=TIMEOUT, total=CALL_TOTAL
         raise StoreError("the answer is not JSON")
 
 
-def put_row(row_id, doc):
+def put_row(row_id, doc, track=None):
     """Upsert one row of table live (ver and updated are set by the table's trigger)."""
-    call("POST", "live?on_conflict=id", {"id": row_id, "doc": doc}, prefer="resolution=merge-duplicates,return=minimal")
+    call("POST", "live?on_conflict=id", {"id": row_id, "doc": doc}, prefer="resolution=merge-duplicates,return=minimal", track=track)
 
 
 def _sig(x):
@@ -273,8 +299,9 @@ def young_brief(y):
             "at": _num(y.get("at")), "t": _num(y.get("t"))}
 
 
-def status_doc(rec, ver):
-    """The small row: what the office map and the app's tab bar need every few seconds."""
+def status_doc(rec, ver, nver=None):
+    """The small row: what the office map and the app's tab bar need every few seconds. ver: the version of the row current; nver: the
+    version of current whose early list or pick changed last (the page reads current only when nver changes: it takes only those two)."""
     agents = []
     for a in rec.get("agents") or []:
         if not isinstance(a, dict) or not a.get("id"):
@@ -285,7 +312,7 @@ def status_doc(rec, ver):
                        "lines": [str(lines[-1])[:160]] if lines else []})
     p = rec.get("pick") if isinstance(rec.get("pick"), dict) else None
     return {"v": 1, "t": _num(rec.get("t")), "live": rec.get("live") if isinstance(rec.get("live"), bool) else None, "updated": _num(rec.get("updated")),
-            "end": _num(rec.get("end")), "horizon": rec.get("horizon"), "mode": rec.get("mode"), "ver": ver, "agents": agents,
+            "end": _num(rec.get("end")), "horizon": rec.get("horizon"), "mode": rec.get("mode"), "ver": ver, "nver": nver, "agents": agents,
             "young": young_brief(rec.get("young")), "pick": {"sym": str(p.get("sym") or "")[:24], "t": _num(p.get("t")), "score": _num(p.get("score"))} if p else None}
 
 
@@ -303,14 +330,19 @@ def sink(record, now=None):
     current first when it is due (changed, and CURRENT_EVERY s since the last one, or news: a new early list or a new pick, or the last
     record of a scan), then the row status, which names current's version. True when the status row was written. It never raises; the
     first failure is printed once. The writes go one after another (a write never overtakes an older one), each cut off after
-    CALL_TOTAL s; the notifications and the VAPID keys never wait for them."""
+    CALL_TOTAL s; the notifications and the VAPID keys never wait for them. Once end_sink was called only the scan's last record
+    ("live": false) is written."""
     if not isinstance(record, dict) or not enabled():
+        return False
+    last = record.get("live") is False
+    cut = lambda: _state["ending"] and not last and record.get("t") == _state["t"]
+    if cut():                                   # the scan is ending (end_sink): only its last record still goes out
         return False
     with _sink_lock:
         now = time.time() if now is None else now
         try:
             if record.get("t") != _state["t"]:          # a new scan: its first record always writes current
-                _state.update(t=record.get("t"), cur_sig=None, cur_at=0.0, news_sig=None)
+                _state.update(t=record.get("t"), cur_sig=None, cur_at=0.0, news_sig=None, nver=None, ending=False)
             cur = current_doc(record)
             sig = _sig({k: v for k, v in cur.items() if k not in ("updated", "end")})
             nsig = _sig([record.get("young"), record.get("pick")])     # news: the app shows them (and a notification names them) at once
@@ -319,20 +351,35 @@ def sink(record, now=None):
                 ver = int(now * 1000)
                 if _state["ver"] is not None and ver <= _state["ver"]:
                     ver = _state["ver"] + 1
-                put_row("current", dict(cur, ver=ver))
+                put_row("current", dict(cur, ver=ver), track=_sink_on)
+                if nsig != _state["news_sig"] or _state["nver"] is None:
+                    _state["nver"] = ver
                 _state.update(cur_sig=sig, cur_at=now, ver=ver, news_sig=nsig)
         except StoreError as e:
-            say("live store: writing the row current failed, the scan goes on (%s)" % e, once="current")
+            if not cut():
+                say("live store: writing the row current failed, the scan goes on (%s)" % e, once="current")
         except Exception as e:
             say("live store: the row current was not written (%s)" % type(e).__name__, once="current-x")
+        if cut():
+            return False
         try:
-            put_row("status", status_doc(record, _state["ver"]))
+            put_row("status", status_doc(record, _state["ver"], _state["nver"]), track=_sink_on)
             return True
         except StoreError as e:
+            if cut():
+                return False
             say("live store: writing the row status failed, the scan goes on (%s)" % e, once="status")
         except Exception as e:
             say("live store: the row status was not written (%s)" % type(e).__name__, once="status-x")
         return False
+
+
+def end_sink():
+    """The scan is ending: the sink's request on its way (a live record's) is cut off at once and no live record is written any more, so
+    the last record ("live": false) goes out next without waiting for a slow store. A new scan's records write again."""
+    _state["ending"] = True
+    for c in list(_sink_on):
+        c.shut()
 
 
 # ---------------------------------------------------------------------------------------------------------------- push libraries, VAPID
@@ -402,7 +449,8 @@ def vapid():
         made = False
         if not raw:
             k = ec.generate_private_key(ec.SECP256R1())
-            call("POST", "app_secret?on_conflict=key", {"key": "vapid_private_key", "value": b64u(k.private_numbers().private_value.to_bytes(32, "big"))},
+            _vapid["pending"] = b64u(k.private_numbers().private_value.to_bytes(32, "big"))    # clean() hides it before it is ever sent
+            call("POST", "app_secret?on_conflict=key", {"key": "vapid_private_key", "value": _vapid["pending"]},
                  prefer="resolution=ignore-duplicates,return=minimal")
             rows = call("GET", q)                    # the stored one wins (another run may have made one at the same moment)
             raw = rows[0].get("value") if isinstance(rows, list) and rows and isinstance(rows[0], dict) else None
@@ -573,8 +621,8 @@ def _settle(ok_eps, net_rows, heard, until):
 
 def notify(kind, title, body, url=None):
     """One notification of kind ("young": new coins listed, "pick": the pick is made, "test") to every saved subscription whose
-    settings want it (prefs[kind] not false). The pushes go out SEND_THREADS at a time and the whole notification takes NOTIFY_BUDGET s
-    at most (a push still on its way then counts as failed). A row the push service calls gone (404, 410) or whose keys are no keys
+    settings want it (prefs[kind] not false). The pushes go out SEND_THREADS at a time and take NOTIFY_BUDGET s at most, counted from
+    when the keys and the subscriptions are read (a push still on its way then counts as failed, one not begun says so). A row the push service calls gone (404, 410) or whose keys are no keys
     (keys_ok) is deleted, without a retry; a 429 or 5xx is tried once more after a pause; a push that got no answer at all (DNS, refused)
     is not tried again and counts against its row (_settle: deleted after NET_FAILS in a row at its own host); any other error keeps the
     row and is said once. Rows a push reached are marked delivered. At least the kind's gap between two notifications of one kind (rate
@@ -594,7 +642,6 @@ def notify(kind, title, body, url=None):
             say("push: %s skipped, the last one went out %.0f s ago" % (kind, now - _last_push[kind]))
             return out
         _last_push[kind] = now
-    until = time.time() + NOTIFY_BUDGET
     wp = _webpush()
     if wp is None:
         say("push: off, pywebpush is not installed here: no notifications this run", once="nopush")
@@ -615,6 +662,7 @@ def notify(kind, title, body, url=None):
         say("push: %s not sent (%s)" % (kind, e))
         out["skipped"] = "store"
         return out
+    until = time.time() + NOTIFY_BUDGET      # the pushes' own time: it starts once the keys and the subscriptions are read (each read is cut off after CALL_TOTAL s)
     data = message(title, body, url, tag=kind)
     targets = []
     for row in rows if isinstance(rows, list) else []:
@@ -624,7 +672,7 @@ def notify(kind, title, body, url=None):
         if kind != "test" and prefs.get(kind) is False:
             continue
         targets.append(row)
-    results, nxt, lk = [None] * len(targets), [0], threading.Lock()
+    results, nxt, lk, begun = [None] * len(targets), [0], threading.Lock(), [False] * len(targets)
 
     def worker():
         while True:
@@ -633,6 +681,7 @@ def notify(kind, title, body, url=None):
                 nxt[0] += 1
             if i >= len(targets) or time.time() >= until:
                 return
+            begun[i] = True
             row = targets[i]
             if not keys_ok(row["sub"]):
                 res, code = "bad", "keys"
@@ -649,10 +698,13 @@ def notify(kind, title, body, url=None):
         t.start()
     for t in threads:
         t.join(max(0.0, until - time.time()))
-    for r in list(results):
+    for i, r in enumerate(list(results)):
         if r is None:
             out["failed"] += 1
-            say("push: a %s notification got no answer within %d s, the scan goes on" % (kind, NOTIFY_BUDGET), once="late-%s" % kind)
+            if begun[i]:
+                say("push: a %s notification got no answer within %d s, the scan goes on" % (kind, NOTIFY_BUDGET), once="late-%s" % kind)
+            else:
+                say("push: a %s notification was not tried: the %d s for this notification were used up by slower pushes" % (kind, NOTIFY_BUDGET), once="untried-%s" % kind)
             continue
         res, code = r
         if res == "ok":
@@ -662,7 +714,7 @@ def notify(kind, title, body, url=None):
         else:
             out["failed"] += 1
             say("push: a %s notification failed (%s %s)%s" % (kind, res, code, ": check the VAPID keys" if res == "config" else
-                                                            ": the subscription stays" if res == "error" else ""), once="fail-%s-%s" % (res, code))
+                                                            ": the subscription stays" if res == "error" else ""), once="fail-%s-%s-%s" % (kind, res, code))
     if marks:
         _settle([targets[i]["endpoint"] for i, r in enumerate(results) if r and r[0] == "ok"], [targets[i] for i, r in enumerate(results) if r and r[0] == "net"],
                 any(r and isinstance(r[1], int) for r in results), until)
@@ -716,14 +768,30 @@ def notify_pick(rec):
 
 # ---------------------------------------------------------------------------------------------------------------- the page's key
 
-def page_key_verdict(key):
-    """What SUPABASE_PUBLISHABLE_KEY is, for the website: ("ok", "") for a publishable key (sb_publishable_...), the only kind that
-    goes into the page; else ("refused", why) without the key in the words."""
+PAGE_KEY_MAX = 80        # characters: a publishable key has about 46, a publishable key with a secret key or a JWT stuck to it is longer
+JWT_HEADS = ("eyJhbGci", "eyJ0eXAi", "eyJraWQi")    # {"alg", {"typ", {"kid": how a JWT starts
+
+
+def page_key_verdict(key, secret=None):
+    """What SUPABASE_PUBLISHABLE_KEY is, for the website: ("ok", "") for a publishable key (sb_publishable_..., at most PAGE_KEY_MAX
+    characters), the only kind that goes into the page; else ("refused", why) without the key in the words. A value with a secret key
+    (sb_secret_, or SUPABASE_SECRET_KEY's value: secret, else the environment's) or a JWT anywhere in it is refused, also when it starts
+    like a publishable key (both keys pasted into one GitHub secret)."""
     k = str(key or "").strip()
-    if re.fullmatch(r"sb_publishable_[A-Za-z0-9_-]{8,200}", k):
+    secret = _env("SUPABASE_SECRET_KEY") if secret is None else str(secret or "").strip()
+    same = len(secret) >= 8 and secret in k
+    jwt = k.startswith("eyJ") or any(h in k for h in JWT_HEADS)
+    if not same and not jwt and "sb_secret_" not in k.lower() and re.fullmatch(r"sb_publishable_[A-Za-z0-9_-]{8,%d}" % (PAGE_KEY_MAX - 15), k):
         return "ok", ""
-    if k.startswith("sb_secret_"):
-        return "refused", "it is a SECRET key (sb_secret_...): it must never be in a page. Put the publishable key (sb_publishable_...) there, and make a new secret key in Supabase if this one was shown anywhere"
+    if "sb_secret_" in k.lower():
+        return "refused", ("it %s a SECRET key (sb_secret_...): it must never be in a page. Put only the publishable key (sb_publishable_...) there, and make a new "
+                           "secret key in Supabase if this one was shown anywhere") % ("is" if k.startswith("sb_secret_") else "holds")
+    if same:
+        return "refused", "it holds the value of SUPABASE_SECRET_KEY: that must never be in a page. Put only the publishable key (sb_publishable_...) there"
+    if jwt and not k.startswith("eyJ"):
+        return "refused", "it holds a JWT besides the key: put only the publishable key (sb_publishable_...) there"
+    if k.startswith("sb_publishable_"):
+        return "refused", "it is longer than a publishable key or has other characters in it: put only the publishable key (sb_publishable_...) there, nothing else"
     if k.startswith("eyJ"):
         role = "?"
         try:
@@ -852,9 +920,11 @@ var A=window.MemebotApp={TABS:['pick','young','office','account'],
   // the early list's count for the New coins tab: its coins (live.json and the merged snapshot) or the status row's brief
   count:function(y){if(!y||typeof y!=='object')return null;if(Array.isArray(y.coins))return y.coins.filter(function(c){return c&&typeof c==='object';}).length;
     return typeof y.n==='number'&&y.n>=0?Math.floor(y.n):null;},
-  // the New coins tab's badge follows the early box (report.py's live script, MemebotLive.early): while the box shows a scan's early list
-  // (listed, partial, paused, limited, done, stopped) the badge is that list's count; else null (the page's own count of its scored list)
-  badge:function(early,y){return ['listed','partial','paused','limited','done','stopped'].indexOf(early)>=0?A.count(y):null;},
+  // the early box shows a scan's early list (report.py's live script, MemebotLive.early: listed, partial, paused, limited, done, stopped)
+  listed:function(early){return ['listed','partial','paused','limited','done','stopped'].indexOf(early)>=0;},
+  // the New coins tab's badge follows the early box: while it shows a scan's early list the badge is that list's count; else null and no
+  // badge at all (a badge reads as new coins: the scored list's count is not one)
+  badge:function(early,y){return A.listed(early)?A.count(y):null;},
   // the pick for the "New pick" note: the snapshot's (status, so it is there as soon as the notification) or current's, of a scan newer
   // than this page, with a symbol
   pick:function(st,cur,pageT){var c=[st&&st.pick,cur&&cur.pick];for(var i=0;i<c.length;i++){var p=c[i];
@@ -875,7 +945,7 @@ var ICON={pick:svg('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 
   account:svg('<path d="M4.2 8.2V7.4A2.4 2.4 0 0 1 6.6 5h10.6v3.2"/><rect x="4.2" y="8.2" width="15.6" height="10.8" rx="2.4"/><circle cx="15.9" cy="13.6" r="1.2"/>'),
   bell:svg('<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>')};
 var NAMES={pick:'Pick',young:'New coins',office:'Office',account:'Account'},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
-var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,baseCnt='',pos={};
+var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,pos={},lastEarly=null,toEarly=0,jumped=false;
 // a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'keep' (back where this tab was left, as iOS apps do) or nothing
 function select(t,scroll){
   if(A.TABS.indexOf(t)<0)t='pick';
@@ -888,9 +958,19 @@ function select(t,scroll){
   Object.keys(btns).forEach(function(k){btns[k].setAttribute('aria-selected',k===t?'true':'false');});
   ss('memebot-apptab',t);
   if(scroll==='top')window.scrollTo(0,0);else if(scroll==='keep')window.scrollTo(0,pos[t]||0);
+  toEarly=scroll==='top'&&t==='young'?Date.now():0;jumped=false;if(toEarly)setTimeout(early,0);
   if(t==='account'&&store&&!P.key&&!P.busy&&P.ready)getKey().then(render);   // the key may have come with a scan since the start
 }
 function checked(){var r=doc.querySelector('input[name="tab"]:checked');return r?A.tab(r.id):null;}
+// a deep link to New coins (a tap on the "new coins" notification): once the early box shows the scan's list (within 30 s, and only while
+// the reader has not scrolled), the page scrolls to the box, so its status line and the first coins are in view, not the scored list's head
+function early(){
+  if(!toEarly||cur!=='young')return;
+  if(Date.now()-toEarly>30000||(window.scrollY||0)>8){toEarly=0;return;}
+  var b=doc.querySelector('[data-early]');if(!b||b.hidden||!A.listed(lastEarly))return;
+  var w=doc.querySelector('.wrap'),gap=w?parseFloat(getComputedStyle(w).paddingTop)||16:16;
+  window.scrollTo(0,Math.max(0,b.getBoundingClientRect().top+(window.scrollY||0)-gap));toEarly=0;jumped=true;
+}
 function buildBar(){
   var nav=el('nav','appbar');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Sections');
   A.TABS.forEach(function(t){var b=el('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('data-tab',t);
@@ -899,7 +979,11 @@ function buildBar(){
   return nav;
 }
 function mark(t,cls,on,text){var b=btns[t];if(!b)return;var e=b.querySelector('.'+cls);
-  if(!on){if(e)e.parentNode.removeChild(e);return;}if(!e){e=el('span',cls);b.appendChild(e);}if(text!=null)e.textContent=text;}
+  if(!on){if(e)e.parentNode.removeChild(e);}else{if(!e){e=el('span',cls);e.setAttribute('aria-hidden','true');b.appendChild(e);}if(text!=null)e.textContent=text;}
+  label(t);}
+// what a screen reader says for a tab: its name, the count on it, the live scan (the badge and the dot themselves are hidden from it)
+function label(t){var b=btns[t];if(!b)return;var c=b.querySelector('.ab-cnt'),d=b.querySelector('.ab-dot');
+  b.setAttribute('aria-label',NAMES[t]+(c?', '+c.textContent+' listed now':'')+(d?', a scan is running now':''));}
 // ---- notifications
 var P={reg:null,key:null,sub:null,saved:false,error:'',quiet:'',hint:'',busy:false,ready:false},prefs={young:true,pick:true},ui={};
 try{var pp=JSON.parse(ls('memebot-push-prefs')||'null');if(pp&&typeof pp==='object')['young','pick'].forEach(function(k){if(typeof pp[k]==='boolean')prefs[k]=pp[k];});}catch(e){}
@@ -1005,12 +1089,13 @@ function startPush(){
 }
 // ---- the live news (report.py's live script sends it after every answer of either transport, and whenever the early box changes what it
 // shows): the office's live dot (the office view's own state), the New coins count, a new pick. The count on New coins is the early list's
-// while the early box shows it (A.badge), else the page's own count, so the badge never says more than the tab shows.
+// while the early box shows it (A.badge), else there is none, so the badge never says more than the tab shows.
 function onLive(e){
   var d=e&&e.detail||{},st=d.status,c=d.current,MB=window.MemebotLive,live=false;
   try{live=typeof d.state==='string'?d.state==='live':!!(st&&MB&&MB.state(st,Date.now(),pageT,0)==='live');}catch(x){}
   mark('office','ab-dot',live);
-  var k=A.badge(d.early,d.young),n=k!=null?String(k):baseCnt;mark('young','ab-cnt',!!n&&n!=='0',n);
+  var k=A.badge(d.early,d.young);mark('young','ab-cnt',!!k,k!=null?String(k):null);
+  lastEarly=d.early;setTimeout(early,0);      // after the live script has drawn the box
   var pk=A.pick(st,c,pageT),pane=doc.getElementById('pane-pick'),ban=doc.querySelector('.applive');
   if(pk&&pane){if(!ban){ban=el('p','applive');pane.insertBefore(ban,pane.firstChild);}
     ban.textContent='New pick from the scan that just ran: '+String(pk.sym).slice(0,24)+(typeof pk.score==='number'?', score '+Math.round(pk.score):'')+'. The full report follows in a few minutes. Paper trading only.';}
@@ -1022,8 +1107,7 @@ function init(){
     if(!doc.getElementById('tab-account')){var acc=el('input');acc.type='radio';acc.name='tab';acc.id='tab-account';acc.tabIndex=-1;acc.setAttribute('aria-hidden','true');tabs.insertBefore(acc,tabs.querySelector('.tabbar'));}
     var notice=doc.querySelector('.wrap > .live');if(notice){notice.setAttribute('data-app','pick');
       var sm=notice.querySelector('small');if(sm)sm.textContent='The app refreshes when you come back to it after a few minutes. Scan now opens GitHub: tap \u201cRun workflow\u201d there and come back in about ten minutes.';}
-    doc.body.appendChild(buildBar());
-    var cnt=doc.querySelector('.tabbar label[for="tab-young"] .cnt');baseCnt=cnt?cnt.textContent.trim():'';mark('young','ab-cnt',!!baseCnt&&baseCnt!=='0',baseCnt);
+    doc.body.appendChild(buildBar());A.TABS.forEach(label);
   }
   all('[data-app-only]').forEach(function(e){e.hidden=false;});
   var eh=doc.querySelector('.ehint');if(eh&&store)eh.textContent=eh.textContent.replace(/ Keep this tab open\.$/,' With notifications on, this iPhone tells you when they are here.');
@@ -1036,10 +1120,11 @@ function init(){
   function link(){var t=A.tab(location.hash);if(!t)return null;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}return t;}
   var first=link();
   select(first||(tabs?ss('memebot-apptab'):null)||checked()||'pick',first?'top':null);
-  if(first)window.addEventListener('load',function(){window.scrollTo(0,0);});
+  if(first)window.addEventListener('load',function(){if(!jumped)window.scrollTo(0,0);});
   window.addEventListener('hashchange',function(){var t=link();if(t)select(t,'top');});
   window.addEventListener('memebot-live',onLive);
   doc.addEventListener('visibilitychange',back);
+  A.hold=function(){return !!P.busy||cur==='account';};      // report.py's live script does not reload the app now (a tap on Account at work)
   render();startPush();
 }
 if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',function(){try{init();}catch(e){}});else try{init();}catch(e){}

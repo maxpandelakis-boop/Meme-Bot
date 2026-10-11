@@ -463,15 +463,18 @@ when the new coins are listed (about five minutes into the scan) and when the pi
 for real, and no notification is a trade. In a normal browser tab the page looks and works as before.
 
 The New coins tab shows the launch spotter's early list (above) at the top, in all its states, above the scored list, and its badge
-on the tab bar counts the coins of that list while the list is shown (otherwise the coins of the scored list). The "new coins"
+on the tab bar counts the coins of that list while the list is shown (otherwise there is no badge). The "new coins"
 notification goes out once a scan, when the first early list with coins is out: "9 new coins listed", "The newest is 4 min old.
-On the list: ... Fake money only, nothing is bought for real."; tapping it opens the New coins tab.
+On the list: ... Fake money only, nothing is bought for real."; tapping it opens the New coins tab at the early list. It goes out once
+the live store has the list, so the app shows it at once.
 
 How it works: a free Supabase project is the live store. While the scan runs, `bot.py` writes a small `status` row every 5 seconds
-(and the whole live record, `current`, when it changes) with the secret key; the page reads them with the publishable key while it
-is open, every 4 seconds while a scan is live and every 30 seconds otherwise, and falls back to the GitHub live view above when
-Supabase does not answer. A page left open and visible all day reads about 1.2 to 1.7 GB a month (the status rows about 1 GB, the
-`current` row 0.3 to 0.7 GB, depending on how long the early list is), well inside the free plan's 5 GB. The notification
+(and the whole live record, `current`, when it changes) with the secret key; the page reads `status` with the publishable key while
+it is open and in front (the app on any of its tabs; a browser tab only on New launches or Agent office, and the tabs of one browser
+share one reader), every 4 seconds while a scan is live and every 30 seconds otherwise, and `current` only when its early list or
+pick changed (a few times a scan). It falls back to the GitHub live view above when Supabase does not answer. Per open page left
+visible all day, with a scan live 32 to 41 minutes of every hour, that is about 1.2 to 1.6 GB a month (almost all of it `status`
+rows), inside the free plan's 5 GB of egress for the project: two or three devices left open around the clock fit, more would not. The notification
 keys (VAPID) are made by the first scan and kept in Supabase; `sw.js` shows the notifications on older iOS versions. The scan
 installs the push sender from `supabase/push-requirements.txt`, where every package is pinned with its sha256 (made by
 `supabase/pin_push.py`), so a run gets exactly those files or no notifications that run.
@@ -482,7 +485,7 @@ Set it up once (about 15 minutes, all from the phone):
    project: name `meme-bot`, region Europe, keep **Enable Data API** on, leave **Automatically expose new tables** off.
 2. **Tables:** open `supabase/setup.sql` on GitHub, tap **Raw**, select all and copy. In Supabase open **SQL Editor → New
    query**, paste, tap **Run** ("Success. No rows returned"). Supabase may warn that the query has destructive operations (the
-   script drops and re-creates its own functions, rules and triggers, and removes malformed rows): confirm, that is expected.
+   script drops and re-creates its own functions, rules and triggers, and removes malformed rows): tap **Run query**, that is expected.
    Running it again later is harmless, and needed once after an update of that file (it keeps your data). The SQL is not in
    `supabase/migrations` and there is no `supabase/config.toml`, so Supabase's GitHub integration never applies anything by itself.
 3. **Keys:** in Supabase open **Project Settings → API Keys**. Copy the **publishable key** (`sb_publishable_...`) and, under
@@ -495,7 +498,7 @@ Set it up once (about 15 minutes, all from the phone):
 5. **One scan:** wait for the next hourly scan or press **Run workflow**. It makes the notification keys and builds the website
    with the live store.
 6. **Install:** open `https://maxpandelakis-boop.github.io/Meme-Bot/` in **Safari**, tap **Share → Add to Home Screen** (keep
-   **Open as Web App** on), then open **Meme-Bot** from the Home Screen.
+   **Open as Web App** on; no Share button in view: tap **•••** at the bottom right first), then open **Meme-Bot** from the Home Screen.
 7. **Notifications:** in the app open **Account** (or tap the bell), tap **Turn on notifications** and allow them. The two
    switches choose which ones arrive: new coins listed, the pick made.
 
@@ -511,13 +514,17 @@ Limits:
   view in the app (it falls back to GitHub's); resume it in the Supabase dashboard.
 - `python3 app.py check` (with the two `SUPABASE_` variables for the URL and the secret key set) says what is set up, without
   printing any key.
+- The live store and the "new coins" notification need `MEMEBOT_LIVE=1` (the workflow sets it on the scan step). A laptop run
+  with the `SUPABASE_` variables but without it sends only the pick notification and writes nothing to the live store.
 - The publishable key is public (it is in the page): anyone can read the live rows, which the public website shows anyway, and
   can save a subscription. The table keeps at most 25 and takes at most 6 new ones an hour, also when many calls come at the same
   moment (`save_push_sub` takes new rows one at a time under a lock). When a new row needs room, the rows no notification has ever
   reached go first, then the one seen longest ago. The scan marks a row delivered when a push service accepted a notification for it
   (with the secret key; a stranger cannot), so once the phone got its first notification, made-up rows cannot push it out; only a
   stranger with two dozen real, working subscriptions could, over hours, and opening the app saves the phone again. Until its first
-  notification the phone counts like any other row, so turn notifications on and keep the app opened now and then. The scan deletes
+  notification the phone counts like any other row, so turn notifications on and keep the app opened now and then. If the app
+  says "too many new subscriptions this hour" (someone else used up the 6 an hour), wait an hour and try again, or delete all rows
+  of `push_subs` in Supabase's **Table Editor** and turn notifications on again in the app (only the rows of the last hour count). The scan deletes
   rows whose keys are no keys and rows whose own push host could not be reached at all three notifications in a row (never for a
   failure at Apple's, Google's or Mozilla's push service, which would be the runner's or theirs); any other error keeps the row and
   the log says it once. Supabase's Security Advisor flags the two functions `save_push_sub` and `drop_push_sub` (security definer,

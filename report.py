@@ -600,7 +600,7 @@ header { order:-1; display:flex; flex-wrap:wrap; gap:6px 24px; align-items:basel
 header .meta { color:var(--muted); font-size:var(--fs-s) }
 .live { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; padding:8px 10px 8px 14px; border-radius:8px; font-size:var(--fs-s); color:var(--fg2);
   background:color-mix(in srgb,var(--accent) 8%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line)) }
-.live .btn { margin-left:auto; display:inline-flex; align-items:center; min-height:36px; padding:0 16px; border-radius:999px; background:var(--accent); color:#fff; font-weight:500 }
+.live .btn { margin-left:auto; display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:999px; background:var(--accent); color:#fff; font-weight:500 }
 .live .btn:hover, .live .btn:focus-visible { text-decoration:none; filter:brightness(1.1) }
 .live small { flex-basis:100%; font-size:var(--fs-xs); color:var(--muted) }
 section { display:grid; gap:12px }
@@ -865,7 +865,7 @@ details.early[open] .estatus::before { transform:rotate(90deg) }
 .eorder label:has(input:focus-visible) { outline:2px solid var(--accent); outline-offset:2px }
 .ecards { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:10px }
 @media (min-width:760px) { .ecards { grid-template-columns:repeat(2,minmax(0,1fr)) } }
-.ecard { border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:grid; gap:6px; min-width:0; align-content:start }
+.ecard { border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:grid; grid-template-columns:minmax(0,1fr); gap:6px; min-width:0; align-content:start }
 details.early.dim .ecards, .ecard.old { opacity:.8 } details.early.dim .ecard.old { opacity:1 } .ecard.old { border-style:dashed }
 details.early.nolist > summary { cursor:default } details.early.nolist .estatus::before { display:none }
 .ehd { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; min-width:0 }
@@ -874,6 +874,7 @@ details.early.nolist > summary { cursor:default } details.early.nolist .estatus:
 .ehd .enm { flex:1 1 72px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--fg2); font-size:var(--fs-s) }
 .ehd .chip { flex:none }
 .eline { margin:0; font:var(--fs-s)/1.45 var(--mono); color:var(--fg2); overflow-wrap:anywhere } .eline span { white-space:nowrap }
+.eline span.ewrap { white-space:normal }   /* a launchpad or a DEX name comes from the sources (up to 24 characters): it may break, the page never widens */
 .ecard .chips .chip { white-space:normal; overflow-wrap:anywhere }
 .elinks { display:flex; flex-wrap:wrap; gap:8px }
 .lchip { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; box-sizing:border-box; padding:0 11px; border:1px solid var(--line); border-radius:999px; font-size:var(--fs-s); font-weight:500; color:var(--accent); background:var(--surface); text-decoration:none }
@@ -929,9 +930,11 @@ JS = r"""
 # selection or the focus survives); links come from fixed templates and an address that passes the base58 check, never a swap link.
 # #new opens the tab once (the hash is dropped, so a reload keeps the tab the reader chose).
 # The transport: a website built with the app's live store (bot.py site puts data-sb-url and a publishable data-sb-key on <html>) reads
-# the Supabase row status instead while the page is visible (any tab): every 4 s while a scan is live, every 30 s otherwise (a new scan
-# shows within half a minute; a page left open and visible all day reads about 1.2 to 1.7 GB a month, the row current included, inside
-# the free plan's 5 GB), and the row current only when status names a new ver. The snapshot the page draws is status with current's early list ("young")
+# the Supabase row status instead while the page is visible (in a browser tab while the New launches or Agent office tab is open, one
+# poll for all tabs of the browser through localStorage; in the installed app on any tab): every 4 s while a scan is live, every 30 s
+# otherwise (a new scan shows within half a minute; an app left open and visible all day reads about 1.5 GB a month, inside the free
+# plan's 5 GB), and the row current only when status names a new nver (its early list or pick changed: the page takes only those two
+# from it). The snapshot the page draws is status with current's early list ("young")
 # and pick when current is of the same scan (MB.merge), so it has the same shape as live.json on the GitHub poll: the office view and the
 # early box draw it the same way, whichever transport brought it (one poller at a time, never both). An HTTP 540 (project paused) or two
 # failures in a row (network, CORS, any other status) fall back to the GitHub poll above, quietly, and the live store is tried again 2
@@ -1034,7 +1037,8 @@ function go(){
   var office=document.querySelector('.office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
   var tabs=['tab-office','tab-young'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open
   var root=document.documentElement,sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
-  var mode=MB.transport(sbUrl,sbKey,src),SB={next:0,fails:0,busy:false,ver:null,cur:null,back:0};
+  var mode=MB.transport(sbUrl,sbKey,src),SB={next:0,fails:0,busy:false,nv:null,cur:null,st:null,back:0,at:0},SBKEY='memebot-sb '+sbUrl;
+  var inApp=function(){return root.classList.contains('app');};      // the installed app (app.py PAGE_JS): it polls on any of its tabs
   MB.via=function(){return mode;};MB.current=function(){return mode==='supabase'?SB.cur:S.doc;};
   // S: the newest snapshot, when the next poll is due, the failed polls in a row and GitHub's rate-limit numbers, shared by the tabs
   var S={doc:null,next:0,fails:0,rem:null,reset:0,at:0,got:0,moved:false},busy=false,shown=null,keep={};
@@ -1081,20 +1085,23 @@ function go(){
     if(ce.textContent!==t)ce.textContent=t;if(ce.className!==cls)ce.className=cls;
     if(li.classList.contains('old')!==old)li.classList.toggle('old',old);
     var tm=isn(c.minted)?((ref!=null?ref:+y.at)-c.minted)/60000:NaN;
-    if(li._tok&&isFinite(tm)){t='token '+dur(tm)+' old'+(str(c.launchpad,24)?' ('+str(c.launchpad,24)+')':'');if(li._tok.textContent!==t)li._tok.textContent=t;}
+    if(li._tok&&isFinite(tm)){t='token '+dur(tm)+' old';if(li._tok.textContent!==t)li._tok.textContent=t;}
   }
   function ecard(c,i,y,ref,fate){
     var li=el('li'),a=str(c.addr,48),born=isn(c.born)?c.born:null;
     li.className='ecard';li._age=chip('');
     var hd=el('div','',[el('span',String(i)),el('span',str(c.sym,24)||'?'),el('span',str(c.name,48)),li._age]);
     hd.className='ehd';hd.children[0].className='ek';hd.children[1].className='es';hd.children[2].className='enm';li.appendChild(hd);
-    var l2=[],tok=isn(c.minted)&&(ref!=null||isn(+y.at));
-    if(tok)l2.push('');                                             // the token's age: filled by eages
-    if(str(c.dex,24))l2.push(str(c.dex,24));
+    var l2=[],tok=isn(c.minted)&&(ref!=null||isn(+y.at)),lp=str(c.launchpad,24),dx=str(c.dex,24);
+    if(tok)l2.push({tok:1,wrap:lp?'('+lp+')':''});                 // the token's age (filled by eages) and its launchpad
+    if(dx)l2.push({wrap:dx});
     l2.push('liq '+usd(c.liq),'mc '+usd(c.mc));
-    [l2,['1h vol '+usd(c.vol1),'5m '+pc(c.chgM5),'1h buys '+(isn(c.buysH1)?Math.round(c.buysH1):'?')+' / sells '+(isn(c.sellsH1)?Math.round(c.sellsH1):'?')]].forEach(function(l,n){
-      var p=el('p');p.className='eline';l.forEach(function(x,j){if(j)p.appendChild(document.createTextNode(' · '));p.appendChild(el('span',x));});li.appendChild(p);   // a line breaks between its facts
-      if(!n&&tok)li._tok=p.firstChild;});
+    [l2,['1h vol '+usd(c.vol1),'5m '+pc(c.chgM5),'1h buys '+(isn(c.buysH1)?Math.round(c.buysH1):'?')+' / sells '+(isn(c.sellsH1)?Math.round(c.sellsH1):'?')]].forEach(function(l){
+      var p=el('p');p.className='eline';l.forEach(function(x,j){if(j)p.appendChild(document.createTextNode(' · '));   // a line breaks between its facts
+        if(typeof x==='string')return p.appendChild(el('span',x));
+        if(x.tok){li._tok=el('span','');p.appendChild(li._tok);}
+        if(x.wrap){var w=el('span',x.wrap);w.className='ewrap';if(x.tok)p.appendChild(document.createTextNode(' '));p.appendChild(w);}});   // a name from the sources
+      li.appendChild(p);});                                                                                                            // may break: never wider than the card
     var ch=el('div'),rc=c.rc&&typeof c.rc==='object'?c.rc:null,lv=rc?rc.level:null;ch.className='chips';
     ch.appendChild(chip(MB.rcChip(rc,y.rcState),lv==='danger'?'bad':lv==='warn'?'warn':''));
     var fh=fate&&fate[a]&&typeof fate[a]==='object'&&fate[a].b==='held';      // the scored list's chip says it already
@@ -1185,7 +1192,8 @@ function go(){
         st==='stopped'?'The last scan stopped at '+hhmm(up)+(newer?', so no new report came from it.':'.')+' The office goes live again during the next scan.':
         newer?'The last scan finished at '+hhmm(up)+(site?', the page refreshes when the new report is published.':', after this page was made: the website has its report.'):
         'The last scan finished at '+hhmm(up)+'; this page shows it. The office goes live again during the next scan.';
-      if(st==='done'&&newer&&site&&now()-up>240000){
+      var hold=false;try{hold=!!(window.MemebotApp&&typeof MemebotApp.hold==='function'&&MemebotApp.hold());}catch(e){}   // the app's Account tab or a tap at work: later
+      if(st==='done'&&newer&&site&&now()-up>240000&&!hold){
         try{if(sessionStorage.getItem('memebot-reloaded')!==String(doc.t)){sessionStorage.setItem('memebot-reloaded',String(doc.t));location.reload();}}catch(e){}
       }
     }
@@ -1227,23 +1235,34 @@ function go(){
       .then(function(r){if(!r.ok)throw r.status||0;return r.json();},function(){throw 0;}),cut]).then(function(rows){clearTimeout(tm);
       var d=Array.isArray(rows)&&rows[0]&&rows[0].doc;return d&&typeof d==='object'&&Array.isArray(d.agents)?d:null;},function(e){clearTimeout(tm);throw typeof e==='number'?e:0;});
   }
+  // the tabs of one browser share one poll of the live store and its answer through localStorage, as the GitHub poll does
+  function sbLoad(){try{var s=JSON.parse(localStorage.getItem(SBKEY));if(!s||typeof s!=='object'||!(+s.at>SB.at)||typeof s.next!=='number'||Date.now()-s.at>2*MB.SB_IDLE)return false;
+    SB.at=+s.at;SB.next=s.next;SB.fails=+s.fails||0;SB.nv=s.nv;SB.cur=s.cur&&typeof s.cur==='object'?s.cur:null;
+    if(s.st&&typeof s.st==='object'&&s.st!==SB.st){SB.st=s.st;took(MB.merge(s.st,SB.cur));}if(SB.fails)S.fails=SB.fails;return true;}catch(e){}return false;}
+  function sbSave(){SB.at=Date.now();try{localStorage.setItem(SBKEY,JSON.stringify({at:SB.at,next:SB.next,fails:SB.fails,nv:SB.nv,cur:SB.cur,st:SB.st}));}catch(e){}}
+  // in a browser tab only while the New launches or Agent office tab is open (as the GitHub poll); in the installed app on any tab. The
+  // row current is read only when status names a new nver (the version of current whose early list or pick changed; ver on an older
+  // status): the page takes only those two from it
   function sbPoll(){
-    if(SB.busy||document.visibilityState!=='visible'||now()<SB.next)return;
-    SB.busy=true;
+    if(SB.busy||document.visibilityState!=='visible'||(!inApp()&&tabs.length&&!tabs.some(function(t){return t.checked;})))return;
+    if(sbLoad())try{draw();}catch(e){}
+    if(now()<SB.next)return;
+    SB.busy=true;SB.next=now()+2*MB.SB_TIMEOUT+2000;sbSave();          // claimed: the other tabs wait for this answer
     sbGet('status').then(function(st){
-      if(st&&st.ver!=null&&st.ver!==SB.ver)return sbGet('current').then(function(c){SB.cur=c;SB.ver=st.ver;return st;});
+      var nv=st?(st.nver!=null?st.nver:st.ver):null;
+      if(nv!=null&&nv!==SB.nv)return sbGet('current').then(function(c){SB.cur=c;SB.nv=nv;return st;});
       return st;
-    }).then(function(st){SB.fails=0;took(MB.merge(st,SB.cur));},function(code){
+    }).then(function(st){SB.fails=0;SB.st=st;took(MB.merge(st,SB.cur));},function(code){
       SB.fails++;
       if(MB.fallback(typeof code==='number'?code:0,SB.fails)==='github'){mode='github';SB.back=now()+MB.SB_RETRY;S.fails=0;S.next=0;}   // quietly: the GitHub poll takes over
       else S.fails=SB.fails;
-    }).then(function(){SB.busy=false;SB.next=MB.sbNext(now(),SB.fails,S.doc,S.got,S.moved);try{draw();}catch(e){}});
+    }).then(function(){SB.busy=false;SB.next=MB.sbNext(now(),SB.fails,S.doc,S.got,S.moved);sbSave();try{draw();}catch(e){}});
   }
   function step(){
     if(mode==='github'&&SB.back&&now()>=SB.back&&MB.transport(sbUrl,sbKey,'')==='supabase'){mode='supabase';SB.back=0;SB.next=0;}   // the live store again
     if(mode==='supabase')sbPoll();else poll();
   }
-  window.addEventListener('storage',function(e){if(mode==='github'&&e.key===KEY&&load())try{draw();}catch(x){}});
+  window.addEventListener('storage',function(e){if(mode==='github'&&e.key===KEY&&load()||mode==='supabase'&&e.key===SBKEY&&sbLoad())try{draw();}catch(x){}});
   setInterval(function(){step();try{tick();}catch(e){}},1000);
   document.addEventListener('visibilitychange',step);
   if(mode!=='supabase')load();
