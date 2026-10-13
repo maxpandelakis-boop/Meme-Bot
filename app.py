@@ -34,9 +34,9 @@ pywebpush (and cryptography, which it brings) are imported when a push or the VA
 site-packages folder, put right after the standard library: the scan workflow installs supabase/push-requirements.txt there, every
 package pinned with its sha256).
 
-Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), page_key_verdict(key),
-site_url(). The page side lives here too: PAGE_CSS and PAGE_JS (the installed app: bottom tab bar, notifications) and SW_JS (sw.js);
-bot.py site writes them into the website.
+Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_radar(coins),
+put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS and PAGE_JS (the installed app: bottom
+tab bar, notifications) and SW_JS (sw.js); bot.py site writes them into the website.
 
   python3 app.py check     what is set up (store reachable, VAPID key, subscriptions, pywebpush), without printing any key
   python3 app.py test      sends a test notification to every saved subscription
@@ -61,7 +61,9 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
     "young": (1800, "normal", 300),
     "pick": (3600, "high", 300),
     "test": (600, "normal", 20),
+    "radar": (600, "high", 60),     # the launch radar's coin without a trap found: stale within minutes (its pool is under 10 minutes old)
 }
+PREF_OF = {"radar": "young"}        # kind -> the phone's setting that covers it: the "New coins" switch also covers the radar (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
 
 
@@ -620,8 +622,9 @@ def _settle(ok_eps, net_rows, heard, until):
 
 
 def notify(kind, title, body, url=None):
-    """One notification of kind ("young": new coins listed, "pick": the pick is made, "test") to every saved subscription whose
-    settings want it (prefs[kind] not false). The pushes go out SEND_THREADS at a time and take NOTIFY_BUDGET s at most, counted from
+    """One notification of kind ("young": new coins listed, "pick": the pick is made, "radar": a launch radar coin without a trap found,
+    "test") to every saved subscription whose settings want it (prefs[PREF_OF.get(kind, kind)] not false: the radar follows "young").
+    The pushes go out SEND_THREADS at a time and take NOTIFY_BUDGET s at most, counted from
     when the keys and the subscriptions are read (a push still on its way then counts as failed, one not begun says so). A row the push service calls gone (404, 410) or whose keys are no keys
     (keys_ok) is deleted, without a retry; a 429 or 5xx is tried once more after a pause; a push that got no answer at all (DNS, refused)
     is not tried again and counts against its row (_settle: deleted after NET_FAILS in a row at its own host); any other error keeps the
@@ -669,7 +672,7 @@ def notify(kind, title, body, url=None):
         if not isinstance(row, dict) or not _sub_ok(row.get("sub")):
             continue
         prefs = row.get("prefs") if isinstance(row.get("prefs"), dict) else {}
-        if kind != "test" and prefs.get(kind) is False:
+        if kind != "test" and prefs.get(PREF_OF.get(kind, kind)) is False:
             continue
         targets.append(row)
     results, nxt, lk, begun = [None] * len(targets), [0], threading.Lock(), [False] * len(targets)
@@ -764,6 +767,34 @@ def notify_pick(rec):
         title = "New pick: %s" % sym
         lead = ", ".join(x for x in [name, ("score %.0f" % score) if score is not None else "", TIER_WORDS.get(p.get("tier"), "")] if x)
     return notify("pick", title, "%s. Paper trading only, nothing is bought for real." % (lead or sym), "#tab-pick")
+
+
+def _usd(v):
+    """A liquidity for a notification: $23k, $1.2M, $800, or "unknown"."""
+    v = _num(v)
+    if v is None or v < 0:
+        return "unknown"
+    if v >= 999_500:
+        return "$%.1fM" % (v / 1e6)
+    return ("$%dk" % round(v / 1000)) if v >= 1000 else "$%d" % round(v)
+
+
+def notify_radar(coins):
+    """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
+    rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour). The title names the first
+    coin and its pool age ("SYM: no trap found (pool 6 min)", "+1 more" per other coin), the body the checks it passed and its liquidity
+    and ends with "fake money, nothing is bought."; it opens the Radar tab. It never says buy, safe or clean. coins: the radar.json coin
+    dicts (sym, age in minutes, liq, n = checks done). The phones' "New coins" setting covers it (PREF_OF). Nothing for an empty list."""
+    cs = [c for c in (coins if isinstance(coins, list) else []) if isinstance(c, dict)]
+    if not cs:
+        return {"skipped": "no coins"}
+    c = cs[0]
+    age, n = _num(c.get("age")), _num(c.get("n"))
+    pool = (" (pool %s min)" % (int(age) if age >= 1 else "<1")) if age is not None and age >= 0 else ""
+    more = (" +%d more" % (len(cs) - 1)) if len(cs) > 1 else ""
+    checks = ("%d checks passed" % n) if n is not None and n >= 1 else "All checks passed"
+    body = "%s · liquidity %s · fake money, nothing is bought." % (checks, _usd(c.get("liq")))
+    return notify("radar", "%s: no trap found%s%s" % (_sym(c.get("sym")), pool, more), body, "#tab-radar")
 
 
 # ---------------------------------------------------------------------------------------------------------------- the page's key
