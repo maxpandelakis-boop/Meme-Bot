@@ -12,11 +12,14 @@ The last line is `PROBE_JSON {...}` with every number, for research/probe-radar.
 Checks (the WP0 table):
   1  GeckoTerminal minute candles for 3 paper windows (about 24 h, 48 h, 75 h old) and the oldest stored position, plus aggregate 15
   2  discovery coverage: 4 cycles 150 s apart; per source the candidates, the pools under 10 minutes and the pool age at first sight
-  3  pump.fun coins/{mint} fields; coins?creator=; user-created-coins (v1 path and coins-v2 on both hosts)
+  3  pump.fun single-coin routes (coins/{mint}, coins-v3/{mint}, coins/metadata/{mint}) and the list-row fields; coins?creator=;
+     user-created-coins (v1 path and coins-v2 on both hosts)
   4  swap-api trades (order, slotIndexId, cursor, rows per page) and candles (v2 and v1)
-  5  coins/top-holders on frontend-api-v3 and advanced-api-v2; POST wallet-overview
-  6  RugCheck report fields (creator, creatorTokens, insiderNetworks, graphInsidersDetected, topHolders) on a pool 3-5 min old
-  7  Solana public RPC: signature depth for a dev wallet and a fresh mint; one getTransaction; calls per second before a 429
+  5  coins/top-holders on frontend-api-v3 and advanced-api-v2 for up to 4 coins (fresh, curve, older); POST wallet-overview
+  6  RugCheck report fields (creator, creatorTokens, insiderNetworks, graphInsidersDetected, topHolders) on pools 2-9 min old,
+     the same coin again 5 minutes later, and pools 30-240 min old
+  7  Solana public RPC: signature depth for a dev wallet and a fresh mint; one getTransaction; a paced run, the burst size before
+     a 429 and how long the block lasts
   8  api.github.com contents API on the existing branch "live", unauthenticated: x-ratelimit-used around a 304 (read-only)
   9  skipped (raw freshness needs a write); a read-only comparison of raw.githubusercontent.com with the contents API is logged
   10 Supabase: whether the secrets exist (yes/no only)
@@ -38,7 +41,7 @@ GH = "https://api.github.com"
 RAW = "https://raw.githubusercontent.com"
 PF_WEB = {"Origin": "https://pump.fun", "Referer": "https://pump.fun/"}
 GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "advanced-api-v2.pump.fun": 1.0,
-       "swap-api.pump.fun": 0.2, "api.rugcheck.xyz": 1.0, "api.dexscreener.com": 0.25, "lite-api.jup.ag": 0.2, "launch-mint-v1.raydium.io": 0.2}
+       "swap-api.pump.fun": 0.2, "api.rugcheck.xyz": 2.0, "api.dexscreener.com": 0.25, "lite-api.jup.ag": 0.2, "launch-mint-v1.raydium.io": 0.2}
 CURVE_DEX = re.compile(r"pumpfun|dbc|launchlab|boop|moonit|curve", re.I)      # memebot.CURVE_DEX: a bonding curve is not a DEX pool
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 B58_ANY = re.compile(r"[1-9A-HJ-NP-Za-km-z]{32,90}")
@@ -577,6 +580,18 @@ class Discovery:
         grads = [(now - self.cache[a]["pool"], a) for a, i in self.info.items() if (i.get("pf") or {}).get("complete") and self.cache.get(a, {}).get("pool")]
         return (min(grads)[1], False) if grads else (None, False)
 
+    def pick(self, lo, hi, n, want=None, skip=()):
+        """Up to n pump.fun coins (liq >= $5k) whose first DEX pool is lo..hi minutes old now, closest to want (default: the middle)."""
+        now, want = now_ms(), (lo + hi) / 2 if want is None else want
+        c = []
+        for a, v in self.cache.items():
+            if a in skip or not v.get("pool") or (v.get("liq") or 0) < 5000 or not (a.endswith("pump") or (self.info.get(a) or {}).get("pf")):
+                continue
+            age = (now - v["pool"]) / MIN
+            if lo <= age <= hi:
+                c.append((abs(age - want), a))
+        return [a for _, a in sorted(c)[:n]]
+
     def curve_coin(self):
         """A pf:new coin still on its bonding curve (no DEX pool), the youngest."""
         c = [(-(ts_ms((i.get("pf") or {}).get("created_timestamp")) or 0), a) for a, i in self.info.items()
@@ -592,9 +607,26 @@ def pool_age_min(disc, a):
 
 @guarded("c3")
 def check3(h, disc, mint, fresh):
-    out = {"targetFresh": fresh, "poolAgeMin": pool_age_min(disc, mint)}
-    r = h.req(PF + "/coins/" + mint)
-    c = r.js if isinstance(r.js, dict) else {}
+    out = {"targetFresh": fresh, "poolAgeMin": pool_age_min(disc, mint), "coinCalls": {}}
+    # run 1: frontend-api-v3 /coins/{mint} answered "Cannot GET" (the route is gone); the captures name /coins-v3/{mint}
+    c, r = {}, None
+    for name, url in (("v3 coins/{mint}", PF + "/coins/" + mint), ("v3 coins-v3/{mint}", PF + "/coins-v3/" + mint),
+                      ("adv coins-v3/{mint}", ADV + "/coins-v3/" + mint), ("adv coins/metadata/{mint}", ADV + "/coins/metadata/" + mint)):
+        rr = h.req(url, headers=PF_WEB if url.startswith(ADV) else None)
+        js = rr.js if isinstance(rr.js, dict) else {}
+        out["coinCalls"][name] = {**rr.brief(), "nFields": len(js), "mint": bool(addr(js.get("mint"))),
+                                  "created": js.get("created_timestamp") is not None, "creator": bool(addr(js.get("creator")))}
+        say("[c3] %s -> %s %dms rl=%s fields=%d mint=%s created=%s creator=%s %s"
+            % (name, rr.code, int(rr.secs * 1000), json.dumps(rr.rl()), len(js), out["coinCalls"][name]["mint"], out["coinCalls"][name]["created"],
+               out["coinCalls"][name]["creator"], json.dumps(rr.brief().get("body", ""))))
+        if rr.code == 200 and addr(js.get("mint")) and not c:
+            c, r = js, rr
+    row = (disc.info.get(mint) or {}).get("pf") or {}
+    out["coinSource"] = "endpoint" if c else ("pf list row" if row else "none")
+    out["listRow"] = {"fields": keys(row, 120), "gradLike": sorted(k for k in row if re.search(r"grad|migrat|complete|king|pool|bond|curve|program|protocol", k, re.I))}
+    if not c:
+        c = row
+    r = r or Resp(None, {}, None, b"", 0.0)
     created = ts_ms(c.get("created_timestamp"))
     pool = (disc.cache.get(mint) or {}).get("pool")
     out["coin"] = {**r.brief(), "nFields": len(c), "fields": keys(c, 120),
@@ -603,8 +635,8 @@ def check3(h, disc, mint, fresh):
                    "gradLike": sorted(k for k in c if re.search(r"grad|migrat|complete|king|pool|bond|curve", k, re.I)),
                    "createdUnit": ("ms" if num(c.get("created_timestamp")) and num(c.get("created_timestamp")) > 1e11 else "s") if c.get("created_timestamp") is not None else None,
                    "mintToPoolS": round((pool - created) / 1000, 1) if (pool and created) else None}
-    say("[c3] coins/{mint} -> %s %dms rl=%s fields=%d has=%s gradLike=%s mintToPool=%ss"
-        % (r.code, out["coin"]["ms"], json.dumps(r.rl()), len(c), json.dumps(out["coin"]["has"]), out["coin"]["gradLike"], out["coin"]["mintToPoolS"]))
+    say("[c3] coin from %s: fields=%d has=%s gradLike=%s mintToPool=%ss"
+        % (out["coinSource"], len(c), json.dumps(out["coin"]["has"]), out["coin"]["gradLike"], out["coin"]["mintToPoolS"]))
     say("[c3] coin fields: %s" % ",".join(out["coin"]["fields"]) if isinstance(out["coin"]["fields"], list) else "[c3] coin fields: none")
     dev = addr(c.get("creator"))
     devs = [d for d in [dev, addr(((disc.info.get(disc.curve_coin() or "") or {}).get("pf") or {}).get("creator"))] if d]
@@ -644,8 +676,19 @@ def trade_ts(t):
     return ts_ms(t.get("timestamp")) if isinstance(t, dict) else None
 
 
+def launch_stats(rows, created):
+    """Trades in the first 30 s after the mint and buyers in the launch slot (slotIndexId = 12-digit slot + 10-digit index)."""
+    if not rows or not created:
+        return None
+    early = [t for t in rows if (trade_ts(t) or 0) <= created + 30_000]
+    slots = [int(str(t.get("slotIndexId"))[:12]) for t in rows if str(t.get("slotIndexId") or "").isdigit() and len(str(t.get("slotIndexId"))) >= 13]
+    first = min(slots) if slots else None
+    return {"in30s": len(early), "buys30s": sum(1 for t in early if t.get("type") == "buy"), "wallets30s": len({t.get("userAddress") for t in early}),
+            "firstSlotRows": sum(1 for s in slots if s == first) if first else None, "reachedMint": bool(early)}
+
+
 @guarded("c4")
-def check4(h, mint, coin, label="target"):
+def check4(h, mint, coin, label="target", pool=None):
     out = {"label": label}
     created = ts_ms((coin or {}).get("created_timestamp"))
     variants = [("plain", "?limit=100"), ("browser", "?chainId=solana&cursor=&limit=100&program=pump")]
@@ -680,9 +723,28 @@ def check4(h, mint, coin, label="target"):
                          "programs": dict(Counter(mask(t.get("program"), 20) for t in allrows)), "wallets": len({t.get("userAddress") for t in allrows}),
                          "oldestVsMintS": round((min(ts) - created) / 1000, 1) if (ts and created) else None,
                          "spanMin": round((max(ts) - min(ts)) / MIN, 1) if ts else None}
-        say("[c4] %s trades: pages=%s rowFields=%s slotIndexId=%d lens=%s types=%s programs=%s wallets=%d oldest-vs-mint=%ss span=%smin"
+        out["trades"]["launch"] = launch_stats(allrows, created)
+        say("[c4] %s trades: pages=%s rowFields=%s slotIndexId=%d lens=%s types=%s programs=%s wallets=%d oldest-vs-mint=%ss span=%smin launch=%s"
             % (label, json.dumps(pages), out["trades"]["rowFields"], out["trades"]["slotIndexId"], out["trades"]["slotLen"], out["trades"]["types"],
-               out["trades"]["programs"], out["trades"]["wallets"], out["trades"]["oldestVsMintS"], out["trades"]["spanMin"]))
+               out["trades"]["programs"], out["trades"]["wallets"], out["trades"]["oldestVsMintS"], out["trades"]["spanMin"], json.dumps(out["trades"]["launch"])))
+    if label != "curve":
+        # a graduated coin: its bonding-curve trades (the launch, the first 30 s) through the program filter, newest first
+        allrows, cur, pages = [], None, []
+        for pg in range(3):
+            if pg and not cur:
+                break
+            r = h.req(SWAP + "/v2/coins/%s/trades?limit=100&program=pump%s" % (mint, ("&cursor=" + urllib.parse.quote(cur)) if cur else ""), headers=PF_WEB)
+            js = r.js if isinstance(r.js, dict) else {}
+            rows = [t for t in (js.get("trades") or []) if isinstance(t, dict)]
+            pag = js.get("pagination") or {}
+            cur = pag.get("nextCursor") if pag.get("hasMore") else None
+            pages.append({"code": r.code, "rows": len(rows), "hasMore": pag.get("hasMore"), "ms": int(r.secs * 1000)})
+            allrows += rows
+        ts = [trade_ts(t) for t in allrows if trade_ts(t)]
+        out["curvePhase"] = {"pages": pages, "n": len(allrows), "programs": dict(Counter(mask(t.get("program"), 20) for t in allrows)),
+                             "oldestVsMintS": round((min(ts) - created) / 1000, 1) if (ts and created) else None,
+                             "newestVsPoolS": round((max(ts) - pool) / 1000, 1) if (ts and pool) else None, "launch": launch_stats(allrows, created)}
+        say("[c4] %s curve-phase trades (program=pump): %s" % (label, json.dumps(out["curvePhase"])))
     for name, url in (("v2", SWAP + "/v2/coins/%s/candles?interval=1m&limit=100&currency=USD&createdTs=%d" % (mint, created or 0)),
                       ("v1", SWAP + "/v1/coins/%s/candles?interval=1m&limit=100&currency=USD" % mint)):
         r = h.req(url, headers=PF_WEB)
@@ -700,27 +762,37 @@ def check4(h, mint, coin, label="target"):
     R.setdefault("c4", {})[label] = out
 
 
-@guarded("c5")
-def check5(h, mint, rc_owners):
+def check5_holders(h, label, mint, holders):
     out = {}
-    holders = []
     for host, name in ((PF, "v3"), (ADV, "adv")):
         r = h.req(host + "/coins/top-holders/%s" % mint, headers=PF_WEB)
         js = r.js if isinstance(r.js, dict) else {}
         th = [x for x in (js.get("topHolders") or []) if isinstance(x, dict)]
         fs = [x.get("fundingSource") for x in th if isinstance(x.get("fundingSource"), dict)]
-        out["topHolders_" + name] = {**r.brief(), "topFields": keys(js), "n": len(th), "itemFields": keys(th[0]) if th else None,
-                                     "isSniper": sum(1 for x in th if x.get("isSniper")), "isBundler": sum(1 for x in th if x.get("isBundler")),
-                                     "isDev": sum(1 for x in th if x.get("isDev")), "fundingSource": len(fs), "fundingFields": keys(fs[0]) if fs else None,
-                                     "funderType": dict(Counter(mask(f.get("funderType"), 24) for f in fs)),
-                                     "sameFunder": max(Counter(f.get("funder") for f in fs).values()) if fs else 0,
-                                     "totalHolders": isinstance(js.get("totalHolders"), (int, float))}
-        say("[c5] %s top-holders -> %s n=%d fields=%s sniper=%d bundler=%d dev=%d fundingSource=%d fundingFields=%s maxSameFunder=%d %dms rl=%s %s"
-            % (name, r.code, len(th), out["topHolders_" + name]["itemFields"], out["topHolders_" + name]["isSniper"], out["topHolders_" + name]["isBundler"],
-               out["topHolders_" + name]["isDev"], len(fs), out["topHolders_" + name]["fundingFields"], out["topHolders_" + name]["sameFunder"],
-               out["topHolders_" + name]["ms"], json.dumps(r.rl()), json.dumps(r.brief().get("body", ""))))
+        out[name] = {**r.brief(), "topFields": keys(js), "n": len(th), "itemFields": keys(th[0]) if th else None,
+                     "isSniper": sum(1 for x in th if x.get("isSniper")), "isBundler": sum(1 for x in th if x.get("isBundler")),
+                     "isDev": sum(1 for x in th if x.get("isDev")), "enteredAt": sum(1 for x in th if num(x.get("enteredAt"))),
+                     "fundingSource": len(fs), "fundingFields": keys(fs[0]) if fs else None,
+                     "funderType": dict(Counter(mask(f.get("funderType"), 24) for f in fs)),
+                     "sameFunder": max(Counter(f.get("funder") for f in fs).values()) if fs else 0,
+                     "totalHolders": isinstance(js.get("totalHolders"), (int, float))}
+        o = out[name]
+        say("[c5] %s %s top-holders -> %s n=%d fields=%s sniper=%d bundler=%d dev=%d enteredAt=%d fundingSource=%d fundingFields=%s maxSameFunder=%d %dms rl=%s %s"
+            % (label, name, r.code, len(th), o["itemFields"], o["isSniper"], o["isBundler"], o["isDev"], o["enteredAt"], len(fs), o["fundingFields"],
+               o["sameFunder"], o["ms"], json.dumps(r.rl()), json.dumps(r.brief().get("body", ""))))
         if not holders:
-            holders = [a for a in (addr(x.get("address")) for x in th) if a]
+            holders += [a for a in (addr(x.get("address")) for x in th) if a]
+    return out
+
+
+@guarded("c5")
+def check5(h, coins, rc_owners):
+    """top-holders on both hosts for each (label, mint): are isSniper / isBundler / isDev / fundingSource ever filled without a login?"""
+    out = {"coins": {}}
+    holders = []
+    for label, mint in coins:
+        out["coins"][label] = check5_holders(h, label, mint, holders)
+    mint = coins[0][1]
     r = h.req(ADV + "/coins/top-holders-and-sol-balance/%s" % mint, headers=PF_WEB)
     out["topHoldersSol_adv"] = {**r.brief(), "topFields": keys(r.js) if isinstance(r.js, dict) else type(r.js).__name__}
     say("[c5] adv top-holders-and-sol-balance -> %s fields=%s %dms" % (r.code, out["topHoldersSol_adv"]["topFields"], out["topHoldersSol_adv"]["ms"]))
@@ -748,7 +820,17 @@ def check5(h, mint, rc_owners):
 
 
 @guarded("c6")
-def check6(h, disc, mint, tag):
+def check6(h, disc, coins, tag):
+    """RugCheck reports for each (label, mint); returns the first coin's top-holder owners."""
+    owners = None
+    for label, mint in coins:
+        got = check6_one(h, disc, mint, tag, label, summary=owners is None)
+        if owners is None:
+            owners = got
+    return owners or []
+
+
+def check6_one(h, disc, mint, tag, label, summary):
     age = pool_age_min(disc, mint)
     r = h.req(RC + "/tokens/%s/report" % mint)
     rep = r.js if isinstance(r.js, dict) else {}
@@ -768,20 +850,26 @@ def check6(h, disc, mint, tag):
            "risks": {"n": len(risks), "levels": dict(Counter(str(x.get("level")) for x in risks)), "names": [mask(x.get("name"), 50) for x in risks][:12]},
            "creatorBalance": rep.get("creatorBalance") is not None, "markets": len(rep.get("markets") or []) if isinstance(rep.get("markets"), list) else None,
            "launchpad": rep.get("launchpad") is not None, "score": num(rep.get("score_normalised"))}
-    say("[c6] %s report (pool %s min old) -> %s %dms rl=%s creator=%s creatorTokens=%s insiderNetworks=%s graphInsidersDetected=%s topHolders=%s risks=%s"
-        % (tag, age, r.code, out["ms"], json.dumps(r.rl()), out["creator"], json.dumps(out["creatorTokens"]), json.dumps(out["insiderNetworks"]),
+    say("[c6] %s/%s report (pool %s min old) -> %s %dms rl=%s creator=%s creatorTokens=%s insiderNetworks=%s graphInsidersDetected=%s topHolders=%s risks=%s"
+        % (tag, label, age, r.code, out["ms"], json.dumps(r.rl()), out["creator"], json.dumps(out["creatorTokens"]), json.dumps(out["insiderNetworks"]),
            out["graphInsidersDetected"], json.dumps(out["topHolders"]), json.dumps(out["risks"])))
-    say("[c6] %s report fields: %s" % (tag, ",".join(out["fields"]) if isinstance(out["fields"], list) else out["fields"]))
-    r2 = h.req(RC + "/tokens/%s/report/summary" % mint)
-    out["summary"] = {**r2.brief(), "fields": keys(r2.js) if isinstance(r2.js, dict) else None}
-    say("[c6] %s summary -> %s fields=%s %dms" % (tag, r2.code, out["summary"]["fields"], out["summary"]["ms"]))
-    R.setdefault("c6", {})[tag] = out
+    if summary:
+        say("[c6] %s report fields: %s" % (tag, ",".join(out["fields"]) if isinstance(out["fields"], list) else out["fields"]))
+        r2 = h.req(RC + "/tokens/%s/report/summary" % mint)
+        out["summary"] = {**r2.brief(), "fields": keys(r2.js) if isinstance(r2.js, dict) else None}
+        say("[c6] %s summary -> %s fields=%s %dms" % (tag, r2.code, out["summary"]["fields"], out["summary"]["ms"]))
+    R.setdefault("c6", {}).setdefault(tag, {})[label] = out
     return [a for a in (addr(x.get("owner")) for x in th) if a]
 
 
 # ---------------------------------------------------------------- check 7 (Solana public RPC)
+def rpc_rl(r):
+    """The public RPC's own limit headers: per-method and per-second budgets left."""
+    return {k.replace("x-ratelimit-", ""): v for k, v in r.h.items() if k.startswith("x-ratelimit-") and k.split("-")[2] in ("method", "rps", "tier")}
+
+
 def sig_depth(h, who, max_pages=3):
-    pages, sigs, before, codes = 0, [], None, Counter()
+    pages, sigs, before, codes, rl = 0, [], None, Counter(), None
     t0 = time.time()
     for _ in range(max_pages):
         opt = {"limit": 1000}
@@ -790,6 +878,7 @@ def sig_depth(h, who, max_pages=3):
         r = h.rpc("getSignaturesForAddress", [who, opt])
         pages += 1
         codes[str(r.code)] += 1
+        rl = rl or rpc_rl(r)
         res = (r.js or {}).get("result") if isinstance(r.js, dict) else None
         if isinstance(r.js, dict) and r.js.get("error"):
             codes["rpcError:%s" % (r.js["error"] or {}).get("code")] += 1
@@ -802,7 +891,7 @@ def sig_depth(h, who, max_pages=3):
     bt = [num(s.get("blockTime")) for s in sigs if num(s.get("blockTime"))]
     return {"pages": pages, "n": len(sigs), "exhausted": len(sigs) < pages * 1000, "codes": dict(codes), "secs": round(time.time() - t0, 2),
             "oldestAgeH": round((time.time() - min(bt)) / 3600, 2) if bt else None, "newestAgeMin": round((time.time() - max(bt)) / 60, 1) if bt else None,
-            "_oldest": sigs[-1].get("signature") if sigs else None, "_oldestT": min(bt) if bt else None}
+            "rl": rl, "_oldest": sigs[-1].get("signature") if sigs else None, "_oldestT": min(bt) if bt else None}
 
 
 @guarded("c7")
@@ -835,31 +924,45 @@ def check7_depth(h, dev, mint, coin, holders):
 
 @guarded("c7rate")
 def check7_rate(h, addrs):
-    """Back-to-back getSignaturesForAddress (limit 5) until the first 429 (at most 60), then 20 at a 0.5 s gap after a 10 s rest."""
+    """Run 1: 10 back-to-back calls passed, the 11th got 429 (retry-after 10) and then every call at a 0.5 s gap for 10 s did too.
+    Here: after a 15 s rest, 15 calls at 1.1 s; then back-to-back until the first 429 (at most 30); then one call every 2 s until
+    the first 200 (at most 60 s), which measures how long the block lasts."""
     out = {}
     if not addrs:
         R.setdefault("c7", {})["rate"] = {"skipped": "no addresses"}
         return
-    t0, ok, first429, ra, codes = time.time(), 0, None, None, Counter()
-    for i in range(60):
-        r = h.rpc("getSignaturesForAddress", [addrs[i % len(addrs)], {"limit": 5}], gap=0.0)
+    call = lambda i, gap: h.rpc("getSignaturesForAddress", [addrs[i % len(addrs)], {"limit": 5}], gap=gap)
+    time.sleep(15)
+    codes, t0, last = Counter(), time.time(), None
+    for i in range(15):
+        r = call(i, 1.1)
         codes[str(r.code)] += 1
+        last = r
+    out["paced11"] = {"calls": 15, "codes": dict(codes), "secs": round(time.time() - t0, 2), "rlLast": rpc_rl(last)}
+    say("[c7] paced 1.1 s: %s" % json.dumps(out["paced11"]))
+    t0, ok, first429, ra, codes, rls = time.time(), 0, None, None, Counter(), []
+    for i in range(30):
+        r = call(i, 0.0)
+        codes[str(r.code)] += 1
+        rls.append(rpc_rl(r).get("method-remaining"))
         if r.code == 429:
             first429, ra = i + 1, r.h.get("retry-after")
             break
-        if r.code == 200 and isinstance(r.js, dict) and "result" in r.js:
-            ok += 1
+        ok += r.code == 200
     secs = time.time() - t0
     out["burst"] = {"calls": sum(codes.values()), "ok": ok, "first429At": first429, "retryAfter": ra, "secs": round(secs, 2),
-                    "perSec": round(sum(codes.values()) / secs, 2) if secs else None, "codes": dict(codes)}
+                    "perSec": round(sum(codes.values()) / secs, 2) if secs else None, "codes": dict(codes), "methodRemaining": rls}
     say("[c7] burst: %s" % json.dumps(out["burst"]))
-    time.sleep(10)
-    codes, t0 = Counter(), time.time()
-    for i in range(20):
-        r = h.rpc("getSignaturesForAddress", [addrs[i % len(addrs)], {"limit": 5}], gap=0.5)
-        codes[str(r.code)] += 1
-    out["paced05"] = {"calls": 20, "codes": dict(codes), "secs": round(time.time() - t0, 2)}
-    say("[c7] paced 0.5 s: %s" % json.dumps(out["paced05"]))
+    if first429:
+        t0, n, rec = time.time(), 0, None
+        while time.time() - t0 < 60:
+            r = call(n, 2.0)
+            n += 1
+            if r.code == 200:
+                rec = round(time.time() - t0, 1)
+                break
+        out["recovery"] = {"probes": n, "recoveredAfterS": rec, "rl": rpc_rl(r)}
+        say("[c7] recovery: %s" % json.dumps(out["recovery"]))
     R.setdefault("c7", {})["rate"] = out
 
 
@@ -881,7 +984,7 @@ def main():
     check1(h, a.res)
     disc = Discovery(h)
     T0 = time.time()
-    tgt, fresh, coin, dev, holders, rc_owners = None, False, {}, None, [], []
+    tgt, fresh, coin, dev, holders, rc_owners, cc = None, False, {}, None, [], [], None
     for k in range(a.cycles):
         t = T0 + k * a.cadence
         if t > deadline - 60:
@@ -896,16 +999,22 @@ def main():
                 res3 = check3(h, disc, tgt, fresh)
                 if res3:
                     coin, dev = res3
-                check4(h, tgt, coin, "target")
+                check4(h, tgt, coin, "target", pool=(disc.cache.get(tgt) or {}).get("pool"))
                 cc = disc.curve_coin()
                 if cc:
                     check4(h, cc, (disc.info.get(cc) or {}).get("pf"), "curve")
-                rc_owners = check6(h, disc, tgt, "first") or []
-                holders = check5(h, tgt, rc_owners) or []
+                more = disc.pick(2, 9, 2, want=4.0, skip={tgt})
+                rc_owners = check6(h, disc, [("target", tgt)] + [("fresh%d" % (i + 1), a) for i, a in enumerate(more)], "first") or []
         elif k == 1 and tgt:
+            coins = [("target", tgt)] + [("curve", cc)] * bool(cc) + [("older", a) for a in disc.pick(30, 240, 1, want=60)] \
+                + [("fresh2", a) for a in disc.pick(2, 9, 1, want=4.0, skip={tgt})]
+            holders = check5(h, coins, rc_owners) or []
+            if not dev and cc:
+                dev = addr(((disc.info.get(cc) or {}).get("pf") or {}).get("creator"))
+                say("[c7] dev wallet: the curve coin's creator (the target's creator is unknown)")
             check7_depth(h, dev, tgt, coin, holders)
         elif k == 2 and tgt:
-            check6(h, disc, tgt, "later")
+            check6(h, disc, [("target", tgt)] + [("older%d" % (i + 1), a) for i, a in enumerate(disc.pick(30, 240, 2, want=90))], "later")
     disc.summary()
     check7_rate(h, [x for x in [dev, tgt] + list(holders) if x])
     if a.repo:
