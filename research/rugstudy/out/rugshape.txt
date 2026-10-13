@@ -1,0 +1,6 @@
+instant  rugs at about 1 h: 225 sell-offs, 1 LP gone, 0 gone from DexScreener
+         sell-offs: liquidity at listing median $63,164 -> at 1 h median $1,994; price multiple median 0.0035
+curve    rugs at about 1 h: 33 sell-offs, 6 LP gone, 2 gone from DexScreener
+         sell-offs: liquidity at listing median $20,096 -> at 1 h median $2,489; price multiple median 0.0380
+unknown  rugs at about 1 h: 4 sell-offs, 59 LP gone, 0 gone from DexScreener
+         sell-offs: liquidity at listing median $25,947 -> at 1 h median $3,009; price multiple median 0.0443

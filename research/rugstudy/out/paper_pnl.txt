@@ -1,0 +1,4 @@
+0 or less   86 closed positions, result  -53.61 fake EUR (-0.62 each = -21%), exits: rug 1, stop 70, time 14, tp 1
+1-2         40 closed positions, result  -13.20 fake EUR (-0.33 each = -11%), exits: stop 29, time 10, tp 1
+3+         249 closed positions, result -299.22 fake EUR (-1.20 each = -40%), exits: rug 8, stop 171, time 69, tp 1
+all        375 closed positions, result -366.03 fake EUR (-0.98 each = -33%), exits: rug 9, stop 270, time 93, tp 3

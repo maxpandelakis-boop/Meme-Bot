@@ -1,0 +1,6 @@
+mint time unknown, by dex / address: pumpswap other-suffix: 33 of 52 rug; pumpswap pump-suffix: 17 of 40 rug; meteora other-suffix: 18 of 23 rug; raydium other-suffix: 0 of 14 rug; fluxbeam other-suffix: 0 of 10 rug; orca other-suffix: 0 of 3 rug; metadao other-suffix: 0 of 2 rug
+  RugCheck LP unlocked         with: 18 of 39 rug | without: 50 of 105
+  RugCheck LP locked < 90%     with: 17 of 38 rug | without: 51 of 106
+  RugCheck few LP providers    with: 18 of 38 rug | without: 50 of 106
+  RugCheck danger              with: 33 of 60 rug | without: 35 of 84
+  no RugCheck report           with: 33 of 59 rug | without: 35 of 85
