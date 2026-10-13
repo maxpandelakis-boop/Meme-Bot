@@ -1,0 +1,1017 @@
+#!/usr/bin/env python3
+"""selftest_radar.py: the launch radar's checks R1-R10 (SPEC 11), against a local mock of every host it asks, a fake clock (cadence
+1 s, 150 s of clock time a cycle), a local bare git remote and a local stand-in for the app's live store. Fake money only.
+
+  python3 selftest_radar.py        runs the checks on their own (PASS/FAIL per check, "RADAR ALL PASS" at the end)
+  checks(check, env=None)          the same from selftest.py's main (check(ok, what) as there)
+  mock_routes(method, path, query, body)
+                                   the radar's own routes for selftest.py's Mock (GitHub's workflow API and the fixture coins of the
+                                   last mock made here); None for every other request, so hooking it in changes no existing answer
+
+traps.py (WP1) and peak.py (WP2) are other work packages. When they are not importable here, a minimal stand-in that follows the
+spec's rules (SPEC 5 WP1 rate, 7.3 chips, 4.8 fit) is used for these checks only; it is never written into the repository. The
+notification itself is app.notify_radar (WP4): without it, a recording stand-in takes the notifications and the PushSink leg is
+skipped (named at the end).
+"""
+import base64, contextlib, glob, gzip, io, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, types, urllib.parse
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+PY = sys.executable
+BASE = "80e7fe0"
+T0 = 1791892800000                # 2026-10-13 12:00 UTC (14:00 Berlin): the fake clock's start
+MIN = 60_000
+H = 3_600_000
+ALPH = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+GH_TOKEN = "ghs_TESTradarTOKEN_0123456789abcdef"          # never in any output, file or branch
+REPO = "tester/meme-bot"
+SKIPPED = []
+MOCK = None                       # the last RadarMock made: mock_routes answers from it
+
+
+def addr(seed, suffix="pump"):
+    rng = random.Random(seed)
+    return "".join(rng.choice(ALPH) for _ in range(44 - len(suffix))) + suffix
+
+
+# ---------------------------------------------------------------- stand-ins for traps.py and peak.py (used only when they are missing)
+TRAPS_STANDIN = r'''
+"""A minimal stand-in for traps.py (WP1) for selftest_radar.py only: the spec's rules, nothing more."""
+import math, re
+BRAND = r"\b(google|apple|nvidia|openai|chatgpt|gpt|gemini|claude|grok|deepseek|tesla|elon|musk|trump|mrbeast|nike|amazon|microsoft|meta|spacex|xai|binance|pokemon)\b"
+M_SIG = {"dev_dead": lambda S: (S.get("devN") or 0) >= 3 and (S.get("devDead") or 0) >= 0.8 * (S.get("devN") or 1),
+         "dev_young": lambda S: S.get("devAgeH") is not None and S["devAgeH"] < 24,
+         "x_copied": lambda S: (S.get("xUsed") or 0) >= 1, "tweet_shared": lambda S: (S.get("tweetShared") or 0) >= 1,
+         "sniped30": lambda S: (S.get("snip30") or 0) >= 0.3, "bundle_slot": lambda S: (S.get("slotN") or 0) >= 4,
+         "fresh_holders": lambda S: (S.get("freshN") or 0) >= 5, "fund_cluster": lambda S: (S.get("fundN") or 0) >= 3,
+         "staircase_early": lambda S: isinstance(S.get("stair"), dict) and 6 <= (S["stair"].get("n") or 0) < 10 and bool(S["stair"].get("stair"))}
+
+
+def load_weights(path=None):
+    return {"v": 1, "src": "stand-in", "hard": ["instant_pool", "rugger_wallets", "brand_name", "bot_volume", "rc_danger", "staircase10"],
+            "soft": ["no_socials", "holder_cluster", "creator_sold", "pumping_5m"], "maxSoft": 1, "pushBlock": ["holder_cluster"],
+            "points": {"hard": 3, "brand_name": 2, "bot_volume": 2, "no_rc_report": 2, "soft": 1, "young_5m": 1, "good": -1}, "brand": BRAND}
+
+
+def norm_x(url):
+    u = str(url or "").strip()
+    m = re.match(r"^https?://(?:www\.)?(?:x|twitter)\.com/(.+?)/?(?:\?.*)?$", u, re.I)
+    if not m:
+        return None
+    p = m.group(1).lower().rstrip("/")
+    if re.match(r"^i/communities/\d+", p):
+        return "community", "x.com/" + p
+    if re.match(r"^[a-z0-9_]{1,30}/status/\d+", p):
+        return "tweet", "x.com/" + "/".join(p.split("/")[:3])
+    if re.match(r"^[a-z0-9_]{1,30}$", p):
+        return "account", "x.com/" + p
+    return None
+
+
+def staircase(closes, n_min=10):
+    cs = [c for c in closes or [] if c]
+    if len(cs) < 2:
+        return {"n": len(cs), "rise": None, "green": None, "pull": None, "stair": False}
+    rise = cs[-1] / cs[0] - 1
+    green = sum(1 for a, b in zip(cs, cs[1:]) if b > a) / (len(cs) - 1)
+    peak, pull = cs[0], 0.0
+    for c in cs:
+        peak = max(peak, c)
+        pull = max(pull, 1 - c / peak)
+    return {"n": len(cs), "rise": rise, "green": green, "pull": pull, "stair": len(cs) >= 6 and rise >= 0.2 and green >= 0.7 and pull < 0.05}
+
+
+def walletmem_lookup(holders, wm):
+    if not wm or not holders:
+        return {"swAvg": None, "rugHolders": None, "checked": False}
+    common, rug, sw = set(wm.get("common") or []), set(wm.get("rug") or []), wm.get("sw") or {}
+    hs = [h for h in holders if h not in common]
+    avg = [sw[h] for h in hs if h in sw]
+    return {"swAvg": sum(avg) / len(avg) if avg else None, "rugHolders": sum(1 for h in hs if h in rug), "checked": True}
+
+
+def signals_scan(y, pr_mint_ms, wm):
+    raise NotImplementedError("stand-in")
+
+
+def signals_radar(c):
+    return {k: c.get(k) for k in c if not isinstance(c.get(k), dict) or k == "stair"}
+
+
+def _flags(S, W):
+    hard = []
+    if S.get("instantPool"):
+        hard.append("instant_pool")
+    if (S.get("swAvg") is not None and S["swAvg"] <= -7) or (S.get("rugHolders") or 0) >= 3:
+        hard.append("rugger_wallets")
+    if S.get("brand"):
+        hard.append("brand_name")
+    if (S.get("buys") or 0) >= 3000:
+        hard.append("bot_volume")
+    if S.get("rcDanger"):
+        hard.append("rc_danger")
+    st = S.get("stair")
+    if isinstance(st, dict) and st.get("stair") and (st.get("n") or 0) >= 10:
+        hard.append("staircase10")
+    soft = []
+    if S.get("socN") is not None and S["socN"] <= 0:
+        soft.append("no_socials")
+    if S.get("cluster"):
+        soft.append("holder_cluster")
+    if S.get("creatorSold"):
+        soft.append("creator_sold")
+    if (S.get("m5") or 0) >= 20:
+        soft.append("pumping_5m")
+    info = [k for k, f in M_SIG.items() if f(S)]
+    for k in info:
+        if k in (W.get("soft") or []):
+            soft.append(k)
+    return hard, soft, info
+
+
+def rate(S, W):
+    hard, soft, info = _flags(S, W)
+    P = W.get("points") or {}
+    unknown = []
+    if S.get("rcReport") is not True:
+        unknown.append("rc_report")
+    if S.get("mintToPoolS") is None:
+        unknown.append("mint_time")
+    if S.get("wmChecked") is not True:
+        unknown.append("walletmem")
+    for k in ("brand", "buys"):
+        if S.get(k) is None:
+            unknown.append(k)
+    if S.get("rcReport") is True and S.get("rcDanger") is None:
+        unknown.append("rc_danger")
+    plus = []
+    if S.get("x") and S.get("paid"):
+        plus.append("x_and_paid")
+    if S.get("tweet"):
+        plus.append("tweet")
+    if (S.get("lists") or 0) >= 3:
+        plus.append("lists3")
+    hp = sum(P.get(h, P.get("hard", 3)) for h in hard)
+    pts = hp + len(soft) * P.get("soft", 1) + (P.get("no_rc_report", 2) if S.get("rcReport") is not True else 0) + \
+        (P.get("young_5m", 1) if S.get("ageMin") is not None and S["ageMin"] < 5 else 0) + P.get("good", -1) * len(plus)
+    pts = max(pts, hp)
+    verdict = "trap" if hard else ("good" if not unknown and len(soft) <= W.get("maxSoft", 1) else "watch")
+    up = (1 if S.get("x") else 0) + (1 if S.get("tweet") else 0) - (1 if S.get("cluster") else 0) - (1 if (S.get("creatorPct") or 0) > 5 else 0) \
+        - (1 if (S.get("mc") or 0) >= 500_000 else 0) - (1 if S.get("liq") and S.get("mc") and S["liq"] < 0.15 * S["mc"] and not S.get("pumpswap") else 0) - (1 if S.get("brand") else 0)
+    push = verdict == "good" and not any(b in soft for b in W.get("pushBlock") or []) and not unknown
+    n = sum(1 for k in ("instantPool", "swAvg", "brand", "buys", "rcReport", "rcDanger", "cluster", "creatorSold", "m5", "socN") if S.get(k) is not None)
+    return {"verdict": verdict, "pts": pts, "upside": up, "hard": hard, "soft": soft, "plus": plus, "info": [i for i in info if i not in soft],
+            "unknown": unknown, "push": push, "n": n}
+
+
+def chips(rating, S):
+    out = []
+    T = {"instant_pool": "pool opened with the mint", "brand_name": "brand/celebrity name", "bot_volume": "3,000+ buys already", "staircase10": "staircase chart",
+         "rugger_wallets": "%s holders from rugged coins" % (S.get("rugHolders") or "some"),
+         "rc_danger": "RugCheck danger: %s" % ((S.get("rcDanger") or ["?"])[0]),
+         "no_socials": "no socials", "holder_cluster": "holder cluster (insider network of %s)" % int(S.get("netSize") or 0),
+         "creator_sold": "creator sold", "pumping_5m": "+%d%% in 5 min" % round(S.get("m5") or 0),
+         "rc_report": "RugCheck pending", "mint_time": "mint time unknown", "walletmem": "wallet memory unavailable"}
+    out += [["bad", T[h]] for h in rating["hard"] if h in T]
+    out += [["warn", T.get(s, s)] for s in rating["soft"]]
+    out += [["unk", T[u]] for u in rating["unknown"] if u in T]
+    ok = []
+    if S.get("mintToPoolS") is not None and S["mintToPoolS"] >= 60:
+        ok.append("curve %d min before pool" % round(S["mintToPoolS"] / 60))
+    if S.get("wmChecked") and "rugger_wallets" not in rating["hard"]:
+        ok.append("no rugger wallets")
+    if S.get("rcReport") is True and not S.get("rcDanger"):
+        ok.append("RugCheck report")
+    out += [["ok", t] for t in ok[:3]]
+    for i in rating["info"]:
+        if i == "x_copied":
+            out.append(["info", "X account used by %d older coin%s" % (S["xUsed"], "" if S["xUsed"] == 1 else "s")])
+        elif i == "dev_dead":
+            out.append(["info", "dev: %d launches, %d dead" % (S["devN"], S["devDead"])])
+        elif i == "staircase_early":
+            out.append(["info", "staircase so far (%d min)" % S["stair"]["n"]])
+    return out[:8]
+
+
+def outcome(rec):
+    l60 = (rec.get("later") or {}).get("60") or {}
+    px0 = rec.get("px")
+    if l60.get("gone"):
+        return {"rug1h": True, "win1h": False, "x60": 0.0}
+    x60 = (l60.get("px") / px0) if l60.get("px") and px0 else None
+    rug = bool((l60.get("liq") is not None and l60["liq"] < 1000) or (x60 is not None and x60 <= 0.1))
+    pk = (rec.get("peak60") or {}).get("x")
+    win = (not rug) and bool((pk and pk >= 2) or (x60 and x60 >= 2 and (l60.get("liq") or 0) >= 5000)) and not (x60 and x60 > 30)
+    return {"rug1h": rug, "win1h": win, "x60": x60}
+
+
+def _auc(scores, ys):
+    pos = [s for s, y in zip(scores, ys) if y]
+    neg = [s for s, y in zip(scores, ys) if not y]
+    if not pos or not neg:
+        return 0.5
+    return sum((1.0 if p > q else 0.5 if p == q else 0.0) for p in pos for q in neg) / (len(pos) * len(neg))
+
+
+def fit(records, W, now):
+    rows = [r for r in records if isinstance((r.get("out") or {}).get("rug1h"), bool)]
+    if len(rows) < 300:
+        return None, {"why": "%d of 300 records with a 1 h outcome" % len(rows), "n": len(rows)}
+    rows.sort(key=lambda r: r.get("first") or 0)
+    cut = now - 2 * 86_400_000
+    train, test = [r for r in rows if (r.get("first") or 0) < cut], [r for r in rows if (r.get("first") or 0) >= cut]
+    half = train[len(train) // 2:], train[:len(train) // 2]
+    W2 = dict(W, soft=list(W.get("soft") or []), points=dict(W.get("points") or {}))
+    promoted = []
+    for k, f in M_SIG.items():
+        ok = True
+        for part in half:
+            w = [r for r in part if f(r.get("sig") or {})]
+            wo = [r for r in part if not f(r.get("sig") or {})]
+            if len(w) < 10 or len(wo) < 10:
+                ok = False
+                break
+            ratio = (sum(r["out"]["rug1h"] for r in w) / len(w) + 0.01) / (sum(r["out"]["rug1h"] for r in wo) / len(wo) + 0.01)
+            ok = ok and ratio >= 1.5
+        if ok:
+            W2["soft"].append(k)
+            W2["points"][k] = 2
+            promoted.append(k)
+    if not promoted:
+        return None, {"why": "no measured signal held up", "n": len(rows)}
+    pts = lambda Wx: [rate(r.get("sig") or {}, Wx)["pts"] for r in test]
+    ys = [r["out"]["rug1h"] for r in test]
+    a1, a2 = _auc(pts(W), ys), _auc(pts(W2), ys)
+    if a2 < a1 - 0.01:
+        return None, {"why": "walk-forward: AUC %.2f under the prior's %.2f" % (a2, a1), "auc": a2, "aucPrior": a1, "n": len(rows)}
+    return W2, {"why": "", "auc": a2, "aucPrior": a1, "n": len(rows), "promoted": promoted}
+
+
+def feed(d, out, now):
+    raise NotImplementedError("stand-in")
+'''
+
+PEAK_STANDIN = r'''
+"""A minimal stand-in for peak.py (WP2) for selftest_radar.py only."""
+def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=()):
+    cs = sorted([c for c in cands if c and c[4] and entry_at - 60_000 <= c[0] <= end], key=lambda c: c[0])
+    if not cs:
+        return {"state": "waiting", "x": None, "at": None, "cut": []}
+    base = cs[0][4]
+    best = max(cs, key=lambda c: c[4])
+    return {"state": "ok", "x": round(best[4] / base, 4), "at": best[0], "cut": [], "res": 1}
+'''
+
+
+def standin(name, src):
+    m = types.ModuleType(name)
+    m.__file__ = "<stand-in %s>" % name
+    exec(compile(src, m.__file__, "exec"), m.__dict__)
+    return m
+
+
+def modules():
+    """(traps, peak, which are stand-ins)."""
+    out, stand = [], []
+    for name, src in (("traps", TRAPS_STANDIN), ("peak", PEAK_STANDIN)):
+        try:
+            mod = __import__(name)
+        except ImportError:
+            mod = standin(name, src)
+            stand.append(name)
+        out.append(mod)
+    return out[0], out[1], stand
+
+
+# ---------------------------------------------------------------- the mock
+def fixture(name, seed, **kw):
+    c = {"name": name, "a": addr(seed, kw.pop("suffix", "pump")), "sym": name, "title": name.title() + " Coin", "dex": "pumpswap", "pool": T0, "mint": T0 - 4 * MIN,
+         "pf": True, "gt": False, "liq": 22_000.0, "mc": 60_000.0, "px": 0.00006, "m5": 5.0, "buys": 200, "sells": 120, "x": "https://x.com/%s_sol" % name.lower(),
+         "tg": True, "rc": "ok", "danger": [], "warn": [], "net": 0, "holders": [addr(seed * 100 + i, "") for i in range(5)], "creator": addr(seed * 7 + 3, ""),
+         "paid": True, "sold": False}
+    c.update(kw)
+    return c
+
+
+FIX = {
+    "CLEAN": fixture("CLEAN", 1),
+    "INSTA": fixture("INSTA", 2, mint=T0 - 2 * MIN, pool=T0 - 2 * MIN + 20_000),
+    "BRAND": fixture("BRAND", 3, title="Grok Agent", sym="GROKAI"),
+    "NORC": fixture("NORC", 4, rc="404", paid=False),
+    "NOMINT": fixture("NOMINT", 5, suffix="", dex="meteora", pf=False, gt=True, mint=None),
+    "CLUSTER": fixture("CLUSTER", 6, net=232),
+    "RUGGERS": fixture("RUGGERS", 7),
+    "OLD": fixture("OLD", 8, pool=T0 - 12 * MIN, mint=T0 - 20 * MIN),
+    "XCOPY": fixture("XCOPY", 9, x="https://x.com/OriginalDog", m5=30.0, net=120),
+    "COPY": fixture("COPY", 10, sym="COPYCAT", mc=100_000.0),
+}
+RUG_WALLETS = FIX["RUGGERS"]["holders"][:3]
+OLDER = addr(99)
+
+
+class RadarMock:
+    """Every host the radar asks, from the fixture coins. hang: path parts whose request waits 20 s; rc429: addresses whose RugCheck
+    report is a 429; jup_bad: Jupiter's recent list in another shape; gone: addresses DexScreener has no pair for."""
+
+    def __init__(self, coins):
+        self.coins = {c["a"]: c for c in coins}
+        self.workflow, self.runs, self.dispatches, self.log, self.hang, self.rc429, self.gone = "active", [], [], [], set(), set(), set()
+        self.jup_bad, self.auth_bad, self.lock = False, 0, threading.Lock()
+
+    def pair(self, c):
+        socials = ([{"type": "twitter", "url": c["x"]}] if c.get("x") else []) + ([{"type": "telegram", "url": "https://t.me/x"}] if c.get("tg") else [])
+        return {"chainId": "solana", "dexId": c["dex"], "pairAddress": c["a"][:20] + "pool", "baseToken": {"address": c["a"], "symbol": c["sym"], "name": c["title"]},
+                "priceUsd": "%.10f" % c["px"], "marketCap": c["mc"], "fdv": c["mc"], "liquidity": {"usd": c["liq"]},
+                "volume": {"h24": 50_000, "h6": 50_000, "h1": 50_000}, "priceChange": {"m5": c["m5"], "h1": c["m5"], "h6": c["m5"], "h24": c["m5"]},
+                "txns": {"h24": {"buys": c["buys"], "sells": c["sells"]}, "h6": {"buys": c["buys"], "sells": c["sells"]}, "h1": {"buys": c["buys"], "sells": c["sells"]}},
+                "pairCreatedAt": c["pool"], "info": {"websites": [], "socials": socials}}
+
+    def route(self, method, path, query, body):
+        """(status, JSON body) or None (not a radar route)."""
+        q = urllib.parse.parse_qs(query)
+        by_pool = {c["a"][:20] + "pool": c for c in self.coins.values()}
+        if path.startswith("/api.github.com/repos/%s/actions/workflows/radar.yml" % REPO):
+            return ("gh", path, method, body)
+        if path.startswith("/frontend-api-v3.pump.fun/coins/user-created-coins/"):
+            return 200, [{"mint": addr(i + 500), "complete": i == 0, "usd_market_cap": 4_000 if i else 90_000, "created_timestamp": T0 - (i + 2) * H} for i in range(3)]
+        m = re.match(r"^/frontend-api-v3\.pump\.fun/coins/([1-9A-HJ-NP-Za-km-z]{32,48})$", path)
+        if m:
+            c = self.coins.get(m.group(1))
+            return (200, self.pf(c)) if c and c["pf"] else (404, {"error": "not found"})
+        m = re.match(r"^/api\.rugcheck\.xyz/v1/tokens/([^/]+)/report$", path)
+        if m and m.group(1) in self.coins:
+            c = self.coins[m.group(1)]
+            if m.group(1) in self.rc429 or c["rc"] == "429":
+                return 429, {"error": "slow down"}
+            if c["rc"] == "404":
+                return 404, {"error": "not found"}
+            risks = [{"name": n, "level": "danger"} for n in c["danger"]] + [{"name": n, "level": "warn"} for n in c["warn"]]
+            return 200, {"mint": c["a"], "score": 100, "score_normalised": 3, "risks": risks, "totalHolders": 400, "graphInsidersDetected": c["net"],
+                         "topHolders": [{"owner": h, "pct": 4.0 - i * 0.5, "insider": False} for i, h in enumerate(c["holders"])], "token": {"supply": 1e15},
+                         "creatorBalance": 1e12, "creator": c["creator"], "markets": [{"lp": {"lpLockedPct": 100}}], "launchpad": {"name": "pump.fun"}}
+        if path.startswith("/api.dexscreener.com/tokens/v1/solana/"):
+            want = path.rsplit("/", 1)[1].split(",")
+            if not any(a in self.coins for a in want):
+                return None
+            return 200, [self.pair(self.coins[a]) for a in want if a in self.coins and a not in self.gone]
+        m = re.match(r"^/api\.dexscreener\.com/orders/v1/solana/([^/]+)$", path)
+        if m and m.group(1) in self.coins:
+            return 200, ([{"type": "tokenProfile", "status": "approved", "paymentTimestamp": T0 - H}] if self.coins[m.group(1)]["paid"] else [])
+        if path.startswith("/lite-api.jup.ag/tokens/v2/search") and (q.get("query") or [""])[0] in self.coins:
+            c = self.coins[q["query"][0]]
+            return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["title"], "dev": c["creator"], "holderCount": 400, "organicScore": 50,
+                          "audit": {"mintAuthorityDisabled": True, "freezeAuthorityDisabled": True, "devBalancePercentage": 1.0, "topHoldersPercentage": 20.0}}]
+        if "/ohlcv/minute" in path:
+            pool = path.split("/pools/")[1].split("/")[0]
+            c = by_pool.get(pool)
+            if not c:
+                return None
+            before = int((q.get("before_timestamp") or ["0"])[0]) * 1000
+            lim = int((q.get("limit") or ["10"])[0])
+            rows = []
+            for i in range(lim):
+                t = before - (i + 1) * MIN
+                if t < c["pool"]:
+                    break
+                k = (t - c["pool"]) // MIN
+                close = c["px"] * (1 + 0.04 * min(k, 30)) * (2.5 if k == 20 else 1.0)
+                rows.append([t // 1000, close, close * 1.01, close * 0.99, close, 5000.0])
+            return 200, {"data": {"attributes": {"ohlcv_list": rows}}}
+        return None
+
+    def pf(self, c):
+        return {"mint": c["a"], "symbol": c["sym"], "name": c["title"], "usd_market_cap": c["mc"], "market_cap": 300, "ath_market_cap": c["mc"], "reply_count": 4,
+                "is_currently_live": False, "complete": True, "created_timestamp": c["mint"], "twitter": c["x"], "website": None, "telegram": "https://t.me/x" if c["tg"] else None,
+                "creator": c["creator"], "pump_swap_pool": c["a"][:20] + "pool"}
+
+    def lists(self, path, q):
+        """The discovery lists (only in this module's server)."""
+        if path.startswith("/frontend-api-v3.pump.fun/coins"):
+            if (q.get("offset") or ["0"])[0] != "0" or "created_timestamp" in (q.get("sort") or [""])[0]:
+                return 200, []
+            return 200, [self.pf(c) for c in self.coins.values() if c["pf"]]
+        if path.startswith("/api.geckoterminal.com/api/v2/networks/solana/new_pools"):
+            gt = [c for c in self.coins.values() if c["gt"]]
+            return 200, {"data": [{"id": "solana_" + c["a"][:20] + "pool", "type": "pool", "attributes": {"name": c["sym"] + " / SOL", "address": c["a"][:20] + "pool",
+                                   "base_token_price_usd": str(c["px"]), "fdv_usd": str(c["mc"]), "reserve_in_usd": str(c["liq"]), "volume_usd": {"h24": "1000"},
+                                   "price_change_percentage": {"h1": "1", "h6": "1", "h24": "1"}, "transactions": {"h24": {"buys": 10, "sells": 5, "buyers": 5, "sellers": 3}},
+                                   "pool_created_at": "2026-10-13T11:59:00Z"},
+                                   "relationships": {"base_token": {"data": {"id": "solana_" + c["a"]}}, "dex": {"data": {"id": c["dex"]}}}} for c in gt],
+                         "included": [{"id": "solana_" + c["a"], "type": "token", "attributes": {"symbol": c["sym"], "name": c["title"]}} for c in gt]}
+        if path.startswith("/lite-api.jup.ag/tokens/v2/recent"):
+            return 200, ({"oops": "another shape"} if self.jup_bad else [])
+        if path.startswith("/api.dexscreener.com/token-profiles/latest/v1"):
+            return 200, []
+        if path.startswith("/launch-mint-v1.raydium.io/get/list"):
+            return 200, {"success": True, "data": {"rows": []}}
+        return 404, {"error": "no route " + path}
+
+    def rpc(self, body):
+        try:
+            req = json.loads(body or b"{}")
+        except ValueError:
+            return 400, {"error": "bad json"}
+        method, params = req.get("method"), req.get("params") or []
+        p0 = str(params[0]) if params else ""
+        nomint = next((c["a"] for c in self.coins.values() if c["name"] == "NOMINT"), None)
+        if method == "getSignaturesForAddress":
+            if p0 == nomint:
+                return 200, {"jsonrpc": "2.0", "id": 1, "result": [{"signature": "m%d" % i, "blockTime": int(T0 / 1000) - i} for i in range(1000)]}
+            if any(c["creator"] == p0 for c in self.coins.values()):
+                return 200, {"jsonrpc": "2.0", "id": 1, "result": [{"signature": "d_%s_%d" % (p0[:8], i), "blockTime": int(T0 / 1000) - 40 * 86400 - i * 3600} for i in range(30)]}
+            return 200, {"jsonrpc": "2.0", "id": 1, "result": [{"signature": "w_%s_%d" % (p0, i), "blockTime": int(T0 / 1000) - 30 * 86400 - i * 3600} for i in range(40)]}
+        if method == "getTransaction":
+            sig = p0
+            if sig.startswith("w_"):
+                w = sig.split("_")[1]
+                return 200, {"jsonrpc": "2.0", "id": 1, "result": {"blockTime": int(T0 / 1000) - 30 * 86400 - 39 * 3600, "meta": {},
+                             "transaction": {"message": {"accountKeys": [{"pubkey": "F" + w[1:]}], "instructions": [{"parsed": {"type": "transfer", "info": {"source": "F" + w[1:], "destination": w, "lamports": 10}}}]}}}}
+            return 200, {"jsonrpc": "2.0", "id": 1, "result": {"blockTime": int(T0 / 1000) - 100, "meta": {"preTokenBalances": [], "postTokenBalances": []}}}
+        return 200, {"jsonrpc": "2.0", "id": 1, "result": None}
+
+
+def mock_routes(method, path, query, body):
+    """The radar's routes for selftest.py's Mock: (status, body) or None. GitHub's workflow API answers "active" with no other run."""
+    m = MOCK
+    if m is None:
+        return None
+    got = m.route(method, path, query, body)
+    if isinstance(got, tuple) and got and got[0] == "gh":
+        return gh_answer(m, method, path, body)
+    return got
+
+
+def gh_answer(m, method, path, body):
+    if path.endswith("/dispatches") and method == "POST":
+        with m.lock:
+            m.dispatches.append(json.loads(body or b"{}"))
+        return 204, None
+    if path.endswith("/runs"):
+        return 200, {"total_count": len(m.runs), "workflow_runs": m.runs}
+    return 200, {"id": 1, "name": "Meme-Bot launch radar", "path": ".github/workflows/radar.yml", "state": m.workflow}
+
+
+def serve(mock):
+    class Hd(BaseHTTPRequestHandler):
+        def go(self, method):
+            u = urllib.parse.urlsplit(self.path)
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0)) if method == "POST" else b""
+            with mock.lock:
+                mock.log.append((method, u.path, time.time()))
+            if any(h in u.path for h in mock.hang):
+                threading.Event().wait(20)
+            if u.path.startswith("/api.github.com/"):
+                if self.headers.get("Authorization") != "Bearer " + GH_TOKEN:
+                    mock.auth_bad += 1
+                    code, out = 401, {"message": "Bad credentials"}
+                else:
+                    code, out = gh_answer(mock, method, u.path, body)
+            elif u.path.startswith("/api.mainnet-beta.solana.com"):
+                code, out = mock.rpc(body)
+            else:
+                got = mock.route(method, u.path, u.query, body)
+                code, out = got if got is not None else mock.lists(u.path, urllib.parse.parse_qs(u.query))
+            raw = json.dumps(out).encode() if out is not None else b""
+            try:
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+            except OSError:
+                pass
+
+        def do_GET(self):
+            self.go("GET")
+
+        def do_POST(self):
+            self.go("POST")
+
+        def log_message(self, *a):
+            pass
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), Hd)
+    srv.daemon_threads = True
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+# ---------------------------------------------------------------- the git remote (results, radar-feed)
+def git(*a, cwd=None):
+    p = subprocess.run(["git"] + list(a), cwd=cwd, capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError("git %s: %s" % (a[0], p.stderr[-300:]))
+    return p.stdout.strip()
+
+
+def put_branch(remote, branch, files, tmp):
+    """files {path: bytes or JSON-able} as the one commit of branch on the bare remote."""
+    w = tempfile.mkdtemp(dir=tmp)
+    for p, v in files.items():
+        fp = os.path.join(w, *p.split("/"))
+        os.makedirs(os.path.dirname(fp), exist_ok=True)
+        with open(fp, "wb") as f:
+            f.write(v if isinstance(v, bytes) else json.dumps(v).encode())
+    git("init", "-q", "-b", branch, cwd=w)
+    git("add", "-A", cwd=w)
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", branch, cwd=w)
+    git("push", "-q", "--force", remote, "%s:refs/heads/%s" % (branch, branch), cwd=w)
+    shutil.rmtree(w, ignore_errors=True)
+
+
+def refs(remote):
+    out = {}
+    for line in git("--git-dir", remote, "for-each-ref", "--format=%(objectname) %(refname)").splitlines():
+        sha, ref = line.split(" ", 1)
+        out[ref] = sha
+    return out
+
+
+def branch_files(remote, branch):
+    try:
+        names = git("--git-dir", remote, "ls-tree", "-r", "--name-only", branch).splitlines()
+    except RuntimeError:
+        return {}
+    return {n: subprocess.run(["git", "--git-dir", remote, "show", "%s:%s" % (branch, n)], capture_output=True).stdout for n in names}
+
+
+def gz(doc):
+    return gzip.compress(json.dumps(doc).encode())
+
+
+def feed_files(T, now):
+    x_key = T.norm_x(FIX["XCOPY"]["x"])
+    return {"walletmem.json.gz": gz({"v": 1, "t": now - 30 * MIN, "nCoins": 500, "common": [], "sw": {}, "rug": RUG_WALLETS}),
+            "xlinks.json.gz": gz({"v": 1, "t": now, "links": {x_key[1]: [OLDER, now - 3 * H, 1, x_key[0]]} if x_key else {}}),
+            "symmc.json.gz": gz({"v": 1, "t": now, "sym": {"COPYCAT": 5_000_000.0}}), "meta.json": {"t": now, "nCoins": 500}}
+
+
+# ---------------------------------------------------------------- running the radar in this process
+@contextlib.contextmanager
+def env(**kw):
+    old = {k: os.environ.get(k) for k in kw}
+    try:
+        for k, v in kw.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        yield
+    finally:
+        for k, v in old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+@contextlib.contextmanager
+def memebot_rules():
+    """memebot's profile globals as they were (the radar sets the 2h profile in this process)."""
+    import memebot as M
+    keys = set(M.PROFILES["2h"]) | {"HORIZON"}
+    saved = {k: getattr(M, k) for k in keys if hasattr(M, k)}
+    try:
+        yield
+    finally:
+        for k, v in saved.items():
+            setattr(M, k, v)
+
+
+class Sink:
+    """The notifications the radar sends (a stand-in for app.notify_radar): their coins and words."""
+
+    def __init__(self):
+        self.got = []
+
+    def __call__(self, coins):
+        import launch_radar as LR
+        title, body = LR.push_text(coins)
+        self.got.append({"coins": [c.get("sym") for c in coins], "title": title, "body": body})
+        return {"kind": "radar", "sent": 1}
+
+
+def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24", extra=None, deadline=8.0, patch=None, envs=None):
+    """One radar run in this process: (exit code, the Radar, its log lines, seconds)."""
+    import launch_radar as LR
+    lines = []
+    argv = ["loop", "--dir", rd, "--minutes", str(minutes), "--cadence", "1", "--clock", "fake", "--now", str(int(now)), "--deadline", str(deadline),
+            "--cache", rd + "-cache", "--source", "manual"] + (["--mock", url] if url else []) + (["--remote", remote] if remote else []) + (extra or [])
+    e = dict(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9001", GITHUB_REF_NAME="main", MEMEBOT_RADAR_HOURS=hours, RADAR_URL=None,
+             SUPABASE_URL=None, SUPABASE_SECRET_KEY=None, MEMEBOT_RADAR_ADAPTERS=None)
+    e.update(envs or {})
+    t = time.time()
+    with env(**e), memebot_rules():
+        R = LR.Radar(LR.args_of(argv), log=lines.append, notifier=notifier, traps=T, peak=P)
+        if patch:
+            patch(R)
+        code = R.loop()
+    return code, R, lines, time.time() - t
+
+
+def radar_json(remote):
+    raw = branch_files(remote, "radar-data").get("radar.json")
+    return json.loads(raw) if raw else {}
+
+
+def hour_recs(remote):
+    out = {}
+    for p, raw in branch_files(remote, "radar-data").items():
+        if p.startswith("db/memeradar/"):
+            for a, rec in (json.loads(raw).get("coins") or {}).items():
+                out[a] = rec
+    return out
+
+
+# ---------------------------------------------------------------- the checks
+def checks(check, env_=None):
+    global MOCK
+    import launch_radar as LR
+    import memebot as M
+    T, P, stand = modules()
+    if stand:
+        print("  (traps.py / peak.py not here yet: the checks use the spec's stand-in for %s)" % " and ".join(stand))
+    tmp = tempfile.mkdtemp(prefix="memebot-radar-")
+    mock = RadarMock(FIX.values())
+    MOCK = mock
+    srv = serve(mock)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    remote = os.path.join(tmp, "remote.git")
+    git("init", "-q", "--bare", remote)
+    put_branch(remote, "results", {"db/memebot/state.json": {"v": 1}, "db/memeradar/2026-10-10T08.json": {"v": 1, "hour": "2026-10-10T08", "t": 0, "coins": {}}}, tmp)
+    put_branch(remote, "radar-feed", feed_files(T, T0), tmp)
+    before = refs(remote)
+    by = {c["name"]: c["a"] for c in FIX.values()}
+    rules = memebot_rules()
+    rules.__enter__()
+    try:
+        # ---- R1, R2, R4 (first part), R7 (refs), R5 (chain): a run of 4 cycles at T0
+        print("== launch radar R1: 4 cycles on the fixtures -> radar.json and a record for every eligible coin")
+        sink = Sink()
+        code, R, lines, secs = run_radar(T, P, url, remote, os.path.join(tmp, "rdA"), T0, minutes=10, notifier=sink)
+        doc, recs = radar_json(remote), hour_recs(remote)
+        raw = json.dumps(doc, separators=(",", ":"))
+        coins = doc.get("coins") or []
+        eligible = {by[n] for n in ("CLEAN", "INSTA", "BRAND", "NORC", "NOMINT", "CLUSTER", "RUGGERS", "XCOPY")}
+        cyc = [l for l in lines if re.match(r"^cycle \d+:", l)]
+        print("  %s" % "\n  ".join(cyc[-4:]))
+        check(code == 0 and len(cyc) == 4 and doc.get("v") == 1 and doc.get("kind") == "radar" and len(raw) <= LR.DOC_MAX and doc.get("state") == "ending",
+              "4 cycles, radar.json valid (%d bytes, state %s, %.1f s)" % (len(raw), doc.get("state"), secs))
+        order = [c["sym"] for c in coins]
+        check(coins and all(c["v"] == "good" for c in coins) and len(coins) <= 5 and all(c["age"] < 10 for c in coins + (doc.get("others") or [])) and order == ["CLEAN", "CLUSTER"],
+              "coins: only good ones, at most 5, every pool under 10 min, ordered by upside (%s); %d in the fold" % (order, len(doc.get("others") or [])))
+        check(set(recs) == eligible and all(len(r["rt"]) == 4 for a, r in recs.items() if a != by["INSTA"]) and len(recs[by["INSTA"]]["rt"]) >= 3
+              and all(r.get("found") and r.get("seenAge") is not None for r in recs.values()) and by["OLD"] not in recs and by["COPY"] not in recs,
+              "a record for each of the %d eligible coins (none for OLD or the copy of a bigger ticker), every rating kept (%s), found and seenAge set"
+              % (len(recs), sorted({len(r["rt"]) for r in recs.values()})))
+        sink_b = Sink()
+        code_b, Rb, linesb, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdB"), T0 + 8.5 * MIN, minutes=2.5, notifier=sink_b)
+        rb = hour_recs(remote).get(by["CLEAN"]) or {}
+        cl = recs.get(by["CLEAN"]) or {}
+        check(cl.get("good") and cl.get("goodPx") and cl["sig"].get("mintToPoolS") == 240 and cl["chk"]["rc"] == "ok" and cl["chk"]["wm"] == "ok"
+              and isinstance(cl["sig"].get("holders"), list) and cl.get("push") and "5" in cl.get("later", {}) and not cl["later"]["5"].get("late"),
+              "CLEAN's record: good at %s, curve 4 min before the pool, checks %s, price 5 min later %s" % (cl.get("good"), cl.get("chk"), cl.get("later", {}).get("5")))
+
+        print("== launch radar R2: the fixtures' verdicts")
+        rated = {a: r["rt"][-1][1] for a, r in recs.items()}
+        doc_by = {c["addr"]: c for c in coins}
+        oth = {c["addr"]: c for c in doc.get("others") or []}
+        txt = lambda a: " | ".join(t for _, t in ((doc_by.get(a) or oth.get(a) or {}).get("line") or []))
+        sig = lambda n: recs[by[n]]["sig"]
+        exp = {"CLEAN": "good", "INSTA": "trap", "BRAND": "trap", "NORC": "watch", "NOMINT": "watch", "CLUSTER": "good", "RUGGERS": "trap", "XCOPY": "watch"}
+        got = {n: rated.get(by[n]) for n in exp}
+        check(got == exp, "verdicts %s" % got)
+        check("pool opened with the mint" in txt(by["INSTA"]) and "brand/celebrity name" in txt(by["BRAND"]) and "holders from rugged coins" in txt(by["RUGGERS"])
+              and "RugCheck pending" in txt(by["NORC"]) and (oth.get(by["NORC"]) or {}).get("pts", 0) >= 2 and "mint time unknown" in txt(by["NOMINT"])
+              and "holder cluster (insider network of 232)" in txt(by["CLUSTER"]) and "X account used by 1 older coin" in txt(by["XCOPY"]),
+              "trap lines: INSTA, BRAND, RUGGERS red; NORC '? RugCheck pending' (+%s); NOMINT 'mint time unknown'; CLUSTER's cluster; XCOPY's grey X line" % (oth.get(by["NORC"]) or {}).get("pts"))
+        sx = dict(sig("XCOPY"), xUsed=0)
+        check(sig("XCOPY").get("xUsed") == 1 and T.rate(sx, R.W_prior)["verdict"] == "watch" and not doc_by.get(by["CLUSTER"], {}).get("push"),
+              "XCOPY: X account used by an older coin (measured, grey), the same verdict without it; CLUSTER good but never pushed")
+        sx = dict(sig("CLEAN"))
+        S2 = T.signals_radar(dict(sx))
+        diff = sorted(k for k in LR.S_KEYS if k in S2 and S2[k] is not None and sx.get(k) is not None and not isinstance(S2[k], (dict, list)) and S2[k] != sx[k])
+        check(not diff, "traps.signals_radar reads the radar's coin dict as the radar does (%s)" % ("same keys" if not diff else "differs: %s" % diff))
+
+        print("== launch radar R3: later prices, late, gone, outcome")
+        check(all("5" in r["later"] for a, r in recs.items() if r["first"] <= T0 + MIN), "the price 5 minutes after first sight is in every record of the first cycle")
+        code, R2, lines2, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdC"), T0 + 20 * MIN, minutes=2.5, notifier=sink)
+        recs2 = hour_recs(remote)
+        l15 = [r["later"].get("15") for r in recs2.values() if r["first"] <= T0 + MIN]
+        check(code == 0 and l15 and all(isinstance(x, dict) and x.get("late") is True and x.get("px") for x in l15) and all("30" not in r["later"] for r in recs2.values()),
+              "a run 20 minutes later takes the 15-minute prices late and marks them (%d records)" % len(l15))
+        mock.gone.add(by["NORC"])
+        code, R3, lines3, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdD"), T0 + 61 * MIN, minutes=5, notifier=sink)
+        mock.gone.discard(by["NORC"])
+        recs3 = hour_recs(remote)
+        l60 = {a: r["later"].get("60") for a, r in recs3.items()}
+        out = {a: r.get("out") for a, r in recs3.items()}
+        cl3 = recs3[by["CLEAN"]]
+        check(all(isinstance(v, dict) for v in l60.values()) and l60[by["NORC"]].get("gone") is True and all(not v.get("gone") for a, v in l60.items() if a != by["NORC"])
+              and all(isinstance(o, dict) and isinstance(o.get("rug1h"), bool) for o in out.values()) and out[by["NORC"]]["rug1h"] is True
+              and isinstance(cl3.get("peak60"), dict) and cl3["peak60"].get("x"),
+              "60-minute prices (NORC gone: DexScreener answered without its pair), outcomes for all, CLEAN's peak within the hour %s" % cl3.get("peak60"))
+        Rg = LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, "rdG"), "--clock", "fake", "--now", str(T0), "--cache", os.path.join(tmp, "rdG-c"), "--no-github"]),
+                      log=lambda s: None, traps=T, peak=P)
+        fake = {"addr": "G" * 44, "first": T0 - 5 * MIN, "later": {}, "px": 1.0}
+        Rg.docs = {"x": {"coins": {fake["addr"]: fake}}}
+        Rg.rec_hour = {fake["addr"]: "x"}
+        Rg.later_prices({}, set(), T0)
+        unknown_ok = "5" not in fake["later"]
+        Rg.later_prices({}, {fake["addr"]}, T0)
+        check(unknown_ok and fake["later"].get("5", {}).get("gone") is True, "gone only when DexScreener answered for the coin (no answer: no price, not gone)")
+
+        print("== launch radar R4: push notifications")
+        pushes = [g for g in sink.got]
+        body_ok = all("fake money" in g["body"] and not re.search(r"\b(buy|safe|clean|guaranteed)\b", g["title"].split(":", 1)[-1] + " " + g["body"], re.I) for g in pushes)
+        check(len(pushes) == 1 and pushes[0]["coins"] == ["CLEAN"] and pushes[0]["title"].startswith("CLEAN: no trap found (pool ") and body_ok,
+              "exactly one notification, for CLEAN, none for INSTA/BRAND/NORC/NOMINT/CLUSTER/RUGGERS/XCOPY: %r / %r" % ((pushes or [{}])[0].get("title"), (pushes or [{}])[0].get("body")))
+        pj = json.loads(branch_files(remote, "radar-data").get("pushed.json") or b"{}")
+        check(set(pj) == {by["CLEAN"]}, "pushed.json on radar-data holds CLEAN")
+        check(code_b == 0 and not sink_b.got and rb.get("rt") and len(rb["rt"]) == 5 and rb["rt"][-1][1] == "good",
+              "a restart while CLEAN is still under 10 minutes rates it again (good) and sends nothing (pushed.json restored)")
+        x = lambda a, age=5.0, ok=True: {"addr": a, "sym": a[:4], "push_ok": ok, "age": age, "doc": {"sym": a[:4], "age": age, "n": 9, "liq": 23000}}
+        Rg.restore_state = "ok"
+        nochan = Rg.to_push([x("AAAA")], T0)
+        Rg.notifier = Sink()
+        Rg.restore_state, Rg.pushed = "ok", {"p%d" % i: T0 - i * 10 * MIN for i in range(4)}
+        full = Rg.to_push([x("AAAA")], T0)
+        Rg.pushed = {"p%d" % i: T0 - (i + 3) * 20 * MIN for i in range(4)}
+        room = Rg.to_push([x("AAAA"), x("BBBB"), x("CCCC", ok=False)], T0)
+        Rg.restore_state = "failed"
+        norest = Rg.to_push([x("AAAA")], T0)
+        t2, b2 = LR.push_text([x("AAAA")["doc"], x("BBBB")["doc"]])
+        check(nochan == [] and full == [] and [c["addr"] for c in room] == ["AAAA", "BBBB"] and norest == [] and t2 == "AAAA: no trap found (pool 5 min) +1 more"
+              and b2 == "9 checks passed · liquidity $23k · fake money, nothing is bought.",
+              "at most 4 notifications an hour; two coins in one cycle make one notification (%r); none when pushed.json was not restored, none without a channel" % t2)
+
+        print("== launch radar R5: kill switch, active hours, the successor")
+        n_disp = len(mock.dispatches)
+        check(n_disp >= 1 and mock.dispatches[0] == {"ref": "main", "inputs": {"minutes": "10", "source": "chain"}} and sum(1 for l in lines if l.startswith("successor: dispatched")) == 1
+              and mock.auth_bad == 0, "run A dispatched its successor once at its end minus 2 minutes (%s)" % mock.dispatches[:1])
+        mock.runs = [{"id": 1234, "status": "pending"}]
+        d0 = len(mock.dispatches)
+        code, Rp, linesp, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdP"), T0 + 2 * H, minutes=2.5, notifier=Sink())
+        mock.runs = []
+        check(len(mock.dispatches) == d0 and any("another radar run is waiting" in l for l in linesp), "no successor while another radar run is pending (C4)")
+        mock.workflow = "disabled_manually"
+        code, Ro, lineso, so = run_radar(T, P, url, remote, os.path.join(tmp, "rdO"), T0 + 3 * H, minutes=55, notifier=Sink())
+        mock.workflow = "active"
+        do = radar_json(remote)
+        check(code == 0 and do.get("state") == "off" and not [l for l in lineso if re.match(r"^cycle \d+:", l)] and so < 30 and do.get("lastGood") and do.get("record"),
+              "workflow disabled: the run ends within one cycle, radar.json state off (the last good coin and the record line kept)")
+        code, Rh, linesh, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdH"), T0 + 3 * H, minutes=55, hours="1-2", notifier=Sink())
+        dh = radar_json(remote)
+        check(code == 0 and dh.get("state") == "hours" and dh.get("next") and LR.berlin(dh["next"]).hour == 1 and not [l for l in linesh if re.match(r"^cycle \d+:", l)],
+              "outside the active hours the loop ends at once with state hours and the next start (%s Berlin)" % (LR.berlin(dh["next"]).strftime("%H:%M") if dh.get("next") else "?"))
+        sha0 = refs(remote).get("refs/heads/radar-data")
+        hout = []
+        with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=remote, GITHUB_TOKEN=None):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc_h = LR.main(["hours", "--dir", os.path.join(tmp, "hours"), "--now", str(T0 + 3 * H)], log=hout.append)
+        check(rc_h == 0 and buf.getvalue().strip() == "inside=false" and refs(remote).get("refs/heads/radar-data") == sha0 and any("already says so" in l for l in hout),
+              "the hours gate step: inside=false, nothing pushed again while radar.json already says hours")
+        with env(MEMEBOT_RADAR_HOURS="0-24", RADAR_URL=remote, GITHUB_TOKEN=None):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                LR.main(["hours", "--dir", os.path.join(tmp, "hours2"), "--now", str(T0)], log=hout.append)
+        ok_in = buf.getvalue().strip() == "inside=true"
+        files_before = branch_files(remote, "radar-data")
+        put_branch(remote, "radar-data", dict(files_before, **{"radar.json": json.loads(files_before["radar.json"]) | {"state": "running"}}), tmp)
+        with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=remote, GITHUB_TOKEN=None):
+            with contextlib.redirect_stdout(io.StringIO()):
+                LR.main(["hours", "--dir", os.path.join(tmp, "hours3"), "--now", str(T0 + 3 * H)], log=hout.append)
+        after = branch_files(remote, "radar-data")
+        check(ok_in and json.loads(after["radar.json"]).get("state") == "hours" and {k for k in after if k != "radar.json"} == {k for k in files_before if k != "radar.json"}
+              and all(after[k] == files_before[k] for k in after if k != "radar.json"),
+              "the hours gate: inside=true inside the window; outside it writes state hours once and keeps every record file as it was")
+
+        wf = open(os.path.join(HERE, ".github", "workflows", "radar.yml"), encoding="utf-8").read()
+        sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml"), encoding="utf-8").read().splitlines()
+        body = lambda lines: lines[lines.index(next(l for l in lines if "Install the push sender" in l)) + 2:][:30]
+        job_env = wf.split("    steps:")[0]
+        check(re.search(r"^on:\n  workflow_dispatch:", wf, re.M) and "schedule" not in wf and "group: memebot-radar" in wf and "cancel-in-progress: false" in wf
+              and re.search(r"^    timeout-minutes: 75\b", wf, re.M) and "if: vars.MEMEBOT_RADAR != '0'" in wf and body(wf.splitlines()) == body(sc)
+              and "RADAR_URL" not in job_env and "SUPABASE_SECRET_KEY: ${{" not in job_env and not re.search(r"git push|refs/heads/(results|live|radar-feed)", wf)
+              and "launch_radar.py loop --dir rd --minutes \"$MIN\" --cadence 150" in wf and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf,
+              "radar.yml: dispatch only, group memebot-radar, 75 min, MEMEBOT_RADAR gate, the push sender's install step as in scan.yml, the token only in the steps that use it")
+
+        print("== launch radar R6: limits")
+        lim = fixture("LIMIT", 11, pool=T0 + 4 * H - MIN, mint=T0 + 4 * H - 5 * MIN)
+        hang = fixture("HANG", 12, pool=T0 + 4 * H - MIN, mint=T0 + 4 * H - 5 * MIN)
+        mock2 = RadarMock([lim, hang])
+        mock2.rc429.add(lim["a"])
+        mock2.hang.add("/orders/v1/solana/" + hang["a"])
+        mock2.jup_bad = True
+        srv2 = serve(mock2)
+        url2 = "http://127.0.0.1:%d" % srv2.server_address[1]
+        rem2 = os.path.join(tmp, "remote2.git")
+        git("init", "-q", "--bare", rem2)
+        put_branch(rem2, "radar-feed", feed_files(T, T0 + 4 * H), tmp)
+        code, R6, lines6, secs6 = run_radar(T, P, url2, rem2, os.path.join(tmp, "rd6"), T0 + 4 * H, minutes=2.5, notifier=Sink(), deadline=4.0)
+        d6, r6 = radar_json(rem2), hour_recs(rem2)
+        lr = r6.get(lim["a"]) or {}
+        check(code == 0 and lr.get("chk", {}).get("rc") == "429" and lr["rt"][-1][1] != "good" and any("429 rate limited by api.rugcheck.xyz" in l for l in lines6)
+              and d6.get("hosts", {}).get("rugcheck") == "limited" and any(n.startswith("RugCheck limited") for n in d6.get("notes") or []),
+              "RugCheck 429: the coin stays unknown (%s), never good, the host is skipped and noted (%s)" % (lr.get("rt", [[0, "?"]])[-1][1], d6.get("notes")))
+        check(secs6 <= 4.0 + 5 and (d6.get("secs") or 99) <= 4.0 + 5, "a host that hangs 20 s never holds the cycle past its deadline + 5 s (%.1f s, deadline 4 s)" % (d6.get("secs") or -1))
+        check(R6.src.on.get("jup_recent") is False and d6.get("hosts", {}).get("jupiter") != "down" and any("jup recent not checked (source down)" in n for n in d6.get("notes") or [])
+              and any("jup_recent: the answer has no" in l for l in lines6), "an answer in another shape turns its adapter off for the run, said once")
+        srv2.shutdown()
+        srv2.server_close()
+
+        print("== launch radar R7: the radar-data branch")
+        now_refs = refs(remote)
+        check(set(now_refs) - set(before) == {"refs/heads/radar-data"} and all(now_refs[r] == before[r] for r in before),
+              "the radar wrote branch radar-data only (refs %s), results and radar-feed untouched" % sorted(r.split("/")[-1] for r in now_refs))
+        sha = now_refs["refs/heads/radar-data"]
+        Rs = LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, "rdS"), "--clock", "fake", "--now", str(T0 + 70 * MIN), "--cache", os.path.join(tmp, "rdS-c"),
+                                  "--remote", remote, "--no-github"]), log=lambda s: None, traps=T, peak=P)
+        with memebot_rules():
+            Rs.restore()
+        hr = sorted(Rs.docs)[0]
+        drop = next(iter(Rs.docs[hr]["coins"]))
+        del Rs.docs[hr]["coins"][drop]
+        landed = Rs.publish(LR.finish_from({}, "running", T0 + 70 * MIN, "", "t", None, None, "manual", (0, 24)))
+        check(Rs.restore_state == "ok" and landed is False and refs(remote)["refs/heads/radar-data"] == sha and any("never-shrink guard" in n for n in Rs.notes_run),
+              "the never-shrink guard refuses a tree with fewer records than the last one in the same hours")
+        sink_f = Sink()
+
+        def broken(R_):
+            def bad(*a, **k):
+                raise RuntimeError("fetch failed (test)")
+            R_.git.fetch_ok = R_.git.fetch
+            R_.git.fetch = lambda branch, ref, timeout=60: bad() if branch == "radar-data" else R_.git.fetch_ok(branch, ref, timeout)
+        mock.coins[by["CLEAN"]]["pool"] = T0 + 2 * H
+        code, Rf, linesf, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdF"), T0 + 2 * H + MIN, minutes=2.5, notifier=sink_f, patch=broken)
+        mock.coins[by["CLEAN"]]["pool"] = T0
+        check(code == 0 and Rf.restore_state == "failed" and refs(remote)["refs/heads/radar-data"] == sha and Rf.publishes == 0 and not sink_f.got
+              and any("not restored" in n for n in Rf.notes_run),
+              "radar-data that cannot be read: no record push, no notification (a pushable coin was on the list), retried every cycle")
+
+        print("== launch radar R8: memebot's rules under their own names, three files unchanged, standard library only")
+        src = open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() + open(os.path.join(HERE, "radar_src.py"), encoding="utf-8").read()
+        import fetch as F
+        import radar as RD
+        used_m = set(re.findall(r"\bM\.([A-Za-z_][A-Za-z0-9_]*)", src))
+        used_f = set(re.findall(r"\bF\.([A-Za-z_][A-Za-z0-9_]*)", src))
+        used_r = set(re.findall(r"\bRD\.([A-Za-z_][A-Za-z0-9_]*)", src))
+        pinned = ("scan", "load_pairs", "load_side", "load_lists", "positions", "apply_profile", "YOUNG_MIN_LIQ", "B58", "PF_COLS", "GT_COLS", "JUP_COLS", "DEV_COLS",
+                  "DP_COLS", "x_link", "launchpad_of", "parse_ms", "chances", "load_train", "pos_value", "CURVE_DEX", "PAPER_RULE")
+        check(all(n in used_m and hasattr(M, n) for n in pinned) and all(hasattr(M, n) for n in used_m) and all(hasattr(F, n) for n in used_f) and all(hasattr(RD, n) for n in used_r)
+              and {"gather", "weights", "ds_chunk"} <= used_r and "blended_weights" not in used_m and not re.search(r"^\s*def (scan|young_rows|cmd_gather|risk_view)\b", src, re.M),
+              "launch_radar.py and radar_src.py call %d memebot, %d fetch and %d radar names, all exist, none copied, never blended_weights" % (len(used_m), len(used_f), len(used_r)))
+        same = []
+        for f in ("memebot.py", "fetch.py", "radar.py"):
+            p = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (BASE, f)], capture_output=True)
+            same.append(p.returncode == 0 and p.stdout == open(os.path.join(HERE, f), "rb").read())
+        import ast
+        mods = set()
+        for f in ("launch_radar.py", "radar_src.py"):
+            for node in ast.walk(ast.parse(open(os.path.join(HERE, f), encoding="utf-8").read())):
+                if isinstance(node, ast.Import):
+                    mods |= {a.name.split(".")[0] for a in node.names}
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    mods.add(node.module.split(".")[0])
+        own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak"}
+        std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
+                                                              "sys", "tarfile", "time", "urllib", "zoneinfo"}
+        check(all(same) and mods - own <= std, "memebot.py, fetch.py and radar.py are byte for byte as at %s (%s); imports: %s" % (BASE, same, sorted(mods - own)))
+
+        print("== launch radar R9: no secret in any file, branch, row or log line")
+        from selftest import Rest, serve_app, PushSink, APP_SECRET
+        rest, psink = Rest(), PushSink()
+        asrv = serve_app(rest, psink)
+        sb_url = "http://127.0.0.1:%d" % asrv.server_address[1]
+        code, R9, lines9, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rd9"), T0 + 5 * H, minutes=2.5, notifier=Sink(),
+                                        envs={"SUPABASE_URL": sb_url, "SUPABASE_SECRET_KEY": APP_SECRET})
+        bad_remote = "https://x-access-token:%s@127.0.0.1:9/nothing.git" % GH_TOKEN
+        code_b, Rx, linesx, _ = run_radar(T, P, url, bad_remote, os.path.join(tmp, "rdX"), T0 + 5 * H, minutes=2.5, notifier=Sink(),
+                                          envs={"SUPABASE_URL": sb_url, "SUPABASE_SECRET_KEY": APP_SECRET})
+        row = (rest.live.get("radar") or {}).get("doc") or {}
+        blobs = []
+        for f in glob.glob(os.path.join(tmp, "**", "*"), recursive=True):
+            if os.path.isfile(f) and "/git/" not in f and ".git" + os.sep not in f:
+                try:
+                    blobs.append(open(f, "rb").read())
+                except OSError:
+                    pass
+        for b in ("radar-data", "results", "radar-feed"):
+            blobs += list(branch_files(remote, b).values())
+        allt = b"\n".join(blobs) + "\n".join(lines + lines2 + lines3 + lines6 + lines9 + linesx + linesf + linesb + linesp + lineso + linesh + hout).encode() + json.dumps(row).encode()
+        secrets = [GH_TOKEN.encode(), APP_SECRET.encode()]
+        check(row.get("kind") == "radar" and not any(s in allt for s in secrets) and any("radar-data restore failed" in l for l in linesx) and code_b == 0,
+              "the app's row radar written (%s); neither the GitHub token nor the store's secret key in %d files, 3 branches, the row or %d log lines (a credentialed remote that fails is redacted)"
+              % (row.get("state"), len(blobs), len(lines + lines9 + linesx)))
+        asrv.shutdown()
+        asrv.server_close()
+
+        print("== launch radar R10: the radar model")
+        planted = lambda n, ok: plant(T, n, ok)
+        for name, n, ok, want in (("few", 250, True, "prior"), ("good", 420, True, "learned"), ("reversed", 420, False, "prior")):
+            rem_m = os.path.join(tmp, "remote-%s.git" % name)
+            git("init", "-q", "--bare", rem_m)
+            put_branch(rem_m, "results", planted(n, ok), tmp)
+            put_branch(rem_m, "radar-feed", feed_files(T, T0 + 6 * H), tmp)
+            code, Rm, linesm, _ = run_radar(T, P, url, rem_m, os.path.join(tmp, "rdM-" + name), T0 + 6 * H, minutes=5, notifier=Sink())
+            dm = radar_json(rem_m)
+            mj = json.loads(branch_files(rem_m, "radar-data").get("model.json") or b"{}")
+            check(code == 0 and mj.get("from") == want and (dm.get("model") or {}).get("from") == want and (dm.get("model") or {}).get("need") == 300
+                  and (dm["model"]["n"] == n) and ((want == "learned") == (Rm.W is not Rm.W_prior)),
+                  "%d planted records (%s): model %s, radar.json says %s of %s needed%s" % (n, name, mj.get("from"), dm.get("model", {}).get("n"), dm.get("model", {}).get("need"),
+                                                                                         ("; " + mj.get("why")) if mj.get("why") else ""))
+        if not real_push(check, T, P, url, remote, tmp):
+            SKIPPED.append("R4's PushSink leg (app.notify_radar comes with WP4)")
+    finally:
+        rules.__exit__(None, None, None)
+        MOCK = None
+        srv.shutdown()
+        srv.server_close()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def plant(T, n, ok):
+    """results' db/memeradar with n records spread over 6 days: coins whose dev launched 12 coins, 11 of them dead, rug far more often
+    (in the last 2 days the other way round when ok is False)."""
+    rng = random.Random(n)
+    docs = {}
+    for i in range(n):
+        first = T0 + 6 * H - 6 * 86_400_000 + int(i * (6 * 86_400_000 - 3 * H) / n)
+        dead = i % 2 == 0
+        late = first >= T0 + 6 * H - 2 * 86_400_000
+        p = 0.7 if dead else 0.1
+        if late and not ok:
+            p = 0.1 if dead else 0.7
+        rug = rng.random() < p
+        hour = time.strftime("%Y-%m-%dT%H", time.gmtime(first / 1000))
+        a = addr(10_000 + i)
+        sig = {"instantPool": False, "mintToPoolS": 300, "swAvg": None, "rugHolders": 0, "wmChecked": True, "brand": False, "buys": 100, "rcReport": True, "rcDanger": [],
+               "cluster": False, "creatorSold": False, "m5": 3.0, "socN": 2, "ageMin": 6.0, "x": "https://x.com/a", "paid": False, "tweet": False, "lists": 1,
+               "mc": 50_000, "liq": 20_000, "devN": 12 if dead else 0, "devDead": 11 if dead else 0}
+        docs.setdefault(hour, {"v": 1, "hour": hour, "t": first - first % H, "upd": first, "coins": {}})["coins"][a] = {
+            "addr": a, "sym": "P%d" % i, "first": first, "pool": first - 6 * MIN, "px": 1.0, "rt": [[first, "watch", 2, 0]], "sig": sig,
+            "later": {"60": {"t": first + H, "px": 0.05 if rug else 1.2, "liq": 500 if rug else 20_000}}, "out": {"rug1h": rug, "win1h": False, "x60": 0.05 if rug else 1.2}}
+    return {"db/memeradar/%s.json" % h: d for h, d in docs.items()}
+
+
+def real_push(check, T, P, url, remote, tmp):
+    """With app.notify_radar (WP4): one notification through app.py to a local push service; its body says fake money."""
+    import importlib.util
+    try:
+        import app as A
+    except Exception:
+        return False
+    if not (hasattr(A, "notify_radar") and "radar" in getattr(A, "KINDS", {})) or importlib.util.find_spec("cryptography") is None:
+        return False
+    from selftest import Rest, serve_app, PushSink, APP_SECRET, FAKE_PYWEBPUSH
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import serialization
+    rest, psink = Rest(), PushSink()
+    asrv = serve_app(rest, psink)
+    sb_url = "http://127.0.0.1:%d" % asrv.server_address[1]
+    fake = os.path.join(tmp, "fakepush")
+    os.makedirs(fake, exist_ok=True)
+    with open(os.path.join(fake, "pywebpush.py"), "w") as f:
+        f.write(FAKE_PYWEBPUSH)
+    k = ec.generate_private_key(ec.SECP256R1())
+    p256 = base64.urlsafe_b64encode(k.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)).rstrip(b"=").decode()
+    auth = base64.urlsafe_b64encode(os.urandom(16)).rstrip(b"=").decode()
+    ep = sb_url + "/push/radarphone"
+    rest.subs[ep] = {"endpoint": ep, "sub": {"endpoint": ep, "keys": {"p256dh": p256, "auth": auth}}, "prefs": {"young": True}, "fails": 0, "delivered": None}
+    rem = os.path.join(tmp, "remote-push.git")
+    git("init", "-q", "--bare", rem)
+    put_branch(rem, "radar-feed", feed_files(T, T0 + 8 * H), tmp)
+    mock = MOCK
+    a = next(c["a"] for c in mock.coins.values() if c["name"] == "CLEAN")
+    mock.coins[a]["pool"] = T0 + 8 * H - MIN
+    sys.path.insert(0, fake)
+    try:
+        code, R, lines, _ = run_radar(T, P, url, rem, os.path.join(tmp, "rdPush"), T0 + 8 * H, minutes=2.5, notifier=None,
+                                      envs={"SUPABASE_URL": sb_url, "SUPABASE_SECRET_KEY": APP_SECRET})
+    finally:
+        sys.path.remove(fake)
+        mock.coins[a]["pool"] = T0
+        asrv.shutdown()
+        asrv.server_close()
+    got = [json.loads(g["data"]) for g in psink.got if g["data"].startswith("{")]
+    body = " ".join(str((g.get("notification") or {}).get("body")) for g in got)
+    check(code == 0 and got and "fake money" in body.lower() and not re.search(r"\bbuy\b", body, re.I), "through app.notify_radar to a local push service: %r" % body[:120])
+    return True
+
+
+def main():
+    fails = []
+
+    def check(ok, what):
+        print(("  PASS " if ok else "  FAIL ") + what)
+        if not ok:
+            fails.append(what)
+    checks(check)
+    print("\n%d radar checks failed" % len(fails) if fails else "\nRADAR ALL PASS" + (" (skipped: %s)" % "; ".join(SKIPPED) if SKIPPED else ""))
+    sys.exit(1 if fails else 0)
+
+
+if __name__ == "__main__":
+    main()

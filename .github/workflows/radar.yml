@@ -1,0 +1,121 @@
+# The launch radar: its own job beside the hourly scan (scan.yml). Every 150 s it rates the coins whose DEX pool is under 10 minutes old
+# (launch_radar.py; the sources in radar_src.py), keeps the best 5 for the page's Radar tab, records every rating with the prices 5, 15,
+# 30 and 60 minutes later, and sends a push notification only for a coin without a trap found. Fake money only: nothing is bought
+# anywhere, and the paper trader never reads what this job writes.
+# It runs only when started (no cron): by hand ("Run workflow"), by its own previous run about 2 minutes before that one ends (source
+# chain), or by the hourly scan's watchdog step when no radar run is alive (source watchdog). Each run watches for `minutes` (55).
+# What it writes: the one-commit branch radar-data (radar.json, the records of the last 48 hours, model.json, pushed.json), the app's
+# live store row "radar" (with the Supabase secrets) and its working caches (actions/cache, key radar-cache-<run id>).
+# Stop it at once: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (the loop sees it within one cycle, the page says off,
+# and neither the chain nor the watchdog can start it again). Repository variable MEMEBOT_RADAR=0: no new run starts (a running one
+# ends at its end). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; outside them the page shows the next start.
+name: Meme-Bot launch radar
+run-name: "Launch radar · ${{ inputs.source || 'manual' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'how long this run watches, in minutes (at most 330); it starts its successor about 2 minutes before its end'
+        type: number
+        default: 55
+      source:
+        description: 'who starts it: manual, chain (its previous run) or watchdog (the hourly scan)'
+        type: choice
+        options: ['manual', 'chain', 'watchdog']
+        default: 'manual'
+permissions:
+  contents: write                    # the one-commit branch radar-data
+  actions: write                     # its own workflow's state (the kill switch), its successor, the tidy-up of old runs
+concurrency:
+  group: memebot-radar               # one radar at a time; the successor waits here until this run ends (never the scan's group)
+  cancel-in-progress: false
+jobs:
+  radar:
+    if: vars.MEMEBOT_RADAR != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75              # a 55-minute run plus its start, its last cycle and the cache
+    env:
+      PYTHONUTF8: '1'
+      MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
+      RADAR_SOURCE: ${{ inputs.source || 'manual' }}
+      HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}   # only true or false: the secrets themselves go to the steps that use them
+    steps:
+      - uses: actions/checkout@v4
+      - name: Active hours (outside them radar.json says when the radar starts again, once, and the run ends here)
+        id: hours
+        env:
+          RADAR_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          # prints inside=true or inside=false; when the check itself fails the loop runs and checks the hours every cycle
+          out=$(python3 launch_radar.py hours --dir rd) || out="inside=true"
+          echo "${out:-inside=true}" | tail -1 >> "$GITHUB_OUTPUT"
+      - name: Restore the radar's working caches (dev wallets, holder wallets, X links, pool ages; a lost cache only makes signals unknown)
+        if: steps.hours.outputs.inside == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: rdcache
+          key: radar-cache-${{ github.run_id }}
+          restore-keys: radar-cache-
+      - name: Install the push sender for the iPhone app (only with the Supabase secrets; a minute at most, the scan never depends on it)
+        if: steps.hours.outputs.inside == 'true' && env.HAS_SUPABASE == 'true'      # (the only line changed from scan.yml's step)
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          RESULTS_URL: ''            # the GitHub token stays out of this step
+        run: |
+          # pywebpush 2.5.0 and every package it needs, exactly as pinned in supabase/push-requirements.txt (each file checked against its
+          # sha256; wheels only, so nothing runs while installing; nothing newer is ever fetched), into a folder of its own: the system
+          # Python refuses pip installs into itself (PEP 668) on ubuntu 24.04 and on 26.04 (ubuntu-latest from late October 2026). bot.py
+          # keeps running on the system Python and imports pywebpush from that folder (MEMEBOT_PUSH_LIB, placed after the standard library)
+          # only when it makes the VAPID keys or sends a notification. PyPI down or slow: no notifications this run, the scan goes on.
+          lib=""
+          opts="-q --disable-pip-version-check --no-input --retries 1 --timeout 10 --require-hashes --only-binary=:all: --no-deps -r supabase/push-requirements.txt"
+          if python3 -m venv "$RUNNER_TEMP/pushenv" 2>/dev/null && timeout 60 "$RUNNER_TEMP/pushenv/bin/python" -m pip install $opts; then
+            lib=$("$RUNNER_TEMP/pushenv/bin/python" -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+          elif timeout 60 python3 -m pip install $opts --target "$RUNNER_TEMP/pushlib"; then
+            lib="$RUNNER_TEMP/pushlib"     # no venv module on this runner: pip's --target needs none and is not refused by PEP 668
+          fi
+          # http-ece 1.2.1 has no wheel: its one module comes from its sdist, checked against the sha256 PyPI lists (supabase/pin_push.py
+          # prints it), without running its setup.py
+          ece="$RUNNER_TEMP/http_ece-1.2.1.tar.gz"
+          if [ -n "$lib" ] && timeout 30 curl -fsSL --retry 1 -o "$ece" \
+               "https://files.pythonhosted.org/packages/7c/af/249d1576653b69c20b9ac30e284b63bd94af6a175d72d87813235caf2482/http_ece-1.2.1.tar.gz" \
+             && echo "8c6ab23116bbf6affda894acfd5f2ca0fb8facbcbb72121c11c75c33e7ce8cff  $ece" | sha256sum -c --quiet - \
+             && tar -xzf "$ece" -C "$lib" --strip-components=1 http_ece-1.2.1/http_ece/__init__.py \
+             && MEMEBOT_PUSH_LIB="$lib" python3 -c "import app; app._push_path(); import pywebpush, http_ece, cryptography" 2>/dev/null; then
+            echo "MEMEBOT_PUSH_LIB=$lib" >> "$GITHUB_ENV"
+            echo "pywebpush 2.5.0 ready (pinned, hashes checked): this scan sends push notifications"
+          else
+            echo "pywebpush could not be installed: no push notifications this run, the scan and the live view go on"
+          fi
+      - name: Watch the new launches (a cycle every 150 s until the run's end; the successor is started about 2 minutes before it)
+        if: steps.hours.outputs.inside == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}                          # the kill switch and the successor (GitHub's API only, never printed)
+          RADAR_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git   # radar-data, read and written
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}                          # the app's live store (row "radar") and its push notifications;
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}            # empty without the secrets: nothing of it runs
+          MIN: ${{ inputs.minutes || 55 }}
+        run: python3 launch_radar.py loop --dir rd --minutes "$MIN" --cadence 150
+      - name: Save the radar's working caches
+        if: always() && steps.hours.outputs.inside == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: rdcache
+          key: radar-cache-${{ github.run_id }}
+      - name: Tidy the run list (successful radar runs older than two days are deleted)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cutoff=$(date -u -d '2 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions"
+          ids=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "$api/workflows/radar.yml/runs?status=success&per_page=100" | jq -r --arg c "$cutoff" '.workflow_runs[] | select(.created_at < $c) | .id')
+          n=0
+          for id in $ids; do
+            curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api/runs/$id" && n=$((n+1))
+          done
+          echo "deleted $n old runs (before $cutoff)"
