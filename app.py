@@ -852,7 +852,7 @@ html.app .tabbar { display:none }
 html.app body { padding-bottom:calc(66px + max(10px, env(safe-area-inset-bottom))) }
 html.app .wrap { padding-top:max(16px, env(safe-area-inset-top)); padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)) }
 html.app .app-off, html.app[data-apptab="account"] .tabs, html.app [data-live-link] { display:none !important }   /* the website's address: the app is it */
-.appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+.appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
   padding:4px max(6px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
   background:color-mix(in srgb,var(--surface) 94%,transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
   border-top:1px solid var(--line) }
@@ -865,6 +865,8 @@ html.app .app-off, html.app[data-apptab="account"] .tabs, html.app [data-live-li
 .appbar .ab-dot { position:absolute; top:7px; left:calc(50% + 8px); width:9px; height:9px; border-radius:50%; background:var(--bad-mark); box-shadow:0 0 0 2px var(--surface) }
 .appbar .ab-cnt { position:absolute; top:3px; left:calc(50% + 6px); min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--accent); color:#fff;
   font-size:11px; line-height:18px; font-weight:600; box-shadow:0 0 0 2px var(--surface); font-variant-numeric:tabular-nums }
+.appbar [data-tab="radar"] .ab-cnt { background:var(--good-mark) }   /* coins with no trap found right now: green, the only green the radar uses */
+.appbar button > span:not([class]) { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 html.app header { position:relative; padding-right:56px }
 .appbell { position:absolute; top:-2px; right:0; width:44px; height:44px; border-radius:22px; border:1px solid var(--line); background:var(--surface); color:var(--fg2);
   display:grid; place-items:center; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent }
@@ -903,11 +905,11 @@ html.app header { position:relative; padding-right:56px }
 
 PAGE_JS = r"""
 (function(){
-// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, New coins, Office, Account) instead of the top one, a bell and a
+// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, Radar, New, Office, Account) instead of the top one, a bell and a
 // notifications card on the Account tab (permission asked from the tap, the subscription saved in the live store through save_push_sub
 // with its two settings), deep links (#tab-young ...) from notifications. In a browser tab it does nothing. window.MemebotApp holds its
 // decisions for the tests.
-var A=window.MemebotApp={TABS:['pick','young','office','account'],
+var A=window.MemebotApp={TABS:['pick','radar','young','office','account'],
   // an installed web app: Safari's navigator.standalone, or the display mode of an installed app (iOS reports "display": "standalone"
   // as fullscreen, WebKit bug 264218)
   installed:function(nav,mm){try{if(nav&&nav.standalone===true)return true;
@@ -925,11 +927,15 @@ var A=window.MemebotApp={TABS:['pick','young','office','account'],
   // the New coins tab's badge follows the early box: while it shows a scan's early list the badge is that list's count; else null and no
   // badge at all (a badge reads as new coins: the scored list's count is not one)
   badge:function(early,y){return A.listed(early)?A.count(y):null;},
+  // the Radar tab's badge (report.py's radar script, event "memebot-radar"): the coins with no trap found while the radar runs; none at 0,
+  // none for a late, stopped or switched-off radar (its coins are not current)
+  radarBadge:function(d){if(!d||typeof d!=='object'||d.state!=='running'||!d.doc||!Array.isArray(d.doc.coins))return null;
+    var n=d.doc.coins.filter(function(c){return c&&typeof c==='object'&&c.v==='good';}).length;return n>0?n:null;},
   // the pick for the "New pick" note: the snapshot's (status, so it is there as soon as the notification) or current's, of a scan newer
   // than this page, with a symbol
   pick:function(st,cur,pageT){var c=[st&&st.pick,cur&&cur.pick];for(var i=0;i<c.length;i++){var p=c[i];
     if(p&&typeof p==='object'&&p.sym&&(+p.t||0)>(+pageT||0))return p;}return null;},
-  tab:function(h){var m=/^#?tab-(pick|young|office|account)$/.exec(String(h||''));return m?m[1]:null;},
+  tab:function(h){var m=/^#?tab-(pick|radar|young|office|account)$/.exec(String(h||''));return m?m[1]:null;},
   store:function(u,k){u=String(u||'').replace(/\/+$/,'');k=String(k||'');
     return /^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?$/.test(u)&&/^sb_publishable_[A-Za-z0-9_-]+$/.test(k)?{url:u,key:k}:null;}};
 if(!A.installed(window.navigator,window.matchMedia?function(q){return window.matchMedia(q);}:null))return;
@@ -940,11 +946,12 @@ function ss(k,v){try{if(v===undefined)return sessionStorage.getItem(k);sessionSt
 function el(tag,cls,text){var e=doc.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
 function svg(d){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';}
 var ICON={pick:svg('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>'),
+  radar:svg('<path d="M12 12l6.2-6.2"/><path d="M19.2 9.2A7.9 7.9 0 1 1 14.8 4.6"/><path d="M15.8 11.1A4 4 0 1 1 12.9 8.1"/><circle cx="12" cy="12" r="1.3"/>'),
   young:svg('<circle cx="12" cy="12" r="8.4"/><path d="M12 8.2v7.6M8.2 12h7.6"/>'),
   office:svg('<circle cx="9" cy="8.2" r="3.1"/><path d="M3.6 19.2c.6-3.2 2.8-5 5.4-5s4.8 1.8 5.4 5"/><circle cx="16.9" cy="9.2" r="2.4"/><path d="M15.6 14.3c2.3.2 4 1.8 4.6 4.9"/>'),
   account:svg('<path d="M4.2 8.2V7.4A2.4 2.4 0 0 1 6.6 5h10.6v3.2"/><rect x="4.2" y="8.2" width="15.6" height="10.8" rx="2.4"/><circle cx="15.9" cy="13.6" r="1.2"/>'),
   bell:svg('<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>')};
-var NAMES={pick:'Pick',young:'New coins',office:'Office',account:'Account'},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
+var NAMES={pick:'Pick',radar:'Radar',young:'New coins',office:'Office',account:'Account'},SHORT={young:'New'},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
 var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,pos={},lastEarly=null,toEarly=0,jumped=false;
 // a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'keep' (back where this tab was left, as iOS apps do) or nothing
 function select(t,scroll){
@@ -974,7 +981,7 @@ function early(){
 function buildBar(){
   var nav=el('nav','appbar');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Sections');
   A.TABS.forEach(function(t){var b=el('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('data-tab',t);
-    b.innerHTML=ICON[t];b.appendChild(el('span','',NAMES[t]));
+    b.innerHTML=ICON[t];b.appendChild(el('span','',SHORT[t]||NAMES[t]));     // five tabs: the short name on the bar, the full one read out
     b.addEventListener('click',function(){if(t===cur){try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}}else select(t,'keep');});btns[t]=b;nav.appendChild(b);});
   return nav;
 }
@@ -1034,7 +1041,7 @@ function back(){
   if(!P.key)getKey().then(render);
   else if(P.sub&&!P.saved&&perm()==='granted'){P.busy=true;render();save(false).then(function(){P.busy=false;render();});}
 }
-var TEXT={off:['Off','','Get a notification when the new coins are listed, about five minutes into each hourly scan, and when the pick is made.','Turn on notifications'],
+var TEXT={off:['Off','','Get a notification when the launch radar finds a coin with no trap, and when the pick is made.','Turn on notifications'],
   on:['On','good','This iPhone gets the notifications switched on below.','Turn off notifications'],
   denied:['Blocked','bad','Notifications are blocked for Meme-Bot. Allow them in Settings > Notifications > Meme-Bot, then open the app again.',''],
   unsupported:['Not supported','warn','Notifications need iOS 16.4 or newer. If Meme-Bot was added to the Home Screen from another browser, add it again from Safari and open it from there.',''],
@@ -1048,7 +1055,7 @@ function card(){
   ui.note=el('p','nf-note');ui.btn=el('button','nf-btn');ui.btn.type='button';
   ui.btn.addEventListener('click',function(){if(state()==='on')turnOff();else turnOn();});
   ui.prefs=el('div','nf-prefs');
-  [['young','New coins listed','about five minutes into each scan'],['pick','The pick is made','at the end of each scan']].forEach(function(p){
+  [['young','New coins','the launch radar: a coin with no trap found'],['pick','The pick is made','at the end of each scan']].forEach(function(p){
     var row=el('label','nf-row'),sp=el('span'),inp=el('input');sp.appendChild(el('b','',p[1]));sp.appendChild(el('small','',p[2]));
     inp.type='checkbox';inp.setAttribute('role','switch');inp.checked=prefs[p[0]];inp.setAttribute('data-pref',p[0]);
     inp.addEventListener('change',function(){var was=prefs[p[0]];prefs[p[0]]=inp.checked;ls('memebot-push-prefs',JSON.stringify(prefs));
@@ -1101,6 +1108,8 @@ function onLive(e){
     ban.textContent='New pick from the scan that just ran: '+String(pk.sym).slice(0,24)+(typeof pk.score==='number'?', score '+Math.round(pk.score):'')+'. The full report follows in a few minutes. Paper trading only.';}
   else if(ban)ban.parentNode.removeChild(ban);
 }
+// the radar's news (report.py's radar script, after every answer and every change of its state): the count of coins with no trap found
+function onRadar(e){var k=A.radarBadge(e&&e.detail);mark('radar','ab-cnt',!!k,k!=null?String(k):null);}
 function init(){
   var tabs=doc.querySelector('.tabs'),hdr=doc.querySelector('header');
   if(tabs){
@@ -1123,6 +1132,7 @@ function init(){
   if(first)window.addEventListener('load',function(){if(!jumped)window.scrollTo(0,0);});
   window.addEventListener('hashchange',function(){var t=link();if(t)select(t,'top');});
   window.addEventListener('memebot-live',onLive);
+  window.addEventListener('memebot-radar',onRadar);if(window.MemebotRadar&&window.MemebotRadar.last)onRadar({detail:window.MemebotRadar.last});
   doc.addEventListener('visibilitychange',back);
   A.hold=function(){return !!P.busy||cur==='account';};      // report.py's live script does not reload the app now (a tap on Account at work)
   render();startPush();
