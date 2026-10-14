@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   radar:
-    if: vars.MEMEBOT_RADAR != '0'
+    if: (vars.MEMEBOT_RADAR || '1') != '0'   # an unset variable counts as on (compared bare, GitHub skipped the job)
     runs-on: ubuntu-latest
     timeout-minutes: 75              # a 55-minute run plus its start, its last cycle and the cache
     env:

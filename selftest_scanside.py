@@ -764,7 +764,7 @@ def _s6(check, scan, tmp):
           and sa.get("continue-on-error") is True and sa.get("timeout-minutes") == 1 and sa.get("if") == "steps.recent.outputs.skip != 'true'"
           and sb.get("continue-on-error") is True and sb.get("timeout-minutes") == 3 and sb.get("if") == "steps.recent.outputs.skip != 'true'"
           and sd.get("continue-on-error") is True and sd.get("timeout-minutes") == 1
-          and sd.get("if") == "always() && steps.recent.outputs.skip != 'true' && vars.MEMEBOT_RADAR != '0'"
+          and sd.get("if") == "always() && steps.recent.outputs.skip != 'true' && (vars.MEMEBOT_RADAR || '1') != '0'"
           and (step(job, "Scan and recommend") or {}).get("run", "").strip() == 'python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN',
           "step A sits after the restore and before the cache step, B right after the results push, D last; each is continue-on-error with a"
           " timeout (1, 3, 1 min); D runs even after a failed scan unless MEMEBOT_RADAR is 0; none is inside bot.py cycle")

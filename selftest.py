@@ -3683,6 +3683,9 @@ console.log(JSON.stringify(o));
           and "mins = DEFAULT_MINUTES" in open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() and LR_x.DEFAULT_MINUTES == 55,
           "build: bidi controls are stripped from push titles and the radar page's text, the radar job and the peaks job check out without "
           "the token in .git/config, every radar successor runs 55 minutes")
+    check(not re.search(r"vars\.[A-Z_]+ *[!=]=", ry + sy) and ry.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1
+          and sy.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1 and sy.count("(vars.MEMEBOT_PEAKS || '1') != '0'") == 1,
+          "build: a repository variable that is not set counts as on (GitHub skipped the radar job on a bare vars.X != '0')")
     import page_radar as PR_x, page_office as PO_x
     yh = PR_x.young_head({"a": {"v": "trap"}}, [{"addr": "a"}])
     check("body:has(#tab-radar:checked) .wrap > .live { display:none }" in PR_x.CSS and "the trap check does not stop them (fake money)" in yh

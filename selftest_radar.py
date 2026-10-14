@@ -1309,7 +1309,7 @@ def checks(check, env_=None):
         body = lambda lines: lines[lines.index(next(l for l in lines if "Install the push sender" in l)) + 2:][:30]
         job_env = wf.split("    steps:")[0]
         check(re.search(r"^on:\n  workflow_dispatch:", wf, re.M) and "schedule" not in wf and "group: memebot-radar" in wf and "cancel-in-progress: false" in wf
-              and re.search(r"^    timeout-minutes: 75\b", wf, re.M) and "if: vars.MEMEBOT_RADAR != '0'" in wf and body(wf.splitlines()) == body(sc)
+              and re.search(r"^    timeout-minutes: 75\b", wf, re.M) and "if: (vars.MEMEBOT_RADAR || '1') != '0'" in wf and body(wf.splitlines()) == body(sc)
               and "RADAR_URL" not in job_env and "SUPABASE_SECRET_KEY: ${{" not in job_env and not re.search(r"git push|refs/heads/(results|live|radar-feed)", wf)
               and "launch_radar.py loop --dir rd --minutes \"$MIN\" --cadence 150" in wf and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf
               and "MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}" in job_env
