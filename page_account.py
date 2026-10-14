@@ -17,14 +17,16 @@ load(d, now, pos=None, px=None, since=None) -> dict
 
 section(D, bought=None) -> HTML
     The survival header (big P/L since the restart, its rate, the balance line, four tiles), the three category strips, the
-    activity feed, the open positions (report.py's own `bought`), the trades in four orders (newest, top %, worst %, best in 6 h)
-    with the two hindsight columns, the trades before the restart and the curve fold with the dashed "best within 6 h" line.
+    activity feed, the top trades in four orders (newest, top %, worst %, best in 6 h) with the two hindsight columns, the open
+    positions (report.py's own `bought`), the trades before the restart and the curve fold with the dashed "best within 6 h" line.
     Everything is static HTML and CSS; the only script shows the trader's latest line while a scan runs, and only when the page
     already holds the live doc (report.py's live poll fires the "memebot-live" event; this module starts no poll of its own).
+    On a phone (820 px or less) the category strips keep only the big P/L, its rate and the "same trades" line in view (the
+    figures sit in their ⓘ fold) and the feed shows the newest 6 rows (the rest open the fold); CSS only, both are in the page.
 
 Every hindsight number carries the word "hindsight". No text here gives advice.
 """
-import html, math, os, sys
+import html, math, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -34,13 +36,16 @@ E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 MINUS, NB = "−", " "
 WINDOW_MS = 6 * 3_600_000           # the hindsight window after the entry (peak.py: end = entryAt + 6 h)
 SETTLE_MS = 2 * 60_000              # a window counts once now >= end + 2 min
-FEED_SHOWN, FEED_MAX = 20, 300      # the activity feed: rows shown, rows in the fold "all since ..."
+FEED_PHONE, FEED_SHOWN, FEED_MAX = 6, 20, 300     # the activity feed: rows in view on a phone, on a wide screen, rows in all (the rest in the fold)
 TOP_NEW, TOP_N = 100, 50            # the trades: newest 100; top %, worst % and best in 6 h 50 each
 BOOKED = ("ok", "est")              # memepeak states that are booked in the "best within 6 h" category
 PEAK_STATES = ("ok", "est", "unit", "waiting")
+CAP_WORDS = "not confirmed (over 30x or $100M cap)"
+CUT_HEAD = {"pool dead": "pool dead", "collapse": "pool dead", "dust": "too little volume", "unconfirmed": "not confirmed by the next close",
+            "jump": "not confirmed", "cap": CAP_WORDS, "unit": "price unit mismatch"}       # peak.py's cut texts start "<rule>: ..."
 CUT_WORDS = (("rug", "pool dead"), ("dead", "pool dead"), ("liq", "pool dead"), ("collapse", "pool dead"), ("dust", "too little volume"),
              ("volume", "too little volume"), ("unconfirmed", "not confirmed by the next close"), ("confirm", "not confirmed by the next close"),
-             ("cap", "not confirmed above 30x"), ("jump", "not confirmed"), ("unit", "price unit mismatch"))
+             ("cap", CAP_WORDS), ("jump", "not confirmed"), ("unit", "price unit mismatch"))
 FEED_WHY = {"tp": "take-profit", "stop": "stop", "time": "6 h limit", "rug": "rug", "reset": "restart", "manual": "by hand", "filters": "filters",
             "target": "half at 2x"}
 SORTS = (("new", "Newest"), ("top", "Top %"), ("worst", "Worst %"), ("best", "Best in 6 h"))
@@ -135,27 +140,32 @@ def hhmm(ms):
         return "–"
 
 
-def ddmm(ms):
+def mday(ms):
+    """A day as the rest of the page writes it: Oct 10."""
     try:
-        return _local(num(ms)).strftime("%d.%m.")
+        return _local(num(ms)).strftime("%b %d")
     except (TypeError, OverflowError, OSError, ValueError):
         return "–"
 
 
-def day_label(ms, now):
+def day_label(ms):
+    """The feed's day header, always a date (Sat Oct 10): the page is built once per scan and may be read after midnight, so a
+    "Today" fixed at the build would be a day off."""
     try:
-        t, n = _local(num(ms)), _local(num(now))
+        return _local(num(ms)).strftime("%a %b %d")
     except (TypeError, OverflowError, OSError, ValueError):
         return ""
-    k = (n.date() - t.date()).days
-    return "Today" if k == 0 else ("Yesterday" if k == 1 else t.strftime("%a %d.%m."))
 
 
 # ---------------------------------------------------------------- data
 def cut_reason(cut):
-    """The first filter that fired, in a few plain words (peak.py's cut texts, e.g. "rug exit", "dust 59257.00x")."""
+    """The first filter that fired, in a few plain words. peak.py's cut texts start with the rule ("pool dead: rug exit, ...",
+    "dust: 59,257x on $3 volume", "cap: 1 level over 30x or a $100M market cap without support"); other texts by their words."""
     for c in cut or []:
         s = str(c).lower()
+        head = s.split(":", 1)[0].strip()
+        if head in CUT_HEAD:
+            return CUT_HEAD[head]
         for key, words in CUT_WORDS:
             if key in s:
                 return words
@@ -198,7 +208,7 @@ def load(d, now, pos=None, px=None, since=None):
         empty = _stats([])
         return {"since": since, "err": "%s: %s" % (type(e).__name__, str(e)[:160]), "stop": dict(M.paper_account({}, since), winRate=None),
                 "best": empty, "six": empty, "counts": {"M": 0, "priced": 0, "est": 0, "m15": 0, "unit": 0, "waiting": 0, "open": 0},
-                "feed": [], "feedN": 0, "rows": [], "bestTrade": None, "peakPts": [], "sameBest": None, "sameSix": None}
+                "feed": [], "feedN": 0, "rows": [], "bestTrade": None, "peakPts": [], "sameBest": None, "sameSix": None, "noPx": 0}
 
 
 def _load(d, now, pos, px, since):
@@ -273,7 +283,7 @@ def _load(d, now, pos, px, since):
     same = lambda rs: round(sum(r["pnl"] for r in rs), 2) if rs else None
     return {"since": since, "err": None, "stop": stop, "best": best, "six": six_st, "counts": counts, "feed": feed[:FEED_MAX], "feedN": len(feed),
             "rows": rows, "bestTrade": {"pnl": top["pnl"], "sym": top["sym"]} if top else None, "peakPts": pts,
-            "sameBest": same(booked), "sameSix": same(six)}
+            "sameBest": same(booked), "sameSix": same(six), "noPx": sum(1 for r in rows if r["open"] and r["value"] is None)}
 
 
 # ---------------------------------------------------------------- the parts of the page
@@ -303,15 +313,40 @@ def balance_line(D, A):
         lo, hi = lo - 1, hi + 1
     X = lambda t: (t - t0) / ((t1 - t0) or 1) * W
     Y = lambda v: pad + (hi - v) / (hi - lo) * (H - 2 * pad)
-    path = " ".join("%s%.1f %.1f" % ("M" if i == 0 else "L", X(t), Y(v)) for i, (t, v) in enumerate(pts))
+    xy = [(X(t), Y(v)) for t, v in pts]
+    path = " ".join("%s%.1f %.1f" % ("M" if i == 0 else "L", x, y) for i, (x, y) in enumerate(xy))
     cls = tone(pts[-1][1]) or "flat"
     y0 = Y(0.0)
-    zl = y0 - 15 if pts[-1][1] < 0 and y0 >= 15 else min(H - 13, y0 + 3)     # beside the zero line, on the side the line ends away from
+    zl = zero_label(xy, y0, W, H)
+    lab = ('<span class="zl" style="%s:0;top:%.0fpx">break-even</span>' % (zl[0], zl[1])) if zl else ""
     return ('<div class="pa-line %s" role="img" aria-label="Paper account profit or loss after every run since the restart, now %s">'
             '<svg viewBox="0 0 %d %d" preserveAspectRatio="none"><line class="z" x1="0" y1="%.1f" x2="%d" y2="%.1f"/>'
             '<path class="a" d="%s L%.1f %.1f L0 %.1f Z"/><path class="l" d="%s"/></svg>'
-            '<span class="zl" style="top:%.0fpx">break-even</span><span class="st">%s</span><span class="en">now %s</span></div>') % (
-        cls, E(eur(pts[-1][1], True)), W, H, y0, W, y0, path, W, y0, y0, path, zl, E(ddmm(t0)), E(hhmm(pts[-1][0])))
+            '%s<span class="st">%s</span><span class="en">now %s</span></div>') % (
+        cls, E(eur(pts[-1][1], True)), W, H, y0, W, y0, path, W, y0, y0, path, lab, E(mday(t0)), E(hhmm(pts[-1][0])))
+
+
+def _crosses(xy, xa, xb, ya, yb):
+    """Whether the polyline xy (sorted by x) passes through the box [xa, xb] x [ya, yb]."""
+    for (x1, y1), (x2, y2) in zip(xy, xy[1:]):
+        if x2 < xa or x1 > xb:
+            continue
+        at = lambda x: y1 if x2 == x1 else y1 + (y2 - y1) * (x - x1) / (x2 - x1)
+        ys = (at(max(x1, xa)), at(min(x2, xb)))
+        if min(ys) <= yb and max(ys) >= ya:
+            return True
+    return False
+
+
+def zero_label(xy, y0, W, H):
+    """Where the balance line's "break-even" label goes: (side, top px). The right end first, then the left end, each above and
+    then below the zero line, wherever the line does not pass (the label is about 62 px wide, up to a quarter of a phone's line).
+    None when the line passes every place: the dashed zero line then stands alone."""
+    for side, xa, xb in (("right", 0.74 * W, W), ("left", 0.0, 0.26 * W)):
+        for top in ((y0 - 15) if y0 >= 15 else None, min(H - 13, y0 + 3)):
+            if top is not None and not _crosses(xy, xa, xb, top - 1, top + 14):
+                return side, round(top)
+    return None
 
 
 def header(D, A):
@@ -323,12 +358,13 @@ def header(D, A):
     rate = (a["pnl"] / a["invested"]) if a["invested"] else None
     wr = a.get("winRate")
     bt = A.get("bestTrade")
+    no_px = int(A.get("noPx") or 0)
     tiles = [("Win rate", ("%.1f%%" % (100 * wr)) if wr is not None else "–", ("%d won · %d lost" % (a["won"], a["lost"])) if a["nClosed"] else "nothing sold yet", ""),
              ("Trades", "%d|closed" % a["nClosed"], ("%d open · %d top pick%s · %d new launch%s" % (
                  a["nOpen"], a["nTop"], "" if a["nTop"] == 1 else "s", a["nYoung"], "" if a["nYoung"] == 1 else "es")) if a["nOpen"] else "0 open · nothing held", ""),
              ("Best trade", eur(bt["pnl"], True) if bt else "–", bt["sym"] if bt else "nothing sold yet", tone(bt["pnl"]) if bt else ""),
-             ("Open value", eur(a["open"]), "if all sold now" if a["nOpen"] else "nothing held", "")]
-    when = ddmm(since) if since else ""
+             ("Open value", eur(a["open"]), ("if all sold now" + ((" · %d with no price yet, counted at 0" % no_px) if no_px else "")) if a["nOpen"] else "nothing held", "")]
+    when = mday(since) if since else ""
     info = ("profit/loss since the restart%s: what came back plus what the open positions would fetch now, minus what went in, after the "
             "paper fees (1%%, at least 0.10 per trade). The rule that runs: the top pick for %s, the first %d new launches for %s each, sold at "
             "+%d%%, at %s%% or after %d hours. Fake money, nothing is bought for real.") % (
@@ -336,10 +372,11 @@ def header(D, A):
         MINUS + str(round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H))
     return ('<div class="pa-hero" data-pa="header"><div class="pl"><div class="pa-eyebrow"><span>Stop-loss account</span><span class="chip neutral">the rule</span>'
             '<span>fake money</span></div><div class="pa-k">P/L since %s</div><div class="pa-big %s" data-pa-v="pnl">%s</div>'
-            '<div class="pa-rate %s" data-pa-v="rate">%s<span> on %s invested</span></div>'
+            '<div class="pa-rate %s" data-pa-v="rate">%s</div>'
             '<details class="pa-i"><summary aria-label="How this is counted">ⓘ how this is counted</summary><p>%s</p></details></div>%s'
             '<div class="pa-tiles">%s</div></div>') % (
-        E(when or "the restart"), tone(a["pnl"]), E(eur(a["pnl"], True)), tone(rate), E(pct1(rate)) if rate is not None else "–", E(eur(a["invested"])), E(info),
+        E(when or "the restart"), tone(a["pnl"]), E(eur(a["pnl"], True)), tone(rate),
+        ('%s<span> on %s invested</span>' % (E(pct1(rate)), E(eur(a["invested"])))) if rate is not None else "<span>nothing bought yet</span>", E(info),
         balance_line(D, A),
         "".join('<div class="pa-tile" data-pa-tile="%s"><span class="k">%s</span><span class="v %s">%s</span><span class="s">%s</span></div>' % (
             E(k.lower().replace(" ", "-")), E(k), c, _tile_v(v), E(s)) for k, v, s, c in tiles))
@@ -360,6 +397,23 @@ def _wl_bar(won, lost):
     return '<div class="pa-wl" role="img" aria-label="%d won, %d lost"><i style="width:%.1f%%"></i></div>' % (won, lost, 100.0 * won / n)
 
 
+def _cat(cls, key, title, chip, pnl, rate_txt, figs, same, how):
+    """One category card. A wide screen shows the big P/L, its rate, the figures (invested, back, ...), the won/lost bar and the
+    counts. A phone (820 px or less) keeps the big P/L, its rate and the "same trades" line in view; the figures move into the ⓘ
+    fold (a second copy that only a phone shows), so the three cards stay short. pnl None: the category is still empty."""
+    vr = ('<div class="vr"><div class="v %s">%s</div><div class="r">%s</div></div>' % (tone(pnl), E(eur(pnl, True)), E(rate_txt)) if pnl is not None
+          else '<div class="vr"><div class="v muted">–</div><div class="r">%s</div></div>' % E(rate_txt))
+    summ = '<span class="dt-only">ⓘ how</span><span class="ph-only">ⓘ figures and how</span>' if figs else "ⓘ how"
+    return ('<div class="pa-cat %s" data-pa="%s"><div class="head"><span class="t">%s</span>%s</div>%s%s%s'
+            '<details class="pa-i"><summary>%s</summary>%s<p>%s</p></details></div>') % (
+        cls, key, E(title), chip, vr, ('<div class="det">%s</div>' % figs) if figs else "", same, summ, ('<div class="ph">%s</div>' % figs) if figs else "", E(how))
+
+
+def _figs(kv, won, lost, foot):
+    """A category's figures: the key numbers, the won/lost bar and the counts line."""
+    return '<dl>%s</dl>%s<div class="foot">%s</div>' % ("".join('<div><dt>%s</dt><dd>%s</dd></div>' % (E(k), E(v)) for k, v in kv), _wl_bar(won, lost), E(foot))
+
+
 def strips(D, A):
     """The three categories side by side (stacked on a phone): the stop-loss account (the rule), best within 6 h and held 6 h then
     sold (both hindsight, with the stop-loss result of the same positions beside them so the three compare like for like)."""
@@ -369,27 +423,21 @@ def strips(D, A):
     wl1 = ("%d won · %d lost" % (a["won"], a["lost"])) if a["nClosed"] else "nothing sold yet"
     how1 = ("The rule that really runs: each paper position is sold at +%d%%, at %s%% or after %d hours, whichever comes first. Open positions count "
             "at the last price, after fees; one with no price yet counts 0.") % (round(100 * M.HOLD_TP), MINUS + str(round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H))
-    cat1 = ('<div class="pa-cat rule" data-pa="stop"><div class="head"><span class="t">Stop-loss account</span><span class="chip neutral">the rule</span></div>'
-            '<div class="v %s">%s</div><div class="r">%s</div><dl>%s</dl>%s<div class="foot">%s</div>'
-            '<details class="pa-i"><summary>ⓘ how</summary><p>%s</p></details></div>') % (
-        tone(a["pnl"]), E(eur(a["pnl"], True)), E(("%s on %s invested" % (pct1(rate), eur(a["invested"]))) if rate is not None else "nothing bought yet"),
-        "".join('<div><dt>%s</dt><dd>%s</dd></div>' % (E(k), E(v)) for k, v in k1), _wl_bar(a["won"], a["lost"]), E(wl1), E(how1))
+    cat1 = _cat("rule", "stop", "Stop-loss account", '<span class="chip neutral">the rule</span>', a["pnl"],
+                ("%s on %s invested" % (pct1(rate), eur(a["invested"]))) if rate is not None else "nothing bought yet",
+                _figs(k1, a["won"], a["lost"], wl1), "", how1)
+    chip = '<span class="chip warn">hindsight, not a trading rule</span>'
 
     def hind(key, title, st, same, howto, foot):
         if not st["n"]:
-            body = '<div class="v muted">–</div><div class="r">%s</div>' % E(foot)
-        else:
-            r = st["pnl"] / st["invested"] if st["invested"] else None
-            kv = [("invested", eur(st["invested"])), ("back", eur(st["back"])), ("trades", str(st["n"]))]
-            body = ('<div class="v %s">%s</div><div class="r">%s</div><dl>%s</dl>%s<div class="foot">%s</div>') % (
-                tone(st["pnl"]), E(eur(st["pnl"], True)), E("%s on %s invested" % (pct1(r), eur(st["invested"]))) if r is not None else "",
-                "".join('<div><dt>%s</dt><dd>%s</dd></div>' % (E(k), E(v)) for k, v in kv), _wl_bar(st["won"], st["lost"]),
-                E("%d won · %d lost · %s" % (st["won"], st["lost"], foot)))
-            if same is not None:
-                body += '<div class="same">same %d trades under the stop-loss rule: <b class="%s">%s</b></div>' % (st["n"], tone(same), E(eur(same, True)))
-        return ('<div class="pa-cat %s" data-pa="%s"><div class="head"><span class="t">%s</span><span class="chip warn">hindsight, not a trading rule</span></div>%s'
-                '<details class="pa-i"><summary>ⓘ how</summary><p>%s</p></details></div>') % (key, key, E(title), body, E(howto))
-    priced = "priced %d of %d · %d waiting · %d estimated · %d 15-min" % (c["priced"], c["M"], c["waiting"], c["est"], c["m15"]) + (
+            return _cat(key, key, title, chip, None, foot, "", "", howto)
+        r = st["pnl"] / st["invested"] if st["invested"] else None
+        kv = [("invested", eur(st["invested"])), ("back", eur(st["back"])), ("trades", str(st["n"]))]
+        line = ('<div class="same">same %d trades under the stop-loss rule: <b class="%s">%s</b></div>' % (st["n"], tone(same), E(eur(same, True)))
+                if same is not None else "")
+        return _cat(key, key, title, chip, st["pnl"], ("%s on %s invested" % (pct1(r), eur(st["invested"]))) if r is not None else "",
+                    _figs(kv, st["won"], st["lost"], "%d won · %d lost · %s" % (st["won"], st["lost"], foot)), line, howto)
+    priced = "priced %d of %d · %d waiting · %d estimated · %d on 15-min candles" % (c["priced"], c["M"], c["waiting"], c["est"], c["m15"]) + (
         (" · %d not booked (price unit)" % c["unit"]) if c["unit"] else "")
     how2 = ("Hindsight: every paper position since the restart, open or sold, booked at its highest minute-candle close within 6 hours after the "
             "entry, measured on the pool it was bought on. Wicks never count; dust candles, a dead pool, a collapse and spikes the next close did "
@@ -398,52 +446,59 @@ def strips(D, A):
     how3 = ("Hindsight: the same positions sold at the last minute-candle close 6 hours after the entry, and at 0 when the pool died inside "
             "the window. Only positions whose 6-hour price is known count here.")
     cat2 = hind("peak", "Best within 6 h", b, A.get("sameBest"), how2, priced)
-    cat3 = hind("six", "Held 6 h, then sold", s, A.get("sameSix"), how3, "n = %d of %d" % (s["n"], c["M"]) if s["n"] else "no 6-hour price known yet")
+    cat3 = hind("six", "Held 6 h, then sold", s, A.get("sameSix"), how3, "%d of %d trades" % (s["n"], c["M"]) if s["n"] else "no 6-hour price known yet")
     return '<div class="pa-cats">%s%s%s</div>' % (cat1, cat2, cat3)
 
 
-def feed_row(f, R):
+def feed_row(f, R, cls=""):
     grp = "new launch" if f.get("grp") == "young" else "top pick"
+    c = (" " + cls) if cls else ""
     if f["k"] == "buy":
-        return '<li class="pa-ev b"><span class="tm">%s</span><i></i><span class="tx"><b class="act">BOUGHT</b> <b>%s</b> · %s</span><span class="am">%s</span></li>' % (
-            E(hhmm(f["t"])), E(f["sym"]), E(grp), E(R.fmt_eur(f["ticket"])))
+        return '<li class="pa-ev b%s"><span class="tm">%s</span><i></i><span class="tx"><b class="act">BOUGHT</b> <b>%s</b> · %s</span><span class="am">%s</span></li>' % (
+            c, E(hhmm(f["t"])), E(f["sym"]), E(grp), E(R.fmt_eur(f["ticket"])))
     why = FEED_WHY.get(f["why"], f["why"])
     move = (" " + pct_move(f["move"])) if f.get("move") is not None else ""
-    return '<li class="pa-ev s %s"><span class="tm">%s</span><i></i><span class="tx"><b class="act">SOLD</b> <b>%s</b> · %s%s%s</span><span class="am">%s</span></li>' % (
-        tone(f["eur"]) or "flat", E(hhmm(f["t"])), E(f["sym"]), E(why), E(move), " · half" if f.get("half") else "", E(eur(f["eur"], True)))
+    return '<li class="pa-ev s %s%s"><span class="tm">%s</span><i></i><span class="tx"><b class="act">SOLD</b> <b>%s</b> · %s%s%s</span><span class="am">%s</span></li>' % (
+        tone(f["eur"]) or "flat", c, E(hhmm(f["t"])), E(f["sym"]), E(why), E(move), " · half" if f.get("half") else "", E(eur(f["eur"], True)))
 
 
-def _feed_list(items, now, R, day0=None):
+def _feed_list(items, R, day0=None, cls=""):
+    """Feed rows with a date header wherever the day changes (day0: the day of the row before them); cls marks rows that only a
+    wide screen ("ex") or only a phone ("ph") shows."""
     out, day = [], day0
     for f in items:
-        dl = day_label(f["t"], now)
+        dl = day_label(f["t"])
         if dl != day:
-            out.append('<li class="pa-day">%s</li>' % E(dl))
+            out.append('<li class="pa-day%s">%s</li>' % ((" " + cls) if cls else "", E(dl)))
             day = dl
-        out.append(feed_row(f, R))
+        out.append(feed_row(f, R, cls))
     return "".join(out), day
 
 
 def feed(D, A):
-    """Every paper buy and sale since the restart, newest first: 20 rows, the rest (up to FEED_MAX) behind a fold. Static per build
-    (it changes only at the trader step); the live line below the head shows the trader's latest line while a scan runs."""
+    """Every paper buy and sale since the restart, newest first: 20 rows on a wide screen and 6 on a phone, the rest (up to
+    FEED_MAX) behind a fold. Rows 7-20 are in the page twice: in the list (wide screens only) and at the top of the fold (phones
+    only). Static per build (it changes only at the trader step); the live line below the head shows the trader's latest line
+    while a scan runs."""
     R = _report()
-    now = D.get("now") or 0
     items = A.get("feed") or []
-    last = (D.get("state") or {}).get("lastRun")
-    head = ('<div class="head"><h3>Activity</h3><span class="upd">updated each scan · last scan %s</span></div>'
-            '<p class="pa-livel" data-acct-live hidden><i aria-hidden="true"></i><span></span></p>') % E(hhmm(last) if last else "–")
+    newest = items[0]["t"] if items else None
+    head = ('<div class="head"><h3>Activity</h3><span class="upd">updated each scan%s</span></div>'
+            '<p class="pa-livel" data-acct-live hidden><i aria-hidden="true"></i><span></span></p>') % E((" · newest " + hhmm(newest)) if newest else "")
     if not items:
         return '<div class="pa-feed" data-pa="feed">%s<p class="note">No paper trade since the restart yet.</p></div>' % head
-    first, day = _feed_list(items[:FEED_SHOWN], now, R)
+    first, day = _feed_list(items[:FEED_PHONE], R)
+    mid_items = items[FEED_PHONE:FEED_SHOWN]
+    mid, day_mid = _feed_list(mid_items, R, day, "ex")
     rest = items[FEED_SHOWN:]
     more = ""
-    if rest:
-        inner, _ = _feed_list(rest, now, R, day)
+    if mid_items or rest:
+        ph, _ = _feed_list(mid_items, R, day, "ph")
+        tail, _ = _feed_list(rest, R, day_mid)
         n_all = A.get("feedN") or len(items)
-        more = '<details class="fold-lite pa-more"><summary>All since %s (%d%s)</summary><ol class="pa-evs">%s</ol></details>' % (
-            E(ddmm(A.get("since"))), n_all, (", newest %d here" % FEED_MAX) if n_all > FEED_MAX else "", inner)
-    return '<div class="pa-feed" data-pa="feed">%s<ol class="pa-evs two">%s</ol>%s</div>' % (head, first, more)
+        more = '<details class="fold-lite pa-more pa-f%s"><summary>All since %s (%d%s)</summary><ol class="pa-evs">%s%s</ol></details>' % (
+            "" if rest else " ph-only", E(mday(A.get("since"))), n_all, (", newest %d here" % FEED_MAX) if n_all > FEED_MAX else "", ph, tail)
+    return '<div class="pa-feed" data-pa="feed">%s<ol class="pa-evs two">%s%s</ol>%s</div>' % (head, first, mid, more)
 
 
 def _peak_cells(r):
@@ -521,11 +576,11 @@ def trades(D, A):
     note = ('<p class="note">%d sold%s.</p><details class="pa-i"><summary>ⓘ the two hindsight columns</summary><p>Best in 6 h: the highest minute-candle '
             'close within 6 hours after the entry, when it came and what it would have given after fees; at 6 h: the close 6 hours after the entry. Both are '
             'hindsight (filtered for dead pools, dust and spikes the next close did not hold), not a rule that ran. %% = what came back over what was paid; '
-            'open positions at the last price.</p></details>') % (len(closed), (": " + by) if by else "")
+            'open positions at the last price.</p></details>') % (len(closed), E((": " + by) if by else ""))
     radios = "".join('<input type="radio" name="pa-sort" id="pa-s-%s"%s>' % (k, " checked" if k == "new" else "") for k, _ in SORTS)
     bar = "".join('<label for="pa-s-%s">%s <span class="cnt">%d</span></label>' % (k, E(t), len(lists[k])) for k, t in SORTS)
     panes = "".join('<div class="pane %s" data-pa-sort="%s">%s</div>' % (k, k, _table(lists[k], R)) for k, _ in SORTS)
-    return ('<details class="fold-lite pa-trades" data-pa="trades"><summary>Closed trades (%d) · %d open · newest, top %%, worst %%, best in 6 h</summary>'
+    return ('<details class="fold-lite pa-trades pa-f" data-pa="trades"><summary>Top trades · %d closed · %d open</summary>'
             '%s<div class="pa-tt">%s<div class="bar" role="radiogroup" aria-label="Order">%s</div>%s</div></details>') % (
         len(closed), n_open, note, radios, bar, panes)
 
@@ -538,8 +593,14 @@ def old_trades(D):
         return ""
     since = (D.get("paper") or {}).get("since")
     note = ("bought before the paper account restarted on %s; not counted above" % R.fmt_dt(since, True)) if since else "bought before the paper account restarted; not counted above"
-    return '<details class="fold-lite"><summary>Before the restart (%d trade%s)</summary>%s</details>' % (
+    return '<details class="fold-lite pa-f"><summary>Before the restart (%d trade%s)</summary>%s</details>' % (
         len(old), "" if len(old) == 1 else "s", R.safe("closed trades", lambda: R.closed_fold(old, note)))
+
+
+def _no_ref(svg):
+    """A chart without report.py's "break-even 0.00" text at the left end: the dashed hindsight line starts at 0 there and would
+    run through it. The dashed zero line and its 0 tick stay; the legend names it."""
+    return re.sub(r'<text class="tick over"[^>]*>[^<]*</text>', "", svg, count=1)
 
 
 def curve(D, A):
@@ -550,31 +611,37 @@ def curve(D, A):
            and isinstance(c.get("paper"), dict) and num(c["paper"].get("pnl")) is not None]
     pk = [(t, v) for t, v in A.get("peakPts") or [] if t and t >= since]
     series = [("stop-loss account", "s1", pts)]
-    if len(pk) >= 2:
+    two = len(pk) >= 2
+    if two:
         series.append(("best within 6 h (hindsight)", "s2 dash", pk))
-    wide = R.line_chart(series, 0.0, R.WIDE, ref_label="break-even", aria_label="Paper account profit or loss since the restart")
+    chart = lambda w: (_no_ref if two else (lambda s: s))(R.line_chart(series, 0.0, w, ref_label="break-even", aria_label="Paper account profit or loss since the restart"))
+    wide = chart(R.WIDE)
     if not wide:
         body = '<div class="empty">The curve needs two runs since the restart. It shows what came back plus what the open positions would fetch, minus what went in.</div>'
     else:
-        legend = ('<div class="legend"><span style="--c:var(--s1)">stop-loss account</span><span class="pa-dleg">best within 6 h (hindsight), by window end</span></div>'
-                  if len(series) > 1 else "")
-        body = R.chart_box(wide, R.line_chart(series, 0.0, R.NARROW, ref_label="break-even", aria_label="Paper account profit or loss since the restart"), legend)
-        body += '<details><summary>Table view</summary><div class="tbl"><table><thead><tr><th>run</th><th class="n">profit/loss</th></tr></thead><tbody>%s</tbody></table></div></details>' % (
-            "".join('<tr><td>%s</td><td class="n">%s</td></tr>' % (R.fmt_dt(t), R.fmt_amt(v, True)) for t, v in pts))
+        legend = ('<div class="legend"><span style="--c:var(--s1)">stop-loss account</span><span class="pa-dleg">best within 6 h (hindsight), by window end</span>'
+                  '<span class="pa-zleg">break-even (0)</span></div>' if two else "")
+        body = R.chart_box(wide, chart(R.NARROW), legend)
+        tbl = lambda head, rows: '<div class="tbl"><table><thead><tr><th>%s</th><th class="n">%s</th></tr></thead><tbody>%s</tbody></table></div>' % (
+            head[0], head[1], "".join('<tr><td>%s</td><td class="n">%s</td></tr>' % (R.fmt_dt(t), R.fmt_amt(v, True)) for t, v in rows))
+        body += '<details class="pa-f pa-tv"><summary>Table view</summary>%s%s</details>' % (
+            tbl(("run", "stop-loss account" if two else "profit/loss"), pts), tbl(("window end", "best within 6 h (hindsight)"), pk) if two else "")
     sub = "profit or loss since the restart after every run: what came back plus what the open positions would fetch, minus what went in, after fees · now %s" % R.fmt_amt(A["stop"]["pnl"], True)
-    if len(series) > 1:
+    if two:
         sub += " · dashed: best within 6 h (hindsight), %d windows" % len(pk)
-    return '<details class="fold-lite"><summary>Profit/loss over time</summary><p class="note">%s</p>%s</details>' % (E(sub), body)
+    return '<details class="fold-lite pa-f"><summary>Profit/loss over time</summary><p class="note">%s</p>%s</details>' % (E(sub), body)
 
 
 def section(D, bought=None):
-    """The whole account block (see the module doc); every part renders on its own, a broken part shows a notice."""
+    """The whole account block (see the module doc); every part renders on its own, a broken part shows a notice. The top trades
+    (one line while folded) come before the open positions, which can fill several phone screens."""
     R = _report()
     A = _acct(D)
-    parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)), R.safe("activity", lambda: feed(D, A))]
+    parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)), R.safe("activity", lambda: feed(D, A)),
+             R.safe("trades", lambda: trades(D, A))]
     if bought:
         parts.append(R.safe("open positions", bought))
-    parts += [R.safe("trades", lambda: trades(D, A)), R.safe("closed trades", lambda: old_trades(D)), R.safe("account curve", lambda: curve(D, A))]
+    parts += [R.safe("closed trades", lambda: old_trades(D)), R.safe("account curve", lambda: curve(D, A))]
     if A.get("err"):
         parts.insert(1, '<p class="note">The hindsight categories could not be read this time (%s); the stop-loss account above is complete.</p>' % E(A["err"]))
     return "".join(parts) + "<script>%s</script>" % JS
@@ -602,7 +669,10 @@ CSS = r"""
 .pa-big { font-size:46px; line-height:1.04; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--fg) }
 .pa-big.good, .pa-cat .v.good, .pa-tile .v.good, .pa-rate.good { color:var(--good) } .pa-big.bad, .pa-cat .v.bad, .pa-tile .v.bad, .pa-rate.bad { color:var(--bad) }
 .pa-rate { font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg2) } .pa-rate span { font-size:var(--fs-s); font-weight:400; color:var(--fg2) }
-details.pa-i { font-size:var(--fs-s); color:var(--fg2) } details.pa-i > summary { list-style:none; color:var(--accent); font-size:var(--fs-xs); padding:6px 0 0; width:max-content; max-width:100% }
+details.pa-i { font-size:var(--fs-s); color:var(--fg2) }
+details.pa-i > summary { list-style:none; color:var(--accent); font-size:var(--fs-xs); min-height:44px; padding:0 12px 0 0; display:flex; align-items:center; width:max-content; max-width:100%; cursor:pointer }
+details.pa-f > summary { min-height:44px; padding:12px 0; box-sizing:border-box; cursor:pointer } details.pa-f[open] > summary { margin-bottom:0 }
+.pa-i .ph-only, .pa-cat .ph, .pa-more.ph-only, .pa-ev.ph, .pa-day.ph { display:none }
 details.pa-i > summary::-webkit-details-marker { display:none } details.pa-i p { margin:6px 0 0; max-width:60ch; text-wrap:pretty }
 .pa-line { grid-area:line; position:relative; height:120px; min-width:0 }
 .pa-line svg { position:absolute; left:0; right:0; top:0; width:100%; height:102px; overflow:visible }
@@ -610,7 +680,7 @@ details.pa-i > summary::-webkit-details-marker { display:none } details.pa-i p {
 .pa-line.good .l { stroke:var(--good-mark) } .pa-line.good .a { fill:var(--good-mark) } .pa-line.bad .l { stroke:var(--bad-mark) } .pa-line.bad .a { fill:var(--bad-mark) }
 .pa-line .z { stroke:var(--muted); stroke-width:1; stroke-dasharray:4 3; vector-effect:non-scaling-stroke }
 .pa-line span { position:absolute; font-size:11px; line-height:1; color:var(--muted); background:var(--surface); padding:1px 3px; border-radius:3px }
-.pa-line .zl { right:0 } .pa-line .st { left:0; bottom:0 } .pa-line .en { right:0; bottom:0 }
+.pa-line .st { left:0; bottom:0 } .pa-line .en { right:0; bottom:0 }
 .pa-line-empty { display:grid; place-items:center } .pa-line-empty span { position:static }
 .pa-tiles { grid-area:tiles; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; border-top:1px solid var(--line2); padding-top:12px }
 .pa-tile { display:grid; gap:1px; min-width:0; align-content:start } .pa-tile .k { font-size:var(--fs-xs); color:var(--muted) }
@@ -620,6 +690,7 @@ details.pa-i > summary::-webkit-details-marker { display:none } details.pa-i p {
 .pa-cat.rule { --cc:var(--accent) } .pa-cat.peak { --cc:var(--warn-mark) } .pa-cat.six { --cc:color-mix(in srgb,var(--warn-mark) 45%,var(--muted)) }
 .pa-cat .head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px 8px } .pa-cat .t { font-weight:600; font-size:15px }
 .pa-cat .chip { white-space:normal }
+.pa-cat .vr { display:grid; gap:6px } .pa-cat .det { display:grid; gap:6px }
 .pa-cat .v { font-size:32px; line-height:1.1; font-weight:600; letter-spacing:-.01em; font-variant-numeric:tabular-nums; white-space:nowrap }
 .pa-cat .r { font-size:var(--fs-s); color:var(--fg2) }
 .pa-cat dl { margin:4px 0 0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px 10px } .pa-cat dl div { min-width:0 }
@@ -645,25 +716,31 @@ details.pa-i > summary::-webkit-details-marker { display:none } details.pa-i p {
 .pa-day { font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500; padding:10px 0 2px }
 .pa-day:first-child { padding-top:4px } .pa-evs > li { break-inside:avoid } .pa-day { break-after:avoid }
 @media (min-width:900px) { .pa-evs.two { columns:2; column-gap:40px } }
-details.pa-more > summary { padding-top:8px }
 .pa-tt { display:grid; gap:10px } .pa-tt > input { position:absolute; opacity:0; pointer-events:none }
 .pa-tt .bar { display:flex; flex-wrap:wrap; gap:6px }
-.pa-tt .bar label { cursor:pointer; display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
+.pa-tt .bar label { cursor:pointer; display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
   background:var(--surface); color:var(--fg2); font-weight:500; font-size:var(--fs-s) } .pa-tt .bar .cnt { font-size:var(--fs-xs); color:var(--muted) }
 #pa-s-new:checked ~ .bar label[for="pa-s-new"], #pa-s-top:checked ~ .bar label[for="pa-s-top"], #pa-s-worst:checked ~ .bar label[for="pa-s-worst"],
-#pa-s-best:checked ~ .bar label[for="pa-s-best"] { background:var(--accent); border-color:var(--accent); color:#fff }
+#pa-s-best:checked ~ .bar label[for="pa-s-best"] { background:color-mix(in srgb,var(--accent) 12%,var(--surface)); border-color:var(--accent); color:var(--accent) }
 #pa-s-new:checked ~ .bar label[for="pa-s-new"] .cnt, #pa-s-top:checked ~ .bar label[for="pa-s-top"] .cnt, #pa-s-worst:checked ~ .bar label[for="pa-s-worst"] .cnt,
-#pa-s-best:checked ~ .bar label[for="pa-s-best"] .cnt { color:#fff; opacity:.8 }
+#pa-s-best:checked ~ .bar label[for="pa-s-best"] .cnt { color:var(--accent) }
 .pa-tt > input:focus-visible ~ .bar label { outline:none } #pa-s-new:focus-visible ~ .bar label[for="pa-s-new"], #pa-s-top:focus-visible ~ .bar label[for="pa-s-top"],
 #pa-s-worst:focus-visible ~ .bar label[for="pa-s-worst"], #pa-s-best:focus-visible ~ .bar label[for="pa-s-best"] { outline:2px solid var(--accent); outline-offset:2px }
 .pa-tt .pane { display:none } #pa-s-new:checked ~ .pane.new, #pa-s-top:checked ~ .pane.top, #pa-s-worst:checked ~ .pane.worst, #pa-s-best:checked ~ .pane.best { display:block }
 .pa-tbl td small { display:block; font-size:var(--fs-xs); color:var(--muted); margin-top:1px; font-variant-numeric:tabular-nums }
-.pa-tbl td.c strong { font-weight:600 } .pa-tbl td.p { text-align:right; font-weight:600; font-size:15px; font-variant-numeric:tabular-nums; white-space:nowrap }
+.pa-tbl td.c { overflow-wrap:anywhere } .pa-tbl td.c strong { font-weight:600 } .pa-tbl td.p { text-align:right; font-weight:600; font-size:15px; font-variant-numeric:tabular-nums; white-space:nowrap }
 .pa-tbl td.p.good { color:var(--good) } .pa-tbl td.p.bad { color:var(--bad) } .pa-tbl td.m { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:500 }
 .pa-tbl td.w .chip { white-space:normal } .pa-tbl td.h .x { font-weight:600; font-variant-numeric:tabular-nums } .pa-tbl td.h .chip { margin-top:4px; white-space:normal }
 .pa-tbl th { white-space:normal } .pa-dleg::before { width:16px !important; height:0 !important; border-top:2px dashed var(--s2); background:none !important; border-radius:0 !important; vertical-align:3px !important }
+.pa-zleg::before { width:16px !important; height:0 !important; border-top:1px dashed var(--muted); background:none !important; border-radius:0 !important; vertical-align:3px !important }
 .chart-svg .line.dash { stroke-dasharray:7 5 }
-@media (max-width:820px) { .pa-cats { grid-template-columns:1fr } .pa-hero { grid-template-columns:1fr; grid-template-areas:"pl" "line" "tiles" } }
+section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
+@media (max-width:820px) {
+  .pa-cats { grid-template-columns:1fr; gap:10px } .pa-hero { grid-template-columns:1fr; grid-template-areas:"pl" "line" "tiles" }
+  .pa-cat { padding:10px 14px 0; gap:4px } .pa-cat .vr { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 10px }
+  .pa-cat .det, .pa-i .dt-only, .pa-ev.ex, .pa-day.ex { display:none }
+  .pa-cat details.pa-i[open] { padding-bottom:12px } .pa-i .ph-only { display:inline } .pa-cat .ph { display:grid; gap:6px; margin:2px 0 8px } .pa-more.ph-only { display:block } .pa-ev.ph { display:grid } .pa-day.ph { display:block }
+}
 @media (max-width:560px) {
   .pa-tt .bar label { padding:0 12px } .pa-tt .bar .cnt { display:none }
   .pa-hero { padding:14px } .pa-big { font-size:40px } .pa-tiles { grid-template-columns:1fr 1fr } .pa-tile .v { font-size:18px } .pa-tile .v small { font-size:12px } .pa-cat .v { font-size:28px }
