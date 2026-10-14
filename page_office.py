@@ -33,6 +33,7 @@ SCAN_RUNS = 6                        # the next-scan estimate: the median start 
 SCAN_RUNS_MIN = 3                    # with fewer runs the cron minute stands
 CYCLE_MS, GRACE_MS, LATE_MS = 150_000, 60_000, 900_000   # a radar loop's cycle; "running" within 2 cycles and a minute, "late" up to 15 minutes
 HOUR_MS, DONE_GRACE_MS = 3_600_000, 1_800_000             # a radar round: "done" until its next round is due and 30 minutes more, "late" one more hour
+SCAN_LEN_MS = 2_700_000              # a full scan's start to the radar round it starts at its end (about 26 to 35 minutes), with room
 DAY_MS, WEEK_DAYS = 86_400_000, 7
 HOUR_MIN_N = 30                      # an hour is named only with at least this many launches with a 1 h result in the 7 days
 HOUR_FEW_N = 20                      # a cell with fewer is hatched
@@ -136,9 +137,25 @@ def radar_state(doc, ref):
     return "running" if age <= 2 * CYCLE_MS + GRACE_MS else ("late" if age <= LATE_MS else "stopped")
 
 
-def look(state, doc, hhmm):
-    """The desk's light, word, line and number (its card's: the time of its last check) for a radar state (the page script's
-    MemebotOffice.look says the same)."""
+def next_words(doc, now, scan, hhmm):
+    """The next round after a round (the New tab's pill says the same: MemebotRadar.nextWords): "next about HH:MM" until doc next, then
+    "next due since HH:MM"; without a next (a round by hand more than 3 h after the scan's last one) the next full scan starts one:
+    "next after the HH:MM scan" from the scan strip's estimate (scan, ms; an hour later each time that scan should be over by now),
+    else "next after the next full scan". now: ms (None: the round's own time)."""
+    now = now if now is not None else doc["t"]
+    if doc.get("next"):
+        return ("next about " if now < doc["next"] else "next due since ") + hhmm(doc["next"])
+    if scan:
+        s, ref = scan, max(doc["t"], now)
+        while s + SCAN_LEN_MS < ref:
+            s += HOUR_MS
+        return "next after the %s scan" % hhmm(s)
+    return "next after the next full scan"
+
+
+def look(state, doc, hhmm, now=None, scan=None):
+    """The desk's light, word, line and number (its card's: the time of its last check) for a radar state at the time now (ms), with the
+    full scan's next start (scan, ms: the strip's) for a round that names no next one (the page script's MemebotOffice.look says the same)."""
     light, word = LOOK.get(state, LOOK["none"])
     lead = word if state in ("late", "stopped") else ""
     if state == "running" and doc and doc.get("state") == "degraded":
@@ -159,7 +176,7 @@ def look(state, doc, hhmm):
     else:
         line = (lead + " · " if lead else "") + "%d seen · %d without traps · %d pushed" % (_int(c.get("seen")), _int(c.get("good")), _int(c.get("pushed")))
     checked = ("%s %s" % ("last round" if is_round(doc) else "checked", hhmm(doc["t"]))) if doc and state != "none" else "no check yet"
-    until = (" · next about %s" % hhmm(doc["next"])) if doc and doc.get("next") and state == "done" else ""
+    until = (" · " + next_words(doc, now, scan, hhmm)) if doc and state == "done" else ""
     return {"light": light, "word": word, "line": line, "stat": hhmm(doc["t"]) if doc and state != "none" else "own job", "checked": checked,     # the card's number: its last check
             "here": state in ("running", "done", "late"), "until": until, "quiet": state in QUIET}
 
@@ -172,7 +189,7 @@ def ext_agents(D, meta, R):
     now = _num(D.get("now")) or 0
     ref = min(now, max(doc["t"], _ms(runs[0]["t"]))) if doc and runs and now else now
     st = radar_state(doc, ref)
-    lk = look(st, doc, lambda ms: R.local(ms).strftime("%H:%M"))
+    lk = look(st, doc, lambda ms: R.local(ms).strftime("%H:%M"), ref, R.next_scan_ms(now, runs) if now else None)   # the strip's next start
     name, job, tools = meta(RADAR)
     return [{"id": RADAR, "ext": True, "dept": EXT_HOME[RADAR], "s": None, "e": None, "st": lk["light"], "bg": False, "out": lk["line"],
              "lines": (doc or {}).get("lines") or [], "waits": {}, "blocked": [], "ran": False, "open": False, "secs": 0.0, "here": lk["here"],
@@ -665,7 +682,7 @@ JS = r"""
 if(window.MemebotOffice)return;
 var D=document,last=null,lastScan=null;
 var LOOK={running:['running','running'],done:['done','done'],late:['fallback','late'],stopped:['failed','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
-var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad',done:'good'};
+var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad',done:'good'},SCAN_LEN=2700000,HOUR=3600000;
 var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase']];
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function n(v){return isn(v)?Math.round(v):0;}
@@ -676,7 +693,12 @@ function set(e,t){if(e&&e.textContent!==t)e.textContent=t;}
 function cls(e,c){if(e.getAttribute('class')!==c)e.setAttribute('class',c);}
 var O=window.MemebotOffice={
   // the radar's light, word, line and small number for its state (page_office.look says the same at build time)
-  look:function(st,doc,fmt){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
+  // a round's next one (page_office.next_words; MemebotRadar.nextWords on the New tab): now and scan (the strip's next start) in ms
+  nextWords:function(d,now,scan,fmt){now=isn(now)?now:+d.t;
+    if(isn(d.next)&&d.next>0)return (now<d.next?'next about ':'next due since ')+fmt(d.next);
+    if(isn(scan)&&scan>0){var s=scan,ref=Math.max(+d.t||0,now);while(s+SCAN_LEN<ref)s+=HOUR;return 'next after the '+fmt(s)+' scan';}
+    return 'next after the next full scan';},
+  look:function(st,doc,fmt,now,scan){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
     var lead=st==='late'||st==='stopped'?word:'';
     var rnd=!!d&&(d.state==='done'||!!d.run&&typeof d.run==='object'&&d.run.mode==='round');
     if(st==='running'&&d&&d.state==='degraded'){light='fallback';word='running, some checks failing';lead='checks failing';}
@@ -688,7 +710,7 @@ var O=window.MemebotOffice={
     else if(lead&&(st==='late'||st==='stopped'))line=lead+' · '+n(c.seen)+' seen, '+n(c.good)+' without traps';
     else line=(lead?lead+' · ':'')+n(c.seen)+' seen · '+n(c.good)+' without traps · '+n(c.pushed)+' pushed';
     var ck=d&&isn(d.t)&&st!=='none'?(rnd?'last round ':'checked ')+fmt(d.t):'no check yet';
-    var until=d&&isn(d.next)&&d.next>0&&st==='done'?' · next about '+fmt(d.next):'';
+    var until=d&&isn(d.t)&&st==='done'?' · '+O.nextWords(d,now,scan,fmt):'';
     return {light:light,word:word,line:line,stat:d&&isn(d.t)&&st!=='none'?fmt(d.t):'own job',checked:ck,here:st==='running'||st==='done'||st==='late',until:until,quiet:QUIET.indexOf(st)>=0};},
   // the full scan's strip for a live-view state (MemebotLive.state): null keeps the page's own words
   scan:function(st,doc,runT,fmt){var d=doc&&typeof doc==='object'?doc:null,t=d&&isn(+d.t)?+d.t:0,up=d?+(d.updated||d.end)||0:0;fmt=fmt||hhmm;
@@ -705,7 +727,8 @@ var O=window.MemebotOffice={
 function host(k){k=String(k).toLowerCase();for(var i=0;i<HOSTS.length;i++)if(k.indexOf(HOSTS[i][0])>=0)return HOSTS[i][1];return String(k).slice(0,40);}
 function draw(){
   if(!last)return;
-  var st=String(last.state||'none'),doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,L=O.look(st,doc);
+  var st=String(last.state||'none'),doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,sb=D.querySelector('[data-sstrip]');
+  var L=O.look(st,doc,null,isn(last.now)?last.now:Date.now(),sb?+sb.getAttribute('data-next')||0:0);     // the radar's clock (its doc's time base), the strip's next scan
   all('g[data-ext="radar"]').forEach(function(g){cls(g,'desk'+(L.here?'':' off'));var s=g.querySelector('.scr');if(s)cls(s,'scr'+(L.light==='fallback'||L.light==='failed'?' '+L.light:''));});
   all('[data-ext-lt="radar"]').forEach(function(e){cls(e,'olt '+L.light);});
   all('[data-ext-word="radar"]').forEach(function(e){set(e,L.word);});

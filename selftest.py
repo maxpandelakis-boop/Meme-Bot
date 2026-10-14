@@ -3319,6 +3319,9 @@ console.log(JSON.stringify(o));
     ysec = R_.young_section(yd)
     check(ysec.count("already held</span>") == 1 and ysec.count("bought for 3\u00a0€</span>") == 5,
           "a held new launch below the first five is marked already held on the tab too")
+    ytb = re.findall(r"<tbody>(.*?)</tbody>", ysec, re.S)
+    check(len(ytb) >= 2 and ytb[0].count("<tr") == 1 and "#1 Y0<" in ytb[0] and ytb[1].count("<tr") == 6 and "<summary>6 more new launches</summary>" in ysec,
+          "New tab: the full scan's best new launch in view under the radar, the other 6 one tap below (%s rows in view)" % (ytb[0].count("<tr") if ytb else None))
     shutil.rmtree(md2, ignore_errors=True)
 
     print("== DexScreener out: Jupiter and GeckoTerminal data stand in, the scan still names a coin")

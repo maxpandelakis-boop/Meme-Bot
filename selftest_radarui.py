@@ -395,10 +395,10 @@ def py_checks(check, tmp, T, standin):
     lab = re.search(r'<label for="tab-young" role="tab">(.*?)</label>', page)
     check('id="tab-radar"' not in page and 'id="pane-radar"' not in page and len(ids) == len(set(ids)) and yp.find("data-radar") >= 0
           and yp.find("data-radar") < yp.find("under an hour old") and yp.count("data-radar ") + yp.count("data-radar>") == 1 and "Launch radar" in yp
-          and lab and "data-r-tabcnt" in lab.group(1) and re.search(r'<span class="cnt" title="[^"]*">8</span>', lab.group(1))
+          and lab and "data-r-tabcnt" in lab.group(1) and re.search(r'<span class="cnt" data-y-tabcnt title="[^"]*">8</span>', lab.group(1))
           and "#tab-radar:checked" not in page and "pane-radar" not in P.CSS + P.JS,
           "New holds the radar: no Radar tab or pane left, no id twice (%d ids), the radar's block on top of the New pane above the full scan's new launches, "
-          "the New label carries the radar's count (hidden at 0) beside the scan's 8 %r" % (len(ids), re.sub(r"<[^>]+>", "|", lab.group(1)) if lab else None))
+          "the New label carries the radar's count (hidden at 0) and the scan's 8 (hidden while the radar's shows) %r" % (len(ids), re.sub(r"<[^>]+>", "|", lab.group(1)) if lab else None))
     rd = P.clean_doc(radar_doc(now, "round"))
     check(rd and rd["state"] == "done" and rd["run"]["mode"] == "round" and rd["hourly"] == now - 30_000 and [r["miss60"] for r in rd["recent"]] == [False] * 4 + [True]
           and P.clean_doc(dict(radar_doc(now, "round"), run={"mode": "<x>"}))["run"]["mode"] == "" and "done" in P.STATES
@@ -473,6 +473,12 @@ var rd=function(t,x){return doc(t,Object.assign({state:'done',next:t+55*M,run:{m
 o.round=[R.radarState(rd(N-20*M),N,0),R.radarState(rd(N-80*M),N,0),R.radarState(rd(N-84*M),N,0),R.radarState(rd(N-86*M),N,0),R.radarState(rd(N-144*M),N,0),
   R.radarState(rd(N-146*M),N,0),R.radarState(rd(N-80*M,{next:null}),N,0),R.radarState(rd(N-100*M,{next:null}),N,0),
   R.radarState(rd(N-10*M,{state:'degraded'}),N,0),R.radarState(doc(N-10*M,{state:'done',next:N+50*M}),N,0),R.radarState(rd(N-10*M,{state:'off'}),N,0)];
+// the next round's words after a round: before doc.next, past it, without a next (the strip's next scan; one that should be over moves on by
+// an hour; none on the page)
+var hm=function(t){return new Date(t).toISOString().slice(11,16);};
+o.nextw=[R.nextWords(rd(N-20*M,{next:N+40*M}),N,0,hm),R.nextWords(rd(N-70*M,{next:N-10*M}),N,N+50*M,hm),R.nextWords(rd(N-20*M,{next:null}),N,N+50*M,hm),
+  R.nextWords(rd(N-20*M,{next:null}),N,N-20*M,hm),R.nextWords(rd(N-20*M,{next:null}),N,N-60*M,hm),R.nextWords(rd(N-20*M,{next:null}),N,0,hm),
+  hm(N+40*M),hm(N-10*M),hm(N+50*M),hm(N-20*M),hm(N)];
 o.live=[R.live('done',rd(N-14*M),N,0),R.live('done',rd(N-16*M),N,0),R.live('running',doc(N-30000),N,0),R.live('late',rd(N-90*M),N,0),R.live('done',null,N,0)];
 // the next poll of a round: near doc.next (+ ROUND, the round's own minutes), at most IDLE apart on GitHub (a Start by hand), SB_DONE on the live store
 o.rnext=[R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:rd(N-55*M,{next:N+5*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,
@@ -562,6 +568,12 @@ def node_checks(check, tmp, skips):
     check(o["round"] == ["done", "done", "done", "late", "late", "stopped", "done", "late", "done", "done", "off"],
           "U3 the hourly radar's rounds: done from doc.next until 30 min past it (an hour after the round when next is unknown), late for an hour after that, then "
           "stopped; a failed round (degraded, run.mode round) is done too, never 'running' from a loop's 6-minute rule %s" % o["round"])
+    nw = o.get("nextw") or []
+    check(len(nw) == 11 and nw[:6] == ["next about " + nw[6], "next due since " + nw[7], "next after the %s scan" % nw[8], "next after the %s scan" % nw[9],
+                                       "next after the %s scan" % nw[10], "next after the next full scan"],
+          "U3 the pill's next round after a round: 'next about HH:MM' before doc.next, 'next due since HH:MM' after it; a round with next null (a round by hand) "
+          "names the full scan that starts the next one (the strip's estimate, the one running now, an hour on once that scan should be over), "
+          "else 'next after the next full scan' %s" % nw[:6])
     check(o["live"] == [True, False, True, False, False],
           "U3 a round's coins are current (cards in colour, the count) for 15 minutes after it, a loop's while it runs, never when late %s" % o["live"])
     rn = o["rnext"]
@@ -602,6 +614,7 @@ RADAR_JS = """() => { const b = document.querySelector('[data-radar]'), q = s =>
     chips: Array.from(b.querySelectorAll('[data-r-cards] .rchips .chip')).map(c => c.textContent),
     chipCls: Array.from(b.querySelectorAll('[data-r-cards] .rchips .chip.tv')).map(c => c.className), empty: vis(q('[data-r-empty]')) ? q('[data-r-empty]').innerText : '',
     ocnt: q('[data-r-ocnt]').textContent, others: vis(q('[data-r-others]')), tabcnt: (document.querySelector('[data-r-tabcnt]') || {}).hidden ? '' : (document.querySelector('[data-r-tabcnt]') || {}).textContent,
+    ytab: document.querySelector('[data-y-tabcnt]') ? document.querySelector('[data-y-tabcnt]').hidden : null,
     orows: Array.from(b.querySelectorAll('[data-r-olist] > li')).map(li => [li.className, li.querySelector('.rs').textContent]),
     notes: Array.from(b.querySelectorAll('[data-r-notes] li')).map(l => l.textContent), recent: Array.from(b.querySelectorAll('[data-r-recent] .rrec tbody tr td:nth-child(2)')).map(t => t.textContent),
     oc: Array.from(b.querySelectorAll('[data-r-recent] .rrec tbody tr')).map(tr => [tr.children[1].textContent, tr.lastElementChild.firstChild.textContent, tr.lastElementChild.title]),
@@ -610,6 +623,14 @@ RADAR_JS = """() => { const b = document.querySelector('[data-radar]'), q = s =>
     act: Array.from(b.querySelectorAll('[data-r-actions] a')).map(a => [a.textContent, a.getAttribute('href'), vis(a) && a.getBoundingClientRect().height, a.className]),
     firstCut: Array.from(b.querySelectorAll('.tline')).filter(vis).filter(cut).map(l => l.firstElementChild.textContent),
     imgs: b.querySelectorAll('img, svg, iframe').length, hscroll: document.documentElement.scrollWidth - innerWidth, ev: window.__rev || null }; }"""
+# the tap targets under 44 px tall in a pane as the phone shows it (links, folds, buttons, labels), and the full scan's rows in view on New
+TAP_JS = r"""(sel) => { const p = document.querySelector(sel), r = e => e.getBoundingClientRect();
+  // shown: laid out and not inside a closed fold (Chromium lays out a closed fold's content when asked, so its rects alone do not tell)
+  const shown = e => { if (!e.getClientRects().length || getComputedStyle(e).visibility === 'hidden') return false;
+    for (let q = e.parentElement; q; q = q.parentElement) if (q.tagName === 'DETAILS' && !q.open && !(e.tagName === 'SUMMARY' && e.parentElement === q)) return false; return true; };
+  return { small: Array.from(p.querySelectorAll('a[href], summary, button, label[for]')).filter(e => shown(e) && r(e).height < 43.5)
+             .map(e => (e.innerText || e.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 30) + ' ' + Math.round(r(e).width) + 'x' + Math.round(r(e).height)),
+           rows: Array.from(p.querySelectorAll('.tbl tbody tr')).filter(t => !t.closest('[data-radar]') && shown(t)).length }; }"""
 FIRST_CUT_JS = """(sel) => Array.from(document.querySelectorAll(sel + ' .tline')).filter(l => l.getClientRects().length).filter(l => {
   const c = l.firstElementChild, more = Array.from(l.children).filter(x => x.classList.contains('more') && x.getClientRects().length);
   if (!c) return false; const r = document.createRange(); r.selectNodeContents(c); const cs = getComputedStyle(c), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
@@ -809,14 +830,16 @@ def browser(check, tmp, d, skips, shots=None):
             ctx.close()
             # the hourly radar: a round 5 minutes old (its coin current), 25 minutes old (done, its coin greyed), late and stopped from doc.next
             out["rounds"] = {}
-            for name, age in (("fresh", 5 * MIN), ("old", 25 * MIN), ("late", 100 * MIN), ("stopped", 3 * H)):
-                state["doc"] = (lambda a: lambda: radar_doc(ms() - a, "round"))(age)
+            for name, age in (("fresh", 5 * MIN), ("old", 25 * MIN), ("late", 100 * MIN), ("stopped", 3 * H), ("nonext", 20 * MIN)):
+                # nonext: a round by hand long after the scan's last one names no next round (radar-data on 14.10, 13:16 UTC)
+                state["doc"] = (lambda a, k: lambda: dict(radar_doc(ms() - a, "round"), **({"next": None, "hourly": None} if k == "nonext" else {})))(age, name)
                 ctx, pg = ctx_page(html_=nodoc)
                 wait(pg, "() => (window.__rev || [])[2] === 'github'")
                 pg.evaluate("document.querySelector('[data-r-rec]').open = true")
                 pg.wait_for_timeout(150)
                 out["rounds"][name] = pg.evaluate(RADAR_JS)
                 out["rounds"][name]["errAttr"] = pg.evaluate("document.querySelector('[data-r-pill]').hasAttribute('data-err')")
+                out["rounds"][name]["strip"] = pg.evaluate("+(document.querySelector('[data-sstrip]') || {getAttribute: () => '0'}).getAttribute('data-next') || 0")
                 if name in ("fresh", "old"):
                     shot(pg, "4b-radar-round-%s-light-390x844.png" % name, el="[data-radar]")
                 ctx.close()
@@ -901,6 +924,8 @@ def browser(check, tmp, d, skips, shots=None):
                 for tab in ("tab-pick", "tab-young", "tab-office"):
                     pg.click('label[for="%s"]' % tab)
                     pg.wait_for_timeout(150)
+                    if tab == "tab-pick" and w == 390 and not dark:
+                        out.setdefault("tap", {})[tab] = pg.evaluate(TAP_JS, "#pane-pick")
                     if tab == "tab-young":
                         pg.evaluate("document.querySelectorAll('#pane-young details').forEach(d => d.open = true)")
                         pg.wait_for_timeout(100)
@@ -909,6 +934,8 @@ def browser(check, tmp, d, skips, shots=None):
                         pg.evaluate("document.querySelectorAll('#pane-young details').forEach(d => d.open = false)")
                         out.setdefault("youngW", {})[w] = pg.evaluate(FIRST_CUT_JS, "#pane-young tbody")
                         out.setdefault("tblScroll", {})[w] = pg.evaluate("(() => { const t = document.querySelector('#pane-young .tbl'); return t.scrollWidth - t.clientWidth; })()")
+                        if w == 390:
+                            out.setdefault("tap", {})[tab] = pg.evaluate(TAP_JS, "#pane-young")
                     if tab == "tab-young" and w == 390 and not dark:
                         out["young"] = pg.evaluate("""() => { const p = document.getElementById('pane-young'), rows = Array.from(p.querySelectorAll('tbody tr')).filter(r => !r.closest('[data-radar]'));
                           return { rows: rows.length, red: rows.filter(r => r.classList.contains('trap')).length, tint: rows.filter(r => r.classList.contains('trap')).map(r => getComputedStyle(r.querySelector('td')).backgroundColor),
@@ -994,6 +1021,10 @@ def browser(check, tmp, d, skips, shots=None):
           "U8 the New launches table keeps every column in view at 390 and 1280 (a long trap line never widens the coin column: no sideways scroll inside the table) %s" % ts)
     pop = out.get("pop") or [-1, 9999, 0]
     check(pop[0] >= 0 and pop[1] <= pop[2], "UX S1 the ⓘ popover (Stop = Disable workflow) stays on a 390 px screen: left %d, right %d of %d" % tuple(pop))
+    tp = out.get("tap") or {}
+    check(set(tp) == {"tab-pick", "tab-young"} and not any(v["small"] for v in tp.values()) and tp["tab-young"]["rows"] == 1,
+          "UX the Pick and New tabs at 390 px have no tap target under 44 px (the card's folds, the coin links, the chart links, the folds under the list) and New "
+          "shows the full scan's best new launch in view, the others one tap below (%s)" % {k: v for k, v in tp.items()})
     gw = out.get("goodW", {})
     gaps = [x for v in gw.values() for x in v[1]] + out.get("emptyGap", []) + out.get("youngGap", [])
     yw = out.get("youngW", {})
@@ -1011,6 +1042,9 @@ def browser(check, tmp, d, skips, shots=None):
           and e_["recent"] == ["PEPE2", "CALM", "HIRE", "SEALS"],
           "U3 browser: no good coin shows 'No clean coin right now' (the empty card list hidden), the seen line, the last good coin (HIRE, 34 min ago) and 'Seen but not clean (7)': "
           "trap rows red with ✕, watch rows amber with ? (not checked) or ! (warnings); no tab count; the Track record lists the calls of the last 3 h only %s %s" % (orows, e_["recent"]))
+    check(g.get("ytab") is True and e_.get("ytab") is False,
+          "U3 browser: the website's New label carries one number: the radar's green 1 hides the full scan's count, with no coin without traps the scan's count is back "
+          "(%s / %s)" % (g.get("ytab"), e_.get("ytab")))
     st = out["states"]
     check(st["late"]["st"] == "late" and st["late"]["dim"] == 1 and any(c.startswith("as of ") for c in st["late"]["chips"]) and st["late"]["pill"].startswith("Radar late · last check")
           and st["late"]["chipCls"] == ["chip tv"] and st["late"]["tabcnt"] == "" and (st["late"]["ev"] or [0, 1])[:2] == ["late", 0]
@@ -1084,7 +1118,7 @@ def browser(check, tmp, d, skips, shots=None):
     bg = out.get("badgeGone") or [False, "?"]
     check(bg[0] and bg[1] == "New coins",
           "S4 A3 the app's New badge follows the radar's news: the live store's row turns to no good coin and the badge goes (%s)" % bg)
-    rf, ro, rl, rt = (rs_.get(k) or {} for k in ("fresh", "old", "late", "stopped"))
+    rf, ro, rl, rt, rn_ = (rs_.get(k) or {} for k in ("fresh", "old", "late", "stopped", "nonext"))
     hm = re.compile(r"^Last round \d\d:\d\d · next about \d\d:\d\d$")
     oc = dict((x[0], x[1:]) for x in rf.get("oc", []))
     check(rf.get("st") == "done" and hm.match(rf.get("pill", "")) and rf.get("cards") == 1 and rf.get("dim") == 0 and rf.get("tabcnt") == "1" and (rf.get("ev") or [0])[:2] == ["done", 1]
@@ -1093,6 +1127,9 @@ def browser(check, tmp, d, skips, shots=None):
           and rl.get("st") == "late" and rl.get("pill", "").startswith("Radar late · last round ") and rt.get("st") == "stopped" and rt.get("pill", "").startswith("Radar stopped · last round "),
           "U3 browser, the hourly radar: a round says %r; its coin is current (in colour, the count 1, the event done with 1 good) for 15 minutes, then greyed 'as of' with no "
           "count; 30 minutes past doc.next it is late, an hour later stopped (%r, %r)" % (rf.get("pill"), rl.get("pill"), rt.get("pill")))
+    check(rn_.get("st") == "done" and re.match(r"^Last round \d\d:\d\d · next after the (\d\d:\d\d|next full) scan$", rn_.get("pill", "")) and rn_.get("strip") is not None
+          and ((rn_["strip"] > 0) == (" next full " not in rn_.get("pill", ""))),
+          "U3 browser: a round with next null still names when the next one comes: after the full scan the Pick strip expects (%r, strip %s)" % (rn_.get("pill"), rn_.get("strip")))
     check(oc.get("GONE") == ["–", "no 1 h price"] and oc.get("CALM") == ["…", "pending"] and oc.get("HIRE") == ["⇈", "2x"],
           "U3 browser: a call whose 1 h price no round caught (miss60) shows '–' (no 1 h price), not '… pending' forever; one still waiting shows '…' %s" % oc)
     lk = out.get("links") or {}

@@ -665,7 +665,7 @@ def _hhmm(ms):
 
 def tab_label():
     """The radar's count on the website's New tab label: the coins without traps while the radar's list is current (RADAR_JS sets it;
-    hidden at 0), beside the full scan's count."""
+    hidden at 0); while it shows, the full scan's count beside it (data-y-tabcnt) is hidden, so the label carries one number."""
     return '<span class="cnt" data-r-tabcnt title="Radar: coins without traps now" hidden></span>'
 
 
@@ -784,7 +784,7 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 .rrow .tline { grid-column:1 / -1 }
 .rrec-w { overflow-x:auto; min-width:0 } .rrec { width:100%; border-collapse:collapse; font-size:var(--fs-s); font-variant-numeric:tabular-nums } .rrec th, .rrec td { padding:6px 6px; border-top:1px solid var(--line2); text-align:right; white-space:nowrap }
 .rrec th { border-top:0 } .rrec td:nth-child(2), .rrec th:nth-child(2), .rrec td:first-child, .rrec th:first-child { text-align:left } .rrec td:nth-child(2) { max-width:9ch; overflow:hidden; text-overflow:ellipsis; font-weight:600 } .rrec-w .tnote { margin-top:6px }
-.mx.up { color:var(--good) } .mx.dn { color:var(--bad) } .mx.na { color:var(--muted) } .rrec .oc.bad { color:var(--bad) } .rrec .oc.good { color:var(--good) }
+.mx.up { color:var(--good) } .mx.dn { color:var(--bad) } .mx.na { color:var(--muted) } .rrec .oc.bad { color:var(--bad) } .rrec .oc.good { color:var(--good) } .rrec .oc.muted, .rrec .oc.na { color:var(--muted) }
 .rwhy-notes { margin:0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2); display:grid; gap:4px }
 .rw-h { margin:4px 0 0; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600 }
 .rwhy-list { list-style:none; margin:0; padding:0; display:grid; gap:8px } .rwhy-list li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; min-width:0 }
@@ -826,7 +826,7 @@ function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
 var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
-  TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,
+  TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
     if(!d||typeof d!=='object'||d.kind!=='radar'||ms(d.t)==null)return null;
@@ -856,6 +856,14 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DON
   round:function(doc){return !!doc&&(doc.state==='done'||!!doc.run&&doc.run.mode==='round');},
   // when the next round is due (ms): the doc's next, else an hour after its round
   due:function(doc){return +doc.next>0?+doc.next:+doc.t+R.HOUR;},
+  // the words for the next round after a round (the office says the same: page_office.next_words): "next about HH:MM" until doc.next, then
+  // "next due since HH:MM"; without a next (a round by hand more than 3 h after the scan's last one) the next full scan starts one: "next
+  // after the HH:MM scan" from the scan strip's estimate (scan, ms; an hour later each time that scan should be over by now), else "next
+  // after the next full scan". now: the radar's clock (ms)
+  nextWords:function(doc,now,scan,fmt){
+    if(isn(doc.next)&&doc.next>0)return (now<doc.next?'next about ':'next due since ')+fmt(doc.next);
+    if(isn(scan)&&scan>0){var s=scan,ref=Math.max(+doc.t||0,now);while(s+R.SCAN_LEN<ref)s+=R.HOUR;return 'next after the '+fmt(s)+' scan';}
+    return 'next after the next full scan';},
   // a round: done (until its next round is due and DONE_GRACE more), late (one more hour), stopped (older). A loop: running (checked within
   // 2 cycles and a minute), late (15 minutes), stopped (older). off (switched off), hours (outside its hours: the doc names the next start;
   // a doc past that start by 15 minutes is stopped), none (no doc)
@@ -962,7 +970,7 @@ function go(){
       var m=S.doc&&S.doc.model;w.appendChild(ul);if(g[0]==='info')w.appendChild(el('p','tnote',MEASURED+(m&&m.from!=='learned'&&isn(m.need)?' Radar data so far: '+(isn(m.n)?m.n:0)+' of '+m.need+' calls with a 1 h result.':'')));return w;});}
   function srvNow(n){var d=S.doc;return d?+d.t+R.age(d,n,S.got,S.moved):n;}
   function fresh(st,n){return R.live(st,S.doc,n,S.got,S.moved);}
-  function emit(st){var det={doc:S.doc,state:st,via:S.via||'embedded',good:fresh(st,now())?R.good(S.doc):0};R.last=det;
+  function emit(st){var n=now(),det={doc:S.doc,state:st,via:S.via||'embedded',good:fresh(st,n)?R.good(S.doc):0,now:srvNow(n)};R.last=det;
     try{window.dispatchEvent(new CustomEvent('memebot-radar',{detail:det}));}catch(e){}}
   function setText(e,t){if(e&&e.textContent!==t)e.textContent=t;}
   function ageText(c,live,docAge){var a=isn(c.age)?c.age+(live?docAge/60000:0):null,m=isn(c.mint)&&S.doc?(+S.doc.t-c.mint)/60000+(live?docAge/60000:0):null;
@@ -993,11 +1001,16 @@ function go(){
     var th=el('thead');th.appendChild(hd);t.appendChild(th);var tb=el('tbody');
     rows.forEach(function(r){var tr=el('tr');tr.appendChild(el('td','',isn(r.good)?hhmm(r.good):'?'));tr.appendChild(el('td','',r.sym||'?'));
       ['5','15','30','60'].forEach(function(k){var v=r.later?r.later[k]:null;tr.appendChild(el('td','mx '+(!isn(v)?'na':v>=1?'up':'dn'),mult(v)));});
-      var o=r.out,oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(r.later&&r.later['60']))?['','✓','alive']:r.miss60?['na','–','no 1 h price']:['muted','…','pending'];
+      // the 1 h outcome: ✓ only for a call alive at 1x or more; one alive below its call price is neutral (↓), never a check mark
+      var o=r.out,x1=o&&isn(o.x60)?o.x60:r.later?r.later['60']:null,
+        oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(x1))?(isn(x1)&&x1>=1?['','✓','alive, up']:isn(x1)?['muted','↓','alive, down']:['muted','·','alive']):r.miss60?['na','–','no 1 h price']:['muted','…','pending'];
       var td=el('td','oc '+oc[0],oc[1]);td.title=oc[2];td.appendChild(el('span','ow',' '+oc[2]));tr.appendChild(td);tb.appendChild(tr);});
-    t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money); – no round caught that price'));return w;}
+    t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive and up · ↓ alive but down · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money); – no round caught that price'));return w;}
+  // the full scan's next start (ms): the scan strip's on Pick (page_office.scan_strip), 0 without it
+  function scanNext(){var b=document.querySelector('[data-sstrip]');return b?+b.getAttribute('data-next')||0:0;}
+  function nextW(st,n){return st==='done'&&S.doc?R.nextWords(S.doc,srvNow(n),scanNext(),hhmm):'';}
   function pill(st){var d=S.doc,t,w=R.round(d)?'last round ':'last check ';
-    if(st==='done')t='Last round '+hhmm(+d.t)+(d.state==='degraded'?' had errors':'')+(isn(d.next)?' · next about '+hhmm(d.next):'');
+    if(st==='done')t='Last round '+hhmm(+d.t)+(d.state==='degraded'?' had errors':'')+' · '+nextW(st,now());
     else if(st==='running')t='Radar running · checked '+hhmm(+d.t)+(isn(d.next)?' · next '+hhmm(d.next):'')+(d.state==='degraded'?' · with errors':'');
     else if(st==='late')t='Radar late · '+w+hhmm(+d.t);
     else if(st==='stopped')t='Radar stopped · '+w+hhmm(+d.t);
@@ -1006,10 +1019,12 @@ function go(){
     else t='Radar not started yet';
     if(S.via==='raw'&&d)t+=' · slower copy, as of '+hhmm(+d.t);return t;}
   function draw(){
-    var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,live=fresh(st,n),k=[d?d.t:0,st,live,S.via].join('|');
+    var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,live=fresh(st,n),k=[d?d.t:0,st,live,S.via,nextW(st,n)].join('|');   // the next words too: the office follows once its time has passed
     var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);if(st==='done'&&d.state==='degraded')p.setAttribute('data-err','');else p.removeAttribute('data-err');setText($('[data-r-pill-t]'),pill(st));}
     if(startA)startA.className='rbtn'+(st==='running'?' quiet':'');    // a tap while a loop runs only queues a run; between rounds Start is one more round
-    var tc=document.querySelector('[data-r-tabcnt]'),g=live?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
+    // the website's New label: the radar's green count while its list is current, else the full scan's count (one number, as the app's badge)
+    var tc=document.querySelector('[data-r-tabcnt]'),yc=document.querySelector('[data-y-tabcnt]'),g=live?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
+    if(yc)yc.hidden=!!g&&!!tc;
     if(k===key){cards.forEach(function(li){setText(li._age,ageText(li._c,live,docAge));});return;}
     key=k;emit(st);
     var stats=$('[data-r-stats]'),notes=$('[data-r-notes]'),list=$('[data-r-cards]'),empty=$('[data-r-empty]'),of=$('[data-r-others]'),rf=$('[data-r-rec]');

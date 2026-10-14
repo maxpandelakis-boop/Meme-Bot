@@ -247,6 +247,15 @@ def office_checks(check, skips=None):
                                                                                             " · next about %s" % utc(NOW + 35 * MIN), True)
               and (ld["light"], ld["word"]) == ("fallback", "last round had errors") and ld["line"].startswith("checks failing · ") and PO.CHIP["done"] == "good",
               "U6 radar card and panel between rounds: done (green) with its counts, 'last round HH:MM · next about HH:MM'; a failed round amber, 'last round had errors' (%s)" % [lr, ld["word"]])
+        # the next round after a round, at a time: past doc.next it is due since then; a round with next null (a round by hand long after the scan's
+        # last one, radar-data on 14.10) names the full scan that starts the next one (the strip's estimate), else the next full scan
+        rn0 = PO.radar_clean(round_doc(NOW - 20 * MIN, next=None))
+        uw = [PO.look("done", PO.radar_clean(round_doc(NOW - 70 * MIN)), utc, NOW)["until"], PO.look("done", rn0, utc, NOW, NOW + 30 * MIN)["until"],
+              PO.look("done", rn0, utc, NOW, NOW - 80 * MIN)["until"], PO.look("done", rn0, utc, NOW)["until"], PO.look("late", rn0, utc, NOW, NOW + 30 * MIN)["until"]]
+        check(uw == [" · next due since %s" % utc(NOW - 15 * MIN), " · next after the %s scan" % utc(NOW + 30 * MIN), " · next after the %s scan" % utc(NOW - 20 * MIN),
+                     " · next after the next full scan", ""],
+              "U6 radar card between rounds: once doc.next has passed 'next due since HH:MM'; with next null the full scan that starts the next round "
+              "(the strip's estimate, an hour on once that scan should be over), else 'next after the next full scan'; late says nothing of a next (%s)" % uw)
         # what the card and the panel say in each state: a late or stopped radar leads with that word (its counts are its last check's) in the
         # Radar tab's colours (amber, red), a degraded one says checks fail, one that never ran is "not started yet"
         rd = PO.radar_clean(radar_doc(NOW - 20 * MIN))
@@ -316,7 +325,7 @@ def office_checks(check, skips=None):
         r = subprocess.run([PY, "-I", os.path.join(code, "report.py"), "--dir", d1, "--out", os.path.join(tmp, "nopo.html"), "--now", str(NOW)], capture_output=True, text=True)
         nopo = open(os.path.join(tmp, "nopo.html"), encoding="utf-8").read() if r.returncode == 0 else ""
         m_old = re.search(r'<div class="meta">updated [^<·]+ · next scan starts about ([^<·]*?)</div>', nopo)     # no strip: the header keeps the next start
-        check(nopo and "could not be rendered" not in nopo and 'class="ocard' not in nopo and "sstrip" not in nopo and "Daily overview" not in nopo
+        check(nopo and "could not be rendered" not in nopo and 'class="ocard' not in nopo and '<div class="sstrip"' not in nopo and "Daily overview" not in nopo
               and 'data-po-fold open>' in nopo and 'class="otop"' not in nopo
               and 'data-ext="radar"' not in nopo and "<style></style>" not in nopo and 'data-agents="analyst"' in nopo
               and m_old and m_old.group(1) == R.fmt_when(R.next_scan_ms(NOW, []), NOW),
@@ -444,13 +453,15 @@ def office_checks(check, skips=None):
                      ("stopped", radar_doc(NOW - 40 * MIN)), ("off", radar_doc(NOW, state="off")), ("hours", radar_doc(NOW, state="hours", next=NOW + 5 * H)),
                      ("hours", radar_doc(NOW, state="hours", next=None)), ("none", None), ("running", dict(radar_doc(NOW), counts=None)),
                      ("done", round_doc(NOW - 20 * MIN)), ("done", round_doc(NOW - 20 * MIN, state="degraded")), ("late", round_doc(NOW - 100 * MIN)), ("done", round_doc(NOW - 20 * MIN, next=None))]
-            py = [PO.look(s_, PO.radar_clean(doc_) if doc_ else None, utc) for s_, doc_ in cases]
+            cases = [c_ + (None, None) for c_ in cases] + [("done", round_doc(NOW - 70 * MIN), NOW, None), ("done", round_doc(NOW - 20 * MIN, next=None), NOW, NOW + 30 * MIN),
+                                                           ("done", round_doc(NOW - 20 * MIN, next=None), NOW, NOW - 80 * MIN), ("done", round_doc(NOW - 20 * MIN, next=None), NOW, None)]
+            py = [PO.look(s_, PO.radar_clean(doc_) if doc_ else None, utc, n_, sc_) for s_, doc_, n_, sc_ in cases]
             jd = os.path.join(tmp, "js")
             os.makedirs(jd)
             with open(os.path.join(jd, "t.js"), "w", encoding="utf-8") as f:
                 f.write("var L=[];global.window={addEventListener:function(k,f){L.push(k);}};global.document={readyState:'complete',addEventListener:function(k){L.push('doc:'+k);},querySelector:function(){return null;},querySelectorAll:function(){return [];}};\n"
                         + PO.JS + "\nvar O=window.MemebotOffice,f=function(ms){return new Date(ms).toISOString().slice(11,16);},C=%s,o={look:[],scan:[]};\n" % json.dumps(cases)
-                        + "C.forEach(function(c){o.look.push(O.look(c[0],c[1],f));});var t=Date.UTC(2026,9,13,18,0),d={t:t,updated:t+600000};\n"
+                        + "C.forEach(function(c){o.look.push(O.look(c[0],c[1],f,c[2],c[3]));});var t=Date.UTC(2026,9,13,18,0),d={t:t,updated:t+600000};\n"
                         + "o.scan=[O.scan('live',d,t-60000,f),O.scan('paused',d,t-60000,f),O.scan('done',d,t-60000,f),O.scan('stopped',d,t-60000,f),O.scan('live',d,t,f),O.scan('hide',d,t-60000,f),O.scan('live',null,0,f)];\n"
                         + "o.next=[O.next(t,t-1,f),O.next(t,t,f),O.next(t,t+3600000,f),O.next(0,t,f)];\n"
                         + "o.events=L;O.radar({state:'off',doc:null});console.log(JSON.stringify(o));\n")

@@ -12,7 +12,9 @@ The window: from the minute candle holding the entry (candle start >= entryAt - 
 now >= end + 2 min. Measured on the bought pool (the position's "pair") only.
 The money: cpx = the first close at or after the entry minute; base = max(cpx, px) when px/cpx is between 1/3 and 3, else cpx (it
 never flatters); x = best accepted close / base; x6 = the last close by the end / base (the lower of the last close on real volume
-and the last close of any volume: a dust print can lower it, never raise it), 0 when the pool died inside the window; eur and eur6
+and the last close of any volume: a dust print can lower it, never raise it), 0 when the pool died inside the window; x >= x6 (the
+last close is a price inside the window too, so it is the best when the price rose into the end; a jump or cap there still needs
+support; in the estimate and in an older version's doc kept by keep_better as well); eur and eur6
 are memebot.pos_value(p, 1.0, x) and (..., x6): the paper fees.
 The low: lo = the lowest level the pool held inside the window / base, at loAt; eurLo = memebot.pos_value(p, 1.0, lo). Closes only;
 a dust candle is no price (it can be neither the best nor the low); a close that the next real close within 5 minutes took back
@@ -261,17 +263,25 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
     shown = [c for c in live if coll is None or c[0] < coll]
     if best_t is None:                  # no confirmed level: the first close (about the entry) is the best
         best, best_t = first, win[0][0]
+    t6 = None
     if dead is not None and dead[0] <= end:
         x6 = 0.0
     else:                               # the last close on real volume, lowered (never raised) by a later dust print
         full = [c for c in shown if clean(c)]
         x6 = min(full[-1][4], shown[-1][4]) / base if full else None
+        t6 = (shown[-1] if shown[-1][4] <= full[-1][4] else full[-1])[0] if full else None
+    if x6 is not None and t6 is not None and x6 > best:
+        # the value at 6 h is a price inside the window too, so the best within 6 h is never below it (the last close has no next
+        # close to confirm it, so the loop never took it as a level); a jump or a cap level at the very end still needs support
+        big = x6 > CAP_X or (num(mc0) and num(mc0) * x6 > MAX_MC)
+        if not ((x6 > JUMP_X * max(best, first) or big) and not supported(len(live) - 1, x6, t6)):
+            best, best_t = x6, t6
     if dead is not None and dead[0] <= end:     # a pool that died inside the window is a real loss: everything, at the time it died
         lo, lo_t = 0.0, dead[0]
     else:
         lo, lo_t = low_of(shown, base, first if clean(win[0]) else 1.0, win[0][0], gap, clean)
         if x6 is not None and x6 < lo:          # the value at 6 h is a price inside the window too
-            lo, lo_t = x6, (shown[-1] if full and shown[-1][4] <= full[-1][4] else full[-1])[0]
+            lo, lo_t = x6, t6
     cut = cut_dead + cut_coll
     if dust:
         x_, v_ = max(dust)
@@ -709,8 +719,8 @@ def keep_better(new, old, p, now):
     """The doc to write when an older PEAK_V's settled doc exists: the new one when its source is as good (SRC_RANK: minute candles,
     15-minute candles, estimate); None (the old doc stays, asked again next run) when the new one is only waiting; else the old doc's
     best, value at 6 h and everything else, in this version, with this run's low rebased onto the old doc's base (the price, not the
-    multiple, is what this run learned), never above the old doc's entry level or its value at 6 h, and 0 when it found the pool dead.
-    Any other case: new as it is."""
+    multiple, is what this run learned), never above the old doc's entry level or its value at 6 h, and 0 when it found the pool dead;
+    an old best below the old value at 6 h (a pool alive at the end) is raised to it. Any other case: new as it is."""
     if new is None or not isinstance(old, dict) or old.get("v") == PEAK_V or old.get("state") not in SETTLED:
         return new
     rank = lambda doc: SRC_RANK.get(doc.get("src"), 0) if doc.get("state") in SETTLED else 0
@@ -720,6 +730,9 @@ def keep_better(new, old, p, now):
         return None
     out = {k: old.get(k) for k in DOC_KEYS}
     out.update({k: new.get(k) for k in ("v", "pos", "grp", "sym", "addr", "pair", "ticket", "t", "entryAt", "end", "upd")})
+    ox, ox6 = num(old.get("x")), num(old.get("x6"))
+    if ox is not None and ox6 is not None and ox6 > ox and not old.get("dead"):   # an older doc's best below its value at 6 h: at least that
+        out.update(x=ox6, at=out.get("end") or old.get("at"), eur=round(M.pos_value(p, 1.0, ox6), 2))
     lo, lo_t = None, None
     nb, ob = num(new.get("base")), num(old.get("base"))
     if num(new.get("lo")) is not None and nb and ob and old.get("state") in ("ok", "est") and num(old.get("x")) is not None:
@@ -758,7 +771,7 @@ def estimate(doc, ctx, p, rug, ds, tries):
     entry, end = window(p)
     px, liq0, mc0 = num(p.get("px")), num(p.get("liq")), num(p.get("mc"))
     dead = dead_of(entry, end, rug, ds, liq0)
-    x, at, raw, cut, n, x6 = 1.0, entry, None, [], 0, None
+    x, at, raw, cut, n, x6, x6_at = 1.0, entry, None, [], 0, None, end
     lo, lo_at = 1.0, entry
     for res, cs in paths_for(ctx, p):
         r = peak_of(cs, entry, end, px, rug, ds, liq0=liq0, mc0=mc0, res=res)
@@ -775,7 +788,7 @@ def estimate(doc, ctx, p, rug, ds, tries):
             lo, lo_at = r["lo"], r["loAt"]
         last = [c for c in _rows(cs) if c[0] + res * MIN <= end]
         if r["x6"] is not None and last and last[-1][0] + res * MIN >= end - 30 * MIN:
-            x6 = r["x6"]
+            x6, x6_at = r["x6"], last[-1][0]
     for e in _list(p.get("_exits")):
         if not isinstance(e, dict):
             continue
@@ -783,7 +796,7 @@ def estimate(doc, ctx, p, rug, ds, tries):
         if e.get("why") == "tp" and t_e and (dead is None or t_e < dead[0]) and TP_X > x:
             x, at = TP_X, int(t_e)
         if e.get("why") == "time" and px and num(e.get("px")) is not None and x6 is None:
-            x6 = num(e["px"]) / px
+            x6, x6_at = num(e["px"]) / px, int(t_e or end)
         if px and num(e.get("px")) is not None and t_e and entry <= t_e <= end and (dead is None or t_e < dead[0]) and num(e["px"]) / px < lo:
             lo, lo_at = num(e["px"]) / px, int(t_e)
     for t_p, p_p, _ in _points(ds):             # DexScreener's prices of the pool inside the window
@@ -796,6 +809,8 @@ def estimate(doc, ctx, p, rug, ds, tries):
         lo, lo_at = 0.0, int(dead[0])
         if dead[2] and dead[2] not in cut:
             cut.insert(0, dead[2])
+    elif x6 is not None and x6 > x:             # the value at 6 h is a price inside the window: the best is never below it
+        x, at = x6, int(min(max(x6_at, entry), end))
     r = {"state": "est", "res": None, "cpx": None, "base": px, "x": sig(max(1.0, x)), "at": int(at), "rawX": sig(raw) if raw else None,
          "x6": sig(x6) if x6 is not None else None, "lo": sig(lo), "loAt": int(max(lo_at, entry)),
          "dead": {"at": int(dead[0]), "why": dead[1]} if dead is not None and dead[0] <= end else None, "cut": cut, "n": n}

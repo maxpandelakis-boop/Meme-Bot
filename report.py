@@ -700,7 +700,7 @@ details.more > summary { color:var(--accent); font-weight:500 } .tipf-b { displa
 .embed { width:100%; height:360px; border:0; border-radius:6px; background:var(--chip) }
 a { color:var(--accent); text-decoration:none } a:hover, a:focus-visible { text-decoration:underline }
 .links { display:flex; flex-wrap:wrap; gap:8px }
-.links a { display:inline-flex; align-items:center; min-height:40px; padding:0 14px; border:1px solid var(--line); border-radius:999px; background:var(--chip); color:var(--accent); font-size:var(--fs-s); font-weight:500 }
+.links a { display:inline-flex; align-items:center; min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:999px; background:var(--chip); color:var(--accent); font-size:var(--fs-s); font-weight:500 }
 .links a:hover, .links a:focus-visible { text-decoration:none; border-color:var(--accent) } .links a:active { background:var(--line) }
 .addr { font-family:var(--mono); font-size:var(--fs-xs); color:var(--muted); overflow-wrap:anywhere }
 .tbl { overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:8px } .tbl td .chip { white-space:normal }
@@ -721,7 +721,11 @@ details.hold .who { grid-area:who; min-width:0 } details.hold .plv { grid-area:p
 details.hold .plv.good { color:var(--good) } details.hold .plv.bad { color:var(--bad) } details.hold .meta { grid-area:meta; font-size:var(--fs-s); color:var(--fg2) }
 details.hold .track { grid-area:track } details.hold .meta::after { content:" · details ›"; color:var(--accent) } details.hold[open] .meta::after { content:" · close ‹" }
 details.hold .body { padding:12px 16px 14px; display:grid; gap:12px } details.hold .worth { margin:0; font-size:var(--fs-s); color:var(--fg2) }
-details.fold-lite > summary { color:var(--accent); font-weight:500; padding:4px 0 } details.fold-lite[open] > summary { margin-bottom:8px } details.fold-lite > .note { margin-bottom:8px }
+details.fold-lite > summary { color:var(--accent); font-weight:500; padding:4px 0; min-height:44px; box-sizing:border-box; display:flex; align-items:center }
+/* 44 px tap targets: the card's folds (Safety check, Why, All numbers, Live chart) and the folds under a list; the negative margins keep the
+   page's spacing (the target reaches into the gap around it) */
+details.more > summary, details.safe > summary, details.tap > summary { min-height:44px; box-sizing:border-box; padding-block:11px; margin-block:-6px }
+td.act a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; margin-block:-14px } details.fold-lite[open] > summary { margin-bottom:8px } details.fold-lite > .note { margin-bottom:8px }
 .track { position:relative; height:56px; margin:0 4px; container-type:inline-size }
 .track .rail, .track .fill { position:absolute; top:26px; height:6px; border-radius:999px } .track .rail { left:0; right:0; background:var(--line2) }
 .track .fill.good, .track .dot.good { background:var(--good-mark) } .track .fill.warn, .track .dot.warn { background:var(--warn-mark) } .track .fill.bad, .track .dot.bad { background:var(--bad-mark) }
@@ -1861,7 +1865,7 @@ def rec_section(D, embed):
     if runners:
         tr = "".join('<tr>%s%s%s</tr>' % (coin_cell(c.get("rank") or "?", c.get("sym"), c.get("name"), safety_chip(c.get("ok"), c.get("safety"))),
                                           num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))) for c in runners)
-        body += '<details><summary>Runners-up (%d)</summary><div class="tbl stack"><table>%s<tbody>%s</tbody></table></div></details>' % (len(runners), COIN_HEAD, tr)
+        body += '<details class="tap"><summary>Runners-up (%d)</summary><div class="tbl stack"><table>%s<tbody>%s</tbody></table></div></details>' % (len(runners), COIN_HEAD, tr)
     return section(E(h2), head, body, info=True)
 
 
@@ -1946,7 +1950,7 @@ def young_history(D):
     head = '<thead><tr><th>scan at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th>%s<th></th></tr></thead>' % "".join('<th class="n">%d h later</th>' % h for h in M.TIP_CHECKS)
     note = ("the earlier new launches: " + "; ".join(bits)) if bits else "the earlier new launches: none priced again yet"
     return ('<details class="fold-lite"><summary>What the earlier new launches did</summary><p class="note">%s · 20 in each at the scan price, after fees · fake money</p>'
-            '<details><summary>%d new launches from the last scans</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details></details>') % (
+            '<details class="tap"><summary>%d new launches from the last scans</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details></details>') % (
         E(note), len(rows), head, "".join(rows))
 
 
@@ -1970,16 +1974,16 @@ def young_section(D):
             chips = '%s<span class="chip">%d min old</span>%s%s%s%s' % (PR.row_chips(traps.get(c.get("addr"))), int(M.num(c.get("ageMin")) or 0), buy,
                                                                        PR.row_safety(traps.get(c.get("addr")), safety_chip(c.get("ok"), c.get("safety"))), odds_chip(c), story_chip(c))
             rows_html.append('<tr%s>%s%s%s</tr>' % (PR.row_attr(traps.get(c.get("addr"))), coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
-        n_top = 3                              # in view: the best three; the others one tap below
+        n_top = 1                              # in view: the best one (the radar sits above it on New); the others one tap below
         body = PR.young_head(traps, young) + '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html[:n_top]))
         if rows_html[n_top:]:
             body += '<details class="fold-lite"><summary>%d more new launch%s</summary><div class="tbl stack"><table>%s<tbody>%s</tbody></table></div></details>' % (
                 len(rows_html) - n_top, "" if len(rows_html) - n_top == 1 else "es", COIN_HEAD, "".join(rows_html[n_top:]))
         cards = "".join(rec_card(dict(c, tier="young", _trap=traps.get(c.get("addr"))), D["now"], embed=False, peers=young, held=held) for c in young)
-        body += '<details><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
+        body += '<details class="tap"><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
         gates = [(c.get("sym"), c.get("gates") or []) for c in young if c.get("gates")]
         if gates:
-            body += '<details><summary>Which other gates they would fail today</summary><ul class="note">%s</ul></details>' % "".join(
+            body += '<details class="tap"><summary>Which other gates they would fail today</summary><ul class="note">%s</ul></details>' % "".join(
                 "<li><strong>%s</strong>: %s</li>" % (E(sym), E("; ".join(str(x) for x in g))) for sym, g in gates)
     elif rc and "young" not in rc:
         body = '<div class="empty">This scan ran before the tab existed; the next scan fills it.</div>'
@@ -3195,7 +3199,7 @@ def render(data, fragment=False):
         pane_office = safe("agent office", lambda: office_section(D))
         tabs = ('<style>%s</style><div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
                 '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>New<span class="tl-long"> launches</span></span>%s'
-                '<span class="cnt" title="Full scan: coins under 1 h">%d</span></label><label for="tab-office" role="tab">Office</label></div>'
+                '<span class="cnt" data-y-tabcnt title="Full scan: coins under 1 h">%d</span></label><label for="tab-office" role="tab">Office</label></div>'
                 '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div></div><script>%s</script>' % (
                     PR.CSS, PR.tab_label(), n_young, pane_pick, pane_young, pane_office, PR.JS))
     rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
