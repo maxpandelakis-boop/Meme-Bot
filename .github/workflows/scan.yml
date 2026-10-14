@@ -150,16 +150,21 @@ jobs:
           def mark(s):                # for the feed step: was radar-feed's X-link index brought in
               put(".radar_feed_import", s.encode())
 
-          def tree(repo):             # {path: blob sha} of the fetched commit's plain files
+          def tree(repo):             # {path: blob sha} of the fetched commit's plain files; a failed local git raises, so the
+              rc, raw = git(repo, "ls-tree", "-r", "-z", "--full-tree", "FETCH_HEAD")   # mark stays failed, never none
+              if rc != 0:
+                  raise RuntimeError("git ls-tree exit %d" % rc)
               out = {}
-              for e in git(repo, "ls-tree", "-r", "-z", "--full-tree", "FETCH_HEAD")[1].decode("utf-8", "replace").split("\0"):
+              for e in raw.decode("utf-8", "replace").split("\0"):
                   meta, _, path = e.partition("\t")
                   if meta.split(" ")[:2] == ["100644", "blob"]:
                       out[path] = meta.split(" ")[2]
               return out
 
           def blob(repo, sha, cap):
-              raw = git(repo, "cat-file", "blob", sha)[1]
+              rc, raw = git(repo, "cat-file", "blob", sha)
+              if rc != 0:
+                  raise RuntimeError("git cat-file exit %d" % rc)
               return raw if len(raw) <= cap else None
 
           def feed(heads, repo):

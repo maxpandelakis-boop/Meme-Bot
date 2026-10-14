@@ -3708,6 +3708,8 @@ console.log(JSON.stringify(o));
           "trap check, the daily overview's table fold is a 44 px target")
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
+    import selftest_audit                       # the error audit's fixes (WP7), one check each
+    selftest_audit.audit_checks(check)
 
     print("== sync: page and small docs to a results branch")
     bare = tempfile.mkdtemp(prefix="memebot-bare-")

@@ -1258,7 +1258,7 @@ def sync(d, remote=None, branch="results"):
     def git(*a, check=False):
         p = subprocess.run(["git", "-C", mb] + list(a), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
         if check and p.returncode != 0:
-            raise SystemExit("git %s failed: %s" % (a[0], (p.stderr or p.stdout).strip()[-800:]))
+            raise SystemExit(redact("git %s failed: %s" % (a[0], (p.stderr or p.stdout).strip()[-800:])))
         return p
 
     if not os.path.isdir(os.path.join(mb, ".git")):
@@ -1285,7 +1285,7 @@ def sync(d, remote=None, branch="results"):
         git("-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "merge", "-q", "-s", "ours", "--allow-unrelated-histories", "-m", "merge results", "FETCH_HEAD")
         git("push", "-q", "-u", "origin", "HEAD:" + branch, check=True)
     head = git("rev-parse", "--short", "HEAD").stdout.strip()
-    log("sync: %s -> %s %s (%s)" % ("new commit" if changed else "nothing new", remote, branch, head))
+    log("sync: %s -> %s %s (%s)" % ("new commit" if changed else "nothing new", redact(remote), branch, head))
     return head
 
 
@@ -1450,21 +1450,24 @@ SITE_ICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rec
 def site_store():
     """(url, publishable key) of the app's live store for the page, from SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, or None. Only a
     publishable key (sb_publishable_...) goes into the page; a secret key or a JWT is refused and the log says why, never the key."""
-    url, key = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/"), (os.environ.get("SUPABASE_PUBLISHABLE_KEY") or "").strip()
-    if not url and not key:
+    raw, key = (os.environ.get("SUPABASE_URL") or "").strip(), (os.environ.get("SUPABASE_PUBLISHABLE_KEY") or "").strip()
+    if not raw and not key:
         return None
     sys.path.insert(0, HERE)
     import app as A
-    if not url or not key:
-        log("site: the app's live store stays off: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are both needed (%s is missing)" % ("SUPABASE_URL" if not url else "SUPABASE_PUBLISHABLE_KEY"))
+    if not raw or not key:
+        log("site: the app's live store stays off: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are both needed (%s is missing)" % ("SUPABASE_URL" if not raw else "SUPABASE_PUBLISHABLE_KEY"))
         return None
     verdict, why = A.page_key_verdict(key)
     if verdict != "ok":
         log("site: SUPABASE_PUBLISHABLE_KEY is NOT put in the page: %s" % why)
         return None
-    if not re.fullmatch(r"https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{1,5})?", url):
-        log("site: the app's live store stays off: SUPABASE_URL is not an address like https://<ref>.supabase.co")
+    url, problem = A.store_url(raw)
+    if url is None or not url.startswith("https://"):
+        log("site: the app's live store stays off: SUPABASE_URL is not an address like https://<ref>.supabase.co (%s)" % (problem or "plain http"))
         return None
+    if problem:
+        log("site: SUPABASE_URL read with a fix (%s): better put the project's address https://<ref>.supabase.co in the repository setting" % problem)
     return url, key
 
 
@@ -1486,6 +1489,8 @@ def site(d, out="site", repo=None):
     if st:
         import html as H
         h = h.replace('<html lang="en">', '<html lang="en" data-sb-url="%s" data-sb-key="%s">' % (H.escape(st[0], True), H.escape(st[1], True)), 1)
+    elif (os.environ.get("SUPABASE_URL") or "").strip() and not str(A.store_url(os.environ["SUPABASE_URL"])[0] or "").startswith("https://"):
+        h = h.replace('<html lang="en">', '<html lang="en" data-sb-why="url">', 1)      # the Account card says the address has the wrong form
     h = h.replace("</title>", "</title>\n" + SITE_TAGS, 1)
     h = h.replace("</head>", "<style>%s</style>\n</head>" % A.PAGE_CSS, 1)
     if repo:

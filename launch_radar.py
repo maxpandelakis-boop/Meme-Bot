@@ -58,6 +58,8 @@ DS_FIRST_REQ = 20           # ... in a run's first cycle (a cold pool-age cache:
 TIER1_CAP = 12              # tier-1 requests a cycle (RugCheck, pump.fun coins-v3, DexScreener orders)
 RPC_CAP = 15                # Solana RPC calls a cycle (the probe: keep it; the public node allows 10 per method per 10 s)
 DEV_RPC_CAP = 8             # of them for fetch.dev_check (did the creator sell), so the dev wallet, the mint and the holders keep the rest
+DEV_TX_RADAR = 3            # the creator's newest transactions read per coin (fetch's DEV_MAX_TX is 6; a pool under 10 minutes old: a sale
+                            # is among the newest): a coin costs 4 RPC calls at most, so DEV_RPC_CAP reads 2 coins a cycle to the end
 FUND_CAP = 5                # of them for the funding of fresh holders (getTransaction)
 PF_DEEP_CAP = 6             # frontend-api-v3 calls a cycle for the dev's launches and the top holders
 SWAP_CAP = 6                # swap-api calls a cycle (candles from the mint, launch trades: 3 pages a coin at most)
@@ -767,18 +769,25 @@ class Radar:
             return False
 
     def store_row(self, doc):
-        """radar.json to the app's live store (row "radar"), when it is set up. Never raises."""
+        """radar.json to the app's live store (row "radar"), when it is set up: True written, None the store is not set up, False the
+        write failed (said). Never raises."""
         try:
             if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY")):
-                return False
+                return None
             import app as A
             if not A.enabled():
-                return False
+                return None
             A.put_row("radar", doc)
             return True
         except Exception as e:
             self.say("app store row not written (%s)" % RS.short(e))
             return False
+
+    def saved(self, landed, rowed):
+        """Where this radar.json went, for the log line: radar-data (pushed, not pushed, or kept on the runner without a remote) and the
+        app's row (written, off: the store is not set up, or not written)."""
+        return "radar-data %s, app row %s" % ("pushed" if landed and self.remote else "kept here" if landed else "not pushed",
+                                              "written" if rowed else "off" if rowed is None else "not written")
 
     def notify(self, coins):
         """One notification for these good coins (kind radar, app.notify_radar when app.py has it). Never raises."""
@@ -991,9 +1000,10 @@ class Radar:
         if sent:                                 # radar.json and the records say pushed right after the notification (3.6)
             self.cycle_lines[-1] = line(len(sent))
             doc = self.build_doc(state, coins, others, rated, now, t_k + self.step, secs, k)
-            self.publish(doc)
-        self.store_row(doc)
-        self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items()))))
+            landed = self.publish(doc)
+        rowed = self.store_row(doc)
+        self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s; %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items())),
+                                                                                   self.saved(landed, rowed)))
         self.last_doc = doc
         # 9. caches, the model, the periodic reads
         for a in [a for a in list(self.work) + list(self.closes) if now - (num((self.rec(a) or {}).get("pool")) or 0) > 20 * 60_000]:
@@ -1275,15 +1285,22 @@ class Radar:
         if todo and self.src.use("dev_check"):
             left = self.http.rpc_left
             cap = DEV_RPC_CAP if left is None else min(left, DEV_RPC_CAP)
-            self.http.rpc_left = cap
-            ddir = os.path.join(sb, "dev2")
-            try:
-                F.dev_check(self.http, ddir, [r["a"] for r in todo[:4]], now / 1000.0)
-            finally:
-                used = cap - max(0, self.http.rpc_left or 0)
-                self.http.rpc_left = None if left is None else max(0, left - used)
-            rows, _ = M.load_side(ddir, "dev", M.DEV_COLS)
-            for r in todo[:4]:
+            ask = todo[:min(4, cap // (1 + DEV_TX_RADAR))]     # only as many coins as the budget reads to the end: a coin cut off midway
+            for r in todo[len(ask):4]:                          # would be unknown and lose a try; the next ones wait their turn (pending)
+                w = self.work.setdefault(r["a"], {})
+                w["dev"] = w.get("dev") or "pending"
+            if ask:
+                self.http.rpc_left = cap
+                ddir = os.path.join(sb, "dev2")
+                max_tx, F.DEV_MAX_TX = F.DEV_MAX_TX, DEV_TX_RADAR
+                try:
+                    F.dev_check(self.http, ddir, [r["a"] for r in ask], now / 1000.0)
+                finally:
+                    F.DEV_MAX_TX = max_tx
+                    used = cap - max(0, self.http.rpc_left or 0)
+                    self.http.rpc_left = None if left is None else max(0, left - used)
+                rows, _ = M.load_side(ddir, "dev", M.DEV_COLS)
+            for r in ask:
                 w = self.work.setdefault(r["a"], {})
                 row = rows.get(r["a"])
                 w["devTries"] = w.get("devTries", 0) + 1
@@ -1444,7 +1461,7 @@ class Radar:
         S = {k: c.get(k) for k in S_KEYS}
         for k, v in S2.items():
             if v is not None:
-                if k in S and S[k] is not None and S[k] != v and k not in self.mismatch_said and not isinstance(v, (dict, list)):
+                if k in S and S[k] is not None and differs(S[k], v) and k not in self.mismatch_said and not isinstance(v, (dict, list)):
                     self.mismatch_said.add(k)
                     self.say("signal %s: traps reads %r, the radar %r (traps wins)" % (k, v, S[k]))
                 S[k] = v
@@ -1795,8 +1812,8 @@ class Radar:
         pushed once to radar-data and the app's row."""
         prev = self.last_doc if isinstance(self.last_doc, dict) else {}
         doc = finish_from(prev, state, now, why, self.run_id, self.run_start, self.run_end, self.source, self.hours)
-        self.publish(doc)
-        self.store_row(doc)
+        landed = self.publish(doc)
+        self.say("radar.json state %s: %s" % (state, self.saved(landed, self.store_row(doc))))
         self.last_doc = doc
         return doc
 
@@ -2063,15 +2080,24 @@ def cmd_hours(a, log=None):
         if remote and ex:
             try:
                 Git(os.path.join(d, "git"), remote, say).push_tree(paths, "radar-data", "launch radar: outside the active hours (fake money)")
+                say("hours: radar-data pushed")
             except Exception as e:
                 say("hours: radar-data push failed (%s)" % RS.short(e))
         elif remote:
             say("hours: radar-data does not exist yet: not made here (the first radar run makes it from the results copy)")
         else:
             write_json(os.path.join(d, "out", "radar.json"), doc)
-    app_row(doc, say)
+    say("hours: app row %s" % ("written" if app_row(doc, say) is not None else "not written (off or failed)"))
     say("outside the active hours %d-%d Berlin: state hours, next start %s UTC" % (hw[0], hw[1], dt.datetime.fromtimestamp(doc["next"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M") if doc["next"] else "?"))
     return 0
+
+
+def differs(a, b):
+    """Whether the radar's reading a and traps' reading b of one signal differ: two numbers at 2 decimals (traps rounds some, ageMin
+    among them), anything else as it is."""
+    if all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (a, b)):
+        return round(a, 2) != round(b, 2)
+    return a != b
 
 
 def args_of(argv=None):
