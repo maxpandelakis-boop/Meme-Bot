@@ -435,8 +435,10 @@ def browser_checks(check, skips, d1, tmp):
     mk_launches(dw, NOW, standout=True)
     page_plain = build(dw)
     # the same page with the Radar tab's radio (WP5b's tab), so "Open the Radar tab" has its target
+    # (added only when the page has none, so a site with WP5b's tab keeps one radio of that id)
     office_radio = '<input type="radio" name="tab" id="tab-office">'
-    page_rt = page_plain.replace(office_radio, office_radio + '<input type="radio" name="tab" id="tab-radar">', 1)
+    page_rt = page_plain if 'id="tab-radar"' in page_plain else page_plain.replace(office_radio, office_radio + '<input type="radio" name="tab" id="tab-radar">', 1)
+    check(page_rt.count('id="tab-radar"') == 1, "U6 the test page with a Radar tab has exactly one radio of that id (%d)" % page_rt.count('id="tab-radar"'))
     t0 = R.office_data(R.collect(d1, NOW))["t0"]
     calls, dialogs, errs = [], [], []
     long_line = "gates: 40 of 900 coins checked against the liquidity, holder and creator rules so far"
@@ -483,14 +485,19 @@ def browser_checks(check, skips, d1, tmp):
                 astatic: cs(q('label.ocard[data-agent="analyst"] > .ocl:not([data-live-line])')).display, aliveshow: cs(q('label.ocard[data-agent="analyst"] [data-live-line]')).display,
                 wait: [q('label.ocard[data-agent="trainer"]').getAttribute('data-live'), cs(q('label.ocard[data-agent="trainer"]')).opacity],
                 strip: q('[data-ss-state]').textContent, nexthid: q('[data-ss-next]').hidden,
-                rline: q('[data-ext-line="radar"]').textContent, waiting: Array.from(document.querySelectorAll('[data-live-strip] span')).map(s => s.textContent) }; }""")
+                rline: q('[data-ext-line="radar"]').textContent, rst: window.MemebotRadar && MemebotRadar.last ? String(MemebotRadar.last.state) : null, waiting: Array.from(document.querySelectorAll('[data-live-strip] span')).map(s => s.textContent) }; }""")
+            # the radar card's line follows the Radar tab's verdict when that tab's script runs (WP5b: an embedded doc this old is 'stopped'),
+            # and the page's own line without it
+            rline_for = {None: "7 seen · 1 without traps · 0 pushed", "running": "7 seen · 1 without traps · 0 pushed",
+                         "late": "late · 7 seen, 1 without traps", "stopped": "stopped · 7 seen, 1 without traps"}
             check(got["desk"] is None and got["card"] is None and got["panel"] is None and got["an"] == "work" and got["acard"] == "work" and got["achip"] == "at work now"
                   and got["pline"] == "Now: " + long_line and 50 < len(got["aline"]) <= 60 and got["aline"].endswith("…") and ("Now: " + long_line).startswith(got["aline"][:-1])
                   and got["astatic"] == "none" and got["aliveshow"] != "none" and got["wait"] == ["wait", "0.55"]
-                  and got["rline"] == "7 seen · 1 without traps · 0 pushed" and "Waiting %d" % (len(set(R.OFFICE_AGENTS) - {"radar"}) - 2) in got["waiting"]
+                  and got["rline"] == rline_for.get(got["rst"], "?") and "Waiting %d" % (len(set(R.OFFICE_AGENTS) - {"radar"}) - 2) in got["waiting"]
                   and got["strip"].startswith("running now · started ") and got["nexthid"] and link == "https://github.com/%s/actions/workflows/scan.yml" % REPO,
                   "U6 browser: the office poll marks the scan's desks and cards live but never the radar's (even when the live doc names one); a card at work "
-                  "shows its live line (at most 60 characters) instead of last run's, a waiting card is faded; the strip says the scan runs now and links to "
+                  "shows its live line (at most 60 characters) instead of last run's, a waiting card is faded; the radar's card follows the Radar tab's state when "
+                  "that tab runs; the strip says the scan runs now and links to "
                   "the scan's page (%s, %s)" % (got, link))
             # the card at work pulses, but not for a reader who asked for less motion
             pulse = lambda: pg.evaluate("getComputedStyle(document.querySelector('label.ocard[data-agent=\"analyst\"] .olt')).animationName")
@@ -568,10 +575,10 @@ def browser_checks(check, skips, d1, tmp):
             pg.click('label.ocard[data-agent="radar"]')
             pg.wait_for_timeout(900)
             tap_r = pg.evaluate("[document.getElementById('od-analysts').checked, Math.round(document.querySelector('.oext').getBoundingClientRect().top), innerHeight, "
-                                "!!(document.querySelector('[data-po-radar]')||{}).hidden]")
-            check(tap[0] and 0 <= tap[1] < tap[2] / 2 and tap_r[0] and 0 <= tap_r[1] < tap_r[2] / 2 and tap_r[3],
+                                "!!(document.querySelector('[data-po-radar]')||{}).hidden, !!document.getElementById('tab-radar')]")
+            check(tap[0] and 0 <= tap[1] < tap[2] / 2 and tap_r[0] and 0 <= tap_r[1] < tap_r[2] / 2 and tap_r[3] == (not tap_r[4]),
                   "U6 browser: on a phone a tap on an agent's card opens its department and scrolls its panel into view, the radar's card its own block; "
-                  "without a Radar tab its link is hidden (%s, %s)" % (tap, tap_r))
+                  "its link to the Radar tab is hidden exactly when the page has no such tab (%s, %s)" % (tap, tap_r))
             pg.evaluate("document.getElementById('tab-office').click(); document.getElementById('od-brain').checked = true;")
             pg.click('label[for="ohb-3"]')
             shown = pg.evaluate("Array.from(document.querySelectorAll('.ohb-read p')).filter(p => p.getClientRects().length).map(p => p.textContent)")
