@@ -298,19 +298,25 @@ update has no early box yet, because the polling script comes with the page the 
 ### Launch radar (coins under 10 minutes)
 
 A second job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). It makes a round
-every 5 minutes: each round rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
+every 2 minutes: each round rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
 plus the trap checks of `traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet
 under a day old, a staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the
 top of the page's New tab (above the full scan's new launches) and in the app, records every rating, and sends a push only for a coin without a trap found. Fake money only:
 the radar buys nothing and the paper trader never reads it.
 
-When it runs: inside the active hours, all the time. One run makes a round every 5 minutes for 55 minutes, then starts the
+When it runs: inside the active hours, all the time. One run makes a round every 2 minutes for 55 minutes, then starts the
 next run itself (no cron: GitHub's timed starts come late or not at all). The hourly scan starts the radar at its start when no
 run is going (so the first rounds of the day come with the first scan after 7:00, or after a run that failed), and "Run workflow"
 on the radar's Actions page starts one by hand. The page asks for the new list every minute or so; after a tap on Start it says "Waiting for the new round".
 
+Live feed: pump.fun graduations also come from PumpPortal's free websocket (`radar_feed.py`: one connection, no key, standard
+library only). A coin that just moved to its pool gets an extra round about 20 s later (at least 60 s after the last round, at
+most 12 extra rounds an hour). When the feed is blocked or silent the radar runs its 2-minute rounds as before; the page names
+the feed only while it is limited.
+
 Later prices: a record keeps the prices 5, 15, 30 and 60 minutes after the coin was first seen, but only those a later round
-catches (at most half the offset late). With a round every 5 minutes all four are usually caught; a field no round caught
+catches (at most half the offset late). With a round every 2 minutes all four are usually caught (the 5- and 15-minute ones
+at the round after, about 6 and 16 minutes); a field no round caught
 (the radar was stopped, or a run handed over to the next) stays empty (shown as "–"), never zero. The 1 h outcome (rugged, doubled) and the record line
 need only the 1 h price.
 
@@ -319,12 +325,33 @@ signals the study could not confirm stay visible on the page but carry no weight
 outcome, the radar retrains its weights by itself (`model.json` on branch `radar-data`, tested walk-forward like the main
 model, the study as the starting point).
 
+Momentum and patterns (hindsight, paper only), in the Track record fold: "Rising fast" counts the coins at 1.5x their
+first-sight price within 6 minutes with liquidity not lower, or +50% in 5 minutes, next to all new coins with the same 1 h
+label (so far most of them rugged); they are never bought or pushed. "Patterns" compares rugged and doubled coins (2x with real
+liquidity at 15, 30 or 60 minutes and no rug by 60) by the signals they had at first sight: at most 3 signals, and up to 3
+rugged coins with the flags their hour's doubled coins mostly lacked. Once a win order holds up, a ▲ marks the coins that look
+like past doubled coins. The rules:
+- Hindsight only: nothing here feeds the green rule, the verdicts, the trap points or a push. The win order only orders coins
+  with the same verdict and the same trap points.
+- Same hours: winners and losers are matched by the UTC hour of first sight, and only hours with both count. Self-priced pools
+  (mostly Meteora) count in neither group.
+- First sight: only the signals of the first rating are used (stored from this version on; older records are left out).
+- Enough data: a signal is tested only with 15 doubled and 15 rugged coins known and at least 5 doubled coins expected with and
+  without it; below that the page says "too few".
+- A pattern needs q under 0.05 (Cochran-Mantel-Haenszel by hour, Benjamini-Hochberg over the signals) and the same direction in
+  both halves of the hours; anything else shown is marked "could be chance".
+- The coin lines only describe, with counts ("0 of 3 doubled that hour had it"), and only for hours with 2 or more doubled coins.
+- The win order is used only when it holds up on the last 2 days it was not fitted on (30 doubled and 30 rugged coins, AUC at
+  least 0.55 with its lower bound over 0.5).
+The first patterns can show after about 2 to 4 days, a win order after about 4 to 6.
+
 Nothing to set up. Active 7:00 to 24:00 Berlin. For a free VM instead, `python3 launch_radar.py loop --no-github --minutes 0
---cadence 300` runs the same loop without an end.
+--cadence 120` runs the same loop without an end.
 Switches (repository variables, Settings > Secrets and variables > Actions > Variables):
 - `MEMEBOT_RADAR=0`: the run going on ends within the hour, then no round runs (the scan starts none, a start by hand is
   skipped). The quick stop: Actions > "Meme-Bot launch radar" > Disable workflow (it ends at the next round).
 - `MEMEBOT_RADAR_HOURS=8-22`: other active hours (Berlin).
+- `MEMEBOT_RADAR_FEED=off`: no live feed (the 2-minute rounds go on); `pumpportal` (the default) switches it on.
 - `MEMEBOT_PUSH_YOUNG=1`: the scan's own "new coins" push again (off by default now; the radar's push replaces it).
 - `MEMEBOT_PEAKS=0`: no "best within 6 h" pricing job after the scan.
 The phone's "New coins" switch also covers the radar's pushes.
@@ -345,7 +372,7 @@ lasted one minute is in it, marked.
 
 A second paper account, beside the real one and never touching it: the best 5 coins of the radar's first round each hour
 go in for 3 € each, at the price the radar saw, at the round's time, and so does every coin the radar listed as good in any of
-its 5-minute rounds (a coin only once; green when the radar rated it good). Every round's best 5 would be about 25 buys an hour,
+its 2-minute rounds (a coin only once; green when the radar rated it good). Every round's best 5 would be about 25 buys an hour,
 more than the job after each scan can price. They
 are sold by the same rules as the paper account (stop -30%, take-profit +1000% at the confirmed close, else the close at
 6 h; a dead pool is a total loss; paper fees), replayed on the pool's GeckoTerminal minute candles with the glitch rules of
