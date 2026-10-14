@@ -919,7 +919,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     if(doc.state==='hours')return +doc.next>0&&+doc.t+a>+doc.next+R.HOUR?'stopped':'hours';     // the first full scan of the hours starts it: up to an hour
     if(R.round(doc)){var over=+doc.t+a-R.due(doc);return over<=R.DONE_GRACE?'done':over<=R.DONE_GRACE+R.HOUR?'late':'stopped';}
     return a<=2*R.cycle(doc)+R.GRACE?'running':a<=R.LATE?'late':'stopped';},
-  // a loop's own cadence: the doc's next minus its time (the radar's 5 minutes, the old loop's 2.5), CYCLE to CYCLE_MAX; CYCLE without a next
+  // a loop's own cadence: the doc's next minus its time (the radar's 2 minutes count as 2.5, an older loop's 5), CYCLE to CYCLE_MAX; CYCLE without a next
   cycle:function(doc){var c=+doc.next-(+doc.t);return c>0?Math.min(R.CYCLE_MAX,Math.max(R.CYCLE,c)):R.CYCLE;},
   // the coins are current (a card in full colour, the tab's count): a running loop, or a round within FRESH of its check
   live:function(st,doc,now,got,moved){return st==='running'||st==='done'&&!!doc&&R.age(doc,now,got,moved)<=R.FRESH;},

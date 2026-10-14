@@ -308,6 +308,7 @@ When it runs: inside the active hours, all the time. One run makes a round every
 next run itself (no cron: GitHub's timed starts come late or not at all). The hourly scan starts the radar at its start when no
 run is going (so the first rounds of the day come with the first scan after 7:00, or after a run that failed), and "Run workflow"
 on the radar's Actions page starts one by hand. The page asks for the new list every minute or so; after a tap on Start it says "Waiting for the new round".
+The Office tab opens with the radar's desk: its state, the round's sources, checks, verdicts and push; a tap on it opens New.
 
 Live feed: pump.fun graduations also come from PumpPortal's free websocket (`radar_feed.py`: one connection, no key, standard
 library only). A coin that just moved to its pool gets an extra round about 20 s later (at least 60 s after the last round, at

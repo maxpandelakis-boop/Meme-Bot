@@ -857,9 +857,9 @@ class Radar:
         return 0
 
     def loop(self):
-        """The cycles of this run (radar.yml: a round every 5 minutes for 55 minutes; a VM: until stopped). Returns the exit code. It never
-        starts another run (radar.yml's last step does)."""
-        self.start()          # the stores first: cycle 0 then sits on its own grid point, so the 5-minute price of its coins is due at cycle 1
+        """The cycles of this run (radar.yml: a round every 2 minutes for 55 minutes, an early one after a graduation on the live feed; a VM:
+        until stopped). Returns the exit code. It never starts another run (radar.yml's last step does)."""
+        self.start()          # the stores first: cycle 0 then sits on its own grid point, so the 5-minute price of its coins is due at cycle 3
         self.run_start = self.clock.now()
         mins = self.run_minutes = run_minutes(self.a.minutes, not self.github)
         if num(self.a.minutes) and self.a.minutes > mins:
