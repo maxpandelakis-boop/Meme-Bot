@@ -2,8 +2,8 @@
 """radar_src.py: the launch radar's sources (adapters). Fake money only: the radar rates new coins for the page and the phone, it
 never buys anything, and the paper trader never reads what it writes.
 
-launch_radar.py asks these sources once a cycle (every 150 s). Every request runs on RadarHttp, fetch.py's client with the radar's own
-rules (the limits measured by the WP0 probe on GitHub's runners, research/probe-radar.md):
+launch_radar.py asks these sources once a cycle (one cycle per round; a VM's loop every 150 s). Every request runs on RadarHttp,
+fetch.py's client with the radar's own rules (the limits measured by the WP0 probe on GitHub's runners, research/probe-radar.md):
   - the request's timeout is what is left of the cycle's step (none starts after it), so a hanging host never holds a cycle up;
   - minimum gaps per host (GAPS: fetch's GeckoTerminal 10 s and pump.fun 0.7 s, RugCheck 1 s, swap-api 0.2 s, advanced-api 1 s) hold,
     but never past the step's end; the Solana RPC also keeps RPC_GAP_S (1.1 s) between two calls of one method, because its real limit
