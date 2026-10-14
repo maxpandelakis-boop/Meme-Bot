@@ -42,7 +42,7 @@ def addr(seed, suffix="pump"):
 TRAPS_STANDIN = r'''
 """A minimal stand-in for traps.py (WP1) for selftest_radar.py only: the spec's rules, nothing more."""
 import math, re
-BRAND = r"\b(google|apple|nvidia|openai|chatgpt|gpt|gemini|claude|grok|deepseek|tesla|elon|musk|trump|mrbeast|nike|amazon|microsoft|meta|spacex|xai|binance|pokemon)\b"
+BRAND = r"\b(google|apple|nvidia|openai|chatgpt|gpt|gemini|grok|deepseek|tesla|elon|musk|trump|mrbeast|nike|amazon|microsoft|meta|spacex|xai|binance|pokemon)\b"
 M_SIG = {"dev_dead": lambda S: (S.get("devN") or 0) >= 3 and (S.get("devDead") or 0) >= 0.8 * (S.get("devN") or 1),
          "dev_young": lambda S: S.get("devAgeH") is not None and S["devAgeH"] < 24,
          "x_copied": lambda S: (S.get("xUsed") or 0) >= 1, "tweet_shared": lambda S: (S.get("tweetShared") or 0) >= 1,
@@ -72,6 +72,26 @@ def norm_x(url):
     return None
 
 
+def _uses(e):
+    if not isinstance(e, list) or len(e) < 6 or not isinstance(e[5], list):
+        return []
+    return e[5] if e[5] else ([[e[0], e[1]]] if e[0] else [])
+
+
+def x_reuse(url, addr, first_ms, links, gap_s=600):
+    nk = norm_x(url)
+    out = {"kind": nk[0] if nk else None, "key": nk[1] if nk else None, "used": None, "shared": None}
+    if not nk:
+        return out
+    uses = _uses((links or {}).get(nk[1]))
+    if nk[0] == "tweet":
+        out["used"], out["shared"] = 0, sum(1 for u in uses if u[0] != addr)
+        return out
+    out["used"] = sum(1 for u in uses if u[0] != addr and u[1] <= first_ms - gap_s * 1000)
+    out["shared"] = 0
+    return out
+
+
 def staircase(closes, n_min=10):
     cs = [c for c in closes or [] if c]
     if len(cs) < 2:
@@ -85,7 +105,7 @@ def staircase(closes, n_min=10):
     return {"n": len(cs), "rise": rise, "green": green, "pull": pull, "stair": len(cs) >= 6 and rise >= 0.2 and green >= 0.7 and pull < 0.05}
 
 
-def walletmem_lookup(holders, wm):
+def walletmem_lookup(holders, wm, now=None):
     if not wm or not holders:
         return {"swAvg": None, "rugHolders": None, "checked": False}
     common, rug, sw = set(wm.get("common") or []), set(wm.get("rug") or []), wm.get("sw") or {}
@@ -256,14 +276,18 @@ def feed(d, out, now):
 '''
 
 PEAK_STANDIN = r'''
-"""A minimal stand-in for peak.py (WP2) for selftest_radar.py only."""
-def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=()):
-    cs = sorted([c for c in cands if c and c[4] and entry_at - 60_000 <= c[0] <= end], key=lambda c: c[0])
+"""A minimal stand-in for peak.py (WP2) for selftest_radar.py only: the dead-pool cut of the glitch filter (a DexScreener point
+under $1,000 of liquidity, or gone, ends the window), nothing more."""
+def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, mc0=None, res=1):
+    cs = sorted([c for c in cands if c and c[4] and entry_at - 60_000 <= c[0] and c[0] + 60_000 <= end], key=lambda c: c[0])
     if not cs:
         return {"state": "waiting", "x": None, "at": None, "cut": []}
+    dead = next((t for t, p, liq in sorted(ds_points or ()) if entry_at <= t <= end and liq is not None and liq < 1000), None)
+    cut = ["pool dead: liquidity under $1,000 at minute %d" % ((dead - entry_at) // 60_000)] if dead else []
+    live = [c for c in cs if dead is None or c[0] < dead] or cs[:1]
     base = cs[0][4]
-    best = max(cs, key=lambda c: c[4])
-    return {"state": "ok", "x": round(best[4] / base, 4), "at": best[0], "cut": [], "res": 1}
+    best = max(live, key=lambda c: c[4])
+    return {"state": "ok", "x": round(best[4] / base, 4), "at": best[0], "cut": cut, "res": 1}
 '''
 
 
@@ -314,17 +338,21 @@ FIX = {
     "COPY": fixture("COPY", 10, sym="COPYCAT", mc=100_000.0),
     "JUPMINT": fixture("JUPMINT", 13, suffix="", dex="meteora", pf=False, jup=True, mint=T0 - 20_000),
     "V3ONLY": fixture("V3ONLY", 14, pf=False, v3=True, gt=True, x=None, tg=False, m5=30.0),
+    "LOWLIQ": fixture("LOWLIQ", 15, liq=2_000.0),                 # under memebot's YOUNG_MIN_LIQ: never on the radar
+    "CURVE": fixture("CURVE", 16, dex="pumpfun"),                 # its DexScreener pair is still the launch curve: never on the radar
 }
 RUG_WALLETS = FIX["RUGGERS"]["holders"][:3]
 OLDER = addr(99)
+YOUNGER = addr(98)
 
 
 class RadarMock:
     """Every host the radar asks, from the fixture coins. hang: path parts whose request waits 20 s; rc429: addresses whose RugCheck
     report is a 429; jup_bad: Jupiter's recent list in another shape; gone: addresses DexScreener has no pair for; gt429 / rpc429: the
     next so many GeckoTerminal / RPC requests answer 429; gt_page2_old: GeckoTerminal's new pools are an hour old; th429: addresses
-    whose top holders frontend-api-v3 answers with a 429; dev_ignore: pump.fun's creator filter ignored. heads: every request
-    (method, path, query, Origin header, the RPC method and first parameter, time)."""
+    whose top holders frontend-api-v3 answers with a 429; dev_ignore: pump.fun's creator filter ignored; gh403 / runs500: the next so
+    many reads of the radar workflow's state answer 403 (GitHub's secondary rate limit) / of its run list answer 500. heads: every
+    request (method, path, query, Origin header, the RPC method and first parameter, time)."""
 
     def __init__(self, coins):
         self.coins = {c["a"]: c for c in coins}
@@ -332,6 +360,7 @@ class RadarMock:
         self.jup_bad, self.auth_bad, self.lock = False, 0, threading.Lock()
         self.clock = lambda: T0 + 10 * MIN          # the radar's clock (run_radar sets it): candles end there
         self.gt429, self.rpc429, self.gt_page2_old, self.th429, self.dev_ignore, self.heads = 0, 0, False, set(), False, []
+        self.gh403 = self.runs500 = 0
         MOCKS.append(self)
 
     def pair(self, c):
@@ -424,7 +453,7 @@ class RadarMock:
                 if t < c["pool"]:
                     break
                 k = (t - c["pool"]) // MIN
-                close = c["px"] * (1 + 0.04 * min(k, 30)) * (2.5 if k == 20 else 1.0)
+                close = c["px"] * (1 + 0.04 * min(k, 30)) * (2.5 if k == 40 else 1.0)       # one print at minute 40, no DexScreener point there
                 rows.append([t // 1000, close, close * 1.01, close * 0.99, close, 5000.0])
             return 200, {"data": {"attributes": {"ohlcv_list": rows}}}
         return None
@@ -568,6 +597,12 @@ def serve(mock):
                 if self.headers.get("Authorization") != "Bearer " + GH_TOKEN:
                     mock.auth_bad += 1
                     code, out = 401, {"message": "Bad credentials"}
+                elif mock.gh403 > 0 and method == "GET" and u.path.endswith("/workflows/radar.yml"):
+                    mock.gh403 -= 1
+                    code, out = 403, {"message": "You have exceeded a secondary rate limit"}
+                elif mock.runs500 > 0 and u.path.endswith("/runs"):
+                    mock.runs500 -= 1
+                    code, out = 500, {"message": "Server Error"}
                 else:
                     code, out = gh_answer(mock, method, u.path, body)
             elif u.path.startswith("/api.mainnet-beta.solana.com"):
@@ -642,10 +677,14 @@ def gz(doc):
     return gzip.compress(json.dumps(doc).encode())
 
 
-def feed_files(T, now):
+def feed_files(T, now, wm_age=30 * MIN):
+    """radar-feed as traps.feed writes it. XCOPY's account link (traps' xlinks format [first addr, first ms, coins, kind, last ms, uses]) is
+    used by an older coin 3 hours before, by XCOPY itself and by a younger coin: one older coin, not three."""
     x_key = T.norm_x(FIX["XCOPY"]["x"])
-    return {"walletmem.json.gz": gz({"v": 1, "t": now - 30 * MIN, "nCoins": 500, "common": [], "sw": {}, "rug": RUG_WALLETS}),
-            "xlinks.json.gz": gz({"v": 1, "t": now, "links": {x_key[1]: [OLDER, now - 3 * H, 1, x_key[0]]} if x_key else {}}),
+    xc = FIX["XCOPY"]
+    uses = sorted([[OLDER, now - 3 * H], [xc["a"], xc["mint"]], [YOUNGER, xc["mint"] + 3 * MIN]], key=lambda u: u[1])
+    return {"walletmem.json.gz": gz({"v": 1, "t": now - wm_age, "nCoins": 500, "common": [], "sw": {}, "rug": RUG_WALLETS}),
+            "xlinks.json.gz": gz({"v": 1, "t": now, "links": {x_key[1]: [uses[0][0], uses[0][1], 3, x_key[0], uses[-1][1], uses]} if x_key else {}}),
             "symmc.json.gz": gz({"v": 1, "t": now, "sym": {"COPYCAT": 5_000_000.0}}), "meta.json": {"t": now, "nCoins": 500}}
 
 
@@ -714,6 +753,21 @@ def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24
     return code, R, lines, time.time() - t
 
 
+def unit_radar(T, P, tmp, name, now=T0, extra=None, log=None):
+    """A Radar without a run (no GitHub, fake clock) for checks on one method."""
+    import launch_radar as LR
+    return LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, name), "--clock", "fake", "--now", str(int(now)), "--cache", os.path.join(tmp, name + "-c"),
+                                "--no-github"] + (extra or [])), log=log or (lambda s_: None), traps=T, peak=P)
+
+
+def fresh_remote(T, tmp, name, now, **kw):
+    """A bare remote with only radar-feed (feed_files(T, now, **kw))."""
+    rem = os.path.join(tmp, name + ".git")
+    git("init", "-q", "--bare", rem)
+    put_branch(rem, "radar-feed", feed_files(T, now, **kw), tmp)
+    return rem
+
+
 def radar_json(remote):
     raw = branch_files(remote, "radar-data").get("radar.json")
     return json.loads(raw) if raw else {}
@@ -743,7 +797,9 @@ def checks(check, env_=None):
     url = "http://127.0.0.1:%d" % srv.server_address[1]
     remote = os.path.join(tmp, "remote.git")
     git("init", "-q", "--bare", remote)
-    put_branch(remote, "results", {"db/memebot/state.json": {"v": 1}, "db/memeradar/2026-10-10T08.json": {"v": 1, "hour": "2026-10-10T08", "t": 0, "coins": {}}}, tmp)
+    odds = lambda p: {"factors": {"zzz": {"edges": [1.0], "lo": [0.0, 0.0]}}, "cal": [{"hi": 1e9, "p": p}]}     # trained odds for the detail view (info only)
+    put_branch(remote, "results", {"db/memebot/state.json": {"v": 1}, "db/memeradar/2026-10-10T08.json": {"v": 1, "hour": "2026-10-10T08", "t": 0, "coins": {}},
+                                   "db/memebot/train.json": {"zeroModel": odds(0.12), "upModel": odds(0.31)}}, tmp)
     put_branch(remote, "radar-feed", feed_files(T, T0), tmp)
     before = refs(remote)
     by = {c["name"]: c["a"] for c in FIX.values()}
@@ -767,9 +823,26 @@ def checks(check, env_=None):
         check(coins and all(c["v"] == "good" for c in coins) and len(coins) <= 5 and all(c["age"] < 10 for c in coins + (doc.get("others") or [])) and order == ["CLEAN", "CLUSTER"],
               "coins: only good ones, at most 5, every pool under 10 min, ordered by upside (%s); %d in the fold" % (order, len(doc.get("others") or [])))
         check(set(recs) == eligible and all(len(r["rt"]) == 4 for a, r in recs.items() if a != by["INSTA"]) and len(recs[by["INSTA"]]["rt"]) >= 3
-              and all(r.get("found") and r.get("seenAge") is not None for r in recs.values()) and by["OLD"] not in recs and by["COPY"] not in recs,
-              "a record for each of the %d eligible coins (none for OLD or the copy of a bigger ticker), every rating kept (%s), found and seenAge set"
-              % (len(recs), sorted({len(r["rt"]) for r in recs.values()})))
+              and all(r.get("found") and r.get("seenAge") is not None for r in recs.values()) and not {by[n] for n in ("OLD", "COPY", "LOWLIQ", "CURVE")} & set(recs),
+              "a record for each of the %d eligible coins (none for OLD, the copy of a bigger ticker, LOWLIQ under $5k or CURVE still on its launch "
+              "curve), every rating kept (%s), found and seenAge set" % (len(recs), sorted({len(r["rt"]) for r in recs.values()})))
+        mk = lambda n, v, up, pts, liq: {"addr": n, "sym": n, "v": v, "up": up, "pts": pts, "liq": liq}
+        pool_r = [mk("g1", "good", 1, 0, 9e3), mk("g2", "good", 2, 1, 5e3), mk("g3", "good", 2, 0, 4e3), mk("g4", "good", 2, 0, 8e3), mk("g5", "good", 0, -1, 1e4),
+                  mk("g6", "good", -1, 0, 9e4), mk("g7", "good", 1, 0, 2e4), mk("w1", "watch", 0, 3, 1e4), mk("w2", "watch", 0, 2, 5e3), mk("w3", "watch", 0, 2, 7e3),
+                  mk("t1", "trap", 3, 6, 1e5), mk("t2", "trap", 3, 4, 1e3)]
+        random.Random(5).shuffle(pool_r)
+        top_r, coins_r, oth_r = LR.rank(pool_r)
+        top_s, coins_s, _ = LR.rank([x for x in pool_r if x["addr"] in ("g1", "w1", "w2", "w3", "t1", "t2")])
+        ids = lambda xs: [x["addr"] for x in xs]
+        check(ids(coins_r) == ["g4", "g3", "g2", "g7", "g1"] and ids(top_r) == ids(coins_r) and ids(oth_r) == ["w3", "w2", "w1", "t2", "t1"]
+              and ids(top_s) == ["g1", "w3", "w2", "w1", "t2"] and ids(coins_s) == ["g1"],
+              "the best 5 of 7 good, 3 watch and 2 trap coins: good by upside, then fewer points, then more liquidity (%s), the fold watch then "
+              "trap (%s); with one good coin the best 5 fill up with watch, then trap coins, and only the good one is listed" % (ids(coins_r), ids(oth_r)))
+        dc = next((c.get("d") or {} for c in coins if c["addr"] == by["CLEAN"]), {})
+        check(dc.get("upP") == 0.31 and dc.get("zeroP") == 0.12 and "odds" not in dc and sum(1 for l in lines if re.match(r"^cycle \d+: .*, 1 pushed ", l)) == 1
+              and R.publishes == 5,
+              "radar.json: the trained odds (info only) as d.upP / d.zeroP (%s / %s), the field names the page reads; the cycle line says 1 pushed once, "
+              "and radar-data is pushed again right after the notification (%d pushes in 4 cycles)" % (dc.get("upP"), dc.get("zeroP"), R.publishes))
         sink_b = Sink()
         code_b, Rb, linesb, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdB"), T0 + 8.5 * MIN, minutes=2.5, notifier=sink_b)
         rb = hour_recs(remote).get(by["CLEAN"]) or {}
@@ -806,6 +879,69 @@ def checks(check, env_=None):
             return abs(x - y) <= 0.01 + 1e-3 * abs(y)          # traps may round (ageMin to 2 places)
         diff = sorted(k for k in LR.S_KEYS if S2.get(k) is not None and cc.get(k) is not None and not isinstance(S2[k], (dict, list)) and not same(S2[k], cc[k]))
         check(cc and not diff, "traps.signals_radar reads the radar's coin dict (CLEAN's, last cycle) as the radar does (%s)" % ("same values" if not diff else "differs: %s" % diff))
+        Ru = unit_radar(T, P, tmp, "rdU")
+        Ru.symmc = {"BIG": 5_000_000.0}
+
+        def row(n, age=5.0, price=1e-5, liq=20_000.0, mc=50_000.0, fails=(), sym=None, pool=True):
+            return {"a": addr(500 + n), "pr": {"pairCreatedAt": (T0 - int(age * MIN)) if pool else None, "symbol": sym or "E%d" % n}, "basic": {"price": price, "liq": liq, "mc": mc},
+                    "fails": list(fails)}
+        rows = {"ok": row(1), "soft fail": row(2, fails=["lowscore"]), "price 0": row(3, price=0.0), "no price": row(4, price=None), "under YOUNG_MIN_LIQ": row(5, liq=M.YOUNG_MIN_LIQ - 1),
+                "at YOUNG_MIN_LIQ": row(6, liq=float(M.YOUNG_MIN_LIQ)), "gate price": row(7, fails=["price"]), "gate curve": row(8, fails=["curve"]), "gate nodex": row(9, fails=["nodex"]),
+                "gate honeypot": row(10, fails=["honeypot"]), "gate copy": row(11, fails=["copy"]), "ticker of a bigger coin": row(12, sym="BIG", mc=1_000_000.0),
+                "ticker, mc over a third": row(13, sym="big", mc=2_000_000.0), "no pool time": row(14, pool=False), "10.5 min, check pending": row(15, age=10.5),
+                "10.5 min, nothing pending": row(16, age=10.5), "12.6 min, check pending": row(17, age=12.6), "10.5 min, no record": row(18, age=10.5)}
+        Ru.docs = {"u": {"coins": {rows[n]["a"]: {"addr": rows[n]["a"]} for n in ("10.5 min, check pending", "10.5 min, nothing pending", "12.6 min, check pending")}}}
+        Ru.rec_hour = {a: "u" for a in Ru.docs["u"]["coins"]}
+        Ru.work = {rows["10.5 min, check pending"]["a"]: {"rc": "pending"}, rows["12.6 min, check pending"]["a"]: {"dev": "pending"},
+                   rows["10.5 min, no record"]["a"]: {"rc": "pending"}}
+        live_u, fin_u = Ru.eligible(list(rows.values()), T0)
+        name_of = {r["a"]: n for n, r in rows.items()}
+        got_live, got_fin = sorted(name_of[r["a"]] for r in live_u), sorted(name_of[r["a"]] for r in fin_u)
+        check(got_live == sorted(["ok", "soft fail", "at YOUNG_MIN_LIQ", "ticker, mc over a third"]) and got_fin == ["10.5 min, check pending"],
+              "eligible: pool under 10 min, a price over 0, liquidity at least YOUNG_MIN_LIQ, none of the gates price/curve/nodex/honeypot/copy, no "
+              "ticker of a coin 3x bigger (%s); a recorded coin past 10 min with a check pending is finished for the record until 12.5 min (%s)" % (got_live, got_fin))
+        an = addr(710)
+        Ru.cache["pf"][an] = {"t": T0 + 30_000}                     # the mint 30 s after the pool: two sources' clocks disagree
+        rn = {"a": an, "pr": {"pairCreatedAt": T0, "symbol": "NEG", "name": "Negative Gap", "dexId": "pumpswap", "pairAddress": "NegPool"},
+              "basic": {"price": 1e-5, "liq": 20_000.0, "mc": 50_000.0}, "f": {}, "age": 5.0}
+        Sn, cn = Ru.signals(rn, T0 + 5 * MIN)
+        rtn = T.rate(Sn, Ru.W_prior)
+        check(cn["mint"] is None and cn["mintToPoolS"] is None and Sn.get("instantPool") is None and Sn.get("mintToPoolS") is None and rtn["verdict"] != "good"
+              and "mint_time" in (rtn.get("unknown") or []),
+              "a pool that opened before its mint (the clocks disagree): the gap is unknown, never 'not instant' (verdict %s, unknown %s)" % (rtn["verdict"], rtn.get("unknown")))
+        Ru.W = dict(Ru.W_prior, brand=None)
+        cb = Ru.coin(dict(rn, pr=dict(rn["pr"], name="Grok Agent")), T0 + 5 * MIN)
+        Ru.W = dict(Ru.W_prior, brand="(")
+        cb2 = Ru.coin(rn, T0 + 5 * MIN)
+        Ru.W = Ru.W_prior
+        check(cb["brand"] is None and cb2["brand"] is None and Ru.coin(dict(rn, pr=dict(rn["pr"], name="Grok Agent")), T0 + 5 * MIN)["brand"] is True,
+              "the brand check reads only radar_weights.json's list (I7): without a list, or with one that does not compile, it is unknown, never passed")
+
+        print("== launch radar R2b: an old wallet memory, a notification that did not go out")
+        rem_w = fresh_remote(T, tmp, "remote-wm", T0 + 2 * MIN, wm_age=4 * H)
+        sink_w = Sink()
+        code_w, Rw, linesw, _ = run_radar(T, P, url, rem_w, os.path.join(tmp, "rdW"), T0 + 2 * MIN, minutes=2.5, notifier=sink_w)
+        dw, rw = radar_json(rem_w), hour_recs(rem_w)
+        cw = rw.get(by["CLEAN"]) or {}
+        check(code_w == 0 and not dw.get("coins") and any("wallet memory older than 3 h" in n for n in dw.get("notes") or []) and cw.get("chk", {}).get("wm") == "old"
+              and cw["rt"][-1][1] != "good" and not cw.get("good") and not sink_w.got,
+              "wallet memory 4 hours old: no coin without traps (CLEAN %s), the header says why (%s), nothing sent" % (cw.get("rt", [[0, "?"]])[-1][1], (dw.get("notes") or ["?"])[0]))
+        rows_s = []
+
+        def keep_rows(R_):
+            orig = R_.store_row
+            R_.store_row = lambda doc: (rows_s.append(json.loads(json.dumps(doc))), orig(doc))[1]
+        rem_s = fresh_remote(T, tmp, "remote-skip", T0 + MIN)
+        code_s, Rsk, liness, _ = run_radar(T, P, url, rem_s, os.path.join(tmp, "rdSk"), T0 + MIN, minutes=2.5, patch=keep_rows,
+                                           notifier=lambda coins: {"kind": "radar", "sent": 0, "skipped": "no push sender"})
+        ds, rsk = radar_json(rem_s), hour_recs(rem_s)
+        pj_s = json.loads(branch_files(rem_s, "radar-data").get("pushed.json") or b"{}")
+        said = [d_ for d_ in rows_s + [ds] if (d_.get("counts") or {}).get("pushed") or any(c.get("push") for c in d_.get("coins") or [])]
+        check(code_s == 0 and rows_s and not said and not (rsk.get(by["CLEAN"]) or {}).get("push") and by["CLEAN"] in pj_s
+              and any(n.get("sym") == "CLEAN" for d_ in rows_s for n in d_.get("coins") or [])
+              and all(", 0 pushed " in l for l in liness if re.match(r"^cycle \d+:", l)),
+              "a notification that did not go out (no push sender): neither radar.json nor the app's row nor the record says pushed, the cycle "
+              "line says 0 pushed; the coin stays in pushed.json, so it is never sent later")
 
         print("== launch radar R3: later prices, late, gone, outcome")
         check(all("5" in r["later"] for a, r in recs.items() if r["first"] <= T0 + MIN), "the price 5 minutes after first sight is in every record of the first cycle")
@@ -834,6 +970,48 @@ def checks(check, env_=None):
         unknown_ok = "5" not in fake["later"]
         Rg.later_prices({}, {fake["addr"]}, T0)
         check(unknown_ok and fake["later"].get("5", {}).get("gone") is True, "gone only when DexScreener answered for the coin (no answer: no price, not gone)")
+        dcl = next((r for r in radar_json(remote).get("recent") or [] if r.get("addr") == by["CLEAN"]), {})
+        check(dcl.get("push") and isinstance(dcl.get("peak60"), dict) and dcl["peak60"].get("x") and dcl["peak60"].get("at"),
+              "radar.json's recent calls carry push and peak60 (CLEAN: pushed %s, best close within 1 h %s), the fields the page's Later pane reads"
+              % (dcl.get("push"), dcl.get("peak60")))
+        win = {"10 s before due": T0 - 5 * MIN + 10_000, "1 s before due (clock jitter)": T0 - 5 * MIN + 1_000, "7 min late": T0 - 12 * MIN, "8 min late": T0 - 13 * MIN}
+        wa = {n: addr(600 + i) for i, n in enumerate(win)}
+        Rg.docs = {"w": {"coins": {wa[n]: {"addr": wa[n], "first": f, "later": {}, "px": 1.0} for n, f in win.items()}}}
+        Rg.rec_hour = {a: "w" for a in wa.values()}
+        Rg.later_prices({a: {"priceUsd": "1.5", "liquidityUsd": 9000.0} for a in wa.values()}, set(wa.values()), T0)
+        p5 = {n: Rg.docs["w"]["coins"][wa[n]]["later"].get("5") for n in win}
+        check(p5["10 s before due"] is None and p5["1 s before due (clock jitter)"] and not p5["1 s before due (clock jitter)"].get("late")
+              and (p5["7 min late"] or {}).get("late") is True and p5["8 min late"] is None,
+              "the 5-minute price: never taken before it is due (only the clock's 2 s jitter), taken up to 1.5x its offset late (7 of 7.5 min) and "
+              "marked late, missing after that (%s)" % {n: (None if v is None else ("late" if v.get("late") else "on time")) for n, v in p5.items()})
+        ap = addr(700)
+        first = T0 - 63 * MIN
+        rec_p = {"addr": ap, "sym": "DEADPK", "pair": "DeadPool", "first": first, "px": 1.0, "liq": 20_000.0, "mc": 50_000.0, "good": first, "peak60": None,
+                 "later": {"5": {"t": first + 5 * MIN, "px": 1.0, "liq": 20_000.0}, "15": {"t": first + 15 * MIN, "px": 1.0, "liq": 18_000.0},
+                           "30": {"t": first + 30 * MIN, "px": 1.0, "liq": 200.0}, "60": {"t": first + 60 * MIN, "px": 1.0, "liq": 250.0}}}
+        cands_p = [[first + i * MIN, 1.0, 1.0, 1.0, 4.0 if 40 <= i <= 42 else 1.0, 900.0] for i in range(60)]
+        Rg.docs, Rg.rec_hour, Rg.cache["peak"] = {"p": {"coins": {ap: rec_p}}}, {ap: "p"}, {}
+        calls_p = []
+        Rg.P = types.SimpleNamespace(peak_of=lambda *a_, **k_: (calls_p.append(k_), P.peak_of(*a_, **k_))[1])
+        Rg.src.candles = lambda pool, t0, t1: [[first + 5 * H, 1.0, 1.0, 1.0, 1.0, 900.0]]       # no candle inside the hour yet
+        Rg.gt_slot([("peak", ap)], T0)
+        waited = rec_p["peak60"] is None and Rg.cache["peak"].get(ap) == 1 and ("peak", ap) in Rg.gt_jobs([], T0)
+        Rg.src.candles = lambda pool, t0, t1: cands_p
+        Rg.gt_slot([("peak", ap)], T0)
+        pk = rec_p["peak60"] or {}
+        kw = calls_p[-1] if calls_p else {}
+        raw_x = P.peak_of(cands_p, first, first + H, 1.0).get("x")
+        check(waited and pk.get("x") is not None and pk["x"] <= 1.05 and raw_x >= 3.9 and any("dead" in c for c in pk.get("cut") or []) and kw.get("liq0") == 20_000.0
+              and kw.get("mc0") == 50_000.0 and (first + 30 * MIN, 1.0, 200.0) in (kw.get("ds_points") or []),
+              "peak60 with the glitch filter's data (DexScreener's later prices and liquidity, liq0, mc0): a pool dead at minute 30 ($200) keeps "
+              "its 4x print out (%s, %s; %sx without them); no candle inside the hour yet: not stored, tried again" % (pk.get("x"), (pk.get("cut") or ["?"])[0], raw_x))
+        Rg.P = P
+        ag, at_, an_ = addr(720), addr(721), addr(722)
+        Rg.docs = {"g": {"coins": {ag: {"addr": ag, "first": T0 - 63 * MIN, "pair": "P1", "good": T0 - 63 * MIN, "peak60": None},
+                                   at_: {"addr": at_, "first": T0 - 66 * MIN, "pair": "P2", "good": None, "top": 1, "peak60": None},
+                                   an_: {"addr": an_, "first": T0 - 65 * MIN, "pair": "P3", "good": None, "peak60": None}}}}
+        Rg.cache["peak"] = {}
+        check(Rg.gt_jobs([], T0) == [("peak", ag), ("peak", at_)], "peak60 only for records that were ever good (first) or in the best 5, never for the rest")
 
         print("== launch radar R4: push notifications")
         pushes = [g for g in sink.got]
@@ -858,16 +1036,49 @@ def checks(check, env_=None):
         check(nochan == [] and full == [] and [c["addr"] for c in room] == ["AAAA", "BBBB"] and norest == [] and t2 == "AAAA: no trap found (pool 5 min) +1 more"
               and b2 == "9 checks passed · liquidity $23k · fake money, nothing is bought.",
               "at most 4 notifications an hour; two coins in one cycle make one notification (%r); none when pushed.json was not restored, none without a channel" % t2)
+        Ru.cache["paid"], Ru.paid_at = {"A1": False, "A2": True, "A3": False}, {"A1": T0 - 4 * MIN, "A3": T0 - MIN}
+        check(Ru.paid_due("A1", T0) and not Ru.paid_due("A2", T0) and not Ru.paid_due("A3", T0) and Ru.paid_due("A4", T0),
+              "DexScreener's paid profile: asked again 3 minutes after an unpaid answer (a profile paid while the coin is on the radar is seen), "
+              "never again once paid")
 
         print("== launch radar R5: kill switch, active hours, the successor")
         n_disp = len(mock.dispatches)
-        check(n_disp >= 1 and mock.dispatches[0] == {"ref": "main", "inputs": {"minutes": "10", "source": "chain"}} and sum(1 for l in lines if l.startswith("successor: dispatched")) == 1
-              and mock.auth_bad == 0, "run A dispatched its successor once at its end minus 2 minutes (%s)" % mock.dispatches[:1])
+        check(n_disp >= 1 and mock.dispatches[0] == {"ref": "main", "inputs": {"minutes": "55", "source": "chain"}} and sum(1 for l in lines if l.startswith("successor: dispatched")) == 1
+              and mock.auth_bad == 0 and any("a run of 2.5 min starts none" in l for l in linesb) and not any(l.startswith("successor: dispatched") for l in linesb + lines2),
+              "run A (10 minutes) dispatched its successor once at its end minus 2 minutes, a 55-minute one (%s); a 2.5-minute run starts none" % mock.dispatches[:1])
         mock.runs = [{"id": 1234, "status": "pending"}]
         d0 = len(mock.dispatches)
-        code, Rp, linesp, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdP"), T0 + 2 * H, minutes=2.5, notifier=Sink())
+        code, Rp, linesp, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdP"), T0 + 2 * H, minutes=5, notifier=Sink())
         mock.runs = []
         check(len(mock.dispatches) == d0 and any("another radar run is waiting" in l for l in linesp), "no successor while another radar run is pending (C4)")
+        mock.runs500 = 1
+        d0 = len(mock.dispatches)
+        code, Rq, linesq, _ = run_radar(T, P, url, fresh_remote(T, tmp, "remote-chain", T0 + 2 * H), os.path.join(tmp, "rdQ"), T0 + 2 * H, minutes=5, notifier=Sink())
+        hic = [l for l in linesq if l.startswith("successor:")]
+        check(mock.runs500 == 0 and len(mock.dispatches) == d0 + 1 and len(hic) == 2 and "GitHub did not list the runs" in hic[0] and hic[0].endswith("tried once more") and hic[1].startswith("successor: dispatched"),
+              "a GitHub hiccup at the chain point (the run list answered 500) is tried once more half a minute later: %s" % hic)
+        with env(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9001", GITHUB_REF_NAME="main"), memebot_rules():
+            outs = []
+            for label, end_at in (("ends 5 min before 14:00", T0 - 5 * MIN), ("ends 30 s after 14:00", T0 + 30_000), ("ends 15 min before 14:00", T0 - 15 * MIN)):
+                Rc = LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, "rdCh"), "--clock", "fake", "--now", str(T0), "--cache", os.path.join(tmp, "rdCh-c"), "--mock", url]),
+                              log=lambda s_: None, traps=T, peak=P)
+                Rc.hours, Rc.run_start, Rc.run_end, Rc.run_minutes = (13, 14), end_at - 30 * MIN, end_at, 30.0
+                n0 = len(mock.dispatches)
+                outs.append((label, Rc.chain(), len(mock.dispatches) - n0, Rc.chained))
+        check([o[1:] for o in outs] == [(False, 0, True), (False, 0, True), (True, 1, True)] and mock.dispatches[-1]["inputs"]["minutes"] == "55",
+              "active hours 13-14 Berlin: no successor when the hours end within 10 minutes of the run's end or before it; one (55 minutes) with "
+              "15 minutes left (%s)" % outs)
+        check([LR.run_minutes(m, f) for m, f in ((120, False), (330, False), (70, False), (10, False), (0, False), (0, True), (None, False))] == [70, 70, 70, 10, 55, 0, 55],
+              "a run lasts at most 70 minutes (the job stops at 75: a longer run would be cut before it starts its successor); 0 = until stopped only "
+              "without GitHub (a VM), else 55")
+        rem_k = fresh_remote(T, tmp, "remote-kill", T0 + 3 * H)
+        mock.gh403, mock.workflow = 3, "disabled_manually"
+        code_k, Rk, linesk, _ = run_radar(T, P, url, rem_k, os.path.join(tmp, "rdK"), T0 + 3 * H, minutes=10, notifier=Sink())
+        mock.gh403, mock.workflow = 0, "active"
+        dk = radar_json(rem_k)
+        check(code_k == 0 and dk.get("state") == "off" and len([l for l in linesk if re.match(r"^cycle \d+:", l)]) == 3,
+              "three 403s from GitHub (its secondary rate limit) never turn the kill switch off: the workflow, disabled meanwhile, is read at the "
+              "next cycle and the run ends (state %s after %d cycles)" % (dk.get("state"), len([l for l in linesk if re.match(r"^cycle \d+:", l)])))
         mock.workflow = "disabled_manually"
         code, Ro, lineso, so = run_radar(T, P, url, remote, os.path.join(tmp, "rdO"), T0 + 3 * H, minutes=55, notifier=Sink())
         mock.workflow = "active"
@@ -900,6 +1111,70 @@ def checks(check, env_=None):
         check(ok_in and json.loads(after["radar.json"]).get("state") == "hours" and {k for k in after if k != "radar.json"} == {k for k in files_before if k != "radar.json"}
               and all(after[k] == files_before[k] for k in after if k != "radar.json"),
               "the hours gate: inside=true inside the window; outside it writes state hours once and keeps every record file as it was")
+        put_branch(remote, "radar-data", dict(after, **{"radar.json": json.loads(after["radar.json"]) | {"state": "running"}}), tmp)
+        sha_h, files_h, hout2 = refs(remote).get("refs/heads/radar-data"), branch_files(remote, "radar-data"), []
+        real_exists = LR.Git.exists
+        LR.Git.exists = lambda self_, branch, timeout=30: None          # git ls-remote got no answer
+        try:
+            with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=remote, GITHUB_TOKEN=None):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    rc_n = LR.main(["hours", "--dir", os.path.join(tmp, "hours4"), "--now", str(T0 + 3 * H)], log=hout2.append)
+        finally:
+            LR.Git.exists = real_exists
+        rem_n = os.path.join(tmp, "remote-nobranch.git")
+        git("init", "-q", "--bare", rem_n)
+        with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=rem_n, GITHUB_TOKEN=None):
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc_m = LR.main(["hours", "--dir", os.path.join(tmp, "hours5"), "--now", str(T0 + 3 * H)], log=hout2.append)
+        check(rc_n == 0 and refs(remote).get("refs/heads/radar-data") == sha_h and branch_files(remote, "radar-data") == files_h and any("did not answer" in l for l in hout2)
+              and rc_m == 0 and "refs/heads/radar-data" not in refs(rem_n) and any("does not exist yet: not made here" in l for l in hout2),
+              "the hours gate when GitHub does not answer about radar-data: nothing written (no tree of radar.json alone over the records); without "
+              "the branch it is not made there (the first run makes it from the results copy)")
+        vm_t = []
+
+        def vm(R_):
+            real = R_.cycle
+
+            def cyc(k, t, last):
+                vm_t.append(R_.clock.now())
+                return "off" if len(vm_t) >= 3 else real(k, t, last)
+            R_.cycle = cyc
+        code_v, Rv, linesv, _ = run_radar(T, P, url, None, os.path.join(tmp, "rdV"), T0 - 150_000, minutes=0, hours="13-14", extra=["--no-github"], patch=vm)
+        check(code_v == 0 and len(vm_t) == 3 and vm_t[2] >= T0 + 23 * H and any("sleeping until" in l for l in linesv) and Rv.run_end is None,
+              "a VM (--no-github, --minutes 0) sleeps through the hours outside the active ones and goes on at the next start (%s Berlin)"
+              % (LR.berlin(vm_t[2]).strftime("%H:%M") if len(vm_t) > 2 else "?"))
+        long_ = []
+        code_l, Rl, linesl, _ = run_radar(T, P, url, None, os.path.join(tmp, "rdL"), T0, minutes=120, extra=["--no-github"],
+                                          patch=lambda R_: setattr(R_, "cycle", lambda k, t, last: (long_.append(k), "off")[1]))
+        check(code_l == 0 and Rl.run_end - Rl.run_start == 70 * MIN and any("a run is at most 70 minutes" in l for l in linesl),
+              "minutes 120 asked: the run lasts 70 (said in the log)")
+        states_d = []
+
+        def failing(n_bad):
+            def patch_(R_):
+                real, store = R_.cycle, R_.store_row
+                seen = []
+
+                def cyc(k, t, last):
+                    seen.append(k)
+                    if len(seen) <= n_bad:
+                        raise RuntimeError("cycle broken (test)")
+                    return real(k, t, last)
+                R_.cycle = cyc
+                R_.store_row = lambda doc: (states_d.append((doc.get("state"), doc.get("why"))), store(doc))[1]
+            return patch_
+        rem_d = fresh_remote(T, tmp, "remote-degraded", T0 + 4 * H)
+        code_d, Rdg, linesd, _ = run_radar(T, P, url, rem_d, os.path.join(tmp, "rdDg"), T0 + 4 * H, minutes=10, notifier=Sink(), patch=failing(3))
+        first_d = list(states_d)
+        del states_d[:]
+        rem_e = fresh_remote(T, tmp, "remote-exit", T0 + 4 * H)
+        code_e, Re_, linese, _ = run_radar(T, P, url, rem_e, os.path.join(tmp, "rdEx"), T0 + 4 * H, minutes=30, notifier=Sink(), patch=failing(99))
+        de = radar_json(rem_e)
+        check(code_d == 0 and first_d == [("degraded", "3 cycles in a row failed"), ("ending", "")] and radar_json(rem_d).get("state") == "ending"
+              and code_e == 1 and de.get("state") == "degraded" and de.get("why") == "10 cycles in a row failed" and not de.get("coins")
+              and (de.get("wm") or {}).get("t") and any("in a row failed" in n for n in de.get("notes") or []),
+              "cycles that fail: from the 3rd in a row radar.json says degraded with the reason (%s), the next good cycle says running again; after "
+              "10 the run ends (exit 1) and radar.json still says degraded" % first_d)
 
         wf = open(os.path.join(HERE, ".github", "workflows", "radar.yml"), encoding="utf-8").read()
         sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml"), encoding="utf-8").read().splitlines()
@@ -909,9 +1184,13 @@ def checks(check, env_=None):
               and re.search(r"^    timeout-minutes: 75\b", wf, re.M) and "if: vars.MEMEBOT_RADAR != '0'" in wf and body(wf.splitlines()) == body(sc)
               and "RADAR_URL" not in job_env and "SUPABASE_SECRET_KEY: ${{" not in job_env and not re.search(r"git push|refs/heads/(results|live|radar-feed)", wf)
               and "launch_radar.py loop --dir rd --minutes \"$MIN\" --cadence 150" in wf and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf
-              and "MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}" in job_env,
-              "radar.yml: dispatch only, group memebot-radar, 75 min, MEMEBOT_RADAR gate, the adapter switches from a repository variable, the push "
-              "sender's install step as in scan.yml, the token only in the steps that use it")
+              and "MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}" in job_env
+              and "(at most %d: the job stops at 75)" % LR.MAX_MINUTES in wf and LR.MAX_MINUTES + 5 <= 75 and "330" not in wf
+              and 'out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"' in wf and len(re.findall(r"^        timeout-minutes: [234]\b", wf, re.M)) == 3
+              and all("--max-time" in l for l in wf.splitlines() if re.search(r"\bcurl -sS\b", l) and "api" in l),
+              "radar.yml: dispatch only, group memebot-radar, 75 min, minutes at most 70, MEMEBOT_RADAR gate, the adapter switches from a repository "
+              "variable, the push sender's install step as in scan.yml, the token only in the steps that use it, the hours and tidy steps bounded "
+              "in time (they hold the radar's group)")
 
         print("== launch radar R6: limits")
         lim = fixture("LIMIT", 11, pool=T0 + 4 * H - MIN, mint=T0 + 4 * H - 5 * MIN)
@@ -952,6 +1231,29 @@ def checks(check, env_=None):
         landed = Rs.publish(LR.finish_from({}, "running", T0 + 70 * MIN, "", "t", None, None, "manual", (0, 24)))
         check(Rs.restore_state == "ok" and landed is False and refs(remote)["refs/heads/radar-data"] == sha and any("never-shrink guard" in n for n in Rs.notes_run),
               "the never-shrink guard refuses a tree with fewer records than the last one in the same hours")
+        Rs2 = unit_radar(T, P, tmp, "rdS2", now=T0 + 70 * MIN, extra=["--remote", remote])
+        with memebot_rules():
+            Rs2.restore()
+        gone_h = max(Rs2.docs, key=lambda h: len(Rs2.docs[h]["coins"]))
+        del Rs2.docs[gone_h]
+        landed2 = Rs2.publish(LR.finish_from({}, "running", T0 + 70 * MIN, "", "t", None, None, "manual", (0, 24)))
+        hr0 = LR.utc_hour(T0)
+        hr_old = LR.utc_hour(T0 - 3 * H)
+        check(landed2 is False and refs(remote)["refs/heads/radar-data"] == sha and not LR.guard_ok({}, {hr0: 4}, T0)[0] and LR.guard_ok({hr0: 4}, {hr0: 4, hr_old: 9}, T0)[0]
+              and not LR.guard_ok({hr0: 3}, {hr0: 4}, T0)[0],
+              "never-shrink: an hour doc that vanished counts with 0 (a whole hour of records missing is refused); an hour older than 47 h rolls off")
+        answers, asked = [None, True], []
+        Rt = unit_radar(T, P, tmp, "rdT", now=T0 + 70 * MIN, extra=["--remote", remote], log=lambda s_: None)
+        Rt.git.exists = lambda b, timeout=30: (asked.append(b), answers.pop(0))[1]
+        with memebot_rules():
+            Rt.restore()
+        answers2, asked2, said_t = [None, False], [], []
+        Rt2 = unit_radar(T, P, tmp, "rdT2", now=T0 + 70 * MIN, extra=["--remote", remote], log=said_t.append)
+        Rt2.git.exists = lambda b, timeout=30: (asked2.append(b), answers2.pop(0))[1]
+        with memebot_rules():
+            Rt2.restore()
+        check(Rt.restore_state == "ok" and len(asked) == 2 and Rt.docs and Rt2.restore_state == "ok" and len(asked2) == 2 and any("does not exist yet" in l for l in said_t),
+              "a restore whose git ls-remote got no answer asks again on the next try (then restores, or starts fresh when the branch is gone)")
         sink_f = Sink()
 
         def broken(R_):
@@ -1017,6 +1319,12 @@ def checks(check, env_=None):
             blobs += list(branch_files(remote, b).values())
         allt = b"\n".join(blobs) + "\n".join(lines + lines2 + lines3 + lines6 + lines9 + linesx + linesf + linesb + linesp + lineso + linesh + hout).encode() + json.dumps(row).encode()
         secrets = [GH_TOKEN.encode(), APP_SECRET.encode()]
+        said_r = []
+        with env(GITHUB_TOKEN=GH_TOKEN, SUPABASE_SECRET_KEY=APP_SECRET):
+            Rr = unit_radar(T, P, tmp, "rdR", log=said_r.append)
+            Rr.say("push to %s failed, token %s, key %s, sb_secret_abcdefgh123" % (bad_remote, GH_TOKEN, APP_SECRET))
+        check(said_r and not any(s_.decode() in said_r[-1] for s_ in secrets) and "sb_secret_abc" not in said_r[-1] and "https://127.0.0.1:9/nothing.git" in said_r[-1],
+              "the radar's own log redacts a credentialed URL, the token's and the secret key's values and any sb_secret_ key: %r" % (said_r[-1][:120] if said_r else ""))
         check(row.get("kind") == "radar" and not any(s in allt for s in secrets) and any("radar-data restore failed" in l for l in linesx) and code_b == 0,
               "the app's row radar written (%s); neither the GitHub token nor the store's secret key in %d files, 3 branches, the row or %d log lines (a credentialed remote that fails is redacted)"
               % (row.get("state"), len(blobs), len(lines + lines9 + linesx)))
@@ -1033,10 +1341,27 @@ def checks(check, env_=None):
             code, Rm, linesm, _ = run_radar(T, P, url, rem_m, os.path.join(tmp, "rdM-" + name), T0 + 6 * H, minutes=5, notifier=Sink())
             dm = radar_json(rem_m)
             mj = json.loads(branch_files(rem_m, "radar-data").get("model.json") or b"{}")
-            check(code == 0 and mj.get("from") == want and (dm.get("model") or {}).get("from") == want and (dm.get("model") or {}).get("need") == 300
-                  and (dm["model"]["n"] == n) and ((want == "learned") == (Rm.W is not Rm.W_prior)),
+            md_ = dm.get("model") or {}
+            why_ok = (md_.get("why") == "") if n < 300 else (bool(md_.get("why")) if want == "prior" else True)    # "study prior kept: ..." from 300 on
+            prior_ok = isinstance(md_.get("prior"), (int, float)) if name == "good" else True
+            check(code == 0 and mj.get("from") == want and md_.get("from") == want and md_.get("need") == 300 and mj.get("src") == Rm.W_prior.get("src")
+                  and (md_["n"] == n) and ((want == "learned") == (Rm.W is not Rm.W_prior)) and why_ok and prior_ok,
                   "%d planted records (%s): model %s, radar.json says %s of %s needed%s" % (n, name, mj.get("from"), dm.get("model", {}).get("n"), dm.get("model", {}).get("need"),
                                                                                          ("; " + mj.get("why")) if mj.get("why") else ""))
+        Ru.model = {"from": "learned", "w": {"v": 1, "points": {}}, "src": "another study"}
+        stale = Ru.apply_model()
+        stale_ok = stale is False and Ru.W is Ru.W_prior and Ru.model == {}
+        Ru.model = {"from": "learned", "w": json.loads(json.dumps(Ru.W_prior)), "src": Ru.W_prior.get("src")}
+        check(stale_ok and Ru.apply_model() and Ru.W is Ru.model["w"],
+              "model.json's learned weights are used only when fitted on this study prior (src); another prior's are dropped and fitted again")
+        Ru.W = Ru.W_prior
+        size = lambda d_: len(json.dumps(d_, separators=(",", ":")))
+        big = {"coins": [], "others": [{"addr": "A" * 44, "sym": "S", "age": 1.0, "v": "watch", "pts": 2, "line": [["warn", "x" * 150]]} for _ in range(400)],
+               "recent": [{"addr": "B" * 44, "sym": "R", "good": T0, "later": {}, "out": None} for _ in range(20)]}
+        f1 = LR.fit_size(json.loads(json.dumps(big)))
+        f2 = LR.fit_size(dict(json.loads(json.dumps(big)), others=big["others"][:5], recent=[{"addr": "B" * 44, "sym": "R", "good": T0, "later": {"x": "y" * 2000}} for _ in range(40)]))
+        check(size(f1) <= LR.DOC_MAX and len(f1["recent"]) == 20 and 0 < len(f1["others"]) < 400 and size(f2) <= LR.DOC_MAX and f2["others"] == [] and 0 < len(f2["recent"]) < 40,
+              "radar.json over 48 KB: the fold (others) is cut first (%d of 400 left, recent kept), then recent (%d of 40 left)" % (len(f1["others"]), len(f2["recent"])))
         probe_checks(check, LR, T, P, url, mock, heads_a, recs, by, tmp)
         if not real_push(check, T, P, url, remote, tmp):
             SKIPPED.append("R4's PushSink leg (app.notify_radar comes with WP4)")

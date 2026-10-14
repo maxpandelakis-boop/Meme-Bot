@@ -3,7 +3,8 @@
 # 30 and 60 minutes later, and sends a push notification only for a coin without a trap found. Fake money only: nothing is bought
 # anywhere, and the paper trader never reads what this job writes.
 # It runs only when started (no cron): by hand ("Run workflow"), by its own previous run about 2 minutes before that one ends (source
-# chain), or by the hourly scan's watchdog step when no radar run is alive (source watchdog). Each run watches for `minutes` (55).
+# chain), or by the hourly scan's watchdog step when no radar run is alive (source watchdog). Each run watches for `minutes` (55, at
+# most 70 so it ends inside the job's 75 minutes); every successor runs 55.
 # What it writes: the one-commit branch radar-data (radar.json, the records of the last 48 hours, model.json, pushed.json), the app's
 # live store row "radar" (with the Supabase secrets) and its working caches (actions/cache, key radar-cache-<run id>).
 # Stop it at once: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (the loop sees it within one cycle, the page says off,
@@ -15,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       minutes:
-        description: 'how long this run watches, in minutes (at most 330); it starts its successor about 2 minutes before its end'
+        description: 'how long this run watches, in minutes (at most 70: the job stops at 75); it starts a 55-minute successor about 2 minutes before its end'
         type: number
         default: 55
       source:
@@ -44,13 +45,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Active hours (outside them radar.json says when the radar starts again, once, and the run ends here)
         id: hours
+        timeout-minutes: 4
         env:
           RADAR_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
           # prints inside=true or inside=false; when the check itself fails the loop runs and checks the hours every cycle
-          out=$(python3 launch_radar.py hours --dir rd) || out="inside=true"
+          out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"
           echo "${out:-inside=true}" | tail -1 >> "$GITHUB_OUTPUT"
       - name: Restore the radar's working caches (dev wallets, holder wallets, X links, pool ages; a lost cache only makes signals unknown)
         if: steps.hours.outputs.inside == 'true'
@@ -108,15 +110,16 @@ jobs:
           key: radar-cache-${{ github.run_id }}
       - name: Tidy the run list (successful radar runs older than two days are deleted)
         continue-on-error: true
+        timeout-minutes: 2                 # it holds the radar's group: a hanging call never keeps the successor waiting
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cutoff=$(date -u -d '2 days ago' +%Y-%m-%dT%H:%M:%SZ)
           api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions"
-          ids=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+          ids=$(curl -sS --max-time 20 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
                 "$api/workflows/radar.yml/runs?status=success&per_page=100" | jq -r --arg c "$cutoff" '.workflow_runs[] | select(.created_at < $c) | .id')
           n=0
           for id in $ids; do
-            curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api/runs/$id" && n=$((n+1))
+            curl -sS --max-time 10 -o /dev/null -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$api/runs/$id" && n=$((n+1))
           done
           echo "deleted $n old runs (before $cutoff)"

@@ -23,13 +23,15 @@ Every 150 s (a fixed grid from the run's start; an overrun skips grid points, it
      radar.json, the records of the last 48 hours, model.json and pushed.json go to the branch radar-data (one commit, force-pushed,
      never smaller than the last tree), radar.json to the app's live store (row "radar"); a push notification only for a good coin
      without a holder cluster and without anything unknown, once per coin, at most 4 an hour
-About 2 minutes before its end the run starts its successor (radar.yml, source chain) when the workflow is active, the next start is
-inside the active hours and no other radar run is waiting. Disabling the workflow stops it within one cycle (state off).
+About 2 minutes before its end the run starts its successor (radar.yml, source chain, 55 minutes) when the workflow is active, the
+active hours last at least 10 more minutes and no other radar run is waiting. Disabling the workflow stops it within one cycle (state
+off). A run lasts at most 70 minutes (the job stops at 75).
 
 Usage:
   python3 launch_radar.py loop --dir rd --minutes 55 --cadence 150 [--mock URL] [--clock fake --now <ms>] [--no-github] [--remote URL]
   python3 launch_radar.py hours --dir rd [--remote URL]      the job's hours gate: prints inside=true|false (outside: state "hours" once)
---minutes 0 runs until stopped; --no-github turns off the kill switch and the chaining (a VM). Further options: --cache (the working
+--no-github turns off the kill switch and the chaining (a VM); there --minutes 0 runs until stopped and sleeps through the hours outside
+the active ones (with GitHub, 0 means the default 55). Further options: --cache (the working
 caches, default rdcache), --deadline (s a cycle may take, default 125 at cadence 150), --source, --horizon (the scan's profile, 2h).
 Secrets come only from the environment: GITHUB_TOKEN (the API), RADAR_URL (the git remote with its token), SUPABASE_* (app.py); none is
 ever printed or written, and git runs without them (child_env). When radar-data exists but cannot be read, nothing is pushed there and
@@ -64,8 +66,10 @@ GT_SLOTS = 3                # GeckoTerminal candle calls a cycle (10 s apart; Ge
 RC_TTL = 300_000            # a RugCheck report is asked again after this while its coin is under 10 min
 DEV_TTL = 6 * 3_600_000     # a dev's launch history is kept this long
 LATER = (5, 15, 30, 60)     # minutes after first sight: the later prices
-DUE_SLACK = 15_000          # ms: a later price counts as due this much early (the cycle grid is 150 s; first sight is a cycle's start)
+DUE_SLACK = 2_000           # ms: the clock's jitter between two grid points (first sight is a cycle's start); a price is never taken earlier
+LATE_X = 1.5                # a later price the radar missed (it was not running) is taken up to this many times its offset late, marked late
 PEAK_AT = 62 * 60_000       # the peak within the hour is priced from this age of the record (one GeckoTerminal call, at most 3 tries)
+PAID_RECHECK = 3 * 60_000   # a coin without a paid DexScreener profile is asked again after this while it is on the radar
 KEEP_MS = 48 * 3_600_000    # hour docs on radar-data
 GUARD_MS = 47 * 3_600_000   # the never-shrink guard counts the hour docs this recent
 PUSHED_MS = 7 * 86_400_000  # pushed.json keeps a coin this long
@@ -76,11 +80,13 @@ FEED_EVERY = 30 * 60_000    # radar-feed (walletmem, xlinks, symmc) fetched agai
 DOC_MAX = 48_000            # bytes: radar.json; over it the fold (others) is cut first, then recent
 FAIL_DEGRADED, FAIL_EXIT = 3, 10
 CHAIN_BEFORE = 120_000      # ms before the run's end: the successor is dispatched
+CHAIN_ROOM = 10 * 60_000    # ms: a successor starts only when the active hours last at least this long after this run's end
+CHAIN_TRIES = 2             # a GitHub hiccup (no answer, a refused dispatch) gets one more try, half a minute later
+DEFAULT_MINUTES = 55        # a run's length (radar.yml's default); every successor runs this long, or this run's length when longer
+MAX_MINUTES = 70            # the longest run: radar.yml's job stops at 75 minutes, start and cache included
+LOG_KEEP = 2_000            # log lines kept in memory (a VM runs for days)
 MODEL_NEED = 300            # records with a known 1 h outcome before the radar model is fitted
 TICKET = 3.0                # the record line's paper stake per call (the new-launch ticket)
-BRAND_FALLBACK = re.compile(r"\b(google|apple|nvidia|openai|chatgpt|gpt|gemini|claude|grok|deepseek|tesla|elon|musk|trump|mrbeast|mr ?beast|nike|amazon|microsoft|meta|"
-                            r"rockstar|gta|minecraft|disney|pixar|spacex|x ai|xai|binance|bnb|coinbase|robinhood|blackrock|starbucks|mcdonald|coca|pepsi|"
-                            r"netflix|youtube|tiktok|samsung|amd|intel|hermes|hermès|rolex|ferrari|lamborghini|bmw|porsche|toy story|spongebob|simpsons|batman|pokemon)\b", re.I)
 HOUR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}\.json$")
 SECRET_ENV = ("GITHUB_TOKEN", "GH_TOKEN", "SUPABASE_SECRET_KEY")
 H = 3_600_000
@@ -162,6 +168,15 @@ def parse_hours(s):
     if not (0 <= a <= 23 and 1 <= b <= 24) or a == b:
         return (0, 24) if a == b and 0 <= a <= 24 else (7, 24)
     return a, b
+
+
+def run_minutes(m, forever_ok):
+    """A run's length in minutes: at most MAX_MINUTES (radar.yml's job stops at 75; a longer run would be cut before it starts its
+    successor). 0 = until stopped, only where nothing stops it from outside (forever_ok: no GitHub, a VM); else the default."""
+    m = num(m)
+    if m is None or m <= 0:
+        return 0.0 if forever_ok else float(DEFAULT_MINUTES)
+    return min(float(MAX_MINUTES), m)
 
 
 def in_hours(ms, hw):
@@ -379,14 +394,16 @@ class Radar:
         self.W_prior = self.T.load_weights()
         self.W = self.W_prior
         self.fails, self.notes_run, self.cycle_lines, self.work, self.closes = 0, [], [], {}, {}
-        self.chained, self.dispatches, self.publishes, self.out_pk = False, 0, 0, set()
-        self.mismatch_said, self.exch, self.pos, self.last_c = set(), set(), None, {}
+        self.chained, self.chain_tries, self.dispatches, self.publishes, self.out_pk = False, 0, 0, 0, set()
+        self.mismatch_said, self.exch, self.pos, self.last_c, self.paid_at = set(), set(), None, {}, {}
         self.run_start = self.run_end = None
 
     # ---------------------------------------------------------------- log
     def say(self, s):
         s = redact(s)
         self.lines_log.append(s)
+        if len(self.lines_log) > LOG_KEEP:
+            del self.lines_log[:LOG_KEEP // 2]
         if self.extlog:
             self.extlog(s)
         else:
@@ -397,7 +414,18 @@ class Radar:
             self.notes_run.append(s)
 
     # ---------------------------------------------------------------- GitHub (kill switch, successor)
+    def gh_fresh(self):
+        """api.github.com is asked again whatever it answered before: the kill switch is read every cycle, so three refusals (a 403 of
+        GitHub's secondary rate limit) or a 429 never give it up for the run (radar_src's breaker is for the coin hosts)."""
+        h, gh = self.http, urllib_host(RS.GH_API)
+        h.dead.discard(gh)
+        h.fails.pop(gh, None)
+        h.mute.discard(gh)
+        h.hit429.discard(gh)
+        h.cool.pop(gh, None)
+
     def workflow_state(self):
+        self.gh_fresh()
         st, j = self.http.api("GET", "/repos/%s/actions/workflows/radar.yml" % self.repo, token=self.token, until=time.time() + 8)
         if st == 200 and isinstance(j, dict) and isinstance(j.get("state"), str):
             return j["state"]
@@ -411,27 +439,51 @@ class Radar:
         return any(isinstance(r, dict) and str(r.get("id")) != str(self.run_id) and r.get("status") != "completed" for r in j["workflow_runs"])
 
     def chain(self):
-        """The successor run (source chain), once: only when the workflow is active, the next start is inside the active hours and no
-        other radar run is waiting or running."""
+        """The successor run (source chain; DEFAULT_MINUTES long, or this run's length when longer, at most MAX_MINUTES): only when this
+        run was long enough to have one (2 x CHAIN_BEFORE), the workflow is active, the active hours last CHAIN_ROOM after this run's end
+        and no other radar run is waiting or running. Those answers are final; a GitHub hiccup (no answer, a refused dispatch) gets one
+        more try (CHAIN_TRIES)."""
         if self.chained or not self.github or not self.run_end:
             return False
-        self.chained = True
-        self.http.mute.discard(urllib_host(RS.GH_API))        # a GitHub timeout in the last cycle does not stop the successor
-        if self.workflow_state() != "active":
+        if self.run_end - self.run_start < 2 * CHAIN_BEFORE:
+            self.chained = True
+            self.say("successor: not started (a run of %.1f min starts none)" % ((self.run_end - self.run_start) / 60_000.0))
+            return False
+        self.chain_tries += 1
+        st = self.workflow_state()
+        if st is None:
+            return self.chain_hiccup("GitHub did not answer about the workflow")
+        if st != "active":
+            self.chained = True
             self.say("successor: not started (the radar workflow is not active)")
             return False
-        if not in_hours(self.run_end + 60_000, self.hours):
-            self.say("successor: not started (the next start is outside the active hours %d-%d Berlin)" % self.hours)
+        if not (in_hours(self.run_end + 60_000, self.hours) and in_hours(self.run_end + CHAIN_ROOM, self.hours)):
+            self.chained = True
+            self.say("successor: not started (the active hours %d-%d Berlin end within %d min of this run's end)" % (self.hours[0], self.hours[1], CHAIN_ROOM // 60_000))
             return False
         alive = self.others_alive()
-        if alive is None or alive:
-            self.say("successor: not started (%s)" % ("another radar run is waiting" if alive else "GitHub did not list the runs"))
+        if alive is None:
+            return self.chain_hiccup("GitHub did not list the runs")
+        if alive:
+            self.chained = True
+            self.say("successor: not started (another radar run is waiting)")
             return False
+        mins = int(max(DEFAULT_MINUTES, min(MAX_MINUTES, math.ceil(self.run_minutes))))
         st, _ = self.http.api("POST", "/repos/%s/actions/workflows/radar.yml/dispatches" % self.repo,
-                              {"ref": self.ref, "inputs": {"minutes": str(int(math.ceil(self.a.minutes))), "source": "chain"}}, token=self.token, until=time.time() + 10)
+                              {"ref": self.ref, "inputs": {"minutes": str(mins), "source": "chain"}}, token=self.token, until=time.time() + 10)
         self.dispatches += 1
-        self.say("successor: %s" % ("dispatched" if st in (200, 201, 204) else "dispatch refused (HTTP %s)" % st))
-        return st in (200, 201, 204)
+        if st in (200, 201, 204):
+            self.chained = True
+            self.say("successor: dispatched (%d min)" % mins)
+            return True
+        return self.chain_hiccup("dispatch refused (HTTP %s)" % st)
+
+    def chain_hiccup(self, why):
+        last = self.chain_tries >= CHAIN_TRIES
+        if last:
+            self.chained = True
+        self.say("successor: not started (%s)%s" % (why, "" if last else ", tried once more"))
+        return False
 
     # ---------------------------------------------------------------- stores
     def load_tree(self, files):
@@ -479,15 +531,17 @@ class Radar:
             self.restore_state = "ok"
             return
         self.git.init()
-        ex = self.git.exists("radar-data")
-        if ex is False:
-            self.restore_from_results()
-            self.restore_state = "ok"
-            self.last_counts = hour_counts(self.docs, 0)
-            self.say("radar-data does not exist yet: fresh start (%d records from the results copy)" % sum(len(d["coins"]) for d in self.docs.values()))
-            return
+        ex = None
         for i in range(1 if retry else 3):
             try:
+                if ex is None:
+                    ex = self.git.exists("radar-data")            # asked again on every try while the remote does not answer
+                if ex is False:
+                    self.restore_from_results()
+                    self.restore_state = "ok"
+                    self.last_counts = hour_counts(self.docs, 0)
+                    self.say("radar-data does not exist yet: fresh start (%d records from the results copy)" % sum(len(d["coins"]) for d in self.docs.values()))
+                    return
                 if ex is None:
                     raise RuntimeError("the remote did not answer")
                 self.git.fetch("radar-data", "refs/radar/data")
@@ -718,13 +772,27 @@ class Radar:
             self.say("radar-data restore failed (%s): records kept on the runner, not pushed" % RS.short(e))
             self.restore_state = "failed"
         self.fetch_feed()
+        self.apply_model()
+
+    def apply_model(self):
+        """model.json's learned weights, only when they were fitted on this study prior (radar_weights.json's src, as traps.load_weights
+        checks); a model of another prior is dropped and fitted again at the next cycle."""
         if self.model.get("from") == "learned" and isinstance(self.model.get("w"), dict):
-            self.W = self.model["w"]
+            if self.model.get("src") is not None and self.model.get("src") == self.W_prior.get("src"):
+                self.W = self.model["w"]
+                return True
+            self.say("model.json was fitted on another study prior (%s, now %s): the study prior is used and the model is fitted again"
+                     % (str(self.model.get("src"))[:40], str(self.W_prior.get("src"))[:40]))
+            self.model = {}
+        self.W = self.W_prior
+        return False
 
     def loop(self):
         """The cycles of this run. Returns the exit code."""
         self.run_start = self.clock.now()
-        mins = max(0.0, min(330.0, float(self.a.minutes)))
+        mins = self.run_minutes = run_minutes(self.a.minutes, not self.github)
+        if num(self.a.minutes) and self.a.minutes > mins:
+            self.say("%g minutes asked: a run is at most %d minutes (radar.yml's job stops at 75), so this one runs %d" % (self.a.minutes, MAX_MINUTES, mins))
         self.run_end = self.run_start + int(mins * 60_000) if mins else None
         self.say("run %s (%s): %s, a cycle every %g s, active hours %d-%d Berlin%s" % (
             self.run_id, self.source, ("until %s UTC" % dt.datetime.fromtimestamp(self.run_end / 1000, dt.timezone.utc).strftime("%H:%M")) if self.run_end else "until stopped",
@@ -744,11 +812,20 @@ class Radar:
                 self.fails += 1
                 self.say("cycle %d failed (%s), %d in a row" % (k, RS.short(e), self.fails))
                 res = None
+                if self.fails >= FAIL_DEGRADED:
+                    self.degraded(t_k, k)
                 if self.fails >= FAIL_EXIT:
                     self.say("%d cycles in a row failed: the run ends (the scan's watchdog starts the radar again)" % self.fails)
                     return 1
             if res in ("off", "hours"):
                 self.save_cache()
+                if res == "hours" and not self.run_end:
+                    ns = next_start(self.clock.now(), self.hours)
+                    if ns:                          # a VM (--minutes 0) sleeps until the hours begin again and goes on
+                        self.say("outside the active hours: sleeping until %s UTC" % dt.datetime.fromtimestamp(ns / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M"))
+                        self.clock.wait(ns)
+                        self.run_start, k = self.clock.now(), 0
+                        continue
                 return 0
             if self.clock.fake:
                 k += 1
@@ -757,8 +834,26 @@ class Radar:
         if self.run_end and not self.chained:
             self.wait_until(self.run_end - CHAIN_BEFORE, chain=False)
             self.chain()
+            if not self.chained:                 # a GitHub hiccup: once more, half a minute later
+                self.clock.wait(min(self.clock.now() + 30_000, self.run_end - 15_000))
+                self.chain()
         self.save_cache()
         return 0
+
+    def degraded(self, t_k, k):
+        """radar.json while cycles fail (FAIL_DEGRADED in a row or more): state degraded with the reason, the last list's coins dropped
+        (the record line, model and last good coin kept), to radar-data and the app's row. Never raises."""
+        try:
+            now = self.clock.now()
+            doc = finish_from(self.last_doc if isinstance(self.last_doc, dict) else {}, "degraded", now, "%d cycles in a row failed" % self.fails,
+                              self.run_id, self.run_start, self.run_end, self.source, self.hours)
+            doc["next"], doc["run"]["cycle"] = t_k + self.step, k
+            doc["wm"] = {"t": num((self.wm or {}).get("t")), "nCoins": num((self.wm or {}).get("nCoins"))}
+            doc["notes"] = ["%d cycles in a row failed: the list is not current" % self.fails]
+            self.publish(doc)
+            self.store_row(doc)
+        except Exception as e:
+            self.say("degraded state not written (%s)" % RS.short(e))
 
     def wait_until(self, t, chain=True):
         """Waits for clock time t; the successor is dispatched on the way when the wait passes the run's end minus CHAIN_BEFORE."""
@@ -826,48 +921,43 @@ class Radar:
         rated = [self.rate(r, now) for r in live]
         for r in finish:
             self.rate(r, now, record_only=True)
-        order = sorted([x for x in rated if x["v"] == "good"], key=lambda x: (-x["up"], x["pts"], -(x["liq"] or 0))) + \
-            sorted([x for x in rated if x["v"] == "watch"], key=lambda x: (x["pts"], -(x["liq"] or 0))) + \
-            sorted([x for x in rated if x["v"] == "trap"], key=lambda x: x["pts"])
-        for x in order[:BEST_N]:
+        top, coins, others = rank(rated)
+        for x in top:
             rec = self.rec(x["addr"])
             if rec is not None:
                 rec["top"] = 1
-        coins = [x for x in order[:BEST_N] if x["v"] == "good"]
-        others = [x for x in order if x["v"] != "good"]
         self.outcomes(now)
         # 8. pushes, radar.json, radar-data, the app's row
         self.http.until = end(STEP_END["push"])
         to_push = self.to_push(coins, now)
-        for x in to_push:
-            self.pushed[x["addr"]] = now
-            x["push"] = now
-            rec = self.rec(x["addr"])
-            if rec is not None:
-                rec["push"] = now
+        for x in to_push:                        # pushed.json (radar-data) holds the coin before anything is sent, so a restart never sends it
+            self.pushed[x["addr"]] = now         # twice; the record and radar.json say "pushed" only once the notification went out
         secs = round(time.time() - T0, 1)
-        state = "degraded" if self.fails >= FAIL_DEGRADED else ("ending" if last else "running")
-        line = "cycle %d: %d seen, %d without traps, %d pushed (%d s)" % (k, len(rated), len(coins), len(to_push), round(secs))
-        self.cycle_lines = (self.cycle_lines + [line])[-6:]
+        state = "ending" if last else "running"
+        line = lambda n: "cycle %d: %d seen, %d without traps, %d pushed (%d s)" % (k, len(rated), len(coins), n, round(secs))
+        self.cycle_lines = (self.cycle_lines + [line(0)])[-6:]
         doc = self.build_doc(state, coins, others, rated, now, t_k + self.step, secs, k)
         landed = self.publish(doc)
         if to_push and not landed and self.remote:
             for x in to_push:                    # the mark could not be saved: no notification now, the next cycle tries again
                 self.pushed.pop(x["addr"], None)
-                rec = self.rec(x["addr"])
-                if rec is not None:
-                    rec["push"] = None
             to_push = []
-        self.store_row(doc)
+        sent = []
         if to_push:
             out = self.notify([dict(x["doc"], push=now) for x in to_push])
             self.say("notification for %s: %s" % (", ".join(x["sym"] for x in to_push), json.dumps(out)[:160] if isinstance(out, dict) else out))
-            if not isinstance(out, dict) or out.get("skipped"):
-                for x in to_push:                # nothing went out (rate guard, no push sender): the coin stays marked, never "pushed" on the page
-                    rec = self.rec(x["addr"])
-                    if rec is not None:
-                        rec["push"] = None
-        self.say(line + "; %d DexScreener requests, discovery %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items()))))
+            if isinstance(out, dict) and not out.get("skipped") and (num(out.get("sent")) or 0) > 0:
+                sent = to_push                   # nothing went out (rate guard, no push sender, no phone): the coin stays marked, never "pushed" on the page
+            for x in sent:
+                rec = self.rec(x["addr"])
+                if rec is not None:
+                    rec["push"] = now
+        if sent:                                 # radar.json and the records say pushed right after the notification (3.6)
+            self.cycle_lines[-1] = line(len(sent))
+            doc = self.build_doc(state, coins, others, rated, now, t_k + self.step, secs, k)
+            self.publish(doc)
+        self.store_row(doc)
+        self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items()))))
         self.last_doc = doc
         # 9. caches, the model, the periodic reads
         for a in [a for a in list(self.work) + list(self.closes) if now - (num((self.rec(a) or {}).get("pool")) or 0) > 20 * 60_000]:
@@ -990,18 +1080,26 @@ class Radar:
         w = self.work.get(a) or {}
         return any(w.get(k) == "pending" for k in ("rc", "dev", "holders", "devage", "devhist"))
 
+    @staticmethod
+    def later_due(first, m, now):
+        """Whether the price m minutes after first sight may be taken now: at or after its due time (DUE_SLACK is only the clock's jitter
+        between grid points), and at most LATE_X times the offset late (the radar was not running then: marked late)."""
+        due = first + m * 60_000
+        return due - DUE_SLACK <= now <= due + LATE_X * m * 60_000 + DUE_SLACK
+
     def due_later(self, now):
         out = []
         for doc in self.docs.values():
             for a, rec in (doc.get("coins") or {}).items():
                 first = num(rec.get("first"))
-                if first and any(str(m) not in (rec.get("later") or {}) and first + m * 60_000 - DUE_SLACK <= now <= first + 1.5 * m * 60_000 for m in LATER):
+                if first and any(str(m) not in (rec.get("later") or {}) and self.later_due(first, m, now) for m in LATER):
                     out.append(a)
         return out
 
     def later_prices(self, pairs, answered, now):
         """The prices 5, 15, 30 and 60 minutes after first sight, at the first cycle at or after each; when the radar was not running
-        then, up to 1.5x the offset after first sight, marked late. gone only when DexScreener answered for the coin and had no pair."""
+        then, up to 1.5x the offset late, marked late (later than one cycle and half a minute after the due time). gone only when
+        DexScreener answered for the coin and had no pair."""
         late_ms = self.step + 30_000
         for a in self.due_later(now):
             rec = self.rec(a)
@@ -1015,7 +1113,7 @@ class Radar:
                 continue
             for m in LATER:
                 due = rec["first"] + m * 60_000
-                if str(m) not in rec["later"] and due - DUE_SLACK <= now <= rec["first"] + 1.5 * m * 60_000:
+                if str(m) not in rec["later"] and self.later_due(rec["first"], m, now):
                     rec["later"][str(m)] = dict(obs, late=True) if now - due > late_ms else dict(obs)
             self.touch(a, now)
 
@@ -1059,11 +1157,12 @@ class Radar:
                 self.cache["peak"][a] = int(self.cache["peak"].get(a, 0)) + 1
             if cands and self.P is not None and rec.get("px"):
                 try:
-                    pk = self.P.peak_of([c[:6] for c in cands], rec["first"], rec["first"] + H, rec["px"])
+                    pk = self.P.peak_of([c[:6] for c in cands], rec["first"], rec["first"] + H, rec["px"], ds_points=later_points(rec),
+                                        liq0=num(rec.get("liq")), mc0=num(rec.get("mc")))
                 except Exception as e:
                     self.say("peak of %s not priced (%s)" % (rec.get("sym"), RS.short(e)))
                     pk = None
-                if isinstance(pk, dict):
+                if isinstance(pk, dict) and pk.get("state") != "waiting":     # no candle inside the hour yet: tried again (3 tries)
                     rec["peak60"] = {"x": fin(pk.get("x"), 4), "at": pk.get("at"), "res": pk.get("res") or 1, "cut": [str(c)[:60] for c in (pk.get("cut") or [])][:6]}
                     if pk.get("state") == "unit":
                         rec["peak60"]["x"] = None
@@ -1097,15 +1196,24 @@ class Radar:
             if not self.mint_of(a, r) and self.pumpish(r) and not w.get("pfcoin") and self.http.n - n0 < TIER1_CAP:
                 w["pfcoin"] = 1                  # the mint time: pump.fun's list row, then Jupiter's createdAt, then coins-v3, then the RPC
                 self.src.pf_coin(a, self.cache["pf"], now)
-            if a not in self.cache["paid"]:
+            if self.paid_due(a, now):
                 paid_ask.append(a)
         room = max(0, TIER1_CAP - (self.http.n - n0))
         if paid_ask and room:
             sb_dp = os.path.join(self.d, "sb", "dp")
             shutil.rmtree(sb_dp, ignore_errors=True)
-            for a, v in self.src.ds_paid(sb_dp, paid_ask[:room]).items():
+            asked = paid_ask[:room]
+            for a, v in self.src.ds_paid(sb_dp, asked).items():
                 self.cache["paid"][a] = v
+            for a in asked:
+                self.paid_at[a] = now
         return got
+
+    def paid_due(self, a, now):
+        """Whether DexScreener's paid profile is asked about this coin now: never asked, or not paid when last asked PAID_RECHECK ago
+        (a profile can be paid while the coin is on the radar). A paid one is not asked again."""
+        v = self.cache["paid"].get(a)
+        return v is None or (v is False and now - self.paid_at.get(a, 0) >= PAID_RECHECK)
 
     @staticmethod
     def pumpish(r):
@@ -1326,6 +1434,8 @@ class Radar:
         st = rcc.get("st") or (self.work.get(a) or {}).get("rc") or "pending"
         pool = num(pr.get("pairCreatedAt"))
         mint = self.mint_of(a, r)
+        if pool and mint and pool < mint:
+            mint = None                  # the pool before the mint: two sources' clocks disagree, the gap is unknown (never "not instant")
         meta = self.cache["pf"].get(a) or {}
         w = self.work.get(a) or {}
         rec = self.rec(a) or {}
@@ -1333,20 +1443,21 @@ class Radar:
              "dex": str(pr.get("dexId") or "")[:24] or None, "first": num(rec.get("first")) or now, "px": num(b.get("price")),
              "pair": pr, "f": f, "rc": rep, "rcStatus": st, "pf": meta, "devRow": w.get("devRow"), "wm": self.wm, "wmState": self.wm_state(now)}
         c["mintToPoolS"] = (pool - mint) / 1000.0 if pool and mint else None
-        c["instantPool"] = (0 <= c["mintToPoolS"] < 60) if c["mintToPoolS"] is not None else None
+        c["instantPool"] = (c["mintToPoolS"] < 60) if c["mintToPoolS"] is not None else None
         top10 = self.holders_of(a)
         c["top10"] = top10
         if c["wmState"] == "ok" and rep is not None:
-            wl = self.T.walletmem_lookup([h.get("owner") for h in rep.get("topHolders") or [] if isinstance(h, dict) and h.get("owner")], self.wm) or {}
+            wl = self.T.walletmem_lookup([h.get("owner") for h in rep.get("topHolders") or [] if isinstance(h, dict) and h.get("owner")], self.wm, now) or {}
             c["swAvg"], c["rugHolders"], c["wmChecked"] = wl.get("swAvg"), wl.get("rugHolders"), bool(wl.get("checked"))
         else:
             c["swAvg"], c["rugHolders"], c["wmChecked"] = None, None, False
         brand = self.W.get("brand") if isinstance(self.W, dict) else None
         try:
-            rx = re.compile(brand, re.I) if isinstance(brand, str) and brand else BRAND_FALLBACK
+            rx = re.compile(brand, re.I) if isinstance(brand, str) and brand else None
         except re.error:
-            rx = BRAND_FALLBACK
-        c["brand"] = bool(rx.search("%s %s" % (pr.get("symbol") or "", pr.get("name") or "")))
+            rx = None
+        # the brand list comes only from radar_weights.json (I7): without one the check is unknown, never passed
+        c["brand"] = bool(rx.search("%s %s" % (pr.get("symbol") or "", pr.get("name") or ""))) if rx else None
         c["buys"] = num(pr.get("buysH1"))
         c["rcReport"] = True if rep is not None else (False if st == "404" else None)
         lvl = lambda x: str((x or {}).get("level") or "").lower()
@@ -1405,7 +1516,7 @@ class Radar:
         c["devAgeH"] = round((now - wa["first"]) / H, 2) if wa and wa.get("first") and not (wa.get("full") and fresh_dev is None) else None   # full: a lower bound
         c["devTx"] = c["devTxs"] = (wa.get("n") if not wa.get("full") else 1000) if wa else None
         c["dev"] = {"n": c["devN"], "dead": c["devDead"], "grad": c["devGrad"], "ageH": c["devAgeH"], "txs": c["devTx"]}
-        c["xUsed"], c["tweetShared"] = self.x_reuse(a, nx, num(meta.get("t")) or now)
+        c["xUsed"], c["tweetShared"] = self.x_reuse(a, x, nx, num(meta.get("t")) or now)
         tr = w.get("trades") if isinstance(w.get("trades"), dict) and not w["trades"].get("many") else {}
         ho = w.get("pfholders") or {}
         pick = lambda k1, k2: num(tr.get(k1)) if tr.get(k1) is not None else num(ho.get(k2))
@@ -1442,21 +1553,27 @@ class Radar:
                 cnt[v["by"]] = cnt.get(v["by"], 0) + 1
         return {k for k, n in cnt.items() if n >= 25}
 
-    def x_reuse(self, a, nx, t):
-        """(xUsed, tweetShared): older coins (10 min or more before) with the same account or community link; other coins off the same tweet."""
+    def x_reuse(self, a, url, nx, t):
+        """(xUsed, tweetShared) at t (the coin's mint, else now): older coins, minted XGAP (10 min) or more before, with the same account or
+        community link (C10), and other coins off the same tweet. Two indexes: the radar's own (pump.fun's lists) and the scan's (radar-feed
+        xlinks, counted by traps.x_reuse: never the coin itself, never a younger coin). They overlap, so the larger count is taken."""
         if not nx:
             return 0, 0
         kind, key = nx
+        gap = num(((self.W or {}).get("thresholds") or {}).get("xGapS")) if isinstance(self.W, dict) else None
+        gap = gap if gap is not None else 600.0
         local = {b: tb for b, tb in (self.cache["xidx"].get(key) or {}).items() if b != a}
-        fe = self.xlinks.get(key)
+        fe = {}
+        if self.xlinks and hasattr(self.T, "x_reuse"):
+            try:
+                fe = self.T.x_reuse(url, a, t, self.xlinks, gap) or {}
+            except Exception as e:
+                self.say("traps.x_reuse failed (%s): the radar's own X-link index only" % RS.short(e))
+        n = lambda k: int(num(fe.get(k)) or 0) if isinstance(fe, dict) else 0
         if kind == "tweet":
-            n_feed = max(0, int(num(fe[2]) or 0) - (1 if isinstance(fe, list) and fe and fe[0] == a else 0)) if isinstance(fe, list) and len(fe) >= 3 else 0
-            return 0, max(len(local), n_feed)
-        older = [b for b, tb in local.items() if num(tb) and tb <= t - 600_000]
-        n_feed = 0
-        if isinstance(fe, list) and len(fe) >= 3 and fe[0] != a and num(fe[1]) and fe[1] <= t - 600_000:
-            n_feed = max(1, int(num(fe[2]) or 1) - (1 if a in local else 0))
-        return max(len(older), n_feed), 0
+            return 0, max(len(local), n("shared"))
+        older = [b for b, tb in local.items() if num(tb) and tb <= t - gap * 1000]
+        return max(len(older), n("used")), 0
 
     def rate(self, r, now, record_only=False):
         """traps.rate on the coin's signals; the record gets the rating (every one, at most 5), its first good moment and its signals."""
@@ -1487,8 +1604,10 @@ class Radar:
         for key, st in (("stair", S.get("stair")), ("stairCurve", c.get("stairCurve"))):
             if isinstance(st, dict):
                 d[key] = stair_doc(st)
-        if zp is not None or up is not None:
-            d["odds"] = {"up": fin(up, 3), "zero": fin(zp, 3), "note": "not used: on coins under 1 h they did not separate winners"}
+        if up is not None:                       # the trained odds, info only (the page says: not used on coins under 1 h)
+            d["upP"] = fin(up, 3)
+        if zp is not None:
+            d["zeroP"] = fin(zp, 3)
         d["score"] = fin(r.get("sc"), 1)
         doc = {"addr": a, "sym": rec["sym"], "name": str(pr.get("name") or "")[:48], "pair": pr.get("pairAddress") or None, "dex": str(pr.get("dexId") or "")[:24] or None,
                "lp": rec.get("lp"), "pool": int(num(pr.get("pairCreatedAt"))), "mint": rec.get("mint"), "age": round(r["age"], 1), "px": fin(b.get("price")),
@@ -1612,13 +1731,17 @@ class Radar:
             for m in LATER:
                 o = (rec.get("later") or {}).get(str(m))
                 lt[str(m)] = 0.0 if isinstance(o, dict) and o.get("gone") else (round(o["px"] / gp, 3) if isinstance(o, dict) and num(o.get("px")) and gp else None)
-            recent.append({"addr": a, "sym": rec.get("sym"), "good": rec["good"], "later": lt, "out": rec.get("out")})
+            pk = rec.get("peak60") if isinstance(rec.get("peak60"), dict) and fin(rec["peak60"].get("x")) is not None else None
+            recent.append({"addr": a, "sym": rec.get("sym"), "good": rec["good"], "push": rec.get("push"), "later": lt,
+                           "peak60": {"x": fin(pk.get("x"), 4), "at": pk.get("at")} if pk else None, "out": rec.get("out")})
         seen_ages = sorted(num(rec.get("seenAge")) for doc in self.docs.values() for rec in (doc.get("coins") or {}).values()
                            if num(rec.get("seenAge")) is not None and now - (num(rec.get("first")) or 0) < 3 * H)
         med = seen_ages[len(seen_ages) // 2] if seen_ages else None
-        model = {"from": self.model.get("from") or "prior", "n": n_out, "need": MODEL_NEED, "auc": fin(self.model.get("auc"), 3), "at": self.model.get("at")}
+        enough = (num(self.model.get("n")) or 0) >= MODEL_NEED       # under it the page says "radar data n of 300 needed" itself
+        model = {"from": self.model.get("from") or "prior", "n": n_out, "need": MODEL_NEED, "auc": fin(self.model.get("auc"), 3),
+                 "prior": fin(self.model.get("aucPrior"), 3), "at": self.model.get("at"), "why": str(self.model.get("why") or "")[:200] if enough else ""}
         doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "run": {"id": str(self.run_id)[:40], "start": self.run_start, "end": self.run_end, "cycle": k, "source": self.source},
-               "state": state, "why": ("%d cycles in a row failed" % self.fails) if state == "degraded" else "", "secs": secs, "model": model,
+               "state": state, "why": "", "secs": secs, "model": model,
                "counts": {"seen": len(rated), "good": len(coins), "pushed": sum(1 for x in rated if (self.rec(x["addr"]) or {}).get("push")), "seenAgeMed": fin(med, 1)},
                "wm": {"t": num((self.wm or {}).get("t")), "nCoins": num((self.wm or {}).get("nCoins"))},
                "coins": [dict(x["doc"], push=(self.rec(x["addr"]) or {}).get("push")) for x in coins],
@@ -1657,7 +1780,7 @@ class Radar:
             self.say("radar model not fitted (%s): the study prior stays" % RS.short(e))
             W2, rep = None, {"why": "fit failed: %s" % RS.short(e)}
         rep = rep if isinstance(rep, dict) else {"why": str(rep)[:200]}
-        self.model = {"v": 1, "from": "learned" if isinstance(W2, dict) else "prior", "at": now, "n": n_out, "nOut": n_out, "need": MODEL_NEED,
+        self.model = {"v": 1, "from": "learned" if isinstance(W2, dict) else "prior", "at": now, "n": n_out, "nOut": n_out, "need": MODEL_NEED, "src": self.W_prior.get("src"),
                       "auc": fin(rep.get("auc"), 4), "aucPrior": fin(rep.get("aucPrior"), 4), "why": str(rep.get("why") or "")[:300],
                       "w": clean_json(W2) if isinstance(W2, dict) else None, "report": clean_json(rep)}
         self.W = self.model["w"] if isinstance(W2, dict) else self.W_prior
@@ -1671,6 +1794,17 @@ S_KEYS = ("instantPool", "mintToPoolS", "swAvg", "rugHolders", "wmChecked", "bra
 D_KEYS = ("mintToPoolS", "swAvg", "rugHolders", "buys", "m5", "socN", "lists", "mc", "liq", "creatorPct", "netSize", "devN", "devDead", "devGrad", "devAgeH",
           "devTxs", "freshOf", "fundMin",
           "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "fundN")
+
+
+def rank(rated, n=BEST_N):
+    """The order of 3.2 over the rated coins: good coins by (-upside, pts, -liq), then watch coins by (pts, -liq), then trap coins by
+    pts. Returns (top, coins, others): the best n, the good ones among them (the main list) and every coin that is not good (the fold)."""
+    liq = lambda x: -(x["liq"] or 0)
+    order = sorted([x for x in rated if x["v"] == "good"], key=lambda x: (-x["up"], x["pts"], liq(x))) + \
+        sorted([x for x in rated if x["v"] == "watch"], key=lambda x: (x["pts"], liq(x))) + \
+        sorted([x for x in rated if x["v"] == "trap"], key=lambda x: x["pts"])
+    top = order[:n]
+    return top, [x for x in top if x["v"] == "good"], [x for x in order if x["v"] != "good"]
 
 
 def stair_doc(st):
@@ -1691,6 +1825,16 @@ def clean_json(v, depth=0):
     if isinstance(v, (list, tuple, set)):
         return [clean_json(x, depth + 1) for x in v]
     return str(v)[:200]
+
+
+def later_points(rec):
+    """The record's later DexScreener prices as peak.peak_of's ds_points [(ms, price or None, liquidity or None)]; a pool found gone is
+    (ms, None, 0), so the glitch filter cuts a dead pool's prints."""
+    out = []
+    for o in (rec.get("later") or {}).values() if isinstance(rec.get("later"), dict) else ():
+        if isinstance(o, dict) and num(o.get("t")):
+            out.append((int(o["t"]), None, 0.0) if o.get("gone") else (int(o["t"]), num(o.get("px")), num(o.get("liq"))))
+    return sorted(out)
 
 
 def rec_weight(rec):
@@ -1782,7 +1926,7 @@ def finish_from(prev, state, now, why, run_id, start, end, source, hw):
     keep = {k: prev.get(k) for k in ("model", "lastGood", "recent", "record", "wm") if prev.get(k) is not None}
     nxt = next_start(now, hw) if state == "hours" else None
     doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "run": {"id": str(run_id)[:40], "start": start, "end": end, "cycle": None, "source": source},
-           "state": state, "why": why, "secs": 0.0, "model": {"from": "prior", "n": 0, "need": MODEL_NEED, "auc": None, "at": None},
+           "state": state, "why": why, "secs": 0.0, "model": {"from": "prior", "n": 0, "need": MODEL_NEED, "auc": None, "prior": None, "at": None, "why": ""},
            "counts": {"seen": 0, "good": 0, "pushed": 0, "seenAgeMed": None}, "wm": {"t": None, "nCoins": None}, "coins": [], "others": [],
            "lastGood": None, "recent": [], "record": {"calls": 0, "n60": 0, "rug": None, "win": None, "eur": None, "ci": {"rug": None, "win": None}},
            "hosts": {}, "notes": [], "lines": []}
@@ -1793,7 +1937,9 @@ def finish_from(prev, state, now, why, run_id, start, end, source, hw):
 # ---------------------------------------------------------------- the hours gate (radar.yml's first step)
 def cmd_hours(a, log=None):
     """Inside the active hours: inside=true. Outside: radar.json state "hours" with the next start, once (not again when the last doc
-    already says hours), pushed to radar-data with every other file of the branch as it is; inside=false."""
+    already says hours), pushed to radar-data with every other file of the branch as it is; inside=false. radar-data is written only
+    when it exists and was read: when GitHub does not answer nothing is written (a tree of radar.json alone would wipe the records),
+    and a missing branch is left to the first radar run (it starts it from the results copy); the app's row is written either way."""
     say = log or (lambda s: print("radar: " + redact(s), file=sys.stderr, flush=True))
     now = int(a.now) if a.now else int(time.time() * 1000)
     hw = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS") or "7-24")
@@ -1803,12 +1949,16 @@ def cmd_hours(a, log=None):
     print("inside=false")
     remote = a.remote or os.environ.get("RADAR_URL") or ""
     d = os.path.abspath(a.dir)
-    files, prev = {}, {}
+    files, prev, ex = {}, {}, None
     if remote:
         g = Git(os.path.join(d, "git"), remote, say)
         try:
             g.init()
-            if g.exists("radar-data"):
+            ex = g.exists("radar-data")
+            if ex is None:
+                say("hours: GitHub did not answer about radar-data: nothing written")
+                return 0
+            if ex:
                 g.fetch("radar-data", "refs/radar/data")
                 files = g.files("refs/radar/data", g.paths("refs/radar/data"))
                 prev = json.loads(files.get("radar.json", b"{}").decode("utf-8") or "{}")
@@ -1834,11 +1984,13 @@ def cmd_hours(a, log=None):
             paths[p] = fp
     write_json(os.path.join(out, "radar.json"), doc)
     paths["radar.json"] = os.path.join(out, "radar.json")
-    if remote:
+    if remote and ex:
         try:
             Git(os.path.join(d, "git"), remote, say).push_tree(paths, "radar-data", "launch radar: outside the active hours (fake money)")
         except Exception as e:
             say("hours: radar-data push failed (%s)" % RS.short(e))
+    elif remote:
+        say("hours: radar-data does not exist yet: not made here (the first radar run makes it from the results copy)")
     else:
         write_json(os.path.join(d, "out", "radar.json"), doc)
     try:
@@ -1856,7 +2008,7 @@ def args_of(argv=None):
     ap = argparse.ArgumentParser(description="the launch radar (fake money only)")
     ap.add_argument("cmd", choices=["loop", "hours"])
     ap.add_argument("--dir", default="rd")
-    ap.add_argument("--minutes", type=float, default=55)
+    ap.add_argument("--minutes", type=float, default=DEFAULT_MINUTES, help="at most %d; 0 = until stopped, only without GitHub (a VM)" % MAX_MINUTES)
     ap.add_argument("--cadence", type=float, default=CYCLE_S)
     ap.add_argument("--deadline", type=float, default=None, help="s a cycle may take (default 125 at cadence 150, scaled)")
     ap.add_argument("--mock", default=os.environ.get("MEMEBOT_MOCK", ""))
