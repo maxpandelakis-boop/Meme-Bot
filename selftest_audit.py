@@ -234,14 +234,76 @@ def check_import_git_fails(check):
           "itself (%r)" % (mark, feed[-80:]))
 
 
+# ---------------------------------------------------------------------------------------------------------------- K1 SUPABASE_URL
+NODE_STATE = r"""
+global.window={};global.document={readyState:'complete',querySelector:function(){return null;}};global.navigator={};
+%s
+var A=window.MemebotApp,B={sw:true,push:true,notif:true,store:false,key:'k',perm:'default',sub:null,saved:false,error:''};
+console.log(JSON.stringify([A.pushState(Object.assign({},B,{why:'url'})),A.pushState(Object.assign({},B,{why:null})),A.pushState(Object.assign({},B,{store:true,why:'url'}))]));
+"""
+
+
+def check_store_url(check):
+    """K1: SUPABASE_URL in a wrong form is fixed where it can be (no scheme, a trailing slash, a path, the dashboard's address) and else
+    refused with the problem's name, never the value: app.store_url, app.store's one line, bot.py site (data-sb-url fixed, or
+    data-sb-why="url") and the Account card's state badurl in place of nostore."""
+    import json
+    import shutil
+    import app as A
+    forms = [("https://abcref.supabase.co", "https://abcref.supabase.co", ""), (" abcref.supabase.co/\n", "https://abcref.supabase.co", "no https"),
+             ("https://abcref.supabase.co/rest/v1/", "https://abcref.supabase.co", "had a path"),
+             ("https://supabase.com/dashboard/project/abcref/settings/api", "https://abcref.supabase.co", "dashboard address"),
+             ("http://abcref.supabase.co", None, "plain http"), ("https://user:pw@abcref.supabase.co", None, "not a host"),
+             ("ftp://abcref.supabase.co", None, "not https"), ("http://127.0.0.1:5432", "http://127.0.0.1:5432", ""), ("", None, "missing")]
+    wrong = [f[0] for f in forms if A.store_url(f[0]) != (f[1], f[2])]
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    said = {}
+    for u in ("http://abcref.supabase.co", "https://abcref.supabase.co/rest/v1"):
+        rc, out, err = run_py("import app\nprint([app.enabled(), app.enabled()])", dict(base, SUPABASE_URL=u, SUPABASE_SECRET_KEY="sb_secret_auditkey123456"))
+        said[u] = (out.strip(), [l for l in err.splitlines() if "SUPABASE_URL" in l])
+    tmp = tempfile.mkdtemp(prefix="memebot-audit-url-")
+    pages = {}
+    try:
+        d = os.path.join(tmp, "mb")
+        os.makedirs(d)
+        with open(os.path.join(d, "report.html"), "w", encoding="utf-8") as f:
+            f.write('<!doctype html><html lang="en"><head><title>Meme-Bot</title></head><body><div class="wrap">fake money</div></body></html>')
+        for u in ("https://supabase.com/dashboard/project/abcref", "http://abcref.supabase.co"):
+            sd = os.path.join(tmp, "site%d" % len(pages))
+            p = subprocess.run([PY, os.path.join(HERE, "bot.py"), "site", "--dir", d, "--out", sd, "--repo", "https://github.com/tester/Meme-Bot"], capture_output=True,
+                               text=True, timeout=120, env=dict(base, SUPABASE_URL=u, SUPABASE_PUBLISHABLE_KEY="sb_publishable_OKkey_1234567890"))
+            idx = open(os.path.join(sd, "index.html"), encoding="utf-8").read() if os.path.exists(os.path.join(sd, "index.html")) else ""
+            pages[u] = (p.returncode, idx.split("<head>")[0], [l for l in p.stderr.splitlines() if "SUPABASE_URL" in l])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    node, states = shutil.which("node"), None
+    if node:
+        r = subprocess.run([node, "-e", NODE_STATE % A.PAGE_JS], capture_output=True, text=True, timeout=60)
+        states = json.loads((r.stdout.strip().splitlines() or ["null"])[-1])
+    bad_said, fix_said = said["http://abcref.supabase.co"], said["https://abcref.supabase.co/rest/v1"]
+    dash, refused = pages["https://supabase.com/dashboard/project/abcref"], pages["http://abcref.supabase.co"]
+    check(not wrong and bad_said[0] == "[False, False]" and len(bad_said[1]) == 1 and bad_said[1][0].endswith("(plain http)") and "abcref" not in bad_said[1][0]
+          and fix_said[0] == "[True, True]" and len(fix_said[1]) == 1 and "(had a path)" in fix_said[1][0] and "abcref" not in fix_said[1][0]
+          and dash[0] == 0 and 'data-sb-url="https://abcref.supabase.co"' in dash[1] and refused[0] == 0 and 'data-sb-why="url"' in refused[1]
+          and "data-sb-url" not in refused[1] and any(l.endswith("(plain http)") for l in refused[2]) and not any("abcref" in l for l in refused[2] + dash[2])
+          and states in (None, ["badurl", "nostore", "off"]),
+          "K1 SUPABASE_URL: %d forms read as expected (wrong: %s); a refused URL is said once by name (%r), a fixed one too; bot.py site puts the "
+          "dashboard address in as https://<ref>.supabase.co and marks a refused one data-sb-why=\"url\"; the Account card reads %s"
+          % (len(forms) - len(wrong), wrong, bad_said[1][:1], states if states else "(no node here)"))
+
+
+def guard(check, fn):
+    """fn(check); a check that raises is one FAIL line and the next check still runs."""
+    try:
+        fn(check)
+    except Exception as e:
+        check(False, "%s stopped with %s: %s" % (fn.__name__, type(e).__name__, str(e)[-200:]))
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
-    check_push_reason(check)
-    check_sync_redact(check)
-    check_dev_budget(check)
-    check_radar_saved(check)
-    check_age_rounding(check)
-    check_import_git_fails(check)
+    for fn in (check_push_reason, check_sync_redact, check_dev_budget, check_radar_saved, check_age_rounding, check_import_git_fails, check_store_url):
+        guard(check, fn)
 
 
 def main():
