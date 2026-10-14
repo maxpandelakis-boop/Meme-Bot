@@ -3733,6 +3733,8 @@ console.log(JSON.stringify(o));
           "ignore the trap check, the daily overview's table fold is a 44 px target")
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
+    import selftest_radarpaper                  # the radar account: 3 EUR on each radar round's best 5, sold by the paper rules (radar_paper.py)
+    selftest_radarpaper.checks(check)
     import selftest_audit                       # the error audit's fixes (WP7), one check each
     selftest_audit.audit_checks(check)
 

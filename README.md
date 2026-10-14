@@ -335,6 +335,22 @@ categories for every position since the v2 restart on 10.10.: the best minute-ca
 the price at 6 h. They are not trading rules: they show what the rule left on the table. Dead pools and glitches are
 filtered out (closes, not wicks; a liquidity floor; self-priced pools), and a cut price says why. A small job after
 each scan (`peak.py`, GeckoTerminal minute candles) prices the windows that have ended.
+The block "Without the stop-loss" also shows the raw top: the highest close of all, unfiltered, with what selling there
+would have given after fees, wherever it differs from the filtered best, and why it could not be sold there in two words
+("one candle", "dust volume", "pool died", "over the cap"). That is the "sold at the very top" number; a 303x print that
+lasted one minute is in it, marked.
+
+### Radar account (bought within minutes)
+
+A second paper account, beside the real one and never touching it: every launch-radar round's best 5 coins go in for
+3 € each, at the price the radar saw, at the round's time (a coin only once; green when the radar rated it good). They
+are sold by the same rules as the paper account (stop -30%, take-profit +1000% at the confirmed close, else the close at
+6 h; a dead pool is a total loss; paper fees), replayed on the pool's GeckoTerminal minute candles with the glitch rules of
+"Best price within 6 h". The Account tab shows it right under "Without the stop-loss": two tiles, "All 5" and "Green
+only" (P/L, invested, win rate, how many sold and open), the best trade, the same coins in hindsight (best within 6 h,
+raw top) and the last 30 coins in a fold. `radar_paper.py` prices them inside the peaks job after each scan, on what is
+left of its ten minutes (at most 15 windows a run, oldest first), so a result shows about an hour after its 6 hours.
+One doc per coin in `db/memeradarpaper/` on the results branch; nothing the trader reads changes.
 
 ## Publicity
 

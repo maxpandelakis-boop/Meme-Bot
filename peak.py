@@ -52,7 +52,8 @@ GeckoTerminal off for the rest of the run. Docs are written every SETTLE_EVERY w
 
 Usage:
   python3 peak.py run --dir mb [--now <ms>] [--deadline-s 600] [--mock http://127.0.0.1:8765]
-      -> prints one JSON line {"items","ok","m15","est","unit","waiting","secs","why"}; progress goes to stderr
+      -> prints one JSON line {"items","ok","m15","est","unit","waiting","radar","secs","why"}; progress goes to stderr
+         ("radar": radar_paper.py's summary; the radar account is priced on what is left of the deadline, see radar_account)
 """
 import argparse, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
@@ -174,7 +175,7 @@ def _rows(cands):
     return out
 
 
-def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, mc0=None, res=1):
+def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, mc0=None, res=1, levels=None):
     """The best confirmed close of a pool inside [entry_at, end] after the glitch filter, relative to the entry, and the close at
     the end. Pure: no clock, no files.
 
@@ -184,6 +185,8 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
     found gone. liq0, mc0: liquidity and market cap at the entry. res: the candles' minutes (1, or 15 for GT's 15-minute candles).
     Candles after the end are used only to see whether a low close at the very end recovered (up to SETTLE_MS after the end: what
     the fetch asks for), never as a level or as the value at 6 h.
+    levels: a list that gets every level the filter accepted, in time order, as (ms, level relative to base) (the entry not among
+    them): radar_paper.py's take-profit is the first of them at 11x or more. The result does not depend on it.
     -> {"state": "ok" | "unit" | "waiting" (no candle inside the window), "res", "px", "cpx", "base", "x", "at", "rawX", "x6",
         "lo", "loAt", "dead": None | {"at", "why"}, "cut": [...], "n"}"""
     R = int(res or 1) * MIN
@@ -258,6 +261,8 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
             best, best_t = lv, c[0]
         held.append((c[0], lv))
         prev = x
+    if levels is not None:
+        levels.extend(held[1:])
     if coll is not None and (dead is None or coll < dead[0]):
         dead = (coll, "collapse", "")
     shown = [c for c in live if coll is None or c[0] < coll]
@@ -855,6 +860,7 @@ def run(d, now, deadline_s=600.0, mock=None, log=None):
     ctx = context(d)
     its = items(d, now, ctx)
     counts, why = {"ok": 0, "m15": 0, "est": 0, "unit": 0, "waiting": 0}, "no window to price"
+    http = None
     if its:
         http = F.Http(mock, pause=0, log=log)
         log("peaks: %d windows to price (%d closed in the last %g h), deadline %ds" % (
@@ -869,10 +875,23 @@ def run(d, now, deadline_s=600.0, mock=None, log=None):
             if k + step < len(its):
                 log("  peaks: %d of %d windows asked, their docs written" % (k + step, len(its)))
     out = dict({"items": len(its)}, **counts)
+    out["radar"] = radar_account(d, now, http, mock, t0 + deadline_s, log)
     out.update(secs=round(time.time() - t0, 1), why=why)
     log("peaks: %d priced from minute candles, %d from 15-minute candles, %d estimated, %d not booked (unit), %d waiting; %s (%.0f s)" % (
         counts["ok"], counts["m15"], counts["est"], counts["unit"], counts["waiting"], why, out["secs"]))
     return out
+
+
+def radar_account(d, now, http, mock, until, log):
+    """The radar account (radar_paper.py: 3 EUR on each launch-radar round's best 5, sold by the paper rules) on what is left of
+    this run's deadline, after the windows above: the same GeckoTerminal client (its 10 s gap, cooldowns and a host given up stay
+    in force), at most radar_paper.MAX_ITEMS windows. It never fails this run: an error is logged and returned as {"err"}."""
+    try:
+        import radar_paper as RP
+        return RP.run(d, now, http=http, mock=mock, until=until, log=log)
+    except Exception as e:
+        log("radar account: not priced this run (%s: %s)" % (type(e).__name__, str(e)[:160]))
+        return {"err": type(e).__name__}
 
 
 def main(argv=None):

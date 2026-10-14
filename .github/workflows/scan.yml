@@ -16,7 +16,8 @@
 # that never hold up the scan: the scan imports the radar's records (branch radar-data) for the page and the results branch, feeds the
 # radar its wallet memory (branch radar-feed), exports its records once a day with the big test, and starts one radar round at its
 # end (inside the radar's active hours). A second job,
-# peaks, prices the closed 6-hour windows of the paper positions (best price within 6 h, hindsight) after the scan.
+# peaks, prices the closed 6-hour windows of the paper positions (best price within 6 h, hindsight) after the scan, and on what is
+# left of its ten minutes the radar account's buys (radar_paper.py, called from peak.py run: at most 15 windows, the same client).
 # Fake money only: nothing is bought anywhere.
 name: Meme-Bot scan
 run-name: "${{ inputs.source == 'hourly' && 'Hourly scan' || (github.event_name == 'schedule' && 'Safety-net scan' || 'Scan now') }} · ${{ inputs.horizon || '2h' }} profile${{ inputs.rescan && ' · fresh snapshot' || '' }}"

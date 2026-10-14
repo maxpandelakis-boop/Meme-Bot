@@ -4,6 +4,8 @@ Playwright and a Chromium are installed, the layout at 390 and 1280 px in light 
 (strip figures and feed rows 7-20 behind folds), tap targets of 44 px, long tickers, the selected order's contrast and the live line.
 U11 checks the block "Without the stop-loss" (max profit and max loss within 6 h, from the docs' x/eur and lo/eurLo): the stop and
 take-profit tiles, the all-trades line, the per-trade list and its folds, the empty and partial states, escaping, the layout.
+U12 checks the raw peak beside the filtered best (peak.py's rawX, its euros after fees and the short cut reason) in the all-trades line
+and per trade.
 
 The memepeak docs here are a stand-in written in the frozen doc shape (SPEC 5 WP2), so the checks need no peak.py.
 
@@ -399,12 +401,32 @@ def _noloss_checks(check, d, D, A, P, pos, page, now):
     a_worst = round(sum(docs[k]["eurLo"] - pos[k]["ticket"] for k in ids), 2)
     a_real = round(sum(real(k) for k in ids), 2)
     line = (re.search(r'<div class="nl-all" data-nl="all">.*?</div>', nl, re.S) or re.match("", "")).group(0)
+    eraw = lambda k: round(M.pos_value(pos[k], 1.0, docs[k]["rawX"]), 2) if k in ("y-stop", "y-rug") else docs[k]["eur"]    # rawX over 1.05x the best
+    a_raw = round(sum(eraw(k) - pos[k]["ticket"] for k in ids), 2)
     check(ids == ["y-path", "y-rug", "y-stop", "y-time", "y-tp"] and (al["n"], al["of"]) == (5, 8) and (al["best"], al["worst"], al["real"]) == (a_best, a_worst, a_real)
-          and vals(line) == {"best": PA.eur(a_best, True), "worst": PA.eur(a_worst, True), "real": PA.eur(a_real, True)} and "All 5 priced trades, sold each" in line
+          and vals(line) == {"best": PA.eur(a_best, True), "worst": PA.eur(a_worst, True), "real": PA.eur(a_real, True), "raw": PA.eur(a_raw, True)}
+          and "All 5 priced trades, sold each" in line and al["raw"] == a_raw and al["rawN"] == 2 and "2 not sellable there" in line
           and "priced 5 of 8 · 2 inside their 6 h" in nl and docs["y-rug"]["eurLo"] == 0.0 and A["noloss"]["open"] == 2,
           "U11 the all-trades line over the 5 trades with both ends priced (a doc without a low, the unit doc and the unreadable one wait): every trade "
-          "sold at its best %s, at its lowest %s (a dead pool at 0), what the stop-loss rule made %s; 'priced 5 of 8 · 2 inside their 6 h'" % (
-              PA.eur(a_best, True), PA.eur(a_worst, True), PA.eur(a_real, True)))
+          "sold at its best %s, at the raw top %s (2 not sellable there), at its lowest %s (a dead pool at 0), what the stop-loss rule made %s; "
+          "'priced 5 of 8 · 2 inside their 6 h'" % (PA.eur(a_best, True), PA.eur(a_raw, True), PA.eur(a_worst, True), PA.eur(a_real, True)))
+    r_dog = (re.search(r'<tr><td class="c"><strong>DOGGO</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
+    r_sto = (re.search(r'<tr><td class="c"><strong>STOPPY</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
+    r_moon = (re.search(r'<tr><td class="c"><strong>MOON</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
+    raw_cases = {("collapse: under 10% at minute 279, no recovery within 30 min", "unconfirmed: 303x held for one candle only", 303.437, 3.77): "one candle",
+                 ("pool dead: rug exit, last healthy scan 40 min after the entry", "dust: 59,257x on $3 volume", 59257.0, 1.0): "dust volume",
+                 ("cap: 1 level over 30x or a $100M market cap without support", "", 80.0, 5.0): "over the cap",
+                 ("jump: 1 level over 3x the previous close without support", "", 12.0, 2.0): "jump not held",
+                 ("collapse: under 10% at minute 30, no recovery within 30 min", "", 9.0, 1.2): "pool died",
+                 ("collapse: under 10% at minute 93, no recovery within 30 min", "", 2.68, 2.16): "one candle",
+                 ("", "", 1.9, 1.85): "", ("", "", None, 1.2): ""}
+    got_raw = {k: PA.raw_reason({"cut": [c for c in k[:2] if c], "rawX": k[2], "x": k[3]}) for k in raw_cases}
+    check(got_raw == raw_cases and "raw top 59,257x %s · pool died" % html.escape(PA.eur(eraw("y-rug") - 3.0, True)) in r_dog
+          and "raw top 1.90x %s · one candle" % html.escape(PA.eur(eraw("y-stop") - 3.0, True)) in r_sto and "raw top" not in r_moon
+          and r_dog.find("data-nl-raw") > r_dog.find('<td class="hi">') and r_dog.find("data-nl-raw") < r_dog.find('<td class="lo">'),
+          "U12 the raw peak beside the filtered best: per trade under its max profit (DOGGO's 59,257x print would have been %s, the pool died; "
+          "STOPPY's 1.90x top one candle), none where they agree (MOON); the reason in two words from peak.py's cut: the rule that names the raw "
+          "multiple (one candle, dust volume), else over the cap, jump not held, pool died (ZPAD's 303x on the results branch: one candle)" % PA.eur(eraw("y-rug") - 3.0, True))
     rows_nl = re.findall(r'<tr><td class="c"><strong>(.*?)</strong>.*?</tr>', nl, re.S)
     r_stop = (re.search(r'<tr><td class="c"><strong>STOPPY</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
     r_rug = (re.search(r'<tr><td class="c"><strong>DOGGO</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)

@@ -879,12 +879,13 @@ def finish_bg(job):
 KEEP_RESULTS_DAYS = 60      # scored snapshot chunks older than this leave the cache (the training does not need older coins)
 KEEP_RAW_DAYS = 3           # a raw snapshot chunk that was never scored by then never will be (its coins never got a price)
 KEEP_EARLY_DAYS = 30        # the early-list record (db/memeearly, radar.py check)
-KEEP_RADAR_DAYS = 30        # the launch radar's records (db/memeradar, imported from the radar-data branch); db/memepeak is never pruned
+KEEP_RADAR_DAYS = 30        # the launch radar's records (db/memeradar, imported from the radar-data branch); db/memepeak and db/memeradarpaper are never pruned
 
 
 def prune(d, now):
     """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted. The launch radar's
-    hour docs (db/memeradar) leave the results branch after KEEP_RADAR_DAYS; the peak docs (db/memepeak) are never deleted."""
+    hour docs (db/memeradar) leave the results branch after KEEP_RADAR_DAYS; the peak docs (db/memepeak) and the radar account's docs
+    (db/memeradarpaper, radar_paper.py) are never deleted."""
     gone = 0
     for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS), ("memeearly", KEEP_EARLY_DAYS),
                       ("memeradar", KEEP_RADAR_DAYS)):
@@ -1245,6 +1246,8 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memepeak/**
 !db/memeradar/
 !db/memeradar/**
+!db/memeradarpaper/
+!db/memeradarpaper/**
 """
 
 
