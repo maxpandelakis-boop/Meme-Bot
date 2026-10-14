@@ -779,10 +779,10 @@ def _s6(check, scan, tmp):
     runs_pk = [s.get("run") or "" for s in pst]
     check(pk.get("needs") == "scan" and "needs.scan.outputs.skipped != 'true'" in str(pk.get("if")) and "needs.scan.result == 'success'" in str(pk.get("if"))
           and pk.get("continue-on-error") is True and isinstance(pk.get("timeout-minutes"), int) and pk["timeout-minutes"] <= 12 and pk.get("permissions") == {"contents": "write"}
-          and (pst[:1] == [{"uses": "actions/checkout@v4"}]) and clone in restore_pk
+          and (pst[:1] == [{"uses": "actions/checkout@v4", "with": {"persist-credentials": False}}]) and clone in restore_pk
           and any(r.strip() == "python3 peak.py run --dir mb --deadline-s 600" for r in runs_pk) and runs_pk[-1].strip() == 'python3 bot.py sync --remote "$RESULTS_URL"'
           and [i for i, r in enumerate(runs_pk) if "peak.py run" in r] == [len(runs_pk) - 2],
-          "job peaks: needs scan (not after a skipped or failed scan), continue-on-error, %s min at most, contents write only; checkout, the scan's"
+          "job peaks: needs scan (not after a skipped or failed scan), continue-on-error, %s min at most, contents write only; checkout (no token kept), the scan's"
           " results clone, peak.py run --deadline-s 600, then bot.py sync" % pk.get("timeout-minutes"))
     pushes = [(s.get("name") or s.get("uses"), l.strip()) for j in scan["jobs"].values() for s in j.get("steps") or [] for l in (s.get("run") or "").splitlines() if "git push" in l]
     check(len(pushes) == 2 and not any("radar-data" in l for _, l in pushes) and all(re.search(r"\b(bigtest|radar-feed)\b", l) for _, l in pushes),
