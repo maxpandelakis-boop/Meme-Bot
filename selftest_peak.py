@@ -29,6 +29,10 @@ P10 GeckoTerminal failing (in-process runs on a copy of the recommend-mode db): 
     answering oddly after a readable first answer, an answer sent a byte at a time; no doc for windows under 48 h, a waiting doc
     with one more try for older ones, GeckoTerminal off for the run, the next healthy run prices from minute candles, docs written
     as the run goes
+P11 the low within 6 h (lo, loAt, eurLo; the max loss without the stop-loss): a staircase down, a dust spike down that is no low, one
+    print the next close took back, a dead pool that is a real low (collapse, rug exit, liquidity floor), a slow fall in a live pool,
+    a sparse pool, lo <= 1 and lo <= x6 in every case, no low for unit or waiting, eurLo after the paper fees, the estimate's low
+    (paper exits and DexScreener prices inside the window), and an older version's doc that is never made worse (keep_better)
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -92,6 +96,7 @@ def peak_checks(check):
         _p8(check, PK, M)
         _p9(check, PK, M, tmp)
         _p10(check, PK, M, S, tmp)
+        _p11(check, PK, M)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -325,6 +330,13 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
           "P4 base is never above max(cpx, px) (%d run docs, %d named cases)" % (len(allr), len(named)))
     check(list(dh) == list(PK.DOC_KEYS) and dh.get("v") == PK.PEAK_V and dh.get("pos") == H_["_id"] and dh.get("upd") == now,
           "P4 the doc carries the frozen keys in order (%d)" % len(dh))
+    lo_ok = all((doc["lo"] is None and doc["eurLo"] is None and doc["loAt"] is None) if doc["x"] is None else
+                (doc["lo"] is not None and 0 <= doc["lo"] <= 1.0 and (doc["x6"] is None or doc["lo"] <= doc["x6"]) and doc["entryAt"] <= doc["loAt"] <= doc["end"]
+                 and doc["eurLo"] == round(M.pos_value(pos3[pid], 1.0, doc["lo"]), 2)) for pid, doc in allr)
+    check(PK.PEAK_V == 2 and lo_ok and sum(1 for _, doc in allr if doc["lo"] is not None) >= 3,
+          "P11 every run doc books its low within 6 h: lo between 0 and the entry, never above x6, loAt inside the window, eurLo = "
+          "memebot.pos_value(p, 1.0, lo) after the paper fees; none without a booked best (PEAK_V %d, %d docs with a low)" % (
+              PK.PEAK_V, sum(1 for _, doc in allr if doc["lo"] is not None)))
 
     print("== peak P5: the trader's docs are the same with and without the memepeak docs")
     wi, wo = os.path.join(tmp, "with"), os.path.join(tmp, "without")
@@ -615,6 +627,86 @@ def _p9(check, PK, M, tmp):
           and ends(got[10:]) == sorted(ends(got[10:])) and not {"settled", "tried3", "pick"} & {x["pid"] for x in got} and {"prevv", "before"} <= {x["pid"] for x in got},
           "P9 items: up to 10 windows closed in the last 3 h first, then the backlog oldest first, at most 60; settled docs, 3 tries and pick mode "
           "left out, pre-restart positions and a doc of an older version priced (%d items)" % len(got))
+
+
+def _p11(check, PK, M):
+    print("== peak P11: the low within 6 h (the max loss without the stop-loss)")
+    T0 = 1_791_800_000_000
+    end = T0 + 6 * HOUR
+    pk = lambda c, px=1e-5, **k: PK.peak_of(c, T0, end, px, **k)
+    pos = young_pos()
+    at_min = lambda r: None if r.get("loAt") is None else (r["loAt"] - T0) // MIN
+    stair = [1.0 - 0.05 * i for i in range(15)] + [0.3] * 300
+    r = pk(series(T0, stair))
+    doc = PK._finish({"v": PK.PEAK_V}, dict(pos, px=1e-5), r, src="m1", tries=0)
+    want = round(M.pos_value(pos, 1.0, 0.3), 2)
+    check(r["lo"] == 0.3 and at_min(r) == 14 and r["x6"] == 0.3 and doc["lo"] == 0.3 and doc["loAt"] == T0 + 14 * MIN and doc["eurLo"] == want
+          and want < 0.9 and doc["eur"] == round(M.pos_value(pos, 1.0, r["x"]), 2),
+          "P11 a staircase down: the low is the lowest close (0.3x at minute 14), eurLo %s is 3 EUR at 0.3x after the paper fees (under 0.90)" % doc["eurLo"])
+    dust = series(T0, [1.0, 1.1, 1.2, 0.2, 1.2, 1.25] + [1.2] * 300, vol=lambda i: 3.0 if i == 3 else 2000.0)
+    real = series(T0, [1.0, 1.1, 1.2, 0.2, 0.2, 1.2, 1.25] + [1.2] * 300)
+    rd, rr = pk(dust), pk(real)
+    check(rd["lo"] == 1.0 and at_min(rd) == 0 and rr["lo"] == 0.2 and at_min(rr) == 3,
+          "P11 a dust spike down ($3 of volume) is no low (%sx at minute %s), the same dip on real volume held for two closes is (%sx at minute %s)" % (
+              rd["lo"], at_min(rd), rr["lo"], at_min(rr)))
+    r1 = pk(series(T0, [1.0, 1.4, 1.5, 1.5, 0.01, 1.5, 1.6, 1.6, 1.6]))
+    sparse = [[T0 + i * 10 * MIN] + [1e-5 * (1 - 0.08 * i)] * 4 + [2000.0] for i in range(10)] + [[T0 + 200 * MIN] + [0.9e-5] * 4 + [2000.0]]
+    rs = pk(sparse)
+    check(r1["lo"] == 1.0 and not r1["dead"] and abs(rs["lo"] - 0.28) < 1e-9 and at_min(rs) == 90 and rs["x6"] == 0.9,
+          "P11 one print at 0.01x that the next close took back is no low (%sx); in a pool that trades every 10 minutes each close stands (low %sx at minute %s, "
+          "6 h %sx)" % (r1["lo"], rs["lo"], at_min(rs), rs["x6"]))
+    rc = pk(series(T0, [1.0, 1.2, 1.5, 1.9, 1.9, 1.8]) + series(T0, [1e-7, 1e-7], start=6))
+    rg = pk(series(T0, [1.0] * 39 + [0.8, 0.9] + [20] * 4), rug_ok_at=T0 + 40 * MIN)
+    rq = pk(series(T0, [1.0, 0.9] + [0.8] * 300), liq0=20_000.0, ds_points=[(T0 + 90 * MIN, None, 300.0)])
+    slow = pk(series(T0, [1.0 - 0.0025 * i for i in range(361)]))
+    dg = PK._finish({"v": PK.PEAK_V}, dict(pos, px=1e-5), rc, src="m1", tries=0)
+    check(rc["lo"] == 0.0 and at_min(rc) == 6 and rg["lo"] == 0.0 and at_min(rg) == 40 and rq["lo"] == 0.0 and at_min(rq) == 90 and dg["eurLo"] == 0.0
+          and abs(slow["lo"] - slow["x6"]) < 1e-9 and 0.1 < slow["lo"] < 0.11 and not slow["dead"],
+          "P11 a pool that really died is a real loss, never filtered away: lo 0 at the collapse (minute %s), at the rug exit's last healthy scan (minute %s) "
+          "and at the liquidity floor (minute %s), eurLo 0; a slow fall in a live pool is its lowest close (%sx), not 0" % (at_min(rc), at_min(rg), at_min(rq), slow["lo"]))
+    fx = json.load(open(os.path.join(FIX, "named.json"), encoding="utf-8"))
+    named = {c["name"]: PK.peak_of(expand(c), c["entryAt"], c["entryAt"] + 6 * HOUR, c["px"], c.get("rugOkAt"), [q[:3] for q in c["ds"]],
+                                   liq0=c["liq0"], mc0=c["mc0"]) for c in fx["cases"]}
+    p1 = [pk(series(T0, m)) for m in ([1.0, 1.1, 1.2, 8.0, 1.1, 1.15, 1.2] + [1.1] * 300, [1.0] * 360 + [9.0] * 3, [1.0, 1.1, 1.2, 1.3, 500, 480, 1.2, 1.2])]
+    allr = list(named.values()) + p1 + [r, rd, rr, r1, rs, rc, rg, rq, slow]
+    bad = [(k, v["lo"], v["x6"]) for k, v in list(named.items()) + [("case", v) for v in allr]
+           if v["state"] == "ok" and not (v["lo"] is not None and 0 <= v["lo"] <= 1.0 and (v["x6"] is None or v["lo"] <= v["x6"] + 1e-12))]
+    dead_named = [k for k, v in named.items() if v["dead"]]
+    check(not bad and dead_named and all(named[k]["lo"] == 0.0 for k in dead_named) and named["HIRE"]["lo"] <= 1.0,
+          "P11 lo is between 0 and the entry and never above the value at 6 h in every case and named fixture; the named dead pools (%s) are a low of 0 (%s)" % (
+              ", ".join(dead_named), bad[:3] or "all fine"))
+    ru = pk(series(T0, [5.0, 5.1, 5.2, 5.0] * 20), px=5e-5, ds_points=[(T0 + 10 * MIN, 0.2 * 1e-5, 50_000.0)])
+    du = PK._finish({"v": PK.PEAK_V}, dict(pos, px=5e-5), ru, src="m1", tries=0)
+    rw = pk([])
+    check(ru["state"] == "unit" and ru["lo"] is None and du["lo"] is None and du["eurLo"] is None and du["loAt"] is None and rw["lo"] is None and rw["loAt"] is None,
+          "P11 candles in another unit than DexScreener's price book no low either (unit), and no candle means no low (waiting)")
+    # the estimate's low: the paper exits and DexScreener's prices inside the window are prices the pool really had
+    pe = dict(pos, px=1e-5, t=T0, entryAt=T0, _exits=[{"why": "stop", "px": 0.68e-5, "at": T0 + 40 * MIN, "t": T0 + 50 * MIN}])
+    est = PK.estimate({"v": PK.PEAK_V}, {"tips": {}}, pe, None, [], 3)
+    est_ds = PK.estimate({"v": PK.PEAK_V}, {"tips": {}}, pe, None, [(T0 + 20 * MIN, 0.5e-5, 20_000.0), (end + 30 * MIN, 0.1e-5, 20_000.0)], 3)
+    pl = dict(pe, _exits=[{"why": "stop", "px": 0.1e-5, "at": end + 20 * MIN}])
+    est_late = PK.estimate({"v": PK.PEAK_V}, {"tips": {}}, pl, None, [], 3)
+    est_rug = PK.estimate({"v": PK.PEAK_V}, {"tips": {}}, pe, T0 + 30 * MIN, [], 3)
+    check(est["lo"] == 0.68 and est["loAt"] == T0 + 40 * MIN and est["eurLo"] == round(M.pos_value(pe, 1.0, 0.68), 2) and est_ds["lo"] == 0.5
+          and est_ds["loAt"] == T0 + 20 * MIN and est_late["lo"] == 1.0 and est_rug["lo"] == 0.0 and est_rug["eurLo"] == 0.0,
+          "P11 an estimate's low is an upper bound from real prices inside the window: the stop's price (0.68x at its candle), a DexScreener point (0.5x); "
+          "a price after the window does not count (1.0x); a rug is 0 (%s / %s / %s / %s)" % (est["lo"], est_ds["lo"], est_late["lo"], est_rug["lo"]))
+    # PEAK_V 2 prices every older doc again, but never worse: a lost minute history keeps the old best and adds this run's low
+    old = {"v": PK.PEAK_V - 1, "state": "ok", "src": "m1", "res": 1, "tries": 0, "pos": "q", "entryAt": T0, "end": end, "px": 2e-5, "cpx": 2e-5,
+           "base": 2e-5, "x": 4.7608, "at": T0 + 4 * HOUR, "rawX": 4.87, "x6": 2.9692, "eur": 90.55, "eur6": 56.17, "dead": None, "cut": [], "n": 360}
+    pq = dict(pos, px=2e-5, ticket=20.0, t=T0, entryAt=T0)
+    new_est = {"v": PK.PEAK_V, "state": "est", "src": "est", "pos": "q", "upd": end + 99 * HOUR, "base": 1e-5, "x": 1.0, "lo": 0.6, "loAt": T0 + HOUR, "entryAt": T0, "end": end}
+    kept = PK.keep_better(dict(new_est), old, pq, end + 99 * HOUR)
+    new_m1 = dict(new_est, src="m1", state="ok")
+    old_dead = dict(old, x6=0.0, dead={"at": T0 + 5 * HOUR, "why": "collapse"})
+    kd = PK.keep_better(dict(new_est), old_dead, pq, end + 99 * HOUR)
+    check(kept and kept["v"] == PK.PEAK_V and kept["src"] == "m1" and kept["x"] == 4.7608 and kept["eur"] == 90.55 and kept["x6"] == 2.9692
+          and kept["lo"] == 0.3 and kept["loAt"] == T0 + HOUR and kept["eurLo"] == round(M.pos_value(pq, 1.0, 0.3), 2) and list(kept) == list(PK.DOC_KEYS)
+          and PK.keep_better(dict(new_est, state="waiting", src=None), old, pq, end) is None and PK.keep_better(new_m1, old, pq, end) is new_m1
+          and PK.keep_better(dict(new_est), dict(old, v=PK.PEAK_V), pq, end)["x"] == 1.0 and kd["lo"] == 0.0 and kd["loAt"] == T0 + 5 * HOUR,
+          "P11 an older version's doc from minute candles is never made worse: an estimate keeps its best %sx and adds the low rebased onto its base "
+          "(0.6x of half the price -> %sx), a waiting answer leaves it for a later run, new minute candles replace it, its dead pool stays a low of 0" % (
+              kept and kept["x"], kept and kept["lo"]))
 
 
 class _GT:

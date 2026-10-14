@@ -2,8 +2,9 @@
 """peak.py: the hindsight category "best price within 6 h" of the paper account. Fake money only: nothing is ever bought.
 
 For every paper position (since the restart, and the few bought before it, shown apart), open or sold, once its 6-hour window has
-closed, this books the highest minute-candle CLOSE of the bought pool within 6 hours after the paper buy, through a glitch filter, and
-next to it what selling at exactly 6 hours would have given. One doc per position: db/memepeak/<pid>.json. It is hindsight, not a
+closed, this books the highest minute-candle CLOSE of the bought pool within 6 hours after the paper buy, through a glitch filter, the
+LOWEST close within the same 6 hours (the most it could have lost without the stop-loss), and what selling at exactly 6 hours would
+have given. One doc per position: db/memepeak/<pid>.json. It is hindsight, not a
 trading rule: the stop-loss account (memebot.py) is the paper account that really runs, and it is not touched. Nothing here is read
 by the trader, the training or the big test; this file only imports memebot (paper fees, positions) and fetch (the HTTP client).
 
@@ -13,6 +14,12 @@ The money: cpx = the first close at or after the entry minute; base = max(cpx, p
 never flatters); x = best accepted close / base; x6 = the last close by the end / base (the lower of the last close on real volume
 and the last close of any volume: a dust print can lower it, never raise it), 0 when the pool died inside the window; eur and eur6
 are memebot.pos_value(p, 1.0, x) and (..., x6): the paper fees.
+The low: lo = the lowest level the pool held inside the window / base, at loAt; eurLo = memebot.pos_value(p, 1.0, lo). Closes only;
+a dust candle is no price (it can be neither the best nor the low); a close that the next real close within 5 minutes took back
+counts only down to that next close (one glitch print is no low), a close no real close followed within 5 minutes stands (the price
+stayed there); the entry counts (its close, or the base when that candle was dust), so lo <= 1; the value at 6 h counts, so
+lo <= x6; a pool that died inside the window (rug exit, liquidity floor, collapse) is a real loss: lo = 0 at the time it died. The
+candles of another unit (state "unit") book no low either.
 
 The glitch filter, in this order (every rule that fires is written into "cut", the first words naming the rule):
   1. closes only, never wicks
@@ -31,9 +38,13 @@ The glitch filter, in this order (every rule that fires is written into "cut", t
 
 States: "ok" (src "m1", or "m15" when GeckoTerminal had only 15-minute candles: a lower bound), "est" (after 3 empty fetches, or
 an empty answer 48 h after the end: from a take-profit exit (11x), a time exit (x6) and the tip record's stored candle paths of the
-same coin and run; x >= 1.0), "unit", "waiting" (the fetch came back empty; "tries" counts). ok, est and unit docs are never
-rewritten unless PEAK_V changes. A failed request (a 5xx, a timeout, 429s through the whole wait ladder) never settles a window: a
-window under 48 h past its end keeps its doc as it was, an older one gets a waiting doc with one more try (an estimate only after
+same coin and run; x >= 1.0; lo from the same paths, the paper exits' prices and the DexScreener points inside the window, x6 and a
+dead pool: an upper bound of the real low), "unit", "waiting" (the fetch came back empty; "tries" counts). ok, est and unit docs are
+never rewritten unless PEAK_V changes. When PEAK_V changes, a doc of the older version is priced again, but never made worse: when
+this run gets a lesser source than the old doc had (15-minute candles or an estimate where it had minute candles, e.g. because
+GeckoTerminal no longer keeps that day's minutes), the old doc's best and value at 6 h stay and only the low of this run is added
+(rebased onto the old doc's base); an empty answer leaves the old doc as it is for a later run. A failed request (a 5xx, a timeout,
+429s through the whole wait ladder) never settles a window: a window under 48 h past its end keeps its doc as it was, an older one gets a waiting doc with one more try (an estimate only after
 3). A 5xx or a timeout three times in a row, or one answer that is not GeckoTerminal's OHLCV shape (a block page), switches
 GeckoTerminal off for the rest of the run. Docs are written every SETTLE_EVERY windows, so a step killed at its timeout keeps them.
 
@@ -48,7 +59,7 @@ sys.path.insert(0, HERE)
 import memebot as M      # read only: positions, paper fees, PAPER_GROUPS
 import fetch as F        # read only: Http (pacing, cooldowns, circuit breaker), GT, HOST_GAP, HOST_429, row
 
-PEAK_V = 1                  # the doc version: a settled doc is recomputed only when this changes
+PEAK_V = 2                  # the doc version: a settled doc is recomputed only when this changes (2: the low within 6 h, lo/loAt/eurLo)
 MIN = 60_000
 WINDOW_H = 6.0              # hours after the entry
 SETTLE_MS = 2 * MIN         # a window counts once now >= end + 2 min
@@ -76,7 +87,8 @@ GT_HOST = urllib.parse.urlsplit(F.GT).netloc
 GT_GONE = "GeckoTerminal given up for this run"
 GT_SHAPE = "GeckoTerminal answered in an unknown shape"
 DOC_KEYS = ("v", "pos", "grp", "sym", "addr", "pair", "ticket", "t", "entryAt", "end", "upd", "state", "src", "res", "tries",
-            "px", "cpx", "base", "x", "at", "rawX", "x6", "eur", "eur6", "dead", "cut", "n")
+            "px", "cpx", "base", "x", "at", "rawX", "x6", "eur", "eur6", "lo", "loAt", "eurLo", "dead", "cut", "n")
+SRC_RANK = {"m1": 3, "m15": 2, "est": 1}   # how good a settled doc's source is: an older version's doc is never replaced by a lesser one
 
 
 def num(v):
@@ -171,12 +183,12 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
     Candles after the end are used only to see whether a low close at the very end recovered (up to SETTLE_MS after the end: what
     the fetch asks for), never as a level or as the value at 6 h.
     -> {"state": "ok" | "unit" | "waiting" (no candle inside the window), "res", "px", "cpx", "base", "x", "at", "rawX", "x6",
-        "dead": None | {"at", "why"}, "cut": [...], "n"}"""
+        "lo", "loAt", "dead": None | {"at", "why"}, "cut": [...], "n"}"""
     R = int(res or 1) * MIN
     rows = _rows(cands)
     win = [c for c in rows if c[0] >= entry_at - R and c[0] + R <= end]
     out = {"state": "waiting", "res": int(res or 1), "px": num(px), "cpx": None, "base": None, "x": None, "at": None, "rawX": None,
-           "x6": None, "dead": None, "cut": [], "n": len(win)}
+           "x6": None, "lo": None, "loAt": None, "dead": None, "cut": [], "n": len(win)}
     if not win:
         return out
     cpx = win[0][4]
@@ -254,6 +266,12 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
     else:                               # the last close on real volume, lowered (never raised) by a later dust print
         full = [c for c in shown if clean(c)]
         x6 = min(full[-1][4], shown[-1][4]) / base if full else None
+    if dead is not None and dead[0] <= end:     # a pool that died inside the window is a real loss: everything, at the time it died
+        lo, lo_t = 0.0, dead[0]
+    else:
+        lo, lo_t = low_of(shown, base, first if clean(win[0]) else 1.0, win[0][0], gap, clean)
+        if x6 is not None and x6 < lo:          # the value at 6 h is a price inside the window too
+            lo, lo_t = x6, (shown[-1] if full and shown[-1][4] <= full[-1][4] else full[-1])[0]
     cut = cut_dead + cut_coll
     if dust:
         x_, v_ = max(dust)
@@ -265,7 +283,7 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
     if n_cap:
         cut.append("cap: %d level%s over %gx or a $%gM market cap without support" % (n_cap, "" if n_cap == 1 else "s", CAP_X, MAX_MC / 1e6))
     out.update(state="ok", x=sig(best), at=int(max(best_t, entry_at)), x6=sig(x6) if x6 is not None else None,
-               dead={"at": int(dead[0]), "why": dead[1]} if dead is not None and dead[0] <= end else None, cut=cut)
+               lo=sig(lo), loAt=int(max(lo_t, entry_at)), dead={"at": int(dead[0]), "why": dead[1]} if dead is not None and dead[0] <= end else None, cut=cut)
     for tt, p, liq in pts:              # 7. the candles' scale against a liquid DexScreener price of the same minutes
         if liq is None or liq < CAP_LIQ or not p or not (entry_at <= tt <= end) or (dead is not None and tt >= dead[0]):
             continue
@@ -274,10 +292,27 @@ def peak_of(cands, entry_at, end, px, rug_ok_at=None, ds_points=(), liq0=None, m
             c = min(near, key=lambda c: abs(c[0] - tt))
             r = c[4] / p
             if not (1.0 / UNIT_X <= r <= UNIT_X):
-                out.update(state="unit", x=None, at=None, x6=None)
+                out.update(state="unit", x=None, at=None, x6=None, lo=None, loAt=None)
                 out["cut"] = cut + ["unit: candles %s away from DexScreener's price at minute %d" % (mult_text(max(r, 1 / r)), (tt - entry_at) // MIN)]
                 break
     return out
+
+
+def low_of(cands, base, entry_lv, entry_t, gap, clean):
+    """The lowest level a pool held (relative to base) and its minute: (lo, ms). Closes only; a candle that is not clean (dust) is no
+    price; a close that the next clean close within gap (ms) took back counts only down to that next close (one glitch print is no
+    low); a close that no clean close followed within gap stands (the price stayed there until the next trade). The entry level
+    (entry_lv at entry_t) counts first, so the low is never above it. Pure."""
+    lo, lo_t = entry_lv, entry_t
+    cl = [c for c in cands if clean(c)]
+    for j, c in enumerate(cl):
+        lv = c[4] / base
+        nxt = cl[j + 1] if j + 1 < len(cl) else None
+        if nxt is not None and nxt[0] - c[0] <= gap:
+            lv = max(lv, nxt[4] / base)
+        if lv < lo:
+            lo, lo_t = lv, c[0]
+    return lo, lo_t
 
 
 def filtered_text(doc):
@@ -640,7 +675,12 @@ def fetch(http, d, items_, until, done=None):
 def book(d, ctx, pid, p, info, now, old=None):
     """The memepeak doc of one position from this run's fetch result (and the doc before it, for tries); None when nothing was
     learned: a failed fetch of a window under EST_AFTER_H past its end (its doc, if any, stays), or no result at all. A failed fetch
-    never settles a window at once: past EST_AFTER_H it counts as a try (a waiting doc), and the estimate comes after MAX_TRIES."""
+    never settles a window at once: past EST_AFTER_H it counts as a try (a waiting doc), and the estimate comes after MAX_TRIES.
+    A settled doc of an older PEAK_V is never made worse (keep_better)."""
+    return keep_better(_book(d, ctx, pid, p, info, now, old), old, p, now)
+
+
+def _book(d, ctx, pid, p, info, now, old=None):
     entry, end = window(p)
     same_v = isinstance(old, dict) and old.get("v") == PEAK_V
     tries = int(num((old or {}).get("tries")) or 0) if same_v else 0
@@ -662,16 +702,49 @@ def book(d, ctx, pid, p, info, now, old=None):
     if tries >= MAX_TRIES or (old_w and status == "empty"):
         return estimate(doc, ctx, p, rug, ds, tries)
     return _finish(doc, p, {"state": "waiting", "res": None, "px": px, "cpx": None, "base": None, "x": None, "at": None, "rawX": None,
-                            "x6": None, "dead": None, "cut": [], "n": 0}, src=None, tries=tries)
+                            "x6": None, "lo": None, "loAt": None, "dead": None, "cut": [], "n": 0}, src=None, tries=tries)
+
+
+def keep_better(new, old, p, now):
+    """The doc to write when an older PEAK_V's settled doc exists: the new one when its source is as good (SRC_RANK: minute candles,
+    15-minute candles, estimate); None (the old doc stays, asked again next run) when the new one is only waiting; else the old doc's
+    best, value at 6 h and everything else, in this version, with this run's low rebased onto the old doc's base (the price, not the
+    multiple, is what this run learned), never above the old doc's entry level or its value at 6 h, and 0 when it found the pool dead.
+    Any other case: new as it is."""
+    if new is None or not isinstance(old, dict) or old.get("v") == PEAK_V or old.get("state") not in SETTLED:
+        return new
+    rank = lambda doc: SRC_RANK.get(doc.get("src"), 0) if doc.get("state") in SETTLED else 0
+    if rank(new) >= rank(old):
+        return new
+    if new.get("state") not in SETTLED:
+        return None
+    out = {k: old.get(k) for k in DOC_KEYS}
+    out.update({k: new.get(k) for k in ("v", "pos", "grp", "sym", "addr", "pair", "ticket", "t", "entryAt", "end", "upd")})
+    lo, lo_t = None, None
+    nb, ob = num(new.get("base")), num(old.get("base"))
+    if num(new.get("lo")) is not None and nb and ob and old.get("state") in ("ok", "est") and num(old.get("x")) is not None:
+        lo, lo_t = num(new["lo"]) * nb / ob, num(new.get("loAt"))
+        top = num(old.get("cpx")) / ob if num(old.get("cpx")) else 1.0
+        if top < lo:
+            lo, lo_t = top, num(old.get("entryAt"))
+        if num(old.get("x6")) is not None and num(old["x6"]) < lo:
+            lo, lo_t = num(old["x6"]), num(old.get("end"))
+        dead = old.get("dead") if isinstance(old.get("dead"), dict) else None
+        if dead and num(dead.get("at")) is not None:
+            lo, lo_t = 0.0, num(dead["at"])
+    out.update(lo=sig(lo) if lo is not None else None, loAt=int(lo_t) if lo is not None and lo_t is not None else None,
+               eurLo=round(M.pos_value(p, 1.0, lo), 2) if lo is not None else None)
+    return {k: out.get(k) for k in DOC_KEYS}
 
 
 def _finish(doc, p, r, src, tries):
     booked = r["state"] in ("ok", "est")
-    x, x6 = (r.get("x"), r.get("x6")) if booked else (None, None)
+    x, x6, lo = (r.get("x"), r.get("x6"), r.get("lo")) if booked else (None, None, None)
     doc.update({"state": r["state"], "src": src, "res": r.get("res") if src in ("m1", "m15") else None, "tries": tries,
                 "px": num(p.get("px")), "cpx": r.get("cpx"), "base": r.get("base"), "x": x, "at": r.get("at") if booked else None,
                 "rawX": r.get("rawX"), "x6": x6, "eur": round(M.pos_value(p, 1.0, x), 2) if x is not None else None,
-                "eur6": round(M.pos_value(p, 1.0, x6), 2) if x6 is not None else None, "dead": r.get("dead"), "cut": list(r.get("cut") or [])[:8],
+                "eur6": round(M.pos_value(p, 1.0, x6), 2) if x6 is not None else None, "lo": lo, "loAt": r.get("loAt") if lo is not None else None,
+                "eurLo": round(M.pos_value(p, 1.0, lo), 2) if lo is not None else None, "dead": r.get("dead"), "cut": list(r.get("cut") or [])[:8],
                 "n": int(r.get("n") or 0)})
     return {k: doc.get(k) for k in DOC_KEYS}
 
@@ -679,11 +752,14 @@ def _finish(doc, p, r, src, tries):
 def estimate(doc, ctx, p, rug, ds, tries):
     """A lower bound without minute candles of our own (state est): the entry itself (1.0x), a take-profit exit (11x at its
     minute), the tip record's stored closes of the same coin and run (rebased to the entry, through the same filter); x6 from a
-    dead pool (0), a time exit (its multiple) or a stored path that reaches the end."""
+    dead pool (0), a time exit (its multiple) or a stored path that reaches the end. The low is an upper bound of the real one: the
+    entry (1.0x), the stored paths' lows, the price of every paper exit and every DexScreener point inside the window (before the
+    pool died), x6, and 0 when the pool died inside the window."""
     entry, end = window(p)
     px, liq0, mc0 = num(p.get("px")), num(p.get("liq")), num(p.get("mc"))
     dead = dead_of(entry, end, rug, ds, liq0)
     x, at, raw, cut, n, x6 = 1.0, entry, None, [], 0, None
+    lo, lo_at = 1.0, entry
     for res, cs in paths_for(ctx, p):
         r = peak_of(cs, entry, end, px, rug, ds, liq0=liq0, mc0=mc0, res=res)
         if r["state"] != "ok" or not px or not (1.0 / 3 <= px / r["cpx"] <= 3.0):
@@ -695,6 +771,8 @@ def estimate(doc, ctx, p, rug, ds, tries):
             dead = (r["dead"]["at"], r["dead"]["why"], "")
         if r["x"] is not None and r["x"] > x:    # relative to max(cpx, px) >= px: a lower bound, never flattering
             x, at = r["x"], r["at"]
+        if r["lo"] is not None and r["lo"] < lo:
+            lo, lo_at = r["lo"], r["loAt"]
         last = [c for c in _rows(cs) if c[0] + res * MIN <= end]
         if r["x6"] is not None and last and last[-1][0] + res * MIN >= end - 30 * MIN:
             x6 = r["x6"]
@@ -706,13 +784,21 @@ def estimate(doc, ctx, p, rug, ds, tries):
             x, at = TP_X, int(t_e)
         if e.get("why") == "time" and px and num(e.get("px")) is not None and x6 is None:
             x6 = num(e["px"]) / px
+        if px and num(e.get("px")) is not None and t_e and entry <= t_e <= end and (dead is None or t_e < dead[0]) and num(e["px"]) / px < lo:
+            lo, lo_at = num(e["px"]) / px, int(t_e)
+    for t_p, p_p, _ in _points(ds):             # DexScreener's prices of the pool inside the window
+        if px and p_p and entry <= t_p <= end and (dead is None or t_p < dead[0]) and p_p / px < lo:
+            lo, lo_at = p_p / px, int(t_p)
+    if x6 is not None and x6 < lo:
+        lo, lo_at = x6, end
     if dead is not None and dead[0] <= end:
         x6 = 0.0
+        lo, lo_at = 0.0, int(dead[0])
         if dead[2] and dead[2] not in cut:
             cut.insert(0, dead[2])
     r = {"state": "est", "res": None, "cpx": None, "base": px, "x": sig(max(1.0, x)), "at": int(at), "rawX": sig(raw) if raw else None,
-         "x6": sig(x6) if x6 is not None else None, "dead": {"at": int(dead[0]), "why": dead[1]} if dead is not None and dead[0] <= end else None,
-         "cut": cut, "n": n}
+         "x6": sig(x6) if x6 is not None else None, "lo": sig(lo), "loAt": int(max(lo_at, entry)),
+         "dead": {"at": int(dead[0]), "why": dead[1]} if dead is not None and dead[0] <= end else None, "cut": cut, "n": n}
     return _finish(doc, p, r, src="est", tries=tries)
 
 
