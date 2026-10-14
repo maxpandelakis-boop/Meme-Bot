@@ -44,6 +44,7 @@ B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 X_LINK = re.compile(r"^https://(www\.)?(x|twitter)\.com/[A-Za-z0-9_]{1,30}(/[A-Za-z0-9_/?=&%.-]{0,90})?$")
 NAME = re.compile(r"^[A-Za-z0-9_.]{1,32}$")
 HOST = re.compile(r"^[A-Za-z0-9.-][A-Za-z0-9. -]{0,23}$")     # the radar's host labels ("rugcheck", "pump.fun trades")
+SRC = re.compile(r"^[a-z][A-Za-z0-9:_-]{0,23}$")               # a discovery list's name ("gt:new", "ll:llNew")
 LEVELS = ("bad", "warn", "unk", "ok", "info")
 ICON = {"bad": "✕", "warn": "!", "unk": "?", "ok": "✓", "info": "·"}
 VERDICTS = ("good", "watch", "trap")
@@ -234,6 +235,8 @@ def clean_doc(doc):
     o["hosts"] = {k: _str(v, 16) for k, v in list(hs.items())[:12] if isinstance(k, str) and HOST.match(k) and isinstance(v, str)}
     o["notes"] = [_str(x, 160) for x in (doc.get("notes") or []) if isinstance(x, str)][:8] if isinstance(doc.get("notes"), list) else []
     o["lines"] = [_str(x, 200) for x in (doc.get("lines") or []) if isinstance(x, str)][:12] if isinstance(doc.get("lines"), list) else []
+    sr = doc.get("src") if isinstance(doc.get("src"), dict) else {}      # the round's discovery counts (the office desk's Sources)
+    o["src"] = {k: int(v) for k, v in list(sr.items())[:12] if isinstance(k, str) and SRC.match(k) and _num(v) is not None and v == int(v) and 0 <= v <= 100_000}
     size = lambda: len(json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     while size() > DOC_MAX and o["others"]:
         o["others"].pop()
@@ -849,6 +852,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     if(rd){var ci=obj(rd.ci),pr=function(v){return Array.isArray(v)&&v.length===2&&isn(v[0])&&isn(v[1])?[v[0],v[1]]:null;};
       o.record={calls:num(rd.calls),rug:num(rd.rug),win:num(rd.win),eur:num(rd.eur),n60:num(rd.n60),ticket:num(rd.ticket),ci:{rug:pr(ci.rug),win:pr(ci.win)}};}
     Object.keys(hs).slice(0,12).forEach(function(k){if(HN.test(k)&&typeof hs[k]==='string')o.hosts[k]=str(hs[k],16);});
+    var sr=obj(d.src);o.src={};Object.keys(sr).slice(0,12).forEach(function(k){var v=sr[k];if(/^[a-z][A-Za-z0-9:_-]{0,23}$/.test(k)&&isn(v)&&Math.floor(v)===v&&v>=0&&v<=100000)o.src[k]=v;});
     return o;},
   // how old the doc is (ms), from its own t: the local time since it was first seen (got), plus the delay it was seen with once a newer
   // doc replaced an older one here (moved, at most LAG); before that the phone's clock is the first guess (MemebotLive.age's pattern)

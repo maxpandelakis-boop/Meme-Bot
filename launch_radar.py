@@ -403,7 +403,7 @@ class Radar:
         self.docs, self.rec_hour, self.pushed, self.model = {}, {}, {}, {}
         self.restore_state, self.last_counts, self.last_doc = "none", None, None
         self.res_at = self.feed_at = None
-        self.wm, self.xlinks, self.symmc, self.feed_meta = None, {}, {}, {}
+        self.wm, self.xlinks, self.symmc, self.feed_meta, self.disc = None, {}, {}, {}, {}
         self.res_summary, self.train = [], (None, None)
         self.W_prior = self.T.load_weights()
         self.W = self.W_prior
@@ -930,7 +930,7 @@ class Radar:
         # 2. discovery
         self.http.until = end(STEP_END["discover"])
         self.last_c = {}
-        n_disc = self.src.discover(sb, self.cache["pf"], now, self.cache["jup"])
+        n_disc = self.disc = self.src.discover(sb, self.cache["pf"], now, self.cache["jup"])
         self.index_x(now)
         # 3. DexScreener
         self.http.until = end(STEP_END["ds"])
@@ -1826,6 +1826,9 @@ class Radar:
                "coins": [dict(x["doc"], push=(self.rec(x["addr"]) or {}).get("push")) for x in coins],
                "others": [{"addr": x["addr"], "sym": x["sym"], "age": x["doc"]["age"], "v": x["v"], "pts": x["doc"]["pts"], "line": x["doc"]["line"]} for x in others[:40]],
                "lastGood": last_good, "recent": recent[:20], "record": record, "hosts": hosts, "notes": notes[:6], "lines": list(self.cycle_lines)}
+        doc["src"] = dict(sorted(((k, int(v)) for k, v in self.disc.items() if num(v) is not None), key=lambda kv: (-kv[1], kv[0]))[:12])   # the round's discovery counts (the office desk's Sources)
+        for o, x in zip(doc["others"], others):     # the fold's red flags too: the office desk counts the round's most frequent ones
+            o["hard"] = x["doc"]["hard"]
         return fit_size(doc)
 
     def finish_doc(self, state, now, why, after=None):

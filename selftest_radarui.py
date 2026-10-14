@@ -1218,6 +1218,30 @@ def browser(check, tmp, d, skips, shots=None):
           "the old links #radar, #tab-young and #new open New in a browser, once (the hash is dropped), one tab radio checked %s" % lk)
 
 
+def src_checks(check, tmp, skips):
+    """radar.json's "src" (the round's discovery counts, the office desk's Sources) through both whitelists: names like gt:new, whole counts
+    0..100000, the first 12 entries; Python and the script keep the same."""
+    import page_radar as P
+    t = 1_760_000_000_000
+    bad = {"gt:new": 40, "pf:graduated": 180.0, "ll:llNew": 3, "Bad": 1, "x y": 2, "jup:recent": 2.5, "pf:new": True, "list:profiles": -1, "kw:x": 100001, "gm:x": "7", "<b>": 1}
+    docs = [dict(kind="radar", t=t, src=bad), dict(kind="radar", t=t, src={"s:%d" % i: i for i in range(13)}), dict(kind="radar", t=t, src=[1, 2]), dict(kind="radar", t=t)]
+    py = [P.clean_doc(d)["src"] for d in docs]
+    check(py[0] == {"gt:new": 40, "pf:graduated": 180, "ll:llNew": 3} and list(py[1]) == ["s:%d" % i for i in range(12)] and py[2] == py[3] == {},
+          "the whitelist keeps src only with names like gt:new and whole counts 0..100000, its first 12 entries (%s)" % py[0])
+    node = shutil.which("node")
+    if not node:
+        skips.append("the src whitelist in node (no node)")
+        return
+    jd = os.path.join(tmp, "js-src")
+    os.makedirs(jd, exist_ok=True)
+    with open(os.path.join(jd, "src.js"), "w", encoding="utf-8") as f:
+        f.write("global.window={};global.document={readyState:'complete',querySelector:function(){return null;},getElementById:function(){return null;}};global.navigator={};\n"
+                + P.JS + "\nconsole.log(JSON.stringify(%s.map(function(d){return window.MemebotRadar.clean(d).src;})));\n" % json.dumps(docs))
+    r = subprocess.run([node, os.path.join(jd, "src.js")], capture_output=True, text=True)
+    js = json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
+    check(js == py, "the script's whitelist keeps the same src as Python's (%s)" % (js if js is not None else r.stderr[-300:]))
+
+
 def P_BANNER():
     import page_radar as P
     return P.BANNER
@@ -1233,6 +1257,7 @@ def checks(check, env=None):
     try:
         d, page = py_checks(check, tmp, T, standin)
         node_checks(check, tmp, skips)
+        src_checks(check, tmp, skips)
         browser(check, tmp, d, skips, env.get("shots"))
     finally:
         if standin:

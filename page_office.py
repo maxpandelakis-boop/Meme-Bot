@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """page_office.py: the agent office's newer parts on the page (fake money only: nothing here buys, sells or advises anything).
 
-  agent cards      the Office tab opens with them (the GROKBOT + JEV layout): a grid of compact cards, 2 columns on a phone and 4 on a
-                   desktop, one per agent of the last run plus the Launch radar. Each card has its icon on a badge in its state colour (done,
-                   at work, fallback, failed, skipped; dashed: own job), its name, one number (how long it worked; the radar: its last check)
-                   and one line (its result, cut to one line). A tap opens the Details fold at the agent's department. While a scan runs, the
-                   office's live script marks the cards through the hooks the panels already have (data-live, data-live-chip, -line).
+  radar desk       the Office tab opens with the Launch radar (its own job, radar.yml): one line with its light, its state in words
+                   (running, round in progress, sleeping until HH:MM, late, stopped, off) and "every 2 min · last HH:MM · next HH:MM", then
+                   four stations of its last round, 2 x 2 on a phone and in one row on a desktop: Sources (the coins its discovery lists
+                   found, the top 3 lists, the live feed's state), Checks (the coins under 10 minutes checked, the round's 2 most frequent red
+                   flags), Verdicts (no trap / watch / trap) and Push (the coin pushed this round, else the last coin without traps). Drawn
+                   from mb/radar_live.json, then kept current by the radar's script on the New tab (memebot-radar event). A tap opens New.
+  agent cards      under the desk (the GROKBOT + JEV layout): a grid of compact cards, 2 columns on a phone and 4 on a desktop, one per
+                   agent of the last run. Each card has its icon on a badge in its state colour (done, at work, fallback, failed, skipped),
+                   its name, one number (how long it worked) and one line (its result, cut to one line). A tap opens the Details fold at the
+                   agent's department. While a scan runs, the office's live script marks the cards through the hooks the panels already
+                   have (data-live, data-live-chip, -line).
   balance line     under the cards: the paper account's profit or loss after every run since the restart (memecurve "paper"), compact.
   details fold     everything else of the office (the counts, the floor plan with its departments and legend, the team timeline, the
                    daily overview in the Brain's panel) sits in one fold, closed until it is opened (a tap on a card opens it too).
-  radar desk       the Launch radar runs in its own job (radar.yml), not in the hourly scan: its desk is the second one on the Analysts
+  radar's panel    the Launch radar runs in its own job (radar.yml), not in the hourly scan: it also has the second desk on the Analysts
                    platform, drawn from mb/radar_live.json (the scan copies the radar's last radar.json there before it starts). It never
                    counts in a department's light, the team timeline, the counts or "at work at once"; office.json is not changed. The
                    radar's script on the New tab (memebot-radar event) keeps its light and its line current on the page. The radar runs
@@ -48,6 +54,15 @@ LOOK = {"running": ("running", "running"), "done": ("done", "done"), "late": ("f
         "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}     # stopped is red, late amber: the radar's colours on the New tab
 QUIET = ("off", "hours", "none")     # states whose last check is not news: no notes, no host chips
 CHIP = {"running": "neutral", "fallback": "warn", "failed": "bad", "done": "good"}
+SOON_MS, ROUND_MS = 10_000, 180_000  # the desk says "round in progress" from 10 s after the doc's next round for up to 3 minutes
+SRC = re.compile(r"^[a-z][A-Za-z0-9:_-]{0,23}$")     # a discovery list's name ("gt:new"), as page_radar keeps it
+NAME = re.compile(r"^[A-Za-z0-9_.]{1,32}$")
+VERDICTS = ("good", "watch", "trap")
+FEED = {"ok": "on"}                  # the live pump.fun feed (hosts.pumpportal): "live feed on", else its state (limited, off)
+try:
+    from page_radar import LABELS     # the words for a red flag's name (the radar's own)
+except ImportError:                   # a copy of the code without page_radar.py: the names as words
+    LABELS = {}
 
 
 def _num(v):
@@ -109,12 +124,29 @@ def radar_clean(doc):
     c = doc.get("counts") if isinstance(doc.get("counts"), dict) else {}
     run = doc.get("run") if isinstance(doc.get("run"), dict) else {}
     hosts = doc.get("hosts") if isinstance(doc.get("hosts"), dict) else {}
+    src = doc.get("src") if isinstance(doc.get("src"), dict) else {}
+    lg = doc.get("lastGood") if isinstance(doc.get("lastGood"), dict) and isinstance(doc["lastGood"].get("addr"), str) and B58.match(doc["lastGood"]["addr"]) else None
+    whole = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v == int(v) and 0 <= v <= 100_000
     return {"t": int(_ms(doc["t"])), "next": _ms(doc.get("next")), "state": _str(doc.get("state"), 20), "why": _str(doc.get("why"), 160),
             "run": {"start": _ms(run.get("start")), "end": _ms(run.get("end")), "cycle": _num(run.get("cycle")), "mode": run.get("mode") if run.get("mode") in ("round", "loop") else ""},
             "counts": {k: _num(c.get(k)) for k in ("seen", "good", "pushed", "seenAgeMed")} if isinstance(doc.get("counts"), dict) else None,
             "hosts": {_str(k, 40): _str(v, 20) for k, v in list(hosts.items())[:12] if isinstance(k, str) and isinstance(v, str)},
             "notes": [_str(x, 160) for x in (doc.get("notes") or [])[:4] if isinstance(x, str)] if isinstance(doc.get("notes"), list) else [],
-            "lines": [_str(x, 200) for x in (doc.get("lines") or [])[-6:] if isinstance(x, str)] if isinstance(doc.get("lines"), list) else []}
+            "lines": [_str(x, 200) for x in (doc.get("lines") or [])[-6:] if isinstance(x, str)] if isinstance(doc.get("lines"), list) else [],
+            "src": {k: int(v) for k, v in list(src.items())[:12] if isinstance(k, str) and SRC.match(k) and whole(v)},
+            "coins": desk_coins(doc.get("coins"), 5), "others": desk_coins(doc.get("others"), 40),
+            "lastGood": {"sym": _str(lg.get("sym"), 24), "at": _ms(lg.get("at"))} if lg else None}
+
+
+def desk_coins(v, n):
+    """A radar.json's coins or others as the desk counts them: address, symbol, verdict, push time and red flags; at most n."""
+    out = []
+    for c in v if isinstance(v, list) else []:
+        if isinstance(c, dict) and isinstance(c.get("addr"), str) and B58.match(c["addr"]):
+            hard = c.get("hard") if isinstance(c.get("hard"), list) else []
+            out.append({"addr": c["addr"], "sym": _str(c.get("sym"), 24), "v": c.get("v") if c.get("v") in VERDICTS else "watch", "push": _ms(c.get("push")),
+                        "hard": [x for x in hard if isinstance(x, str) and NAME.match(x)][:20]})
+    return out[:n]
 
 
 def is_round(doc):
@@ -180,17 +212,25 @@ def look(state, doc, hhmm, now=None, scan=None):
         line = (lead + " · " if lead else "") + "%d seen · %d without traps · %d pushed" % (_int(c.get("seen")), _int(c.get("good")), _int(c.get("pushed")))
     checked = ("%s %s" % ("last round" if is_round(doc) else "checked", hhmm(doc["t"]))) if doc and state != "none" else "no check yet"
     until = (" · " + next_words(doc, now, scan, hhmm)) if doc and state == "done" else ""
-    return {"light": light, "word": word, "line": line, "stat": hhmm(doc["t"]) if doc and state != "none" else "own job", "checked": checked,     # the card's number: its last check
+    return {"light": light, "word": word, "line": line, "stat": hhmm(doc["t"]) if doc and state != "none" else "own job", "checked": checked,     # the time of its last check
             "here": state in ("running", "done", "late"), "until": until, "quiet": state in QUIET}
+
+
+def radar_ref(D, doc):
+    """The time (ms) the radar's state is judged at on the page: the start of the scan that copied its file (the page is built about 25
+    minutes later; the script brings it up to date), else now."""
+    runs = [r for r in D.get("runs") or [] if isinstance(r, dict) and _ms(r.get("t"))]
+    now = _num(D.get("now")) or 0
+    return min(now, max(doc["t"], _ms(runs[0]["t"]))) if doc and runs and now else now
 
 
 def ext_agents(D, meta, R):
     """The agents that run in their own job, as office_data's agents (never 'ran' in the scan: no seconds, no bar, no count). The radar's
-    state is judged at the start of the scan that copied its file (the page is built about 25 minutes later; the script brings it up to date)."""
+    state is judged at the start of the scan that copied its file (radar_ref)."""
     doc = radar_doc(D.get("dir"))
     runs = [r for r in D.get("runs") or [] if isinstance(r, dict) and _ms(r.get("t"))]
     now = _num(D.get("now")) or 0
-    ref = min(now, max(doc["t"], _ms(runs[0]["t"]))) if doc and runs and now else now
+    ref = radar_ref(D, doc)
     st = radar_state(doc, ref)
     lk = look(st, doc, lambda ms: R.local(ms).strftime("%H:%M"), ref, R.next_scan_ms(now, runs) if now else None)   # the strip's next start
     name, job, tools = meta(RADAR)
@@ -233,6 +273,74 @@ def ext_panel(a, R):
         " hidden" if quiet else "", "" if quiet else host_chips(doc.get("hosts")), "" if quiet or not doc.get("hosts") else " hidden", _e(", ".join(a["tools"])), lines)
 
 
+# ---------------------------------------------------------------- the radar desk on top of the Office tab
+def ago(ms):
+    """'just now' under a minute, else '34 min ago', '3 h ago', '2 days ago' (the New tab's MemebotRadar.ago)."""
+    m = ms / 60000.0
+    return "just now" if ms < 60_000 else ("%d min" % m if m < 60 else "%d h" % (m / 60) if m < 2880 else "%d days" % (m / 1440)) + " ago"
+
+
+def desk_look(st, doc, now, hhmm, labels=None):
+    """The desk for a radar state (radar_state's, the New tab's MemebotRadar.radarState) at the time now (ms): its light, its state in words,
+    the line after it, whether the stations are hidden (quiet: switched off, outside its hours, not started) or the last round's (dim: late,
+    stopped), and the four stations [key, name, [[class, number], ...], line]. "round in progress": the doc's next round is 10 s to 3 minutes
+    due and its doc not here yet. The script's MemebotOffice.desk says the same."""
+    d, labels = doc or {}, LABELS if labels is None else labels
+    t, nx = d.get("t"), d.get("next")
+    if st in ("running", "done") and nx and nx + SOON_MS < now <= nx + ROUND_MS:
+        st = "progress"
+    err = d.get("state") == "degraded" and st in ("running", "progress", "done")
+    light = "fallback" if err else {"running": "running", "progress": "running", "done": "done", "late": "fallback", "stopped": "failed"}.get(st, "skipped")
+    sleep = ("sleeping until " + hhmm(nx)) if nx and now < nx else "sleeping"
+    word = {"running": "running", "progress": "round in progress", "done": sleep, "hours": sleep, "late": "late", "stopped": "stopped", "off": "off"}.get(st, "not started yet")
+    if err and st != "progress":
+        word = "running, some checks failing" if st == "running" else "last round had errors"
+    every = math.floor((nx - t) / 30000.0 + 0.5) / 2.0 if nx and t and nx > t and not is_round(doc) else 0     # a loop's cadence to half a minute
+    meta = (["every %s min" % ("%d" % every if every == int(every) else "%.1f" % every)] if every and st in ("running", "progress", "late") else []) + (["last " + hhmm(t)] if doc and st != "none" else []) \
+        + (["next " + hhmm(nx)] if nx and (st == "running" or err and st == "done") else [])
+    cs, seen = [], set()
+    for c in (d.get("coins") or []) + (d.get("others") or []):      # a coin in both lists counts once
+        if c["addr"] not in seen:
+            seen.add(c["addr"])
+            cs.append(c)
+    src, feed = d.get("src") or {}, (d.get("hosts") or {}).get("pumpportal")
+    order = lambda kv: (-kv[1], kv[0])
+    found = (["live feed " + FEED.get(feed, feed)] if feed else []) + ["%s %d" % kv for kv in sorted(src.items(), key=order)[:3]]
+    flags = {}
+    for c in cs:
+        for h in set(c["hard"]):
+            flags[h] = flags.get(h, 0) + 1
+    red = " · ".join("%s %d" % (labels.get(h, h.replace("_", " ")), k) for h, k in sorted(flags.items(), key=order)[:2])
+    seen_n = (d.get("counts") or {}).get("seen")
+    pushed = [c for c in d.get("coins") or [] if c["push"] and t and c["push"] >= t]
+    lg = d.get("lastGood") or {}
+    push = (", ".join(c["sym"] or "?" for c in pushed[:2]) + " pushed") if pushed else \
+        ("last without traps: %s, %s" % (lg.get("sym") or "?", ago(now - lg["at"])) if lg.get("at") else "no push")
+    return {"light": light, "word": word, "meta": " · ".join(meta), "quiet": st in QUIET, "dim": st in ("late", "stopped"),
+            "st": [["src", "Sources", [["", str(sum(src.values())) if src else "–"]], " · ".join(found) or "no counts yet"],
+                   ["chk", "Checks", [["", "%d" % math.floor(seen_n + 0.5) if seen_n is not None else "–"]],
+                    ("red flags: " + red) if red else ("no red flags" if cs else "no coin under 10 min")],
+                   ["vd", "Verdicts", [[c, str(sum(1 for x in cs if x["v"] == v))] for c, v in zip(("good", "warn", "bad"), VERDICTS)], "no trap · watch · trap"],
+                   ["push", "Push", [["", str(len(pushed))]], push]]}
+
+
+def desk(D, R):
+    """The Launch radar's desk on top of the Office tab: its state line and its four stations (desk_look), from mb/radar_live.json as the scan
+    found it (its state judged at that scan's start: radar_ref); the script redraws it from the radar's event. The desk is the label of the
+    New tab's radio: a tap opens the radar (the installed app: its hash link, as "Open the radar")."""
+    doc = radar_doc(D.get("dir"))
+    ref = radar_ref(D, doc)
+    v = desk_look(radar_state(doc, ref), doc, ref, lambda ms: R.local(ms).strftime("%H:%M"))
+    part = lambda c, x: '<span%s>%s</span>' % (' class="%s"' % c if c else "", _e(x))
+    sts = "".join('<span class="odk-s" data-pd="%s"><span class="k">%s</span><b>%s</b><span class="l" title="%s">%s</span></span>' % (
+        k, _e(name), "".join(part(c, x) for c, x in val), _e(line), _e(line)) for k, name, val, line in v["st"])
+    return ('<style>%s</style><label class="odesk" for="tab-young" data-po-desk data-po-tz="%s" title="Open the radar on the New tab (fake money only)">'
+            '<span class="odk-h"><span class="odk-dot %s" data-pd-dot aria-hidden="true"></span><b>Launch radar</b><span class="odk-w" data-pd-word>%s</span>'
+            '<span class="odk-m" data-pd-meta%s>%s</span></span><span class="odk-g%s" data-pd-g%s>%s</span></label>') % (
+        DESK_CSS, "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", v["light"], _e(v["word"]), "" if v["meta"] else " hidden", _e(v["meta"]),
+        " dim" if v["dim"] else "", " hidden" if v["quiet"] else "", sts)
+
+
 # ---------------------------------------------------------------- the agent cards
 # each agent's icon: strokes in a 16 x 16 box, drawn in the card's state colour (an agent without one shows its initial)
 ICONS = {
@@ -267,26 +375,21 @@ def card_line(a, R):
 
 
 def cards(info, R):
-    """The grid on top of the Office tab: one card per agent of the last run (in run order) and one per agent in its own job, each with its
-    icon on a badge in its state colour, its name, one number and one line. A card is the label of its department's radio, so a tap picks
-    that department in the Details fold (the script opens the fold and brings the panel into view). Only spans inside a card: the cards
-    are labels."""
+    """The grid under the radar's desk: one card per agent of the last run (in run order; the radar has the desk above), each with its icon
+    on a badge in its state colour, its name, one number and one line. A card is the label of its department's radio, so a tap picks that
+    department in the Details fold (the script opens the fold and brings the panel into view). Only spans inside a card: the cards are labels."""
     home = {m["id"]: d["key"] for d in info["depts"] + [info["brain"]] for m in d["agents"]}
     out = []
-    for a in info["agents"] + (info.get("ext") or []):
-        ext = bool(a.get("ext"))
+    for a in info["agents"]:
         st = a["st"] if a["st"] in R.OFFICE_ST else "skipped"
-        line = a["out"] if ext else card_line(a, R)
-        stat = a["stat"] if ext else (R.fmt_secs(a["secs"], True) if a["ran"] else "–")
-        word = a["word"] if ext else R.office_word(a) + (", beside the others" if a["bg"] and a["ran"] else "")
-        tag = (' data-ext="%s"' % _e(a["id"])) if ext else ""
-        x = (lambda k: ' data-ext-%s="%s"' % (k, _e(a["id"]))) if ext else (lambda k: "")
-        live = "" if ext else ('<span class="chip" data-lv data-live-chip="%s" hidden></span><span class="ocl" data-lv data-live-line="%s" data-live-max="%d" hidden></span>' % (
-            _e(a["id"]), _e(a["id"]), CARD_LINE))
-        out.append('<label class="ocard%s" for="od-%s" data-agent="%s"%s title="%s: %s · %s"><span class="olt %s"%s>%s</span>'
-                   '<span class="ocn">%s</span><span class="ocs"%s>%s</span><span class="ocl"%s>%s</span>%s<span class="sr"%s> %s</span></label>' % (
-                       " ext" if ext else "", _e(home.get(a["id"], "ops")), _e(a["id"]), tag, _e(a["name"]), _e(word), _e(clip(line, 160)), st, x("lt"),
-                       icon(a["id"], a["name"]), _e(a["name"]), x("stat"), _e(stat), x("line"), _e(clip(line, CARD_LINE)), live, x("word"), _e(word)))
+        line = card_line(a, R)
+        word = R.office_word(a) + (", beside the others" if a["bg"] and a["ran"] else "")
+        live = '<span class="chip" data-lv data-live-chip="%s" hidden></span><span class="ocl" data-lv data-live-line="%s" data-live-max="%d" hidden></span>' % (
+            _e(a["id"]), _e(a["id"]), CARD_LINE)
+        out.append('<label class="ocard" for="od-%s" data-agent="%s" title="%s: %s · %s"><span class="olt %s">%s</span>'
+                   '<span class="ocn">%s</span><span class="ocs">%s</span><span class="ocl">%s</span>%s<span class="sr"> %s</span></label>' % (
+                       _e(home.get(a["id"], "ops")), _e(a["id"]), _e(a["name"]), _e(word), _e(clip(line, 160)), st, icon(a["id"], a["name"]), _e(a["name"]),
+                       _e(R.fmt_secs(a["secs"], True) if a["ran"] else "–"), _e(clip(line, CARD_LINE)), live, _e(word)))
     return ('<div class="ocards" data-po-tz="%s" data-po-tzn="%s" role="group" aria-label="The agents of the last scan: tap one to open its department">%s</div>' % (
         "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", _e(R.TZ_NAME), "".join(out)))
 
@@ -607,15 +710,33 @@ STRIP_CSS = r"""
 @media (prefers-reduced-motion: reduce) { .sdot.run { animation:none } }
 """
 
+DESK_CSS = r"""
+/* the Launch radar's desk on top of the Office tab (page_office.desk): a state line and four stations, 2 x 2 on a phone, one row from 700 px */
+.odesk { display:grid; gap:8px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface); cursor:pointer; min-width:0 }
+.odesk:hover { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)) } .odesk:active { transform:translateY(1px) }
+.odk-h { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; min-width:0; font-size:var(--fs-s); color:var(--fg2) }
+.odk-h b { color:var(--fg); font-weight:600 } .odk-h b + .odk-w::before { content:"·"; margin-right:8px; color:var(--muted) }
+.odk-m { flex-basis:100%; padding-left:17px; color:var(--muted); font-variant-numeric:tabular-nums } .odk-m[hidden], .odk-g[hidden] { display:none }
+.odk-dot { width:9px; height:9px; border-radius:50%; background:var(--muted); flex:none } .odk-dot.running { background:var(--good-mark); animation:opulse 2s ease-in-out infinite }
+.odk-dot.done { background:var(--good-mark) } .odk-dot.fallback { background:var(--warn-mark) } .odk-dot.failed { background:var(--bad-mark) }
+.odk-g { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px } .odk-g.dim { opacity:.6 }
+.odk-s { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:0 6px; min-width:0; padding:6px 8px; border-radius:8px; background:color-mix(in srgb,var(--fg) 4%,transparent) }
+.odk-s .k { font-size:var(--fs-xs); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.odk-s b { font-size:15px; font-weight:600; color:var(--fg); font-variant-numeric:tabular-nums; white-space:nowrap } .odk-s b span + span::before { content:"·"; margin:0 3px; color:var(--muted); font-weight:400 }
+.odk-s .good { color:var(--good) } .odk-s .warn { color:var(--warn) } .odk-s .bad { color:var(--bad) }
+.odk-s .l { grid-column:1 / -1; font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow-wrap:anywhere }
+@media (min-width:700px) { .odk-g { grid-template-columns:repeat(4,minmax(0,1fr)) } .odk-m { flex-basis:auto; padding-left:0 } .odk-w + .odk-m::before { content:"·"; margin-right:8px } }
+@media (prefers-reduced-motion: reduce) { .odk-dot.running { animation:none } .odesk:active { transform:none } }
+"""
+
 CSS = r"""
 .fold-lite > summary { min-height:44px; display:flex; align-items:center }   /* a 44 px tap target */
-/* the office's agent cards, the Launch radar's desk and the daily overview (page_office.py); page tokens only, light and dark */
+/* the office's agent cards, the Launch radar's panel and the daily overview (page_office.py); page tokens only, light and dark */
 /* the agent cards: 2 columns on a phone, 4 from 700 px; a card is icon + number, name, one line (phone) or icon, name, number and one line */
 .ocards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
 .ocard { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"ic . nu" "nm nm nm" "ln ln ln"; align-items:center; gap:4px 8px; min-width:0;
   padding:9px 10px 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface); cursor:pointer; position:relative }
 .ocard:hover { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)) } .ocard:active { transform:translateY(1px) }
-.ocard.ext { border-style:dashed; border-color:color-mix(in srgb,var(--s3) 60%,var(--line)) }
 .ocard:has(> .olt.failed) { border-color:color-mix(in srgb,var(--bad-mark) 55%,var(--line)) } .ocard:has(> .olt.fallback) { border-color:color-mix(in srgb,var(--warn-mark) 55%,var(--line)) }
 .ocard .olt { grid-area:ic; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb,currentColor 15%,transparent) }
 .ocard .olt svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round } .ocard .olt b { font-size:13px; line-height:1 }
@@ -677,15 +798,17 @@ details.ofold > .ofold-in { display:grid; gap:16px; min-width:0 } details.ofold 
 .ohb-leg .nowk::before { display:none } .oday details .ohb-leg { margin-bottom:8px } .oday th, .oday td { padding:6px 8px }
 """ + hour_css()
 
-# The page script: the Launch radar's desk, card and panel follow the radar's script on the New tab (window event memebot-radar, detail {doc, state,
-# via}); the full scan's strip follows the office's live script (memebot-live, detail {state, status}) and finds the repository for its
-# Scan now link. Text only through textContent; nothing is fetched. MemebotOffice.look, .scan and .next are the decisions (node checks them).
+# The page script: the Launch radar's desk on top and its floor desk and panel follow the radar's script on the New tab (window event memebot-radar,
+# detail {doc, state, via, now}); the full scan's strip follows the office's live script (memebot-live, detail {state, status}) and finds the
+# repository for its Scan now link. Text only through textContent; nothing is fetched. MemebotOffice.look, .desk, .scan and .next are the
+# decisions (node checks them).
 JS = r"""
 (function(){
 if(window.MemebotOffice)return;
-var D=document,last=null,lastScan=null;
+var D=document,last=null,lastAt=0,lastScan=null;
 var LOOK={running:['running','running'],done:['done','done'],late:['fallback','late'],stopped:['failed','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
 var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad',done:'good'},SCAN_LEN=2700000,HOUR=3600000;
+var SOON=10000,ROUND=180000,FEED={ok:'on'},LABELS=__LABELS__;
 var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase']];
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function n(v){return isn(v)?Math.round(v):0;}
@@ -694,6 +817,9 @@ function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-di
 function all(s){return Array.prototype.slice.call(D.querySelectorAll(s));}
 function set(e,t){if(e&&e.textContent!==t)e.textContent=t;}
 function cls(e,c){if(e.getAttribute('class')!==c)e.setAttribute('class',c);}
+function own(o,k){return Object.prototype.hasOwnProperty.call(o,k)?o[k]:undefined;}
+function order(a,b){return b[1]-a[1]||(a[0]<b[0]?-1:a[0]>b[0]?1:0);}
+function ago(ms){var m=ms/60000;return ms<60000?'just now':(m<60?Math.floor(m)+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days')+' ago';}
 var O=window.MemebotOffice={
   // the radar's light, word, line and small number for its state (page_office.look says the same at build time)
   // a round's next one (page_office.next_words; MemebotRadar.nextWords on the New tab): now and scan (the strip's next start) in ms
@@ -701,6 +827,31 @@ var O=window.MemebotOffice={
     if(isn(d.next)&&d.next>0)return (now<d.next?'next about ':'next due since ')+fmt(d.next);
     if(isn(scan)&&scan>0){var s=scan,ref=Math.max(+d.t||0,now);while(s+SCAN_LEN<ref)s+=HOUR;return 'next after the '+fmt(s)+' scan';}
     return 'next after the next full scan';},
+  // the radar desk on top of the Office tab (page_office.desk_look says the same at build time): its light, its state in words, the line after
+  // it, whether its stations are hidden (quiet) or the last round's (dim), and the stations [key, name, [[class, number], ...], line]
+  desk:function(st,doc,now,fmt){var d=doc&&typeof doc==='object'?doc:null,o=d||{},t=o.t,nx=isn(o.next)&&o.next>0?o.next:null;fmt=fmt||hhmm;
+    if((st==='running'||st==='done')&&nx&&now>nx+SOON&&now<=nx+ROUND)st='progress';
+    var err=o.state==='degraded'&&['running','progress','done'].indexOf(st)>=0,sleep=nx&&now<nx?'sleeping until '+fmt(nx):'sleeping';
+    var light=err?'fallback':own({running:'running',progress:'running',done:'done',late:'fallback',stopped:'failed'},st)||'skipped';
+    var word=own({running:'running',progress:'round in progress',done:sleep,hours:sleep,late:'late',stopped:'stopped',off:'off'},st)||'not started yet';
+    if(err&&st!=='progress')word=st==='running'?'running, some checks failing':'last round had errors';
+    var rnd=!!d&&(d.state==='done'||!!d.run&&typeof d.run==='object'&&d.run.mode==='round'),ev=nx&&isn(t)&&nx>t&&!rnd?Math.round((nx-t)/30000)/2:0,meta=[];
+    if(ev&&['running','progress','late'].indexOf(st)>=0)meta.push('every '+ev+' min');
+    if(d&&st!=='none')meta.push('last '+fmt(t));
+    if(nx&&(st==='running'||err&&st==='done'))meta.push('next '+fmt(nx));
+    var cs=[],by=Object.create(null),arr=function(v){return Array.isArray(v)?v.filter(function(c){return c&&typeof c==='object';}):[];};
+    arr(o.coins).concat(arr(o.others)).forEach(function(c){if(!own(by,c.addr)){by[c.addr]=1;cs.push(c);}});     // a coin in both lists counts once
+    var sr=o.src&&typeof o.src==='object'?o.src:{},hs=o.hosts&&typeof o.hosts==='object'?o.hosts:{},fd=typeof hs.pumpportal==='string'?hs.pumpportal:'',sum=0;
+    var found=(fd?['live feed '+(own(FEED,fd)||fd)]:[]).concat(Object.keys(sr).map(function(k){sum+=sr[k];return [k,sr[k]];}).sort(order).slice(0,3).map(function(x){return x[0]+' '+x[1];}));
+    var fl=Object.create(null);cs.forEach(function(c){var u=Object.create(null);(Array.isArray(c.hard)?c.hard:[]).forEach(function(h){if(!own(u,h)){u[h]=1;fl[h]=(own(fl,h)||0)+1;}});});
+    var red=Object.keys(fl).map(function(k){return [k,fl[k]];}).sort(order).slice(0,2).map(function(x){return (own(LABELS,x[0])||x[0].replace(/_/g,' '))+' '+x[1];}).join(' · ');
+    var cn=o.counts&&typeof o.counts==='object'?o.counts:{},pu=arr(o.coins).filter(function(c){return isn(c.push)&&c.push>0&&isn(t)&&c.push>=t;}),lg=o.lastGood&&typeof o.lastGood==='object'?o.lastGood:{};
+    var push=pu.length?pu.slice(0,2).map(function(c){return c.sym||'?';}).join(', ')+' pushed':isn(lg.at)&&lg.at>0?'last without traps: '+(lg.sym||'?')+', '+ago(now-lg.at):'no push';
+    return {light:light,word:word,meta:meta.join(' · '),quiet:QUIET.indexOf(st)>=0,dim:st==='late'||st==='stopped',
+      st:[['src','Sources',[['',Object.keys(sr).length?String(sum):'–']],found.join(' · ')||'no counts yet'],
+        ['chk','Checks',[['',isn(cn.seen)?String(Math.floor(cn.seen+0.5)):'–']],red?'red flags: '+red:cs.length?'no red flags':'no coin under 10 min'],
+        ['vd','Verdicts',[['good','good'],['warn','watch'],['bad','trap']].map(function(x){return [x[0],String(cs.filter(function(c){return c.v===x[1];}).length)];}),'no trap · watch · trap'],
+        ['push','Push',[['',String(pu.length)]],push]]};},
   look:function(st,doc,fmt,now,scan){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
     var lead=st==='late'||st==='stopped'?word:'';
     var rnd=!!d&&(d.state==='done'||!!d.run&&typeof d.run==='object'&&d.run.mode==='round');
@@ -725,22 +876,31 @@ var O=window.MemebotOffice={
     return null;},
   // the strip's next start: "next ≈ HH:MM" until that time, then "due now (≈ HH:MM)" (the page is rebuilt only after the next scan)
   next:function(nx,now,fmt){fmt=fmt||hhmm;if(!isn(nx)||nx<=0)return null;return now>=nx?'due now (≈ '+fmt(nx)+')':'next ≈ '+fmt(nx);},
-  radar:function(det){if(det&&typeof det==='object')last=det;draw();},
+  radar:function(det){if(det&&typeof det==='object'){last=det;lastAt=Date.now();}draw();},
   hosts:HOSTS};
 function host(k){k=String(k).toLowerCase();for(var i=0;i<HOSTS.length;i++)if(k.indexOf(HOSTS[i][0])>=0)return HOSTS[i][1];return String(k).slice(0,40);}
+// the desk on top: redrawn from the radar's last event, its clock moved on by the time since (a round falls due between two events)
+function desk(){
+  var box=D.querySelector('[data-po-desk]');if(!box||!last)return;
+  var doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,v=O.desk(String(last.state||'none'),doc,isn(last.now)?last.now+Date.now()-lastAt:Date.now()),key=JSON.stringify(v);
+  if(box._k===key)return;box._k=key;
+  cls(box.querySelector('[data-pd-dot]'),'odk-dot '+v.light);set(box.querySelector('[data-pd-word]'),v.word);
+  var m=box.querySelector('[data-pd-meta]'),g=box.querySelector('[data-pd-g]');set(m,v.meta);m.hidden=!v.meta;g.hidden=v.quiet;cls(g,'odk-g'+(v.dim?' dim':''));g.textContent='';
+  v.st.forEach(function(x){var s=D.createElement('span'),k=D.createElement('span'),b=D.createElement('b'),l=D.createElement('span');s.className='odk-s';s.setAttribute('data-pd',x[0]);
+    k.className='k';k.textContent=x[1];x[2].forEach(function(p){var e=D.createElement('span');if(p[0])e.className=p[0];e.textContent=p[1];b.appendChild(e);});
+    l.className='l';l.title=x[3];l.textContent=x[3];s.appendChild(k);s.appendChild(b);s.appendChild(l);g.appendChild(s);});
+}
 function draw(){
   if(!last)return;
+  try{desk();}catch(e){}
   var st=String(last.state||'none'),doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,sb=D.querySelector('[data-sstrip]');
   var L=O.look(st,doc,null,isn(last.now)?last.now:Date.now(),sb?+sb.getAttribute('data-next')||0:0);     // the radar's clock (its doc's time base), the strip's next scan
   all('g[data-ext="radar"]').forEach(function(g){cls(g,'desk'+(L.here?'':' off'));var s=g.querySelector('.scr');if(s)cls(s,'scr'+(L.light==='fallback'||L.light==='failed'?' '+L.light:''));});
-  all('[data-ext-lt="radar"]').forEach(function(e){cls(e,'olt '+L.light);});
   all('[data-ext-word="radar"]').forEach(function(e){set(e,L.word);});
   all('[data-ext-chip="radar"]').forEach(function(e){cls(e,'chip '+(CHIP[L.light]||''));});
   all('[data-ext-line="radar"]').forEach(function(e){set(e,L.line);});
-  all('[data-ext-stat="radar"]').forEach(function(e){set(e,L.stat);});
   all('[data-ext-checked="radar"]').forEach(function(e){set(e,L.checked);});
   all('[data-ext-until="radar"]').forEach(function(e){set(e,L.until);});
-  all('label[data-ext="radar"]').forEach(function(e){var t=e.querySelector('.ocn');e.title=(t?t.textContent:'Launch radar')+': '+L.word;});
   var hs=doc&&doc.hosts&&typeof doc.hosts==='object'?doc.hosts:null,ks=hs?Object.keys(hs).slice(0,12):[];
   // switched off, outside its hours or never started: the last check's notes and services are old news, so they go (the wiring stays)
   all('[data-ext-hosts="radar"]').forEach(function(box){box.hidden=L.quiet||!ks.length;if(L.quiet||!hs)return;box.textContent='';
@@ -769,15 +929,15 @@ function link(){
 }
 window.addEventListener('memebot-radar',function(e){O.radar(e&&e.detail);});
 D.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;
-  // "Open the radar": the browser page checks the New tab's radio (the label); the installed app switches tabs on a hash change (#tab-radar
-  // opens New at its top, where the radar is), so its bar follows
-  if(t.closest('[data-po-radar] label')&&D.documentElement.classList.contains('app')){e.preventDefault();try{location.hash='#tab-radar';}catch(x){}return;}
+  // "Open the radar" and the desk on top: the browser page checks the New tab's radio (the label); the installed app switches tabs on a hash
+  // change (#tab-radar opens New at its top, where the radar is), so its bar follows
+  if(t.closest('[data-po-radar] label, label[data-po-desk]')&&D.documentElement.classList.contains('app')){e.preventDefault();try{location.hash='#tab-radar';}catch(x){}return;}
   // a tap on a card picks its department (the card is the radio's label), opens the Details fold and brings the panel into view (on a
   // desktop the panel sits beside the floor plan, on a phone below it)
   var c=t.closest('label.ocard');if(!c)return;
   var f=D.querySelector('details[data-po-fold]');if(f&&!f.open)f.open=true;
   var k=c.getAttribute('for'),p=k&&D.querySelector('.opanel.k-'+k.replace(/^od-/,'').replace(/[^a-z]/g,''));if(!p)return;
-  var to=c.hasAttribute('data-ext')&&p.querySelector('.oext')||(window.innerWidth>=1080&&p.closest('.ogrid'))||p;     // the radar's card: its own block
+  var to=(window.innerWidth>=1080&&p.closest('.ogrid'))||p;
   setTimeout(function(){try{to.scrollIntoView({block:'start',behavior:window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}catch(x){}},30);});
 window.addEventListener('memebot-live',function(e){lastScan=e&&e.detail&&typeof e.detail==='object'?e.detail:null;try{strip();}catch(x){}});
 // the Details fold stays open across the page's own reloads (a new report) once the reader opened it in this tab; closed on a first visit
@@ -785,9 +945,11 @@ function fold(){var f=D.querySelector('details[data-po-fold]');if(!f||f._po)retu
   try{if(sessionStorage.getItem('memebot-office-fold')==='1')f.open=true;}catch(e){}
   f.addEventListener('toggle',function(){try{sessionStorage.setItem('memebot-office-fold',f.open?'1':'0');}catch(e){}});}
 function ready(){try{link();}catch(e){}try{fold();}catch(e){}
-  try{if(!D.getElementById('tab-young')||!D.querySelector('[data-radar]'))all('[data-po-radar]').forEach(function(e){e.hidden=true;});}catch(e){}     // a page without the radar on New: no dead link
+  try{if(!D.getElementById('tab-young')||!D.querySelector('[data-radar]')){all('[data-po-radar]').forEach(function(e){e.hidden=true;});     // a page without the radar on New: no dead link
+    all('label[data-po-desk]').forEach(function(e){e.removeAttribute('for');});}}catch(e){}
   try{if(!last&&window.MemebotRadar&&MemebotRadar.last)O.radar(MemebotRadar.last);else draw();}catch(e){}try{strip();}catch(e){}
-  if(D.querySelector('[data-sstrip]'))setInterval(function(){try{strip();}catch(e){}},60000);}
+  if(D.querySelector('[data-sstrip]'))setInterval(function(){try{strip();}catch(e){}},60000);
+  if(D.querySelector('[data-po-desk]'))setInterval(function(){try{desk();}catch(e){}},10000);}
 if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',ready);else ready();
 })();
-"""
+""".replace("__LABELS__", json.dumps(LABELS))

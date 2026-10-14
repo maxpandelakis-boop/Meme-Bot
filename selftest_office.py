@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""selftest_office.py: the checks of the office page parts (page_office.py, WP5c): SPEC 11 U6 (agent cards, office.json unchanged, the
-radar's desk untouched by the office poll and moved by the radar event, 8 departments, the next-scan estimate from memeruns), U9 (the daily
-overview names an hour only when it stands out), U7 and U10 for the new text, U8 for the office and pick tabs (390 and 1280 px, light and
-dark). Fake money only: the fixtures are hand-made docs, nothing is fetched.
+"""selftest_office.py: the checks of the office page parts (page_office.py, WP5c): SPEC 11 U6 (the radar desk on top of the Office tab, agent
+cards, office.json unchanged, the radar's floor desk untouched by the office poll and moved by the radar event, 8 departments, the next-scan
+estimate from memeruns), U9 (the daily overview names an hour only when it stands out), U7 and U10 for the new text, U8 for the office and
+pick tabs (320, 390 and 1280 px, light and dark). Fake money only: the fixtures are hand-made docs, nothing is fetched.
 
   python3 selftest_office.py      -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
   selftest.main: office_checks(check, SKIPS) after spotter_checks (WP6 hooks it in)
@@ -46,6 +46,19 @@ def radar_doc(t, state="running", **kw):
            "notes": ["RugCheck limited: 2 coins not fully checked"], "lines": ["cycle 14: 7 seen, 1 without traps, 0 pushed (63 s)"]}
     doc.update(kw)
     return doc
+
+
+def desk_doc(t, rng=None, **kw):
+    """radar.json of a round with the desk's numbers: discovery counts (src), the live feed, one coin pushed this round, six with traps or
+    unchecked (red flags: creator sold 3 times, RugCheck danger twice), a coin in both lists (counted once)."""
+    rng = rng or random.Random(4)
+    good = {"addr": b58(rng), "sym": "PEPE2", "v": "good", "hard": [], "push": t}
+    others = [{"addr": b58(rng), "sym": "T%d" % i, "v": v, "hard": h} for i, (v, h) in enumerate((
+        ("trap", ["creator_sold", "rc_danger"]), ("trap", ["creator_sold"]), ("trap", ["rugger_wallets", "creator_sold", "creator_sold"]), ("trap", ["rc_danger"]),
+        ("watch", []), ("watch", [])))]
+    return radar_doc(t, **dict({"next": t + 120_000, "counts": {"seen": 7, "good": 1, "pushed": 1, "seenAgeMed": 2.0}, "coins": [good, others[4]], "others": others,
+                                "src": {"gt:new": 40, "pf:graduated": 180, "jup:recent": 30, "pf:new": 30, "list:profiles": 12},
+                                "hosts": {"dexscreener": "ok", "rugcheck": "ok", "pumpportal": "ok"}, "lastGood": {"addr": good["addr"], "sym": "PEPE2", "at": t}}, **kw))
 
 
 def round_doc(t, **kw):
@@ -134,7 +147,7 @@ def office_checks(check, skips=None):
     tmp = tempfile.mkdtemp(prefix="memebot-office5c-")
     utc = lambda ms: dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime("%H:%M")
     try:
-        # ---------------------------------------------------------------- U6: one card per agent plus the radar card, office.json unchanged
+        # ---------------------------------------------------------------- U6: the radar desk first, one card per agent, office.json unchanged
         d1 = os.path.join(tmp, "o1")
         mk_db(d1, radar=radar_doc(NOW - 26 * MIN))
         off_before = open(os.path.join(d1, "db", "memebot", "office.json"), "rb").read()
@@ -143,15 +156,18 @@ def office_checks(check, skips=None):
         cards = re.findall(r'<label class="ocard( ext)?" for="od-([a-z]+)" data-agent="([a-z]+)"', page)
         D1 = R.collect(d1, NOW)
         info = R.office_data(D1)
-        check(off_before == off_after and [c[2] for c in cards] == list(AGENTS) + ["radar"] and cards[-1][0] == " ext" and cards[-1][1] == "analysts"
+        pane_o = page[page.find('<div class="pane" id="pane-office">'):]
+        check(off_before == off_after and [c[2] for c in cards] == list(AGENTS) and not any(c[0] for c in cards) and 'data-agent="radar"' not in cut(page, '<div class="ocards"', "</div>")
               and [a["id"] for a in info["agents"]] == list(AGENTS) and [a["id"] for a in info["ext"]] == ["radar"] and "could not be rendered" not in page
               and R.OFFICE_AGENTS["radar"] == RADAR_AGENT and (info["ext"][0]["name"], info["ext"][0]["job"], tuple(info["ext"][0]["tools"])) == RADAR_AGENT
-              and -1 < page.find('<div class="ocards"') < page.find("Tap a department to see what its agents did.") < page.find('<div class="office">'),
-              "U6 office: one card per agent of office.json in run order plus the Launch radar's card (dashed, opens Analysts), above the intro note; the "
-              "radar's name, job and tools are the spec's words; office.json is not written (%d cards)" % len(cards))
+              and pane_o.startswith('<div class="pane" id="pane-office"><style>') and pane_o.find("</style>") + 8 == pane_o.find('<label class="odesk" for="tab-young" data-po-desk')
+              and -1 < pane_o.find('<label class="odesk"') < pane_o.find("<h2>Agent office</h2>") < pane_o.find('<div class="ocards"') < pane_o.find('<div class="office">')
+              and page.count('<label class="odesk"') == 1 and "data-ext-stat" not in page and "ocard ext" not in page + PO.CSS,
+              "U6 office: the Launch radar's desk is the first block of the Office tab (before its heading and the grid); one card per agent of office.json "
+              "in run order and no card for the radar any more; the radar's name, job and tools are the spec's words; office.json is not written (%d cards)" % len(cards))
         card_dept = dict((c[2], c[1]) for c in cards)
         card_line = lambda aid: R.html.unescape(re.search(r'<label class="ocard[^"]*" for="od-[a-z]+" data-agent="%s".*?<span class="ocl"[^>]*>(.*?)</span>' % aid, page, re.S).group(1))
-        lines_ = {aid: card_line(aid) for aid in ("refresh", "market", "candles", "radar")}
+        lines_ = {aid: card_line(aid) for aid in ("refresh", "market", "candles")}
         check(card_dept.get("trainer") == "brain" and card_dept.get("dispatch") == "ops" and card_dept.get("safety") == "safety" and card_dept.get("deep") is None
               and "result &lt;b&gt;3" in page and "result <b>3" not in page and 'data-live-chip="analyst"' in cut(page, '<div class="ocards"', '</div>')
               and 'data-live-chip="radar"' not in page and lines_["candles"] == "candles result <b>3</b>"
@@ -222,9 +238,12 @@ def office_checks(check, skips=None):
               "U6 office: the ring keeps exactly 8 departments (wide and phone), Scouts keep 3 desks with the spotter, the radar's desk is marked data-ext")
         desk = re.search(r'<g class="desk( off)?" data-agent="radar" data-ext="radar">.*?</g>', page, re.S)
         check(desk and not desk.group(1) and "own job" in desk.group(0) and "beside" not in desk.group(0) and 'class="scr "' in desk.group(0)
-              and ">running<" in page and "on watch" not in page and "7 seen · 1 without traps · 0 pushed" in page and 'data-ext-stat="radar">%s</span>' % R.local(NOW - 26 * MIN).strftime("%H:%M") in page and ">checked %s<" % R.local(NOW - 26 * MIN).strftime("%H:%M") in page
-              and "RugCheck · limited" in page and "RugCheck limited: 2 coins not fully checked" in page,
-              "U6 office: a radar loop that ran at the start of this scan is 'running' with its counts, hosts and notes; its pill reads 'own job'")
+              and ">running<" in page and "on watch" not in page and "7 seen · 1 without traps · 0 pushed" in page and ">checked %s<" % R.local(NOW - 26 * MIN).strftime("%H:%M") in page
+              and "RugCheck · limited" in page and "RugCheck limited: 2 coins not fully checked" in page
+              and '<span class="odk-dot running" data-pd-dot aria-hidden="true"></span><b>Launch radar</b><span class="odk-w" data-pd-word>running</span>' in page
+              and '>every 2.5 min · last %s · next %s<' % (R.local(NOW - 26 * MIN).strftime("%H:%M"), R.local(NOW - 26 * MIN + 150_000).strftime("%H:%M")) in page,
+              "U6 office: a radar loop that ran at the start of this scan is 'running' with its counts, hosts and notes on its floor desk and panel (its pill reads "
+              "'own job'), and on the desk on top with its cadence, last and next round")
         # its state at the scan's start (the copy is made then; the page comes about 25 minutes later), as MB.radarState names them
         sts = []
         for age, kw in ((5 * MIN, {}), (7 * MIN, {}), (20 * MIN, {}), (60_000, {"state": "off"}), (60_000, {"state": "hours", "next": NOW + H}),
@@ -294,6 +313,60 @@ def office_checks(check, skips=None):
         check(PO.radar_doc(bad) is None and PO.radar_doc(os.path.join(tmp, "nowhere")) is None and weird["counts"]["seen"] is None and weird["lines"] == [XSS]
               and list(weird["hosts"]) == ["a" * 40] and wild["next"] is None and wild["run"]["end"] is None and PO.radar_clean(dict(radar_doc(NOW), t=1e19)) is None,
               "a malformed radar_live.json is dropped (no time, or a wild one) or cut to finite numbers, times that are times, strings and the known keys")
+        # ---------------------------------------------------------------- the radar desk on top of the Office tab
+        dk_t = NOW - 26 * MIN
+        dk = PO.radar_clean(desk_doc(dk_t))
+        v_run = PO.desk_look("running", dk, dk_t + 60_000, utc)
+        check(v_run["st"] == [["src", "Sources", [["", "292"]], "live feed on · pf:graduated 180 · gt:new 40 · jup:recent 30"],
+                              ["chk", "Checks", [["", "7"]], "red flags: creator sold 3 · RugCheck danger 2"],
+                              ["vd", "Verdicts", [["good", "1"], ["warn", "2"], ["bad", "4"]], "no trap · watch · trap"], ["push", "Push", [["", "1"]], "PEPE2 pushed"]]
+              and (v_run["light"], v_run["word"], v_run["meta"], v_run["quiet"], v_run["dim"]) == ("running", "running", "every 2 min · last %s · next %s" % (utc(dk_t), utc(dk_t + 120_000)), False, False),
+              "radar desk stations: Sources = all the discovery lists' coins (292) with the live feed and the top 3 lists (a tie by name), Checks = the coins "
+              "checked with the round's 2 most frequent red flags in words (a flag twice on one coin counts once), Verdicts no trap / watch / trap (a coin in "
+              "both lists once), Push = the coin pushed this round; the line 'every 2 min · last · next' (%s)" % v_run)
+        dsk = lambda st_, doc_, at: PO.desk_look(st_, PO.radar_clean(doc_) if doc_ else None, at, utc)
+        rd_ = round_doc(NOW - 20 * MIN)
+        words = [(x["light"], x["word"], x["meta"], x["quiet"], x["dim"]) for x in (
+            dsk("running", desk_doc(dk_t), dk_t + 120_000 + 10_000), dsk("running", desk_doc(dk_t), dk_t + 120_000 + 11_000), dsk("running", desk_doc(dk_t), dk_t + 120_000 + 181_000),
+            dsk("late", desk_doc(dk_t), dk_t + 8 * MIN), dsk("stopped", desk_doc(dk_t), dk_t + 20 * MIN), dsk("done", rd_, NOW), dsk("done", rd_, rd_["next"] + 60_000),
+            dsk("done", rd_, rd_["next"] + 5 * MIN), dsk("hours", radar_doc(NOW, state="hours", next=NOW + 5 * H), NOW), dsk("off", radar_doc(NOW, state="off"), NOW),
+            dsk("none", None, NOW), dsk("running", desk_doc(dk_t, state="degraded"), dk_t + 60_000), dsk("done", round_doc(NOW - 20 * MIN, state="degraded"), NOW))]
+        check(words == [("running", "running", "every 2 min · last %s · next %s" % (utc(dk_t), utc(dk_t + 120_000)), False, False),
+                        ("running", "round in progress", "every 2 min · last %s" % utc(dk_t), False, False), ("running", "running", "every 2 min · last %s · next %s" % (utc(dk_t), utc(dk_t + 120_000)), False, False),
+                        ("fallback", "late", "every 2 min · last %s" % utc(dk_t), False, True), ("failed", "stopped", "last %s" % utc(dk_t), False, True),
+                        ("done", "sleeping until %s" % utc(NOW + 35 * MIN), "last %s" % utc(NOW - 20 * MIN), False, False), ("running", "round in progress", "last %s" % utc(NOW - 20 * MIN), False, False),
+                        ("done", "sleeping", "last %s" % utc(NOW - 20 * MIN), False, False), ("skipped", "sleeping until %s" % utc(NOW + 5 * H), "last %s" % utc(NOW), True, False),
+                        ("skipped", "off", "last %s" % utc(NOW), True, False), ("skipped", "not started yet", "", True, False),
+                        ("fallback", "running, some checks failing", "every 2 min · last %s · next %s" % (utc(dk_t), utc(dk_t + 120_000)), False, False),
+                        ("fallback", "last round had errors", "last %s · next %s" % (utc(NOW - 20 * MIN), utc(NOW + 35 * MIN)), False, False)],
+              "radar desk states: running; 'round in progress' from 10 s past the doc's next round for 3 minutes (then the radar's own rules again); late and "
+              "stopped show the last round dimmed; a round between rounds 'sleeping until HH:MM'; outside its hours, off and never started hide the stations; "
+              "failing checks amber (%s)" % words)
+        old = desk_doc(dk_t, coins=[dict(desk_doc(dk_t)["coins"][0], push=dk_t - 34 * MIN)], hosts={"pumpportal": "limited"}, lastGood={"addr": desk_doc(dk_t)["coins"][0]["addr"], "sym": "PEPE2", "at": dk_t - 34 * MIN})
+        old.pop("src")
+        v_old, v_empty = dsk("running", old, dk_t + 60_000), dsk("running", radar_doc(dk_t, coins=[], others=[], counts={"seen": 0, "good": 0, "pushed": 0}, lastGood=None), dk_t + 60_000)
+        check(v_old["st"][0] == ["src", "Sources", [["", "–"]], "live feed limited"] and v_old["st"][3] == ["push", "Push", [["", "0"]], "last without traps: PEPE2, 35 min ago"]
+              and dsk("running", dict(old, hosts={}), dk_t)["st"][0][3] == "no counts yet"
+              and v_empty["st"][1:] == [["chk", "Checks", [["", "0"]], "no coin under 10 min"], ["vd", "Verdicts", [["good", "0"], ["warn", "0"], ["bad", "0"]], "no trap · watch · trap"],
+                                        ["push", "Push", [["", "0"]], "no push"]]
+              and dsk("running", desk_doc(dk_t, others=[dict(x, hard=[]) for x in desk_doc(dk_t)["others"]]), dk_t)["st"][1][3] == "no red flags",
+              "radar desk with an older radar.json (no src): Sources shows only the live feed's state, else 'no counts yet'; no push this round: the last coin "
+              "without traps and how long ago; an empty round: no coin, no push (%s | %s)" % (v_old["st"], v_empty["st"]))
+        pd = os.path.join(tmp, "desk")
+        mk_db(pd, radar=desk_doc(dk_t))
+        pdh = os.path.join(tmp, "deskh")
+        mk_db(pdh, radar=radar_doc(NOW - 30 * MIN, state="hours", next=NOW + 5 * H))
+        page_d, page_h = build(pd), build(pdh)
+        desk_ = lambda p: cut(p, '<label class="odesk"', "</label>")
+        strip_tags = lambda h: re.sub(r"\s+", " ", R.html.unescape(re.sub(r"<[^>]+>", " ", h))).strip()
+        check(strip_tags(desk_(page_d)) == "Launch radar running every 2 min · last %s · next %s Sources 292 live feed on · pf:graduated 180 · gt:new 40 · jup:recent 30 Checks 7 "
+                                               "red flags: creator sold 3 · RugCheck danger 2 Verdicts 1 2 4 no trap · watch · trap Push 1 PEPE2 pushed" % (
+                                                   R.local(dk_t).strftime("%H:%M"), R.local(dk_t + 120_000).strftime("%H:%M"))
+              and '<span class="odk-g" data-pd-g>' in desk_(page_d) and '<span class="odk-g" data-pd-g hidden>' in desk_(page_h) and "sleeping until %s" % R.local(NOW + 5 * H).strftime("%H:%M") in desk_(page_h)
+              and 'title="Open the radar on the New tab (fake money only)"' in desk_(page_d)
+              and strip_tags(desk_(page0)).startswith("Launch radar not started yet ") and '<span class="odk-g" data-pd-g hidden>' in desk_(page0),
+              "radar desk on the page: built from mb/radar_live.json with the same words; outside its hours 'sleeping until HH:MM' without stations; "
+              "no radar.json at all: 'not started yet' (%s)" % strip_tags(desk_(page_d)))
         d3 = os.path.join(tmp, "o3")
         mk_db(d3, radar=radar_doc(NOW - 26 * MIN, lines=["cycle 9: " + XSS], notes=[XSS], hosts={XSS: "down"}, why=XSS))
         page3 = build(d3)
@@ -330,7 +403,7 @@ def office_checks(check, skips=None):
         m_old = re.search(r'<div class="meta">updated [^<·]+ · next scan starts about ([^<·]*?)</div>', nopo)     # no strip: the header keeps the next start
         check(nopo and "could not be rendered" not in nopo and 'class="ocard' not in nopo and '<div class="sstrip"' not in nopo and "Daily overview" not in nopo
               and 'data-po-fold open>' in nopo and 'class="otop"' not in nopo
-              and 'data-ext="radar"' not in nopo and "<style></style>" not in nopo and 'data-agents="analyst"' in nopo
+              and 'data-ext="radar"' not in nopo and 'class="odesk"' not in nopo and "<style></style>" not in nopo and 'data-agents="analyst"' in nopo
               and m_old and m_old.group(1) == R.fmt_when(R.next_scan_ms(NOW, []), NOW),
               "report.py without page_office.py builds the page as before it: no cards, strip, overview or radar desk (the office's fold stands open), the "
               "header names the next scan at the cron minute, as the strip is not there (%s)" % (
@@ -441,7 +514,7 @@ def office_checks(check, skips=None):
               "has no strong cell; hatched exactly where under 20 results; a table view comes with it")
 
         # ---------------------------------------------------------------- U7: honest words in the new parts
-        new_text = " ".join([cut(page, '<div class="ocards"', "</label></div>"), cut(pageB, '<div class="obal', "</svg></div></div>"), cut(page, "<summary><span class=\"t\">Details", "</summary>"), cut(page, '<div class="oagent oext"', "Open the radar"), cut(page7, '<div class="oday">', "</details></div>"),
+        new_text = " ".join([cut(page, '<div class="ocards"', "</label></div>"), cut(pageB, '<div class="obal', "</svg></div></div>"), cut(page_d, '<label class="odesk"', "</label>"), cut(page, "<summary><span class=\"t\">Details", "</summary>"), cut(page, '<div class="oagent oext"', "Open the radar"), cut(page7, '<div class="oday">', "</details></div>"),
                              sstrip(page), PO.JS, R.OFFICE_AGENTS["radar"][1]]).lower()
         words = [w for w in (r"\bsafe\b", r"\bsafely\b", "guarantee", r"\bbuy\b", "\u2014") if re.search(w, new_text)]
         check(not words and new_text.count("dead within") >= 2, "U7 the new office text never says safe, guaranteed or buy, and has no em dash (%s)" % (words or "none"))
@@ -459,6 +532,15 @@ def office_checks(check, skips=None):
             cases = [c_ + (None, None) for c_ in cases] + [("done", round_doc(NOW - 70 * MIN), NOW, None), ("done", round_doc(NOW - 20 * MIN, next=None), NOW, NOW + 30 * MIN),
                                                            ("done", round_doc(NOW - 20 * MIN, next=None), NOW, NOW - 80 * MIN), ("done", round_doc(NOW - 20 * MIN, next=None), NOW, None)]
             py = [PO.look(s_, PO.radar_clean(doc_) if doc_ else None, utc, n_, sc_) for s_, doc_, n_, sc_ in cases]
+            # the desk on top: the page's doc (radar_clean) and the doc the radar's event carries (page_radar's whitelist) give the build's words
+            import page_radar as PRd
+            rd0 = round_doc(NOW - 20 * MIN)
+            dcases = [("running", desk_doc(dk_t), dk_t + 60_000), ("running", desk_doc(dk_t), dk_t + 131_000), ("late", desk_doc(dk_t), dk_t + 8 * MIN), ("stopped", desk_doc(dk_t), dk_t + 20 * MIN),
+                      ("done", rd0, NOW), ("done", rd0, rd0["next"] + 60_000), ("done", round_doc(NOW - 20 * MIN, state="degraded"), NOW), ("hours", radar_doc(NOW, state="hours", next=NOW + 5 * H), NOW),
+                      ("off", radar_doc(NOW, state="off"), NOW), ("none", None, NOW), ("running", old, dk_t + 60_000), ("running", radar_doc(dk_t, coins=[], others=[], lastGood=None), dk_t + 60_000),
+                      ("running", desk_doc(dk_t, state="degraded"), dk_t + 60_000), ("running", radar_doc(dk_t), dk_t + 30_000)]
+            dpy = [PO.desk_look(s_, PO.radar_clean(doc_) if doc_ else None, n_, utc) for s_, doc_, n_ in dcases]
+            dj = [[s_, PO.radar_clean(doc_) if doc_ else None, PRd.clean_doc(doc_) if doc_ else None, n_] for s_, doc_, n_ in dcases]
             jd = os.path.join(tmp, "js")
             os.makedirs(jd)
             with open(os.path.join(jd, "t.js"), "w", encoding="utf-8") as f:
@@ -467,6 +549,7 @@ def office_checks(check, skips=None):
                         + "C.forEach(function(c){o.look.push(O.look(c[0],c[1],f,c[2],c[3]));});var t=Date.UTC(2026,9,13,18,0),d={t:t,updated:t+600000};\n"
                         + "o.scan=[O.scan('live',d,t-60000,f),O.scan('paused',d,t-60000,f),O.scan('done',d,t-60000,f),O.scan('stopped',d,t-60000,f),O.scan('live',d,t,f),O.scan('hide',d,t-60000,f),O.scan('live',null,0,f)];\n"
                         + "o.next=[O.next(t,t-1,f),O.next(t,t,f),O.next(t,t+3600000,f),O.next(0,t,f)];\n"
+                        + "var DK=%s;o.desk=DK.map(function(c){return [O.desk(c[0],c[1],c[3],f),O.desk(c[0],c[2],c[3],f)];});\n" % json.dumps(dj)
                         + "o.events=L;O.radar({state:'off',doc:null});console.log(JSON.stringify(o));\n")
             r = subprocess.run([node, os.path.join(jd, "t.js")], capture_output=True, text=True, timeout=60)
             o = json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else {}
@@ -478,6 +561,10 @@ def office_checks(check, skips=None):
                   "node: the office script says what the page said at build time for every radar state (line, light, a round's 'next about'), the scan strip's live "
                   "words and its 'due now' once the expected start has passed (%s)" % (
                       "same" if same else "%s vs %s" % (o.get("look"), py) if o else r.stderr[-300:]))
+            same_d = o.get("desk") == [[x, x] for x in dpy]
+            check(same_d and len(dpy) == 14 and dpy[-1]["meta"].startswith("every 2.5 min · "),
+                  "node: the desk on top says in the browser what the page said at build time, for every state and doc, from the page's doc and from the "
+                  "radar event's (page_radar's whitelist) (%s)" % ("same" if same_d else "%s vs %s" % (o.get("desk"), dpy) if o else r.stderr[-300:]))
 
         # ---------------------------------------------------------------- the page in Chromium: live poll, radar event, overflow
         browser_checks(check, skips, d1, tmp)
@@ -501,6 +588,10 @@ def browser_checks(check, skips, d1, tmp):
     mk_db(dw, radar=radar_doc(NOW - 26 * MIN), agents=AGENTS[:3] + ("deep",) + AGENTS[3:], spotter=True)
     mk_launches(dw, NOW, standout=True)
     page_plain = build(dw)
+    dk = os.path.join(tmp, "deskw")
+    mk_db(dk, radar=desk_doc(NOW - 26 * MIN, hosts={"pumpportal": "limited"}, others=[dict(x, hard=["holder_cluster", "rugger_wallets", "fund_cluster"])
+                                                                                       for x in desk_doc(NOW)["others"]]))
+    page_desk = build(dk)
     # "Open the radar" goes to the New tab, where the radar sits on top (the Radar tab is merged into New): one radio of that id, none for Radar
     page_rt = page_plain
     check(page_rt.count('id="tab-young"') == 1 and 'id="tab-radar"' not in page_rt and page_rt.count("data-radar ") == 1,
@@ -544,7 +635,7 @@ def browser_checks(check, skips, d1, tmp):
             pg.click('label[for="tab-office"]')
             pg.wait_for_function("!!document.querySelector('.office[data-live]')", timeout=10000)
             got = pg.evaluate("""() => { const q = s => document.querySelector(s), cs = e => getComputedStyle(e);
-              return { desk: q('g[data-ext="radar"]').getAttribute('data-live'), card: q('label[data-ext="radar"]').getAttribute('data-live'),
+              return { desk: q('g[data-ext="radar"]').getAttribute('data-live'), card: q('label[data-po-desk]').getAttribute('data-live'),
                 panel: q('.oext').getAttribute('data-live'), an: q('g.desk[data-agent="analyst"]').getAttribute('data-live'),
                 acard: q('label.ocard[data-agent="analyst"]').getAttribute('data-live'), achip: (q('label.ocard[data-agent="analyst"] [data-live-chip]')||{}).textContent,
                 aline: (q('label.ocard[data-agent="analyst"] [data-live-line]')||{}).textContent, pline: (q('.opanel [data-live-line="analyst"]')||{}).textContent,
@@ -580,36 +671,59 @@ def browser_checks(check, skips, d1, tmp):
             pg.evaluate("""() => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: 'off', via: 'github', doc: {kind: 'radar', t: Date.now() - 30000, state: 'off',
               notes: ['radar switched off'], hosts: {rugcheck: 'ok'}}}}))""")
             off = pg.evaluate("""() => { const q = s => document.querySelector(s);
-              return [q('g[data-ext="radar"]').getAttribute('class'), q('label[data-ext="radar"] .ocl').textContent, q('[data-ext-word="radar"]').textContent,
-                q('[data-ext-lt="radar"]').getAttribute('class'), q('[data-ext-hosts="radar"]').hidden, q('[data-ext-wired="radar"]').hidden,
+              return [q('g[data-ext="radar"]').getAttribute('class'), q('[data-ext-line="radar"]').textContent, q('[data-ext-word="radar"]').textContent,
+                q('[data-pd-dot]').getAttribute('class'), q('[data-ext-hosts="radar"]').hidden, q('[data-ext-wired="radar"]').hidden,
                 q('[data-ext-notes="radar"]').textContent, q('[data-ext-until="radar"]').textContent]; }""")
             pg.evaluate("""x => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: 'late', via: 'raw', doc: {kind: 'radar', t: Date.now() - 400000, state: 'running',
               counts: {seen: 9, good: 2, pushed: 1}, lines: ['cycle 20: ' + x], notes: ['RugCheck limited: 4 coins not fully checked'], run: {end: Date.now() + 1200000},
               hosts: {rugcheck: 'down', dexscreener: 'ok'}}}}))""", XSS)
             on = pg.evaluate("""() => { const p = document.querySelector('.oext');
               return [document.querySelector('g[data-ext="radar"]').getAttribute('class'), document.querySelector('g[data-ext="radar"] .scr').getAttribute('class'),
-                document.querySelector('label[data-ext="radar"] .ocl').textContent, p.querySelectorAll('img').length, p.querySelector('[data-ext-lines]').textContent,
+                document.querySelector('[data-ext-line="radar"]').textContent, p.querySelectorAll('img').length, p.querySelector('[data-ext-lines]').textContent,
                 p.querySelector('[data-ext-hosts]').textContent, document.querySelector('[data-ext-chip="radar"]').className, p.querySelector('[data-ext-notes]').textContent,
                 p.querySelector('[data-ext-until]').textContent, p.querySelector('[data-ext-hosts]').hidden, p.querySelector('[data-ext-wired]').hidden]; }""")
             pg.evaluate("""() => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: 'stopped', via: 'github', doc: {kind: 'radar', t: Date.now() - 2400000, state: 'running',
               counts: {seen: 4, good: 0, pushed: 0}}}}))""")
-            stop = pg.evaluate("""() => [document.querySelector('[data-ext-lt="radar"]').getAttribute('class'), document.querySelector('[data-ext-chip="radar"]').className,
-              document.querySelector('g[data-ext="radar"] .scr').getAttribute('class'), document.querySelector('label[data-ext="radar"] .ocl').textContent,
+            stop = pg.evaluate("""() => [document.querySelector('[data-pd-dot]').getAttribute('class'), document.querySelector('[data-ext-chip="radar"]').className,
+              document.querySelector('g[data-ext="radar"] .scr').getAttribute('class'), document.querySelector('[data-ext-line="radar"]').textContent,
               document.querySelector('[data-ext-notes="radar"]').textContent]""")
             # ... and a round (the hourly radar): done, green, its last round and the next one
             pg.evaluate("""() => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: 'done', via: 'github', good: 0, doc: {kind: 'radar', t: Date.now() - 1200000, state: 'done',
               next: Date.now() + 2100000, run: {mode: 'round', end: null}, counts: {seen: 6, good: 1, pushed: 1}}}}))""")
-            done = pg.evaluate("""() => [document.querySelector('g[data-ext="radar"]').getAttribute('class'), document.querySelector('[data-ext-lt="radar"]').getAttribute('class'),
-              document.querySelector('[data-ext-chip="radar"]').className, document.querySelector('[data-ext-word="radar"]').textContent, document.querySelector('label[data-ext="radar"] .ocl').textContent,
+            done = pg.evaluate("""() => [document.querySelector('g[data-ext="radar"]').getAttribute('class'), document.querySelector('[data-pd-dot]').getAttribute('class'),
+              document.querySelector('[data-ext-chip="radar"]').className, document.querySelector('[data-ext-word="radar"]').textContent, document.querySelector('[data-ext-line="radar"]').textContent,
               document.querySelector('[data-ext-checked="radar"]').textContent.replace(/\d\d:\d\d/, 'HH:MM'), document.querySelector('[data-ext-until="radar"]').textContent.replace(/\d\d:\d\d/, 'HH:MM')]""")
-            check(off == ["desk off", "switched off on GitHub", "switched off", "olt skipped", True, False, "", ""]
+            check(off == ["desk off", "switched off on GitHub", "switched off", "odk-dot skipped", True, False, "", ""]
                   and on[:3] == ["desk", "scr fallback", "late · 9 seen, 2 without traps"] and on[3] == 0 and XSS in on[4] and on[5] == "RugCheck · downDexScreener · ok"
                   and on[6] == "chip warn" and on[7] == "RugCheck limited: 4 coins not fully checked" and on[8] == "" and on[9:] == [False, True]
-                  and stop == ["olt failed", "chip bad", "scr failed", "stopped · 4 seen, 0 without traps", ""]
-                  and done == ["desk", "olt done", "chip good", "done", "6 seen · 1 without traps · 1 pushed", "last round HH:MM", " · next about HH:MM"] and not dialogs,
-                  "U6/U10 browser: the radar event moves the radar's desk, card and panel: off is dark without old notes or services; late is amber with its "
+                  and stop == ["odk-dot failed", "chip bad", "scr failed", "stopped · 4 seen, 0 without traps", ""]
+                  and done == ["desk", "odk-dot done", "chip good", "done", "6 seen · 1 without traps · 1 pushed", "last round HH:MM", " · next about HH:MM"] and not dialogs,
+                  "U6/U10 browser: the radar event moves the desk on top, the floor desk and the panel: off is dark without old notes or services; late is amber with its "
                   "counts and notes (no run end any more); stopped is red; a round between rounds is green, 'last round HH:MM · next about HH:MM'; its lines are "
                   "text, never markup (%s | %s | %s | %s)" % (off, on[:3] + on[6:9], stop, done))
+            # the desk on top follows the same event (its numbers from the doc, as the page builds them), says 'round in progress' once the next
+            # round is 10 s due without a newer doc (its own clock moves on between two events), and hides its stations when switched off
+            read = """() => { const q = s => document.querySelector(s);
+              return [q('[data-pd-word]').textContent, q('[data-pd-meta]').textContent.replace(/\\d\\d:\\d\\d/g, 'HH:MM'), q('[data-pd-g]').hidden, q('[data-pd-g]').className,
+                Array.from(document.querySelectorAll('[data-pd-g] .odk-s')).map(e => [e.querySelector('.k').textContent, e.querySelector('b').textContent, e.querySelector('.l').textContent])]; }"""
+            send = """([st, d, age]) => { const n = Date.now(); d.t = n - age; d.next = d.t + 120000; d.coins[0].push = d.t; d.lastGood.at = d.t;
+              window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: st, via: 'github', doc: d, now: n}})); }"""
+            pg.evaluate(send, ["running", desk_doc(0), 60_000])
+            d_run = pg.evaluate(read)
+            pg.evaluate(send, ["running", desk_doc(0), 129_500])
+            d_due = pg.evaluate(read)
+            pg.wait_for_function("document.querySelector('[data-pd-word]').textContent === 'round in progress'", timeout=15000)
+            d_prog = pg.evaluate(read)
+            pg.evaluate(send, ["late", desk_doc(0), 8 * MIN])
+            d_late = pg.evaluate(read)
+            pg.evaluate(send, ["off", dict(desk_doc(0), state="off"), 60_000])
+            d_off = pg.evaluate(read)
+            check(d_run == ["running", "every 2 min · last HH:MM · next HH:MM", False, "odk-g", [["Sources", "292", "live feed on · pf:graduated 180 · gt:new 40 · jup:recent 30"],
+                            ["Checks", "7", "red flags: creator sold 3 · RugCheck danger 2"], ["Verdicts", "124", "no trap · watch · trap"], ["Push", "1", "PEPE2 pushed"]]]
+                  and d_due[0] == "running" and d_prog[:2] == ["round in progress", "every 2 min · last HH:MM"] and d_late[:4] == ["late", "every 2 min · last HH:MM", False, "odk-g dim"]
+                  and d_off[:3] == ["off", "last HH:MM", True] and not errs,
+                  "U6 browser: the desk on top follows the radar event: running with its four stations; 'round in progress' once the next round is 10 s due "
+                  "(the desk's own clock moves on); late dims the last round; switched off hides the stations (%s | %s | %s | %s)" % (d_run, d_prog[:2], d_late[:4], d_off[:3]))
             ctx.close()
             # 390 and 1280, light and dark, every fold on the Pick and Office tabs open and every department in turn: nothing wider than the screen;
             # the cards row scrolls inside itself on a phone, wraps on a desktop with whole names; the hour cells are 44 px tall
@@ -646,7 +760,7 @@ def browser_checks(check, skips, d1, tmp):
                   "U8 office and pick tabs at 390 and 1280 px, light and dark, every fold open (the daily overview's table too, also made 1500 px wide: it "
                   "scrolls in its box) and every department: no page scroll; the cards grid never scrolls inside itself and cuts no name; hour cells 44 px "
                   "tall (%s)" % [(w, "dark" if dk else "light", m[:4] + m[8:13]) for w, dk, m in sizes])
-            n_cards = len(AGENTS) + 3
+            n_cards = len(AGENTS) + 2
             check(all(m[13][:3] == [False, 0, 0] and m[13][4] == [] and m[13][5] == n_cards and m[13][6] >= 0 for _, _, m in sizes)
                   and all(m[13][3] == 2 for m in phone) and all(m[13][3] == 4 for m in desk),
                   "office default view at 390 and 1280 px, light and dark: the Details fold is closed (the floor plan is not drawn), no sideways scroll, the "
@@ -661,9 +775,9 @@ def browser_checks(check, skips, d1, tmp):
             tap = pg.evaluate("[document.getElementById('od-safety').checked, Math.round(document.querySelector('.opanel.k-safety').getBoundingClientRect().top), innerHeight, "
                               "document.querySelector('details[data-po-fold]').open]")
             pg.evaluate("scrollTo(0, 0)")
-            pg.click('label.ocard[data-agent="radar"]')
-            pg.wait_for_timeout(900)
-            tap_r = pg.evaluate("[document.getElementById('od-analysts').checked, Math.round(document.querySelector('.oext').getBoundingClientRect().top), innerHeight, "
+            pg.click('label[data-po-desk]')
+            pg.wait_for_timeout(300)
+            tap_r = pg.evaluate("[document.getElementById('tab-young').checked, Math.round(document.querySelector('[data-radar]').getBoundingClientRect().top), innerHeight, "
                                 "!!(document.querySelector('[data-po-radar]')||{}).hidden, !!document.getElementById('tab-young') && !!document.querySelector('[data-radar]')]")
             pg.reload()
             pg.wait_for_timeout(300)
@@ -678,29 +792,47 @@ def browser_checks(check, skips, d1, tmp):
                                 "document.querySelector('details[data-po-fold]').open, getComputedStyle(document.querySelector('.opanel.k-trading')).display]")
             check(tap[0] and 0 <= tap[1] < tap[2] / 2 and tap[3] and tap_r[0] and 0 <= tap_r[1] < tap_r[2] / 2 and tap_r[3] == (not tap_r[4]) and kept and fresh is False
                   and tap_d[0] and 0 <= tap_d[1] < tap_d[2] / 2 and tap_d[3] and tap_d[4] != "none",
-                  "U6 browser: a tap on an agent's card opens the Details fold at its department and brings it into view (a phone: its panel, the radar's "
-                  "card its own block; a desktop: the floor plan with the panel beside it); the fold stays open across the page's reload in that tab and is "
+                  "U6 browser: a tap on an agent's card opens the Details fold at its department and brings it into view (a phone: its panel; a desktop: "
+                  "the floor plan with the panel beside it), a tap on the radar desk opens New with the radar in view; the fold stays open across the page's reload in that tab and is "
                   "closed in a new one; the link to the radar is hidden exactly when the page has no radar on New (%s, %s, %s, %s, %s)" % (tap, tap_r, tap_d, kept, fresh))
             pg.evaluate("document.getElementById('tab-office').click(); document.getElementById('od-brain').checked = true;")
             pg.click('label[for="ohb-3"]')
             shown = pg.evaluate("Array.from(document.querySelectorAll('.ohb-read p')).filter(p => p.getClientRects().length).map(p => p.textContent)")
             check(len(shown) == 1 and shown[0].startswith("03:00 to 04:00 · ") and not errs, "U9 browser: a tap on an hour of the bar shows that hour's numbers, one at a time (%s)" % (shown[:1], ))
             ctx.close()
-            # "Open the radar": in a browser the label checks the New tab's radio; in the installed app it sets #tab-radar so the app's tab bar follows (New, at its top)
+            # "Open the radar" and the desk on top: in a browser the label checks the New tab's radio; in the installed app it sets #tab-radar so the
+            # app's tab bar follows (New, at its top)
             res = []
-            for app in (False, True):
-                ctx, pg = open_(page_rt)
-                pg.evaluate("document.getElementById('tab-office').click(); document.querySelector('details[data-po-fold]').open = true; "
-                            "document.getElementById('od-analysts').checked = true;" + (" document.documentElement.classList.add('app');" if app else ""))
-                pg.evaluate("window._hc = 0; window.addEventListener('hashchange', () => { window._hc++; });")
-                lab = pg.locator('[data-po-radar] label')
-                hgt = round(lab.bounding_box()["height"]) if lab.is_visible() else 0
-                lab.click()
-                pg.wait_for_timeout(100)
-                res.append(pg.evaluate("[document.getElementById('tab-young').checked, location.hash, window._hc]") + [hgt])
+            for sel in ('[data-po-radar] label', 'label[data-po-desk]'):
+                for app in (False, True):
+                    ctx, pg = open_(page_rt)
+                    pg.evaluate("document.getElementById('tab-office').click(); document.querySelector('details[data-po-fold]').open = true; "
+                                "document.getElementById('od-analysts').checked = true;" + (" document.documentElement.classList.add('app');" if app else ""))
+                    pg.evaluate("window._hc = 0; window.addEventListener('hashchange', () => { window._hc++; });")
+                    lab = pg.locator(sel)
+                    hgt = round(lab.bounding_box()["height"]) if lab.is_visible() else 0
+                    lab.click()
+                    pg.wait_for_timeout(100)
+                    res.append(pg.evaluate("[document.getElementById('tab-young').checked, location.hash, window._hc]") + [hgt])
+                    ctx.close()
+            check(all(r_[:3] == [True, "", 0] for r_ in res[0::2]) and all(r_[:3] == [False, "#tab-radar", 1] for r_ in res[1::2]) and all(r_[3] >= 44 for r_ in res),
+                  "U6 browser: 'Open the radar' and the desk on top (44 px targets at least) open New in a browser and go through the app's hash link in the installed app (%s)" % res)
+            # the desk on a phone (320 and 390 px) and a desktop, light and dark: no sideways scroll, a short block (a state line and two rows of
+            # stations, each line at most 2 lines), page tokens in both themes
+            dsz = []
+            for w, dark in ((320, False), (320, True), (390, False), (390, True), (1280, False), (1280, True)):
+                ctx, pg = open_(page_desk, w, 844, dark)
+                pg.evaluate("document.getElementById('tab-office').click()")
+                dsz.append(pg.evaluate("""() => { const k = document.querySelector('.odesk'), r = k.getBoundingClientRect(), h = document.querySelector('#pane-office h2').getBoundingClientRect(),
+                    ls = Array.from(k.querySelectorAll('.odk-s .l')), cols = new Set(Array.from(k.querySelectorAll('.odk-s')).map(e => Math.round(e.getBoundingClientRect().left))).size;
+                  return [document.documentElement.scrollWidth - innerWidth, Math.round(r.right - innerWidth), k.scrollWidth - k.clientWidth, Math.round(r.height), r.top < h.top,
+                    ls.filter(l => l.getBoundingClientRect().height > 2 * parseFloat(getComputedStyle(l).lineHeight) + 1).length, cols,
+                    getComputedStyle(k).backgroundColor, Array.from(k.querySelectorAll('.odk-s .k')).filter(e => e.scrollWidth > e.clientWidth + 1).length]; }"""))
                 ctx.close()
-            check(res[0][:3] == [True, "", 0] and res[1][:3] == [False, "#tab-radar", 1] and res[0][3] >= 44 and res[1][3] >= 44,
-                  "U6 browser: 'Open the radar' (a 44 px target) opens New in a browser and goes through the app's hash link in the installed app (%s)" % res)
+            check(all(m[0] <= 0 and m[1] <= 0 and m[2] <= 0 and m[4] and m[5] == 0 and m[8] == 0 for m in dsz) and all(m[3] <= 220 and m[6] == 2 for m in dsz[:2]) and all(m[3] <= 200 and m[6] == 2 for m in dsz[2:4])
+                  and dsz[4][6] == 4 and dsz[4][3] <= 130 and dsz[0][7] != dsz[1][7] and dsz[2][7] != dsz[3][7],
+                  "U8 the radar desk at 320, 390 and 1280 px, light and dark: above the office's heading, no sideways scroll, station names whole, each "
+                  "station line at most 2 lines, 2 x 2 on a phone (at most 200 px tall at 390 px) and one row on a desktop, its own colours in the dark theme (%s)" % dsz)
             br.close()
     except Exception as e:
         check(False, "office browser checks ran (%s)" % str(e)[:300])
