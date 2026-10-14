@@ -3703,6 +3703,23 @@ console.log(JSON.stringify(o));
           "build: the peak job prices the trades bought before the restart too, and the account sums their best within 6 h apart "
           "(not in the account since the restart): %s" % o_)
     shutil.rmtree(tmpo, ignore_errors=True)
+    import yaml as Y_x                            # the hand-started peaks backfill: manual only, the scan's group, no token kept, a bigger budget
+    pb = Y_x.safe_load(open(os.path.join(HERE, ".github", "workflows", "peaks-backfill.yml")))
+    pb_on, pb_job = pb.get(True) or pb.get("on") or {}, (pb.get("jobs") or {}).get("backfill") or {}
+    pb_steps = pb_job.get("steps") or []
+    pb_run = " ".join(st_.get("run") or "" for st_ in pb_steps)
+    import peak as PK_y
+    pk_before = PK_y.PEAK_MAX_ITEMS
+    tmp_pb = tempfile.mkdtemp(prefix="mb-pb-")
+    with contextlib.redirect_stdout(io.StringIO()):
+        PK_y.main(["run", "--dir", tmp_pb, "--deadline-s", "1", "--max-items", "280"])
+    pk_after = PK_y.PEAK_MAX_ITEMS
+    PK_y.PEAK_MAX_ITEMS = pk_before
+    shutil.rmtree(tmp_pb, ignore_errors=True)
+    check(list(pb_on) == ["workflow_dispatch"] and (pb.get("concurrency") or {}).get("group") == "memebot-scan"
+          and (pb.get("concurrency") or {}).get("cancel-in-progress") is False and pb_steps[:1] == [{"uses": "actions/checkout@v4", "with": {"persist-credentials": False}}]
+          and "peak.py run --dir mb --deadline-s" in pb_run and "--max-items" in pb_run and "bot.py sync" in pb_run and pk_after == 280 and pk_before == 60,
+          "build: the peaks backfill is started by hand only, waits in the scan's group, keeps no token, and may price more windows (--max-items)")
     import page_radar as PR_x, page_office as PO_x
     yh = PR_x.young_head({"a": {"v": "trap"}}, [{"addr": "a"}])
     check("body:has(#tab-radar:checked) .wrap > .live { display:none }" in PR_x.CSS and "the trap check does not stop them (fake money)" in yh

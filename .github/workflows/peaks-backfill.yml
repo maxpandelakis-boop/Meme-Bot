@@ -1,0 +1,54 @@
+# One-off catch-up of the hindsight category "best within 6 h" (peak.py): the hourly peaks job prices at most 60 windows a run, so
+# after a change of the doc version (PEAK_V) the whole backlog would take many hours. Started only by hand (Actions -> "Meme-Bot
+# peaks backfill" -> Run workflow); it prices as many windows as fit in the time given and pushes the docs to the results branch.
+# Fake money only: nothing is bought, and the trader never reads these docs. It shares the scan's concurrency group, so it never
+# writes the results branch at the same time as a scan (a scan that comes meanwhile waits for it).
+name: Meme-Bot peaks backfill
+run-name: "Peaks backfill · ${{ inputs.minutes }} min"
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'how long it prices, in minutes (at most 50); about 6 windows a minute'
+        type: number
+        default: 40
+permissions:
+  contents: write                    # the results branch
+concurrency:
+  group: memebot-scan                # the scan's group: one writer of the results branch at a time
+  cancel-in-progress: false
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # no token in .git/config: only the restore and push steps get it
+      - name: Restore the bot's state from the results branch
+        id: restore
+        env:
+          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          if git ls-remote --exit-code --heads "$RESULTS_URL" results >/dev/null; then
+            git clone -q --depth 1 --branch results "$RESULTS_URL" mb || (sleep 10 && git clone -q --depth 1 --branch results "$RESULTS_URL" mb)
+            echo "state restored: $(git -C mb log -1 --format='%h %s')"
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "no results branch yet: nothing to price"
+          fi
+      - name: Price the closed 6-hour windows (as many as fit in the time given)
+        if: steps.restore.outputs.ok == 'true'
+        timeout-minutes: 52
+        env:
+          MINUTES: ${{ inputs.minutes }}
+        run: |
+          m=$(python3 -c "import os; print(max(5, min(50, int(float(os.environ.get('MINUTES') or 40)))))")
+          python3 peak.py run --dir mb --deadline-s $((m * 60)) --max-items $((m * 7))
+      - name: Push the peak docs to the results branch
+        if: ${{ !cancelled() && steps.restore.outputs.ok == 'true' }}
+        env:
+          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: python3 bot.py sync --remote "$RESULTS_URL"

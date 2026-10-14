@@ -868,7 +868,11 @@ def main(argv=None):
     r.add_argument("--now", type=int, default=None, help="ms; default: the wall clock")
     r.add_argument("--deadline-s", type=float, default=600.0)
     r.add_argument("--mock", default=None, help="rewrite every URL to <mock>/<host>/<path> (selftest)")
+    r.add_argument("--max-items", type=int, default=None, help="windows this run may ask for (default PEAK_MAX_ITEMS; the backfill run asks more)")
     a = ap.parse_args(argv)
+    if a.max_items and a.max_items > 0:
+        global PEAK_MAX_ITEMS
+        PEAK_MAX_ITEMS = min(int(a.max_items), 600)
     now = a.now if a.now is not None else int(time.time() * 1000)
     out = run(a.dir, now, a.deadline_s, a.mock)
     print(json.dumps(out), flush=True)
