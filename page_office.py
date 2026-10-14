@@ -495,6 +495,7 @@ STRIP_CSS = r"""
 """
 
 CSS = r"""
+.fold-lite > summary { min-height:44px; display:flex; align-items:center }   /* a 44 px tap target */
 /* the office's agent cards, the Launch radar's desk and the daily overview (page_office.py); page tokens only, light and dark */
 .ocards { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; padding:2px 2px 10px; scrollbar-width:thin; max-width:100% }
 .ocard { flex:0 0 152px; scroll-snap-align:start; display:grid; gap:3px; align-content:start; min-width:0; padding:9px 11px; border:1px solid var(--line); border-radius:8px;

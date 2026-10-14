@@ -439,7 +439,8 @@ def young_head(ratings, rows):
     if not rts:
         return ""
     good = sum(1 for r in rts if r and r.get("v") == "good")
-    return ('<p class="tsum"><span class="chip%s">%d without traps</span><span class="chip%s">%d with traps or unchecked</span></p>' % (
+    return ('<p class="tsum"><span class="chip%s">%d without traps</span><span class="chip%s">%d with traps or unchecked</span>'
+            '<small class="tbuy">paper buys follow the old rule: the trap check does not stop them (fake money)</small></p>' % (
         " good" if good else "", good, " bad" if len(rts) - good else "", len(rts) - good))
 
 
@@ -670,7 +671,9 @@ CSS = r"""
    (also on the New launches tab and the pick); the "no good coin" banner. Page tokens only, so light and dark both work. */
 #tab-radar:checked ~ .tabbar label[for="tab-radar"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
 #tab-radar:checked ~ #pane-radar { display:grid }
+body:has(#tab-radar:checked) .wrap > .live { display:none }   /* the full scan's "Scan now" box is not shown on the Radar tab: the radar has its own Start */
 .tabbar .cnt.good { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) }
+.tsum .tbuy { flex:1 1 100%; color:var(--muted); font-size:var(--fs-s) }
 .tline { display:flex; flex-wrap:nowrap; gap:4px; min-width:0; max-width:100%; overflow:hidden; flex:1 1 100%; contain:inline-size }   /* its chips never widen a table column */
 .tc { display:inline-flex; align-items:center; gap:4px; flex:0 1 auto; min-width:2.6em; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
   font-size:var(--fs-xs); line-height:1.4; padding:2px 8px 2px 6px; border-radius:999px; background:var(--chip); color:var(--fg2) }

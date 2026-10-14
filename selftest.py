@@ -3683,6 +3683,12 @@ console.log(JSON.stringify(o));
           and "mins = DEFAULT_MINUTES" in open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() and LR_x.DEFAULT_MINUTES == 55,
           "build: bidi controls are stripped from push titles and the radar page's text, the radar job and the peaks job check out without "
           "the token in .git/config, every radar successor runs 55 minutes")
+    import page_radar as PR_x, page_office as PO_x
+    yh = PR_x.young_head({"a": {"v": "trap"}}, [{"addr": "a"}])
+    check("body:has(#tab-radar:checked) .wrap > .live { display:none }" in PR_x.CSS and "the trap check does not stop them (fake money)" in yh
+          and '<span class="chip bad">1 with traps or unchecked</span>' in yh and ".fold-lite > summary { min-height:44px" in PO_x.CSS,
+          "build: the Radar tab hides the full scan's Scan now box (the radar has its own Start), the New tab says paper buys ignore the "
+          "trap check, the daily overview's table fold is a 44 px target")
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
 
