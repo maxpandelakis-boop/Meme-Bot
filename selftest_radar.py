@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """selftest_radar.py: the launch radar's checks R1-R10 (SPEC 11), R11 (the WP0 probe's findings applied: adapter defaults, routes,
-rate rules) and R12 (one round per start, as radar.yml runs it: no successor, the later prices hourly rounds can catch), against a
-local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle), a local bare git remote and a local
-stand-in for the app's live store. Fake money only.
+rate rules), R12 (one round per start: no successor, the later prices hourly rounds can catch) and R13 (2-minute rounds, momentum on
+paper), against a local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle; 120 s in R13), a local
+bare git remote and a local stand-in for the app's live store. Fake money only.
 
   python3 selftest_radar.py        runs the checks on their own (PASS/FAIL per check, "RADAR ALL PASS" at the end)
   checks(check, env=None)          the same from selftest.py's main (check(ok, what) as there)
@@ -734,9 +734,10 @@ class Sink:
         return {"kind": "radar", "sent": 1}
 
 
-def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24", extra=None, deadline=8.0, patch=None, envs=None, cmd="loop", source="manual"):
-    """One radar run in this process: (exit code, the Radar, its log lines, seconds). cmd loop (a VM's way: --minutes long) or round
-    (radar.yml's way: one cycle)."""
+def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24", extra=None, deadline=8.0, patch=None, envs=None, cmd="loop", source="manual",
+              clock=None):
+    """One radar run in this process: (exit code, the Radar, its log lines, seconds). cmd loop (radar.yml's way: --minutes long) or round
+    (one cycle). clock: a fake clock of its own (LR.FakeClock(now, step=120_000) for 2-minute cycles; default 150 s)."""
     import launch_radar as LR
     lines = []
     argv = [cmd, "--dir", rd] + (["--minutes", str(minutes)] if cmd == "loop" else []) + ["--cadence", "1", "--clock", "fake", "--now", str(int(now)),
@@ -746,7 +747,7 @@ def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24
     e.update(envs or {})
     t = time.time()
     with env(**e), memebot_rules():
-        R = LR.Radar(LR.args_of(argv), log=lines.append, notifier=notifier, traps=T, peak=P)
+        R = LR.Radar(LR.args_of(argv), log=lines.append, notifier=notifier, traps=T, peak=P, clock=clock)
         for m in MOCKS:
             m.clock = R.clock.now
         if patch:
@@ -755,11 +756,11 @@ def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24
     return code, R, lines, time.time() - t
 
 
-def unit_radar(T, P, tmp, name, now=T0, extra=None, log=None):
+def unit_radar(T, P, tmp, name, now=T0, extra=None, log=None, clock=None):
     """A Radar without a run (no GitHub, fake clock) for checks on one method."""
     import launch_radar as LR
     return LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, name), "--clock", "fake", "--now", str(int(now)), "--cache", os.path.join(tmp, name + "-c"),
-                                "--no-github"] + (extra or [])), log=log or (lambda s_: None), traps=T, peak=P)
+                                "--no-github"] + (extra or [])), log=log or (lambda s_: None), traps=T, peak=P, clock=clock)
 
 
 def fresh_remote(T, tmp, name, now, **kw):
@@ -1120,7 +1121,7 @@ def checks(check, env_=None):
               "exactly one notification, for CLEAN, none for INSTA/BRAND/NORC/NOMINT/CLUSTER/RUGGERS/XCOPY/JUPMINT/V3ONLY: %r / %r" % ((pushes or [{}])[0].get("title"), (pushes or [{}])[0].get("body")))
         pj = json.loads(branch_files(remote, "radar-data").get("pushed.json") or b"{}")
         check(set(pj) == {by["CLEAN"]}, "pushed.json on radar-data holds CLEAN")
-        check(code_b == 0 and not sink_b.got and rb.get("rt") and len(rb["rt"]) == 5 and rb["rt"][-1][1] == "good",
+        check(code_b == 0 and not sink_b.got and rb.get("rt") and len(rb["rt"]) >= 5 and rb["rt"][-1][1] == "good",
               "a restart while CLEAN is still under 10 minutes rates it again (good) and sends nothing (pushed.json restored)")
         x = lambda a, age=5.0, ok=True: {"addr": a, "sym": a[:4], "push_ok": ok, "age": age, "doc": {"sym": a[:4], "age": age, "n": 9, "liq": 23000}}
         Rg.restore_state = "ok"
@@ -1293,7 +1294,7 @@ def checks(check, env_=None):
               "cycles that fail: from the 3rd in a row radar.json says degraded with the reason (%s), the next good cycle says running again; after "
               "10 the run ends (exit 1) and radar.json still says degraded" % first_d)
 
-        # radar.yml's loop (a round every 5 minutes for 55 minutes, each run starting the next): when its next round would fall outside the
+        # radar.yml's loop (a round every 2 minutes for 55 minutes, each run starting the next): when its next round would fall outside the
         # hours, its last radar.json says hours (no run follows to say it); a failed push of its last round is tried once more (no cycle follows)
         import launch_radar as LR_l
         rem_le = fresh_remote(T, tmp, "remote-loop-end", T0)
@@ -1332,7 +1333,7 @@ def checks(check, env_=None):
         check(re.search(r"^on:\n  workflow_dispatch:", wf, re.M) and "schedule" not in wf and "group: memebot-radar" in wf and "cancel-in-progress: false" in wf
               and re.search(r"^    timeout-minutes: 70\b", wf, re.M) and "if: (vars.MEMEBOT_RADAR || '1') != '0'" in wf and body(wf.splitlines()) == body(sc)
               and "RADAR_URL" not in job_env and "SUPABASE_SECRET_KEY: ${{" not in job_env and not re.search(r"git push|refs/heads/(results|live|radar-feed)", wf)
-              and "run: python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55\n" in wf_code and "launch_radar.py round" not in wf_code
+              and "run: python3 launch_radar.py loop --dir rd --cadence 120 --deadline 100 --minutes 55\n" in wf_code and "launch_radar.py round" not in wf_code
               and not re.search(r"^      minutes:", inputs, re.M) and "options: ['manual', 'hourly', 'auto']" in inputs
               and wf_code.count("/dispatches") == 1 and "if: steps.loop.outcome == 'success'" in wf_code and '"inputs": {"source": "auto"}' in wf_code
               and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf
@@ -1341,7 +1342,7 @@ def checks(check, env_=None):
               and sorted(int(x) for x in re.findall(r"^        timeout-minutes: (\d+)\b", wf, re.M)) == [1, 2, 3, 4, 62]
               and all("--max-time" in l or re.search(r"\btimeout \d+ curl\b", l) for l in wf.splitlines() if re.search(r"\bcurl\b", l) and not l.strip().startswith("#"))
               and len(re.findall(r"\bcurl -sS --max-time \d+", wf)) == 2,
-              "radar.yml: dispatch only (source manual, hourly or auto, no minutes), group memebot-radar, a round every 5 minutes for 55 minutes "
+              "radar.yml: dispatch only (source manual, hourly or auto, no minutes), group memebot-radar, a round every 2 minutes for 55 minutes "
               "(launch_radar.py loop, step 62, job 70 min), one next-run step only after a loop that ended well, MEMEBOT_RADAR gate, the adapter switches from a repository variable, the push sender's install "
               "step as in scan.yml, the token only in the steps that use it, the hours and tidy steps bounded in time (they hold the radar's group)")
 
@@ -1549,6 +1550,7 @@ def checks(check, env_=None):
         check(size(f1) <= LR.DOC_MAX and len(f1["recent"]) == 20 and 0 < len(f1["others"]) < 400 and size(f2) <= LR.DOC_MAX and f2["others"] == [] and 0 < len(f2["recent"]) < 40,
               "radar.json over 48 KB: the fold (others) is cut first (%d of 400 left, recent kept), then recent (%d of 40 left)" % (len(f1["others"]), len(f2["recent"])))
         round_checks(check, LR, T, P, tmp)
+        fast_checks(check, LR, T, P, tmp)
         probe_checks(check, LR, T, P, url, mock, heads_a, recs, by, tmp)
         if not real_push(check, T, P, url, remote, tmp):
             SKIPPED.append("R4's PushSink leg (app.notify_radar comes with WP4)")
@@ -1678,6 +1680,165 @@ def round_checks(check, LR, T, P, tmp):
     finally:
         srv3.shutdown()
         srv3.server_close()
+
+
+def fast_checks(check, LR, T, P, tmp):
+    """R13: 2-minute rounds (radar.yml: --cadence 120 --deadline 100) on a fake clock of 120 s a cycle: the deadline and step ends, a
+    coin without a pair asked again at the next cycle, the later prices at 6, 16, 30 and 60 minutes (none late), rt of RT_MAX ratings
+    with 6 fields (radar_paper buys the same as from 4); momentum on paper set once by its rule and nothing else changed by it; the
+    record line's mom and all (the 60-minute price alone)."""
+    import radar_paper as RP
+    print("== launch radar R13: 2-minute rounds, momentum on paper")
+    wf = open(os.path.join(HERE, ".github", "workflows", "radar.yml"), encoding="utf-8").read()
+    cd = re.search(r"launch_radar\.py loop --dir rd --cadence (\d+) --deadline (\d+) ", wf)
+    R2 = unit_radar(T, P, tmp, "rdF", extra=["--cadence", "120"], clock=LR.FakeClock(T0, step=120_000))
+    ends = [round(R2.deadline * s_ / LR.DEADLINE_S, 3) for s_ in LR.STEP_END.values()]
+    check(cd and (int(cd.group(1)), int(cd.group(2))) == (120, R2.deadline) and R2.deadline == 100 and R2.step == 120_000 and ends == [20, 28, 48, 76, 84, 96]
+          and LR.FakeClock(T0).step == LR.CYCLE_S * 1000 == 150_000,
+          "radar.yml's --cadence 120 --deadline 100: 125 s scaled to 120 is %g s, the step ends %s s; the fake clock's default stays 150 s"
+          % (R2.deadline, "/".join("%g" % e for e in ends)))
+
+    sb = os.path.join(tmp, "rdF-sb")
+    os.makedirs(sb, exist_ok=True)
+    a_np, a_60, a_cv, a_new = (addr(1300 + i) for i in range(4))
+    with open(os.path.join(sb, "lists.json"), "w") as f:
+        json.dump({"profiles": [a_np, a_60, a_cv, a_new]}, f)
+    R2.pool_cache({}, {a_np}, T0 + 1_000)               # DexScreener had no pair at the last cycle, which started 1 s after its grid point
+    R2.cache["pool"].update({a_60: [None, False, T0 + 60_000], a_cv: [None, True, T0 + 1_000]})
+    R2.clock.wait(T0 + 120_000)
+    asks = set(R2.ds_asks(sb, R2.clock.now()))
+    keep, LR.NOPAIR_RECHECK_MS = LR.NOPAIR_RECHECK_MS, 120_000
+    try:
+        old = set(R2.ds_asks(sb, R2.clock.now()))
+    finally:
+        LR.NOPAIR_RECHECK_MS = keep
+    check(asks == {a_np, a_cv, a_new} and old == {a_new},
+          "a coin DexScreener answered without a pair (or on its launch curve) is asked again at the next cycle, 119 s later (the old "
+          "2-minute rule skipped it); one answered 60 s ago is not")
+    a_l = addr(1310)
+    R2.clock.wait(T0 + 2 * 120_000)
+    first = R2.clock.now()
+    R2.docs, R2.rec_hour = {"l": {"coins": {a_l: {"addr": a_l, "first": first, "later": {}, "px": 1.0}}}}, {a_l: "l"}
+    for k in range(1, 32):
+        R2.clock.wait(T0 + (2 + k) * 120_000)
+        R2.later_prices({a_l: {"priceUsd": "1.5", "liquidityUsd": 9000.0}}, {a_l}, R2.clock.now())
+    lt = R2.docs["l"]["coins"][a_l]["later"]
+    at = {m: round((o["t"] - first) / MIN, 1) for m, o in lt.items()}
+    check(at == {"5": 6.0, "15": 16.0, "30": 30.0, "60": 60.0} and not any(o.get("late") or o.get("early") for o in lt.values()),
+          "the later prices at 2-minute cycles: 5 and 15 at the first cycle after them, 30 and 60 on time, none marked late (%s)" % at)
+
+    a_r = addr(1320)
+    row = {"a": a_r, "pr": {"pairCreatedAt": T0, "symbol": "RT", "name": "Rt", "dexId": "pumpswap", "pairAddress": "RtPool", "chgM5": 5.0},
+           "basic": {"price": 2e-5, "liq": 20_000.0, "mc": 50_000.0}, "f": {}, "age": 1.0}
+    for k in range(LR.RT_MAX + 2):
+        R2.rate(row, T0 + k * 120_000)
+    rt = R2.rec(a_r)["rt"]
+    check(len(rt) == LR.RT_MAX == 12 and all(len(e) == 6 and e[4] == 2e-5 and isinstance(e[5], int) for e in rt),
+          "rt keeps %d ratings, each [t, verdict, points, push, price, upside] (%s)" % (len(rt), rt[-1]))
+
+    mrec = lambda: {"addr": "M", "sym": "M", "first": T0, "px": 1.0, "liq": 20_000.0}
+    mrow = lambda px=1.6, liq=21_000.0, m5=5.0, age=3.0: {"basic": {"price": px, "liq": liq, "mc": 80_000.0}, "pr": {"chgM5": m5}, "age": age}
+
+    def mom(now, r, record_only=False, rec=None):
+        rec = rec or mrec()
+        R2.momentum(rec, r, now, "watch", record_only)
+        return rec.get("mom")
+    once = mrec()
+    m0 = mom(T0, mrow(px=1.0, liq=20_000.0, m5=60.0), rec=once)
+    m1 = mom(T0 + 2 * MIN, mrow(px=2.0), rec=once)
+    got = {"1.6x": mom(T0 + 2 * MIN, mrow()), "1.4x": mom(T0 + 2 * MIN, mrow(px=1.4)), "7 min": mom(T0 + 7 * MIN, mrow()),
+           "less liquidity": mom(T0 + 2 * MIN, mrow(liq=19_000.0)), "record only": mom(T0 + 2 * MIN, mrow(), True), "pool 10 min": mom(T0 + 2 * MIN, mrow(age=10.0)),
+           "under YOUNG_MIN_LIQ": mom(T0 + 2 * MIN, mrow(liq=4_000.0), rec=dict(mrec(), liq=3_000.0)), "m5 49": mom(T0, mrow(px=1.0, liq=20_000.0, m5=49.0))}
+    check((got["1.6x"] or {}).get("by") == "x" and got["1.6x"]["x"] == 1.6 and got["1.6x"]["t"] == T0 + 2 * MIN and not any(v for k, v in got.items() if k != "1.6x")
+          and (m0 or {}).get("by") == "m5" and m1 is m0 and once["mom"]["t"] == T0,
+          "momentum on paper: 1.6x within 6 minutes with liquidity not lower (by x); +60%% in 5 minutes at first sight (by m5, once); none at "
+          "1.4x, after 6 minutes, with less liquidity, on a record-only rating, at 10 minutes or under YOUNG_MIN_LIQ (%s)" % sorted(k for k, v in got.items() if v))
+
+    # two loop runs of 5 cycles on the same coins, momentum patched out in the second: the lists, verdicts and pushes stay the same
+    TF = T0 + 10 * H
+    coins = [fixture(n, 1330 + i, pool=TF - MIN, mint=TF - 5 * MIN, **kw)
+             for i, (n, kw) in enumerate((("RISER", {"rc": "404", "paid": False}), ("PUMPER", {"m5": 60.0}), ("DRAIN", {}), ("LATE", {}), ("STEADY", {})))]
+    moves = {"RISER": (1, 1.6, 1.3), "DRAIN": (1, 1.6, 0.7), "LATE": (4, 1.6, 1.3)}     # from that cycle on: price and liquidity times
+    by = {c["name"]: c["a"] for c in coins}
+    mf = RadarMock(coins)
+    srvf = serve(mf)
+    seen = {False: [], True: []}
+
+    def drive(off):
+        def patch_(R_):
+            real, ob = R_.cycle, R_.build_doc
+            if off:
+                R_.momentum = lambda *a_: None
+
+            def cyc(k, t, last):
+                for c in coins:
+                    k0, fx, lx = moves.get(c["name"], (99, 1.0, 1.0))
+                    c["px"], c["liq"] = (6e-5 * fx, 22_000.0 * lx) if k >= k0 else (6e-5, 22_000.0)
+                return real(k, t, last)
+
+            def bd(*a_, **k_):
+                d_ = ob(*a_, **k_)
+                seen[off].append([[(x["addr"], x["v"], x["pts"]) for x in d_[part]] for part in ("coins", "others")])
+                return d_
+            R_.cycle, R_.build_doc = cyc, bd
+        return patch_
+    try:
+        runs = {}
+        for off in (False, True):
+            rem_ = fresh_remote(T, tmp, "remote-mom-%d" % off, TF)
+            sink_ = Sink()
+            c_, _, _, _ = run_radar(T, P, "http://127.0.0.1:%d" % srvf.server_address[1], rem_, os.path.join(tmp, "rdMom%d" % off), TF, minutes=10,
+                                    notifier=sink_, clock=LR.FakeClock(TF, step=120_000), patch=drive(off))
+            runs[off] = (c_, hour_recs(rem_), radar_json(rem_), json.loads(branch_files(rem_, "radar-data").get("pushed.json") or b"{}"), sink_.got)
+    finally:
+        srvf.shutdown()
+        srvf.server_close()
+    (c_on, rec_on, doc_on, pj_on, got_on), (c_off, rec_off, doc_off, pj_off, got_off) = runs[False], runs[True]
+    mo = {n: (rec_on.get(a) or {}).get("mom") for n, a in by.items()}
+    ri, pu = rec_on.get(by["RISER"]) or {}, rec_on.get(by["PUMPER"]) or {}
+    check(c_on == 0 and len(ri.get("rt") or []) == 5 and (mo["RISER"] or {}).get("by") == "x" and mo["RISER"]["t"] == ri["rt"][1][0] and mo["RISER"]["v"] == "watch"
+          and not ri.get("good")
+          and (mo["PUMPER"] or {}).get("by") == "m5" and mo["PUMPER"]["t"] == pu.get("first") and not (mo["DRAIN"] or mo["LATE"] or mo["STEADY"])
+          and abs(ri["rt"][1][4] / ri["rt"][0][4] - 1.6) < 1e-6 and (doc_on.get("record") or {}).get("mom") == {"calls": 2, "n60": 0, "rug": None, "win": None},
+          "a loop at 2 minutes: RISER (watch: no RugCheck report) at 1.6x at its 2nd rating with more liquidity has momentum by x and stays "
+          "watch, PUMPER +60%% at first sight by m5 "
+          "(once), none for DRAIN (liquidity down), LATE (up 8 minutes after first sight) or STEADY; radar.json's record.mom %s"
+          % (doc_on.get("record") or {}).get("mom"))
+    l5 = {n: (rec_on.get(a) or {}).get("later", {}).get("5") or {} for n, a in by.items()}
+    check(all(round((o.get("t", 0) - (rec_on.get(by[n]) or {}).get("first", 0)) / MIN, 1) == 6.0 and not o.get("late") for n, o in l5.items()),
+          "the loop takes every coin's 5-minute price at its 3rd cycle (6 minutes), not marked late")
+    vs = lambda recs: {a: ([e[1:] for e in r["rt"]], bool(r.get("good")), bool(r.get("push")), r.get("top")) for a, r in recs.items()}
+    check(c_off == 0 and seen[False] and seen[False] == seen[True] and vs(rec_on) == vs(rec_off) and set(pj_on) == set(pj_off)
+          and [g["coins"] for g in got_on] == [g["coins"] for g in got_off] and not any(r.get("mom") for r in rec_off.values()),
+          "with momentum patched out every cycle's list and fold, every rating, good and pushed mark, pushed.json and the notifications are the same (%d lists, "
+          "%d pushed): momentum changes nothing but the record" % (len(seen[False]), len(pj_on)))
+    strip = lambda b: {a: {k: v for k, v in x.items() if k != "_rec"} for a, x in b.items()}
+    b6 = strip(RP.buys_of(list(rec_on.values())))
+    b4 = strip(RP.buys_of([dict(r, rt=[e[:4] for e in r["rt"]]) for r in rec_on.values()]))
+    check(b6 and b6 == b4, "radar_paper buys the same %d coins from 6-field ratings as from their first 4 fields" % len(b6))
+
+    def rec_(n, mom_=None, l60=None, **kw):
+        r = {"addr": addr(1340 + n), "sym": "S%d" % n, "dex": "pumpswap", "first": T0 - 2 * H, "px": 1.0, "liq": 20_000.0, "mc": 50_000.0, "rt": [], "later": {}}
+        if mom_:
+            r["mom"] = dict({"t": T0 - 2 * H + 2 * MIN, "liq": 20_000.0, "mc": 50_000.0, "by": "x"}, **mom_)
+        if l60:
+            r["later"]["60"] = dict({"t": T0 - H}, **l60)
+        return dict(r, **kw)
+    planted = [rec_(1, {"px": 2.0}, {"px": 0.15, "liq": 3_000.0}),            # 0.075x of the momentum price: rugged; 0.15x of the first: neither
+               rec_(2, {"px": 1.0}, {"px": 2.0, "liq": 30_000.0}),            # 2x with liquidity grown like a pool's: doubled
+               rec_(3, {"px": 1.5}),                                          # no 1 h price yet: a call, not in n60
+               rec_(4, None, {"gone": True}),
+               rec_(5, None, {"px": 1.0, "liq": 20_000.0}, peak60={"x": 3.0}, out={"rug1h": False, "win1h": True})]   # peak60 left out: neither
+    R2.docs, R2.rec_hour, R2.res_summary = {"p": {"coins": {r["addr"]: r for r in planted}}}, {r["addr"]: "p" for r in planted}, []
+    line, _, _ = R2.summary(T0)
+    R2.docs, R2.res_summary = {}, [LR.summ(r, T) for r in planted]
+    line2, _, _ = R2.summary(T0)
+    off_ = LR.finish_from({"record": line}, "off", T0, "switched off", "t", None, None, "manual", (0, 24))
+    check(line["mom"] == {"calls": 3, "n60": 2, "rug": 0.5, "win": 0.5} and line["all"] == {"n60": 4, "rug": 0.25, "win": 0.25} and line2 == line
+          and {k for k in line if k not in ("mom", "all")} == {"calls", "n60", "rug", "win", "eur", "ci"} and line["calls"] == 0 and line["win"] is None
+          and LR.summ(planted[0])["mom"] is None and LR.summ(planted[0])["all"] is None and off_["record"]["mom"] == line["mom"] and off_["record"]["all"] == line["all"],
+          "the record line's mom %s and all %s: the 60-minute price alone (from the momentum price for mom; peak60 left out of both), a "
+          "momentum call without a 1 h price counted in calls only, the same from results' records; kept in an off or hours doc" % (line["mom"], line["all"]))
 
 
 # the WP0 probe's hand-off (research/probe-radar.md, ADAPTERS block and its two constants), as the probe wrote it

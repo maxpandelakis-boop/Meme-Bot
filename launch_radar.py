@@ -2,8 +2,8 @@
 """launch_radar.py: the launch radar, its own job beside the hourly scan. Fake money only: it rates new coins for the page and the
 phone, it never buys anything, and the paper trader never reads what it writes.
 
-One round per start (radar.yml runs `round`: the hourly scan's last step starts one after every full scan inside the active hours, and
-"Run workflow" starts one by hand), one cycle, one thread, 125 s at most; the whole job takes about 2 to 3 minutes:
+A loop every 2 minutes (radar.yml runs `loop --cadence 120 --deadline 100` for 55 minutes, then its last step starts the next run),
+one thread, a cycle 100 s at most; `round` is one cycle per start (125 s at most). Each cycle:
   1. kill switch (the radar workflow's state on GitHub) and the active hours (MEMEBOT_RADAR_HOURS, default 7-24 Berlin)
   2. discovery (radar_src, the WP0 probe's set): pump.fun graduated (pages 1-4) and newest coins (pages 1-2), GeckoTerminal new
      pools (pages 1-2), Jupiter recent, DexScreener profiles (LaunchLab newest only when switched on), into the cycle's sandbox
@@ -20,17 +20,17 @@ One round per start (radar.yml runs `round`: the hourly scan's last step starts 
      GeckoTerminal minute candles between them (other pools' staircase so far, the peak within the hour)
   7. traps.rate on traps.signals_radar of every eligible coin; the best 5: good coins by upside, then watch, then trap coins; only
      good coins are listed, the rest go to the fold
-  8. every eligible coin is recorded with every rating and its prices 5, 15, 30 and 60 minutes later (db/memeradar/<UTC hour>.json);
+  8. every eligible coin is recorded with its ratings (RT_MAX) and its prices 5, 15, 30 and 60 minutes later (db/memeradar/<UTC hour>.json);
      radar.json, the records of the last 48 hours, model.json and pushed.json go to the branch radar-data (one commit, force-pushed,
      never smaller than the last tree), radar.json to the app's live store (row "radar"); a push notification only for a good coin
      without a holder cluster and without anything unknown, once per coin, at most 4 an hour
-A round never starts another run: no successor, no keep-alive. Disabling the workflow stops it (a running round sees it at its start:
-state off; a disabled workflow refuses every start). The loop (a cycle every 150 s for --minutes) stays for a VM.
+The radar never starts another run itself: no successor, no keep-alive. Disabling the workflow stops it (a running loop sees it at its
+next cycle: state off; a disabled workflow refuses every start). A VM runs the loop with --no-github.
 
 Usage:
   python3 launch_radar.py round --dir rd [--mock URL] [--clock fake --now <ms>] [--no-github] [--remote URL]
-                                                           one round (radar.yml's default): the stores, one cycle, the caches
-  python3 launch_radar.py loop --dir rd --minutes 55 --cadence 150 [--mock URL] [--clock fake --now <ms>] [--no-github] [--remote URL]
+                                                           one round: the stores, one cycle, the caches
+  python3 launch_radar.py loop --dir rd --minutes 55 --cadence 120 [--mock URL] [--clock fake --now <ms>] [--no-github] [--remote URL]
   python3 launch_radar.py hours --dir rd [--remote URL]      the job's hours gate: prints inside=true|false (outside: state "hours" once)
 After a round radar.json says state "done", with "next" about when the next round comes (an hour after the last round the scan started,
 inside the active hours; null when none is known) and "hourly" (when the scan last started one). The loop: --no-github turns off the
@@ -39,7 +39,10 @@ Further options: --cache (the working caches, default rdcache), --deadline (s a 
 --horizon (the scan's profile, 2h).
 Later prices: due at 5, 15, 30 and 60 minutes after first sight, taken at the first cycle at or after each, at most half the offset late
 (marked late); a round also takes the 1 h price up to 15 minutes early (marked early), since the next round comes about an hour later.
-A price no cycle caught stays missing (never 0); the 1 h outcome (and so the radar model) needs only the 1 h price.
+At 2 minutes the 5- and 15-minute prices land at 6 and 16 minutes (each with its own t; late only past a cycle and 30 s), the 30- and
+60-minute ones on time. A price no cycle caught stays missing (never 0); the 1 h outcome (and so the radar model) needs only the 1 h price.
+Momentum on paper: a coin at MOM_X times its first price, or up MOM_M5% in 5 minutes, within MOM_WIN_MS of first sight with liquidity
+not lower gets rec["mom"] once; the record line counts its 1 h outcome next to all new coins'. Hindsight only: never a verdict or a push.
 Secrets come only from the environment: GITHUB_TOKEN (the API), RADAR_URL (the git remote with its token), SUPABASE_* (app.py); none is
 ever printed or written, and git runs without them (child_env). When radar-data exists but cannot be read, nothing is pushed there and
 no notification goes out until a later cycle reads it.
@@ -60,6 +63,11 @@ STEP_END = {"discover": 25, "ds": 35, "tier1": 60, "tier2": 95, "rate": 105, "pu
 MAX_AGE_MIN = 10.0          # a coin is on the radar while its DEX pool is younger than this
 FINISH_MIN = 12.5           # a coin that turned 10 min with a check pending is finished for the record until this age (never pushed)
 BEST_N = 5
+NOPAIR_RECHECK_MS = 90_000  # a coin on a launch curve or without a pair is asked again after this (every cycle at 120 s)
+RT_MAX = 12                 # ratings a record keeps: a pool's 10 minutes at 2-minute cycles, the finish ratings and a restart's
+MOM_X = 1.5                 # momentum on paper (hindsight, the record line only): the price at 1.5x first sight's ...
+MOM_M5 = 50.0               # ... or DexScreener's 5-minute change at +50% or more at a rating ...
+MOM_WIN_MS = 6 * 60_000     # ... within 6 minutes of first sight, with liquidity not lower
 DS_MAX_REQ = 12             # DexScreener tokens/v1 requests a cycle (30 addresses each; the probe needed 10-11 a cycle, limit 300 a minute)
 DS_FIRST_REQ = 20           # ... in a run's first cycle (a cold pool-age cache: the probe asked about 570 addresses in 20 requests)
 TIER1_CAP = 12              # tier-1 requests a cycle (RugCheck, pump.fun coins-v3, DexScreener orders)
@@ -245,11 +253,12 @@ class WallClock:
 
 
 class FakeClock:
-    """Starts at `start` (ms); each cycle jumps to its grid point (CYCLE_S apart, no real wait), inside a cycle it runs at real speed."""
+    """Starts at `start` (ms); each cycle jumps to its grid point (step ms apart, CYCLE_S by default, no real wait), inside a cycle it
+    runs at real speed."""
     fake = True
 
-    def __init__(self, start):
-        self.step, self.at, self.real = CYCLE_S * 1000, int(start), time.time()
+    def __init__(self, start, step=None):
+        self.step, self.at, self.real = int(step) if step else CYCLE_S * 1000, int(start), time.time()
 
     def now(self):
         return int(self.at + (time.time() - self.real) * 1000)
@@ -571,7 +580,7 @@ class Radar:
                     f.write(raw)
             self.res_at, self.pos = self.clock.now(), None
             self.train = M.load_train(self.res)[:2]
-            self.res_summary = [r for r in (summ(rec) for doc in (load_json(f) for f in glob.glob(os.path.join(self.res, "db", "memeradar", "*.json")))
+            self.res_summary = [r for r in (summ(rec, self.T) for doc in (load_json(f) for f in glob.glob(os.path.join(self.res, "db", "memeradar", "*.json")))
                                             if isinstance(doc, dict) for rec in (doc.get("coins") or {}).values() if isinstance(rec, dict)) if r]
             self.say("results read: %d files, %d radar records with an outcome" % (len(files), sum(1 for r in self.res_summary if r["rug"] is not None)))
             return True
@@ -1072,14 +1081,14 @@ class Radar:
                 born, curve, at = pc
                 if born and not curve and now - born >= MAX_AGE_MIN * 60_000:
                     continue                 # an old pool: never asked again
-                if (curve or not born) and now - at < 120_000:
-                    continue                 # on a curve, or no pair: asked again after two minutes
+                if (curve or not born) and now - at < NOPAIR_RECHECK_MS:
+                    continue                 # on a curve, or no pair: asked again after 90 s
             add(a)
         return out[:cap * 30]
 
     def pool_cache(self, pairs, answered, now):
         """addr -> [pool opened (ms) or None, a launch curve's pair, when seen]: an old pool is never asked again, a curve pair or no pair
-        after two minutes."""
+        after 90 s."""
         for a in answered:
             if a not in pairs:
                 self.cache["pool"][a] = [None, False, now]
@@ -1649,7 +1658,8 @@ class Radar:
         return max(len(older), n("used")), 0
 
     def rate(self, r, now, record_only=False):
-        """traps.rate on the coin's signals; the record gets the rating (every one, at most 5), its first good moment and its signals."""
+        """traps.rate on the coin's signals; the record gets the rating (at most RT_MAX, each with its price and upside), its first good
+        moment, its momentum on paper and its signals."""
         a = r["a"]
         S, c = self.signals(r, now)
         self.last_c[a] = c
@@ -1661,8 +1671,9 @@ class Radar:
         v = rt.get("verdict") if rt.get("verdict") in ("good", "watch", "trap") else "watch"
         rec = self.rec(a) or self.new_rec(a, now, r)
         rec["sym"] = str(r["pr"].get("symbol") or rec.get("sym") or "?")[:24]
-        if len(rec["rt"]) < 5:
-            rec["rt"].append([now, v, fin(rt.get("pts")), 1 if rt.get("push") else 0])
+        if len(rec["rt"]) < RT_MAX:
+            rec["rt"].append([now, v, fin(rt.get("pts")), 1 if rt.get("push") else 0, fin(r["basic"].get("price")), int(num(rt.get("upside")) or 0)])
+        self.momentum(rec, r, now, v, record_only)
         if v == "good" and not rec.get("good") and not record_only:
             rec["good"], rec["goodPx"] = now, fin(r["basic"].get("price"))
         mint = self.mint_of(a, r)
@@ -1712,6 +1723,24 @@ class Radar:
                 "wm": wms, "dev": "ok" if w.get("dev") == "ok" else ("err" if w.get("dev") == "err" else "skip"),
                 "holders": hold, "trades": trades, "candles": "ok" if self.closes.get(a) else "skip"}
 
+    def momentum(self, rec, r, now, v, record_only):
+        """Momentum on paper, set once (rec["mom"]): a coin on the radar within MOM_WIN_MS of first sight at MOM_X times its first price
+        (by "x") or with DexScreener's 5-minute change at MOM_M5% or more (by "m5"), its liquidity at least first sight's and
+        YOUNG_MIN_LIQ (money came in, the pool is not draining). Hindsight for the record line: never the verdict, the list or a push."""
+        try:
+            if record_only or isinstance(rec.get("mom"), dict) or not r["age"] < MAX_AGE_MIN or now - (num(rec.get("first")) or 0) > MOM_WIN_MS:
+                return
+            b = r["basic"]
+            px, px0, liq, m5 = num(b.get("price")), num(rec.get("px")), num(b.get("liq")), num(r["pr"].get("chgM5"))
+            if not (px and px > 0 and px0 and px0 > 0 and liq is not None and liq >= max(num(rec.get("liq")) or 0.0, M.YOUNG_MIN_LIQ)):
+                return
+            by = "x" if px / px0 >= MOM_X else "m5" if m5 is not None and m5 >= MOM_M5 else None
+            if by:
+                rec["mom"] = {"t": now, "px": fin(px), "liq": fin(liq, 2), "mc": fin(b.get("mc"), 2), "x": fin(px / px0, 3), "m5": fin(m5, 2),
+                              "by": by, "age": round(r["age"], 2), "v": v}
+        except Exception as e:
+            self.say("momentum of %s not read (%s)" % (rec.get("sym"), RS.short(e)))
+
     def outcomes(self, now):
         """traps.outcome once the 60-minute price is in (again when the peak within the hour comes later)."""
         for doc in self.docs.values():
@@ -1745,11 +1774,12 @@ class Radar:
 
     # ---------------------------------------------------------------- radar.json
     def summary(self, now):
-        """The record line (3.4) and the model's data count over results' 30 days and the local 48 hours."""
+        """The record line (3.4) and the model's data count over results' 30 days and the local 48 hours. record.mom (momentum on
+        paper: calls, n60, the rugged and 2x shares at 1 h) and record.all (every new coin) share one label: the 60-minute price alone."""
         by = {r["addr"]: r for r in self.res_summary}
         for doc in self.docs.values():
             for rec in (doc.get("coins") or {}).values():
-                s = summ(rec)
+                s = summ(rec, self.T)
                 if s:
                     by[s["addr"]] = s
         calls = [s for s in by.values() if s["good"]]
@@ -1761,6 +1791,12 @@ class Radar:
         rec = {"calls": len(calls), "n60": len(n60), "rug": round(sum(1 for s in rug if s["rug"]) / len(rug), 3) if rug else None,
                "win": round(sum(1 for s in win if s["win"]) / len(win), 3) if win else None, "eur": round(eur, 2) if n60 else None,
                "ci": {"rug": wilson(sum(1 for s in rug if s["rug"]), len(rug)), "win": wilson(sum(1 for s in win if s["win"]), len(win))}}
+        moms = [s["mom"] for s in by.values() if s.get("mom")]
+        known = lambda xs: [x for x in xs if x["rug"] is not None]
+        share = lambda xs, k: round(sum(1 for x in xs if x[k]) / len(xs), 3) if xs else None
+        mk, ak = known(moms), known([s["all"] for s in by.values() if s.get("all")])
+        rec["mom"] = {"calls": len(moms), "n60": len(mk), "rug": share(mk, "rug"), "win": share(mk, "win")}
+        rec["all"] = {"n60": len(ak), "rug": share(ak, "rug"), "win": share(ak, "win")}
         n_out = sum(1 for s in by.values() if s["rug"] is not None)
         return rec, n_out, by
 
@@ -1793,7 +1829,7 @@ class Radar:
         good_recs = [(a, rec) for doc in self.docs.values() for a, rec in (doc.get("coins") or {}).items() if rec.get("good")]
         last_good = None
         for a, rec in good_recs:
-            at = max([t for t, v, _, _ in rec.get("rt") or [] if v == "good"] or [rec["good"]])
+            at = max([x[0] for x in rec.get("rt") or [] if x[1] == "good"] or [rec["good"]])     # 4 or 6 fields
             if last_good is None or at > last_good["at"]:
                 last_good = {"addr": a, "sym": rec.get("sym"), "at": at}
         if last_good is None and isinstance(self.last_doc, dict) and isinstance(self.last_doc.get("lastGood"), dict):
@@ -1965,16 +2001,33 @@ def sig_of(S, extra):
     return out
 
 
-def summ(rec):
-    """A record in the few numbers the record line and the model count need."""
+def summ(rec, T=None):
+    """A record in the few numbers the record line and the model count need. With traps (T) also "mom" (None without momentum) and
+    "all": {rug, win} by traps.outcome on the 60-minute price alone, mom's from the momentum price (peak60 is left out: only the best
+    5 and good coins get one, so both stay like for like); None without T."""
     a = rec.get("addr")
     if not a:
         return None
     l60 = (rec.get("later") or {}).get("60") if isinstance(rec.get("later"), dict) else None
     out = rec.get("out") if isinstance(rec.get("out"), dict) else {}
+    mom = rec.get("mom") if isinstance(rec.get("mom"), dict) else None
     return {"addr": a, "good": num(rec.get("good")), "goodPx": num(rec.get("goodPx")), "p60": num((l60 or {}).get("px")) if isinstance(l60, dict) else None,
             "gone": bool(isinstance(l60, dict) and l60.get("gone")), "rug": out.get("rug1h") if isinstance(out.get("rug1h"), bool) else None,
-            "win": out.get("win1h") if isinstance(out.get("win1h"), bool) else None}
+            "win": out.get("win1h") if isinstance(out.get("win1h"), bool) else None,
+            "mom": hindsight(T, {"addr": a, "dex": rec.get("dex"), "px": mom.get("px"), "liq": mom.get("liq"), "mc": mom.get("mc"), "later": {"60": l60},
+                                 "peak60": None, "sig": rec.get("sig")}) if mom else None,
+            "all": hindsight(T, dict(rec, peak60=None))}
+
+
+def hindsight(T, rec):
+    """traps.outcome's {rug, win} of rec (None without traps; both None when it fails or no 60-minute price is in)."""
+    if T is None:
+        return None
+    try:
+        o = T.outcome(rec) or {}
+    except Exception:
+        o = {}
+    return {k: o.get(k + "1h") if isinstance(o.get(k + "1h"), bool) else None for k in ("rug", "win")}
 
 
 def went_out(out):

@@ -12,7 +12,7 @@
 # scan also writes its live view to a free Supabase project every few seconds and sends push notifications (the pick made; new coins
 # listed only with the repository variable MEMEBOT_PUSH_YOUNG=1) through pywebpush, which a step below installs only when those secrets
 # exist; without them the run is exactly as before.
-# The launch radar (radar.yml, its own job: a round every 5 minutes, each run an hour that starts the next) and this scan meet in four soft steps
+# The launch radar (radar.yml, its own job: a round every 2 minutes, each run an hour that starts the next) and this scan meet in four soft steps
 # that never hold up the scan: the scan imports the radar's records (branch radar-data) for the page and the results branch, feeds the
 # radar its wallet memory (branch radar-feed), exports its records once a day with the big test, and starts the radar at its start
 # when none runs (inside the radar's active hours). A second job,
@@ -96,7 +96,7 @@ jobs:
           RADAR_REF: ${{ github.ref_name }}
           MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
         run: |
-          # The radar makes a round every 5 minutes; each run lasts 55 minutes and starts the next itself. This step, first in the scan (so
+          # The radar makes a round every 2 minutes; each run lasts 55 minutes and starts the next itself. This step, first in the scan (so
           # the radar is going within minutes of the first scan after the hours begin), is the safety net: it starts radar.yml (source
           # hourly) when no radar run is going, only when that workflow is active (Disable workflow
           # on the Actions page is the stop switch, and a disabled workflow refuses every start), the Berlin time is inside
@@ -163,7 +163,7 @@ jobs:
                       say("no branch to start it on: no start")
                   else:
                       st, _ = call("POST", wf + "/dispatches", {"ref": os.environ["RADAR_REF"], "inputs": {"source": "hourly"}})
-                      say("started the radar (source hourly: a round every 5 minutes, its first in about 2)" if st in (200, 201, 204) else "the start was refused (HTTP %s)" % st)
+                      say("started the radar (source hourly: a round every 2 minutes, its first in about 2)" if st in (200, 201, 204) else "the start was refused (HTTP %s)" % st)
           except Exception as e:
               say("GitHub did not answer (%s): no start" % type(e).__name__)
           PY
