@@ -33,6 +33,9 @@ P11 the low within 6 h (lo, loAt, eurLo; the max loss without the stop-loss): a 
     print the next close took back, a dead pool that is a real low (collapse, rug exit, liquidity floor), a slow fall in a live pool,
     a sparse pool, lo <= 1 and lo <= x6 in every case, no low for unit or waiting, eurLo after the paper fees, the estimate's low
     (paper exits and DexScreener prices inside the window), and an older version's doc that is never made worse (keep_better)
+P12 the best within 6 h is never below the value at 6 h: a price that rises into the end (the last close has no next close to
+    confirm it), a one-candle jump at the very end without support stays cut, the estimate from a time exit above the entry, an
+    older version's doc whose best was below its value at 6 h (keep_better), and x >= x6 in every live case and named fixture
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -97,6 +100,7 @@ def peak_checks(check):
         _p9(check, PK, M, tmp)
         _p10(check, PK, M, S, tmp)
         _p11(check, PK, M)
+        _p12(check, PK, M)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -707,6 +711,47 @@ def _p11(check, PK, M):
           "P11 an older version's doc from minute candles is never made worse: an estimate keeps its best %sx and adds the low rebased onto its base "
           "(0.6x of half the price -> %sx), a waiting answer leaves it for a later run, new minute candles replace it, its dead pool stays a low of 0" % (
               kept and kept["x"], kept and kept["lo"]))
+
+
+def _p12(check, PK, M):
+    print("== peak P12: the best within 6 h is never below the value at 6 h")
+    T0 = 1_791_800_000_000
+    end = T0 + 6 * HOUR
+    pk = lambda c, px=1e-5, **k: PK.peak_of(c, T0, end, px, **k)
+    pos = young_pos()
+    at_min = lambda r: None if r.get("at") is None else (r["at"] - T0) // MIN
+    rise = pk(series(T0, [1.0] * 359 + [1.06]))                       # TDF on results: 1.000 best, 1.062 at 6 h
+    ramp = pk(series(T0, [1.0] * 300 + [1.0 + 0.01 * i for i in range(1, 60)]))
+    spike = pk(series(T0, [1.0] * 359 + [50.0], vol=30), mc0=50_000)
+    check(rise["x"] == rise["x6"] == 1.06 and at_min(rise) == 359 and ramp["x"] == ramp["x6"] == 1.59 and at_min(ramp) == 358
+          and spike["x"] == 1.0 and spike["x6"] == 50.0 and any(c.startswith("unconfirmed") for c in spike["cut"]),
+          "P12 a price that rises into the end: the best is the last close (%sx at minute %s; a ramp %sx at minute %s), a one-candle 50x print at the "
+          "very end without support stays cut (best %sx)" % (rise["x"], at_min(rise), ramp["x"], at_min(ramp), spike["x"]))
+    pe = dict(pos, px=1e-5, t=T0, entryAt=T0, _exits=[{"why": "time", "px": 1.26e-5, "at": end, "t": end + 5 * MIN}])
+    est = PK.estimate({"v": PK.PEAK_V}, {"tips": {}}, pe, None, [], 3)          # Harry on estimate-filled data: +26% at 6 h, best 1.0x before
+    est_dead = PK.estimate({"v": PK.PEAK_V}, {"tips": {}}, pe, T0 + 30 * MIN, [], 3)
+    check(est["x"] == est["x6"] == 1.26 and est["at"] == end and est["eur"] == round(M.pos_value(pe, 1.0, 1.26), 2) == est["eur6"] and est["eur"] > 0
+          and est_dead["x"] == 1.0 and est_dead["x6"] == 0.0,
+          "P12 an estimate from a time exit at 1.26x books a best of at least 1.26x (eur %s = eur6 %s); a rug before it keeps the best at the entry (%sx)" % (
+              est["eur"], est["eur6"], est_dead["x"]))
+    old = {"v": PK.PEAK_V - 1, "state": "ok", "src": "m1", "res": 1, "tries": 0, "pos": "w", "entryAt": T0, "end": end, "px": 1e-5, "cpx": 1e-5,
+           "base": 1e-5, "x": 1.021, "at": T0 + 2 * HOUR, "rawX": 1.08, "x6": 1.071, "eur": 2.9, "eur6": 3.0, "dead": None, "cut": [], "n": 360}
+    pw = dict(pos, px=1e-5, t=T0, entryAt=T0)
+    new_est = {"v": PK.PEAK_V, "state": "est", "src": "est", "pos": "w", "upd": end + 99 * HOUR, "base": 1e-5, "x": 1.0, "lo": 0.9, "loAt": T0 + HOUR, "entryAt": T0, "end": end}
+    kept = PK.keep_better(dict(new_est), old, pw, end + 99 * HOUR)
+    kept_hi = PK.keep_better(dict(new_est), dict(old, x=1.5), pw, end + 99 * HOUR)
+    check(kept["x"] == 1.071 and kept["at"] == end and kept["eur"] == round(M.pos_value(pw, 1.0, 1.071), 2) and kept["x6"] == 1.071
+          and kept_hi["x"] == 1.5 and kept_hi["at"] == T0 + 2 * HOUR and kept_hi["eur"] == 2.9,
+          "P12 an older version's doc whose best (1.021x, WOTF on results) is below its value at 6 h (1.071x) keeps at least that value (%sx), "
+          "a best above it stays as it was" % kept["x"])
+    fx = json.load(open(os.path.join(FIX, "named.json"), encoding="utf-8"))
+    named = {c["name"]: PK.peak_of(expand(c), c["entryAt"], c["entryAt"] + 6 * HOUR, c["px"], c.get("rugOkAt"), [q[:3] for q in c["ds"]],
+                                   liq0=c["liq0"], mc0=c["mc0"]) for c in fx["cases"]}
+    cases = [pk(series(T0, m)) for m in ([1.0, 1.1, 1.2, 8.0, 1.1, 1.15, 1.2] + [1.1] * 300, [1.0] * 360 + [9.0] * 3, [1.0 - 0.0025 * i for i in range(361)],
+                                         [1.0, 1.4, 1.5, 1.5, 0.01, 1.5, 1.6, 1.6, 1.6], [38 ** (i / 120) for i in range(121)] + [38 - i * 0.05 for i in range(200)])]
+    bad = [(k, v["x"], v["x6"]) for k, v in list(named.items()) + [("case%d" % i, v) for i, v in enumerate(cases + [rise, ramp])]
+           if v["state"] == "ok" and v["x6"] is not None and v["x"] < v["x6"] - 1e-12]
+    check(not bad, "P12 x >= x6 in every live case and named fixture (%d checked; %s)" % (len(named) + len(cases) + 2, bad[:3] or "all fine"))
 
 
 class _GT:

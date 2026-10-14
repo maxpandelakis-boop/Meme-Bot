@@ -23,7 +23,7 @@ REPO = "Some-Owner/Meme-Bot"
 AGENTS = ("dispatch", "trainer", "scouts", "candles", "market", "analyst", "safety", "refresh", "trader", "reporter")
 XSS = "<img src=x onerror=alert(1)>"
 LONG_OUT = "fresh prices for 14 candidates from DexScreener, 2 of them moved more than 30% since the gates ran"
-RADAR_AGENT = ("Launch radar", "rates every coin whose pool is under 10 minutes old, every 2½ minutes, in its own job; only coins without traps are shown and pushed",
+RADAR_AGENT = ("Launch radar", "rates every coin whose pool is under 10 minutes old in one quick round after each scan, in its own job; only coins without traps are shown and pushed",
                ("DexScreener", "pump.fun", "GeckoTerminal", "Jupiter", "RugCheck", "Solana RPC", "LaunchLab"))     # SPEC 5 WP5c, verbatim
 
 
@@ -46,6 +46,11 @@ def radar_doc(t, state="running", **kw):
            "notes": ["RugCheck limited: 2 coins not fully checked"], "lines": ["cycle 14: 7 seen, 1 without traps, 0 pushed (63 s)"]}
     doc.update(kw)
     return doc
+
+
+def round_doc(t, **kw):
+    """radar.json after one round of the hourly radar (launch_radar.py round): state done, the next round in 55 minutes, run.mode round."""
+    return radar_doc(t, **dict({"state": "done", "next": t + 55 * MIN, "hourly": t, "run": {"id": 8, "start": t - 2 * MIN, "end": None, "cycle": 1, "source": "hourly", "mode": "round"}}, **kw))
 
 
 def mk_db(d, now=NOW, radar=None, run_min=(41, 42, 40, 43, 39, 41), agents=AGENTS, spotter=False):
@@ -217,9 +222,9 @@ def office_checks(check, skips=None):
               "U6 office: the ring keeps exactly 8 departments (wide and phone), Scouts keep 3 desks with the spotter, the radar's desk is marked data-ext")
         desk = re.search(r'<g class="desk( off)?" data-agent="radar" data-ext="radar">.*?</g>', page, re.S)
         check(desk and not desk.group(1) and "own job" in desk.group(0) and "beside" not in desk.group(0) and 'class="scr "' in desk.group(0)
-              and ">on watch<" in page and "7 seen · 1 without traps · 0 pushed" in page and 'data-ext-stat="radar">%s</span>' % R.local(NOW - 26 * MIN).strftime("%H:%M") in page and ">checked %s<" % R.local(NOW - 26 * MIN).strftime("%H:%M") in page
+              and ">running<" in page and "on watch" not in page and "7 seen · 1 without traps · 0 pushed" in page and 'data-ext-stat="radar">%s</span>' % R.local(NOW - 26 * MIN).strftime("%H:%M") in page and ">checked %s<" % R.local(NOW - 26 * MIN).strftime("%H:%M") in page
               and "RugCheck · limited" in page and "RugCheck limited: 2 coins not fully checked" in page,
-              "U6 office: a radar that ran at the start of this scan is 'on watch' with its counts, hosts and notes; its pill reads 'own job'")
+              "U6 office: a radar loop that ran at the start of this scan is 'running' with its counts, hosts and notes; its pill reads 'own job'")
         # its state at the scan's start (the copy is made then; the page comes about 25 minutes later), as MB.radarState names them
         sts = []
         for age, kw in ((5 * MIN, {}), (7 * MIN, {}), (20 * MIN, {}), (60_000, {"state": "off"}), (60_000, {"state": "hours", "next": NOW + H}),
@@ -229,6 +234,28 @@ def office_checks(check, skips=None):
             sts.append(PO.radar_state(PO.radar_doc(dd), NOW))
         check(sts == ["running", "late", "stopped", "off", "hours", "stopped"] and PO.radar_state(None, NOW) == "none",
               "U6 radar desk states at a time: running, late, stopped, off, hours (and stopped once past its next start), none (%s)" % sts)
+        # the hourly radar's rounds: done until doc.next + 30 min (an hour after the round without a next), late one more hour, then stopped;
+        # a failed round (degraded) is done too, never a loop's 'running' or 'stopped' after 15 minutes
+        rsts = [PO.radar_state(PO.radar_clean(doc_), NOW) for doc_ in (round_doc(NOW - 50 * MIN), round_doc(NOW - 84 * MIN), round_doc(NOW - 86 * MIN), round_doc(NOW - 146 * MIN),
+                                                                       round_doc(NOW - 80 * MIN, next=None), round_doc(NOW - 20 * MIN, state="degraded"), radar_doc(NOW - 20 * MIN, state="done", next=NOW + 35 * MIN))]
+        check(rsts == ["done", "done", "late", "stopped", "done", "done", "done"],
+              "U6 radar desk, the hourly radar: done from doc.next until 30 min past it (an hour after the round without a next), late for an hour more, "
+              "then stopped; a failed round is done too (%s)" % rsts)
+        lr = PO.look("done", PO.radar_clean(round_doc(NOW - 20 * MIN)), utc)
+        ld = PO.look("done", PO.radar_clean(round_doc(NOW - 20 * MIN, state="degraded")), utc)
+        check((lr["light"], lr["word"], lr["line"], lr["checked"], lr["until"], lr["here"]) == ("done", "done", "7 seen · 1 without traps · 0 pushed", "last round %s" % utc(NOW - 20 * MIN),
+                                                                                            " · next about %s" % utc(NOW + 35 * MIN), True)
+              and (ld["light"], ld["word"]) == ("fallback", "last round had errors") and ld["line"].startswith("checks failing · ") and PO.CHIP["done"] == "good",
+              "U6 radar card and panel between rounds: done (green) with its counts, 'last round HH:MM · next about HH:MM'; a failed round amber, 'last round had errors' (%s)" % [lr, ld["word"]])
+        # the next round after a round, at a time: past doc.next it is due since then; a round with next null (a round by hand long after the scan's
+        # last one, radar-data on 14.10) names the full scan that starts the next one (the strip's estimate), else the next full scan
+        rn0 = PO.radar_clean(round_doc(NOW - 20 * MIN, next=None))
+        uw = [PO.look("done", PO.radar_clean(round_doc(NOW - 70 * MIN)), utc, NOW)["until"], PO.look("done", rn0, utc, NOW, NOW + 30 * MIN)["until"],
+              PO.look("done", rn0, utc, NOW, NOW - 80 * MIN)["until"], PO.look("done", rn0, utc, NOW)["until"], PO.look("late", rn0, utc, NOW, NOW + 30 * MIN)["until"]]
+        check(uw == [" · next due since %s" % utc(NOW - 15 * MIN), " · next after the %s scan" % utc(NOW + 30 * MIN), " · next after the %s scan" % utc(NOW - 20 * MIN),
+                     " · next after the next full scan", ""],
+              "U6 radar card between rounds: once doc.next has passed 'next due since HH:MM'; with next null the full scan that starts the next round "
+              "(the strip's estimate, an hour on once that scan should be over), else 'next after the next full scan'; late says nothing of a next (%s)" % uw)
         # what the card and the panel say in each state: a late or stopped radar leads with that word (its counts are its last check's) in the
         # Radar tab's colours (amber, red), a degraded one says checks fail, one that never ran is "not started yet"
         rd = PO.radar_clean(radar_doc(NOW - 20 * MIN))
@@ -238,20 +265,23 @@ def office_checks(check, skips=None):
         check([(v["light"], v["line"]) for v in lk.values()] == [
             ("running", "7 seen · 1 without traps · 0 pushed"), ("fallback", "late · 7 seen, 1 without traps"),
             ("failed", "stopped · 7 seen, 1 without traps"), ("fallback", "checks failing · 7 seen · 1 without traps · 0 pushed"),
-            ("skipped", "not started yet")] and lk["stopped"]["stat"] == utc(NOW - 20 * MIN) and lk["stopped"]["checked"] == "checked %s" % utc(NOW - 20 * MIN) and lk["none"]["stat"] == "own job" and lk["late"]["until"].startswith(" · this run until ")
+            ("skipped", "not started yet")] and lk["stopped"]["stat"] == utc(NOW - 20 * MIN) and lk["stopped"]["checked"] == "checked %s" % utc(NOW - 20 * MIN) and lk["none"]["stat"] == "own job" and lk["late"]["until"] == ""
               and lk["stopped"]["until"] == "" and PO.CHIP["failed"] == "bad",
-              "U6 radar card: late and stopped lead with that word (amber, red: the Radar tab's colours), degraded says checks fail, none is 'not started yet' (%s)" % (
+              "U6 radar card: late and stopped lead with that word (amber, red: the radar's colours), degraded says checks fail, none is 'not started yet', no 'this run until' (%s)" % (
                   [v["line"] for v in lk.values()],))
         # switched off (or outside its hours, or never started): the panel drops the last check's notes and services, the wiring stays
         panels = {}
-        for k_, kw in (("off", {"state": "off"}), ("run", {})):
+        for k_, doc_ in (("off", radar_doc(NOW - 60_000, state="off")), ("run", round_doc(NOW - 60_000))):
             dd = os.path.join(tmp, "pn-" + k_)
-            wj(os.path.join(dd, "radar_live.json"), radar_doc(NOW - 60_000, **kw))
+            wj(os.path.join(dd, "radar_live.json"), doc_)
             panels[k_] = PO.ext_panel(PO.ext_agents({"dir": dd, "runs": D1["runs"], "now": NOW}, R.office_meta, R)[0], R)
         check("omsg warn" not in panels["off"] and 'data-ext-hosts="radar" hidden></div>' in panels["off"] and '<p class="note" data-ext-wired="radar">Wired to DexScreener' in panels["off"]
               and "RugCheck limited: 2 coins" in panels["run"] and "RugCheck · limited" in panels["run"] and 'data-ext-wired="radar" hidden>' in panels["run"]
-              and 'data-ext-until="radar"> · this run until ' in panels["run"] and 'data-ext-until="radar"></span>' in panels["off"],
-              "U6 radar panel: switched off, it shows no old notes or service chips (the wiring instead) and no 'this run until'; running, it shows them")
+              and 'data-ext-until="radar"> · next about %s</span> · one round after each scan</p>' % R.local(NOW + 54 * MIN).strftime("%H:%M") in panels["run"]
+              and '>last round %s<' % R.local(NOW - 60_000).strftime("%H:%M") in panels["run"] and 'data-ext-until="radar"></span>' in panels["off"]
+              and not any(x_ in panels["run"] + panels["off"] for x_ in ("2½", "this run until", "on watch")) and 'for="tab-young">Open the radar</label>' in panels["run"],
+              "U6 radar panel: switched off, it shows no old notes or service chips (the wiring instead) and no next round; between rounds, its notes, services, "
+              "'last round HH:MM · next about HH:MM · one round after each scan' and the link to the radar on New")
         bad = os.path.join(tmp, "bad")
         wj(os.path.join(bad, "radar_live.json"), {"kind": "radar", "t": "soon", "counts": {"seen": "x"}})
         wj(os.path.join(bad, "x", "radar_live.json"), dict(radar_doc(NOW), counts={"seen": float("inf"), "good": "2", "pushed": None}, lines=[XSS, 5, None], hosts={"a" * 90: "ok", "rpc": 3}))
@@ -295,7 +325,7 @@ def office_checks(check, skips=None):
         r = subprocess.run([PY, "-I", os.path.join(code, "report.py"), "--dir", d1, "--out", os.path.join(tmp, "nopo.html"), "--now", str(NOW)], capture_output=True, text=True)
         nopo = open(os.path.join(tmp, "nopo.html"), encoding="utf-8").read() if r.returncode == 0 else ""
         m_old = re.search(r'<div class="meta">updated [^<·]+ · next scan starts about ([^<·]*?)</div>', nopo)     # no strip: the header keeps the next start
-        check(nopo and "could not be rendered" not in nopo and 'class="ocard' not in nopo and "sstrip" not in nopo and "Daily overview" not in nopo
+        check(nopo and "could not be rendered" not in nopo and 'class="ocard' not in nopo and '<div class="sstrip"' not in nopo and "Daily overview" not in nopo
               and 'data-po-fold open>' in nopo and 'class="otop"' not in nopo
               and 'data-ext="radar"' not in nopo and "<style></style>" not in nopo and 'data-agents="analyst"' in nopo
               and m_old and m_old.group(1) == R.fmt_when(R.next_scan_ms(NOW, []), NOW),
@@ -408,7 +438,7 @@ def office_checks(check, skips=None):
               "has no strong cell; hatched exactly where under 20 results; a table view comes with it")
 
         # ---------------------------------------------------------------- U7: honest words in the new parts
-        new_text = " ".join([cut(page, '<div class="ocards"', "</label></div>"), cut(pageB, '<div class="obal', "</svg></div></div>"), cut(page, "<summary><span class=\"t\">Details", "</summary>"), cut(page, '<div class="oagent oext"', "Open the Radar tab"), cut(page7, '<div class="oday">', "</details></div>"),
+        new_text = " ".join([cut(page, '<div class="ocards"', "</label></div>"), cut(pageB, '<div class="obal', "</svg></div></div>"), cut(page, "<summary><span class=\"t\">Details", "</summary>"), cut(page, '<div class="oagent oext"', "Open the radar"), cut(page7, '<div class="oday">', "</details></div>"),
                              sstrip(page), PO.JS, R.OFFICE_AGENTS["radar"][1]]).lower()
         words = [w for w in (r"\bsafe\b", r"\bsafely\b", "guarantee", r"\bbuy\b", "\u2014") if re.search(w, new_text)]
         check(not words and new_text.count("dead within") >= 2, "U7 the new office text never says safe, guaranteed or buy, and has no em dash (%s)" % (words or "none"))
@@ -421,14 +451,17 @@ def office_checks(check, skips=None):
         else:
             cases = [("running", radar_doc(NOW - 60_000)), ("running", radar_doc(NOW - 60_000, state="degraded")), ("late", radar_doc(NOW - 5 * MIN)),
                      ("stopped", radar_doc(NOW - 40 * MIN)), ("off", radar_doc(NOW, state="off")), ("hours", radar_doc(NOW, state="hours", next=NOW + 5 * H)),
-                     ("hours", radar_doc(NOW, state="hours", next=None)), ("none", None), ("running", dict(radar_doc(NOW), counts=None))]
-            py = [PO.look(s_, PO.radar_clean(doc_) if doc_ else None, utc) for s_, doc_ in cases]
+                     ("hours", radar_doc(NOW, state="hours", next=None)), ("none", None), ("running", dict(radar_doc(NOW), counts=None)),
+                     ("done", round_doc(NOW - 20 * MIN)), ("done", round_doc(NOW - 20 * MIN, state="degraded")), ("late", round_doc(NOW - 100 * MIN)), ("done", round_doc(NOW - 20 * MIN, next=None))]
+            cases = [c_ + (None, None) for c_ in cases] + [("done", round_doc(NOW - 70 * MIN), NOW, None), ("done", round_doc(NOW - 20 * MIN, next=None), NOW, NOW + 30 * MIN),
+                                                           ("done", round_doc(NOW - 20 * MIN, next=None), NOW, NOW - 80 * MIN), ("done", round_doc(NOW - 20 * MIN, next=None), NOW, None)]
+            py = [PO.look(s_, PO.radar_clean(doc_) if doc_ else None, utc, n_, sc_) for s_, doc_, n_, sc_ in cases]
             jd = os.path.join(tmp, "js")
             os.makedirs(jd)
             with open(os.path.join(jd, "t.js"), "w", encoding="utf-8") as f:
                 f.write("var L=[];global.window={addEventListener:function(k,f){L.push(k);}};global.document={readyState:'complete',addEventListener:function(k){L.push('doc:'+k);},querySelector:function(){return null;},querySelectorAll:function(){return [];}};\n"
                         + PO.JS + "\nvar O=window.MemebotOffice,f=function(ms){return new Date(ms).toISOString().slice(11,16);},C=%s,o={look:[],scan:[]};\n" % json.dumps(cases)
-                        + "C.forEach(function(c){o.look.push(O.look(c[0],c[1],f));});var t=Date.UTC(2026,9,13,18,0),d={t:t,updated:t+600000};\n"
+                        + "C.forEach(function(c){o.look.push(O.look(c[0],c[1],f,c[2],c[3]));});var t=Date.UTC(2026,9,13,18,0),d={t:t,updated:t+600000};\n"
                         + "o.scan=[O.scan('live',d,t-60000,f),O.scan('paused',d,t-60000,f),O.scan('done',d,t-60000,f),O.scan('stopped',d,t-60000,f),O.scan('live',d,t,f),O.scan('hide',d,t-60000,f),O.scan('live',null,0,f)];\n"
                         + "o.next=[O.next(t,t-1,f),O.next(t,t,f),O.next(t,t+3600000,f),O.next(0,t,f)];\n"
                         + "o.events=L;O.radar({state:'off',doc:null});console.log(JSON.stringify(o));\n")
@@ -439,7 +472,7 @@ def office_checks(check, skips=None):
                                              {"dot": "ok", "text": "finished 18:10 · new page on its way"}, {"dot": "bad", "text": "stopped 18:10"}, None, None, None]
                   and o.get("next") == ["next ≈ 18:00", "due now (≈ 18:00)", "due now (≈ 18:00)", None]
                   and sorted(o.get("events") or []) == ["doc:click", "memebot-live", "memebot-radar"],
-                  "node: the office script says what the page said at build time for every radar state (line, light, 'this run until'), the scan strip's live "
+                  "node: the office script says what the page said at build time for every radar state (line, light, a round's 'next about'), the scan strip's live "
                   "words and its 'due now' once the expected start has passed (%s)" % (
                       "same" if same else "%s vs %s" % (o.get("look"), py) if o else r.stderr[-300:]))
 
@@ -465,11 +498,10 @@ def browser_checks(check, skips, d1, tmp):
     mk_db(dw, radar=radar_doc(NOW - 26 * MIN), agents=AGENTS[:3] + ("deep",) + AGENTS[3:], spotter=True)
     mk_launches(dw, NOW, standout=True)
     page_plain = build(dw)
-    # the same page with the Radar tab's radio (WP5b's tab), so "Open the Radar tab" has its target
-    # (added only when the page has none, so a site with WP5b's tab keeps one radio of that id)
-    office_radio = '<input type="radio" name="tab" id="tab-office">'
-    page_rt = page_plain if 'id="tab-radar"' in page_plain else page_plain.replace(office_radio, office_radio + '<input type="radio" name="tab" id="tab-radar">', 1)
-    check(page_rt.count('id="tab-radar"') == 1, "U6 the test page with a Radar tab has exactly one radio of that id (%d)" % page_rt.count('id="tab-radar"'))
+    # "Open the radar" goes to the New tab, where the radar sits on top (the Radar tab is merged into New): one radio of that id, none for Radar
+    page_rt = page_plain
+    check(page_rt.count('id="tab-young"') == 1 and 'id="tab-radar"' not in page_rt and page_rt.count("data-radar ") == 1,
+          "U6 the page has one New tab radio, no Radar tab, and the radar on New (%d)" % page_rt.count('id="tab-young"'))
     t0 = R.office_data(R.collect(d1, NOW))["t0"]
     calls, dialogs, errs = [], [], []
     long_line = "gates: 40 of 900 coins checked against the liquidity, holder and creator rules so far"
@@ -561,12 +593,20 @@ def browser_checks(check, skips, d1, tmp):
             stop = pg.evaluate("""() => [document.querySelector('[data-ext-lt="radar"]').getAttribute('class'), document.querySelector('[data-ext-chip="radar"]').className,
               document.querySelector('g[data-ext="radar"] .scr').getAttribute('class'), document.querySelector('label[data-ext="radar"] .ocl').textContent,
               document.querySelector('[data-ext-notes="radar"]').textContent]""")
+            # ... and a round (the hourly radar): done, green, its last round and the next one
+            pg.evaluate("""() => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: 'done', via: 'github', good: 0, doc: {kind: 'radar', t: Date.now() - 1200000, state: 'done',
+              next: Date.now() + 2100000, run: {mode: 'round', end: null}, counts: {seen: 6, good: 1, pushed: 1}}}}))""")
+            done = pg.evaluate("""() => [document.querySelector('g[data-ext="radar"]').getAttribute('class'), document.querySelector('[data-ext-lt="radar"]').getAttribute('class'),
+              document.querySelector('[data-ext-chip="radar"]').className, document.querySelector('[data-ext-word="radar"]').textContent, document.querySelector('label[data-ext="radar"] .ocl').textContent,
+              document.querySelector('[data-ext-checked="radar"]').textContent.replace(/\d\d:\d\d/, 'HH:MM'), document.querySelector('[data-ext-until="radar"]').textContent.replace(/\d\d:\d\d/, 'HH:MM')]""")
             check(off == ["desk off", "switched off on GitHub", "switched off", "olt skipped", True, False, "", ""]
                   and on[:3] == ["desk", "scr fallback", "late · 9 seen, 2 without traps"] and on[3] == 0 and XSS in on[4] and on[5] == "RugCheck · downDexScreener · ok"
-                  and on[6] == "chip warn" and on[7] == "RugCheck limited: 4 coins not fully checked" and on[8].startswith(" · this run until ") and on[9:] == [False, True]
-                  and stop == ["olt failed", "chip bad", "scr failed", "stopped · 4 seen, 0 without traps", ""] and not dialogs,
+                  and on[6] == "chip warn" and on[7] == "RugCheck limited: 4 coins not fully checked" and on[8] == "" and on[9:] == [False, True]
+                  and stop == ["olt failed", "chip bad", "scr failed", "stopped · 4 seen, 0 without traps", ""]
+                  and done == ["desk", "olt done", "chip good", "done", "6 seen · 1 without traps · 1 pushed", "last round HH:MM", " · next about HH:MM"] and not dialogs,
                   "U6/U10 browser: the radar event moves the radar's desk, card and panel: off is dark without old notes or services; late is amber with its "
-                  "counts, notes and run end; stopped is red; its lines are text, never markup (%s | %s | %s)" % (off, on[:3] + on[6:9], stop))
+                  "counts and notes (no run end any more); stopped is red; a round between rounds is green, 'last round HH:MM · next about HH:MM'; its lines are "
+                  "text, never markup (%s | %s | %s | %s)" % (off, on[:3] + on[6:9], stop, done))
             ctx.close()
             # 390 and 1280, light and dark, every fold on the Pick and Office tabs open and every department in turn: nothing wider than the screen;
             # the cards row scrolls inside itself on a phone, wraps on a desktop with whole names; the hour cells are 44 px tall
@@ -621,7 +661,7 @@ def browser_checks(check, skips, d1, tmp):
             pg.click('label.ocard[data-agent="radar"]')
             pg.wait_for_timeout(900)
             tap_r = pg.evaluate("[document.getElementById('od-analysts').checked, Math.round(document.querySelector('.oext').getBoundingClientRect().top), innerHeight, "
-                                "!!(document.querySelector('[data-po-radar]')||{}).hidden, !!document.getElementById('tab-radar')]")
+                                "!!(document.querySelector('[data-po-radar]')||{}).hidden, !!document.getElementById('tab-young') && !!document.querySelector('[data-radar]')]")
             pg.reload()
             pg.wait_for_timeout(300)
             kept = pg.evaluate("document.querySelector('details[data-po-fold]').open")
@@ -637,13 +677,13 @@ def browser_checks(check, skips, d1, tmp):
                   and tap_d[0] and 0 <= tap_d[1] < tap_d[2] / 2 and tap_d[3] and tap_d[4] != "none",
                   "U6 browser: a tap on an agent's card opens the Details fold at its department and brings it into view (a phone: its panel, the radar's "
                   "card its own block; a desktop: the floor plan with the panel beside it); the fold stays open across the page's reload in that tab and is "
-                  "closed in a new one; the link to the Radar tab is hidden exactly when the page has no such tab (%s, %s, %s, %s, %s)" % (tap, tap_r, tap_d, kept, fresh))
+                  "closed in a new one; the link to the radar is hidden exactly when the page has no radar on New (%s, %s, %s, %s, %s)" % (tap, tap_r, tap_d, kept, fresh))
             pg.evaluate("document.getElementById('tab-office').click(); document.getElementById('od-brain').checked = true;")
             pg.click('label[for="ohb-3"]')
             shown = pg.evaluate("Array.from(document.querySelectorAll('.ohb-read p')).filter(p => p.getClientRects().length).map(p => p.textContent)")
             check(len(shown) == 1 and shown[0].startswith("03:00 to 04:00 · ") and not errs, "U9 browser: a tap on an hour of the bar shows that hour's numbers, one at a time (%s)" % (shown[:1], ))
             ctx.close()
-            # "Open the Radar tab": in a browser the label checks the tab's radio; in the installed app it sets #tab-radar so the app's tab bar follows
+            # "Open the radar": in a browser the label checks the New tab's radio; in the installed app it sets #tab-radar so the app's tab bar follows (New, at its top)
             res = []
             for app in (False, True):
                 ctx, pg = open_(page_rt)
@@ -654,10 +694,10 @@ def browser_checks(check, skips, d1, tmp):
                 hgt = round(lab.bounding_box()["height"]) if lab.is_visible() else 0
                 lab.click()
                 pg.wait_for_timeout(100)
-                res.append(pg.evaluate("[document.getElementById('tab-radar').checked, location.hash, window._hc]") + [hgt])
+                res.append(pg.evaluate("[document.getElementById('tab-young').checked, location.hash, window._hc]") + [hgt])
                 ctx.close()
             check(res[0][:3] == [True, "", 0] and res[1][:3] == [False, "#tab-radar", 1] and res[0][3] >= 44 and res[1][3] >= 44,
-                  "U6 browser: 'Open the Radar tab' (a 44 px target) opens the tab in a browser and goes through the app's hash link in the installed app (%s)" % res)
+                  "U6 browser: 'Open the radar' (a 44 px target) opens New in a browser and goes through the app's hash link in the installed app (%s)" % res)
             br.close()
     except Exception as e:
         check(False, "office browser checks ran (%s)" % str(e)[:300])

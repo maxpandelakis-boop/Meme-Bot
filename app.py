@@ -839,7 +839,7 @@ def notify_radar(coins):
     """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
     rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour). The title names the first
     coin and its pool age ("SYM: no trap found (pool 6 min)", "+1 more" per other coin), the body the checks it passed and its liquidity
-    and ends with "fake money, nothing is bought."; it opens the Radar tab. It never says buy, safe or clean. coins: the radar.json coin
+    and ends with "fake money, nothing is bought."; it opens the New tab at its top, where the radar is. It never says buy, safe or clean. coins: the radar.json coin
     dicts (sym, age in minutes, liq, n = checks done). The phones' "New coins" setting covers it (PREF_OF). Nothing for an empty list."""
     cs = [c for c in (coins if isinstance(coins, list) else []) if isinstance(c, dict)]
     if not cs:
@@ -939,7 +939,7 @@ html.app .tabbar { display:none }
 html.app body { padding-bottom:calc(66px + max(10px, env(safe-area-inset-bottom))) }
 html.app .wrap { padding-top:max(16px, env(safe-area-inset-top)); padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)) }
 html.app .app-off, html.app[data-apptab="account"] .tabs, html.app [data-live-link] { display:none !important }   /* the website's address: the app is it */
-.appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
+.appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
   padding:4px max(6px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
   background:color-mix(in srgb,var(--surface) 94%,transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
   border-top:1px solid var(--line) }
@@ -952,7 +952,7 @@ html.app .app-off, html.app[data-apptab="account"] .tabs, html.app [data-live-li
 .appbar .ab-dot { position:absolute; top:7px; left:calc(50% + 8px); width:9px; height:9px; border-radius:50%; background:var(--bad-mark); box-shadow:0 0 0 2px var(--surface) }
 .appbar .ab-cnt { position:absolute; top:3px; left:calc(50% + 6px); min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--accent); color:#fff;
   font-size:11px; line-height:18px; font-weight:600; box-shadow:0 0 0 2px var(--surface); font-variant-numeric:tabular-nums }
-.appbar [data-tab="radar"] .ab-cnt { background:var(--good-mark) }   /* coins with no trap found right now: green, the only green the radar uses */
+.appbar .ab-cnt.good { background:var(--good-mark) }   /* the radar's coins with no trap found right now: green, the only green the radar uses */
 .appbar button > span:not([class]) { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 html.app header { position:relative; padding-right:56px }
 .appbell { position:absolute; top:-2px; right:0; width:44px; height:44px; border-radius:22px; border:1px solid var(--line); background:var(--surface); color:var(--fg2);
@@ -992,11 +992,11 @@ html.app header { position:relative; padding-right:56px }
 
 PAGE_JS = r"""
 (function(){
-// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, Radar, New, Office, Account) instead of the top one, a bell and a
+// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, New, Office, Account) instead of the top one, a bell and a
 // notifications card on the Account tab (permission asked from the tap, the subscription saved in the live store through save_push_sub
-// with its two settings), deep links (#tab-young ...) from notifications. In a browser tab it does nothing. window.MemebotApp holds its
-// decisions for the tests.
-var A=window.MemebotApp={TABS:['pick','radar','young','office','account'],
+// with its two settings), deep links (#tab-young, #tab-radar ...) from notifications. New holds the launch radar (on top) and the full
+// scan's new launches; the old Radar tab's links open it. In a browser tab it does nothing. window.MemebotApp holds its decisions for the tests.
+var A=window.MemebotApp={TABS:['pick','young','office','account'],
   // an installed web app: Safari's navigator.standalone, or the display mode of an installed app (iOS reports "display": "standalone"
   // as fullscreen, WebKit bug 264218)
   installed:function(nav,mm){try{if(nav&&nav.standalone===true)return true;
@@ -1014,15 +1014,20 @@ var A=window.MemebotApp={TABS:['pick','radar','young','office','account'],
   // the New coins tab's badge follows the early box: while it shows a scan's early list the badge is that list's count; else null and no
   // badge at all (a badge reads as new coins: the scored list's count is not one)
   badge:function(early,y){return A.listed(early)?A.count(y):null;},
-  // the Radar tab's badge (report.py's radar script, event "memebot-radar"): the coins with no trap found while the radar runs; none at 0,
-  // none for a late, stopped or switched-off radar (its coins are not current)
-  radarBadge:function(d){if(!d||typeof d!=='object'||d.state!=='running'||!d.doc||!Array.isArray(d.doc.coins))return null;
-    var n=d.doc.coins.filter(function(c){return c&&typeof c==='object'&&c.v==='good';}).length;return n>0?n:null;},
+  // the radar's count (page_radar.py's script, event "memebot-radar"): the coins with no trap found while its list is current (a running
+  // loop, or a round within a few minutes: the event's good); none at 0, none for a late, stopped or switched-off radar
+  radarBadge:function(d){if(!d||typeof d!=='object'||(d.state!=='running'&&d.state!=='done')||!d.doc||!Array.isArray(d.doc.coins))return null;
+    var n=typeof d.good==='number'&&isFinite(d.good)?Math.floor(d.good):d.state==='running'?d.doc.coins.filter(function(c){return c&&typeof c==='object'&&c.v==='good';}).length:0;return n>0?n:null;},
+  // the New tab's one badge: the radar's coins without traps (green) before the early list's count; null for none
+  newBadge:function(radar,early){return radar>0?{n:radar,good:true}:early>0?{n:early,good:false}:null;},
   // the pick for the "New pick" note: the snapshot's (status, so it is there as soon as the notification) or current's, of a scan newer
   // than this page, with a symbol
   pick:function(st,cur,pageT){var c=[st&&st.pick,cur&&cur.pick];for(var i=0;i<c.length;i++){var p=c[i];
     if(p&&typeof p==='object'&&p.sym&&(+p.t||0)>(+pageT||0))return p;}return null;},
-  tab:function(h){var m=/^#?tab-(pick|radar|young|office|account)$/.exec(String(h||''));return m?m[1]:null;},
+  // the tab of a link: #tab-pick ... #tab-account; the old Radar tab's #tab-radar and #radar, and #new, open New
+  tab:function(h){h=String(h||'');var m=/^#?tab-(pick|radar|young|office|account)$/.exec(h)||/^#(radar|new)$/.exec(h);return m?(m[1]==='radar'||m[1]==='new'?'young':m[1]):null;},
+  // a link to the radar (the top of New), not to the full scan's early list
+  radarLink:function(h){return /^#?(tab-)?radar$/.test(String(h||''));},
   store:function(u,k){u=String(u||'').replace(/\/+$/,'');k=String(k||'');
     return /^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?$/.test(u)&&/^sb_publishable_[A-Za-z0-9_-]+$/.test(k)?{url:u,key:k}:null;}};
 if(!A.installed(window.navigator,window.matchMedia?function(q){return window.matchMedia(q);}:null))return;
@@ -1038,10 +1043,13 @@ var ICON={pick:svg('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 
   office:svg('<circle cx="9" cy="8.2" r="3.1"/><path d="M3.6 19.2c.6-3.2 2.8-5 5.4-5s4.8 1.8 5.4 5"/><circle cx="16.9" cy="9.2" r="2.4"/><path d="M15.6 14.3c2.3.2 4 1.8 4.6 4.9"/>'),
   account:svg('<path d="M4.2 8.2V7.4A2.4 2.4 0 0 1 6.6 5h10.6v3.2"/><rect x="4.2" y="8.2" width="15.6" height="10.8" rx="2.4"/><circle cx="15.9" cy="13.6" r="1.2"/>'),
   bell:svg('<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>')};
-var NAMES={pick:'Pick',radar:'Radar',young:'New coins',office:'Office',account:'Account'},SHORT={young:'New'},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
+var NAMES={pick:'Pick',young:'New coins',office:'Office',account:'Account'},SHORT={young:'New'},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
+var counts={radar:null,early:null};      // the New tab's badge: the radar's coins without traps, the early list's count
 var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,pos={},lastEarly=null,toEarly=0,jumped=false;
-// a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'keep' (back where this tab was left, as iOS apps do) or nothing
+// a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'radar' (a link to the radar: the top of New, no jump to the early
+// list), 'keep' (back where this tab was left, as iOS apps do) or nothing
 function select(t,scroll){
+  if(t==='radar')t='young';            // the Radar tab is part of New (a tab remembered from before)
   if(A.TABS.indexOf(t)<0)t='pick';
   if(t!==cur)pos[cur]=window.scrollY||0;
   cur=t;
@@ -1051,7 +1059,7 @@ function select(t,scroll){
   all('[data-app]').forEach(function(e){e.classList.toggle('app-off',(' '+e.getAttribute('data-app')+' ').indexOf(' '+t+' ')<0);});
   Object.keys(btns).forEach(function(k){btns[k].setAttribute('aria-selected',k===t?'true':'false');});
   ss('memebot-apptab',t);
-  if(scroll==='top')window.scrollTo(0,0);else if(scroll==='keep')window.scrollTo(0,pos[t]||0);
+  if(scroll==='top'||scroll==='radar')window.scrollTo(0,0);else if(scroll==='keep')window.scrollTo(0,pos[t]||0);
   toEarly=scroll==='top'&&t==='young'?Date.now():0;jumped=false;if(toEarly)setTimeout(early,0);
   if(t==='account'&&store&&!P.key&&!P.busy&&P.ready)getKey().then(render);   // the key may have come with a scan since the start
 }
@@ -1068,7 +1076,7 @@ function early(){
 function buildBar(){
   var nav=el('nav','appbar');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Sections');
   A.TABS.forEach(function(t){var b=el('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('data-tab',t);
-    b.innerHTML=ICON[t];b.appendChild(el('span','',SHORT[t]||NAMES[t]));     // five tabs: the short name on the bar, the full one read out
+    b.innerHTML=ICON[t];b.appendChild(el('span','',SHORT[t]||NAMES[t]));     // four tabs: the short name on the bar, the full one read out
     b.addEventListener('click',function(){if(t===cur){try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}}else select(t,'keep');});btns[t]=b;nav.appendChild(b);});
   return nav;
 }
@@ -1077,7 +1085,10 @@ function mark(t,cls,on,text){var b=btns[t];if(!b)return;var e=b.querySelector('.
   label(t);}
 // what a screen reader says for a tab: its name, the count on it, the live scan (the badge and the dot themselves are hidden from it)
 function label(t){var b=btns[t];if(!b)return;var c=b.querySelector('.ab-cnt'),d=b.querySelector('.ab-dot');
-  b.setAttribute('aria-label',NAMES[t]+(c?', '+c.textContent+' listed now':'')+(d?', a scan is running now':''));}
+  b.setAttribute('aria-label',NAMES[t]+(c?', '+c.textContent+(c.classList.contains('good')?' without traps now':' listed now'):'')+(d?', a scan is running now':''));}
+// the New tab's badge: the radar's count in green, else the early list's
+function newBadge(){var k=A.newBadge(counts.radar,counts.early);mark('young','ab-cnt',!!k,k?String(k.n):null);
+  var e=btns.young&&btns.young.querySelector('.ab-cnt');if(e)e.classList.toggle('good',!!(k&&k.good));label('young');}
 // ---- notifications
 var P={reg:null,key:null,sub:null,saved:false,error:'',quiet:'',hint:'',busy:false,ready:false},prefs={young:true,pick:true},ui={};
 try{var pp=JSON.parse(ls('memebot-push-prefs')||'null');if(pp&&typeof pp==='object')['young','pick'].forEach(function(k){if(typeof pp[k]==='boolean')prefs[k]=pp[k];});}catch(e){}
@@ -1170,7 +1181,7 @@ function render(){
 }
 function startPush(){
   if(!('serviceWorker' in navigator)){P.ready=true;render();return;}
-  navigator.serviceWorker.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='memebot-open'){var t=null;try{t=A.tab(new URL(d.url,location.href).hash);}catch(x){}if(t)select(t,'top');}});
+  navigator.serviceWorker.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='memebot-open'){var t=null,h='';try{h=new URL(d.url,location.href).hash;t=A.tab(h);}catch(x){}if(t)select(t,A.radarLink(h)?'radar':'top');}});
   navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).then(function(){return navigator.serviceWorker.ready;}).then(function(reg){
     P.reg=reg;
     if(state()==='unsupported'||!store)return;
@@ -1189,15 +1200,15 @@ function onLive(e){
   var d=e&&e.detail||{},st=d.status,c=d.current,MB=window.MemebotLive,live=false;
   try{live=typeof d.state==='string'?d.state==='live':!!(st&&MB&&MB.state(st,Date.now(),pageT,0)==='live');}catch(x){}
   mark('office','ab-dot',live);
-  var k=A.badge(d.early,d.young);mark('young','ab-cnt',!!k,k!=null?String(k):null);
+  counts.early=A.badge(d.early,d.young);newBadge();
   lastEarly=d.early;setTimeout(early,0);      // after the live script has drawn the box
   var pk=A.pick(st,c,pageT),pane=doc.getElementById('pane-pick'),ban=doc.querySelector('.applive');
   if(pk&&pane){if(!ban){ban=el('p','applive');pane.insertBefore(ban,pane.firstChild);}
     ban.textContent='New pick from the scan that just ran: '+String(pk.sym).slice(0,24)+(typeof pk.score==='number'?', score '+Math.round(pk.score):'')+'. The full report follows in a few minutes. Paper trading only.';}
   else if(ban)ban.parentNode.removeChild(ban);
 }
-// the radar's news (report.py's radar script, after every answer and every change of its state): the count of coins with no trap found
-function onRadar(e){var k=A.radarBadge(e&&e.detail);mark('radar','ab-cnt',!!k,k!=null?String(k):null);}
+// the radar's news (page_radar.py's script, after every answer and every change of its state): the count of coins with no trap found
+function onRadar(e){counts.radar=A.radarBadge(e&&e.detail);newBadge();}
 function init(){
   var tabs=doc.querySelector('.tabs'),hdr=doc.querySelector('header');
   if(tabs){
@@ -1213,12 +1224,12 @@ function init(){
   if(hdr){ui.bell=el('button','appbell');ui.bell.type='button';ui.bell.innerHTML=ICON.bell;hdr.appendChild(ui.bell);
     ui.bell.addEventListener('click',function(){if(tabs)select('account',false);sec.scrollIntoView({block:'start'});if(ui.btn&&!ui.btn.hidden)ui.btn.focus({preventScroll:true});});}
   // a deep link (#tab-young from a notification) picks the tab; the hash is dropped again (the next link with the same hash still counts) and the
-  // page stays at the top instead of the browser's jump to the radio of that name
-  function link(){var t=A.tab(location.hash);if(!t)return null;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}return t;}
+  // page stays at the top instead of the browser's jump to the radio of that name. #tab-radar (the radar's notification) opens New at its top
+  function link(){var h=location.hash,t=A.tab(h);if(!t)return null;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}return [t,A.radarLink(h)?'radar':'top'];}
   var first=link();
-  select(first||(tabs?ss('memebot-apptab'):null)||checked()||'pick',first?'top':null);
+  select(first?first[0]:(tabs?ss('memebot-apptab'):null)||checked()||'pick',first?first[1]:null);
   if(first)window.addEventListener('load',function(){if(!jumped)window.scrollTo(0,0);});
-  window.addEventListener('hashchange',function(){var t=link();if(t)select(t,'top');});
+  window.addEventListener('hashchange',function(){var t=link();if(t)select(t[0],t[1]);});
   window.addEventListener('memebot-live',onLive);
   window.addEventListener('memebot-radar',onRadar);if(window.MemebotRadar&&window.MemebotRadar.last)onRadar({detail:window.MemebotRadar.last});
   doc.addEventListener('visibilitychange',back);
