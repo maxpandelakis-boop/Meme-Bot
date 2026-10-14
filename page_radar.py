@@ -51,6 +51,7 @@ VERDICTS = ("good", "watch", "trap")
 STATES = ("running", "degraded", "ending", "off", "hours", "done")     # done: a round is over (launch_radar.py round), its list stays until the next one
 BANNER = "No good coin this scan: shown for the record, marked, not a recommendation"
 LATER = ("5", "15", "30", "60")
+PAT_ROWS = 3               # record.pat: at most 3 signals and 3 coins (launch_radar.pat_of keeps the same)
 
 # words for a signal name (radar_weights.json, the rating's lists) when the doc's line does not carry its own text (the line has at most 8)
 LABELS = {"instant_pool": "pool opened with the mint", "rugger_wallets": "holders from rugged coins", "brand_name": "brand/celebrity name",
@@ -60,7 +61,8 @@ LABELS = {"instant_pool": "pool opened with the mint", "rugger_wallets": "holder
           "dev_dead": "dev's earlier launches", "dev_young": "fresh dev wallet", "x_copied": "X account used by older coins",
           "tweet_shared": "coins off the same tweet", "sniped30": "sniped in the first 30 s", "bundle_slot": "wallets in the launch block",
           "fresh_holders": "fresh top holders", "fund_cluster": "top holders funded by one wallet", "staircase_early": "staircase so far",
-          "rc_report": "RugCheck report", "mint_time": "mint time", "walletmem": "wallet memory"}
+          "rc_report": "RugCheck report", "mint_time": "mint time", "walletmem": "wallet memory",
+          "x": "has an X link", "creator_5pct": "creator holds over 5%", "mc_500k": "market cap over $500k", "liq_15pct": "liquidity under 15% of market cap"}
 UNKNOWN = {"rc_report": "RugCheck pending", "rcReport": "RugCheck pending", "no_rc_report": "RugCheck pending", "mint_time": "mint time unknown",
            "mintToPoolS": "mint time unknown", "instant_pool": "mint time unknown", "walletmem": "wallet memory unavailable",
            "wmChecked": "wallet memory unavailable", "rugger_wallets": "wallet memory unavailable", "brand_name": "name unknown", "bot_volume": "buys unknown"}
@@ -76,10 +78,11 @@ SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to poo
          "xUsed": "older coins with this X account", "tweetShared": "coins off the same tweet", "snip30": "supply sniped in 30 s, %", "snip30N": "sniper wallets",
          "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder"}
 MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar's own records confirm it."
-INFO_TEXT = ("The radar checks the newest pools every 5 minutes on its own during its hours (7 to 24 h Berlin unless changed), from the first full "
-             "scan after they begin: each run lasts about an hour and starts the next. Start and Stop open its page on GitHub. Start (only when it is "
-             "stopped): tap \u201cRun workflow\u201d, the first list comes in about 4 minutes. Stop: the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. "
-             "Fake money: the radar never buys anything.")
+INFO_TEXT = ("The radar checks the newest pools every 2 minutes on its own during its hours (7 to 24 h Berlin unless changed), from the first full "
+             "scan after they begin, and pump.fun graduations from a live feed when it is up: each run lasts about an hour and starts the next. Start "
+             "and Stop open its page on GitHub. Start (only when it is stopped): tap \u201cRun workflow\u201d, the first list comes in about 4 minutes. Stop: "
+             "the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Momentum and patterns: hindsight, paper only, never a push. Fake money: the radar "
+             "never buys anything.")
 
 
 # ------------------------------------------------------------------------------------------------------------------ small helpers
@@ -172,7 +175,7 @@ def clean_coin(c, full=True):
         return None
     o = {"addr": c["addr"], "sym": _str(c.get("sym"), 24), "name": _str(c.get("name"), 48), "v": c.get("v") if c.get("v") in VERDICTS else "watch",
          "pts": _num(c.get("pts")), "age": _num(c.get("age")), "line": _line(c.get("line")), "liq": _num(c.get("liq")), "mc": _num(c.get("mc")),
-         "n": _num(c.get("n"))}
+         "n": _num(c.get("n")), "ws": int(c["ws"]) if _num(c.get("ws")) is not None and c["ws"] % 1 == 0 and -9 <= c["ws"] <= 9 else None}
     for k in ("hard", "soft", "unknown", "info", "plus"):
         o[k] = _names(c.get(k))
     if isinstance(c.get("pair"), str) and B58.match(c["pair"]):
@@ -190,6 +193,22 @@ def clean_coin(c, full=True):
     return o
 
 
+def _nums(v, keys):
+    return {k: _num(v.get(k)) for k in keys} if isinstance(v, dict) else None
+
+
+def _pat(p):
+    """record.pat (winners vs losers of the same hours, launch_radar.pat_of) or None: rows [name, lk, ln, wk, wn, sure, lv] with both groups
+    known (ln, wn > 0), sure only a real true, an unknown level read as info; coins [sym, t, hourW, [[name, k]]]; PAT_ROWS of each."""
+    if not isinstance(p, dict):
+        return None
+    ok = lambda x: isinstance(x, list) and len(x) == 7 and isinstance(x[0], str) and NAME.match(x[0]) and all(_num(v) is not None for v in x[1:5]) and 0 <= x[1] <= x[2] and 0 <= x[3] <= x[4] and x[2] > 0 and x[4] > 0
+    rows = [[x[0], x[1], x[2], x[3], x[4], x[5] is True, x[6] if x[6] in LEVELS else "info"] for x in (p.get("rows") if isinstance(p.get("rows"), list) else []) if ok(x)]
+    why = [[_str(w[0], 24), _ms(w[1]), _num(w[2]), [[s[0], s[1]] for s in w[3] if isinstance(s, list) and len(s) == 2 and isinstance(s[0], str) and NAME.match(s[0]) and _num(s[1]) is not None][:3]]
+           for w in (p.get("why") if isinstance(p.get("why"), list) else []) if isinstance(w, list) and len(w) == 4 and isinstance(w[3], list)]
+    return dict({"at": _ms(p.get("at")), "since": _ms(p.get("since")), "rows": rows[:PAT_ROWS], "why": why[:PAT_ROWS]}, **_nums(p, ("hrs", "w", "l", "need")))
+
+
 def clean_doc(doc):
     """radar.json as the page may show it, or None: kind "radar" with a time, every key whitelisted (SPEC Appendix A), at most DOC_MAX
     bytes as JSON ("others" trimmed first, then "recent")."""
@@ -203,6 +222,8 @@ def clean_doc(doc):
     md = doc.get("model") if isinstance(doc.get("model"), dict) else {}
     o["model"] = {"from": md.get("from") if md.get("from") in ("prior", "learned") else "prior", "n": _num(md.get("n")), "need": _num(md.get("need")),
                   "auc": _num(md.get("auc")), "prior": _num(md.get("prior")), "at": _ms(md.get("at")), "why": _str(md.get("why"), 200)}
+    mw = md.get("win") if isinstance(md.get("win"), dict) else None      # the learned win order (hindsight; it only orders ties)
+    o["model"]["win"] = {"from": "learned" if mw.get("from") == "learned" else "none", "n": _num(mw.get("n")), "auc": _num(mw.get("auc")), "why": _str(mw.get("why"), 120)} if mw else None
     cn = doc.get("counts") if isinstance(doc.get("counts"), dict) else {}
     o["counts"] = {k: _num(cn.get(k)) for k in ("seen", "good", "pushed", "seenAgeMed")}
     wm = doc.get("wm") if isinstance(doc.get("wm"), dict) else {}
@@ -229,6 +250,7 @@ def clean_doc(doc):
         pair = lambda v: [_num(v[0]), _num(v[1])] if isinstance(v, list) and len(v) == 2 and _num(v[0]) is not None and _num(v[1]) is not None else None
         o["record"] = {"calls": _num(rd.get("calls")), "rug": _num(rd.get("rug")), "win": _num(rd.get("win")), "eur": _num(rd.get("eur")), "n60": _num(rd.get("n60")),
                        "ticket": _num(rd.get("ticket")), "ci": {"rug": pair(ci.get("rug")), "win": pair(ci.get("win"))}}
+        o["record"].update(mom=_nums(rd.get("mom"), ("calls", "n60", "rug", "win")), all=_nums(rd.get("all"), ("n60", "rug", "win")), pat=_pat(rd.get("pat")))
     else:
         o["record"] = None
     hs = doc.get("hosts") if isinstance(doc.get("hosts"), dict) else {}
@@ -790,13 +812,18 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 .rrec-w { overflow-x:auto; min-width:0 } .rrec { width:100%; border-collapse:collapse; font-size:var(--fs-s); font-variant-numeric:tabular-nums } .rrec th, .rrec td { padding:6px 6px; border-top:1px solid var(--line2); text-align:right; white-space:nowrap }
 .rrec th { border-top:0 } .rrec td:nth-child(2), .rrec th:nth-child(2), .rrec td:first-child, .rrec th:first-child { text-align:left } .rrec td:nth-child(2) { max-width:9ch; overflow:hidden; text-overflow:ellipsis; font-weight:600 } .rrec-w .tnote { margin-top:6px }
 .mx.up { color:var(--good) } .mx.dn { color:var(--bad) } .mx.na { color:var(--muted) } .rrec .oc.bad { color:var(--bad) } .rrec .oc.good { color:var(--good) } .rrec .oc.muted, .rrec .oc.na { color:var(--muted) }
+/* the Track record's momentum line and patterns (hindsight, paper only): the signal's chip takes what the two % columns leave, cut with an ellipsis */
+.rpat { width:100%; border-collapse:collapse; font-size:var(--fs-s); font-variant-numeric:tabular-nums } .rpat th, .rpat td { padding:4px 6px; border-top:1px solid var(--line2); text-align:right; white-space:nowrap }
+.rpat th { border-top:0; font-size:var(--fs-xs); font-weight:500; color:var(--muted) } .rpat td:first-child { text-align:left; max-width:0; width:100%; padding-left:0 } .rpat .tc { display:inline-block; max-width:100%; vertical-align:middle }
+.rpat .tc b { display:inline-block; margin-right:3px } .rpat tr.maybe td { color:var(--muted) } .rpat tr.maybe .tc { opacity:.7 } .rws { margin-left:4px; font-size:var(--fs-xs); color:var(--fg2); cursor:help }
+.rpwhy { margin:0; padding-left:18px; font-size:var(--fs-xs); color:var(--fg2); display:grid; gap:4px; overflow-wrap:anywhere } .rrmom { overflow-wrap:anywhere }
 .rwhy-notes { margin:0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2); display:grid; gap:4px }
 .rw-h { margin:4px 0 0; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600 }
 .rwhy-list { list-style:none; margin:0; padding:0; display:grid; gap:8px } .rwhy-list li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; min-width:0 }
 .rwhy-list .rw-n { font-weight:500 } .rwhy-list .chip { font-size:var(--fs-xs) } .rwhy-list small { flex-basis:100%; color:var(--fg2); font-size:var(--fs-xs); font-variant-numeric:tabular-nums }
 .rmodel:empty { display:none } details.rfold.dim .rrows { opacity:.7 }
 @media (max-width:560px) { .rstats > div { padding:8px 8px } .rstats b { font-size:20px }
-  .rhead { gap:8px } .rpill { width:100% } .rrec th, .rrec td { padding:6px 3px } .rrec .ow { display:none } .rrec td:nth-child(2) { max-width:7ch } }
+  .rhead { gap:8px } .rpill { width:100% } .rrec th, .rrec td { padding:6px 3px } .rrec .ow { display:none } .rrec td:nth-child(2) { max-width:7ch } .rpat th, .rpat td { padding:4px 3px } }
 @media (prefers-reduced-motion: reduce) { .rpill[data-st="running"] .rdot, .rpill[data-wait] .rdot { animation:none } details.rfold > summary::before { transition:none } }
 """
 
@@ -819,7 +846,8 @@ function dmap(v,deep){var o={},n=0;if(!v||typeof v!=='object'||Array.isArray(v))
     else if(!deep&&Array.isArray(v[k])){var a=v[k].filter(function(y){return isn(y)||typeof y==='string'&&y;}).slice(0,16).map(function(y){return isn(y)?y:str(y,40);});if(a.length){o[k]=a;n++;}}});return o;}
 function coin(c,full){
   if(!c||typeof c!=='object'||typeof c.addr!=='string'||!B58.test(c.addr))return null;
-  var o={addr:c.addr,sym:str(c.sym,24),name:str(c.name,48),v:['good','watch','trap'].indexOf(c.v)>=0?c.v:'watch',pts:num(c.pts),age:num(c.age),line:line(c.line),liq:num(c.liq),mc:num(c.mc),n:num(c.n)};
+  var o={addr:c.addr,sym:str(c.sym,24),name:str(c.name,48),v:['good','watch','trap'].indexOf(c.v)>=0?c.v:'watch',pts:num(c.pts),age:num(c.age),line:line(c.line),liq:num(c.liq),mc:num(c.mc),n:num(c.n),
+    ws:Number.isInteger(c.ws)&&c.ws>=-9&&c.ws<=9?c.ws:null};
   ['hard','soft','unknown','info','plus'].forEach(function(k){o[k]=names(c[k]);});
   if(typeof c.pair==='string'&&B58.test(c.pair))o.pair=c.pair;
   if(full){['pool','mint','first','push'].forEach(function(k){o[k]=ms(c[k]);});['px','m5','buys','sells','up'].forEach(function(k){o[k]=num(c[k]);});
@@ -827,18 +855,28 @@ function coin(c,full){
   if(typeof c.x==='string'&&XL.test(c.x))o.x=c.x;
   return o;}
 function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
+function nums(v,ks){if(!v||typeof v!=='object'||Array.isArray(v))return null;var o={};ks.forEach(function(k){o[k]=num(v[k]);});return o;}
+function win(v){var o=nums(v,['n','auc']);if(o){o.from=v.from==='learned'?'learned':'none';o.why=str(v.why,120);}return o;}
+// record.pat as clean_doc's _pat keeps it: rows [name, lk, ln, wk, wn, sure, lv] with both groups known, sure only a real true; coins [sym, t, hourW, [[name, k]]]
+function pat(p){if(!p||typeof p!=='object'||Array.isArray(p))return null;var o=nums(p,['hrs','w','l','need']),nm=function(x){return typeof x==='string'&&NM.test(x);};
+  o.at=ms(p.at);o.since=ms(p.since);
+  o.rows=(Array.isArray(p.rows)?p.rows:[]).filter(function(x){return Array.isArray(x)&&x.length===7&&nm(x[0])&&isn(x[1])&&isn(x[2])&&isn(x[3])&&isn(x[4])&&x[1]>=0&&x[1]<=x[2]&&x[3]>=0&&x[3]<=x[4]&&x[2]>0&&x[4]>0;})
+    .slice(0,R.PAT_ROWS).map(function(x){return [x[0],x[1],x[2],x[3],x[4],x[5]===true,LV.indexOf(x[6])>=0?x[6]:'info'];});
+  o.why=(Array.isArray(p.why)?p.why:[]).filter(function(w){return Array.isArray(w)&&w.length===4&&Array.isArray(w[3]);}).slice(0,R.PAT_ROWS).map(function(w){
+    return [str(w[0],24),ms(w[1]),num(w[2]),w[3].filter(function(s){return Array.isArray(s)&&s.length===2&&nm(s[0])&&isn(s[1]);}).slice(0,3).map(function(s){return [s[0],s[1]];})];});
+  return o;}
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
 var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,LEAVE:30000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
-  TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,
+  TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,PAT_ROWS:3,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
     if(!d||typeof d!=='object'||d.kind!=='radar'||ms(d.t)==null)return null;
     var run=obj(d.run),md=obj(d.model),cn=obj(d.counts),wm=obj(d.wm),lg=obj(d.lastGood),rd=d.record&&typeof d.record==='object'?d.record:null,hs=obj(d.hosts),o;
     o={v:num(d.v),kind:'radar',t:d.t,next:ms(d.next),hourly:ms(d.hourly),state:['running','degraded','ending','off','hours','done'].indexOf(d.state)>=0?d.state:'running',why:str(d.why,200),secs:num(d.secs),
       run:{id:str(run.id,40),start:ms(run.start),end:ms(run.end),cycle:num(run.cycle),source:str(run.source,12),mode:run.mode==='round'||run.mode==='loop'?run.mode:''},
-      model:{from:md.from==='learned'?'learned':'prior',n:num(md.n),need:num(md.need),auc:num(md.auc),prior:num(md.prior),at:ms(md.at),why:str(md.why,200)},
+      model:{from:md.from==='learned'?'learned':'prior',n:num(md.n),need:num(md.need),auc:num(md.auc),prior:num(md.prior),at:ms(md.at),why:str(md.why,200),win:win(md.win)},
       counts:{seen:num(cn.seen),good:num(cn.good),pushed:num(cn.pushed),seenAgeMed:num(cn.seenAgeMed)},wm:{t:ms(wm.t),nCoins:num(wm.nCoins)},
       coins:(Array.isArray(d.coins)?d.coins:[]).map(function(c){return coin(c,1);}).filter(Boolean).slice(0,5),
       others:(Array.isArray(d.others)?d.others:[]).map(function(c){return coin(c,0);}).filter(Boolean).slice(0,40),
@@ -851,6 +889,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
       lines:(Array.isArray(d.lines)?d.lines:[]).filter(function(x){return typeof x==='string';}).slice(0,12).map(function(x){return str(x,200);})};
     if(rd){var ci=obj(rd.ci),pr=function(v){return Array.isArray(v)&&v.length===2&&isn(v[0])&&isn(v[1])?[v[0],v[1]]:null;};
       o.record={calls:num(rd.calls),rug:num(rd.rug),win:num(rd.win),eur:num(rd.eur),n60:num(rd.n60),ticket:num(rd.ticket),ci:{rug:pr(ci.rug),win:pr(ci.win)}};}
+    if(rd){o.record.mom=nums(rd.mom,['calls','n60','rug','win']);o.record.all=nums(rd.all,['n60','rug','win']);o.record.pat=pat(rd.pat);}
     Object.keys(hs).slice(0,12).forEach(function(k){if(HN.test(k)&&typeof hs[k]==='string')o.hosts[k]=str(hs[k],16);});
     var sr=obj(d.src);o.src={};Object.keys(sr).slice(0,12).forEach(function(k){var v=sr[k];if(/^[a-z][A-Za-z0-9:_-]{0,23}$/.test(k)&&isn(v)&&Math.floor(v)===v&&v>=0&&v<=100000)o.src[k]=v;});
     return o;},
@@ -926,6 +965,20 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     if(isn(r.eur))s+=' · paper, '+(isn(r.ticket)?r.ticket:3)+' € each: '+eur(r.eur);return s;},
   recShort:function(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s');
     return r.n60>=R.TOO_FEW?s+' · '+p0(r.rug)+' rugged · '+p0(r.win)+' doubled':s+' · too few for a record yet';},
+  // the coins that rose fast (record.mom: 1.5x within 6 min or +50% in 5 min; counted, never bought or pushed) beside all new coins (record.all),
+  // both with the same 1 h label
+  momLine:function(m,a){if(!m||!isn(m.calls))return '';var s='Rising fast, paper only: '+m.calls+' call'+(m.calls===1?'':'s');
+    if(!(m.n60>=R.TOO_FEW))return s+' · too few yet ('+(isn(m.n60)?m.n60:0)+' of '+R.TOO_FEW+' with a 1 h price)';
+    return s+' · '+p0(m.rug)+' rugged · '+p0(m.win)+' 2x at 1 h'+(a&&isn(a.rug)&&isn(a.win)?' · all new coins: '+p0(a.rug)+' · '+p0(a.win):'');},
+  // record.pat (rugged vs doubled coins of the same hours, their signals at first sight): the head line, one row [label, rugged %, 2x %, sure, level,
+  // title], one rugged coin with the flags its hour's doubled coins mostly lacked (fmt: the time as HH:MM)
+  patHead:function(p){if(!p||!isn(p.w)||!isn(p.l))return '';
+    return isn(p.need)&&p.w<p.need?'Patterns: too few doubled coins yet ('+p.w+' of '+p.need+')':'Same hours, signals at first sight: '+p.l+' rugged vs '+p.w+' doubled';},
+  patRow:function(x){return [LABELS[x[0]]||x[0].replace(/_/g,' '),p0(x[1]/x[2]),p0(x[3]/x[4]),x[5],x[6],x[1]+' of '+x[2]+' rugged, '+x[3]+' of '+x[4]+' doubled had it'+(x[5]?'':' (could be chance)')];},
+  whyLine:function(w,fmt){if(!w[3].length)return '';
+    return (w[0]||'?')+' rugged'+(isn(w[1])?' '+fmt(w[1]):'')+' · '+w[3].map(function(s,i){return (LABELS[s[0]]||s[0].replace(/_/g,' '))+' ('+s[1]+' of '+(isn(w[2])?w[2]:'?')+(i?')':' doubled that hour had it)');}).join(', ');},
+  // the ▲ beside a coin: it orders like past doubled coins (ws, hindsight) once a win order is learned; it changes no verdict
+  wsOn:function(c,m){return !!(c&&isn(c.ws)&&c.ws>=1&&m&&m.win&&m.win.from==='learned');},
   verdict:function(c){if(!c)return ['','? trap check unavailable'];
     if(c.v==='good')return ['good','✓ No trap found'+(c.n?' · '+c.n+' checks':'')];
     if(c.v==='trap'){var k=(c.hard||[]).length;return ['bad',k>1?'✕ '+k+' traps':'✕ trap'];}
@@ -991,7 +1044,7 @@ function go(){
     return 'pool '+(a==null?'age ?':dur(a))+' · '+(m==null?'mint time unknown':'minted '+dur(m)+' ago');}
   function card(c,i,live,docAge,rec){
     var li=el('li','rcard'+(live?'':' dim')),det=el('details'),sm=el('summary');
-    var top=el('div','rtop');top.appendChild(el('span','rsym',c.sym||'?'));if(c.name&&c.name!==c.sym)top.appendChild(el('span','rname',c.name));
+    var top=el('div','rtop');top.appendChild(el('span','rsym',c.sym||'?'));wsMark(top,c);if(c.name&&c.name!==c.sym)top.appendChild(el('span','rname',c.name));
     var ag=el('span','rage',ageText(c,live,docAge));top.appendChild(ag);li._age=ag;li._c=c;sm.appendChild(top);
     var nums=el('div','rnums');[['liq',usd(c.liq)],['mc',usd(c.mc)],['5 min',pc(c.m5)]].forEach(function(x){var s=el('span');s.appendChild(el('i','',x[0]));s.appendChild(document.createTextNode(x[1]));nums.appendChild(s);});
     sm.appendChild(nums);
@@ -1020,6 +1073,16 @@ function go(){
         oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(x1))?(isn(x1)&&x1>=1?['','✓','alive, up']:isn(x1)?['muted','↓','alive, down']:['muted','·','alive']):r.miss60?['na','–','no 1 h price']:['muted','…','pending'];
       var td=el('td','oc '+oc[0],oc[1]);td.title=oc[2];td.appendChild(el('span','ow',' '+oc[2]));tr.appendChild(td);tb.appendChild(tr);});
     t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive and up · ↓ alive but down · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money); – no round caught that price'));return w;}
+  // the patterns (record.pat, hindsight): the head line, the signals as a chip and the share of rugged and of doubled coins that had it (a hint that
+  // could be chance muted, the counts in the title), the rugged coins with the flags their hour's doubled coins mostly lacked
+  function patBox(p){var f=document.createDocumentFragment(),h=R.patHead(p),ws=p.why.map(function(x){return R.whyLine(x,hhmm);}).filter(Boolean);if(h)f.appendChild(el('p','note',h));
+    if(p.rows.length){var t=el('table','rpat'),hd=el('tr'),th=el('thead'),tb=el('tbody');['','of rugged','of doubled'].forEach(function(x){hd.appendChild(el('th','',x));});th.appendChild(hd);t.appendChild(th);
+      p.rows.forEach(function(x){var r=R.patRow(x),tr=el('tr',r[3]?'':'maybe'),td=el('td'),c=el('span','tc '+r[4]),b=el('b','',IC[r[4]]);tr.title=r[5];b.setAttribute('aria-hidden','true');
+        c.appendChild(b);c.appendChild(document.createTextNode(r[0]));td.appendChild(c);tr.appendChild(td);tr.appendChild(el('td','',r[1]));tr.appendChild(el('td','',r[2]));tb.appendChild(tr);});
+      t.appendChild(tb);f.appendChild(t);}
+    if(ws.length){var ul=el('ul','rpwhy');ws.forEach(function(s){ul.appendChild(el('li','',s));});f.appendChild(ul);}
+    return f;}
+  function wsMark(box,c){if(R.wsOn(c,S.doc&&S.doc.model)){var s=el('span','rws','▲');s.title='orders like past doubled coins (hindsight)';s.setAttribute('aria-label',s.title);box.appendChild(s);}return box;}
   // the full scan's next start (ms): the scan strip's on Pick (page_office.scan_strip), 0 without it
   function scanNext(){var b=document.querySelector('[data-sstrip]');return b?+b.getAttribute('data-next')||0:0;}
   function nextW(st,n){return st==='done'&&S.doc?R.nextWords(S.doc,srvNow(n),scanNext(),hhmm):'';}
@@ -1068,13 +1131,15 @@ function go(){
       var lg=$('[data-r-lastgood]'),l=d&&d.lastGood;lg.hidden=!(l&&isn(l.at));if(!lg.hidden)setText(lg,'last coin without traps: '+(l.sym||'?')+', '+R.ago(srvNow(n)-l.at));}
     var oth=has?d.others:[],ol=$('[data-r-olist]');ol.textContent='';of.hidden=!oth.length;of.classList.toggle('dim',!live);setText($('[data-r-ocnt]'),String(oth.length));
     oth.forEach(function(c){var li=el('li','rrow '+(c.v==='trap'?'bad':'warn')),vd=R.verdict(c);li.title=vd[1];
-      li.appendChild(el('span','rs',vd[1].charAt(0)+' '+(c.sym||'?')));li.appendChild(el('span','ra',isn(c.age)?'pool '+dur(c.age+(live?docAge/60000:0)):''));li.appendChild(lineEl(c.line,3));ol.appendChild(li);});
+      li.appendChild(wsMark(el('span','rs',vd[1].charAt(0)+' '+(c.sym||'?')),c));li.appendChild(el('span','ra',isn(c.age)?'pool '+dur(c.age+(live?docAge/60000:0)):''));li.appendChild(lineEl(c.line,3));ol.appendChild(li);});
     var rr=d?d.recent.filter(function(r){return isn(r.good)&&srvNow(n)-r.good<=R.RECENT;}).sort(function(a,b){return b.good-a.good;}):[],rl=R.recLine(d&&d.record);
-    rf.hidden=!(rr.length||rl);setText($('[data-r-recline]'),R.recShort(d&&d.record)||rr.length+' call'+(rr.length===1?'':'s')+' in the last 3 h');
+    var rcd=d&&d.record,ml=R.momLine(rcd&&rcd.mom,rcd&&rcd.all),pt=rcd&&rcd.pat;     // the momentum line and the patterns: hindsight, never a push
+    rf.hidden=!(rr.length||rl||ml||pt);setText($('[data-r-recline]'),R.recShort(d&&d.record)||rr.length+' call'+(rr.length===1?'':'s')+' in the last 3 h');
     var rc=$('[data-r-recent]');rc.textContent='';if(rl)rc.appendChild(el('p','note rrline',rl));
+    if(ml)rc.appendChild(el('p','note rrmom',ml));if(pt)rc.appendChild(patBox(pt));
     if(rr.length)rc.appendChild(laterTable(rr));else rc.appendChild(el('p','note','No call without traps in the last 3 hours.'));
-    var md=$('[data-r-model]'),m=d&&d.model;if(md)setText(md,!m?'':m.from==='learned'?'Weights: learned on '+(m.n||'?')+' calls'+(isn(m.auc)?' · ranking quality '+m.auc.toFixed(2)+' ('+(isn(m.prior)?'study weights '+m.prior.toFixed(2)+', ':'')+'coin toss 0.50)':''):
-      'Weights: study prior'+(isn(m.need)?' · radar data '+(isn(m.n)?m.n:0)+' of '+m.need+' needed':'')+(m.why?' · '+m.why:''));
+    var md=$('[data-r-model]'),m=d&&d.model;if(md)setText(md,!m?'':(m.from==='learned'?'Weights: learned on '+(m.n||'?')+' calls'+(isn(m.auc)?' · ranking quality '+m.auc.toFixed(2)+' ('+(isn(m.prior)?'study weights '+m.prior.toFixed(2)+', ':'')+'coin toss 0.50)':''):
+      'Weights: study prior'+(isn(m.need)?' · radar data '+(isn(m.n)?m.n:0)+' of '+m.need+' needed':'')+(m.why?' · '+m.why:''))+(m.win&&m.win.from==='learned'?' · win order learned on '+(isn(m.win.n)?m.win.n:'?')+' coins':''));
   }
   function took(d,via){d=R.clean(d);if(!d)return false;var o=S.doc;
     if(o&&d.t<o.t)return true;                                  // an older copy (the CDN) never replaces a newer doc
