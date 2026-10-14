@@ -3666,7 +3666,11 @@ console.log(JSON.stringify(o));
     import selftest_traps                       # the launch radar's rule core and study weights (traps.py)
     selftest_traps.checks(check, {})
     import selftest_radar                       # the launch radar job (launch_radar.py, radar_src.py, radar.yml)
-    selftest_radar.checks(check)
+    nosleep, time.sleep = time.sleep, REAL_SLEEP   # the radar's request rules are checked in real time (1.1 s between RPC calls)
+    try:
+        selftest_radar.checks(check)
+    finally:
+        time.sleep = nosleep
     SKIPS.extend(selftest_radar.SKIPPED)
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
