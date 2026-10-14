@@ -1,8 +1,8 @@
 # API probe for the launch radar (WP0): started by hand only (Actions -> probe-radar -> Run workflow), never on a push or a schedule.
-# Fake money only: it reads public APIs (pump.fun, DexScreener, GeckoTerminal, Jupiter, LaunchLab, RugCheck, Solana RPC, GitHub) and
-# writes nothing anywhere. The log holds only status codes, field names, counts, timings and rate-limit headers: never a response body
-# over 300 characters, never a credential, no coin or wallet address. The Supabase secrets are only checked for being set (yes/no);
-# their values never reach the job.
+# Fake money only: it reads public APIs (pump.fun, DexScreener, GeckoTerminal, Jupiter, LaunchLab, RugCheck, Solana RPC, GitHub,
+# PumpPortal's websocket for 60 s) and writes nothing anywhere. The log holds only status codes, field names, counts, timings and
+# rate-limit headers: never a response body over 300 characters, never a credential, no coin or wallet address. The Supabase secrets
+# are only checked for being set (yes/no); their values never reach the job.
 name: probe-radar
 on:
   workflow_dispatch:
@@ -29,5 +29,8 @@ jobs:
           url="https://github.com/${GITHUB_REPOSITORY}.git"
           git clone -q --depth 1 --branch results "$url" res || (sleep 10 && git clone -q --depth 1 --branch results "$url" res)
           echo "positions on the results branch: $(ls res/db/memepos | wc -l)"
+      - name: Probe the live pump.fun feed (PumpPortal's websocket, 60 s; status, counts and field names, never an address)
+        continue-on-error: true
+        run: timeout 90 python3 radar_feed.py probe --seconds 60
       - name: Probe the radar's sources (about 11 minutes)
         run: python3 research/probe_radar.py --res res --repo "$GITHUB_REPOSITORY"
