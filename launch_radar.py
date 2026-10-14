@@ -1461,7 +1461,7 @@ class Radar:
         S = {k: c.get(k) for k in S_KEYS}
         for k, v in S2.items():
             if v is not None:
-                if k in S and S[k] is not None and S[k] != v and k not in self.mismatch_said and not isinstance(v, (dict, list)):
+                if k in S and S[k] is not None and differs(S[k], v) and k not in self.mismatch_said and not isinstance(v, (dict, list)):
                     self.mismatch_said.add(k)
                     self.say("signal %s: traps reads %r, the radar %r (traps wins)" % (k, v, S[k]))
                 S[k] = v
@@ -2090,6 +2090,14 @@ def cmd_hours(a, log=None):
     say("hours: app row %s" % ("written" if app_row(doc, say) is not None else "not written (off or failed)"))
     say("outside the active hours %d-%d Berlin: state hours, next start %s UTC" % (hw[0], hw[1], dt.datetime.fromtimestamp(doc["next"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M") if doc["next"] else "?"))
     return 0
+
+
+def differs(a, b):
+    """Whether the radar's reading a and traps' reading b of one signal differ: two numbers at 2 decimals (traps rounds some, ageMin
+    among them), anything else as it is."""
+    if all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (a, b)):
+        return round(a, 2) != round(b, 2)
+    return a != b
 
 
 def args_of(argv=None):

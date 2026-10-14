@@ -175,12 +175,35 @@ def check_radar_saved(check):
           "K5 radar: the cycle line says where radar.json went (%r)" % (cyc[-1][-70:] if cyc else lines[-3:]))
 
 
+# ---------------------------------------------------------------------------------------------------------------- K4 rounding
+def check_age_rounding(check):
+    """K4: traps' rounded ageMin (2.14) against the radar's full float (2.13823...) is no mismatch; a real difference is said once."""
+    import types
+    import selftest_radar as SR
+    T, P, _ = SR.modules()
+    tmp = tempfile.mkdtemp(prefix="memebot-audit-age-")
+    lines, radar_age = [], [2.1382333333333334]
+    with SR.memebot_rules():
+        R = SR.unit_radar(T, P, tmp, "age", log=lines.append)
+        R.T = types.SimpleNamespace(signals_radar=lambda c: {"ageMin": 2.14})
+        R.coin = lambda r, now: {"sym": "AGE", "ageMin": radar_age[0]}
+        R.signals({}, SR.T0)
+        quiet = [l for l in lines if l.startswith("signal ageMin")]
+        radar_age[0] = 3.0
+        R.signals({}, SR.T0)
+        R.signals({}, SR.T0)
+    said = [l for l in lines if l.startswith("signal ageMin")]
+    check(not quiet and len(said) == 1 and "3.0" in said[0],
+          "K4 radar: ageMin 2.14 (traps) against 2.13823 (the radar) is no mismatch (%d lines); 2.14 against 3.0 is said once (%r)" % (len(quiet), said))
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
     check_push_reason(check)
     check_sync_redact(check)
     check_dev_budget(check)
     check_radar_saved(check)
+    check_age_rounding(check)
 
 
 def main():
