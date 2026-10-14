@@ -1,26 +1,26 @@
-# The launch radar: its own job beside the hourly scan (scan.yml). One quick round per start, about 2 to 3 minutes in all: it rates the
-# coins whose DEX pool is under 10 minutes old (launch_radar.py round; the sources in radar_src.py), keeps the best 5 for the page's
-# Radar tab, records every rating with the later prices a round can still catch (the 1 h price at the next hourly round), and sends a
-# push notification only for a coin without a trap found. Fake money only: nothing is bought anywhere, and the paper trader never
-# reads what this job writes.
-# Who starts it (no cron): the hourly scan's last step, after every full scan inside the active hours (source hourly), and "Run
-# workflow" by hand (source manual). A round never starts another run. The loop of the old continuous radar stays in launch_radar.py
-# for a VM (python3 launch_radar.py loop --no-github --minutes 0); this workflow never runs it.
+# The launch radar: its own job beside the hourly scan (scan.yml). A round every 5 minutes, 7 to 24 h Berlin: each round rates the coins
+# whose DEX pool is under 10 minutes old (launch_radar.py loop; the sources in radar_src.py), keeps the best 5 for the page's New tab,
+# records every rating with the later prices the next rounds catch, and sends a push notification only for a coin without a trap found.
+# Fake money only: nothing is bought anywhere, and the paper trader never reads what this job writes.
+# How it keeps going (no cron: GitHub's timed starts come late or not at all): one run makes a round every 5 minutes for 55 minutes, then its
+# last step starts the next run (source auto) when the loop ended well, the Berlin time is inside the hours, the workflow is active and no
+# other radar run is running or waiting. The hourly scan's last step starts one when none runs (source hourly: the chain broke, or the
+# hours began), "Run workflow" by hand too (source manual); a start while one runs waits in the group until that run ends.
 # What it writes: the one-commit branch radar-data (radar.json, the records of the last 48 hours, model.json, pushed.json), the app's
 # live store row "radar" (with the Supabase secrets) and its working caches (actions/cache, key radar-cache-<run id>).
-# Stop it: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (GitHub refuses every start, so no round runs any more; a round
-# already going ends within its 2 minutes, with state off when it saw the switch). Repository variable MEMEBOT_RADAR=0: no round runs
-# (the scan starts none, a start by hand is skipped). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; the scan starts
-# rounds only inside them, and a start outside them only writes state hours with the next start.
+# Stop it: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (GitHub refuses every start; the running loop sees the switch at
+# its next round, writes state off and ends without starting another). Repository variable MEMEBOT_RADAR=0: no run does anything (the
+# scan starts none, a start is skipped). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; the loop ends when they end, a start
+# outside them only writes state hours with the next start.
 name: Meme-Bot launch radar
 run-name: "Launch radar · ${{ inputs.source || 'manual' }}"
 on:
   workflow_dispatch:
     inputs:
       source:
-        description: 'who starts it: manual (Run workflow) or hourly (the scan, after each full scan); either way one round of about 2 to 3 minutes'
+        description: 'who starts it: manual (Run workflow), hourly (the scan, when no radar runs) or auto (the run before); a round every 5 minutes for 55 minutes'
         type: choice
-        options: ['manual', 'hourly']
+        options: ['manual', 'hourly', 'auto']
         default: 'manual'
 permissions:
   contents: write                    # the one-commit branch radar-data
@@ -32,7 +32,7 @@ jobs:
   radar:
     if: (vars.MEMEBOT_RADAR || '1') != '0'   # an unset variable counts as on (compared bare, GitHub skipped the job)
     runs-on: ubuntu-latest
-    timeout-minutes: 10              # one round takes about 2 to 3 minutes: setup, the push sender, the round (6 at most), the cache
+    timeout-minutes: 70              # setup, the push sender, the loop (55 minutes, 62 at most), the cache and the next start
     env:
       PYTHONUTF8: '1'
       MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
@@ -93,21 +93,72 @@ jobs:
           else
             echo "pywebpush could not be installed: no push notifications this run, the scan and the live view go on"
           fi
-      - name: One round (the new pools rated, the records and their later prices, the page's list, a push for a good coin; 2 minutes or so)
+      - name: A round every 5 minutes for 55 minutes (the new pools rated, the records and their later prices, the page's list, a push for a good coin)
+        id: loop
         if: steps.hours.outputs.inside == 'true'
-        timeout-minutes: 6               # a round's cycle stops itself after 125 s; the restore and the push come on top
+        timeout-minutes: 62              # each round stops itself after 125 s; the loop ends after 55 minutes, at the end of the hours or when switched off
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}                          # the kill switch (GitHub's API only, never printed)
           RADAR_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git   # radar-data, read and written
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}                          # the app's live store (row "radar") and its push notifications;
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}            # empty without the secrets: nothing of it runs
-        run: python3 launch_radar.py round --dir rd
+        run: python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55
       - name: Save the radar's working caches
         if: always() && steps.hours.outputs.inside == 'true'
         uses: actions/cache/save@v4
         with:
           path: rdcache
           key: radar-cache-${{ github.run_id }}
+      - name: Start the next run (when the loop ended well, inside the hours, the workflow active and no other radar run running or waiting)
+        if: steps.loop.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RADAR_REF: ${{ github.ref_name }}
+        run: |
+          # Three GitHub API calls at most; the token is sent only to GitHub's API. The new run waits in the group memebot-radar until this
+          # one has ended (a minute or two), then makes its first round at once. A loop that failed starts nothing: the next full scan does.
+          python3 - <<'PY'
+          import datetime as dt, json, os, re, sys, urllib.error, urllib.request
+          sys.path.insert(0, ".")
+          from launch_radar import parse_hours, in_hours
+          wf = "%s/repos/%s/actions/workflows/radar.yml" % (os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/"), os.environ["GITHUB_REPOSITORY"])
+          me = str(os.environ.get("GITHUB_RUN_ID") or "")
+          say = lambda s: print("next run: " + s, flush=True)
+
+          def call(method, url, body=None):
+              req = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),
+                                           headers={"Authorization": "Bearer " + os.environ.get("GH_TOKEN", ""), "Accept": "application/vnd.github+json",
+                                                    "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "memebot-radar", "Content-Type": "application/json"})
+              try:
+                  with urllib.request.urlopen(req, timeout=12) as r:
+                      raw = r.read()
+                      return r.status, (json.loads(raw) if raw.strip() else None)
+              except urllib.error.HTTPError as e:
+                  return e.code, None
+
+          hours = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS"))
+          if not in_hours(int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000) + 60_000, hours):
+              say("the active hours %d-%d Berlin are over: no start (the first full scan inside them starts the radar)" % hours)
+              sys.exit(0)
+          try:
+              st, w = call("GET", wf)
+              if st != 200 or not isinstance(w, dict) or w.get("state") != "active":
+                  say("the radar workflow is not active (HTTP %s, %s): no start" % (st, re.sub(r"[^a-z_]", "", str((w or {}).get("state")))[:30]))
+                  sys.exit(0)
+              st, j = call("GET", wf + "/runs?per_page=20")
+              runs = j.get("workflow_runs") if isinstance(j, dict) else None
+              if st != 200 or not isinstance(runs, list):
+                  say("the radar runs could not be read (HTTP %s): no start" % st)
+              elif any(isinstance(r, dict) and r.get("status") != "completed" and str(r.get("id")) != me for r in runs):
+                  say("another radar run is running or waiting: it goes on, no second one")
+              else:
+                  st, _ = call("POST", wf + "/dispatches", {"ref": os.environ["RADAR_REF"], "inputs": {"source": "auto"}})
+                  say("started (source auto): its first round in about 2 minutes" if st in (200, 201, 204) else "the start was refused (HTTP %s)" % st)
+          except Exception as e:
+              say("GitHub did not answer (%s): no start, the next full scan starts one" % type(e).__name__)
+          PY
       - name: Tidy the run list (successful radar runs older than two days are deleted)
         continue-on-error: true
         timeout-minutes: 2                 # it holds the radar's group: a hanging call never keeps the next round waiting

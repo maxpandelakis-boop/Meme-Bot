@@ -479,6 +479,10 @@ var hm=function(t){return new Date(t).toISOString().slice(11,16);};
 o.nextw=[R.nextWords(rd(N-20*M,{next:N+40*M}),N,0,hm),R.nextWords(rd(N-70*M,{next:N-10*M}),N,N+50*M,hm),R.nextWords(rd(N-20*M,{next:null}),N,N+50*M,hm),
   R.nextWords(rd(N-20*M,{next:null}),N,N-20*M,hm),R.nextWords(rd(N-20*M,{next:null}),N,N-60*M,hm),R.nextWords(rd(N-20*M,{next:null}),N,0,hm),
   hm(N+40*M),hm(N-10*M),hm(N+50*M),hm(N-20*M),hm(N)];
+// the radar's loop every 5 minutes (doc.next 5 minutes after doc.t): running within 2 of its cycles and a minute (11 min), late to 15, then
+// stopped; the old 2.5-minute loop keeps its 6 minutes; a next far off counts as 10 minutes at most
+o.loop5=[R.radarState(doc(N-8*M,{next:N-3*M}),N,0),R.radarState(doc(N-12*M,{next:N-7*M}),N,0),R.radarState(doc(N-16*M,{next:N-11*M}),N,0),
+  R.radarState(doc(N-8*M),N,0),R.radarState(doc(N-8*M,{next:N+30*M}),N,0),R.cycle(doc(N,{next:N+5*M})),R.cycle(doc(N,{next:null}))];
 o.live=[R.live('done',rd(N-14*M),N,0),R.live('done',rd(N-16*M),N,0),R.live('running',doc(N-30000),N,0),R.live('late',rd(N-90*M),N,0),R.live('done',null,N,0)];
 // the next poll of a round: near doc.next (+ ROUND, the round's own minutes), at most IDLE apart on GitHub (a Start by hand), SB_DONE on the live store
 o.rnext=[R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:rd(N-55*M,{next:N+5*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,
@@ -579,6 +583,9 @@ def node_checks(check, tmp, skips):
           "U3 the pill's next round after a round: 'next about HH:MM' before doc.next, 'next due since HH:MM' after it; a round with next null (a round by hand) "
           "names the full scan that starts the next one (the strip's estimate, the one running now, an hour on once that scan should be over), "
           "else 'next after the next full scan' %s" % nw[:6])
+    check(o.get("loop5") == ["running", "late", "stopped", "late", "running", 300000, 150000],
+          "U3 the radar's loop every 5 minutes is running for 2 of its own cycles and a minute (8 min old: running, 12: late, 16: stopped); the "
+          "2.5-minute loop keeps its 6 minutes; its cycle is the doc's next minus its time, 2.5 to 10 minutes %s" % o.get("loop5"))
     check(o["live"] == [True, False, True, False, False],
           "U3 a round's coins are current (cards in colour, the count) for 15 minutes after it, a loop's while it runs, never when late %s" % o["live"])
     rn = o["rnext"]

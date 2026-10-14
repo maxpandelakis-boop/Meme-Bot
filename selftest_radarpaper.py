@@ -202,6 +202,16 @@ def _buys(check, tmp):
           and b["b1"]["entryAt"] == TC and b["a2"]["round"] == TA and len(b) == 11,
           "RA1 a coin once: GOODTWO, rated again in round B, stays bought in round A (no sixth coin moves up); LATEGOOD, sixth in round B, is "
           "bought in round C, where it was good: at that round's time, without the radar's first-sight price (the candle's close is paid)")
+    # the radar every 5 minutes: all of the best 5 only in the first round of each UTC hour, in the other rounds only a coin rated good
+    TP = TA - 15 * MIN                   # 13:01: the first round of 13 h (round A at 13:16 is not; its coins come from the old rule's test above)
+    r5 = [rec("p%d" % i, "PFIRST%d" % i, TP, [(TP, "watch", float(i))]) for i in range(1, 7)]
+    r5 += [rec("q1", "QWATCH", TP + 5 * MIN, [(TP + 5 * MIN, "watch", 0.0)]), rec("q2", "QGOOD", TP + 5 * MIN, [(TP + 5 * MIN, "good", 1.0)]),
+           rec("r1", "RNEXTHOUR", TP + H, [(TP + H, "trap", 4.0)])]
+    b5 = RP.buys_of(r5)
+    check(sorted(b5) == ["p1", "p2", "p3", "p4", "p5", "q2", "r1"] and b5["q2"]["entryAt"] == TP + 5 * MIN and b5["q2"]["green"] is True
+          and b5["r1"]["entryAt"] == TP + H and RP.counted(TP, {int(TP // H): TP}) and not RP.counted(TP + 5 * MIN, {int(TP // H): TP}),
+          "RA1 the radar every 5 minutes: the first round of each UTC hour has its best 5 bought (not the sixth), a later round of that hour only its "
+          "coin rated good (QGOOD, not QWATCH), the next hour's first round its best 5 again: about 5 buys an hour plus the greens (%s)" % sorted(b5))
     greens = sorted(a for a, x in b.items() if x["green"])
     check(greens == ["a1", "a2", "b1"] and b["a1"]["px"] == 1e-5 and b["a3"]["verdict"] == "watch" and b["a4"]["pts"] == 3.0
           and b["a2"]["id"] == "2026-10-14T1316-GOODTWO-a2" and b["b5"]["id"].endswith("-imgsrcxonerr-b5") and re.match(r"^[\w-]+$", b["b5"]["id"]),

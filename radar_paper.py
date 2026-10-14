@@ -2,10 +2,11 @@
 """radar_paper.py: the radar account. Fake money only: nothing is ever bought, and nothing the trader, the training or the big test
 reads comes from here (the paper account of memebot.py and its docs db/memepos, db/memeexit stay exactly as they are).
 
-What it does: every launch-radar round's best 5 are bought on paper for TICKET (3 EUR) each, at the price the radar saw, at the
-round's time; a coin is bought at most once (in its first round among the best 5; a coin bought before is skipped, no digging
-deeper). Each buy is marked green when the radar rated it good in that round. Two accounts are summed from the same buys: "all 5"
-and "green only".
+What it does: the best 5 of the radar's first round in each UTC hour are bought on paper for TICKET (3 EUR) each, at the price the
+radar saw, at the round's time, and so is every coin the radar rated good in any round (the radar makes a round every 5 minutes;
+every round's best 5 would be about 25 buys an hour, more than the peaks job can price). A coin is bought at most once (in its first
+such round; a coin bought before is skipped, no digging deeper). Each buy is marked green when the radar rated it good in that round.
+Two accounts are summed from the same buys: "all 5" and "green only".
 
 Where the buys come from: the radar's hour docs db/memeradar/<UTC hour>.json (launch_radar.py; the scan's step A imports them into
 the results branch, which keeps 30 days). A record with "top" was among a round's best 5 at least once; its ratings rt
@@ -135,14 +136,22 @@ def ranked(cands):
     return out
 
 
+def counted(t, first_of_hour):
+    """Whether all of round t's best 5 are bought: the first round of its UTC hour (else only its coins rated good)."""
+    return first_of_hour.get(int(t // H)) == t
+
+
 def buys_of(recs, have=()):
-    """{addr: buy} for every coin among a round's best 5, in its first such round, except the coins in have (they already have a
-    doc). A buy: id, addr, sym, name, pair, round, entryAt, end, px (the radar's price when the round is its first sight), liq, mc,
+    """{addr: buy} for every coin among the best 5 of the first round of a UTC hour and every coin rated good among a round's best 5, in
+    its first such round, except the coins in have (they already have a doc). A buy: id, addr, sym, name, pair, round, entryAt, end, px (the radar's price when the round is its first sight), liq, mc,
     green, verdict, pts, rank (1 to 5 in its round), ticket, and _rec (the record, for its later DexScreener points)."""
-    rounds, out, have = rounds_of(recs), {}, set(have)
+    rounds, out, have, hour_first = rounds_of(recs), {}, set(have), {}
     for t in sorted(rounds):
+        hour_first.setdefault(int(t // H), t)
+    for t in sorted(rounds):
+        every = counted(t, hour_first)
         for rank, (_, _, _, a, v, rec) in enumerate(ranked(rounds[t])[:BEST_N], 1):
-            if a in out or a in have:
+            if a in out or a in have or not (every or v == "good"):
                 continue
             first = num(rec.get("first"))
             out[a] = {"id": buy_id(t, rec.get("sym"), a), "addr": a, "sym": str(rec.get("sym") or "?")[:24], "name": str(rec.get("name") or "")[:48],

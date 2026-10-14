@@ -75,9 +75,9 @@ SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to poo
          "xUsed": "older coins with this X account", "tweetShared": "coins off the same tweet", "snip30": "supply sniped in 30 s, %", "snip30N": "sniper wallets",
          "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder"}
 MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar's own records confirm it."
-INFO_TEXT = ("The radar runs one quick round right after each full scan. Start and Stop open its page on GitHub. Start: tap \u201cRun workflow\u201d for one more "
-             "round (about 2 to 3 minutes); a start while a round runs waits until it ends. Stop: the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d; no round "
-             "starts any more until you enable it again. The two scans run side by side, and each can be started on its own. Fake money: the radar never buys anything.")
+INFO_TEXT = ("The radar checks the newest pools every 5 minutes on its own, 7 to 24 h Berlin: each run lasts about an hour and starts the next. "
+             "Start and Stop open its page on GitHub. Start (only when it is stopped): tap \u201cRun workflow\u201d, the first round comes in about 2 minutes. "
+             "Stop: the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Fake money: the radar never buys anything.")
 
 
 # ------------------------------------------------------------------------------------------------------------------ small helpers
@@ -826,7 +826,7 @@ function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
-var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,LEAVE:30000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
+var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,LEAVE:30000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
   TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
@@ -866,7 +866,7 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DON
     if(isn(scan)&&scan>0){var s=scan,ref=Math.max(+doc.t||0,now);while(s+R.SCAN_LEN<ref)s+=R.HOUR;return 'next after the '+fmt(s)+' scan';}
     return 'next after the next full scan';},
   // a round: done (until its next round is due and DONE_GRACE more), late (one more hour), stopped (older). A loop: running (checked within
-  // 2 cycles and a minute), late (15 minutes), stopped (older). off (switched off), hours (outside its hours: the doc names the next start;
+  // 2 of its cycles and a minute), late (15 minutes), stopped (older). off (switched off), hours (outside its hours: the doc names the next start;
   // a doc past that start by 15 minutes is stopped), none (no doc)
   radarState:function(doc,now,got,moved){
     if(!doc||typeof doc!=='object'||doc.kind!=='radar'||!(+doc.t>0))return 'none';
@@ -874,7 +874,9 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DON
     if(doc.state==='off')return 'off';
     if(doc.state==='hours')return +doc.next>0&&+doc.t+a>+doc.next+R.LATE?'stopped':'hours';
     if(R.round(doc)){var over=+doc.t+a-R.due(doc);return over<=R.DONE_GRACE?'done':over<=R.DONE_GRACE+R.HOUR?'late':'stopped';}
-    return a<=2*R.CYCLE+R.GRACE?'running':a<=R.LATE?'late':'stopped';},
+    return a<=2*R.cycle(doc)+R.GRACE?'running':a<=R.LATE?'late':'stopped';},
+  // a loop's own cadence: the doc's next minus its time (the radar's 5 minutes, the old loop's 2.5), CYCLE to CYCLE_MAX; CYCLE without a next
+  cycle:function(doc){var c=+doc.next-(+doc.t);return c>0?Math.min(R.CYCLE_MAX,Math.max(R.CYCLE,c)):R.CYCLE;},
   // the coins are current (a card in full colour, the tab's count): a running loop, or a round within FRESH of its check
   live:function(st,doc,now,got,moved){return st==='running'||st==='done'&&!!doc&&R.age(doc,now,got,moved)<=R.FRESH;},
   // supabase when the page carries the live store (and it did not just fail: back), else github while the shared budget keeps more

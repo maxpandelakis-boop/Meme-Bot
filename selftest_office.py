@@ -234,6 +234,9 @@ def office_checks(check, skips=None):
             sts.append(PO.radar_state(PO.radar_doc(dd), NOW))
         check(sts == ["running", "late", "stopped", "off", "hours", "stopped"] and PO.radar_state(None, NOW) == "none",
               "U6 radar desk states at a time: running, late, stopped, off, hours (and stopped once past its next start), none (%s)" % sts)
+        l5 = [PO.radar_state({"t": NOW - a_ * MIN, "next": NOW - (a_ - 5) * MIN, "state": "running"}, NOW) for a_ in (8, 12, 16)]
+        check(l5 == ["running", "late", "stopped"],
+              "U6 radar desk, the loop every 5 minutes: running for 2 of its own cycles and a minute (8 min old), late to 15, then stopped, as the New tab (%s)" % l5)
         # the hourly radar's rounds: done until doc.next + 30 min (an hour after the round without a next), late one more hour, then stopped;
         # a failed round (degraded) is done too, never a loop's 'running' or 'stopped' after 15 minutes
         rsts = [PO.radar_state(PO.radar_clean(doc_), NOW) for doc_ in (round_doc(NOW - 50 * MIN), round_doc(NOW - 84 * MIN), round_doc(NOW - 86 * MIN), round_doc(NOW - 146 * MIN),

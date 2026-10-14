@@ -25,10 +25,12 @@ S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar -> young: a phone wit
     as unknown
 S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with their timeouts and places, C exports memeradar, job
     peaks needs scan with timeout <= 12, the token only in its restore and push steps, and, run as written (with a stand-in pricing
-    step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (one radar round) against a
-    stand-in GitHub API: it starts ONE round of radar.yml (source hourly) after each full scan, only when the workflow is active, inside
+    step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the radar's safety net)
+    against a stand-in GitHub API: it starts radar.yml (source hourly) after each full scan, only when the workflow is active, inside
     the hours and no radar run is running or waiting (any status but completed), never when MEMEBOT_RADAR is 0; radar.yml (when on this
-    branch): group memebot-radar, no schedule, timeout 10 (one round), never pushes results, live or radar-feed
+    branch): group memebot-radar, no schedule, a round every 5 minutes for 55 minutes (timeout 70), never pushes results, live or
+    radar-feed; its last step starts the next run (source auto) only after a loop that ended well, inside the hours, never counting
+    itself as another run
 S7  step B "Feed the launch radar": traps.py feed on a mock db in < 60 s writes the four files, which go to radar-feed as one orphan
     commit (force-pushed, all four or none: a feed that fails or writes three pushes nothing) at the scan's clock (a run doc dated hours
     ahead is ignored); the X-link history survives a step A that could not fetch radar-feed (step B fetches it itself, else leaves
@@ -719,8 +721,8 @@ def _round_start(check, job, tmp):
     disp = [c for c in c1 if c["m"] == "POST"]
     body = json.loads(disp[0]["body"]) if disp else {}
     check(p1.returncode == 0 and [c["m"] for c in c1] == ["GET", "GET", "POST"] and c1[1]["p"].endswith("/runs?per_page=20") and body == {"ref": "main", "inputs": {"source": "hourly"}}
-          and all(c["auth"] == "Bearer " + FAKE_TOKEN for c in c1) and "started one round (source hourly" in p1.stdout and len(disp) == 1,
-          "step D: with the radar workflow active, inside the hours (%s Berlin) and every radar run completed, it starts ONE round of radar.yml"
+          and all(c["auth"] == "Bearer " + FAKE_TOKEN for c in c1) and "started the radar (source hourly" in p1.stdout and len(disp) == 1,
+          "step D: with the radar workflow active, inside the hours (%s Berlin) and every radar run completed, it starts ONE run of radar.yml"
           " on this branch, source hourly, no minutes (3 API calls, the token in the Authorization header only)" % inside)
     check(all(p.returncode == 0 and not [c for c in calls if c["m"] == "POST"] and len(calls) == 2 and ("still going (%s): no second one" % s_) in p.stdout for s_, (p, calls) in alive.items()),
           "a radar run that is queued, in progress, waiting, pending or requested is still going: no second round (C4)")
@@ -801,14 +803,71 @@ def _s6(check, scan, tmp):
     text = open(RADAR_YML, encoding="utf-8").read()
     code = [l.split(" #")[0] for l in text.splitlines() if not l.strip().startswith("#")]        # the workflow without its comments
     push_lines = [l for l in code if re.search(r"\bgit\b.*\bpush\b", l) or re.search(r"refs/heads/", l)]
+    steps_ = rj.get("steps") or []
+    lp = [s_ for s_ in steps_ if (s_.get("run") or "").strip() == "python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55"]
+    nx = [s_ for s_ in steps_ if "/dispatches" in (s_.get("run") or "")]
     check((radar.get("concurrency") or {}).get("group") == "memebot-radar" and (radar.get("concurrency") or {}).get("cancel-in-progress") is False
-          and on_keys(radar) == {"workflow_dispatch"} and "schedule" not in text.split("jobs:")[0] and rj.get("timeout-minutes") == 10
+          and on_keys(radar) == {"workflow_dispatch"} and "schedule" not in text.split("jobs:")[0] and rj.get("timeout-minutes") == 70
           and set(((radar.get("on") or radar.get(True) or {}).get("workflow_dispatch") or {}).get("inputs") or {}) == {"source"}
-          and "python3 launch_radar.py round --dir rd" in [(s_.get("run") or "").strip() for s_ in rj.get("steps") or []]
+          and len(lp) == 1 and lp[0].get("id") == "loop" and lp[0].get("timeout-minutes") == 62
+          and len(nx) == 1 and nx[0].get("if") == "steps.loop.outcome == 'success'" and nx[0].get("continue-on-error") is True and nx[0].get("timeout-minutes") == 1
+          and steps_.index(nx[0]) > steps_.index(lp[0]) and "secrets." not in json.dumps(nx[0].get("env") or {})
           and not any(re.search(r"\b(results|live|radar-feed)\b", l) for l in push_lines)
           and "memebot-scan" not in json.dumps(radar.get("concurrency")),
-          "radar.yml: group memebot-radar (never memebot-scan), started by workflow_dispatch only (no schedule, input source only), ONE round"
-          " (launch_radar.py round), job timeout 10 min, no push to results, live or radar-feed")
+          "radar.yml: group memebot-radar (never memebot-scan), started by workflow_dispatch only (no schedule, input source only), a round every"
+          " 5 minutes for 55 minutes (launch_radar.py loop, step timeout 62, job 70), then one soft step that starts the next run (only after a loop"
+          " that ended well, the job's own token, no secret), no push to results, live or radar-feed")
+    if nx:
+        _chain_start(check, rj, nx[0], tmp)
+
+
+def _chain_start(check, rj, st, tmp):
+    """radar.yml's last step against the stand-in GitHub API: the next run (source auto) when only this run is going, none while another
+    waits, none outside the hours, none when the workflow is disabled, one line and exit 0 when GitHub is down; never the token."""
+    gh = GH()
+    srv = serve_gh(gh)
+    api = "http://127.0.0.1:%d" % srv.server_address[1]
+    h = berlin_hour()
+    inside = "%d-%d" % (h, h + 2) if h + 2 <= 24 else "%d-%d" % (h, (h + 2) % 24)
+    outside = "%d-%d" % ((h + 2) % 24, ((h + 3) % 24) or 24)
+    env0 = dict(rj.get("env") or {}, **(st.get("env") or {}))
+    env0.update(GH_TOKEN=FAKE_TOKEN, GITHUB_API_URL=api, GITHUB_REPOSITORY="own/repo", RADAR_REF="main", MEMEBOT_RADAR_HOURS=inside, GITHUB_RUN_ID="30")
+    res = {}
+
+    def go(label, **kw):
+        n0 = len(gh.log)
+        p, secs = run_script(st["run"], HERE, dict(env0, **kw), timeout=60)      # the checkout: the step reads the hours rule from launch_radar.py
+        res[label] = (p, gh.log[n0:], secs)
+    gh.runs = [{"id": 30, "status": "in_progress"}, {"id": 29, "status": "completed", "conclusion": "success"}]
+    go("alone")
+    gh.runs = [{"id": 30, "status": "in_progress"}, {"id": 31, "status": "pending"}]
+    go("waiting")
+    gh.runs = [{"id": 30, "status": "in_progress"}]
+    go("outside", MEMEBOT_RADAR_HOURS=outside)
+    gh.state = "disabled_manually"
+    go("disabled")
+    gh.state = "active"
+    srv.shutdown()
+    srv.server_close()
+    go("down", GITHUB_API_URL="http://127.0.0.1:9")
+    for label, (p, calls, secs) in res.items():
+        print("  next run %-9s %s" % (label, (p.stdout.strip() or p.stderr.strip()[-200:])))
+    p, calls, _ = res["alone"]
+    disp = [c for c in calls if c["m"] == "POST"]
+    body = json.loads(disp[0]["body"]) if disp else {}
+    check(p.returncode == 0 and [c["m"] for c in calls] == ["GET", "GET", "POST"] and body == {"ref": "main", "inputs": {"source": "auto"}}
+          and "started (source auto)" in p.stdout and all(c["auth"] == "Bearer " + FAKE_TOKEN for c in calls),
+          "radar.yml's last step: with only this run going (its own run in progress is not 'another run'), inside the hours and the workflow"
+          " active, it starts the next run (source auto) on this branch (3 API calls)")
+    pw, cw, _ = res["waiting"]
+    po, co, _ = res["outside"]
+    pd, cd, _ = res["disabled"]
+    pn, _, _ = res["down"]
+    check(pw.returncode == 0 and not [c for c in cw if c["m"] == "POST"] and "another radar run" in pw.stdout and po.returncode == 0 and not co
+          and "hours" in po.stdout and pd.returncode == 0 and len(cd) == 1 and "not active" in pd.stdout and pn.returncode == 0 and "did not answer" in pn.stdout
+          and all(FAKE_TOKEN not in p_.stdout + p_.stderr for p_, _, _ in res.values()) and all(s_ < 30 for _, _, s_ in res.values()),
+          "radar.yml's last step: no second run while another waits (a start by hand goes on as the next run), no call outside the hours, one call"
+          " when the workflow is disabled (the stop switch), one line and exit 0 when GitHub is down; never the token, within its minute")
 
 
 def _mock_mb(d, now, rng, n_docs=60, per_doc=200):

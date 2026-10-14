@@ -297,29 +297,30 @@ update has no early box yet, because the polling script comes with the page the 
 
 ### Launch radar (coins under 10 minutes)
 
-A second, quick job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). Each start is
-ONE round of about 2 to 3 minutes: it rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
+A second job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). It makes a round
+every 5 minutes: each round rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
 plus the trap checks of `traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet
 under a day old, a staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the
 top of the page's New tab (above the full scan's new launches) and in the app, records every rating, and sends a push only for a coin without a trap found. Fake money only:
 the radar buys nothing and the paper trader never reads it.
 
-When it runs: the hourly scan starts one round at its end (so about one an hour, inside the active hours), and "Run workflow"
-on the radar's Actions page starts one by hand. A round never starts another one. The list on the page stays until the next
-round.
+When it runs: inside the active hours, all the time. One run makes a round every 5 minutes for 55 minutes, then starts the
+next run itself (no cron: GitHub's timed starts come late or not at all). The hourly scan starts the radar at its end when no run
+is going (the first scan of the morning, or after a run that failed), and "Run workflow" on the radar's Actions page starts one
+by hand. The page asks for the new list every minute or so; after a tap on Start it says "Waiting for the new round".
 
 Later prices: a record keeps the prices 5, 15, 30 and 60 minutes after the coin was first seen, but only those a later round
-catches (at most half the offset late; the 1 h price from 45 to 90 minutes). With one round an hour that is usually the 1 h
-price only; the 5, 15 and 30 minute fields then stay empty (shown as "–"), never zero. The 1 h outcome (rugged, doubled) and
-the record line need only the 1 h price.
+catches (at most half the offset late; the 1 h price from 45 to 90 minutes). With a round every 5 minutes all four are
+caught; a field no round caught stays empty (shown as "–"), never zero. The 1 h outcome (rugged, doubled) and the record line
+need only the 1 h price.
 
 Which trap checks count, and how much, comes from our own rug data (`research/rugstudy/`, `radar_weights.json`): the
 signals the study could not confirm stay visible on the page but carry no weight. Once enough rated coins have their 1 h
 outcome, the radar retrains its weights by itself (`model.json` on branch `radar-data`, tested walk-forward like the main
 model, the study as the starting point).
 
-Nothing to set up. Active 7:00 to 24:00 Berlin. For a free VM instead, `python3 launch_radar.py loop --no-github --minutes 0`
-runs the old continuous loop (a cycle every 150 s).
+Nothing to set up. Active 7:00 to 24:00 Berlin. For a free VM instead, `python3 launch_radar.py loop --no-github --minutes 0
+--cadence 300` runs the same loop without an end.
 Switches (repository variables, Settings > Secrets and variables > Actions > Variables):
 - `MEMEBOT_RADAR=0`: no round runs (the scan starts none, a start by hand is skipped). Also a stop: Actions > "Meme-Bot
   launch radar" > Disable workflow.
@@ -342,8 +343,10 @@ lasted one minute is in it, marked.
 
 ### Radar account (bought within minutes)
 
-A second paper account, beside the real one and never touching it: every launch-radar round's best 5 coins go in for
-3 € each, at the price the radar saw, at the round's time (a coin only once; green when the radar rated it good). They
+A second paper account, beside the real one and never touching it: the best 5 coins of the radar's first round each hour
+go in for 3 € each, at the price the radar saw, at the round's time, and so does every coin the radar rated good in any of its
+5-minute rounds (a coin only once; green when the radar rated it good). Every round's best 5 would be about 25 buys an hour,
+more than the job after each scan can price. They
 are sold by the same rules as the paper account (stop -30%, take-profit +1000% at the confirmed close, else the close at
 6 h; a dead pool is a total loss; paper fees), replayed on the pool's GeckoTerminal minute candles with the glitch rules of
 "Best price within 6 h". The Account tab shows it right under "Without the stop-loss": two tiles, "All 5" and "Green

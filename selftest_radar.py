@@ -1300,18 +1300,19 @@ def checks(check, env_=None):
         wf_code = "\n".join(l for l in wf.splitlines() if not l.strip().startswith("#"))
         inputs = wf_code.split("permissions:")[0]
         check(re.search(r"^on:\n  workflow_dispatch:", wf, re.M) and "schedule" not in wf and "group: memebot-radar" in wf and "cancel-in-progress: false" in wf
-              and re.search(r"^    timeout-minutes: 10\b", wf, re.M) and "if: (vars.MEMEBOT_RADAR || '1') != '0'" in wf and body(wf.splitlines()) == body(sc)
+              and re.search(r"^    timeout-minutes: 70\b", wf, re.M) and "if: (vars.MEMEBOT_RADAR || '1') != '0'" in wf and body(wf.splitlines()) == body(sc)
               and "RADAR_URL" not in job_env and "SUPABASE_SECRET_KEY: ${{" not in job_env and not re.search(r"git push|refs/heads/(results|live|radar-feed)", wf)
-              and "run: python3 launch_radar.py round --dir rd\n" in wf_code and "launch_radar.py loop" not in wf_code and not re.search(r"^      minutes:", inputs, re.M)
-              and "options: ['manual', 'hourly']" in inputs and not re.search(r"\b(chain|watchdog|successor)\b", wf_code)
+              and "run: python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55\n" in wf_code and "launch_radar.py round" not in wf_code
+              and not re.search(r"^      minutes:", inputs, re.M) and "options: ['manual', 'hourly', 'auto']" in inputs
+              and wf_code.count("/dispatches") == 1 and "if: steps.loop.outcome == 'success'" in wf_code and '"inputs": {"source": "auto"}' in wf_code
               and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf
               and "MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}" in job_env
               and 'out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"' in wf
-              and sorted(int(x) for x in re.findall(r"^        timeout-minutes: (\d+)\b", wf, re.M)) == [2, 3, 4, 6]
+              and sorted(int(x) for x in re.findall(r"^        timeout-minutes: (\d+)\b", wf, re.M)) == [1, 2, 3, 4, 62]
               and all("--max-time" in l or re.search(r"\btimeout \d+ curl\b", l) for l in wf.splitlines() if re.search(r"\bcurl\b", l) and not l.strip().startswith("#"))
               and len(re.findall(r"\bcurl -sS --max-time \d+", wf)) == 2,
-              "radar.yml: dispatch only (source manual or hourly, no minutes), group memebot-radar, ONE round (launch_radar.py round, never the loop), "
-              "job timeout 10 min (the round step 6), MEMEBOT_RADAR gate, the adapter switches from a repository variable, the push sender's install "
+              "radar.yml: dispatch only (source manual, hourly or auto, no minutes), group memebot-radar, a round every 5 minutes for 55 minutes "
+              "(launch_radar.py loop, step 62, job 70 min), one next-run step only after a loop that ended well, MEMEBOT_RADAR gate, the adapter switches from a repository variable, the push sender's install "
               "step as in scan.yml, the token only in the steps that use it, the hours and tidy steps bounded in time (they hold the radar's group)")
 
         print("== launch radar R6: limits")

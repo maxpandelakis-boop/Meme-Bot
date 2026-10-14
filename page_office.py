@@ -32,6 +32,7 @@ EXT_HOME = {RADAR: "analysts"}       # agents that run in their own job -> the d
 SCAN_RUNS = 6                        # the next-scan estimate: the median start minute of this many latest runs
 SCAN_RUNS_MIN = 3                    # with fewer runs the cron minute stands
 CYCLE_MS, GRACE_MS, LATE_MS = 150_000, 60_000, 900_000   # a radar loop's cycle; "running" within 2 cycles and a minute, "late" up to 15 minutes
+CYCLE_MAX_MS = 600_000      # a loop's own cadence (its next minus its time) counts up to this (the radar's 5 minutes)
 HOUR_MS, DONE_GRACE_MS = 3_600_000, 1_800_000             # a radar round: "done" until its next round is due and 30 minutes more, "late" one more hour
 SCAN_LEN_MS = 2_700_000              # a full scan's start to the radar round it starts at its end (about 26 to 35 minutes), with room
 DAY_MS, WEEK_DAYS = 86_400_000, 7
@@ -134,7 +135,9 @@ def radar_state(doc, ref):
     if is_round(doc):
         over = ref - (doc.get("next") or doc["t"] + HOUR_MS)
         return "done" if over <= DONE_GRACE_MS else ("late" if over <= DONE_GRACE_MS + HOUR_MS else "stopped")
-    return "running" if age <= 2 * CYCLE_MS + GRACE_MS else ("late" if age <= LATE_MS else "stopped")
+    nx, t = doc.get("next"), doc.get("t")
+    cyc = min(CYCLE_MAX_MS, max(CYCLE_MS, nx - t)) if isinstance(nx, (int, float)) and isinstance(t, (int, float)) and nx > t else CYCLE_MS   # MemebotRadar.cycle
+    return "running" if age <= 2 * cyc + GRACE_MS else ("late" if age <= LATE_MS else "stopped")
 
 
 def next_words(doc, now, scan, hhmm):
