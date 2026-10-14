@@ -47,7 +47,7 @@ The launch spotter's list reaches both live views through two hooks: the live vi
 own) checks each new young_early.json (early_doc) and hands it to live_put("young", doc), so live.json and the app's live store (row
 current, and its count and newest age in row status) carry it, both at once; the first write of the app's live store that carries a
 listed list (the first git push when there is no live store) calls young_published(doc), which sends the "new coins" notification
-once per cycle.
+once per cycle, only with MEMEBOT_PUSH_YOUNG=1 (off by default: the launch radar pushes only coins without a trap found).
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, datetime as dt
 
@@ -387,7 +387,10 @@ def young_published(doc):
     notification finds the list there), and by the live view's git push only when there is no AppFeed. It sends
     the "new coins" push notification (app.notify_young) beside the cycle, once per cycle (later versions of the list, e.g. with
     RugCheck, send nothing), and only for a list with coins (state "listed" when the doc names one) of this cycle. It never raises;
-    without the app's live store it does nothing."""
+    without the app's live store it does nothing. Off by default: this list is not filtered for traps, and only the launch radar's
+    coins without a trap found are pushed; MEMEBOT_PUSH_YOUNG=1 (the repository variable, passed by the scan workflow) brings it back."""
+    if os.environ.get("MEMEBOT_PUSH_YOUNG") != "1":
+        return False
     try:
         if not isinstance(doc, dict) or not [c for c in (doc.get("coins") or []) if isinstance(c, dict)] or doc.get("state", "listed") != "listed":
             return False
@@ -876,12 +879,15 @@ def finish_bg(job):
 KEEP_RESULTS_DAYS = 60      # scored snapshot chunks older than this leave the cache (the training does not need older coins)
 KEEP_RAW_DAYS = 3           # a raw snapshot chunk that was never scored by then never will be (its coins never got a price)
 KEEP_EARLY_DAYS = 30        # the early-list record (db/memeearly, radar.py check)
+KEEP_RADAR_DAYS = 30        # the launch radar's records (db/memeradar, imported from the radar-data branch); db/memepeak is never pruned
 
 
 def prune(d, now):
-    """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted."""
+    """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted. The launch radar's
+    hour docs (db/memeradar) leave the results branch after KEEP_RADAR_DAYS; the peak docs (db/memepeak) are never deleted."""
     gone = 0
-    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS), ("memeearly", KEEP_EARLY_DAYS)):
+    for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS), ("memeearly", KEEP_EARLY_DAYS),
+                      ("memeradar", KEEP_RADAR_DAYS)):
         for fn in glob.glob(os.path.join(d, "db", sub, "*.json")):
             try:
                 t = (json.load(open(fn, encoding="utf-8")) or {}).get("t")
@@ -1235,6 +1241,10 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memeyoung/**
 !db/memeearly/
 !db/memeearly/**
+!db/memepeak/
+!db/memepeak/**
+!db/memeradar/
+!db/memeradar/**
 """
 
 
