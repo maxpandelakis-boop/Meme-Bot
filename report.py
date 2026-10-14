@@ -980,7 +980,7 @@ JS = r"""
 # the installed app's tab bar; MemebotLive.current() is the newest whole record.
 OFFICE_LIVE_JS = r"""
 (function(){
-var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RESERVE:10,GRID:[-2,5,15,25,35,45],WIN:[-2,35],EARLY_OLD:4500000,LAG:120000,
+var MB=window.MemebotLive={LIVE:75000,IDLE:600000,STALE:300000,TIMEOUT:20000,RESERVE:10,GRID:[-2,5,15,25,35,45],WIN:[-2,35],EARLY_OLD:4500000,LAG:120000,RELOAD_AFTER:90000,RELOAD_GAP:120000,RELOADS:4,
   SB_EVERY:4000,SB_IDLE:30000,SB_TIMEOUT:8000,SB_RETRY:120000,SB_FAILS:2,
   // how old a snapshot is (ms). got: the local time its "updated" was first seen here; moved: it replaced an older "updated" of the same
   // scan, so the scan is pushing and the phone's clock is not needed: the local time since then, plus the delay it was seen with (at
@@ -1234,8 +1234,12 @@ function go(){
         newer?'The last scan finished at '+hhmm(up)+(site?', the page refreshes when the new report is published.':', after this page was made: the website has its report.'):
         'The last scan finished at '+hhmm(up)+'; this page shows it. The office goes live again during the next scan.';
       var hold=false;try{hold=!!(window.MemebotApp&&typeof MemebotApp.hold==='function'&&MemebotApp.hold());}catch(e){}   // the app's Account tab or a tap at work: later
-      if(st==='done'&&newer&&site&&now()-up>240000&&!hold){
-        try{if(sessionStorage.getItem('memebot-reloaded')!==String(doc.t)){sessionStorage.setItem('memebot-reloaded',String(doc.t));window.MEMEBOT_RELOADING=Date.now();location.reload();}}catch(e){}   // the flag: the radar's poll stops (page_radar.py)
+      // the new report is online about a minute after the scan's end: a reload RELOAD_AFTER after it, and again every RELOAD_GAP while this page
+      // is still the old one (a slow deploy, an old copy on the way), RELOADS times at most per scan (sessionStorage "t|count|when")
+      if(st==='done'&&newer&&site&&now()-up>MB.RELOAD_AFTER&&!hold){
+        try{var rl=String(sessionStorage.getItem('memebot-reloaded')||'').split('|'),rn=rl[0]===String(doc.t)?Math.max(1,+rl[1]||1):0,ra=+rl[2]||0;
+          if(rn<MB.RELOADS&&(!rn||now()-ra>MB.RELOAD_GAP)){sessionStorage.setItem('memebot-reloaded',doc.t+'|'+(rn+1)+'|'+now());
+            window.MEMEBOT_RELOADING=Date.now();location.reload();}}catch(e){}   // the flag: the radar's poll stops (page_radar.py)
       }
     }
     tick();

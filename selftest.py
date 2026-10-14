@@ -1650,6 +1650,7 @@ def app_browser_checks(check, sd, young):
                     name = urllib.parse.urlsplit(u).path[len("/Meme-Bot/"):] or "index.html"
                     ct = {"html": "text/html; charset=utf-8", "js": "text/javascript", "svg": "image/svg+xml", "png": "image/png", "webmanifest": "application/manifest+json"}
                     if name in files:
+                        calls[name] = calls.get(name, 0) + 1
                         route.fulfill(status=200, body=files[name], headers={"Content-Type": ct.get(name.rsplit(".", 1)[-1], "application/octet-stream")})
                     else:
                         route.fulfill(status=404, body="")
@@ -1754,6 +1755,25 @@ def app_browser_checks(check, sd, young):
             pb.wait_for_timeout(8000)
             two = calls["status"] - c0
             shared = [p_.evaluate("[document.visibilityState, document.querySelectorAll('[data-early-list] > li').length, document.documentElement.classList.contains('app')]") for p_ in (pa, pb)]
+            ctx.close()
+            # after a scan the app reloads itself once the new report should be online (RELOAD_AFTER after the scan's end), and again every RELOAD_GAP
+            # while it is still the old page (a slow deploy, an old copy), RELOADS times at most (14.10: "the scan was finished but the site didn't update")
+            scan(False, 6, nver=1)
+            st["rows"]["status"]["updated"] = st["rows"]["current"]["updated"] = ms() - 5000
+            ctx = br.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+            ctx.add_init_script("Object.defineProperty(Navigator.prototype,'standalone',{get:function(){return true;}});")
+            ctx.add_init_script("window.MEMEBOT_LIVE_T={SB_IDLE:400,RELOAD_AFTER:1000,RELOAD_GAP:1200};")
+            ctx.route("**/*", handler)
+            l0 = calls.get("index.html", 0)
+            pr = ctx.new_page()
+            pr.on("pageerror", lambda e: errs.append(str(e)[:160]))
+            pr.goto(pages_url)
+            for _ in range(150):
+                if calls.get("index.html", 0) - l0 - 1 >= 4:
+                    break
+                pr.wait_for_timeout(100)
+            pr.wait_for_timeout(3000)
+            reloads = calls.get("index.html", 0) - l0 - 1
             br.close()
     except Exception as e:
         check(False, "the browser checks of the installed app could not run (Playwright is installed; Chromium needs a short TMPDIR path): %s" % str(e)[:200])
@@ -1774,6 +1794,9 @@ def app_browser_checks(check, sd, young):
           "installed app at 320 x 640, opened by the new coins notification (#tab-young): once the list is in, the page scrolls to the early box (its top at %.0f px),"
           " the first coin's card starts above the tab bar (at %.0f px, bar at %.0f px); a 24-character launchpad never widens the page%s" % (
               deep["box"], deep["card"], deep["bar"], "" if wait_ok and deep["tok"] and deep["y"] > 0 else " %s %s" % (wait_ok, deep)))
+    check(reloads == 4,
+          "installed app, a scan done while it shows the old page: it reloads itself %d times (RELOAD_AFTER after the scan's end, then every RELOAD_GAP while "
+          "the page is still the old one, 4 at most), not once only" % reloads)
     check(on_pick == 0 and one >= 3 and two <= one + 2 and shared == [["visible", n, False]] * 2,
           "a browser tab reads the live store only on New launches or Agent office (%d reads in 3 s on The pick), and two tabs share one reader through"
           " localStorage (%d reads in 8 s with one tab, %d with two, both showing the list)" % (on_pick, one, two))
