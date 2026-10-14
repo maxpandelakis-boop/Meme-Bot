@@ -6,12 +6,14 @@ create databases and roles (trust or a password in PGPASSWORD); it makes and dro
   python3 supabase/test_setup.py <host or socket folder> <port>        (selftest.py runs it when MEMEBOT_PG=<host>:<port> is set)
 
 What it proves: anon reads live and app_config, saves and removes a subscription only through save_push_sub / drop_push_sub, and
-can neither read push_subs or app_secret nor write live or app_config; the 25-row cap pushes out the row seen longest ago (never the
+can neither read push_subs, push_sub_log or app_secret nor write live or app_config; a NEW subscription is taken only from Apple's push
+service (a row of another host already there can still be saved); the 25-row cap pushes out the row seen longest ago (never the
 phone, which saves itself at every start), and rows no notification has reached before any that one has (so a stranger's made-up rows
-never push out a phone that got a notification); at most 6 new subscriptions an hour are taken, also from 40 calls at the same moment
-on 40 connections; keys of the wrong form are refused; service_role does what the bot does (marks delivered and counts failures); the
-script runs twice without an error and keeps the data; a project set up with the first version of the script (one-argument
-save_push_sub, direct inserts) is upgraded in place."""
+never push out a phone that got a notification), and among those the newest subscription (so 24 newer rows a notification reached,
+saved again every few seconds, never push out the phone either); at most 6 new subscriptions an hour are taken, counted in
+push_sub_log (also when the cap removes the new rows again, and from 40 calls at the same moment on 40 connections); keys of the wrong
+form are refused; service_role does what the bot does (marks delivered and counts failures); the script runs twice without an error and
+keeps the data; a project set up with the first version of the script (one-argument save_push_sub, direct inserts) is upgraded in place."""
 import json, os, subprocess, sys
 
 SOCK, PORT = sys.argv[1], sys.argv[2]
@@ -121,6 +123,15 @@ def main():
         check(r.returncode != 0 and "permission denied" in r.stderr, "%s cannot insert into push_subs directly" % role, r.stderr)
         r = ok("delete from public.push_subs;", role)
         check(r.returncode != 0 and "permission denied" in r.stderr, "%s cannot delete from push_subs directly" % role, r.stderr)
+        for verb, sql in (("read", "select * from public.push_sub_log;"), ("write", "insert into public.push_sub_log default values;"),
+                          ("delete from", "delete from public.push_sub_log;")):
+            r = ok(sql, role)
+            check(r.returncode != 0 and "permission denied" in r.stderr, "%s cannot %s push_sub_log" % (role, verb), r.stderr)
+    r = psql("select c.relrowsecurity, has_table_privilege('anon', c.oid, '%s'), has_table_privilege('authenticated', c.oid, '%s'),"
+             " has_table_privilege('service_role', c.oid, 'SELECT,INSERT,DELETE') from pg_class c where c.oid = 'public.push_sub_log'::regclass;"
+             % (("SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER",) * 2), db)
+    check(r.stdout.strip() == "t|f|f|t", "push_sub_log: row level security on, no grant at all for anon and authenticated (also with auto-expose on), service_role may (%s)"
+          % r.stdout.strip(), r.stderr)
 
     r = ok("select public.save_push_sub(%s);" % lit(sub(1)), "anon")
     check(r.returncode == 0, "anon saves a subscription through save_push_sub (no prefs: both on)", r.stderr)
@@ -134,8 +145,26 @@ def main():
     check(r.returncode == 0 and json.loads(r2.stdout.strip()) == {"young": True, "pick": True}, "settings that are not true/false read as on", r.stderr + r2.stdout)
     r = ok("select public.save_push_sub(%s, '[1]'::jsonb);" % lit(sub(1)), "anon")
     check(r.returncode != 0, "settings that are not an object are refused", r.stderr)
+    q = lambda s_: "'" + s_["endpoint"] + "'"
+    apple_only = "notifications work only in the iPhone app (Apple push)"
     r = ok("select public.save_push_sub(%s);" % lit(sub(2, host="evil.example.com")), "anon")
-    check(r.returncode != 0 and "push_subs_endpoint_ok" in r.stderr, "a subscription for another host is refused", r.stderr)
+    check(r.returncode != 0 and apple_only in r.stderr, "a subscription for another host is refused, with a clear text", r.stderr)
+    # a NEW subscription only from Apple's push service: Google's and Mozilla's can be made by a script (headless Chrome, autopush)
+    res = [ok("select public.save_push_sub(%s);" % lit(sub(20 + k, host=h)), "anon")
+           for k, h in enumerate(("fcm.googleapis.com", "updates.push.services.mozilla.com", "wns2-par02p.notify.windows.com"))]
+    r2 = ok("select count(*) from public.push_subs where endpoint !~ '^https://web[.]push[.]apple[.]com/';", "service_role")
+    check(all(x.returncode != 0 and apple_only in x.stderr for x in res) and r2.stdout.strip() == "0",
+          "a NEW subscription from Google's, Mozilla's or Windows' push service is refused (the app is an iPhone app)", " ".join(x.stderr for x in res) + r2.stdout)
+    old = sub(30, host="fcm.googleapis.com")      # a row saved before only Apple's were taken: the table's own check still allows it
+    r0 = ok("insert into public.push_subs (endpoint, sub, seen) values (%s, %s, now() - interval '2 days');" % (q(old), lit(old)), "service_role")
+    r = ok("select public.save_push_sub(%s, %s);" % (lit(old), lit({"young": False, "pick": True})), "anon")
+    r2 = ok("select prefs->>'young', seen > now() - interval '1 minute' from public.push_subs where endpoint = %s;" % q(old), "service_role")
+    evil = sub(31, host="evil.example.com")
+    r3 = ok("insert into public.push_subs (endpoint, sub) values (%s, %s);" % (q(evil), lit(evil)), "service_role")
+    check(r0.returncode == 0 and r.returncode == 0 and r2.stdout.strip() == "false|t" and r3.returncode != 0 and "push_subs_endpoint_ok" in r3.stderr,
+          "a row of another push service already there is still saved (settings, seen); the table's own host check is unchanged",
+          r0.stderr + r.stderr + r2.stdout + r3.stderr)
+    ok("delete from public.push_subs where endpoint = %s;" % q(old), "service_role")
     bad = sub(3); bad["keys"]["auth"] = "x"
     r = ok("select public.save_push_sub(%s);" % lit(bad), "anon")
     check(r.returncode != 0 and "push_subs_sub_ok" in r.stderr, "a malformed subscription is refused", r.stderr)
@@ -147,10 +176,16 @@ def main():
     check(fmt == [True] * 5, "keys of the wrong length or with other characters are refused (p256dh: B and 86 base64url characters, auth: 22) %s" % fmt)
     r = ok("select public.save_push_sub(%s);" % lit(sub(4)), "anon")
     check(r.returncode == 0, "a second subscription is stored", r.stderr)
+    r = ok("select count(*) from public.push_sub_log;", "service_role")
+    check(r.stdout.strip() == "2", "push_sub_log holds one row per new subscription: none for saving one again, none for a refused one (%s rows)" % r.stdout.strip(), r.stderr)
+    ok("insert into public.push_sub_log (at) values (now() - interval '2 days'), (now() - interval '25 hours'), (now() - interval '23 hours');", "service_role")
+    r = ok("select public.save_push_sub(%s);" % lit(sub(10)), "anon")
+    r2 = ok("select count(*), count(*) filter (where at < now() - interval '1 day') from public.push_sub_log;", "service_role")
+    check(r.returncode == 0 and r2.stdout.strip() == "4|0", "a new subscription removes the log rows older than a day and keeps the rest (rows, older: %s)" % r2.stdout.strip(),
+          r.stderr)
 
     # the cap (25 rows) and the hourly limit (6 new rows): a stranger with the publishable key cannot push the phone out
-    q = lambda s_: "'" + s_["endpoint"] + "'"
-    ok("delete from public.push_subs;", "service_role")
+    ok("delete from public.push_subs; delete from public.push_sub_log;", "service_role")
     for i in range(100, 124):          # 24 dead rows, made and last seen weeks ago (sub(100) the oldest)
         ok("insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '40 days', now() - interval '30 days' + interval '%d hours');"
            % (q(sub(i)), lit(sub(i)), i - 100), "service_role")
@@ -171,7 +206,8 @@ def main():
           and w.startswith("25|t|t|"),
           "at most 6 new subscriptions an hour: a flood of 40 stores 6, the phone stays and can still save itself (%d stored, %s)" % (stored + 1, w), r.stderr)
     # 40 calls at the same moment, each on its own connection and in its own transaction (as PostgREST runs them): still at most 6 new
-    ok("delete from public.push_subs; insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '2 days', now() - interval '10 minutes');"
+    ok("delete from public.push_subs; delete from public.push_sub_log;"
+       " insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '2 days', now() - interval '10 minutes');"
        % (q(phone), lit(phone)), "service_role")
     at = ok("select (clock_timestamp() + interval '2 seconds')::text;", "service_role").stdout.strip()
     procs = []
@@ -182,11 +218,12 @@ def main():
         procs[-1].stdin.close()
     errs = [p_.stderr.read() if p_.wait() != 0 else "" for p_ in procs]
     n_ok = sum(1 for e in errs if not e)
-    w = ok("select count(*), count(*) filter (where created > now() - interval '1 hour'), bool_or(endpoint = %s) from public.push_subs;" % q(phone), "service_role").stdout.strip()
-    check(n_ok == 6 and w == "7|6|t" and all("too many new subscriptions this hour" in e for e in errs if e),
-          "40 calls at the same moment on 40 connections (as anon): 6 are stored, 34 refused, the phone stays (%d stored; rows, new, phone: %s)" % (n_ok, w))
+    w = ok("select count(*), count(*) filter (where created > now() - interval '1 hour'), bool_or(endpoint = %s), (select count(*) from public.push_sub_log)"
+           " from public.push_subs;" % q(phone), "service_role").stdout.strip()
+    check(n_ok == 6 and w == "7|6|t|6" and all("too many new subscriptions this hour" in e for e in errs if e),
+          "40 calls at the same moment on 40 connections (as anon): 6 are stored, 34 refused, the phone stays (%d stored; rows, new, phone, logged: %s)" % (n_ok, w))
     # a persistent stranger: 24 made-up rows saved over the last hours and kept fresh, the phone not opened for three days but reached by a notification
-    ok("delete from public.push_subs;", "service_role")
+    ok("delete from public.push_subs; delete from public.push_sub_log;", "service_role")
     for i in range(400, 424):
         ok("insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '5 hours', now() - interval '%d minutes');" % (q(sub(i)), lit(sub(i)), i - 400), "service_role")
     ok("insert into public.push_subs (endpoint, sub, created, seen) values (%s, %s, now() - interval '9 days', now() - interval '3 days');" % (q(phone), lit(phone)), "service_role")
@@ -197,6 +234,35 @@ def main():
     check(r_d.returncode == 0 and r_a.returncode != 0 and "permission denied" in r_a.stderr and r_n.returncode == 0 and w == "25|t|t|f",
           "rows no notification reached go first: a stranger's 25th row pushes out the oldest made-up row, never the phone a notification reached, even unopened"
           " for three days; only the secret key marks a row delivered (%s)" % w)
+    # a stranger with 24 real subscriptions a notification has reached (made after the phone; Google's and Mozilla's from before only
+    # Apple's were taken), saved again every few seconds: the phone, older and not opened for three days, stays; the newest goes
+    ok("delete from public.push_subs; delete from public.push_sub_log;", "service_role")
+    ok("insert into public.push_subs (endpoint, sub, created, seen, delivered) values (%s, %s, now() - interval '9 days', now() - interval '3 days', now() - interval '1 day');"
+       % (q(phone), lit(phone)), "service_role")
+    att = [sub(500 + k, host=("fcm.googleapis.com", "updates.push.services.mozilla.com")[k % 2]) for k in range(24)]
+    for k, a in enumerate(att):        # att[0] the oldest, att[23] the newest; all reached by a notification just now
+        ok("insert into public.push_subs (endpoint, sub, created, seen, delivered) values (%s, %s, now() - interval '2 days' + interval '%d minutes', now() - interval '1 hour', now());"
+           % (q(a), lit(a), k), "service_role")
+    rounds = []
+    for n in range(3):
+        bad = [x for x in (ok("select public.save_push_sub(%s);" % lit(a), "anon") for a in att[:23]) if x.returncode != 0]
+        r = ok("select public.save_push_sub(%s);" % lit(sub(600 + n)), "anon")
+        rounds.append((r.returncode, len(bad), ok("select count(*), bool_or(endpoint = %s), bool_or(endpoint = %s), bool_or(endpoint = %s) from public.push_subs;"
+                                                  % (q(phone), q(att[0]), q(att[23])), "service_role").stdout.strip()))
+    r = ok("select public.save_push_sub(%s);" % lit(att[23]), "anon")
+    check([x[0] for x in rounds] == [0, 0, 0] and all(x[1] == 0 for x in rounds) and all(x[2] == "25|t|t|f" for x in rounds)
+          and r.returncode != 0 and apple_only in r.stderr,
+          "24 newer rows a notification reached, saved again every few seconds, never push out the phone (older, reached, unopened for three days):"
+          " a new subscription pushes out the newest of them, then the new one before it; the pushed-out Google row cannot come back %s" % rounds, r.stderr)
+    # a full table where every new row is the first to go (24 rows a notification reached): the 7th new subscription of the hour is refused
+    # (the rows of push_subs made this hour stay at 1, the log counts all 6)
+    ok("delete from public.push_sub_log;", "service_role")
+    res = [ok("select public.save_push_sub(%s);" % lit(sub(800 + n)), "anon") for n in range(7)]
+    w = ok("select count(*), count(*) filter (where created > now() - interval '1 hour'), bool_or(endpoint = %s), (select count(*) from public.push_sub_log)"
+           " from public.push_subs;" % q(phone), "service_role").stdout.strip()
+    check([x.returncode == 0 for x in res] == [True] * 6 + [False] and "too many new subscriptions this hour" in res[6].stderr and w == "25|1|t|6",
+          "with a full table, where each new row is the next to go, the 7th new subscription of the hour is refused (rows, made this hour, phone, logged: %s)" % w,
+          res[6].stderr)
     ok("update public.push_subs set fails = fails + 1 where endpoint = %s;" % q(phone), "service_role")
     r_f = ok("select fails, delivered is not null from public.push_subs where endpoint = %s;" % q(phone), "service_role")
     check(r_f.stdout.strip() == "1|t", "service_role counts a subscription's failures (the scan deletes it after 3 in a row at its own push host)", r_f.stderr + r_f.stdout)
@@ -219,11 +285,12 @@ def main():
     check(r.returncode == 0 and r.stdout.strip() == '"B"', "service_role writes app_config", r.stderr)
     r = ok("select endpoint, sub, prefs from public.push_subs limit 1; delete from public.push_subs where endpoint = %s;" % ("'" + sub(1)["endpoint"] + "'"), "service_role")
     check(r.returncode == 0, "service_role reads and deletes push_subs", r.stderr)
-    r0 = ok("select count(*) from public.push_subs;", "service_role")
+    r0 = ok("select count(*), (select count(*) from public.push_sub_log) from public.push_subs;", "service_role")
     r2 = psql("", db, user="sbadmin", file=SETUP)
-    r3 = ok("select count(*) from public.push_subs;", "service_role")
+    r3 = ok("select count(*), (select count(*) from public.push_sub_log) from public.push_subs;", "service_role")
     r4 = ok("select doc::text from public.live where id='status';", "anon")
-    check(r2.returncode == 0 and r3.stdout.strip() == r0.stdout.strip() != "0" and '"a": 2' in r4.stdout, "running setup.sql again keeps the data", "rc=%s count=%s doc=%s" % (r2.returncode, r3.stdout.strip(), r4.stdout.strip()))
+    check(r2.returncode == 0 and r3.stdout.strip() == r0.stdout.strip() and "0" not in r0.stdout.strip().split("|") and '"a": 2' in r4.stdout,
+          "running setup.sql again keeps the data (push_subs, push_sub_log, live)", "rc=%s counts=%s doc=%s" % (r2.returncode, r3.stdout.strip(), r4.stdout.strip()))
     r = ok("select count(*) from pg_proc where proname = 'save_push_sub';", "sbadmin")
     check(r.stdout.strip() == "1", "one save_push_sub only (PostgREST refuses overloaded calls)", r.stdout)
 

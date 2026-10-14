@@ -13,8 +13,12 @@
 --               the page saves them through save_push_sub and removes
 --               them through drop_push_sub, it can never read them;
 --               at most 25 rows and 6 new ones an hour, also when many
---               calls come at once (the publishable key is public); a
---               row a notification has reached is kept ahead of the rest
+--               calls come at once (the publishable key is public); new
+--               ones only from Apple's push service (the iPhone app); the
+--               oldest row a notification has reached is kept first
+--   push_sub_log
+--               one row per new subscription (the hourly limit counts
+--               them); written by save_push_sub only, never the page
 --   app_config  public settings (the VAPID public key); anyone may read
 --   app_secret  the VAPID private key; the secret key only
 -- =====================================================================
@@ -63,6 +67,8 @@ revoke all on table public.live from anon, authenticated;
 grant select on table public.live to anon, authenticated;
 grant select, insert, update, delete on table public.live to service_role;
 
+-- Reads have no limit (accepted): anyone with the publishable key may read live as often as they like. The website shows the
+-- same anyway; the only cost is the free plan's egress quota (the README says how much one open page uses).
 drop policy if exists "live: public read" on public.live;
 create policy "live: public read"
   on public.live for select
@@ -119,10 +125,12 @@ alter table public.push_subs add constraint push_subs_prefs_ok check (
 
 -- Size cap: the publishable key is public, so the table never grows past 25 rows.
 -- A new subscription keeps 24 and pushes out the rest: first the rows no
--- notification has ever reached (a stranger's made-up rows never get one), then,
--- among the others, the one seen longest ago (the app saves its own subscription
--- again every time it opens). So once a notification has reached the phone, rows
--- that never got one cannot push it out.
+-- notification has ever reached (a stranger's made-up rows never get one), the
+-- one seen longest ago first (the app saves its own subscription again every
+-- time it opens); then, among the rows a notification has reached, the newest
+-- subscription. So the oldest subscription a notification reached (the phone)
+-- stays: rows that never got one cannot push it out, and newer ones that got one
+-- cannot either, however often they are saved again (that only renews seen).
 create or replace function public.push_subs_cap()
 returns trigger
 language plpgsql
@@ -132,7 +140,7 @@ as $$
 begin
   delete from public.push_subs
    where endpoint in (select endpoint from public.push_subs
-                       order by (delivered is not null) desc, seen desc, created desc
+                       order by (delivered is not null) desc, case when delivered is not null then created end asc, seen desc, created desc
                        offset 24);
   return new;
 end;
@@ -149,6 +157,15 @@ revoke all on table public.push_subs from anon, authenticated;
 grant select, insert, update, delete on table public.push_subs to service_role;
 drop policy if exists "push_subs: anon insert" on public.push_subs;   -- the first version let the page insert directly
 -- No policy and no grant for anon / authenticated = no SELECT, INSERT, UPDATE or DELETE.
+
+-- One row per NEW subscription, for the limit of 6 an hour (the rows of push_subs cannot count them: the size cap
+-- deletes some). Only save_push_sub writes it; it removes rows older than a day.
+create table if not exists public.push_sub_log (
+  at timestamptz not null default now()
+);
+alter table public.push_sub_log enable row level security;   -- and deliberately no policies
+revoke all on table public.push_sub_log from anon, authenticated;
+grant select, insert, update, delete on table public.push_sub_log to service_role;
 
 -- Save (insert or update) one subscription and its settings:
 -- POST /rest/v1/rpc/save_push_sub {"p_sub": <subscription.toJSON()>, "p_prefs": {"young": true, "pick": false}}
@@ -183,11 +200,18 @@ begin
     if found then
       return;
     end if;
-    -- at most 6 NEW subscriptions an hour (saving one that is already there always works):
+    -- a NEW subscription only from Apple's push service: the app lives on the iPhone's Home Screen, and a script cannot
+    -- make Apple subscriptions without Apple devices (Google's and Mozilla's it can); saving one already there works for every host
+    if ep is null or ep !~ '^https://web\.push\.apple\.com/' then
+      raise exception 'notifications work only in the iPhone app (Apple push)';
+    end if;
+    -- at most 6 NEW subscriptions an hour (saving one that is already there always works), counted in push_sub_log:
     -- a stranger with the publishable key cannot flood the table and push the phone out
-    if (select count(*) from public.push_subs where created > now() - interval '1 hour') >= 6 then
+    if (select count(*) from public.push_sub_log where at > now() - interval '1 hour') >= 6 then
       raise exception 'too many new subscriptions this hour, try again later';
     end if;
+    delete from public.push_sub_log where at < now() - interval '1 day';
+    insert into public.push_sub_log (at) values (now());
     insert into public.push_subs (endpoint, sub, prefs)
     values (ep, p_sub, coalesce(pr, '{"young": true, "pick": true}'::jsonb));
   end if;
@@ -250,7 +274,7 @@ notify pgrst, 'reload schema';
 -- select table_name, grantee, string_agg(privilege_type, ', ' order by privilege_type) as privs
 -- from information_schema.role_table_grants
 -- where table_schema = 'public'
---   and table_name in ('live','push_subs','app_config','app_secret')
+--   and table_name in ('live','push_subs','push_sub_log','app_config','app_secret')
 --   and grantee in ('anon','authenticated','service_role')
 -- group by 1, 2 order by 1, 2;
 -- ---------------------------------------------------------------------

@@ -2640,13 +2640,14 @@ var o={};
           "the push sender is installed from supabase/push-requirements.txt only: %d packages, each pinned with sha256 hashes, wheels only, no other dependency; "
           "http-ece's sdist checked against its sha256; the GitHub token is not in that step" % len(pins))
     sql = open(os.path.join(HERE, "supabase", "setup.sql"), encoding="utf-8").read()
-    check("order by (delivered is not null) desc, seen desc, created desc" in sql and "order by seen asc" not in sql and "interval '1 hour') >= 6" in sql
+    check("order by (delivered is not null) desc, case when delivered is not null then created end asc, seen desc, created desc" in sql and "order by seen asc" not in sql
+          and "from public.push_sub_log where at > now() - interval '1 hour') >= 6" in sql and r"ep !~ '^https://web\.push\.apple\.com/'" in sql
           and "~ '^B[A-Za-z0-9_-]{86}=?$'" in sql and "~ '^[A-Za-z0-9_-]{22}(==)?$'" in sql
           and re.search(r"if not found then\s+perform pg_advisory_xact_lock\(7316001\);", sql)
           and not os.path.exists(os.path.join(HERE, "supabase", "migrations")) and not os.path.exists(os.path.join(HERE, "supabase", "config.toml")),
-          "setup.sql: the 25-row cap keeps rows a notification reached first, then the ones seen most recently (the phone); at most 6 new subscriptions an hour, one at"
-          " a time under an advisory lock; keys must look like a P-256 key and 16 bytes; no supabase/migrations and no supabase/config.toml, so Supabase's GitHub"
-          " integration applies nothing by itself (the SQL is pasted into the SQL Editor)")
+          "setup.sql: the 25-row cap keeps rows a notification reached first, the oldest subscription first (the phone), then the ones seen most recently; at most 6 new"
+          " subscriptions an hour, counted in push_sub_log, new ones only from Apple's push service, one at a time under an advisory lock; keys must look like a P-256 key"
+          " and 16 bytes; no supabase/migrations and no supabase/config.toml, so Supabase's GitHub integration applies nothing by itself (the SQL is pasted into the SQL Editor)")
     pj = __import__("app").PAGE_JS
     check("iOS said no" not in pj and "from another browser" in pj and "These two apply once notifications are on." in pj and "applicationServerKey" in pj
           and "select(t,'keep')" in pj and "A.badge(d.early,d.young)" in pj and "visibilitychange',back" in pj and "The app refreshes when you come back to it" in pj

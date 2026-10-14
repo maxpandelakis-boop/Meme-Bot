@@ -546,7 +546,8 @@ Set it up once (about 15 minutes, all from the phone):
 2. **Tables:** open `supabase/setup.sql` on GitHub, tap **Raw**, select all and copy. In Supabase open **SQL Editor → New
    query**, paste, tap **Run** ("Success. No rows returned"). Supabase may warn that the query has destructive operations (the
    script drops and re-creates its own functions, rules and triggers, and removes malformed rows): tap **Run query**, that is expected.
-   Running it again later is harmless, and needed once after an update of that file (it keeps your data). The SQL is not in
+   Running it again later is harmless, and needed once after an update of that file (it keeps your data). After the update that
+   takes new subscriptions from Apple's push service only (with the table `push_sub_log`), run it again in the SQL Editor. The SQL is not in
    `supabase/migrations` and there is no `supabase/config.toml`, so Supabase's GitHub integration never applies anything by itself.
 3. **Keys:** in Supabase open **Project Settings → API Keys**. Copy the **publishable key** (`sb_publishable_...`) and, under
    Secret keys, reveal and copy the **secret key** (`sb_secret_...`). The project URL is `https://<ref>.supabase.co`, where
@@ -564,7 +565,9 @@ Set it up once (about 15 minutes, all from the phone):
 
 Limits:
 
-- Notifications need iOS 16.4 or newer and the app opened from the Home Screen; a Safari tab cannot get them.
+- Notifications need iOS 16.4 or newer and the app opened from the Home Screen; a Safari tab cannot get them. They can only be
+  turned on in the iPhone app: the live store takes new subscriptions from Apple's push service only (a script cannot make those
+  without Apple devices), so the app installed on Android or a computer says "notifications work only in the iPhone app".
 - A **Focus** mode (Do Not Disturb, Sleep) hides them: allow Meme-Bot in that Focus's settings.
 - iOS sometimes ends a subscription without a word. If notifications stop arriving, open **Account**, tap **Turn off
   notifications**, then **Turn on notifications** again.
@@ -577,14 +580,15 @@ Limits:
 - The live store and the "new coins" notification need `MEMEBOT_LIVE=1` (the workflow sets it on the scan step). A laptop run
   with the `SUPABASE_` variables but without it sends only the pick notification and writes nothing to the live store.
 - The publishable key is public (it is in the page): anyone can read the live rows, which the public website shows anyway, and
-  can save a subscription. The table keeps at most 25 and takes at most 6 new ones an hour, also when many calls come at the same
-  moment (`save_push_sub` takes new rows one at a time under a lock). When a new row needs room, the rows no notification has ever
-  reached go first, then the one seen longest ago. The scan marks a row delivered when a push service accepted a notification for it
-  (with the secret key; a stranger cannot), so once the phone got its first notification, made-up rows cannot push it out; only a
-  stranger with two dozen real, working subscriptions could, over hours, and opening the app saves the phone again. Until its first
+  can save a subscription. The table keeps at most 25 and takes at most 6 new ones an hour (counted in `push_sub_log`), only from
+  Apple's push service, also when many calls come at the same moment (`save_push_sub` takes new rows one at a time under a lock).
+  When a new row needs room, the rows no notification has ever reached go first (the one seen longest ago first), then, among the
+  rows a notification has reached, the newest subscription. The scan marks a row delivered when a push service accepted a notification for it
+  (with the secret key; a stranger cannot), so once the phone got its first notification, neither made-up rows nor newer real ones
+  can push it out, however often they are saved again. Until its first
   notification the phone counts like any other row, so turn notifications on and keep the app opened now and then. If the app
-  says "too many new subscriptions this hour" (someone else used up the 6 an hour), wait an hour and try again, or delete all rows
-  of `push_subs` in Supabase's **Table Editor** and turn notifications on again in the app (only the rows of the last hour count). The scan deletes
+  says "too many new subscriptions this hour" (someone else used up the 6 an hour), wait an hour and try again, or run
+  `delete from push_sub_log; delete from push_subs;` in Supabase's **SQL Editor** and turn notifications on again in the app. The scan deletes
   rows whose keys are no keys and rows whose own push host could not be reached at all three notifications in a row (never for a
   failure at Apple's, Google's or Mozilla's push service, which would be the runner's or theirs); any other error keeps the row and
   the log says it once. Supabase's Security Advisor flags the two functions `save_push_sub` and `drop_push_sub` (security definer,

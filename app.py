@@ -1098,7 +1098,8 @@ function why(e){return e&&e.message?String(e.message).slice(0,80):String(e&&e.na
 function sb(path,body){var h={apikey:store.key,Accept:'application/json'};if(body)h['Content-Type']='application/json';
   return fetch(store.url+'/rest/v1/'+path,{method:body?'POST':'GET',headers:h,body:body?JSON.stringify(body):undefined,cache:'no-store'})
     .then(function(r){if(!r.ok)return r.text().catch(function(){return '';}).then(function(t){
-      throw new Error(/too many new subscriptions/.test(t)?'too many new subscriptions this hour, try again in an hour':'HTTP '+r.status);});
+      throw new Error(/too many new subscriptions/.test(t)?'too many new subscriptions this hour, try again in an hour':
+        /only in the iPhone app/.test(t)?'notifications work only in the iPhone app':'HTTP '+r.status);});   // setup.sql takes new ones from Apple's push service only
       return r.text();}).then(function(t){return t?JSON.parse(t):null;});}
 // the VAPID public key from the live store; a failure is an error the card shows after a tap, else a note (nothing was tried yet)
 function getKey(tap){return sb('app_config?select=value&key=eq.vapid_public_key').then(function(rows){var v=rows&&rows[0]&&rows[0].value;
