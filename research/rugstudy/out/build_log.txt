@@ -1,0 +1,8 @@
+reading memesnapres ...
+snapshot files 10238, young rows (liq>=5k) 3784, join index 83317, holder docs 2282
+common holder accounts excluded (top holder of >1% of coins): 22
+reading memeyoung / memeearly / memepos ...
+memeyoung listings 1455, memeearly listings 951, positions 433
+listings (first per coin) 1648: early 847, young 1300, with snapshot factors 1429, with RugCheck doc 1171
+snapshot young cohort (first per coin) 3222, with RugCheck 1014
+paper positions since restart 426

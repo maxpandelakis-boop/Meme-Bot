@@ -1,0 +1,15 @@
+# Staircase test on 425 listed coins with a full minute path (first 15 min = shape, minutes 15-60 = outcome vs the minute-15 close)
+Note: staircase = rose >= 20% in the window, >= 70% green candles, deepest pullback under 5%.
+shape in the first 15 min                                   n  -90% after min 15          -50% after min 15          2x after min 15           
+all                                                       425  16% [12%-20%]              33% [28%-38%]              13% [10%-16%]              
+rose >= 20% in the window                                 124  37% [28%-46%]              55% [45%-64%]              19% [12%-28%]              
+staircase (rise >= 20%, >= 70% green, pullback < 5%)       60  62% [49%-75%]              62% [49%-75%]              27% [14%-41%]              
+rise >= 20% with a pullback >= 15% (organic-looking)       51  18% [6%-31%]               53% [37%-68%]              14% [5%-24%]               
+rise >= 20%, >= 60% green                                  89  48% [38%-58%]              57% [47%-68%]              24% [14%-35%]              
+rise >= 20%, pullback < 10%                                66  56% [44%-68%]              58% [45%-70%]              24% [13%-37%]              
+rise >= 20%, regular steps (cv < 0.8)                      97  44% [34%-54%]              60% [50%-70%]              19% [10%-28%]              
+flat (0.9-1.2)                                            182  7% [3%-11%]                18% [12%-25%]              7% [3%-10%]                
+falling (< 0.9)                                           119  8% [4%-13%]                33% [25%-41%]              16% [10%-23%]              
+risers: staircase vs other risers, rugAfter: 62% of 60 vs 14% of 64, diff +48 pts [+30..+63], p=0.00
+risers: staircase vs other risers, halfAfter: 62% of 60 vs 48% of 64, diff +13 pts [-4..+31], p=0.13
+risers: staircase vs other risers, winAfter: 27% of 60 vs 12% of 64, diff +14 pts [-1..+30], p=0.07

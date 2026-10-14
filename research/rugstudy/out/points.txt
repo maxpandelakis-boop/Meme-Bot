@@ -1,0 +1,123 @@
+# Trap points: fitted on the first half of the scans (2 points per e-fold of the rug-rate ratio, 0-4), checked on the second half
+
+## L / rug1h: points from scans before 2026-10-10T2125: instant_pool 0, rugger_wallets 2, brand_name 3, bot_volume 4, pumping_5m 0, no_socials 1, holder_cluster 2, creator_sold 3, jup_organic_zero 4, rc_danger 0
+  second half, rug1h: AUC 0.646 (n=998)
+      0 points  31.1% of 228 [24.2%-36.7%]
+      1-2       20.1% of 174 [14.2%-26.5%]
+      3-4       35.3% of 187 [27.2%-42.9%]
+      5+        50.6% of 409 [45.5%-55.9%]
+  second half, win1h: AUC 0.593 (n=993)
+      0 points  4.4% of 228 [2.0%-7.5%]
+      1-2       6.5% of 169 [3.2%-10.4%]
+      3-4       10.7% of 187 [6.5%-15.1%]
+      5+        10.0% of 409 [7.2%-12.8%]
+
+## S / rug2h: points from scans before 2026-10-09T2045: instant_pool 0, rugger_wallets 2, brand_name 1, bot_volume 0, pumping_5m 1, no_socials 1, holder_cluster 1, creator_sold 2, jup_organic_zero 2, rc_danger 1
+  second half, rug2h: AUC 0.567 (n=1529)
+      0 points  28.3% of 152 [21.5%-35.5%]
+      1-2       54.1% of 813 [50.7%-57.7%]
+      3-4       44.4% of 376 [39.1%-49.7%]
+      5+        70.7% of 188 [62.5%-78.2%]
+  second half, win2h: AUC 0.462 (n=1519)
+      0 points  5.3% of 152 [2.2%-8.6%]
+      1-2       2.9% of 806 [1.8%-4.0%]
+      3-4       3.2% of 374 [1.6%-5.0%]
+      5+        1.6% of 187 [0.0%-3.5%]
+
+## E / rug1h: points from scans before 2026-10-12T1546: instant_pool 4, rugger_wallets 2, brand_name 2, bot_volume 2, pumping_5m 0, no_socials 3, holder_cluster 1, creator_sold 2, jup_organic_zero 4, rc_danger 1
+  second half, rug1h: AUC 0.627 (n=468)
+      0 points  28.0% of 107 [18.7%-36.1%]
+      1-2       0.0% of 26 [0.0%-0.0%]
+      3-4       42.7% of 89 [31.0%-54.8%]
+      5+        48.4% of 246 [43.0%-54.3%]
+  second half, win1h: AUC 0.570 (n=465)
+      0 points  5.6% of 107 [1.9%-11.0%]
+      1-2       15.4% of 26 [3.3%-32.0%]
+      3-4       5.8% of 86 [1.5%-11.1%]
+      5+        11.4% of 246 [7.5%-15.1%]
+
+## Final trap points (all scans, averaged over the cohorts that measure the flag): instant_pool 3, rugger_wallets 2, brand_name 2, bot_volume 2, pumping_5m 0, no_socials 2, holder_cluster 1, creator_sold 2, jup_organic_zero 4, rc_danger 1
+
+### L with the final points (in-sample)
+  all, rug1h: AUC 0.717 (n=1646)
+      0 points  16.7% of 264 [11.3%-21.7%]
+      1-2       10.6% of 293 [7.1%-14.1%]
+      3-4       24.0% of 287 [18.3%-29.9%]
+      5+        43.8% of 802 [39.8%-47.8%]
+  all, win1h: AUC 0.501 (n=1639)
+      0 points  8.0% of 264 [4.6%-11.9%]
+      1-2       10.6% of 292 [7.4%-13.9%]
+      3-4       10.0% of 281 [6.4%-13.8%]
+      5+        8.2% of 802 [6.4%-10.1%]
+
+### S with the final points (in-sample)
+  all, rug2h: AUC 0.596 (n=3222)
+      0 points  27.9% of 337 [22.0%-34.2%]
+      1-2       55.3% of 1260 [52.3%-58.4%]
+      3-4       58.7% of 726 [54.8%-62.6%]
+      5+        60.7% of 899 [57.4%-64.2%]
+  all, win2h: AUC 0.476 (n=3193)
+      0 points  4.2% of 335 [2.2%-6.4%]
+      1-2       2.6% of 1245 [1.6%-3.7%]
+      3-4       2.5% of 720 [1.5%-3.6%]
+      5+        2.8% of 893 [1.8%-3.8%]
+
+### E with the final points (in-sample)
+  all, rug1h: AUC 0.681 (n=847)
+      0 points  25.9% of 147 [17.5%-33.1%]
+      1-2       12.8% of 109 [6.7%-19.1%]
+      3-4       35.6% of 132 [26.5%-45.2%]
+      5+        54.0% of 459 [49.4%-58.9%]
+  all, win1h: AUC 0.568 (n=842)
+      0 points  5.4% of 147 [2.2%-9.4%]
+      1-2       9.2% of 109 [4.3%-14.8%]
+      3-4       7.9% of 127 [3.5%-13.6%]
+      5+        10.9% of 459 [8.4%-13.5%]
+
+### P with the final points (in-sample)
+  all, rug1h: AUC 0.790 (n=393)
+      0 points  4.4% of 45 [0.0%-11.4%]
+      1-2       1.0% of 97 [0.0%-3.4%]
+      3-4       14.8% of 61 [6.7%-23.9%]
+      5+        27.4% of 190 [20.1%-34.4%]
+  all, win1h: AUC 0.549 (n=392)
+      0 points  6.7% of 45 [0.0%-14.0%]
+      1-2       7.2% of 97 [2.4%-12.6%]
+      3-4       6.7% of 60 [1.6%-13.0%]
+      5+        11.1% of 190 [7.3%-14.8%]
+
+# 'Good coin' rule: 0 trap points and (X link + paid profile, or launched off a tweet, or on 3+ source lists)
+## L
+  0 trap points                  rug1h 1st 4%/89 rug1h 2nd 23%/175 win1h 1st 15%/89 win1h 2nd 5%/175
+  0 trap points + a good sign    rug1h 1st 4%/80 rug1h 2nd 6%/72 win1h 1st 16%/80 win1h 2nd 8%/72
+  1-2 trap points                rug1h 1st 11%/157 rug1h 2nd 10%/136 win1h 1st 13%/156 win1h 2nd 8%/136
+  3+ trap points                 rug1h 1st 24%/402 rug1h 2nd 47%/687 win1h 1st 8%/401 win1h 2nd 9%/682
+  everything                     rug1h 1st 18%/648 rug1h 2nd 38%/998 win1h 1st 10%/646 win1h 2nd 8%/993
+## S
+  0 trap points                  rug2h 1st 31%/175 rug2h 2nd 25%/162 win2h 1st 5%/173 win2h 2nd 4%/162
+  0 trap points + a good sign    rug2h 1st 20%/124 rug2h 2nd 20%/136 win2h 1st 6%/124 win2h 2nd 4%/136
+  1-2 trap points                rug2h 1st 58%/747 rug2h 2nd 51%/513 win2h 1st 2%/734 win2h 2nd 3%/511
+  3+ trap points                 rug2h 1st 64%/771 rug2h 2nd 56%/854 win2h 1st 2%/767 win2h 2nd 3%/846
+  everything                     rug2h 1st 58%/1693 rug2h 2nd 51%/1529 win2h 1st 3%/1674 win2h 2nd 3%/1519
+## E
+  0 trap points                  rug1h 1st 20%/40 rug1h 2nd 28%/107 win1h 1st 5%/40 win1h 2nd 6%/107
+  0 trap points + a good sign    rug1h 1st 7%/28 rug1h 2nd 3%/30 win1h 1st 7%/28 win1h 2nd 13%/30
+  1-2 trap points                rug1h 1st 9%/54 rug1h 2nd 16%/55 win1h 1st 7%/54 win1h 2nd 11%/55
+  3+ trap points                 rug1h 1st 52%/285 rug1h 2nd 48%/306 win1h 1st 10%/283 win1h 2nd 10%/303
+  everything                     rug1h 1st 42%/379 rug1h 2nd 40%/468 win1h 1st 9%/377 win1h 2nd 9%/465
+
+# Paper new-launch positions since the 2026-10-10 18:11 UTC restart (3 fake EUR each; closed positions only)
+closed 375, total result -366.03 EUR, -0.98 per position
+  instant_pool       with: 117 positions -158.77 EUR (-1.36 each) | without: 125 positions  -77.05 EUR (-0.62 each)
+  rugger_wallets     with: 128 positions -213.27 EUR (-1.67 each) | without: 238 positions -130.59 EUR (-0.55 each)
+  brand_name         with:  36 positions  -83.69 EUR (-2.32 each) | without: 339 positions -282.34 EUR (-0.83 each)
+  bot_volume         with:  96 positions -183.67 EUR (-1.91 each) | without: 278 positions -182.16 EUR (-0.66 each)
+  pumping_5m         with:  45 positions  -46.57 EUR (-1.03 each) | without: 310 positions -334.60 EUR (-1.08 each)
+  no_socials         with: 205 positions -218.67 EUR (-1.07 each) | without: 170 positions -147.36 EUR (-0.87 each)
+  holder_cluster     with: 100 positions -112.79 EUR (-1.13 each) | without: 266 positions -231.07 EUR (-0.87 each)
+  creator_sold       with: 124 positions -143.27 EUR (-1.16 each) | without: 242 positions -200.59 EUR (-0.83 each)
+  jup_organic_zero   with:  44 positions   +9.82 EUR (+0.22 each) | without:  89 positions -109.60 EUR (-1.23 each)
+  rc_danger          with:  44 positions  -22.33 EUR (-0.51 each) | without: 322 positions -321.53 EUR (-1.00 each)
+  0 trap points       43 positions  -52.46 EUR (-1.22 each), sold by: rug 1, stop 34, time 8
+  1-2 trap points     92 positions  -67.85 EUR (-0.74 each), sold by: rug 2, stop 75, time 14, tp 1
+  3+ trap points     240 positions -245.72 EUR (-1.02 each), sold by: rug 6, stop 161, time 71, tp 2

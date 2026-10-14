@@ -1,0 +1,21 @@
+upside points: + X link; + launched off a tweet; + on 3+ source lists; - RugCheck holder correlation / insider network; - creator still holds > 5%; - market cap >= $500k at < 1 h; - liquidity < 15% of market cap; - brand / AI / celebrity name
+L:  1st half AUC 0.746 (n=646, 64 winners)  2nd half AUC 0.555 (n=993, 82 winners)
+     upside >= 2                          n= 432  win1h 15.7%   rug1h 9.3%
+     upside >= 2 and trap points <= 0     n= 179  win1h 19.6%   rug1h 3.4%
+     upside <= 0                          n= 958  win1h 5.3%   rug1h 42.6%
+     all                                  n=1639  win1h 8.9%   rug1h 30.1%
+E:  1st half AUC 0.544 (n=377, 35 winners)  2nd half AUC 0.551 (n=465, 43 winners)
+     upside >= 2                          n= 202  win1h 12.9%   rug1h 12.9%
+     upside >= 2 and trap points <= 0     n=  69  win1h 11.6%   rug1h 5.8%
+     upside <= 0                          n= 521  win1h 7.5%   rug1h 56.1%
+     all                                  n= 842  win1h 9.3%   rug1h 41.0%
+S:  1st half AUC 0.701 (n=1674, 43 winners)  2nd half AUC 0.700 (n=1519, 46 winners)
+     upside >= 2                          n= 700  win2h 5.6%   rug2h 24.1%
+     upside >= 2 and trap points <= 0     n= 196  win2h 4.6%   rug2h 12.8%
+     upside <= 0                          n=1997  win2h 1.4%   rug2h 68.2%
+     all                                  n=3193  win2h 2.8%   rug2h 54.7%
+P:  1st half AUC 0.550 (n=194, 15 winners)  2nd half AUC 0.620 (n=198, 20 winners)
+     upside >= 2                          n= 129  win1h 10.9%   rug1h 8.5%
+     upside >= 2 and trap points <= 0     n=  60  win1h 6.7%   rug1h 6.7%
+     upside <= 0                          n= 179  win1h 6.1%   rug1h 25.0%
+     all                                  n= 392  win1h 8.9%   rug1h 16.3%

@@ -1,0 +1,5 @@
+brand: curve/no-brand 13% of 303  curve/brand 0% of 3  instant/no-brand 52% of 284  instant/brand 80% of 113
+botvol: curve/no-botvol 12% of 285  curve/botvol 14% of 21  instant/no-botvol 44% of 197  instant/botvol 75% of 200
+rugger: curve/no-rugger 13% of 237  curve/rugger 10% of 69  instant/no-rugger 51% of 266  instant/rugger 78% of 131
+curve (>= 60 s) & no other hard trap: rug1h 32 of 218, win1h 24
+instant & no other hard trap: rug1h 55 of 150, win1h 6
