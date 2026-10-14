@@ -3696,6 +3696,8 @@ console.log(JSON.stringify(o));
     spotter_checks(check)
     import selftest_traps                       # the launch radar's rule core and study weights (traps.py)
     selftest_traps.checks(check, {})
+    import selftest_learn                       # winners vs losers at first sight, the learned win order (traps.compare / win_fit)
+    selftest_learn.checks(check, {})
     import selftest_radar                       # the launch radar job (launch_radar.py, radar_src.py, radar.yml)
     nosleep, time.sleep = time.sleep, REAL_SLEEP   # the radar's request rules are checked in real time (1.1 s between RPC calls)
     try:

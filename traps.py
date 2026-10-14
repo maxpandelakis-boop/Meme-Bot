@@ -18,10 +18,24 @@ API (frozen, SPEC 13.10 section 5 WP1):
   chips(rating, S, W=None) -> [[level, text]]     level: bad | warn | unk | ok | info; at most 8
   outcome(rec) -> {"rug1h","win1h","x60"}
   fit(records, W, now) -> (W2 | None, report)     report is what the radar writes as model.json
+  win_label(rec) -> 1 | 0 | None                  doubled with real liquidity (no rug) | rugged | neither, or a self-priced pool
+  compare(records, W, now) -> report               winners vs losers at first sight, matched by UTC hour (model.json "cmp")
+  win_fit(records, W, now) -> (wmodel | None, report)   the learned win order, walk-forward guarded (model.json "win")
+  win_score(S, wmodel, W) -> int | None            the win order's score of one coin
   feed(d, out, now) -> meta                        python3 traps.py feed --dir mb --out feed --now <ms>
 Helpers: rc_summary(report), xlinks_add(links, url, addr, ms), x_reuse(url, addr, ref_ms, links), instant(pool_ms, mint_ms),
 pair_times(pairs_json_entry) -> (mint ms, pool ms), flag(name, S, W), apply_changes(W, changes), blank_signals().
 Stdlib only. memebot is imported read-only, and only by feed().
+
+Winner patterns (compare, win_fit, win_score) are hindsight and follow these rules:
+  1. Labels never feed the green rule, a verdict, the points or a push; the win score only orders coins of equal points.
+  2. Winners and losers are matched by the UTC hour of first sight; only hours with both count.
+  3. Only first-sight signals (sig0) are used, so a coin that lived longer is not seen with more checks done. Unknown is not counted;
+     older records without sig0 are not used.
+  4. A signal is tested with 15+ winners and 15+ losers known and 5+ expected winners with and without it; else "too few".
+  5. A pattern needs Benjamini-Hochberg q < 0.05 and the same direction in both halves of the hours; everything else could be chance.
+  6. The per-coin why only describes, with counts, in hours with 2+ winners.
+  7. The win order is learned only when it holds on the last 2 days (walk-forward).
 """
 import copy, glob, gzip, json, math, os, random, re, sys, time
 from operator import mul
@@ -1065,6 +1079,234 @@ def fit(records, W=None, now=None):
     rep["why"] = "learned on %d calls: AUC %.2f vs %.2f" % (len(train), a_n, a_p)
     W2["model"] = {"from": "learned", "n": len(rows), "auc": rep["auc"], "aucPrior": rep["aucPrior"], "at": now}
     return W2, rep
+
+
+# ---------------------------------------------------------------- winners vs losers at first sight (hindsight only)
+STUDY_DAYS = 14             # compare reads the labelled records of the newest 14 days
+STUDY_MIN_WIN = 15          # a signal is tested with at least 15 winners and 15 losers whose flag is known ...
+STUDY_MIN_LOSE = 15
+STUDY_MIN_EXP = 5           # ... and at least 5 expected winners with the flag and 5 without
+STUDY_Q = 0.05              # Benjamini-Hochberg q under which a signal (same direction in both halves) is a pattern
+WHY_HOURS = 6               # the per-coin why: rugged top or green coins of the last 6 hours ...
+WHY_MIN_WIN = 2             # ... in an hour with at least 2 winners
+WIN_TEST_DAYS = 2           # the win order is chosen before the last 2 days and tested on them
+WIN_MIN_TRAIN = 150
+WIN_MIN_TEST = 30           # winners and losers each in the test days
+WIN_AUC_MIN = 0.55
+WIN_MAX_SIGNALS = 5
+
+
+def _self_priced(rec):
+    """outcome()'s pool test on the first sight: liquidity 90%+ of the market cap on a token that is neither a pump.fun mint nor on
+    PumpSwap (mostly Meteora: its price moves with its own liquidity)."""
+    liq0, mc0 = num(rec.get("liq")), num(rec.get("mc"))
+    return bool(liq0 and mc0 and liq0 / mc0 >= 0.9 and not str(rec.get("addr") or "").endswith("pump")
+                and str(rec.get("dex") or "").lower() != "pumpswap")
+
+
+def win_label(rec):
+    """A record's class for the winner study: 0 = rugged within the hour (out.rug1h); 1 = no rug and a 15, 30 or 60-minute price of
+    2x-30x with liquidity of $5k+ grown like a constant-product pool (_obs "up_real"); None = no outcome yet, neither, or a
+    self-priced pool (left out of both classes). The same rule for every record: peak60, which only top or green records get, is
+    not read."""
+    o = rec.get("out") if isinstance(rec, dict) and isinstance(rec.get("out"), dict) else {}
+    if not isinstance(o.get("rug1h"), bool) or _self_priced(rec):
+        return None
+    if o["rug1h"]:
+        return 0
+    later = rec.get("later") if isinstance(rec.get("later"), dict) else {}
+    px0, liq0 = num(rec.get("px")), num(rec.get("liq"))
+    for m in ("15", "30", "60"):
+        lat = later.get(m)
+        if isinstance(lat, dict) and not lat.get("gone") and _obs(px0, liq0, num(lat.get("px")), num(lat.get("liq")), False)[1] == "up_real":
+            return 1
+    return None
+
+
+def _study_cands(W):
+    out = []
+    for k in list(W["hard"]) + list(W["soft"]) + list(W.get("measured", ())) + list(W.get("infoOnly", ())) + list(GOOD_SIGNS) \
+            + list(W.get("upside") or {}) + ["young_5m", "no_rc_report"]:
+        if k not in out:
+            out.append(k)
+    return out
+
+
+def _study_rows(records, W, cands, now):
+    """(rows, noSig0): per coin its earliest labelled record of the last STUDY_DAYS with first-sight signals (sig0), as
+    (first ms, UTC hour, label, {signal: flag}, record); noSig0 = labelled coins without sig0 (older records: not used)."""
+    by, nosig = {}, set()
+    for r in records or []:
+        if not isinstance(r, dict) or not isinstance(r.get("addr"), str):
+            continue
+        t, y = num(r.get("first")), win_label(r)
+        if t is None or y is None or t < now - STUDY_DAYS * DAY:
+            continue
+        if not isinstance(r.get("sig0"), dict):
+            nosig.add(r["addr"])
+        elif r["addr"] not in by or t < by[r["addr"]][0]:
+            by[r["addr"]] = (int(t), y, r)
+    rows = [(t, t // H, y, {k: flag(k, r["sig0"], W) for k in cands}, r) for t, y, r in by.values()]
+    rows.sort(key=lambda x: (x[0], x[4]["addr"]))
+    return rows, len(nosig - set(by))
+
+
+def _cmh(tabs):
+    """Cochran-Mantel-Haenszel over hour tables [a, b, c, d] (winners with / without the flag, losers with / without); an hour
+    counts only with a winner and a loser. -> [A, E, V, MH numerator, MH denominator, wk, wn, lk, ln]."""
+    s = [0.0] * 5 + [0] * 4
+    for a, b, c, d in tabs:
+        n = a + b + c + d
+        if not a + b or not c + d:
+            continue
+        s[0] += a
+        s[1] += (a + b) * (a + c) / n
+        s[2] += (a + b) * (c + d) * (a + c) * (b + d) / (n * n * (n - 1.0))
+        s[3] += a * d / n
+        s[4] += b * c / n
+        s[5] += a
+        s[6] += a + b
+        s[7] += c
+        s[8] += c + d
+    return s
+
+
+def _odds(nu, de):
+    return float("%.3g" % (nu / de)) if nu and de else None
+
+
+def _study(rows, cands, W):
+    """The per-signal rows of compare on these rows (see compare) and the informative hours."""
+    hw = {}
+    for _, h, y, _, _ in rows:
+        hw.setdefault(h, [0, 0])[y] += 1
+    inf = sorted(h for h, (l, w) in hw.items() if l and w)
+    mid = inf[len(inf) // 2] if inf else 0
+    kinds = (("hard", W["hard"]), ("soft", W["soft"]), ("measured", W.get("measured", ())), ("info", W.get("infoOnly", ())),
+             ("good", GOOD_SIGNS), ("upside", W.get("upside") or {}))
+    out, sides = [], []
+    side = lambda s: (s[3] > s[4]) - (s[3] < s[4])
+    for name in cands:
+        tab = {}
+        for _, h, y, F, _ in rows:
+            if F[name] is not None:
+                tab.setdefault(h, [0, 0, 0, 0])[(0 if y else 2) + (0 if F[name] else 1)] += 1
+        s = _cmh(tab.values())
+        halves = [_cmh(t for h, t in tab.items() if (h < mid) == first) for first in (True, False)]
+        A, E, V = s[0], s[1], s[2]
+        ok = s[6] >= STUDY_MIN_WIN and s[8] >= STUDY_MIN_LOSE and E >= STUDY_MIN_EXP and s[6] - E >= STUDY_MIN_EXP and V > 0
+        p = math.erfc(math.sqrt(max(0.0, abs(A - E) - 0.5) ** 2 / V / 2)) if ok else None
+        out.append({"signal": name, "kind": next((k for k, xs in kinds if name in xs), "points"), "wk": s[5], "wn": s[6], "lk": s[7], "ln": s[8],
+                    "or": _odds(s[3], s[4]), "dir": side(s), "p": p, "q": None, "halves": [_odds(x[3], x[4]) for x in halves], "verdict": "too few"})
+        sides.append([side(x) for x in halves])
+    tested = [(r, hs) for r, hs in zip(out, sides) if r["p"] is not None]
+    for (r, hs), q in zip(tested, _bh([r["p"] for r, _ in tested])):
+        r["q"] = q
+        agree = r["dir"] != 0 and hs == [r["dir"], r["dir"]]
+        r["verdict"] = "pattern" if q < STUDY_Q and agree else "hint" if r["p"] < 0.05 else "none"
+    rank = {"pattern": 0, "hint": 1, "none": 2, "too few": 3}
+    out.sort(key=lambda r: (rank[r["verdict"]], r["q"] if r["q"] is not None else 2.0, r["p"] if r["p"] is not None else 2.0, cands.index(r["signal"])))
+    for r in out:
+        r["p"], r["q"] = (float("%.3g" % r[k]) if r[k] is not None else None for k in ("p", "q"))
+    return out, inf
+
+
+def compare(records, W=None, now=None):
+    """Winners vs losers at first sight (the radar's winner patterns; hindsight, never a verdict, points or a push). Rows: per coin
+    its earliest record of the last STUDY_DAYS with sig0 and a win_label. Every signal of W (hard, soft, measured, info only, good
+    signs, upside) plus young_5m and no_rc_report is compared within the UTC hour of first sight, over the hours with a winner and
+    a loser whose flag is known (Cochran-Mantel-Haenszel chi-square with continuity correction, Mantel-Haenszel odds ratio). Tested
+    only with STUDY_MIN_WIN winners and losers known and STUDY_MIN_EXP expected winners with and without the flag; then
+    Benjamini-Hochberg over the tested ones. verdict: pattern (q < STUDY_Q, the same direction in both halves of the hours), hint
+    (p < 0.05, could be chance), none, too few. Report: {at, since, n, w, l, hrs, noSig0, need, rows: [{signal, kind, wk, wn, lk,
+    ln, or, dir, p, q, halves, verdict}], coins: the per-coin why [sym, first, winners that hour, [[signal, winners with it]]]: the
+    rugged top or green coins of the last WHY_HOURS in hours with WHY_MIN_WIN+ winners, and their flags that at most a third of
+    that hour's winners had (by p, at most 3), newest first, at most 20}."""
+    W = W or load_weights()
+    now = int(now if now is not None else time.time() * 1000)
+    cands = _study_cands(W)
+    rows, nosig = _study_rows(records, W, cands, now)
+    out, inf = _study(rows, cands, W)
+    keep = set(inf)
+    pkey = {r["signal"]: (r["p"] if r["p"] is not None else 2.0, cands.index(r["signal"])) for r in out}
+    wins = {}
+    for _, h, y, F, _ in rows:
+        if y:
+            wins.setdefault(h, []).append(F)
+    coins = []
+    for t, h, y, F, rec in rows:
+        ws = wins.get(h) or []
+        if y or t < now - WHY_HOURS * H or not (rec.get("top") or rec.get("good")) or len(ws) < WHY_MIN_WIN:
+            continue
+        rare = sorted((pkey[k], k, sum(1 for G in ws if G[k])) for k in cands if F[k])
+        rare = [[k, n] for _, k, n in rare if 3 * n <= len(ws)][:3]
+        if rare:
+            coins.append([str(rec.get("sym") or "?")[:24], t, len(ws), rare])
+    coins.sort(key=lambda c: -c[1])
+    return {"at": now, "since": rows[0][0] if rows else None, "n": len(rows), "w": sum(1 for x in rows if x[2] and x[1] in keep),
+            "l": sum(1 for x in rows if not x[2] and x[1] in keep), "hrs": len(inf), "noSig0": nosig, "need": STUDY_MIN_WIN, "rows": out, "coins": coins[:20]}
+
+
+def _hm_se(a, n1, n0):
+    """Hanley-McNeil standard error of an AUC with n1 positives and n0 negatives."""
+    q1, q2 = a / (2 - a), 2 * a * a / (1 + a)
+    return math.sqrt(max(0.0, a * (1 - a) + (n1 - 1) * (q1 - a * a) + (n0 - 1) * (q2 - a * a)) / (n1 * n0))
+
+
+def win_fit(records, W=None, now=None):
+    """The learned win order, walk-forward: compare on the rows before the last WIN_TEST_DAYS; each pattern signal gets +1 (winners
+    had it more) or -1, at most WIN_MAX_SIGNALS by q; the order is kept only if on the last WIN_TEST_DAYS (at least WIN_MIN_TEST
+    winners and losers) the AUC of win_score is at least WIN_AUC_MIN and its Hanley-McNeil 95% low end is above 0.5. Needs
+    WIN_MIN_TRAIN rows before. -> (wmodel {w, src, auc, at} | None, report {from: learned | none, at, src, w, n, auc, aucLo,
+    nTrain, nTest, wTest, lTest, why})."""
+    W = W or load_weights()
+    now = int(now if now is not None else time.time() * 1000)
+    cands = _study_cands(W)
+    rows, _ = _study_rows(records, W, cands, now)
+    cut = now - WIN_TEST_DAYS * DAY
+    train, test = [x for x in rows if x[0] < cut], [x for x in rows if x[0] >= cut]
+    wt = sum(1 for x in test if x[2])
+    rep = {"from": "none", "at": now, "src": W.get("src"), "w": {}, "n": len(rows), "auc": None, "aucLo": None, "nTrain": len(train),
+           "nTest": len(test), "wTest": wt, "lTest": len(test) - wt, "why": ""}
+    if len(train) < WIN_MIN_TRAIN:
+        rep["why"] = "walk-forward needs %d coins before the last %d days (have %d)" % (WIN_MIN_TRAIN, WIN_TEST_DAYS, len(train))
+        return None, rep
+    for k, n in (("doubled", wt), ("rugged", len(test) - wt)):
+        if n < WIN_MIN_TEST:
+            rep["why"] = "walk-forward needs %d %s coins in the last %d days (have %d)" % (WIN_MIN_TEST, k, WIN_TEST_DAYS, n)
+            return None, rep
+    pats = [r for r in _study(train, cands, W)[0] if r["verdict"] == "pattern"][:WIN_MAX_SIGNALS]
+    rep["w"] = w = {r["signal"]: 1 if r["dir"] > 0 else -1 for r in pats}
+    if not w:
+        rep["why"] = "no pattern in %d coins before the last %d days" % (len(train), WIN_TEST_DAYS)
+        return None, rep
+    a = auc([sum(v for k, v in w.items() if F[k]) for _, _, _, F, _ in test], [y for _, _, y, _, _ in test])
+    lo = a - 1.96 * _hm_se(a, wt, len(test) - wt)
+    rep["auc"], rep["aucLo"] = round(a, 4), round(lo, 4)
+    if a < WIN_AUC_MIN or lo <= 0.5:
+        rep["why"] = "walk-forward AUC %.2f (low %.2f) on %d coins: not learned" % (a, lo, len(test))
+        return None, rep
+    rep["from"] = "learned"
+    rep["why"] = "learned on %d coins: AUC %.2f (low %.2f) on %d later coins" % (len(train), a, lo, len(test))
+    return {"w": dict(w), "src": W.get("src"), "auc": rep["auc"], "at": now}, rep
+
+
+def win_score(S, wmodel, W=None):
+    """The learned win order's score of one coin's signals: the sum of the weights (+1 / -1) of the signals that are true, -5..5; None
+    without a learned order (wmodel is win_fit's model or its "w"). W is only read for the thresholds: its points, lists and
+    thresholds are never changed, so a verdict, the points and a push are the same with or without a win order."""
+    w = wmodel.get("w") if isinstance(wmodel, dict) and isinstance(wmodel.get("w"), dict) else wmodel
+    if not isinstance(w, dict) or not w:
+        return None
+    W = W or load_weights()
+    S = S if isinstance(S, dict) else {}
+    s = 0
+    for k, v in w.items():
+        try:
+            s += int(num(v)) if num(v) in (1.0, -1.0) and flag(k, S, W) else 0
+        except KeyError:
+            continue                                         # a signal this traps.py no longer knows
+    return max(-WIN_MAX_SIGNALS, min(WIN_MAX_SIGNALS, s))
 
 
 # ---------------------------------------------------------------- feed (runs in the scan job after sync; reads only <d>)
