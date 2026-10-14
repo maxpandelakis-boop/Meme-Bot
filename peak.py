@@ -434,21 +434,33 @@ def items(d, now, ctx=None):
 
 
 # ---------------------------------------------------------------- GeckoTerminal
+def gt_before(end):
+    """The before_timestamp (epoch s) asked for a window that ends at end (ms): 2 minutes past it."""
+    return int(end // 1000) + 120
+
+
 def gt_url(pool, end, agg=1):
     lim = 400 if agg == 1 else 30
     return F.GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (
-        urllib.parse.quote(str(pool), safe=""), agg, lim, int(end // 1000) + 120)
+        urllib.parse.quote(str(pool), safe=""), agg, lim, gt_before(end))
 
 
-def ohlcv_rows(j):
-    """GeckoTerminal's OHLCV answer -> [[ms, o, h, l, c, vol], ...] oldest first; [] when it holds no candle; None when it is not
-    the expected shape."""
+def ohlcv_rows(j, before=None, agg=1):
+    """GeckoTerminal's OHLCV answer -> [[ms, o, h, l, c, vol], ...] oldest first; [] when it holds no candle (or only closes of 0);
+    None when it is not the expected shape: no ohlcv_list, or a non-empty one in which no row is a list [seconds, o, h, l, c, vol]
+    (rows as objects, timestamps in ms or as text). Only the structure decides, never a close: a pool whose closes are all 0 is
+    an answer, not a changed shape. A timestamp counts as seconds from 1e9 up to before (epoch s, the request's before_timestamp)
+    plus one candle of agg minutes, or below 1e10 without before; a row outside that is not read."""
     if not isinstance(j, dict):
         return None
     lst = ((j.get("data") or {}).get("attributes") or {}).get("ohlcv_list") if isinstance(j.get("data"), dict) else None
     if not isinstance(lst, list):
         return None
-    return _rows([[num(c[0]) * 1000 if num(c[0]) else None] + list(c[1:6]) for c in lst if isinstance(c, list) and len(c) >= 5])
+    hi = before + agg * 60 if before else 1e10
+    good = [c for c in lst if isinstance(c, list) and len(c) >= 5 and 1e9 <= (num(c[0]) or 0) <= hi]
+    if lst and not good:
+        return None
+    return _rows([[num(c[0]) * 1000] + list(c[1:6]) for c in good])
 
 
 def covers(rows, entry_at, res):
@@ -563,8 +575,10 @@ def fetch(http, d, items_, until, done=None):
     """GeckoTerminal minute candles for each window, one after another on fetch.Http (10 s apart), until the deadline (epoch s):
     candles/<pool>_pk<entry minute>.txt rows ms|o|h|l|c|vol. An empty answer (or one that does not reach back to the entry) is
     asked once more as 15-minute candles. Two windows of one pool with the same entry minute share one request (done: the answers
-    so far, shared between calls of one run). An answer that is not GeckoTerminal's OHLCV shape (a block page, a changed API)
-    switches GeckoTerminal off for the run, logged once; that window gets no result.
+    so far, shared between calls of one run). An answer that is not GeckoTerminal's OHLCV shape (a block page, a changed API,
+    candle rows it cannot read) before any answer of the run was readable switches GeckoTerminal off for the run, logged once; that
+    window gets no result (SPEC 10: the first answer of each run). After a readable answer, one such answer is a failed fetch of
+    that window (one pool answered oddly; the run goes on), and the third in a row switches GeckoTerminal off.
     -> ({pid: {"status": "ok" | "empty" | "error" | "nopool", "res", "key", "n"}}, why the loop ended)"""
     fetched, why = {}, "all asked"
     done = {} if done is None else done
@@ -585,13 +599,21 @@ def fetch(http, d, items_, until, done=None):
             if st in ("deadline", "limited", "dead"):
                 stop = {"deadline": "deadline", "limited": "GeckoTerminal rate limit", "dead": GT_GONE}[st]
                 break
-            rows = ohlcv_rows(j) if st == "ok" else []
+            rows = ohlcv_rows(j, gt_before(it["end"]), agg) if st == "ok" else []
             if st == "shape" or (st == "ok" and rows is None):
-                http.log("  ! GeckoTerminal answered %s: off for the rest of this run" % ("with something that is not JSON" if st == "shape" else "without ohlcv_list"))
-                with http.lock:
-                    http.dead.add(GT_HOST)
-                stop = GT_SHAPE
+                what = "with something that is not JSON" if st == "shape" else "without an ohlcv_list of [seconds, o, h, l, c, vol] rows"
+                http.gt_odd = getattr(http, "gt_odd", 0) + 1
+                if not getattr(http, "gt_read", False) or http.gt_odd >= 3:
+                    http.log("  ! GeckoTerminal answered %s: off for the rest of this run" % what)
+                    with http.lock:
+                        http.dead.add(GT_HOST)
+                    stop = GT_SHAPE
+                    break
+                http.log("  ! GeckoTerminal answered one pool %s: that window waits for a later run" % what)
+                info = {"status": "error", "key": key}
                 break
+            if st == "ok":
+                http.gt_read, http.gt_odd = True, 0
             if st == "error":
                 info = {"status": "error", "key": key}
                 break

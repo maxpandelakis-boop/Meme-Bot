@@ -24,8 +24,10 @@ P9  booking without candles: the 2-minute settle wait, the order and cap of item
     time exit, where the DexScreener points come from, the rug exit's last healthy scan clamped to the entry, the coverage test,
     malformed docs
 P10 GeckoTerminal failing (in-process runs on a copy of the recommend-mode db): 5xx (also between 404s), timeouts, 429s through the wait ladder, a block
-    page, a changed shape, an answer sent a byte at a time; no doc for windows under 48 h, a waiting doc with one more try for
-    older ones, GeckoTerminal off for the run, the next healthy run prices from minute candles, docs written as the run goes
+    page, a changed shape, candle rows it cannot read (objects, ms, ISO, tiny timestamps or ones newer than asked; closes of 0 are still an answer), one pool
+    answering oddly after a readable first answer, an answer sent a byte at a time; no doc for windows under 48 h, a waiting doc
+    with one more try for older ones, GeckoTerminal off for the run, the next healthy run prices from minute candles, docs written
+    as the run goes
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -617,10 +619,14 @@ def _p9(check, PK, M, tmp):
 class _GT:
     """A stand-in GeckoTerminal for P10. mode: "ok" (flat minute candles at the pool's price), "503", "html" (a block page), "shape"
     (JSON without ohlcv_list), "429", "hang" (answers after 3 s), "trickle" (the answer a byte every 0.2 s, cut off after 8 s). Every request is noted
-    with the number of memepeak docs on disk at that moment (watch: the run's db folder). "alt": 404 and 503 by turns."""
+    with the number of memepeak docs on disk at that moment (watch: the run's db folder). "alt": 404 and 503 by turns. Candle rows it
+    cannot read: "dicts" (rows as objects), "ms" (timestamps in ms), "iso" (timestamps as ISO text), "small" (candle numbers 0, 1, 2 for timestamps), "future" (seconds, but a day
+    past the before_timestamp asked); "zero": readable rows whose
+    closes are all 0. "odd1": the pool odd_pool answers without ohlcv_list, every other pool as "ok"; "okshape": the first request
+    as "ok", every later one without ohlcv_list."""
 
     def __init__(self, px_of):
-        self.mode, self.px_of, self.calls, self.watch = "ok", px_of, [], None
+        self.mode, self.px_of, self.calls, self.watch, self.odd_pool = "ok", px_of, [], None, None
         gt = self
 
         class H(BaseHTTPRequestHandler):
@@ -631,6 +637,10 @@ class _GT:
                 mode = gt.mode
                 if mode == "alt":                     # 503 and 404 by turns: a flaky host that still answers
                     mode = "503" if len(gt.calls) % 2 else "404"
+                if mode == "odd1":                    # one pool answers oddly, the others normally
+                    mode = "shape" if m and m.group(1) == gt.odd_pool else "ok"
+                if mode == "okshape":                 # a readable first answer, then the shape changes
+                    mode = "ok" if len(gt.calls) == 1 else "shape"
                 try:
                     if mode == "404":
                         self.send_response(404); self.send_header("Content-Length", "0"); self.end_headers()
@@ -651,6 +661,18 @@ class _GT:
                     px = gt.px_of.get(m.group(1), 1e-5)
                     top = before // (60 * agg) * (60 * agg)
                     lst = [[top - (i + 1) * 60 * agg, px, px, px, px, 1000.0] for i in range(lim)]
+                    if mode == "dicts":
+                        lst = [dict(zip(("t", "o", "h", "l", "c", "v"), r)) for r in lst]
+                    elif mode == "ms":
+                        lst = [[r[0] * 1000] + r[1:] for r in lst]
+                    elif mode == "iso":
+                        lst = [[time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(r[0]))] + r[1:] for r in lst]
+                    elif mode == "small":
+                        lst = [[i] + r[1:] for i, r in enumerate(lst)]
+                    elif mode == "future":
+                        lst = [[r[0] + 86400] + r[1:] for r in lst]
+                    elif mode == "zero":
+                        lst = [[r[0], 0, 0, 0, 0, 1000.0] for r in lst]
                     raw = json.dumps({"data": {"attributes": {"ohlcv_list": lst}}}).encode()
                     if mode == "trickle":
                         self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(raw)))
@@ -717,6 +739,16 @@ def _p10(check, PK, M, S, tmp):
         go("429new", "429", new)
         go("html", "html", old)
         go("shape", "shape", old)
+        for name in ("dicts", "ms", "iso", "small", "future"):
+            go(name, name, old)
+        go("zero", "zero", new)
+        its = PK.items(rec, old)
+        n_of = {}
+        for it in its:
+            n_of[it["pool"]] = n_of.get(it["pool"], 0) + 1
+        gt.odd_pool = [it["pool"] for it in its if n_of[it["pool"]] == 1 and it["pool"] != its[0]["pool"]][-1]
+        go("odd1", "odd1", old)
+        go("okshape", "okshape", old)
         go("trickle", "trickle", new, deadline=3.0)
         PK.SETTLE_EVERY = 2
         go("steps", "ok", new)
@@ -746,11 +778,35 @@ def _p10(check, PK, M, S, tmp):
           and sum(1 for l in lines if "waiting 0s" in l) == 6 and o2["why"] == "GeckoTerminal rate limit" and not docs2,
           "P10 429s: the same window asked 4 times (the 15, 30, 60 s ladder), then it waits for a later run (tries 1 when old, no doc when new); "
           "8 in the run and GeckoTerminal is given up (%d requests)" % len(c))
-    for name, said in (("html", "not JSON"), ("shape", "without ohlcv_list")):
+    for name, said in (("html", "not JSON"), ("shape", "ohlcv_list")):
         o, c, docs, lines, secs, _ = runs[name]
         check(o["why"] == PK.GT_SHAPE and len(c) == 1 and not docs and sum(1 for l in lines if said in l and "off for the rest of this run" in l) == 1,
               "P10 %s: one request, GeckoTerminal off for the run, logged once, no doc (not even for the old window asked) (%s)"
               % ("a block page (HTML)" if name == "html" else "an answer in another shape", o["why"]))
+    for name, what in (("dicts", "rows as objects"), ("ms", "timestamps in ms"), ("iso", "timestamps as ISO text"), ("small", "candle numbers for timestamps"),
+                       ("future", "a day newer than the before_timestamp asked")):
+        o, c, docs, lines, secs, _ = runs[name]
+        check(o["why"] == PK.GT_SHAPE and len(c) == 1 and not docs and sum(1 for l in lines if "off for the rest of this run" in l) == 1,
+              "P10 candle rows it cannot read (%s): a changed shape, not an empty answer: one request, GeckoTerminal off, no doc, "
+              "the old windows not estimated (%s, %d requests, %d docs)" % (what, o["why"], len(c), len(docs)))
+    o, c, docs, lines, secs, _ = runs["zero"]
+    asked = len({(it["pool"], it["key"]) for it in PK.items(rec, new)})
+    check(o["why"] == "all asked" and len(c) == 2 * asked and not any("off for the rest" in l for l in lines)
+          and st(docs) == [("waiting", 1, None)] * len(PK.items(rec, new)),
+          "P10 readable rows whose closes are all 0: an empty answer, not a changed shape (the structure decides, never a close): every "
+          "window asked as minute and 15-minute candles, waiting with tries 1 (%s, %d requests)" % (o["why"], len(c)))
+    o, c, docs, lines, secs, _ = runs["odd1"]
+    odd = [pid for pid, x in docs.items() if x["state"] == "waiting"]
+    check(o["why"] == "all asked" and len(docs) == n and len(odd) == 1 and docs[odd[0]]["pair"] == gt.odd_pool and docs[odd[0]]["tries"] == 1
+          and all(x["state"] == "ok" and x["src"] == "m1" for pid, x in docs.items() if pid not in odd)
+          and sum(1 for l in lines if "answered one pool" in l) == 1 and not any("off for the rest" in l for l in lines),
+          "P10 one pool answers in another shape after a readable first answer: only that window fails (old: waiting, tries 1), "
+          "GeckoTerminal stays on and the windows behind it are priced (%s)" % st(docs))
+    o, c, docs, lines, secs, _ = runs["okshape"]
+    check(o["why"] == PK.GT_SHAPE and len(c) == 4 and sorted(x["state"] for x in docs.values()) == ["ok", "waiting", "waiting"]
+          and sum(1 for l in lines if "off for the rest of this run" in l) == 1,
+          "P10 the shape changes after a readable first answer: the third odd answer in a row switches GeckoTerminal off "
+          "(%s, %d requests, %s)" % (o["why"], len(c), st(docs)))
     o, c, docs, lines, secs, _ = runs["trickle"]
     check(o["why"] == "deadline" and len(c) == 1 and not docs and secs <= 4.5,
           "P10 an answer sent a byte at a time is cut off at the deadline: --deadline-s 3 ended after %.1f s" % secs)
