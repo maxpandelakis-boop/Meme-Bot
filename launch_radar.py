@@ -769,18 +769,25 @@ class Radar:
             return False
 
     def store_row(self, doc):
-        """radar.json to the app's live store (row "radar"), when it is set up. Never raises."""
+        """radar.json to the app's live store (row "radar"), when it is set up: True written, None the store is not set up, False the
+        write failed (said). Never raises."""
         try:
             if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY")):
-                return False
+                return None
             import app as A
             if not A.enabled():
-                return False
+                return None
             A.put_row("radar", doc)
             return True
         except Exception as e:
             self.say("app store row not written (%s)" % RS.short(e))
             return False
+
+    def saved(self, landed, rowed):
+        """Where this radar.json went, for the log line: radar-data (pushed, not pushed, or kept on the runner without a remote) and the
+        app's row (written, off: the store is not set up, or not written)."""
+        return "radar-data %s, app row %s" % ("pushed" if landed and self.remote else "kept here" if landed else "not pushed",
+                                              "written" if rowed else "off" if rowed is None else "not written")
 
     def notify(self, coins):
         """One notification for these good coins (kind radar, app.notify_radar when app.py has it). Never raises."""
@@ -993,9 +1000,10 @@ class Radar:
         if sent:                                 # radar.json and the records say pushed right after the notification (3.6)
             self.cycle_lines[-1] = line(len(sent))
             doc = self.build_doc(state, coins, others, rated, now, t_k + self.step, secs, k)
-            self.publish(doc)
-        self.store_row(doc)
-        self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items()))))
+            landed = self.publish(doc)
+        rowed = self.store_row(doc)
+        self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s; %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items())),
+                                                                                   self.saved(landed, rowed)))
         self.last_doc = doc
         # 9. caches, the model, the periodic reads
         for a in [a for a in list(self.work) + list(self.closes) if now - (num((self.rec(a) or {}).get("pool")) or 0) > 20 * 60_000]:
@@ -1804,8 +1812,8 @@ class Radar:
         pushed once to radar-data and the app's row."""
         prev = self.last_doc if isinstance(self.last_doc, dict) else {}
         doc = finish_from(prev, state, now, why, self.run_id, self.run_start, self.run_end, self.source, self.hours)
-        self.publish(doc)
-        self.store_row(doc)
+        landed = self.publish(doc)
+        self.say("radar.json state %s: %s" % (state, self.saved(landed, self.store_row(doc))))
         self.last_doc = doc
         return doc
 
@@ -2072,13 +2080,14 @@ def cmd_hours(a, log=None):
         if remote and ex:
             try:
                 Git(os.path.join(d, "git"), remote, say).push_tree(paths, "radar-data", "launch radar: outside the active hours (fake money)")
+                say("hours: radar-data pushed")
             except Exception as e:
                 say("hours: radar-data push failed (%s)" % RS.short(e))
         elif remote:
             say("hours: radar-data does not exist yet: not made here (the first radar run makes it from the results copy)")
         else:
             write_json(os.path.join(d, "out", "radar.json"), doc)
-    app_row(doc, say)
+    say("hours: app row %s" % ("written" if app_row(doc, say) is not None else "not written (off or failed)"))
     say("outside the active hours %d-%d Berlin: state hours, next start %s UTC" % (hw[0], hw[1], dt.datetime.fromtimestamp(doc["next"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M") if doc["next"] else "?"))
     return 0
 

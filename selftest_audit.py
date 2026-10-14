@@ -154,11 +154,33 @@ def check_dev_budget(check):
           % (sold[:2], len(stub.calls), [x.get("dev") for x in w], [x.get("devTries", 0) for x in w], F.DEV_MAX_TX))
 
 
+# ---------------------------------------------------------------------------------------------------------------- K5 radar saved
+def check_radar_saved(check):
+    """K5: the radar's cycle line says where radar.json went: radar-data pushed (or not) and the app's row written, off or not written."""
+    import selftest_radar as SR
+    T, P, _ = SR.modules()
+    tmp = tempfile.mkdtemp(prefix="memebot-audit-saved-")
+    mock = SR.RadarMock(SR.FIX.values())
+    srv = SR.serve(mock)
+    try:
+        remote = SR.fresh_remote(T, tmp, "rem", SR.T0)
+        SR.put_branch(remote, "results", {"db/memebot/state.json": {"v": 1}}, tmp)
+        code, R, lines, _ = SR.run_radar(T, P, "http://127.0.0.1:%d" % srv.server_address[1], remote, os.path.join(tmp, "rd"), SR.T0, minutes=2.5)
+    finally:
+        srv.shutdown()
+        if mock in SR.MOCKS:
+            SR.MOCKS.remove(mock)
+    cyc = [l for l in lines if l.startswith("cycle ")]
+    check(code == 0 and bool(cyc) and cyc[-1].endswith("; radar-data pushed, app row off") and "refs/heads/radar-data" in SR.refs(remote),
+          "K5 radar: the cycle line says where radar.json went (%r)" % (cyc[-1][-70:] if cyc else lines[-3:]))
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
     check_push_reason(check)
     check_sync_redact(check)
     check_dev_budget(check)
+    check_radar_saved(check)
 
 
 def main():
