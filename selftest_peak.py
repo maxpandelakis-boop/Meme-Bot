@@ -16,6 +16,16 @@ P5  the trader's docs (memecurve "paper", state "paper", recommend, marks, train
 P6  memepeak and memeradar reach the results branch through bot.py sync (with a stand-in for WP4's SYNC_IGNORE lines until that
     package is merged; after it, the real lines are required)
 P7  the deadline holds: a mock answering in 5 s with --deadline-s 12 ends within 15 s
+P8  each filter rule on its own (jump, market-cap cap, the liquidity floor relative to the entry, the 5-minute confirmation), the
+    base, the value at 6 h (a dust print lowers it, never raises it; a glitch print in a quiet live pool is no collapse; a low
+    close at the very end can recover after the end), the order of the DexScreener points, the filtered chip
+P9  booking without candles: the 2-minute settle wait, the order and cap of items, an empty answer 48 h after the end, a failed
+    fetch that never settles a window at once, a position without a pool, the estimate from stored paths (x >= 1.0) and from a
+    time exit, where the DexScreener points come from, the rug exit's last healthy scan clamped to the entry, the coverage test,
+    malformed docs
+P10 GeckoTerminal failing (in-process runs on a copy of the recommend-mode db): 5xx (also between 404s), timeouts, 429s through the wait ladder, a block
+    page, a changed shape, an answer sent a byte at a time; no doc for windows under 48 h, a waiting doc with one more try for
+    older ones, GeckoTerminal off for the run, the next healthy run prices from minute candles, docs written as the run goes
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -76,6 +86,9 @@ def peak_checks(check):
         _p1(check, PK, M)
         named = _p2(check, PK, M)
         _p3_to_p7(check, PK, M, S, tmp, named)
+        _p8(check, PK, M)
+        _p9(check, PK, M, tmp)
+        _p10(check, PK, M, S, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -389,6 +402,361 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
     check(p7.returncode == 0 and s7 <= 15.0 and o7.get("why") == "deadline" and o7.get("items") == 6 and 2 <= len(calls) <= 3
           and len(left) == 1 and all(doc["state"] == "waiting" and doc["tries"] == 1 for doc in left.values()),
           "P7 6 windows, 5 s an answer, --deadline-s 12: ended after %.1f s with %d requests, one window asked (waiting), the rest untouched" % (s7, len(calls)))
+
+
+def _p8(check, PK, M):
+    print("== peak P8: each filter rule on its own, the base, the value at 6 h, the filtered chip (direct peak_of cases)")
+    T0 = 1_791_800_000_000
+    end = T0 + 6 * HOUR
+    pk = lambda c, px=1e-5, **k: PK.peak_of(c, T0, end, px, **k)
+    seg = lambda pts: [[T0 + m * MIN, 1e-5 * x, 1e-5 * x, 1e-5 * x, 1e-5 * x, v] for m, x, v in pts]
+    flat = lambda m0, m1, x, v=2000.0: [(m, x, v) for m in range(m0, m1 + 1)]
+    geo = lambda m0, m1, x0, x1, v=2000.0: [(m, x0 * (x1 / x0) ** ((m - m0) / (m1 - m0)), v) for m in range(m0, m1 + 1)]
+    show = lambda r: {k: r.get(k) for k in ("x", "x6", "base", "dead", "cut")}
+    starts = lambda r, w: any(str(c).startswith(w) for c in r["cut"])
+
+    r1 = pk(seg(flat(0, 9, 1.0) + flat(10, 11, 4.0) + flat(12, 60, 1.0)))
+    r2 = pk(seg(flat(0, 9, 1.0) + flat(10, 30, 4.0) + flat(31, 60, 1.0)))
+    check(r1["x"] <= 1.01 and starts(r1, "jump") and not starts(r1, "cap") and 3.99 <= r2["x"] <= 4.01 and not r2["cut"],
+          "P8 jump: a two-candle step to 4x (over 3x the previous close) without support is not booked; held for 21 closes on $2,000 it is (%s / %s)"
+          % (show(r1), r2["x"]))
+    climb = seg(geo(0, 100, 1.0, 6.0, 500.0) + flat(101, 150, 6.0, 500.0) + flat(151, 200, 5.5, 500.0))
+    r1, r2 = pk(climb, mc0=20e6), pk(climb, mc0=5e6)
+    check(r1["x"] <= 5.0 and starts(r1, "cap") and not starts(r1, "jump") and r2["x"] >= 5.9 and not r2["cut"],
+          "P8 market-cap cap: 6x from a $20M entry is over $100M and thin ($500 candles): capped under 5x; from a $5M entry it counts (%s / %s)"
+          % (show(r1), r2["x"]))
+    c = seg(flat(0, 29, 1.0) + flat(30, 359, 2.5))
+    r1 = pk(c, ds_points=[(T0 + 30 * MIN, None, 3_000.0)], liq0=50_000.0)
+    r2 = pk(c, ds_points=[(T0 + 30 * MIN, None, 3_000.0)], liq0=5_000.0)
+    check(r1["x"] <= 1.01 and r1["x6"] == 0 and (r1["dead"] or {}).get("why") == "liquidity" and r1["cut"][0].startswith("pool dead: liquidity $3,000 at minute 30")
+          and r2["x"] >= 2.49 and not r2["dead"],
+          "P8 liquidity floor: $3,000 is dead for a pool bought at $50,000 liquidity (10%% of it), alive for one bought at $5,000 ($1,000 floor) (%s / %s)"
+          % (show(r1), r2["x"]))
+    r1 = pk(seg(flat(0, 9, 1.0) + [(10, 2.5, 2000.0), (20, 2.5, 2000.0)] + flat(21, 60, 1.0)))
+    r2 = pk(seg(flat(0, 9, 1.0) + [(10, 2.5, 2000.0), (14, 2.5, 2000.0)] + flat(15, 60, 1.0)))
+    check(r1["x"] <= 1.01 and starts(r1, "unconfirmed") and 2.49 <= r2["x"] <= 2.51,
+          "P8 confirmation: a close at 2.5x whose next close comes 10 min later is not confirmed; 4 min later it is (%s / %s)" % (show(r1), r2["x"]))
+    c = seg(flat(0, 99, 1.0) + flat(100, 110, 2.0) + flat(111, 359, 1.0))
+    b = {px: pk(c, px=px) for px in (1.5e-5, 5e-5, 0.25e-5, 0.5e-5)}
+    check(b[1.5e-5]["base"] == 1.5e-5 and abs(b[1.5e-5]["x"] - 2.0 / 1.5) < 1e-4 and all(b[px]["base"] == 1e-5 and b[px]["x"] == 2.0 for px in (5e-5, 0.25e-5, 0.5e-5)),
+          "P8 base = max(cpx, px) only when px/cpx is between 1/3 and 3: paid 1.5x the candles -> base px (%sx); 5x, 1/4 or 1/2 -> base cpx (%s)"
+          % (b[1.5e-5]["x"], [b[px]["x"] for px in (5e-5, 0.25e-5, 0.5e-5)]))
+    e1 = pk(seg(geo(0, 59, 1.0, 2.0) + flat(60, 119, 2.0) + geo(120, 359, 2.0, 0.3, 10.0)[1:]))
+    e14b = pk(seg(geo(0, 59, 1.0, 1.5) + flat(60, 359, 1.4, 10.0)))
+    e14 = pk(seg(geo(0, 59, 1.0, 1.5) + [(m, 0.05 if m == 180 else 1.4, 5.0 if m == 180 else 10.0) for m in range(60, 360)]))
+    up = pk(seg(flat(0, 358, 1.0) + [(359, 50.0, 1.0)]))
+    check(e1["x"] == 2.0 and e1["x6"] == 0.3 and not e1["dead"] and e14b["x6"] == 1.4 and up["x6"] == 1.0 and starts(up, "dust"),
+          "P8 value at 6 h: a fade to 0.3x on $10 candles gives 0.3x (not the last $2,000 close at 2x), a quiet pool at 1.4x gives 1.4x, a $1 print at 50x "
+          "at the end leaves it at 1.0x (%s / %s / %s)" % (e1["x6"], e14b["x6"], up["x6"]))
+    check(not e14["dead"] and e14["x6"] == 1.4 and not any(starts(e14, w) for w in ("collapse", "pool dead")),
+          "P8 a $5 glitch print at 0.05x in a quiet pool trading on $10 candles at 1.4x is no collapse (the small closes count as its recovery) (%s)" % show(e14))
+    far = pk(seg(flat(0, 19, 1.0) + [(20, 1e-7, 2000.0)] + flat(25, 30, 5000.0, 0.02)))
+    check((far["dead"] or {}).get("why") == "collapse" and far["x6"] == 0 and starts(far, "collapse"),
+          "P8 a dust print far above the held level (5,000x on 2 cents) is no recovery: the pool is dead after the pull (%s)" % show(far))
+    c = seg(flat(0, 358, 1.0) + [(359, 0.05, 2000.0)] + flat(360, 361, 1.0))
+    e6 = pk(c)
+    gone = pk(seg(flat(0, 358, 1.0) + [(359, 0.05, 2000.0)] + flat(366, 370, 1.0)))
+    check(not e6["dead"] and e6["x6"] == 0.05 and e6["x"] == 1.0 and (gone["dead"] or {}).get("why") == "collapse" and gone["x6"] == 0,
+          "P8 a low close in the last minute that recovers in the 2 minutes after the end (what the fetch returns) is no collapse; x6 is that close "
+          "(%s); a recovery only later does not count (%s)" % (show(e6), gone["dead"]))
+    c = seg(flat(0, 359, 1.0))
+    pts = [(T0 + 3 * MIN, 1e-4, 50_000.0), (T0 + 19 * MIN, 2e-4, 60_000.0)]
+    ra, rb = pk(c, ds_points=pts), pk(c, ds_points=pts[::-1])
+    check(ra == rb and ra["state"] == "unit" and "minute 3" in ra["cut"][-1],
+          "P8 the DexScreener points are taken in time order, whatever order the docs were read in (%s)" % ra["cut"])
+    ft = PK.filtered_text
+    cases = [({"cut": ["jump: 1 level over 3x the previous close without support"], "rawX": 4.0, "x": 4.0}, ""),
+             ({"cut": ["unit: candles 26.0x away from DexScreener's price at minute 10"], "rawX": 1.04, "x": None, "state": "unit"}, ""),
+             ({"cut": [], "rawX": 9.0, "x": 1.0}, ""),
+             ({"cut": ["pool dead: liquidity $40 at minute 25", "dust: 59,257x on $0 volume"], "rawX": 59257.6, "x": 1.0}, "59,258x ignored: pool dead"),
+             ({"cut": ["unconfirmed: 9.00x held for one candle only"], "rawX": 9.0, "x": 1.0}, "9.00x ignored: unconfirmed"),
+             (None, "")]
+    got = [ft(doc) for doc, _ in cases]
+    check(got == [want for _, want in cases], "P8 the filtered chip names the raw best close and the first rule only when a filter lowered the result (%s)" % got)
+
+
+def _jdump(path, doc):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(doc, f, separators=(",", ":"))
+
+
+def _p9(check, PK, M, tmp):
+    print("== peak P9: booking without candles (items, the 48 h estimate, failed fetches, stored paths, time exits, DexScreener points)")
+    d = os.path.join(tmp, "p9")
+    db = lambda *a: os.path.join(d, "db", *a)
+    S0 = 1_791_600_000_000                                       # paperSince of this small db
+    base = {"paper": M.PAPER_RULE, "ticket": 3.0, "px": 1e-5, "liq": 20_000.0, "mc": 100_000.0}
+    pos = {}
+
+    def add(tag, grp, t, **k):
+        pid = "%s-%s-%s" % (time.strftime("%Y-%m-%dT%H%M%S", time.gmtime(t / 1000)), "y" if grp == "young" else "h", tag)
+        doc = dict(base, grp=grp, t=t, entryAt=t + MIN, sym=tag, addr="ADDR" + tag, pair="PAIR" + tag)
+        doc.update(k)
+        _jdump(db("memepos", pid + ".json"), doc)
+        pos[tag] = (pid, doc)
+        return pid
+    tA, tB, tC, tD, tE, tG = (S0 + h * HOUR for h in (1, 2, 3, 4, 5, 7))
+    add("PATHUP", "young", tA)
+    add("TIMEX", "young", tB)
+    add("PATHLOW", "young", tC)
+    add("DSPTS", "hold", tD, ticket=50.0)
+    add("RUGGED", "young", tE)
+    add("NOPOOL", "young", tG, pair="")
+    _jdump(db("memebot", "state.json"), {"paperSince": S0, "paperRule": M.PAPER_RULE})
+    up = [[m, x, x, x, x] for m, x in [(m, 1.0 + 2.0 * m / 60) for m in range(0, 61)] + [(m, 3.0) for m in range(61, 121)] + [(m, 2.0) for m in range(121, 401)]]
+    low = [[m, 0.5, 0.5, 0.5, 0.5] for m in range(0, 401)]
+    for tag, t, path in (("PATHUP", tA, up), ("PATHLOW", tC, low)):
+        _jdump(db("memeyoung", "%d.json" % t), {"t": t, "picks": [{"addr": "ADDR" + tag, "pair": "PAIR" + tag, "sym": tag, "px": 1e-5}],
+                                                "outs": {"1": {"t": t + 7 * HOUR, "picks": [{"sym": tag, "path": path}]}}})
+    _jdump(db("memeexit", pos["TIMEX"][0] + "-1.json"), {"pos": pos["TIMEX"][0], "t": tB + 6 * HOUR + 5 * MIN, "px": 0.8e-5, "frac": 1.0, "why": "time", "grp": "young"})
+    eD = tD + MIN
+    _jdump(db("memeearly", "a.json"), {"t": eD - 2 * MIN, "coins": [
+        {"addr": "ADDRDSPTS", "pair": "PAIRDSPTS", "px": 1e-5, "liq": 30_000.0, "p2": {"t": eD, "px": 1.1e-5, "liq": 29_000.0}, "p60": {"t": eD + 58 * MIN, "px": 1.3e-5, "liq": 28_000.0}},
+        {"addr": "ADDRDSPTS", "pair": "PAIROTHER", "px": 9.0, "liq": 1.0}]})
+    _jdump(db("memebot", "marks.json"), {"t": eD + 3 * HOUR, "px": {pos["DSPTS"][0]: 2e-5}, "liq": {pos["DSPTS"][0]: 25_000.0}})
+    _jdump(db("memerec", "%d.json" % tD), {"t": tD, "picks": [{"addr": "ADDRDSPTS", "pair": "PAIRDSPTS", "sym": "DSPTS", "px": 1e-5}],
+                                         "outs": {"24": {"t": eD + 4 * HOUR, "picks": [{"sym": "DSPTS", "gone": True}]}}})
+    eE = tE + MIN
+    _jdump(db("memeruns", "before.json"), {"t": eE - 10 * MIN})
+    _jdump(db("memeexit", pos["RUGGED"][0] + "-1.json"), {"pos": pos["RUGGED"][0], "t": eE + 20 * MIN, "px": 0, "frac": 1.0, "why": "rug", "grp": "young"})
+    # malformed docs of every reader: none may stop the run
+    _jdump(db("memeearly", "b.json"), {"t": eD, "coins": 7})
+    _jdump(db("memeearly", "c.json"), {"t": eD, "coins": [{"addr": ["ADDRDSPTS"]}, {"addr": "ADDRDSPTS", "pair": 5, "px": 1.0, "liq": 2.0}, 7, {"addr": "ADDRDSPTS", "pair": "PAIRZ", "p2": "x"}]})
+    _jdump(db("memeyoung", "%d.json" % (tA + 1)), {"t": tA, "picks": 5})
+    _jdump(db("memeyoung", "%d.json" % (tA + 2)), {"t": tA, "picks": [{"addr": "ADDRPATHUP", "sym": "PATHUP", "px": 1e-5}], "outs": {"1": 3, "24": {"picks": "x"}, "6": {"picks": [{"sym": "PATHUP", "path": [[0, "a", 1, 1, 1], 5]}]},
+                                                                  "12": {"picks": [{"sym": "PATHUP", "path": 5}]}, "48": {"picks": [{"sym": "PATHUP", "path": [["0", "1", "1", "1", "1"], ["1", "1", "1", "1", "1"]]}]}}})
+    _jdump(db("memerec", "%d.json" % (tD + 1)), {"t": tD, "outs": [1, 2], "picks": [{"addr": "ADDRDSPTS"}, "x"]})
+    try:
+        ctx = PK.context(d)
+        crash = None
+    except Exception as e:                                       # noqa: the check below says what broke
+        ctx, crash = None, "%s: %s" % (type(e).__name__, e)
+    check(crash is None and len(ctx["pos"]) == 6 and ctx["since"] == S0,
+          "P9 malformed docs (coins not a list, an address that is a list, picks not a list, outs not a dict, a path of text or no list) are skipped, never fatal (%s)"
+          % (crash or "%d positions read" % len(ctx["pos"])))
+    if crash:
+        return
+    P = {tag: dict(ctx["pos"][pid]) for tag, (pid, _) in pos.items()}
+    pid = {tag: v[0] for tag, v in pos.items()}
+    end = lambda tag: PK.window(P[tag])[1]
+    pts = sorted(PK.ds_for(ctx, pid["DSPTS"], P["DSPTS"]), key=lambda q: (q[0], q[2] or 0))
+    want = [(eD - 2 * MIN, 1e-5, 30_000.0), (eD, 1.1e-5, 29_000.0), (eD + 58 * MIN, 1.3e-5, 28_000.0), (eD + 3 * HOUR, 2e-5, 25_000.0), (eD + 4 * HOUR, None, 0.0)]
+    check(pts == want, "P9 the DexScreener points of a position: the early list (list time, +2 min, +60 min) of its own pool only, the marks, and a tip "
+                       "check that found it gone ($0); none from another pool of the coin (%d points)" % len(pts))
+    mk = dict(ctx, marks={"t": eD, "px": ["x"], "liq": "x"})
+    check(len(PK.ds_for(mk, pid["DSPTS"], P["DSPTS"])) == 4, "P9 marks.json with px not a dict gives no marks point and no error")
+    eRug = PK.window(P["RUGGED"])[0]
+    ok1 = PK.rug_ok_at(ctx, P["RUGGED"])
+    ok2 = PK.rug_ok_at(dict(ctx, runs=sorted(ctx["runs"] + [eRug + 10 * MIN])), P["RUGGED"])
+    dead, dead2 = PK.dead_of(eRug, eRug + 6 * HOUR, ok1), PK.dead_of(eRug, eRug + 6 * HOUR, ok2)
+    check(ok1 == eRug and ok2 == eRug + 10 * MIN and dead[2] == "pool dead: rug exit, no healthy scan after the entry"
+          and dead2[2] == "pool dead: rug exit, last healthy scan 10 min after the entry",
+          "P9 a rug exit's last healthy scan is the latest memeruns doc before it, never before the entry (%s / %s)" % (dead[2], dead2[2]))
+    r0 = [[eRug + m * MIN, 1, 1, 1, 1, 100] for m in range(0, 400)]
+    check(PK.covers(r0, eRug, 1) and PK.covers(r0[5:], eRug, 1) and not PK.covers(r0[30:], eRug, 1) and not PK.covers([], eRug, 1)
+          and PK.covers(r0[20:], eRug, 15) and not PK.covers(r0[45:], eRug, 15),
+          "P9 an answer that starts more than 10 min after the entry (30 min for 15-minute candles) is a cut history, not a result")
+
+    now0 = end("PATHUP") + HOUR
+    e_up = PK.book(d, ctx, pid["PATHUP"], P["PATHUP"], {"status": "empty"}, end("PATHUP") + 49 * HOUR)
+    e_tx = PK.book(d, ctx, pid["TIMEX"], P["TIMEX"], {"status": "empty"}, end("TIMEX") + 49 * HOUR)
+    e_lo = PK.book(d, ctx, pid["PATHLOW"], P["PATHLOW"], {"status": "empty"}, end("PATHLOW") + 49 * HOUR)
+    check(e_up["state"] == "est" and e_up["src"] == "est" and abs(e_up["x"] - 3.0) < 0.01 and e_up["x6"] == 2.0 and e_up["n"] > 300
+          and e_up["eur"] == round(M.pos_value(P["PATHUP"], 1.0, e_up["x"]), 2),
+          "P9 an estimate from the tip record's stored minute path of the same coin and run: rebased to the entry, through the filter (%sx, 6 h %sx, %d closes)"
+          % (e_up["x"], e_up["x6"], e_up["n"]))
+    check(e_tx["state"] == "est" and e_tx["x"] == 1.0 and e_tx["x6"] == 0.8 and e_tx["eur6"] == round(M.pos_value(P["TIMEX"], 1.0, 0.8), 2)
+          and e_lo["state"] == "est" and e_lo["x"] == 1.0,
+          "P9 an estimate is at least 1.0x (a stored path under the entry gives 1.0x) and takes the value at 6 h from a time exit (%sx / 6 h %sx)" % (e_lo["x"], e_tx["x6"]))
+    k = "TIMEX"
+    w47 = PK.book(d, ctx, pid[k], P[k], {"status": "empty"}, end(k) + 47 * HOUR)
+    e47 = PK.book(d, ctx, pid[k], P[k], {"status": "error"}, end(k) + 47 * HOUR)
+    e49 = PK.book(d, ctx, pid[k], P[k], {"status": "error"}, end(k) + 49 * HOUR)
+    e49b = PK.book(d, ctx, pid[k], P[k], {"status": "error"}, end(k) + 49 * HOUR, old=dict(e49 or {"v": PK.PEAK_V}, tries=2))
+    e100 = PK.book(d, ctx, pid[k], P[k], {"status": "error"}, end(k) + 100 * HOUR)
+    unk = [PK.book(d, ctx, pid[k], P[k], i, end(k) + 49 * HOUR) for i in (None, {}, {"status": "deadline"})]
+    w47, e49, e49b, e100 = (x or {} for x in (w47, e49, e49b, e100))      # a missing doc fails the checks below, never crashes them
+    check(w47.get("state") == "waiting" and w47.get("tries") == 1 and e_tx["state"] == "est" and e_tx["tries"] == 1,
+          "P9 an empty answer 47 h after the end waits (tries 1); 49 h after the end it is estimated at once (%s, tries %s)" % (e_tx["state"], e_tx["tries"]))
+    check(e47 is None and e49.get("state") == "waiting" and e49.get("tries") == 1 and e49.get("x") is None and e49b.get("state") == "est"
+          and e49b.get("tries") == 3 and e100.get("state") == "waiting" and unk == [None, None, None],
+          "P9 a failed fetch never settles a window at once: under 48 h no doc, after it a waiting doc with one more try (also 100 h after), the "
+          "estimate only at the third (%s, %s/%s, %s/%s)" % (e47, e49.get("state"), e49.get("tries"), e49b.get("state"), e49b.get("tries")))
+    np_ = PK.book(d, ctx, pid["NOPOOL"], P["NOPOOL"], {"status": "nopool"}, end("NOPOOL") + 5 * MIN)
+    check(np_["state"] == "est" and np_["tries"] == PK.MAX_TRIES and np_["x"] == 1.0, "P9 a position without a pool is estimated at once (tries %s)" % np_["tries"])
+    ok_items = lambda now: {it["pid"] for it in PK.items(d, now, ctx)}
+    check(pid["NOPOOL"] not in ok_items(end("NOPOOL") + MIN) and pid["NOPOOL"] in ok_items(end("NOPOOL") + 2 * MIN) and len(ok_items(now0 + 10 * HOUR)) == 6,
+          "P9 a window counts only 2 minutes after its end (settle wait)")
+
+    now = S0 + 200 * HOUR
+    fake = {"since": S0, "docs": {}}
+    fpos = {}
+    for i in range(15):                                          # closed 10 to 24 min ago
+        fpos["r%02d" % i] = {"grp": "young", "t": now - 6 * HOUR - (10 + i) * MIN, "pair": "R%d" % i}
+    for i in range(60):                                          # closed 4 h ago and earlier
+        fpos["o%02d" % i] = {"grp": "hold", "t": now - 10 * HOUR - i * 17 * MIN, "pair": "O%d" % i}
+    fpos["settled"] = {"grp": "young", "t": now - 30 * HOUR, "pair": "S"}
+    fpos["tried3"] = {"grp": "young", "t": now - 31 * HOUR, "pair": "T"}
+    fpos["prevv"] = {"grp": "young", "t": now - 32 * HOUR, "pair": "V"}
+    fpos["pick"] = {"grp": "pick", "t": now - 33 * HOUR, "pair": "K"}
+    fpos["before"] = {"grp": "young", "t": S0 - HOUR, "pair": "B"}
+    fake["pos"] = fpos
+    fake["docs"] = {"settled": {"v": PK.PEAK_V, "state": "est", "tries": 3}, "tried3": {"v": PK.PEAK_V, "state": "waiting", "tries": 3},
+                    "prevv": {"v": PK.PEAK_V - 1, "state": "ok", "tries": 0}}
+    got = PK.items(None, now, fake)
+    ends = lambda xs: [x["end"] for x in xs]
+    recent = sorted((k for k in fpos if k.startswith("r")), key=lambda k: fpos[k]["t"])
+    rest = sorted([k for k in fpos if k.startswith("o")] + recent[10:] + ["prevv"], key=lambda k: fpos[k]["t"])
+    check(len(got) == PK.PEAK_MAX_ITEMS == 60 and [x["pid"] for x in got[:10]] == recent[:10] and [x["pid"] for x in got[10:]] == rest[:50]
+          and ends(got[10:]) == sorted(ends(got[10:])) and not {"settled", "tried3", "pick", "before"} & {x["pid"] for x in got} and "prevv" in {x["pid"] for x in got},
+          "P9 items: up to 10 windows closed in the last 3 h first, then the backlog oldest first, at most 60; settled docs, 3 tries, pick mode and "
+          "pre-restart positions left out, a doc of an older version priced again (%d items)" % len(got))
+
+
+class _GT:
+    """A stand-in GeckoTerminal for P10. mode: "ok" (flat minute candles at the pool's price), "503", "html" (a block page), "shape"
+    (JSON without ohlcv_list), "429", "hang" (answers after 3 s), "trickle" (the answer a byte every 0.2 s, cut off after 8 s). Every request is noted
+    with the number of memepeak docs on disk at that moment (watch: the run's db folder). "alt": 404 and 503 by turns."""
+
+    def __init__(self, px_of):
+        self.mode, self.px_of, self.calls, self.watch = "ok", px_of, [], None
+        gt = self
+
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                m = re.search(r"/pools/([^/]+)/ohlcv/minute\?(.*)$", self.path)
+                docs = len(glob.glob(os.path.join(gt.watch, "db", "memepeak", "*.json"))) if gt.watch else 0
+                gt.calls.append((m.group(1) if m else self.path, docs))
+                mode = gt.mode
+                if mode == "alt":                     # 503 and 404 by turns: a flaky host that still answers
+                    mode = "503" if len(gt.calls) % 2 else "404"
+                try:
+                    if mode == "404":
+                        self.send_response(404); self.send_header("Content-Length", "0"); self.end_headers()
+                        return
+                    if mode == "503" or mode == "429":
+                        self.send_response(int(mode)); self.send_header("Content-Length", "0"); self.end_headers()
+                        return
+                    if mode == "hang":
+                        threading.Event().wait(3.0)       # not time.sleep: the main selftest turns that off in its process
+                    if mode == "html":
+                        self._send(b"<html><body>Just a moment...</body></html>", "text/html")
+                        return
+                    if mode == "shape":
+                        self._send(json.dumps({"data": {"attributes": {"candles": []}}}).encode(), "application/json")
+                        return
+                    q = urllib.parse.parse_qs(m.group(2))
+                    agg, lim, before = int(q["aggregate"][0]), int(q["limit"][0]), int(q["before_timestamp"][0])
+                    px = gt.px_of.get(m.group(1), 1e-5)
+                    top = before // (60 * agg) * (60 * agg)
+                    lst = [[top - (i + 1) * 60 * agg, px, px, px, px, 1000.0] for i in range(lim)]
+                    raw = json.dumps({"data": {"attributes": {"ohlcv_list": lst}}}).encode()
+                    if mode == "trickle":
+                        self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(raw)))
+                        self.end_headers()
+                        t_end = time.time() + 8.0          # then it hangs up: a client that waits for the whole answer fails late, never hangs
+                        for b in raw:
+                            if time.time() > t_end:
+                                break
+                            self.wfile.write(bytes([b])); self.wfile.flush()
+                            threading.Event().wait(0.2)
+                        return
+                    self._send(raw, "application/json")
+                except OSError:
+                    pass
+
+            def _send(self, raw, ctype):
+                self.send_response(200); self.send_header("Content-Type", ctype); self.send_header("Content-Length", str(len(raw)))
+                self.end_headers(); self.wfile.write(raw)
+
+            def log_message(self, *a):
+                pass
+        self.srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        self.srv.daemon_threads = True
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.url = "http://127.0.0.1:%d" % self.srv.server_address[1]
+
+    def close(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+
+def _p10(check, PK, M, S, tmp):
+    print("== peak P10: GeckoTerminal failing (5xx, timeouts, 429s, a block page, a changed shape, a slow answer)")
+    rec = os.path.join(tmp, "rec")
+    if not os.path.isdir(os.path.join(rec, "db", "memepos")):
+        check(False, "P10 needs the recommend-mode db of P3")
+        return
+    pos = M.positions(rec)
+    gt = _GT({p.get("pair"): M.num(p.get("px")) for p in pos.values()})
+    ends = [PK.window(p)[1] for p in pos.values()]
+    new, old = max(ends) + 3 * HOUR, max(ends) + 54 * HOUR     # every window under 48 h past its end, or every one over it
+    saved = (PK.GT_429_LADDER_S, PK.SETTLE_EVERY, PK.F.TIMEOUT)
+    runs = {}
+
+    def go(name, mode, now, deadline=60.0, d=None):
+        if d is None:
+            d = os.path.join(tmp, "p10-" + name)
+            shutil.copytree(rec, d)
+        gt.mode, gt.calls, gt.watch = mode, [], d
+        lines = []
+        t = time.time()
+        out = PK.run(d, now, deadline, mock=gt.url, log=lines.append)
+        docs = M.load_docs(d, "memepeak")
+        runs[name] = (out, list(gt.calls), docs, lines, time.time() - t, d)
+        return runs[name]
+    try:
+        PK.GT_429_LADDER_S, PK.F.TIMEOUT = (0.05, 0.05, 0.05), 1.0
+        go("503new", "503", new)
+        go("503old", "503", old)
+        go("alt", "alt", new)
+        go("recover", "ok", old, d=runs["503old"][5])
+        go("hang", "hang", old)
+        go("429", "429", old)
+        go("429new", "429", new)
+        go("html", "html", old)
+        go("shape", "shape", old)
+        go("trickle", "trickle", new, deadline=3.0)
+        PK.SETTLE_EVERY = 2
+        go("steps", "ok", new)
+    finally:
+        PK.GT_429_LADDER_S, PK.SETTLE_EVERY, PK.F.TIMEOUT = saved
+        gt.close()
+    n = len(PK.items(rec, old))
+    st = lambda docs: sorted((x["state"], x["tries"], x["src"]) for x in docs.values())
+    o, c, docs, lines, secs, _ = runs["503new"]
+    check(o["why"] == PK.GT_GONE and len(c) == 3 and not docs and sum(1 for l in lines if "giving up on" in l) == 1,
+          "P10 503 on every request, windows under 48 h: GeckoTerminal off after 3 requests, no doc written (%s, %d requests)" % (o["why"], len(c)))
+    o, c, docs, lines, secs, _ = runs["alt"]
+    check(o["why"] == "all asked" and len(c) >= 2 * n - 1 and not any("giving up on" in l for l in lines) and not docs,
+          "P10 503 and 404 by turns: a 404 is an answer, so the 5xx never come three in a row and every window is asked (%s, %d requests)" % (o["why"], len(c)))
+    o, c, docs, lines, secs, _ = runs["503old"]
+    check(o["why"] == PK.GT_GONE and len(c) == 3 and st(docs) == [("waiting", 1, None)] * 3 and all(x["x"] is None for x in docs.values()),
+          "P10 503 on windows over 48 h past their end: the 3 asked ones wait with tries 1, none is estimated, the rest is untouched (%s)" % st(docs))
+    o, c, docs, lines, secs, _ = runs["recover"]
+    check(o["why"] == "all asked" and len(docs) == n and all(x["state"] == "ok" and x["src"] == "m1" and x["x"] == 1.0 for x in docs.values()),
+          "P10 the next healthy run prices every window from minute candles, the 3 that waited included (%s)" % st(docs))
+    o, c, docs, lines, secs, _ = runs["hang"]
+    check(o["why"] == PK.GT_GONE and len(c) == 3 and st(docs) == [("waiting", 1, None)] * 3 and secs < 10,
+          "P10 timeouts: off after 3, the asked old windows wait with tries 1 (%.1f s)" % secs)
+    o, c, docs, lines, secs, _ = runs["429"]
+    o2, c2, docs2, _, _, _ = runs["429new"]
+    check(o["why"] == "GeckoTerminal rate limit" and len(c) == 8 and len({x[0] for x in c[:4]}) == 1 and st(docs) == [("waiting", 1, None)]
+          and sum(1 for l in lines if "waiting 0s" in l) == 6 and o2["why"] == "GeckoTerminal rate limit" and not docs2,
+          "P10 429s: the same window asked 4 times (the 15, 30, 60 s ladder), then it waits for a later run (tries 1 when old, no doc when new); "
+          "8 in the run and GeckoTerminal is given up (%d requests)" % len(c))
+    for name, said in (("html", "not JSON"), ("shape", "without ohlcv_list")):
+        o, c, docs, lines, secs, _ = runs[name]
+        check(o["why"] == PK.GT_SHAPE and len(c) == 1 and not docs and sum(1 for l in lines if said in l and "off for the rest of this run" in l) == 1,
+              "P10 %s: one request, GeckoTerminal off for the run, logged once, no doc (not even for the old window asked) (%s)"
+              % ("a block page (HTML)" if name == "html" else "an answer in another shape", o["why"]))
+    o, c, docs, lines, secs, _ = runs["trickle"]
+    check(o["why"] == "deadline" and len(c) == 1 and not docs and secs <= 4.5,
+          "P10 an answer sent a byte at a time is cut off at the deadline: --deadline-s 3 ended after %.1f s" % secs)
+    o, c, docs, lines, secs, _ = runs["steps"]
+    check(o["why"] == "all asked" and [x[1] for x in c] == [0, 0, 2, 2, 4, 4][:n] and len(docs) == n and o["ok"] == n,
+          "P10 the docs are written as the run goes (every SETTLE_EVERY windows, here 2): docs on disk at each request %s" % [x[1] for x in c])
 
 
 def main():
