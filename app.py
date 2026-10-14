@@ -1041,7 +1041,7 @@ function back(){
   if(!P.key)getKey().then(render);
   else if(P.sub&&!P.saved&&perm()==='granted'){P.busy=true;render();save(false).then(function(){P.busy=false;render();});}
 }
-var TEXT={off:['Off','','Get a notification when the launch radar finds a coin with no trap, and when the pick is made.','Turn on notifications'],
+var TEXT={off:['Off','','Get a notification when the launch radar has a coin with no trap found, and when the pick is made.','Turn on notifications'],
   on:['On','good','This iPhone gets the notifications switched on below.','Turn off notifications'],
   denied:['Blocked','bad','Notifications are blocked for Meme-Bot. Allow them in Settings > Notifications > Meme-Bot, then open the app again.',''],
   unsupported:['Not supported','warn','Notifications need iOS 16.4 or newer. If Meme-Bot was added to the Home Screen from another browser, add it again from Safari and open it from there.',''],

@@ -19,10 +19,11 @@ sys.path.insert(0, HERE)
 import memebot as M
 try:
     import page_radar as PR  # the Radar tab, the trap-check line and the "no good coin" marks (WP5b)
-except ImportError:          # a bare copy of the trader's files (selftest's stand-in spotter runs): the page goes without the radar parts
-    import types
-    PR = types.SimpleNamespace(pane=lambda D: "", CSS="", JS="", tab_label=lambda: "Radar", young=lambda D: {}, row_chips=lambda rt: "", row_attr=lambda rt: "",
-                               row_safety=lambda rt, chip: chip, young_head=lambda t, rows: "", card_trap=lambda c, now=None: "", pick_banner=lambda picks: "")
+except ModuleNotFoundError as e:  # only a copy of the code without page_radar.py (the selftest's stand-in spotter): no radar parts; any other error is raised
+    if e.name != "page_radar":
+        raise
+    PR = __import__("types").SimpleNamespace(pane=lambda D: "", CSS="", JS="", tab_label=lambda: "Radar", young=lambda D: {}, row_chips=lambda rt: "", row_attr=lambda rt: "", row_safety=lambda rt, chip: chip,
+                                             card_safety=lambda c, chip: chip, young_head=lambda t, rows: "", card_trap=lambda c, now=None: "", pick_banner=lambda picks: "")
 
 TITLE = "Meme-Bot Ledger"
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
@@ -1772,7 +1773,7 @@ def rec_card(c, now, embed, peers=None, held=None):
     why = '<details class="more"><summary>%s</summary><p class="why">%s</p></details>' % ("Why it ranks here" if c.get("tier") == "young" else "Why the bot picked it", E(c.get("why") or "")) if c.get("why") else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
             '%s%s%s%s%s%s%s%s%s%s%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")) + story_chip(c), PR.card_trap(c, now),
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), PR.card_safety(c, safety_chip(c.get("ok"))) + story_chip(c), PR.card_trap(c, now),
         stats_html, verdict_html, odds_note, paper_html, safety, why, notes, numbers, chart, links(c), E(c.get("addr")))
 
 
@@ -3103,7 +3104,7 @@ def render(data, fragment=False):
     body = [head]
     tabs = ""
     if D.get("rec"):
-        # three tabs: the pick (and its track record), the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
+        # four tabs: the pick (and its track record), the launch radar, the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_young = safe("new launches", lambda: young_section(D))

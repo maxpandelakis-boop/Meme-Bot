@@ -8,10 +8,12 @@ report.py calls it in a few one-line hooks; everything the page shows of the lau
                        (mb/radar_live.json, whitelisted, at most 48 KB) and then from its polls (the live store's row "radar", else the
                        GitHub contents API on the branch radar-data inside the budget the office poll keeps, else raw.githubusercontent).
                        The script has no rule logic: every chip text comes from the doc (traps.chips, computed by the radar job).
-  young(D)             {address: rating} for the New launches rows: traps.rate(traps.signals_scan(row, mint, walletmem)) at page build,
-                       from recommend.json's young rows, the mint times in mb/pairs.json and mb/walletmem.json.gz. Without pairs.json or
-                       the wallet memory (or one older than 3 hours) the checks that need them are unknown, so no row can be green.
-  row_chips, row_attr, young_head, card_trap   the verdict chip, the one-row trap line, the red tint, the count heading, the detail view
+  young(D)             {address: rating} for the New launches rows: traps.rate(traps.signals_scan(row, mint, walletmem, now, pool)) at
+                       page build, from recommend.json's young rows (now: the scan's time "t"), the mint and pool times in mb/pairs.json
+                       (traps.pair_times: pf / ll createdAt, pairCreatedAt) and mb/walletmem.json.gz. Without pairs.json or the wallet
+                       memory (or one older than 3 hours) the checks that need them are unknown, so no row can be green.
+  row_chips, row_attr, young_head, card_trap, card_safety   the verdict chip, the one-row trap line, the red tint, the count heading,
+                       the detail view, the card's old safety chip
   pick_banner(picks)   the banner over the pick when it is a fallback, risky or watch coin (weak keeps its own chip)
   CSS, JS              the styles (the tab, the line, the detail view) and RADAR_JS (window.MemebotRadar holds its decisions for the tests)
 
@@ -33,12 +35,14 @@ except Exception:          # no tz database: the page says UTC, as report.py doe
 
 DOC_MAX = 48_000           # bytes: the embedded radar.json; over it "others" is trimmed first, then "recent", else nothing is embedded
 WM_MAX_AGE = 3 * 3_600_000  # the wallet memory counts as checked for 3 hours after it was built (the radar job's rule, SPEC 3.2)
-LINE_SHOWN = 4             # chips on the one-row trap line before "+N" (on a phone, up to 560 px: PHONE_SHOWN)
+LINE_SHOWN = 4             # chips on the one-row trap line before "+N" (on a phone, up to 560 px: PHONE_SHOWN); a radar card shows CARD_SHOWN
 PHONE_SHOWN = 2
+CARD_SHOWN = 3
+PHONE_LONG = 28            # a first chip longer than this (characters) is shown alone on a phone, so it stays whole
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 X_LINK = re.compile(r"^https://(www\.)?(x|twitter)\.com/[A-Za-z0-9_]{1,30}(/[A-Za-z0-9_/?=&%.-]{0,90})?$")
 NAME = re.compile(r"^[A-Za-z0-9_.]{1,32}$")
-HOST = re.compile(r"^[A-Za-z0-9.-]{1,24}$")
+HOST = re.compile(r"^[A-Za-z0-9.-][A-Za-z0-9. -]{0,23}$")     # the radar's host labels ("rugcheck", "pump.fun trades")
 LEVELS = ("bad", "warn", "unk", "ok", "info")
 ICON = {"bad": "✕", "warn": "!", "unk": "?", "ok": "✓", "info": "·"}
 VERDICTS = ("good", "watch", "trap")
@@ -57,7 +61,9 @@ LABELS = {"instant_pool": "pool opened with the mint", "rugger_wallets": "holder
           "rc_report": "RugCheck report", "mint_time": "mint time", "walletmem": "wallet memory"}
 UNKNOWN = {"rc_report": "RugCheck pending", "rcReport": "RugCheck pending", "no_rc_report": "RugCheck pending", "mint_time": "mint time unknown",
            "mintToPoolS": "mint time unknown", "instant_pool": "mint time unknown", "walletmem": "wallet memory unavailable",
-           "wmChecked": "wallet memory unavailable", "rugger_wallets": "wallet memory unavailable"}
+           "wmChecked": "wallet memory unavailable", "rugger_wallets": "wallet memory unavailable", "brand_name": "name unknown", "bot_volume": "buys unknown"}
+# the study's outcomes (radar_weights.json evidence rows) in words, for the why fold
+OUTCOMES = {"rug1h": "rugged within 1 h", "rug2h": "rugged within 2 h", "rugAny": "rugged at any time", "win1h": "doubled within 1 h", "win2h": "doubled within 2 h"}
 # the raw signal values (traps S keys) in words, for the Numbers tab
 SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to pool, seconds", "swAvg": "holders' past result per 20", "rugHolders": "holders from rugged coins",
          "wmChecked": "wallet memory checked", "brand": "brand or celebrity name", "buys": "buys so far", "rcReport": "RugCheck report", "rcDanger": "RugCheck danger",
@@ -270,26 +276,47 @@ def load_wm(d, ref):
     return wm
 
 
-def load_mints(d, addrs):
-    """{address: mint ms} from mb/pairs.json (pump.fun or LaunchLab createdAt) for the given addresses."""
+def _pair_times(p):
+    """(mint ms, pool ms) of one mb/pairs.json entry, as traps.pair_times reads it: the mint from pump.fun or LaunchLab createdAt, the
+    pool from DexScreener's pairCreatedAt."""
+    mint = M.parse_ms((p.get("pf") or {}).get("createdAt")) if isinstance(p.get("pf"), dict) else None
+    if not mint and isinstance(p.get("ll"), dict):
+        mint = M.parse_ms(p["ll"].get("createdAt"))
+    pool = _num(p.get("pairCreatedAt"))
+    return mint or None, (pool if pool and pool > 1e12 else None)
+
+
+def load_times(d, addrs, T=None):
+    """{address: (mint ms, pool ms)} from mb/pairs.json for the given addresses (traps.pair_times when the rule core has it). A coin
+    that is in pairs.json gets an entry even when both times are unknown."""
     out, want = {}, set(addrs)
     try:
         with open(os.path.join(d, "pairs.json"), encoding="utf-8") as f:
             pairs = json.load(f)
     except (OSError, ValueError):
         return out
+    pt = getattr(T, "pair_times", None) or _pair_times
     for p in pairs if isinstance(pairs, list) else []:
         a = p.get("address") if isinstance(p, dict) else None
         if a in want:
-            ms = M.parse_ms((p.get("pf") or {}).get("createdAt")) or M.parse_ms((p.get("ll") or {}).get("createdAt"))
-            if ms:
-                out[a] = ms
+            try:
+                mint, pool = pt(p)
+            except Exception:
+                mint, pool = None, None
+            out[a] = (_num(mint) or None, _num(pool) or None)
     return out
 
 
-def rating_of(T, W, y, mint, wm):
-    """One young row rated by the rule core; the page keeps the verdict, the lists, the chip line and the raw values."""
-    S = T.signals_scan(y, mint, wm)
+def rating_of(T, W, y, times, wm, now):
+    """One young row rated by the rule core; the page keeps the verdict, the lists, the chip line and the raw values. times: the row's
+    (mint, pool) from mb/pairs.json, or None when pairs.json does not have the coin; now: the scan's time (recommend.json "t"). With
+    no pool time the rule core counts the pool from now minus the row's age (f.ageH); but when pairs.json has the coin without a
+    pool time, memebot measured that age from the mint (feats: pump.fun createdAt), so it is left out: the mint-to-pool gap stays
+    unknown instead of reading as a pool opened with the mint."""
+    mint, pool = times or (None, None)
+    if times is not None and pool is None and isinstance(y.get("f"), dict) and "ageH" in y["f"]:
+        y = dict(y, f={k: v for k, v in y["f"].items() if k != "ageH"})
+    S = T.signals_scan(y, mint, wm, now=now, pool=pool)
     r = T.rate(S, W)
     line = _line(T.chips(r, S))
     keep = {k: v for k, v in (S or {}).items() if isinstance(k, str) and NAME.match(k)} if isinstance(S, dict) else {}
@@ -298,7 +325,7 @@ def rating_of(T, W, y, mint, wm):
             keep[k] = "not an x.com link"
     return {"v": r.get("verdict") if r.get("verdict") in VERDICTS else "watch", "n": _num(r.get("n")), "pts": _num(r.get("pts")),
             "hard": _names(r.get("hard")), "soft": _names(r.get("soft")), "unknown": _names(r.get("unknown")), "plus": _names(r.get("plus")),
-            "info": _names(r.get("info")), "line": line, "S": _dmap(keep), "mint": mint}
+            "info": _names(r.get("info")), "line": line, "S": _dmap(keep), "mint": mint, "pool": pool}
 
 
 def data(D):
@@ -328,14 +355,14 @@ def data(D):
         else:
             ref = M.num(rec.get("t")) or M.num(D.get("now"))
             wm = load_wm(d, ref) if d else None
-            mints = load_mints(d, [c["addr"] for c in young]) if d else {}
+            times = load_times(d, [c["addr"] for c in young], T) if d else {}
             try:
                 W = T.load_weights()
             except Exception:
                 W = None
             for c in young:
                 try:
-                    out["young"][c["addr"]] = rating_of(T, W, c, mints.get(c["addr"]), wm) if W is not None else None
+                    out["young"][c["addr"]] = rating_of(T, W, c, times.get(c["addr"]), wm, ref) if W is not None else None
                 except Exception:
                     out["young"][c["addr"]] = None        # a row the rule core could not rate says so; it is never green
     D["_radar"] = out
@@ -375,11 +402,12 @@ def line_html(line, shown=LINE_SHOWN):
     if not line:
         return ""
     k = min(len(line), shown)
-    chips = "".join('<span class="tc %s%s"><b aria-hidden="true">%s</b>%s</span>' % (lv, " x2" if i >= PHONE_SHOWN else "", ICON[lv], E(t)) for i, (lv, t) in enumerate(line[:k]))
+    ph = 1 if len(line[0][1]) > PHONE_LONG else PHONE_SHOWN
+    chips = "".join('<span class="tc %s%s"><b aria-hidden="true">%s</b>%s</span>' % (lv, " x2" if i >= ph else "", ICON[lv], E(t)) for i, (lv, t) in enumerate(line[:k]))
     if len(line) > k:
         chips += '<span class="tc more m4">+%d</span>' % (len(line) - k)
-    if len(line) > PHONE_SHOWN:
-        chips += '<span class="tc more m2">+%d</span>' % (len(line) - PHONE_SHOWN)
+    if len(line) > ph:
+        chips += '<span class="tc more m2">+%d</span>' % (len(line) - ph)
     return '<div class="tline" title="%s">%s</div>' % (E(" · ".join(t for _, t in line)), chips)
 
 
@@ -396,6 +424,11 @@ def row_safety(rt, chip):
     return "" if rt and 'class="chip"' in chip and "flagged" not in chip else chip
 
 
+def card_safety(c, chip):
+    """A New launches card's old safety chip beside its trap block: as on the row (row_safety); any other card keeps it."""
+    return row_safety(c.get("_trap"), chip) if c.get("tier") == "young" and "_trap" in c else chip
+
+
 def row_attr(rt):
     return ' class="trap"' if rt and rt.get("v") == "trap" else ""
 
@@ -406,8 +439,8 @@ def young_head(ratings, rows):
     if not rts:
         return ""
     good = sum(1 for r in rts if r and r.get("v") == "good")
-    return ('<p class="tsum"><span class="chip good">%d without traps</span><span class="chip%s">%d with traps or unchecked</span></p>' % (
-        good, " bad" if len(rts) - good else "", len(rts) - good))
+    return ('<p class="tsum"><span class="chip%s">%d without traps</span><span class="chip%s">%d with traps or unchecked</span></p>' % (
+        " good" if good else "", good, " bad" if len(rts) - good else "", len(rts) - good))
 
 
 def label(name, level):
@@ -479,7 +512,7 @@ def card_trap(c, now=None):
     if c.get("tier") != "young" or "_trap" not in c:
         return ""
     rt = c.get("_trap")
-    head = '<div class="ttrap">%s%s</div>' % (verdict_chip(rt), line_html((rt or {}).get("line"), 6))
+    head = '<div class="ttrap">%s%s</div>' % (verdict_chip(rt), line_html((rt or {}).get("line")))
     if not rt:
         return head
     f = c.get("f") if isinstance(c.get("f"), dict) else {}
@@ -507,40 +540,61 @@ def pick_banner(picks):
 
 
 # ------------------------------------------------------------------------------------------------------------------ the Radar tab
-def _ev_text(e):
-    """One evidence entry of radar_weights.json in words: rug rate with and without, lift and its interval, n. The field names are the
-    weights file's; anything else is shown as it is."""
+def _ev_row(e):
+    """The headline row of one evidence entry of radar_weights.json ({label, rows: [{cohort, outcome, with, without, n, lift, lo, hi,
+    verdict, ...}]}): the listed new launches (cohort L) and a rug outcome first, a row whose verdict holds first, then the biggest n.
+    A flat entry with those keys counts as its own row. None when no row has both rates."""
     if not isinstance(e, dict):
-        return _str(e, 160)
-    low = {str(k).lower(): v for k, v in e.items()}
-    rate = lambda v: ("%d%%" % round(100 * v) if v <= 1 else "%d%%" % round(v)) if _num(v) is not None else None
-
-    def pick(*keys):
-        for k in keys:
-            if k.lower() in low:
-                return low[k.lower()]
         return None
-    w, wo, lift, n = pick("rugWith", "with", "rw", "rug_with"), pick("rugWithout", "without", "rwo", "rug_without"), pick("lift", "ratio"), pick("n", "nWith")
-    ci = pick("ci", "ci95", "interval")
-    lo, hi = (ci[0], ci[1]) if isinstance(ci, list) and len(ci) == 2 else (pick("lo"), pick("hi"))
-    if isinstance(w, dict):
-        w = w.get("rate")
-    if isinstance(wo, dict):
-        wo = wo.get("rate")
-    bits = []
-    if rate(w) and rate(wo):
-        bits.append("rug in 1 h: %s with, %s without" % (rate(w), rate(wo)))
-    if _num(lift) is not None:
-        bits.append("lift %.2g" % lift + (" [%.2g-%.2g]" % (lo, hi) if _num(lo) is not None and _num(hi) is not None else ""))
-    if _num(n) is not None:
-        bits.append("n %d" % n)
-    if bits:
-        return " · ".join(bits)
-    return " · ".join("%s %s" % (k, fmt_val(v)) for k, v in list(e.items())[:5] if _scalar(v)[0])
+    rows = e.get("rows") if isinstance(e.get("rows"), list) else [e]
+    rows = [r for r in rows if isinstance(r, dict) and _num(r.get("with")) is not None and _num(r.get("without")) is not None]
+    if not rows:
+        return None
+    return max(rows, key=lambda r: (r.get("cohort") == "L", str(r.get("outcome") or "").startswith("rug"),
+                                    str(r.get("verdict") or "").lower().startswith("holds"), _num(r.get("n")) or 0))
+
+
+def _ev_text(e):
+    """One evidence entry in words: "rugged within 1 h: 60% with it, 13% without · 4.6x (95%: 3.5-6.4) · 397 coins"; "" without one."""
+    r = _ev_row(e)
+    if not r:
+        return ""
+    rate = lambda v: "%d%%" % round(100 * v if v <= 1 else v)
+    oc = OUTCOMES.get(str(r.get("outcome") or "")) or re.sub(r"^rug\b", "rugged", re.sub(r"^win\b", "doubled", _str(r.get("outcome"), 30))) or "rugged"
+    bits = ["%s: %s with it, %s without" % (oc, rate(r["with"]), rate(r["without"]))]
+    lift, lo, hi = _num(r.get("lift")), _num(r.get("lo")), _num(r.get("hi"))
+    if lift is not None:
+        bits.append("%.2gx" % lift + (" (95%%: %.2g-%.2g)" % (lo, hi) if lo is not None and hi is not None else ""))
+    if _num(r.get("n")) is not None:
+        bits.append("%d coins" % r["n"])
+    return " · ".join(bits)
+
+
+def _zero_list(zero):
+    """The weight-0 list of radar_weights.json ([{signal, label, reason, note, rows}], or {name: reason}) as [(reason, [labels])]."""
+    items = []
+    if isinstance(zero, dict):
+        items = [(k, v) for k, v in zero.items()]
+    elif isinstance(zero, list):
+        for z in zero:
+            if isinstance(z, dict):
+                nm = z.get("label") or z.get("signal") or z.get("name")
+                items.append((nm, z.get("reason") or z.get("why") or ""))
+            elif isinstance(z, (list, tuple)) and z:
+                items.append((z[0], z[1] if len(z) > 1 else ""))
+            elif isinstance(z, str):
+                items.append((z, ""))
+    by = {}
+    for nm, why in items:
+        nm = _str(nm, 60).strip()
+        if nm:
+            by.setdefault(_str(why, 40).strip() or "no effect", []).append(LABELS.get(nm, nm.replace("_", " ")))
+    return list(by.items())
 
 
 def why_fold(W):
-    """The "Why these checks?" fold: what decides, what only ranks, what is only measured, with the study's evidence (radar_weights.json)."""
+    """The "Why these checks?" fold: what decides (traps, warnings) with the study's evidence (radar_weights.json), what got weight 0 and
+    why, what is only measured."""
     notes = ('<ul class="rwhy-notes"><li>Green means no trap found in the checks that ran. A check that could not run (RugCheck pending, mint time or wallet memory unknown) blocks the green.</li>'
              '<li>The dev history, snipers, bundles, fresh wallets, funding clusters and copied X links are measured and shown grey. They get weight only when the radar\'s own records confirm them.</li>'
              '<li>Not in v1: coins still on the bonding curve. Later prices and the 1-hour peak are measured on the pool the radar saw.</li>'
@@ -550,31 +604,23 @@ def why_fold(W):
         ev = W.get("evidence")
         evd = ev if isinstance(ev, dict) else {str(x.get("name") or x.get("sig") or x.get("signal") or i): x for i, x in enumerate(ev)} if isinstance(ev, list) and all(isinstance(x, dict) for x in ev) else {}
         pts = W.get("points") if isinstance(W.get("points"), dict) else {}
-        rows = []
-        for kind, names in (("trap", W.get("hard")), ("warning", W.get("soft"))):
+        for kind, cls, names, what in (("trap", "bad", W.get("hard"), "Traps: one is enough, the coin is never green"),
+                                       ("warning", "warn", W.get("soft"), "Warnings: two or more block the green")):
+            items = []
             for nme in _names(names, 30):
                 p = _num(pts.get(nme))
-                rows.append('<tr><td>%s</td><td>%s%s</td><td>%s</td></tr>' % (E(LABELS.get(nme, nme.replace("_", " "))), E(kind), E(" · %g pt" % p if p is not None else ""), E(_ev_text(evd.get(nme)) or "–")))
-        if rows:
-            body += '<div class="tbl stack"><table><thead><tr><th>check</th><th>counts as</th><th>study evidence</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(rows)
-        zero = W.get("zero")
-        zl = []
-        if isinstance(zero, dict):
-            zl = [(k, v) for k, v in zero.items()]
-        elif isinstance(zero, list):
-            for z in zero:
-                if isinstance(z, dict):
-                    zl.append((z.get("name") or z.get("sig") or "?", z.get("why") or z.get("reason") or ""))
-                elif isinstance(z, (list, tuple)) and z:
-                    zl.append((z[0], z[1] if len(z) > 1 else ""))
-                elif isinstance(z, str):
-                    zl.append((z, ""))
+                ev_t = _ev_text(evd.get(nme))
+                items.append('<li><span class="rw-n">%s</span><span class="chip %s">%s</span>%s</li>' % (
+                    E(LABELS.get(nme, nme.replace("_", " "))), cls, E(kind + (" · %g pt" % p if p is not None else "")), ('<small>%s</small>' % E(ev_t)) if ev_t else ""))
+            if items:
+                body += '<h5 class="rw-h">%s</h5><ul class="rwhy-list">%s</ul>' % (E(what), "".join(items))
+        zl = _zero_list(W.get("zero"))
         if zl:
             body += '<p class="note"><strong>Weight 0</strong> (did not hold up in our data): %s.</p>' % E("; ".join(
-                "%s%s" % (LABELS.get(str(k), str(k).replace("_", " ")), (": " + _str(v, 80)) if isinstance(v, str) and v else "") for k, v in zl[:12]))
+                "%s: %s" % (why, ", ".join(nms)) for why, nms in zl))
         src = _str(W.get("src"), 40)
         if src:
-            body += '<p class="note">Weights: %s.</p>' % E(src)
+            body += '<p class="note">Weights: %s. Each rate is the share of coins that rugged with and without the sign, in the study.</p>' % E(src)
     else:
         body = '<p class="note">The study weights are not in this build.</p>'
     return ('<details class="rfold rwhy"><summary><span class="t">Why these checks?</span></summary><div class="rfold-in">'
@@ -625,17 +671,21 @@ CSS = r"""
 #tab-radar:checked ~ .tabbar label[for="tab-radar"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
 #tab-radar:checked ~ #pane-radar { display:grid }
 .tabbar .cnt.good { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) }
-.tline { display:flex; flex-wrap:nowrap; gap:4px; min-width:0; max-width:100%; overflow:hidden; flex:1 1 100% }
+.tline { display:flex; flex-wrap:nowrap; gap:4px; min-width:0; max-width:100%; overflow:hidden; flex:1 1 100%; contain:inline-size }   /* its chips never widen a table column */
 .tc { display:inline-flex; align-items:center; gap:4px; flex:0 1 auto; min-width:2.6em; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
   font-size:var(--fs-xs); line-height:1.4; padding:2px 8px 2px 6px; border-radius:999px; background:var(--chip); color:var(--fg2) }
-.tc b { flex:none; font-weight:700; width:1em; text-align:center }
+.tc b { flex:none; font-weight:700; min-width:1em; text-align:center }
+/* the one-row line: the first chip (the worst finding) stays whole and gives way only after the others have shrunk to a stub (their
+   shrink factor is so much larger that the first one's share stays under a layout unit, so no stray ellipsis); "+N" never shrinks */
+.tline .tc { display:block; flex:0 100000 auto; min-width:3.2em } .tline .tc:first-child { flex:0 1 auto; min-width:0; max-width:100% }
+.tline .tc b { display:inline-block; margin-right:3px }
 .tc.bad { background:color-mix(in srgb,var(--bad-mark) 15%,var(--surface)); color:var(--bad) }
 .tc.warn { background:color-mix(in srgb,var(--warn-mark) 17%,var(--surface)); color:var(--warn) }
 .tc.unk { background:var(--chip); color:var(--fg2); box-shadow:inset 0 0 0 1px var(--line) }
 .tc.ok { background:color-mix(in srgb,var(--good-mark) 13%,var(--surface)); color:var(--good) }
 .tc.info { background:none; color:var(--muted); box-shadow:inset 0 0 0 1px var(--line2) }
-.tc.more { flex:none; min-width:0; background:none; color:var(--muted); padding-inline:4px }
-.tline .tc { display:inline-block } .tline .tc.m2 { display:none }
+.tline .tc.more { flex:none; min-width:0; background:none; color:var(--muted); padding-inline:4px }
+.tline .tc.m2 { display:none }
 @media (max-width:560px) { .tline .tc.x2, .tline .tc.m4 { display:none } .tline .tc.m2 { display:inline-block } }
 .radar [hidden], .tdet [hidden] { display:none !important }
 .chip.tv { font-weight:600 }
@@ -643,10 +693,10 @@ CSS = r"""
 .tbl tr.trap { background:color-mix(in srgb,var(--bad-mark) 7%,var(--surface)) } .tbl tr.trap > td:first-child { box-shadow:inset 3px 0 0 var(--bad-mark) }
 @media (max-width:560px) { .stack tr.trap { box-shadow:inset 3px 0 0 var(--bad-mark) } .stack tr.trap > td:first-child { box-shadow:none } }
 .ttrap { display:grid; gap:6px; min-width:0 } .ttrap .chip { justify-self:start }
-details.tdet > summary { color:var(--accent); font-weight:500; min-height:32px; display:flex; align-items:center }
+details.tdet > summary { color:var(--accent); font-weight:500; min-height:44px; display:flex; align-items:center }
 .dtabs { display:grid; gap:10px; margin-top:8px; min-width:0 } .dtabs > input { position:absolute; opacity:0; pointer-events:none }
 .dtabbar { display:flex; gap:4px; flex-wrap:wrap; border-bottom:1px solid var(--line2); padding-bottom:6px }
-.dtabbar label { cursor:pointer; padding:5px 9px; border-radius:999px; font-size:var(--fs-s); font-weight:500; color:var(--fg2); min-height:36px; display:inline-flex; align-items:center }
+.dtabbar label { cursor:pointer; padding:5px 10px; border-radius:999px; font-size:var(--fs-s); font-weight:500; color:var(--fg2); min-height:44px; display:inline-flex; align-items:center }
 .dtabbar label:hover { color:var(--fg) }
 .dpane { display:none; min-width:0 }
 .dtabs > input:nth-of-type(1):checked ~ .dpanes > .dpane:nth-child(1), .dtabs > input:nth-of-type(2):checked ~ .dpanes > .dpane:nth-child(2),
@@ -667,7 +717,7 @@ details.tdet > summary { color:var(--accent); font-weight:500; min-height:32px; 
 .nogood.bad { background:color-mix(in srgb,var(--bad-mark) 12%,var(--surface)); color:var(--bad); border:1px solid color-mix(in srgb,var(--bad-mark) 45%,var(--line)) } .nogood.bad b { background:var(--bad-mark) }
 /* the Radar tab */
 .radar { display:grid; gap:14px; min-width:0 }
-.rhead { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; justify-content:space-between }
+.rhead { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; justify-content:space-between; position:relative }
 .rpill { margin:0; display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:6px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line);
   font-size:var(--fs-s); color:var(--fg2); font-variant-numeric:tabular-nums; min-width:0; max-width:100% }
 .rpill span { min-width:0; overflow-wrap:anywhere }
@@ -675,12 +725,12 @@ details.tdet > summary { color:var(--accent); font-weight:500; min-height:32px; 
 .rpill[data-st="running"] .rdot { background:var(--good-mark); animation:rpulse 2s ease-in-out infinite } .rpill[data-st="late"] .rdot { background:var(--warn-mark) }
 .rpill[data-st="stopped"] .rdot { background:var(--bad-mark) } .rpill[data-st="running"] { color:var(--fg) }
 @keyframes rpulse { 50% { opacity:.35 } }
-.ractions { display:flex; align-items:center; gap:8px; position:relative }
+.ractions { display:flex; align-items:center; gap:8px }
 .rbtn { display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:999px; background:var(--accent); color:#fff; font-weight:500; font-size:var(--fs-s) }
 .rbtn.quiet { background:var(--chip); color:var(--fg); border:1px solid var(--line) } .rbtn:hover, .rbtn:focus-visible { text-decoration:none; filter:brightness(1.08) }
 details.rinfo > summary { list-style:none; width:44px; height:44px; display:grid; place-items:center; border-radius:50%; color:var(--muted); font-size:18px; cursor:pointer }
 details.rinfo > summary::-webkit-details-marker { display:none }
-details.rinfo[open] > p { position:absolute; right:0; top:48px; z-index:5; width:min(320px,calc(100vw - 32px)); margin:0; padding:10px 12px; border-radius:8px;
+details.rinfo[open] > p { position:absolute; right:0; top:calc(100% + 6px); z-index:5; width:min(320px,100%); box-sizing:border-box; margin:0; padding:10px 12px; border-radius:8px;
   background:var(--surface); border:1px solid var(--line); box-shadow:0 6px 24px rgba(0,0,0,.14); font-size:var(--fs-s); color:var(--fg2) }
 .rstats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:var(--surface); border:1px solid var(--line); border-radius:8px }
 .rstats > div { padding:10px 12px; display:grid; gap:2px; min-width:0 } .rstats > div + div { border-left:1px solid var(--line2) }
@@ -691,7 +741,7 @@ details.rinfo[open] > p { position:absolute; right:0; top:48px; z-index:5; width
 .rcards { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:10px }
 @media (min-width:760px) { .rcards { grid-template-columns:repeat(2,minmax(0,1fr)) } }
 .rcard { background:var(--surface); border:1px solid color-mix(in srgb,var(--good-mark) 40%,var(--line)); border-radius:10px; min-width:0; display:grid }
-.rcard.dim { opacity:.72; border-color:var(--line); border-style:dashed }
+.rcard.dim { opacity:.72; border-color:var(--line); border-style:dashed } .rcard.dim .chip.tv { background:var(--chip); color:var(--fg2) }
 .rcard > details > summary { list-style:none; cursor:pointer; padding:12px 14px 10px; display:grid; gap:6px; min-width:0; color:var(--fg) }
 .rcard > details > summary::-webkit-details-marker { display:none }
 .rcard > details[open] > summary { border-bottom:1px solid var(--line2) } .rcard > details > .dtabs { padding:0 14px 12px }
@@ -725,6 +775,9 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 .rrec th { border-top:0 } .rrec td:nth-child(2), .rrec th:nth-child(2), .rrec td:first-child, .rrec th:first-child { text-align:left } .rrec td:nth-child(2) { max-width:9ch; overflow:hidden; text-overflow:ellipsis; font-weight:600 } .rrec-w .tnote { margin-top:6px }
 .mx.up { color:var(--good) } .mx.dn { color:var(--bad) } .mx.na { color:var(--muted) } .rrec .oc.bad { color:var(--bad) } .rrec .oc.good { color:var(--good) }
 .rwhy-notes { margin:0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2); display:grid; gap:4px }
+.rw-h { margin:4px 0 0; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600 }
+.rwhy-list { list-style:none; margin:0; padding:0; display:grid; gap:8px } .rwhy-list li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; min-width:0 }
+.rwhy-list .rw-n { font-weight:500 } .rwhy-list .chip { font-size:var(--fs-xs) } .rwhy-list small { flex-basis:100%; color:var(--fg2); font-size:var(--fs-xs); font-variant-numeric:tabular-nums }
 .rmodel:empty { display:none } details.rfold.dim .rrows { opacity:.7 }
 @media (max-width:560px) { .rstats { grid-template-columns:1fr 1fr } .rstats > div:nth-child(3) { border-left:0 } .rstats > div:nth-child(n+3) { border-top:1px solid var(--line2) }
   .rhead { gap:8px } .rpill { width:100% } .rrec th, .rrec td { padding:6px 3px } .rrec .ow { display:none } .rrec td:nth-child(2) { max-width:7ch } }
@@ -735,7 +788,7 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 JS = r"""
 (function(){
 var LV=['bad','warn','unk','ok','info'],IC={bad:'✕',warn:'!',unk:'?',ok:'✓',info:'·'};
-var B58=/^[1-9A-HJ-NP-Za-km-z]{32,48}$/,XL=/^https:\/\/(www\.)?(x|twitter)\.com\/[A-Za-z0-9_]{1,30}(\/[A-Za-z0-9_\/?=&%.-]{0,90})?$/,NM=/^[A-Za-z0-9_.]{1,32}$/,HN=/^[A-Za-z0-9.-]{1,24}$/;
+var B58=/^[1-9A-HJ-NP-Za-km-z]{32,48}$/,XL=/^https:\/\/(www\.)?(x|twitter)\.com\/[A-Za-z0-9_]{1,30}(\/[A-Za-z0-9_\/?=&%.-]{0,90})?$/,NM=/^[A-Za-z0-9_.]{1,32}$/,HN=/^[A-Za-z0-9.-][A-Za-z0-9. -]{0,23}$/;
 var LABELS=__LABELS__,UNK=__UNKNOWN__,SK=__SKEYS__,MEASURED=__MEASURED__,INFO=__INFO__;
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function num(v){return isn(v)?v:null;}
@@ -758,8 +811,11 @@ function coin(c,full){
   if(typeof c.x==='string'&&XL.test(c.x))o.x=c.x;
   return o;}
 function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
+function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
+function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
+function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
 var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
-  TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,PHONE:2,RECENT:10800000,
+  TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
     if(!d||typeof d!=='object'||d.kind!=='radar'||ms(d.t)==null)return null;
@@ -816,6 +872,18 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,RESERVE:10,GH_MI
     var f=Math.max(0,Math.min(10,+o.fails||0));if(f)t=Math.max(t,now+Math.min(1800000,75000*Math.pow(2,f)));
     return Math.max(t,now+1000);},
   good:function(doc){return doc&&Array.isArray(doc.coins)?doc.coins.filter(function(c){return c&&c.v==='good';}).length:0;},
+  // the trained odds of a coin's numbers (info only): d.upP / d.zeroP, or d.odds {up, zero}; [up, zero] or null
+  odds:function(d){d=obj(d);var o=obj(d.odds),up=isn(d.upP)?d.upP:isn(o.up)?o.up:null,z=isn(d.zeroP)?d.zeroP:isn(o.zero)?o.zero:null;return up==null?null:[up,z];},
+  // "just now" under a minute, else "34 min ago"
+  ago:function(msAgo){return !isn(msAgo)?'?':msAgo<60000?'just now':dur(msAgo/60000)+' ago';},
+  // the record line (SPEC 3.4) in full, inside the Track record fold, and its short form on the fold's title
+  recLine:function(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s')+' without traps';
+    if(!(r.n60>=R.TOO_FEW))return s+' · too few calls for a record yet ('+(isn(r.n60)?r.n60:0)+' of '+R.TOO_FEW+' with a 1 h price)';
+    s+=' · 1 h later: '+p0(r.rug)+' rugged, '+p0(r.win)+' doubled';
+    var ci=r.ci||{};if(ci.rug&&ci.win)s+=' (95%: '+p0(ci.rug[0])+'-'+p0(ci.rug[1])+' / '+p0(ci.win[0])+'-'+p0(ci.win[1])+')';
+    if(isn(r.eur))s+=' · paper, '+(isn(r.ticket)?r.ticket:3)+' € each: '+eur(r.eur);return s;},
+  recShort:function(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s');
+    return r.n60>=R.TOO_FEW?s+' · '+p0(r.rug)+' rugged · '+p0(r.win)+' doubled':s+' · too few for a record yet';},
   verdict:function(c){if(!c)return ['','? trap check unavailable'];
     if(c.v==='good')return ['good','✓ No trap found'+(c.n?' · '+c.n+' checks':'')];
     if(c.v==='trap'){var k=(c.hard||[]).length;return ['bad',k>1?'✕ '+k+' traps':'✕ trap'];}
@@ -836,7 +904,7 @@ function go(){
   var sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var KEY='memebot-radar '+(src||sbUrl||'page'),$=function(s){return box.querySelector(s);};
   var tR=document.getElementById('tab-radar'),tO=document.getElementById('tab-office');
-  var S={doc:null,got:0,moved:false,next:0,fails:0,rem:null,reset:0,remAt:0,last:0,at:0,via:'',back:0},busy=false,key=null,cards=[];
+  var S={doc:null,got:0,moved:false,next:0,fails:0,rem:null,reset:0,remAt:0,last:0,at:0,via:'',back:0},busy=false,key=null,cards=[],startA=null,ghNow=false,ghFor=null;
   try{S.doc=R.clean(JSON.parse(document.getElementById('radar-doc').textContent));}catch(e){}
   function now(){return Date.now();}
   function inApp(){return root.classList.contains('app');}
@@ -852,13 +920,10 @@ function go(){
   function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
   function usd(v){if(!isn(v))return '?';var a=Math.abs(v),f=function(x){return x.toFixed(1).replace(/\.0$/,'');};return '$'+(a>=1e9?f(v/1e9)+'B':a>=1e6?f(v/1e6)+'M':a>=1e3?f(v/1e3)+'k':v.toFixed(0));}
   function pc(v){return isn(v)?(v>0?'+':v<0?'−':'')+Math.round(Math.abs(v))+'%':'?';}
-  function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
-  function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
-  function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
   function mult(v){return isn(v)?(v>=10?Math.round(v):v.toFixed(2))+'x':'–';}
   function chip(text,cls){return el('span','chip'+(cls?' '+cls:''),text);}
   function link(name,url){var a=el('a','',name);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;}
-  function lineEl(ln,k){ln=ln||[];var d=el('div','tline'),n=Math.min(ln.length,k||R.SHOWN),p=R.PHONE;d.title=ln.map(function(x){return x[1];}).join(' · ');
+  function lineEl(ln,k){ln=ln||[];var d=el('div','tline'),n=Math.min(ln.length,k||R.SHOWN),p=ln.length&&ln[0][1].length>R.LONG?1:R.PHONE;d.title=ln.map(function(x){return x[1];}).join(' · ');
     for(var i=0;i<n;i++){var s=el('span','tc '+ln[i][0]+(i>=p?' x2':'')),b=el('b','',IC[ln[i][0]]);b.setAttribute('aria-hidden','true');s.appendChild(b);s.appendChild(document.createTextNode(ln[i][1]));d.appendChild(s);}
     if(ln.length>n)d.appendChild(el('span','tc more m4','+'+(ln.length-n)));if(ln.length>p)d.appendChild(el('span','tc more m2','+'+(ln.length-p)));return d;}
   function kv(rows){var w=el('div','dkv');rows.forEach(function(r){if(r[1]==null||r[1]==='')return;var d=el('div');d.appendChild(el('span','k',r[0]));d.appendChild(el('span','v',r[1]));w.appendChild(d);});
@@ -885,13 +950,13 @@ function go(){
     var ag=el('span','rage',ageText(c,live,docAge));top.appendChild(ag);li._age=ag;li._c=c;sm.appendChild(top);
     var nums=el('div','rnums');[['liq',usd(c.liq)],['mc',usd(c.mc)],['5 min',pc(c.m5)]].forEach(function(x){var s=el('span');s.appendChild(el('i','',x[0]));s.appendChild(document.createTextNode(x[1]));nums.appendChild(s);});
     sm.appendChild(nums);
-    var ch=el('div','rchips'),vd=R.verdict(c);ch.appendChild(chip(vd[1],'tv '+vd[0]));if(!live)ch.appendChild(chip('as of '+hhmm(+S.doc.t)));ch.appendChild(el('span','rmore','details ›'));sm.appendChild(ch);
-    sm.appendChild(lineEl(c.line));det.appendChild(sm);
+    var ch=el('div','rchips'),vd=R.verdict(c);ch.appendChild(chip(vd[1],'tv'+(live?' '+vd[0]:'')));if(!live)ch.appendChild(chip('as of '+hhmm(+S.doc.t)));ch.appendChild(el('span','rmore','details ›'));sm.appendChild(ch);
+    sm.appendChild(lineEl(c.line,R.CARD));det.appendChild(sm);
     var d=c.d||{},ov=[['price',isn(c.px)?'$'+(+c.px.toPrecision(3)):null],['pool age',ageText(c,live,docAge)],['liquidity',usd(c.liq)],['market cap',usd(c.mc)],['change in 5 min',pc(c.m5)],
       ['buys / sells',isn(c.buys)?Math.round(c.buys)+' / '+(isn(c.sells)?Math.round(c.sells):'?'):null],['first seen',isn(c.first)?hhmm(c.first):null],['found by',(c.found||[]).join(', ')||null],
       ['DEX',c.dex||null],['launchpad',c.lp||null]];
     var parts=[['Overview',[kv(ov)]],['Trap check',trapPane(c)],['Numbers',[kv(Object.keys(d).sort().map(function(k){return [SK[k]||k,val(d[k])];}))]]];
-    if(isn(d.upP))parts[0][1].push(el('p','tnote','Trained odds (info only): '+p0(d.upP)+' profit'+(isn(d.zeroP)?', '+p0(d.zeroP)+' zero':'')+'. Not used: on coins under 1 h they did not separate winners.'));
+    var od=R.odds(d);if(od)parts[0][1].push(el('p','tnote','Trained odds (info only): '+p0(od[0])+' profit'+(isn(od[1])?', '+p0(od[1])+' zero':'')+'. Not used: on coins under 1 h they did not separate winners.'));
     if(rec){var lp=[laterTable([rec])];if(rec.peak60)lp.push(el('p','tnote','Best close within 1 h (hindsight): '+mult(rec.peak60.x)+(isn(rec.peak60.at)?' at '+hhmm(rec.peak60.at):'')));
       parts.push(['Later',lp]);}
     det.appendChild(dtabs('rd'+i+'-'+(+S.doc.t%1e7),parts,1));li.appendChild(det);
@@ -908,11 +973,6 @@ function go(){
       var o=r.out,oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(r.later&&r.later['60']))?['','✓','alive']:['muted','…','pending'];
       var td=el('td','oc '+oc[0],oc[1]);td.title=oc[2];td.appendChild(el('span','ow',' '+oc[2]));tr.appendChild(td);tb.appendChild(tr);});
     t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money)'));return w;}
-  function recLine(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s')+' without traps';
-    if(!(r.n60>=20))return s+' · too few calls for a record yet ('+(isn(r.n60)?r.n60:0)+' of 20 with a 1 h price)';
-    s+=' · 1 h later: '+p0(r.rug)+' rugged, '+p0(r.win)+' doubled';
-    var ci=r.ci||{};if(ci.rug&&ci.win)s+=' (95%: '+p0(ci.rug[0])+'-'+p0(ci.rug[1])+' / '+p0(ci.win[0])+'-'+p0(ci.win[1])+')';
-    if(isn(r.eur))s+=' · paper, '+(isn(r.ticket)?r.ticket:3)+' € each: '+eur(r.eur);return s;}
   function pill(st){var d=S.doc,run=d&&d.run||{},t;
     if(st==='running')t='Radar running · checked '+hhmm(+d.t)+(isn(d.next)?' · next '+hhmm(d.next):'')+(isn(run.end)?' · this run until '+hhmm(run.end):'')+(d.state==='degraded'?' · with errors':'');
     else if(st==='late')t='Radar late · last check '+hhmm(+d.t);
@@ -924,6 +984,7 @@ function go(){
   function draw(){
     var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,k=[d?d.t:0,st,S.via].join('|');
     var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);setText($('[data-r-pill-t]'),pill(st));}
+    if(startA)startA.className='rbtn'+(['off','stopped','hours','none'].indexOf(st)>=0?'':' quiet');    // a tap while it runs only queues a run
     var tc=document.querySelector('[data-r-tabcnt]'),g=st==='running'?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
     if(k===key){cards.forEach(function(li){setText(li._age,ageText(li._c,st==='running',docAge));});return;}
     key=k;emit(st);
@@ -935,12 +996,13 @@ function go(){
       var c=el('div',x[2]);c.appendChild(el('b','',x[0]!=null?String(x[0]):'?'));c.appendChild(el('span','',x[1]));stats.appendChild(c);});
     var nts=d&&has?d.notes.slice():[];
     if(has&&(!isn(d.wm.t)||+d.t-d.wm.t>3*3600000)&&!nts.some(function(x){return /wallet/i.test(x);}))nts.push('wallet check unavailable: no greens until the wallet memory is back');
-    if(has)Object.keys(d.hosts).forEach(function(h){var v=d.hosts[h];if(v!=='ok'&&!nts.some(function(x){return x.toLowerCase().indexOf(h.split('.')[0])>=0;}))nts.push(h+' '+v+': its checks count as not done');});
+    // a host the radar found limited or down, when its own notes do not name it ("unused" and "off" are routine: not shown)
+    if(has)Object.keys(d.hosts).forEach(function(h){var v=d.hosts[h];if((v==='limited'||v==='down')&&!nts.some(function(x){return x.toLowerCase().indexOf(h.toLowerCase())>=0;}))nts.push(h+': '+v);});
     nts.forEach(function(x){notes.appendChild(el('li','',x));});notes.hidden=!nts.length;
     var good=has?d.coins.filter(function(c){return c.v==='good';}):[],byAddr={};
     (d&&d.recent||[]).forEach(function(r){byAddr[r.addr]=r;});
     good.forEach(function(c,i){var li=card(c,i,st,docAge,byAddr[c.addr]);cards.push(li);list.appendChild(li);});
-    empty.hidden=!!good.length;
+    list.hidden=!good.length;empty.hidden=!!good.length;
     if(!good.length){var big,sub='';
       if(st==='none'){big='Radar not started yet';sub='It starts with the next full scan, or tap Start.';}
       else if(st==='off'){big='Radar is switched off';sub='Start: enable the workflow on GitHub.';}
@@ -948,14 +1010,15 @@ function go(){
       else{big=st==='running'?'No clean coin right now':'No clean coin at '+hhmm(+d.t);var s=isn(cn.seen)?cn.seen:d.others.length;
         sub=(s?s+' seen in the last 10 min · all with traps or not fully checked':'Nothing under 10 min old seen')+' · checks every 2½ min';}
       setText($('[data-r-empty-t]'),big);setText($('[data-r-empty-s]'),sub);
-      var lg=$('[data-r-lastgood]'),l=d&&d.lastGood;lg.hidden=!(l&&isn(l.at));if(!lg.hidden)setText(lg,'last coin without traps: '+(l.sym||'?')+', '+dur((srvNow(n)-l.at)/60000)+' ago');}
+      var lg=$('[data-r-lastgood]'),l=d&&d.lastGood;lg.hidden=!(l&&isn(l.at));if(!lg.hidden)setText(lg,'last coin without traps: '+(l.sym||'?')+', '+R.ago(srvNow(n)-l.at));}
     var oth=has?d.others:[],ol=$('[data-r-olist]');ol.textContent='';of.hidden=!oth.length;of.classList.toggle('dim',st!=='running');setText($('[data-r-ocnt]'),String(oth.length));
     oth.forEach(function(c){var li=el('li','rrow '+(c.v==='trap'?'bad':'warn')),vd=R.verdict(c);li.title=vd[1];
-      li.appendChild(el('span','rs',(c.v==='trap'?'✕ ':'? ')+(c.sym||'?')));li.appendChild(el('span','ra',isn(c.age)?'pool '+dur(c.age+(st==='running'?docAge/60000:0)):''));li.appendChild(lineEl(c.line,3));ol.appendChild(li);});
-    var rr=d?d.recent.filter(function(r){return isn(r.good)&&srvNow(n)-r.good<=R.RECENT;}).sort(function(a,b){return b.good-a.good;}):[],rl=recLine(d&&d.record);
-    rf.hidden=!(rr.length||rl);setText($('[data-r-recline]'),rl||rr.length+' call'+(rr.length===1?'':'s')+' in the last 3 h');
-    var rc=$('[data-r-recent]');rc.textContent='';if(rr.length)rc.appendChild(laterTable(rr));else rc.appendChild(el('p','note','No call without traps in the last 3 hours.'));
-    var md=$('[data-r-model]'),m=d&&d.model;if(md)setText(md,!m?'':m.from==='learned'?'Weights: learned on '+(m.n||'?')+' calls'+(isn(m.auc)?' · AUC '+m.auc.toFixed(2)+(isn(m.prior)?' vs '+m.prior.toFixed(2):''):''):
+      li.appendChild(el('span','rs',vd[1].charAt(0)+' '+(c.sym||'?')));li.appendChild(el('span','ra',isn(c.age)?'pool '+dur(c.age+(st==='running'?docAge/60000:0)):''));li.appendChild(lineEl(c.line,3));ol.appendChild(li);});
+    var rr=d?d.recent.filter(function(r){return isn(r.good)&&srvNow(n)-r.good<=R.RECENT;}).sort(function(a,b){return b.good-a.good;}):[],rl=R.recLine(d&&d.record);
+    rf.hidden=!(rr.length||rl);setText($('[data-r-recline]'),R.recShort(d&&d.record)||rr.length+' call'+(rr.length===1?'':'s')+' in the last 3 h');
+    var rc=$('[data-r-recent]');rc.textContent='';if(rl)rc.appendChild(el('p','note rrline',rl));
+    if(rr.length)rc.appendChild(laterTable(rr));else rc.appendChild(el('p','note','No call without traps in the last 3 hours.'));
+    var md=$('[data-r-model]'),m=d&&d.model;if(md)setText(md,!m?'':m.from==='learned'?'Weights: learned on '+(m.n||'?')+' calls'+(isn(m.auc)?' · ranking quality '+m.auc.toFixed(2)+' ('+(isn(m.prior)?'study weights '+m.prior.toFixed(2)+', ':'')+'coin toss 0.50)':''):
       'Weights: study prior'+(isn(m.need)?' · radar data '+(isn(m.n)?m.n:0)+' of '+m.need+' needed':'')+(m.why?' · '+m.why:''));
   }
   function took(d,via){d=R.clean(d);if(!d)return false;var o=S.doc;
@@ -981,10 +1044,14 @@ function go(){
     if(via==='raw'&&!raw)via='none';
     if(via==='none')return;
     busy=true;S.next=now()+R.TIMEOUT+5000;save();
-    (via==='supabase'?sbGetRow('radar'):via==='raw'?rawGet():ghGet()).then(function(d){if(d!=null&&!took(d,via))throw 0;}).then(function(){S.fails=0;},function(code){
+    (via==='supabase'?sbGetRow('radar'):via==='raw'?rawGet():ghGet()).then(function(d){if(d!=null&&!took(d,via))throw 0;return d;}).then(function(d){S.fails=0;
+      // the live store answered, but its row is missing or reads stopped (the radar's write to it failing): GitHub right away, once per
+      // doc the page holds (a radar that is really stopped costs one call); with no doc at all the radar has not run: GitHub is not asked
+      var st=R.radarState(S.doc,now(),S.got,S.moved);
+      if(via==='supabase'&&src&&S.doc&&(d==null||st==='stopped')&&ghFor!==+S.doc.t){ghFor=+S.doc.t;S.back=now()+R.SB_RETRY;ghNow=true;}},function(code){
       S.fails=(+S.fails||0)+1;if(via==='supabase'&&(code===540||S.fails>=2)){S.back=now()+R.SB_RETRY;S.fails=0;}})
     .then(function(){busy=false;S.via=via;S.last=now();var b2=R.budget(office(),S);
-      S.next=R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved});save();try{draw();}catch(e){}});
+      S.next=ghNow?now()+1000:R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved});ghNow=false;save();try{draw();}catch(e){}});
   }
   // a tab change: the next poll comes at the new tab's pace (sooner on the Radar tab), never before the budget allows
   function retime(){if(!S.last||busy)return;var b=R.budget(office(),S);S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:S.via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved}));}
@@ -996,7 +1063,7 @@ function go(){
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}if(document.activeElement===tR)tR.blur();}},0);   // the jump to the radio must not ring every tab
   var act=box.querySelector('[data-r-actions]');       // Start and Stop: plain links to the radar's page on GitHub (no token, nothing is started from here)
   if(act&&repo){var wf='https://github.com/'+repo+'/actions/workflows/radar.yml',inf=el('details','rinfo'),sm=el('summary','','\u24d8');
-    [el('a','rbtn','Start \u2197'),el('a','rbtn quiet','Stop \u2197')].forEach(function(a){a.href=wf;a.target='_blank';a.rel='noopener';act.appendChild(a);});
+    startA=el('a','rbtn','Start \u2197');[startA,el('a','rbtn quiet','Stop \u2197')].forEach(function(a){a.href=wf;a.target='_blank';a.rel='noopener';act.appendChild(a);});
     sm.setAttribute('aria-label','About start and stop');inf.appendChild(sm);inf.appendChild(el('p','',INFO));act.appendChild(inf);act.hidden=false;}
   load();try{draw();}catch(e){}
   setInterval(function(){poll();try{draw();}catch(e){}},1000);
