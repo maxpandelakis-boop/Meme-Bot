@@ -172,11 +172,21 @@ jobs:
       - name: Restore the bot's state from the results branch
         if: steps.recent.outputs.skip != 'true'
         run: |
-          if git ls-remote --exit-code --heads "$RESULTS_URL" results >/dev/null; then
+          # git ls-remote --exit-code: 0 the branch is there, 2 it is not (a fresh start), anything else the check failed (network, token,
+          # GitHub down): then this run stops, so that an empty state is never pushed over the results (tried 3 times, 10 s apart)
+          for i in 1 2 3; do
+            rc=0; git ls-remote --exit-code --heads "$RESULTS_URL" results >/dev/null || rc=$?
+            if [ "$rc" -eq 0 ] || [ "$rc" -eq 2 ]; then break; fi
+            sleep 10
+          done
+          if [ "$rc" -eq 0 ]; then
             git clone -q --depth 1 --branch results "$RESULTS_URL" mb || (sleep 10 && git clone -q --depth 1 --branch results "$RESULTS_URL" mb)
             echo "state restored: $(git -C mb log -1 --format='%h %s')"
-          else
+          elif [ "$rc" -eq 2 ]; then
             mkdir -p mb && echo "no results branch yet: fresh start"
+          else
+            echo "the results branch could not be checked (git exit $rc): this scan stops, the results stay as they are"
+            exit 1
           fi
       - name: Import the launch radar's records (branches radar-data and radar-feed; a minute at most, the scan never depends on it)
         if: steps.recent.outputs.skip != 'true'

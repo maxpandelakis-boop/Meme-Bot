@@ -1285,6 +1285,10 @@ def sync(d, remote=None, branch="results"):
     if p.returncode != 0:
         # another machine pushed to the same branch: take the remote history and put this state on top of it
         git("fetch", "-q", "origin", branch)
+        if git("merge-base", "HEAD", "FETCH_HEAD").returncode != 0 and git("rev-parse", "-q", "--verify", "HEAD~0").returncode == 0 \
+                and git("rev-list", "--count", "FETCH_HEAD").stdout.strip() not in ("", "0"):
+            # this state never came from the remote branch (a start without its history): putting it on top would replace what is there
+            raise RuntimeError("sync refused: the local state does not come from %s's history (a fresh start beside an existing branch)" % branch)
         git("-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "merge", "-q", "-s", "ours", "--allow-unrelated-histories", "-m", "merge results", "FETCH_HEAD")
         git("push", "-q", "-u", "origin", "HEAD:" + branch, check=True)
     head = git("rev-parse", "--short", "HEAD").stdout.strip()
