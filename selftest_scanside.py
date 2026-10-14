@@ -548,9 +548,9 @@ def _s5(check, tmp):
           "through app.py to a local push service: a phone with New coins off gets no radar push, one without settings and one with pick off do;"
           " a second radar push within 60 s is held back by the rate guard (%s)" % names)
     check(n_.get("title") == "HIRE: no trap found (pool 6 min) +1 more" and n_.get("body") == "9 checks passed · liquidity $23k · fake money, nothing is bought."
-          and str(n_.get("navigate", "")).endswith("/Meme-Bot/#tab-radar") and hd.get("ttl") == "600" and hd.get("urgency") == "high" and hd.get("topic") == "radar"
+          and str(n_.get("navigate", "")).endswith("/Meme-Bot/#tab-radar") and hd.get("ttl") == "600" and hd.get("urgency") == "high" and hd.get("topic") == "radarhit"
           and not NO_WORDS.search(n_.get("title", "") + " " + n_.get("body", "")) and _app_secret() not in p.stdout + p.stderr,
-          "the radar push: Declarative Web Push with the words above, TTL 600, Urgency high, Topic radar, opening the Radar tab; no key in the output")
+          "the radar push: Declarative Web Push with the words above, TTL 600, Urgency high, Topic radarhit, opening the Radar tab; no key in the output")
 
 
 def _app_secret():

@@ -63,6 +63,8 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
     "test": (600, "normal", 20),
     "radar": (600, "high", 60),     # the launch radar's coin without a trap found: stale within minutes (its pool is under 10 minutes old)
 }
+TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit"}   # the push Topic header per kind: Apple refuses a topic
+# that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
 PREF_OF = {"radar": "young"}        # kind -> the phone's setting that covers it: the "New coins" switch also covers the radar (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
 
@@ -734,10 +736,10 @@ def notify(kind, title, body, url=None):
             if not keys_ok(row["sub"]):
                 res, code, why = "bad", "keys", ""
             else:
-                res, code, why = _send(wp, row["sub"], data, ttl, urgency, kind, until)
+                res, code, why = _send(wp, row["sub"], data, ttl, urgency, TOPIC.get(kind, "memebots"), until)
                 if res == "retry" and time.time() + 3 < until:
                     time.sleep(2)
-                    res, code, why = _send(wp, row["sub"], data, ttl, urgency, kind, until)
+                    res, code, why = _send(wp, row["sub"], data, ttl, urgency, TOPIC.get(kind, "memebots"), until)
             results[i] = (res, code, why)
             if res in ("gone", "bad"):
                 _drop(row["endpoint"])

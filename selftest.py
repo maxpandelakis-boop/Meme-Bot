@@ -2101,7 +2101,7 @@ def app_tests(check, mock, url):
         except Exception as e:
             claims = {"error": str(e)}
         check(jwt_ok and claims.get("aud") == sb and claims.get("sub") == "https://maxpandelakis-boop.github.io" and 0 < claims.get("exp", 0) - time.time() <= 24 * 3600
-              and hp.get("ttl") == "3600" and hp.get("urgency") == "high" and hp.get("topic") == "pick" and hy.get("ttl") == "1800" and hy.get("urgency") == "normal"
+              and hp.get("ttl") == "3600" and hp.get("urgency") == "high" and hp.get("topic") == "pick" and hy.get("ttl") == "1800" and hy.get("urgency") == "normal" and hy.get("topic") == "newcoins"
               and (real or hp.get("x-timeout") == "10"),
               "VAPID header: an ES256 JWT that the stored public key verifies (aud the push service, sub the bare site origin, exp within 24 h); TTL, Urgency and Topic per kind")
         n0 = len(sink.got)

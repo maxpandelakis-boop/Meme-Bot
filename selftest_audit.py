@@ -8,6 +8,7 @@ Each check runs against local stand-ins (a fake push library, local git remotes,
 when its fix is reverted.
 """
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -34,8 +35,8 @@ class WPE(Exception):
 class Resp:
     def __init__(self, code, text):
         self.status_code, self.text = code, text
-ANSWER = {"young": (400, '{"reason":"BadWebPushTopic"}\x1b[31m\n' + "x" * 200), "test": (403, '{"reason":"BadJwtToken"}'),
-          "pick": None, "radar": (403, '{"reason":"BadJwtToken"}')}
+ANSWER = {"newcoins": (400, '{"reason":"BadWebPushTopic"}\x1b[31m\n' + "x" * 200), "test": (403, '{"reason":"BadJwtToken"}'),
+          "pick": None, "radarhit": (403, '{"reason":"BadJwtToken"}')}       # keyed by the Topic header app.TOPIC sends per kind
 def webpush(sub, data, headers=None, ttl=0, timeout=None):
     a = ANSWER[headers["Topic"]]
     if a:
@@ -300,9 +301,18 @@ def guard(check, fn):
         check(False, "%s stopped with %s: %s" % (fn.__name__, type(e).__name__, str(e)[-200:]))
 
 
+def check_push_topic(check):
+    """Apple refused the "young" and "radar" pushes with BadWebPushTopic: a Topic must be a whole base64url string (4 or 8 letters)."""
+    import app
+    tops = [app.TOPIC.get(k) for k in app.KINDS]
+    check(all(isinstance(t, str) and re.fullmatch(r"[A-Za-z0-9_-]{4,32}", t) and len(t) % 4 == 0 for t in tops) and len(set(tops)) == len(tops)
+          and "TOPIC.get(kind" in open(os.path.join(HERE, "app.py"), encoding="utf-8").read(),
+          "push Topic per kind is a whole base64url string Apple accepts, one per kind (%s)" % app.TOPIC)
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
-    for fn in (check_push_reason, check_sync_redact, check_dev_budget, check_radar_saved, check_age_rounding, check_import_git_fails, check_store_url):
+    for fn in (check_push_reason, check_sync_redact, check_dev_budget, check_radar_saved, check_age_rounding, check_import_git_fails, check_store_url, check_push_topic):
         guard(check, fn)
 
 
