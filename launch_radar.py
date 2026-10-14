@@ -58,6 +58,8 @@ DS_FIRST_REQ = 20           # ... in a run's first cycle (a cold pool-age cache:
 TIER1_CAP = 12              # tier-1 requests a cycle (RugCheck, pump.fun coins-v3, DexScreener orders)
 RPC_CAP = 15                # Solana RPC calls a cycle (the probe: keep it; the public node allows 10 per method per 10 s)
 DEV_RPC_CAP = 8             # of them for fetch.dev_check (did the creator sell), so the dev wallet, the mint and the holders keep the rest
+DEV_TX_RADAR = 3            # the creator's newest transactions read per coin (fetch's DEV_MAX_TX is 6; a pool under 10 minutes old: a sale
+                            # is among the newest): a coin costs 4 RPC calls at most, so DEV_RPC_CAP reads 2 coins a cycle to the end
 FUND_CAP = 5                # of them for the funding of fresh holders (getTransaction)
 PF_DEEP_CAP = 6             # frontend-api-v3 calls a cycle for the dev's launches and the top holders
 SWAP_CAP = 6                # swap-api calls a cycle (candles from the mint, launch trades: 3 pages a coin at most)
@@ -1275,15 +1277,22 @@ class Radar:
         if todo and self.src.use("dev_check"):
             left = self.http.rpc_left
             cap = DEV_RPC_CAP if left is None else min(left, DEV_RPC_CAP)
-            self.http.rpc_left = cap
-            ddir = os.path.join(sb, "dev2")
-            try:
-                F.dev_check(self.http, ddir, [r["a"] for r in todo[:4]], now / 1000.0)
-            finally:
-                used = cap - max(0, self.http.rpc_left or 0)
-                self.http.rpc_left = None if left is None else max(0, left - used)
-            rows, _ = M.load_side(ddir, "dev", M.DEV_COLS)
-            for r in todo[:4]:
+            ask = todo[:min(4, cap // (1 + DEV_TX_RADAR))]     # only as many coins as the budget reads to the end: a coin cut off midway
+            for r in todo[len(ask):4]:                          # would be unknown and lose a try; the next ones wait their turn (pending)
+                w = self.work.setdefault(r["a"], {})
+                w["dev"] = w.get("dev") or "pending"
+            if ask:
+                self.http.rpc_left = cap
+                ddir = os.path.join(sb, "dev2")
+                max_tx, F.DEV_MAX_TX = F.DEV_MAX_TX, DEV_TX_RADAR
+                try:
+                    F.dev_check(self.http, ddir, [r["a"] for r in ask], now / 1000.0)
+                finally:
+                    F.DEV_MAX_TX = max_tx
+                    used = cap - max(0, self.http.rpc_left or 0)
+                    self.http.rpc_left = None if left is None else max(0, left - used)
+                rows, _ = M.load_side(ddir, "dev", M.DEV_COLS)
+            for r in ask:
                 w = self.work.setdefault(r["a"], {})
                 row = rows.get(r["a"])
                 w["devTries"] = w.get("devTries", 0) + 1

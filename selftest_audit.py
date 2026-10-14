@@ -95,10 +95,70 @@ def check_sync_redact(check):
           % (ok_line[:90].replace(secret, "<token>"), q.returncode))
 
 
+# ---------------------------------------------------------------------------------------------------------------- F2/K9 creator check
+class StubRpc:
+    """The radar's http for fetch.dev_check: Jupiter names each coin's creator, the RPC gives each creator 6 transactions of the last
+    minutes (the seller's newest one sells the coin), rpc_left counts as radar_src's post does (None once it is spent)."""
+
+    def __init__(self, creators, seller, now_s):
+        self.creators, self.seller, self.now_s = creators, seller, now_s
+        self.rpc_left, self.dead, self.limited_by, self.until, self.calls, self.logs = None, set(), {}, 0, [], []
+
+    def get(self, u, *a, **k):
+        q = u.rsplit("query=", 1)[-1]
+        return [{"id": q, "dev": self.creators.get(q), "audit": {}, "holderCount": 100}]
+
+    def post(self, u, payload, *a, **k):
+        if self.rpc_left is not None:
+            if self.rpc_left <= 0:
+                return None
+            self.rpc_left -= 1
+        m, p0 = payload["method"], payload["params"][0]
+        self.calls.append(m)
+        if m == "getSignaturesForAddress":
+            return {"result": [{"signature": "%s_%d" % (p0, i), "blockTime": int(self.now_s) - 60 * (i + 1)} for i in range(6)]}
+        dev, i = p0.rsplit("_", 1)
+        mint = next(a for a, c in self.creators.items() if c == dev)
+        bal = lambda x: [{"mint": mint, "owner": dev, "uiTokenAmount": {"uiAmount": x}}]
+        sale = mint == self.seller and i == "0"
+        return {"result": {"meta": {"preTokenBalances": bal(100.0), "postTokenBalances": bal(0.0 if sale else 100.0)}}}
+
+    def log(self, s):
+        self.logs.append(s)
+
+
+def check_dev_budget(check):
+    """F2/K9: the radar's creator check asks only as many coins as its RPC budget reads to the end, so each coin it asks is decided (sold
+    or not), and the coins that wait lose no try."""
+    import fetch as F
+    import selftest_radar as SR
+    T, P, _ = SR.modules()
+    tmp = tempfile.mkdtemp(prefix="memebot-audit-dev-")
+    now = SR.T0
+    mints = [SR.addr(7100 + i) for i in range(4)]
+    creators = {a: SR.addr(7200 + i, "") for i, a in enumerate(mints)}
+    stub = StubRpc(creators, mints[1], now / 1000.0)
+    max_tx = F.DEV_MAX_TX
+    with SR.memebot_rules():
+        R = SR.unit_radar(T, P, tmp, "dev")
+        R.http = stub
+        R.src.http = stub
+        stub.rpc_left = 15
+        R.tier2(os.path.join(tmp, "sb"), [{"a": a, "pr": {}, "age": 1.0 + i} for i, a in enumerate(mints)], [], now)
+    w = [R.work.get(a) or {} for a in mints]
+    sold = [((x.get("devRow") or {}).get("devSold")) for x in w]
+    check(len(stub.calls) <= 8 and [x.get("dev") for x in w] == ["ok", "ok", "pending", "pending"] and sold[:2] == [False, True]
+          and [x.get("devTries", 0) for x in w] == [1, 1, 0, 0] and F.DEV_MAX_TX == max_tx,
+          "F2/K9 radar creator check: with 8 RPC calls it asks 2 of 4 young coins and decides both (sold %s, %d calls), the other 2 wait "
+          "without losing a try (dev %s, tries %s); fetch's DEV_MAX_TX is back to %s"
+          % (sold[:2], len(stub.calls), [x.get("dev") for x in w], [x.get("devTries", 0) for x in w], F.DEV_MAX_TX))
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
     check_push_reason(check)
     check_sync_redact(check)
+    check_dev_budget(check)
 
 
 def main():
