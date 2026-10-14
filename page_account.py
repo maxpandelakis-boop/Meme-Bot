@@ -16,7 +16,9 @@ load(d, now, pos=None, px=None, since=None) -> dict
       "rows"   one row per position since the restart, newest first, with its result and its peak doc
       "noloss" without the stop-loss (hindsight): the trades sold at the stop and at the take-profit, and all trades, each with
                the sum and the extreme of their best (max profit) and lowest (max loss) close within 6 h, what the rule really made
-               with the same trades, and how many went back above the entry after the stop (rose further after the take-profit)
+               with the same trades, and how many went back above the entry after the stop (rose further after the take-profit);
+               beside the best, the raw top close (peak.py's rawX, unfiltered) where it differs, with its euros and why it was not
+               sellable ("one candle", "pool died", "over the cap": raw_reason)
 
 section(D, bought=None) -> HTML
     The survival header (big P/L since the restart, its rate, the balance line, four tiles), the three category strips, the block
@@ -24,6 +26,8 @@ section(D, bought=None) -> HTML
     positions (report.py's own `bought`), the trades before the restart and the curve fold with the dashed "best within 6 h" line.
     Everything is static HTML and CSS; the only script shows the trader's latest line while a scan runs, and only when the page
     already holds the live doc (report.py's live poll fires the "memebot-live" event; this module starts no poll of its own).
+    Right under the block "Without the stop-loss" comes the radar account (page_radarpaper.section: 3 EUR on each launch-radar
+    round's best 5, sold by the same rules; radar_paper.py), when page_radarpaper.py is there.
     On a phone (820 px or less) the category strips keep only the big P/L, its rate and the "same trades" line in view (the
     figures sit in their ⓘ fold) and the feed shows the newest 6 rows (the rest open the fold); CSS only, both are in the page.
 
@@ -53,6 +57,8 @@ FEED_WHY = {"tp": "take-profit", "stop": "stop", "time": "6 h limit", "rug": "ru
             "target": "half at 2x"}
 SORTS = (("new", "Newest"), ("top", "Top %"), ("worst", "Worst %"), ("best", "Best in 6 h"))
 NL_SHOWN, NL_MAX = 50, 300          # the per-trade list without the stop-loss: rows in its first fold, rows in all (the rest in a fold inside)
+RAW_WHY = {"unconfirmed": "one candle", "dust": "dust volume", "cap": "over the cap", "jump": "jump not held", "pool dead": "pool died",
+           "collapse": "pool died", "rug": "pool died", "unit": "price unit"}   # why the raw top close was not booked (peak.py's cut rules)
 
 
 def num(v):
@@ -177,6 +183,33 @@ def cut_reason(cut):
     return ""
 
 
+def peak_mult(v):
+    """A multiple as peak.py writes it in its cut texts ("59,257x", "35.2x", "4.00x"), to find the raw top's own rule."""
+    return "{:,.0f}x".format(v) if v >= 100 else ("%.1fx" % v if v >= 10 else "%.2fx" % v)
+
+
+def raw_reason(pk):
+    """Why the raw top close (rawX: the highest close inside the window, unfiltered) was not booked, in two words, when it is more
+    than 5% over the booked best; "" when they agree. A dust or unconfirmed cut that names the raw multiple wins; else a cap or jump
+    cut, then a dead pool, when the raw top is over 1.5x the best (closes that far up are listed by peak.py unless one of those
+    rules dropped them); else the next close was lower: one candle."""
+    raw, x = num((pk or {}).get("rawX")), num((pk or {}).get("x"))
+    if raw is None or x is None or raw <= 1.05 * x:
+        return ""
+    cut = [str(c) for c in (pk.get("cut") or [])]
+    rule = lambda c: next((k for k in RAW_WHY if c.strip().lower().startswith(k)), None)     # "dust: 59,257x on $3 volume" -> dust
+    rules = [rule(c) for c in cut]
+    name = peak_mult(raw)
+    for c, k in zip(cut, rules):
+        if k in ("dust", "unconfirmed") and name in c:
+            return RAW_WHY[k]
+    if raw > 1.5 * x:
+        for k in ("cap", "jump", "pool dead", "rug", "collapse", "unit"):
+            if k in rules:
+                return RAW_WHY[k]
+    return RAW_WHY["unconfirmed"]
+
+
 def peak_doc(doc):
     """A memepeak doc reduced to checked fields, or None when it is not a doc at all. A booked state without a finite multiple is
     treated as still waiting: an unreadable number is never booked."""
@@ -276,6 +309,8 @@ def _load(d, now, pos, px, since):
             pk["eur6"] = round(M.pos_value(r["p"], 1.0, pk["x6"]), 2)
         if pk["lo"] is not None and pk["eurLo"] is None:
             pk["eurLo"] = round(M.pos_value(r["p"], 1.0, pk["lo"]), 2)
+        pk["rawWhy"] = raw_reason(pk)                      # the raw top close, unfiltered, and what selling there would have given
+        pk["eurRaw"] = round(M.pos_value(r["p"], 1.0, pk["rawX"]), 2) if pk["rawWhy"] else pk["eur"]
     six = [r for r in booked if r["pk"]["x6"] is not None]
     best = _stats([(r["ticket"], r["pk"]["eur"]) for r in booked])
     six_st = _stats([(r["ticket"], r["pk"]["eur6"]) for r in six])
@@ -332,14 +367,18 @@ def _exit_t(r, why):
 
 def nl_stats(rs, why=None, over=1.0):
     """Without the stop-loss, for a set of trade rows: "of" trades, "n" priced (both ends booked), and over the priced ones "best" (the
-    P/L had each been sold at its best close within 6 h), "worst" (at its lowest), "real" (what the rule made with them), "bestP" and
+    P/L had each been sold at its best close within 6 h), "worst" (at its lowest), "real" (what the rule made with them), "raw" (at the
+    raw top close, unfiltered, where it differs; "rawN" of them could not have been sold there: one candle, a dead pool, a level over
+    the cap), "bestP" and
     "loP" (the best trade at its best and the worst at its lowest, as a share of its ticket after the paper fees, like the real
     result's %) and, with why, "back": how many had their best above over times the entry after that sale (the stop: back above the
     entry; the take-profit: higher than where it sold)."""
     pr = [r for r in rs if nl_priced(r)]
-    out = {"of": len(rs), "n": len(pr), "best": None, "worst": None, "real": None, "bestP": None, "loP": None, "back": None}
+    out = {"of": len(rs), "n": len(pr), "best": None, "worst": None, "real": None, "bestP": None, "loP": None, "back": None, "raw": None, "rawN": 0}
     if not pr:
         return out
+    eraw = lambda r: r["pk"]["eurRaw"] if r["pk"].get("eurRaw") is not None else r["pk"]["eur"]
+    out.update(raw=round(sum(eraw(r) - r["ticket"] for r in pr), 2), rawN=sum(1 for r in pr if r["pk"].get("rawWhy")))
     out.update(best=round(sum(r["pk"]["eur"] - r["ticket"] for r in pr), 2), worst=round(sum(r["pk"]["eurLo"] - r["ticket"] for r in pr), 2),
                real=round(sum(r["pnl"] for r in pr), 2), bestP=max(nl_pct(r, True) for r in pr), loP=min(nl_pct(r, False) for r in pr))
     if why:
@@ -575,7 +614,11 @@ def _nl_cell(r, hi):
     v, t = nl_pct(r, hi), (pk["at"] if hi else pk["loAt"])
     when = mins_txt((t - (pk["entryAt"] or r["tBuy"])) if t is not None else None)
     c = tone(v)
-    return '<td class="%s"><span%s>%s</span><small>%s</small></td>' % ("hi" if hi else "lo", (' class="%s"' % c) if c else "", E(pct_f(v)), E(("at " + when) if when else ""))
+    raw = ""
+    if hi and pk.get("rawWhy"):                           # the raw top beside the filtered best, and why it was not sellable
+        raw = '<small class="nl-raw" data-nl-raw>raw top %s %s · %s</small>' % (E(mult(pk["rawX"])), E(eur(pk["eurRaw"] - r["ticket"], True)), E(pk["rawWhy"]))
+    return '<td class="%s"><span%s>%s</span><small>%s</small>%s</td>' % ("hi" if hi else "lo", (' class="%s"' % c) if c else "", E(pct_f(v)),
+                                                                         E(("at " + when) if when else ""), raw)
 
 
 def _nl_rows(rows, R):
@@ -615,10 +658,12 @@ def noloss(D, A):
     tiles = (_nl_tile("stop", "Sold at %s%% (stop)" % stop_pct, st, "the stop made", "%d of %d back above the entry", "no trade sold at the stop yet")
              + _nl_tile("tp", "Sold at %s%% (take-profit)" % tp_pct, tp, "the take-profit made", "%d of %d rose further", "no trade sold at the take-profit yet"))
     if al["n"]:
-        line = ('<div class="nl-all" data-nl="all"><span class="k">%s</span><span>at the best <b class="%s" data-nl-v="best">%s</b></span>'
+        raw = ('<span class="raw">at the raw top <b class="%s" data-nl-v="raw">%s</b><small>%s</small></span>' % (
+            tone(al["raw"]), E(eur(al["raw"], True)), E("%d not sellable there" % al["rawN"]))) if al.get("rawN") else ""
+        line = ('<div class="nl-all" data-nl="all"><span class="k">%s</span><span>at the best <b class="%s" data-nl-v="best">%s</b></span>%s'
                 '<span>at the lowest <b class="%s" data-nl-v="worst">%s</b></span><span>the rule made <b class="%s" data-nl-v="real">%s</b></span></div>') % (
             E("All %d trades, sold each" % al["n"] if al["n"] == al["of"] else "All %d priced trades, sold each" % al["n"]), tone(al["best"]), E(eur(al["best"], True)),
-            tone(al["worst"]), E(eur(al["worst"], True)), tone(al["real"]), E(eur(al["real"], True)))
+            raw, tone(al["worst"]), E(eur(al["worst"], True)), tone(al["real"]), E(eur(al["real"], True)))
     else:
         line = ""
     lst = N.get("list") or []
@@ -633,7 +678,9 @@ def noloss(D, A):
     how = ("Hindsight, not a rule that ran: each paper trade since the restart, sold at its highest (max profit) or its lowest (max loss) minute-candle "
            "close within 6 hours after the entry, on the pool it was bought on, after the paper fees. Wicks, dust candles and one-candle glitches do not "
            "count; a pool that died counts as a total loss. The dot is what the rule (stop at %s%%, take-profit at %s%%, 6 hours) really made with "
-           "the same trades; 'back above the entry' and 'rose further' count the trades whose best came after that sale. Estimates and 15-minute "
+           "the same trades; 'back above the entry' and 'rose further' count the trades whose best came after that sale. The raw top is the highest "
+           "close of all, unfiltered, shown where it differs: one candle, dust volume, a dead pool or a level over the cap could not be sold "
+           "there. Estimates and 15-minute "
            "candles are bounds. Nobody knows the top or the bottom in advance. Fake money, nothing is bought "
            "for real.") % (stop_pct, tp_pct)
     return ('<div class="pa-nl" data-pa="noloss"><div class="nl-head"><h3>Without the stop-loss</h3><span class="chip warn">hindsight</span>'
@@ -832,13 +879,23 @@ def curve(D, A):
     return '<details class="fold-lite pa-f"><summary>Profit/loss over time</summary><p class="note">%s</p>%s</details>' % (E(sub), body)
 
 
+def radar_account(D):
+    """The radar account's block (page_radarpaper.py), or nothing when that module is not there."""
+    try:
+        import page_radarpaper as RPP
+    except ImportError:
+        return ""
+    return RPP.section(D)
+
+
 def section(D, bought=None):
     """The whole account block (see the module doc); every part renders on its own, a broken part shows a notice. The top trades
     (one line while folded) come before the open positions, which can fill several phone screens."""
     R = _report()
     A = _acct(D)
     parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)),
-             R.safe("without the stop-loss", lambda: noloss(D, A)), R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
+             R.safe("without the stop-loss", lambda: noloss(D, A)), R.safe("radar account", lambda: radar_account(D)),
+             R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
     if bought:
         parts.append(R.safe("open positions", bought))
     parts += [R.safe("closed trades", lambda: old_trades(D)), R.safe("account curve", lambda: curve(D, A))]
@@ -956,6 +1013,8 @@ section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
 .nl-none { margin:0; font-size:var(--fs-s); color:var(--muted) }
 .nl-all { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 18px; padding:8px 0 0; border-top:1px solid var(--line2); font-size:var(--fs-s); color:var(--fg2) }
 .nl-all .k { font-weight:600; color:var(--fg) } .nl-all b { font-size:15px; font-variant-numeric:tabular-nums; white-space:nowrap }
+.nl-all .raw small { margin-left:6px; font-size:var(--fs-xs); color:var(--muted) }
+.nl-tbl td small.nl-raw { color:var(--fg2) }
 .nl-tbl td small { display:block; font-size:var(--fs-xs); color:var(--muted); margin-top:1px; font-variant-numeric:tabular-nums }
 .nl-tbl td.c { overflow-wrap:anywhere } .nl-tbl td.c strong { font-weight:600 } .nl-tbl th.n, .nl-tbl td.r, .nl-tbl td.hi, .nl-tbl td.lo { text-align:right }
 .nl-tbl td.r span, .nl-tbl td.hi span, .nl-tbl td.lo span { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap }
@@ -974,12 +1033,14 @@ section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
   .pa-tbl tr:first-child { border-top:0 } .pa-tbl td { border-top:0; padding:0; min-width:0 }
   .pa-nl { padding:12px 12px 2px } .nl-tiles { grid-template-columns:1fr; gap:10px } .nl-tile { padding:10px 12px 12px } .nl-lh .v { font-size:22px }
   .nl-all { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px 10px } .nl-all .k { grid-column:1 / -1 } .nl-all span:not(.k) { display:grid; font-size:var(--fs-xs); color:var(--muted) }
+  .nl-all span.raw { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:baseline; gap:0 6px; order:9 } .nl-all .raw small { margin:0 }
   .nl-tbl table, .nl-tbl tbody, .nl-tbl tr, .nl-tbl td { display:block } .nl-tbl thead { display:none }
   .nl-tbl tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"c r" "hi lo"; gap:2px 12px; padding:8px 4px; border-top:1px solid var(--line2) }
   .nl-tbl tr:first-child { border-top:0 } .nl-tbl td { border-top:0; padding:0; min-width:0 } .nl-tbl td.c { grid-area:c } .nl-tbl td.r { grid-area:r }
   .nl-tbl td.hi { grid-area:hi; text-align:left } .nl-tbl td.lo { grid-area:lo }
   .nl-tbl td.hi::before { content:"max profit"; display:block; color:var(--muted); font-size:var(--fs-xs) } .nl-tbl td.lo::before { content:"max loss"; display:block; color:var(--muted); font-size:var(--fs-xs) }
   .nl-tbl td.hi small, .nl-tbl td.lo small { display:inline; margin:0 0 0 6px; white-space:nowrap }
+  .nl-tbl td.hi small.nl-raw { display:block; margin:1px 0 0; white-space:normal }
   .pa-tbl td.c { grid-area:c } .pa-tbl td.p { grid-area:p } .pa-tbl td.m { grid-area:m } .pa-tbl td.w { grid-area:w }
   .pa-tbl td.h { grid-area:h1; display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; font-size:var(--fs-s) } .pa-tbl td.h + td.h { grid-area:h2 }
   .pa-tbl td.h1::before { content:"best in 6 h (hindsight)"; color:var(--muted); font-size:var(--fs-xs) } .pa-tbl td.h2::before { content:"at 6 h (hindsight)"; color:var(--muted); font-size:var(--fs-xs) } .pa-tbl td.h small { display:inline; margin:0 } .pa-tbl td.h .chip { margin:0 } }

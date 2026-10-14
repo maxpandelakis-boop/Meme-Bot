@@ -282,8 +282,10 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
         srv.server_close()
     closed = {H_["_id"], Y0["_id"], Y1["_id"], Y2["_id"], Y3["_id"], Y4["_id"], pid_a, pid_b, pid_old}   # the pre-restart buy too (shown apart)
     check(r1.returncode == 0 and set(docs1) == closed and o1.get("items") == 9 and o1.get("ok") == 7 and o1.get("m15") == 1 and o1.get("waiting") == 1
-          and set(o1) == {"items", "ok", "m15", "est", "unit", "waiting", "secs", "why"},
-          "P3 docs for the 8 closed in_account windows and the pre-restart buy (shown apart); none for the open window or the pick-mode position (%s)" % json.dumps(o1))
+          and set(o1) == {"items", "ok", "m15", "est", "unit", "waiting", "radar", "secs", "why"}
+          and (o1.get("radar") or {}).get("buys") == 0 and (o1.get("radar") or {}).get("items") == 0,
+          "P3 docs for the 8 closed in_account windows and the pre-restart buy (shown apart); none for the open window or the pick-mode position; "
+          "the radar account (no radar record here) has nothing to price (%s)" % json.dumps(o1))
     new = set(after) - set(before)
     changed = [k for k in before if k in after and before[k] != after[k]]
     check(not changed and all(k.startswith(("db/memepeak/", "candles/")) for k in new) and all(re.search(r"_pk\d+\.txt$", k) for k in new if k.startswith("candles/")),
