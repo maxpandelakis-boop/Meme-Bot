@@ -2,6 +2,8 @@
 report.py (and their fallback when page_account.py is missing), robustness against broken memepeak docs, escaping and, when
 Playwright and a Chromium are installed, the layout at 390 and 1280 px in light and dark: the four orders, the short phone view
 (strip figures and feed rows 7-20 behind folds), tap targets of 44 px, long tickers, the selected order's contrast and the live line.
+U11 checks the block "Without the stop-loss" (max profit and max loss within 6 h, from the docs' x/eur and lo/eurLo): the stop and
+take-profit tiles, the all-trades line, the per-trade list and its folds, the empty and partial states, escaping, the layout.
 
 The memepeak docs here are a stand-in written in the frozen doc shape (SPEC 5 WP2), so the checks need no peak.py.
 
@@ -74,18 +76,19 @@ def fixture(d, peaks=True):
                                    "ticket": pos[pid]["ticket"], "t": pos[pid]["t"], "entryAt": pos[pid]["entryAt"], "end": pos[pid]["entryAt"] + 6 * H,
                                    "upd": now, "tries": 0, "px": pos[pid]["px"], "cpx": pos[pid]["px"], "base": pos[pid]["px"], "dead": None, "cut": [], "n": 300}, **k)
         val = lambda pid, x: round(M.pos_value(pos[pid], 1.0, x), 2)
+        lo = lambda pid, x, m: dict(v=2, lo=x, loAt=pos[pid]["entryAt"] + m * MIN, eurLo=val(pid, x))
         _dump(d, "memepeak", "y-stop", P("y-stop", state="ok", src="m1", res=1, x=1.8, at=pos["y-stop"]["entryAt"] + 47 * MIN, rawX=1.9, x6=0.4,
-                                       eur=val("y-stop", 1.8), eur6=val("y-stop", 0.4)))
-        _dump(d, "memepeak", "y-tp", P("y-tp", state="ok", src="m1", res=1, x=12.5, at=pos["y-tp"]["entryAt"] + 95 * MIN, rawX=12.5, x6=3.0,
-                                     eur=val("y-tp", 12.5), eur6=val("y-tp", 3.0)))
+                                       eur=val("y-stop", 1.8), eur6=val("y-stop", 0.4), **lo("y-stop", 0.35, 180)))
+        _dump(d, "memepeak", "y-tp", P("y-tp", state="ok", src="m1", res=1, x=12.5, at=pos["y-tp"]["entryAt"] + 100 * MIN, rawX=12.5, x6=3.0,
+                                     eur=val("y-tp", 12.5), eur6=val("y-tp", 3.0), **lo("y-tp", 0.9, 5)))
         _dump(d, "memepeak", "y-time", P("y-time", state="est", src="est", res=None, tries=3, x=1.2, at=None, rawX=None, x6=1.3,
-                                       eur=val("y-time", 1.2), eur6=val("y-time", 1.3)))
+                                       eur=val("y-time", 1.2), eur6=val("y-time", 1.3), **lo("y-time", 0.8, 360)))
         _dump(d, "memepeak", "y-rug", P("y-rug", state="ok", src="m1", res=1, x=1.0, at=pos["y-rug"]["entryAt"] + MIN, rawX=59257.0, x6=0.0,
-                                      eur=val("y-rug", 1.0), eur6=0.0, dead={"at": T0 + 2 * H, "why": "rug"}, cut=["rug exit", "dust 59257.00x"]))
+                                      eur=val("y-rug", 1.0), eur6=0.0, dead={"at": T0 + 2 * H, "why": "rug"}, cut=["rug exit", "dust 59257.00x"], **lo("y-rug", 0.0, 80)))
         _dump(d, "memepeak", "h-time", P("h-time", state="ok", src="m15", res=15, x=2.0, at=pos["h-time"]["entryAt"] + 3 * H, rawX=2.0, x6=1.5,
                                        eur=val("h-time", 2.0), eur6=val("h-time", 1.5), cut=["unconfirmed <script>4.00x</script>"]))
         _dump(d, "memepeak", "y-path", P("y-path", state="est", src="est", res=None, tries=3, x=1.5, at=None, rawX=None, x6=None,      # an estimate from stored
-                                       eur=val("y-path", 1.5), eur6=None))                                                         # path closes: x6 unknown
+                                       eur=val("y-path", 1.5), eur6=None, **lo("y-path", 0.65, 67)))                               # path closes: x6 unknown
         _dump(d, "memepeak", "y-xss", P("y-xss", state="unit", src="m1", res=1, rawX=3.0))
         _dump(d, "memepeak", "y-nan", P("y-nan", state="ok", src="m1", x="NaN", x6=None, eur=None, eur6=None))
         _dump(d, "memepeak", "nobody", P("y-stop", pos="nobody", state="ok", src="m1", x=99.0, eur=999.0))      # a doc of no known position
@@ -354,7 +357,95 @@ def _checks(check, d, skips):
           "the balance line's 'break-even' label sits where the line does not pass: the right end when it is free, the left end when the line crosses zero "
           "at the right, none when the line runs up and down through zero all along")
 
+    _noloss_checks(check, d, D, A, P, pos, page, now)
     _browser(check, page, skips)
+
+
+def _noloss_checks(check, d, D, A, P, pos, page, now):
+    """U11: the block "Without the stop-loss" (hindsight): every number from the docs, the states, escaping."""
+    nl = PA.noloss(D, A)
+    docs = {pid: json.load(open(os.path.join(d, "db", "memepeak", pid + ".json"))) for pid in ("y-stop", "y-tp", "y-time", "y-rug", "h-time", "y-path")}
+    with_lo = {pid: doc for pid, doc in docs.items() if doc.get("lo") is not None}
+    real = lambda pid: round(sum(e["eur"] for e in P[pid]["_exits"]) - P[pid]["ticket"], 2)
+    pc = lambda v: html.escape(PA.pct_f(v))
+    tile = lambda k: (re.search(r'<div class="nl-tile %s" data-nl="%s">.*?</div></div>(?=<div class="nl-tile|</div><div class="nl-all|</div><details)' % (k, k), nl, re.S)
+                      or re.match("", "")).group(0)
+    vals = lambda h: dict(re.findall(r'data-nl-v="(\w+)">([^<]*)<', h))
+    ts, tt = tile("stop"), tile("tp")
+    s_ids = ("y-stop", "y-path")                       # sold at the stop and priced; y-nan (stop, a doc without a number) is not
+    s_best = round(sum(docs[k]["eur"] - pos[k]["ticket"] for k in s_ids), 2)
+    s_worst = round(sum(docs[k]["eurLo"] - pos[k]["ticket"] for k in s_ids), 2)
+    s_real = round(sum(real(k) for k in s_ids), 2)
+    s_bp = max(docs[k]["eur"] / pos[k]["ticket"] - 1 for k in s_ids)
+    s_lp = min(docs[k]["eurLo"] / pos[k]["ticket"] - 1 for k in s_ids)
+    st = A["noloss"]["stop"]
+    check(st["of"] == 3 and st["n"] == 2 and (st["best"], st["worst"], st["real"]) == (s_best, s_worst, s_real) and st["back"] == 1
+          and vals(ts) == {"worst": PA.eur(s_worst, True), "best": PA.eur(s_best, True), "real": PA.eur(s_real, True)}
+          and "worst trade %s" % pc(s_lp) in ts and "best trade %s" % pc(s_bp) in ts and "priced 2 of 3" in ts and "1 of 2 back above the entry" in ts
+          and "Sold at −30% (stop)" in ts,
+          "U11 the stop tile: 2 of 3 stop trades priced (one doc has no number); max profit %s (best trade %s), max loss %s (worst trade %s), the stop "
+          "made %s with the same trades; 1 of 2 back above the entry after the stop (the other's best has no time)" % (
+              PA.eur(s_best, True), PA.pct_f(s_bp), PA.eur(s_worst, True), PA.pct_f(s_lp), PA.eur(s_real, True)))
+    t_best, t_worst = round(docs["y-tp"]["eur"] - 3.0, 2), round(docs["y-tp"]["eurLo"] - 3.0, 2)
+    tp = A["noloss"]["tp"]
+    check(tp["of"] == tp["n"] == 1 and tp["back"] == 1 and vals(tt) == {"worst": PA.eur(t_worst, True), "best": PA.eur(t_best, True), "real": PA.eur(real("y-tp"), True)}
+          and "best trade %s" % pc(docs["y-tp"]["eur"] / 3.0 - 1) in tt and "1 trade<" in tt and "1 of 1 rose further" in tt and "Sold at +1,000% (take-profit)" in tt
+          and t_best > real("y-tp") > 0 > t_worst,
+          "U11 the take-profit tile: how high it went within 6 h (12.5x: %s) and its low (0.9x: %s) against what the take-profit made (%s); its best "
+          "came after the sale, so it rose further" % (PA.eur(t_best, True), PA.eur(t_worst, True), PA.eur(real("y-tp"), True)))
+    al = A["noloss"]["all"]
+    ids = sorted(with_lo)
+    a_best = round(sum(docs[k]["eur"] - pos[k]["ticket"] for k in ids), 2)
+    a_worst = round(sum(docs[k]["eurLo"] - pos[k]["ticket"] for k in ids), 2)
+    a_real = round(sum(real(k) for k in ids), 2)
+    line = (re.search(r'<div class="nl-all" data-nl="all">.*?</div>', nl, re.S) or re.match("", "")).group(0)
+    check(ids == ["y-path", "y-rug", "y-stop", "y-time", "y-tp"] and (al["n"], al["of"]) == (5, 8) and (al["best"], al["worst"], al["real"]) == (a_best, a_worst, a_real)
+          and vals(line) == {"best": PA.eur(a_best, True), "worst": PA.eur(a_worst, True), "real": PA.eur(a_real, True)} and "All 5 priced trades, sold each" in line
+          and "priced 5 of 8 · 2 inside their 6 h" in nl and docs["y-rug"]["eurLo"] == 0.0 and A["noloss"]["open"] == 2,
+          "U11 the all-trades line over the 5 trades with both ends priced (a doc without a low, the unit doc and the unreadable one wait): every trade "
+          "sold at its best %s, at its lowest %s (a dead pool at 0), what the stop-loss rule made %s; 'priced 5 of 8 · 2 inside their 6 h'" % (
+              PA.eur(a_best, True), PA.eur(a_worst, True), PA.eur(a_real, True)))
+    rows_nl = re.findall(r'<tr><td class="c"><strong>(.*?)</strong>.*?</tr>', nl, re.S)
+    r_stop = (re.search(r'<tr><td class="c"><strong>STOPPY</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
+    r_rug = (re.search(r'<tr><td class="c"><strong>DOGGO</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
+    r_ht = (re.search(r'<tr><td class="c"><strong>TOPPY</strong>.*?</tr>', nl, re.S) or re.match("", "")).group(0)
+    want_order = [html.escape(p["sym"]) for _, p in sorted(((k, p) for k, p in P.items() if M.in_account(p, T0) and k not in ("y-open", "h-open")), key=lambda kv: -kv[1]["t"])]
+    check(rows_nl == want_order and pc(docs["y-stop"]["eur"] / 3 - 1) + "</span><small>at 47 min" in r_stop and pc(docs["y-stop"]["eurLo"] / 3 - 1) + "</span><small>at 3.0 h" in r_stop
+          and "−100%</span><small>at 80 min" in r_rug and r_ht.count("waiting") == 2 and "estimate" in (re.search(r"<strong>PATHY</strong>.*?</tr>", nl, re.S) or re.match("", "")).group(0)
+          and "Per trade (8)" in nl and "Older trades" not in nl and "max profit</th><th class=\"n\">max loss</th>" in nl,
+          "U11 the per-trade list: the 8 trades whose 6 hours are over, newest first, each with its real result, max profit and max loss in %% after "
+          "fees and when (STOPPY %s at 47 min, %s at 3.0 h; DOGGO −100%% where the pool died), 'waiting' for a doc without a low, 'estimate' marked" % (
+              PA.pct_f(docs["y-stop"]["eur"] / 3 - 1), PA.pct_f(docs["y-stop"]["eurLo"] / 3 - 1)))
+    check(XSS not in nl and html.escape(XSS) in nl and XSS2 not in nl and html.escape(XSS2) in nl and "<b>bold</b>" not in nl
+          and not re.findall(r"(?i)\b(safe|safely|guaranteed?|buy|buys|buying)\b", _text(nl)) and "\u2014" not in _text(nl)
+          and _text(nl).lower().count("hindsight") == 2 and "Fake money, nothing is bought for real." in _text(nl) and 'data-pa="noloss"' in page
+          and page.find('data-pa="noloss"') > page.find('data-pa="six"') and page.find('data-pa="noloss"') < page.find('data-pa="feed"'),
+          "U11 the block sits right under the three category cards; coin names and exit reasons are escaped; the hindsight label once (and in the ⓘ), "
+          "the fake-money note in the ⓘ, no 'safe', 'guaranteed' or 'buy' and no em dash")
+    # states: no docs at all, nothing bought yet, a long history
+    A_empty = PA.load(d, now, pos=dict(P), px={}, since=T0)
+    for r in A_empty["rows"]:
+        r["pk"] = None
+    e_nl = PA.noloss(D, dict(A_empty, noloss=PA.noloss_data(A_empty["rows"])))
+    A0 = PA.load(d, now, pos={}, px={}, since=T0)
+    z_nl = PA.noloss(D, A0)
+    check("priced 0 of 8 · 2 inside their 6 h" in e_nl and e_nl.count("priced after the next scans") == 2 and "priced 0 of 3" in e_nl and 'data-nl="all"' not in e_nl
+          and "waiting" in e_nl and "no 6 hours over yet" in z_nl and "no trade sold at the stop yet" in z_nl and "no trade sold at the take-profit yet" in z_nl
+          and "Per trade" not in z_nl and A0["err"] is None,
+          "U11 the states: nothing priced yet ('priced 0 of 8', each tile 'priced after the next scans', no all-trades line, the list waits); nothing "
+          "bought yet ('no 6 hours over yet', no list)")
+    big = {}
+    for i in range(330):
+        pid = "b%03d" % i
+        big[pid] = {"grp": "young", "sym": "B%d" % i, "t": T0 + i * MIN, "entryAt": T0 + i * MIN, "px": 1.0, "ticket": 3.0, "paper": M.PAPER_RULE, "_id": pid, "_left": 0.0,
+                    "_exits": [{"pos": pid, "t": T0 + i * MIN + 30 * MIN, "px": 0.7, "frac": 1.0, "why": "stop", "eur": 2.05}]}
+    A_big = PA.load(d, T0 + 30 * H, pos=big, px={}, since=T0)
+    b_nl = PA.noloss(D, A_big)
+    first, inner = b_nl.split("<summary>Older trades", 1) if "<summary>Older trades" in b_nl else (b_nl, "")
+    check(A_big["noloss"]["listN"] == 330 and len(A_big["noloss"]["list"]) == PA.NL_MAX == 300 and first.count("<tr><td") == PA.NL_SHOWN == 50
+          and inner.count("<tr><td") == 250 and "Older trades (280)" in b_nl and "The newest 300 are here; 30 older ones are not shown." in b_nl
+          and re.findall(r"<strong>(B\d+)</strong>", first)[:2] == ["B329", "B328"],
+          "U11 a long history: the newest 50 in the list, the next 250 in a fold inside it, the 30 oldest named but left out (the page stays small)")
 
 
 # in the page: what the phone view shows, tap targets, a long ticker, the selected order's contrast
@@ -380,8 +471,11 @@ PROBE = r"""
   let contrast = 0;
   if (lab) { const cs = getComputedStyle(lab), a = rgb(cs.color), b = rgb(cs.backgroundColor); if (a && b) { const l1 = lum(a), l2 = lum(b); contrast = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); } }
   const cats = sec.querySelector('.pa-cats').getBoundingClientRect().height;
+  const nlb = sec.querySelector('[data-pa="noloss"]'), nlt = Array.from(sec.querySelectorAll('.nl-tile')).map((e) => e.getBoundingClientRect());
+  const nlOver = Array.from(sec.querySelectorAll('[data-pa="noloss"] *')).filter((e) => vis(e) && e.getBoundingClientRect().right > nlb.getBoundingClientRect().right + 1).length;
   return {feed: n('[data-pa="feed"] > ol .pa-ev'), feedAll: n('[data-pa="feed"] .pa-ev'), det: n('.pa-cat .det'), ph: n('.pa-cat .ph'), same: n('.pa-cat .same'),
-          small: small, over: over, contrast: Math.round(contrast * 100) / 100, cats: Math.round(cats), iw: innerWidth, sw: document.documentElement.scrollWidth};
+          small: small, over: over, contrast: Math.round(contrast * 100) / 100, cats: Math.round(cats), iw: innerWidth, sw: document.documentElement.scrollWidth,
+          nlH: nlb ? Math.round(nlb.getBoundingClientRect().height) : -1, nlTops: nlt.map((r) => Math.round(r.top)), nlW: nlt.map((r) => Math.round(r.width)), nlOver: nlOver};
 }
 """
 
@@ -448,6 +542,12 @@ def _browser(check, page_html, skips):
     con = {k: v[1]["contrast"] for k, v in views.items()}
     check(all(c >= 4.5 for c in con.values()), "the selected order chip's text has at least 4.5:1 contrast in light and dark (%s)" % ", ".join(
         "%d %s %.2f" % (k[0], k[1], c) for k, c in sorted(con.items())))
+    nl_ph, nl_dt = [views[(390, sc)] for sc in ("light", "dark")], [views[(1280, sc)] for sc in ("light", "dark")]
+    check(all(len(c["nlTops"]) == 2 and c["nlTops"][1] > c["nlTops"][0] + 100 and c["nlH"] <= 820 for c, _ in nl_ph)
+          and all(len(c["nlTops"]) == 2 and c["nlTops"][0] == c["nlTops"][1] and min(c["nlW"]) >= 400 for c, _ in nl_dt)
+          and all(v["nlOver"] == 0 for vv in views.values() for v in vv),
+          "U11 in Chromium the stop and take-profit tiles stand side by side at 1280 px and stack on a 390 px phone, where the folded block is %d px "
+          "high (at most 820); nothing in it reaches past its edge, folds closed or open, light and dark" % nl_ph[0][0]["nlH"])
     check(live == [(True, [False, "Trader now: bought <b>X</b> for 3 €", 0], True)] and not errs,
           "the live line shows the trader's latest line only while the live doc says a scan runs, as text; no script error (%s; %s)" % (live, errs[:2]))
 

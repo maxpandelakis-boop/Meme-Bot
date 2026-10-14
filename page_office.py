@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """page_office.py: the agent office's newer parts on the page (fake money only: nothing here buys, sells or advises anything).
 
-  agent cards      a row above the floor plan: one card per agent of the last run plus the Launch radar, each with its light, its name,
-                   one line (its result, at most 60 characters) and one small number. A card opens its department below. While a scan
-                   runs, the office's live script marks the cards through the hooks the panels already have (data-live-chip, -line).
+  agent cards      the Office tab opens with them (the GROKBOT + JEV layout): a grid of compact cards, 2 columns on a phone and 4 on a
+                   desktop, one per agent of the last run plus the Launch radar. Each card has its icon on a badge in its state colour (done,
+                   at work, fallback, failed, skipped; dashed: own job), its name, one number (how long it worked; the radar: its last check)
+                   and one line (its result, cut to one line). A tap opens the Details fold at the agent's department. While a scan runs, the
+                   office's live script marks the cards through the hooks the panels already have (data-live, data-live-chip, -line).
+  balance line     under the cards: the paper account's profit or loss after every run since the restart (memecurve "paper"), compact.
+  details fold     everything else of the office (the counts, the floor plan with its departments and legend, the team timeline, the
+                   daily overview in the Brain's panel) sits in one fold, closed until it is opened (a tap on a card opens it too).
   radar desk       the Launch radar runs in its own job (radar.yml), not in the hourly scan: its desk is the second one on the Analysts
                    platform, drawn from mb/radar_live.json (the scan copies the radar's last radar.json there before it starts). It never
                    counts in a department's light, the team timeline, the counts or "at work at once"; office.json is not changed. The
@@ -121,7 +126,8 @@ def radar_state(doc, ref):
 
 
 def look(state, doc, hhmm):
-    """The desk's light, word, line and small number for a radar state (the page script's MemebotOffice.look says the same)."""
+    """The desk's light, word, line and number (its card's: the time of its last check) for a radar state (the page script's
+    MemebotOffice.look says the same)."""
     light, word = LOOK.get(state, LOOK["none"])
     lead = word if state in ("late", "stopped") else ""
     if state == "running" and doc and doc.get("state") == "degraded":
@@ -142,7 +148,7 @@ def look(state, doc, hhmm):
     checked = ("checked %s" % hhmm(doc["t"])) if doc and state != "none" else "no check yet"
     end = ((doc or {}).get("run") or {}).get("end") if isinstance((doc or {}).get("run"), dict) else None
     until = (" · this run until %s" % hhmm(end)) if end and state in ("running", "late") else ""
-    return {"light": light, "word": word, "line": line, "stat": checked if doc and state != "none" else "own job", "checked": checked,
+    return {"light": light, "word": word, "line": line, "stat": hhmm(doc["t"]) if doc and state != "none" else "own job", "checked": checked,     # the card's number: its last check
             "here": state in ("running", "late"), "until": until, "quiet": state in QUIET}
 
 
@@ -196,31 +202,102 @@ def ext_panel(a, R):
 
 
 # ---------------------------------------------------------------- the agent cards
+# each agent's icon: strokes in a 16 x 16 box, drawn in the card's state colour (an agent without one shows its initial)
+ICONS = {
+    "dispatch": '<path d="M2.5 4h1M6 4h7.5M2.5 8h1M6 8h7.5M2.5 12h1M6 12h7.5"/>',
+    "trainer": '<path d="M6 2h4M6.7 2v4.3L3.2 12.6A1.2 1.2 0 0 0 4.3 14.4h7.4a1.2 1.2 0 0 0 1.1-1.8L9.3 6.3V2M4.6 10.2h6.8"/>',
+    "scouts": '<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.3 2.2 2.3 9.8 0 12M8 2c-2.3 2.2-2.3 9.8 0 12"/>',
+    "candles": '<path d="M4 2.5v11M8 1.5v13M12 3.5v9"/><rect x="2.6" y="5" width="2.8" height="5" rx=".5"/><rect x="6.6" y="3.5" width="2.8" height="7" rx=".5"/>'
+               '<rect x="10.6" y="6" width="2.8" height="4" rx=".5"/>',
+    "spotter": '<path d="M1.5 8s2.4-4.6 6.5-4.6S14.5 8 14.5 8s-2.4 4.6-6.5 4.6S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
+    "market": '<path d="M2 2.5h5.3l6.2 6.2-4.8 4.8L2.5 7.3z"/><circle cx="5.2" cy="5.6" r="1"/>',
+    "analyst": '<path d="M2 3h12L9.5 8.6V13l-3 1.5V8.6z"/>',
+    "deep": '<circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4 14 14"/>',
+    "safety": '<path d="M8 1.8 13.5 4v4c0 3.2-2.3 5.6-5.5 6.5C4.8 13.6 2.5 11.2 2.5 8V4z"/><path d="M5.6 8.2l1.7 1.7 3.2-3.4"/>',
+    "refresh": '<path d="M13.2 7.2A5.2 5.2 0 0 0 4 4.2M2.8 8.8A5.2 5.2 0 0 0 12 11.8M4 1.7v2.6h2.6M12 14.3v-2.6H9.4"/>',
+    "trader": '<path d="M2.5 5.5h10.5l-2.6-2.6M13.5 10.5H3l2.6 2.6"/>',
+    "reporter": '<path d="M4 1.8h5.4l2.9 3v9.4H4z"/><path d="M9.2 1.8v3.2h3.1M6 8.6h4.4M6 11.2h4.4"/>',
+    "radar": '<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.8"/><path d="M8 8l4.3-4.3"/>'}
+
+
+def icon(aid, name):
+    """The card's icon (inline SVG, no request) or the agent's initial."""
+    if aid in ICONS:
+        return '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">%s</svg>' % ICONS[aid]
+    return '<b aria-hidden="true">%s</b>' % _e((str(name or aid or "?").strip() or "?")[0].upper())
+
+
+def card_line(a, R):
+    """A scan agent's one line on its card: its result, else its most telling line (a warning without its "! " mark, as the panel shows
+    it), else its word (skipped, did not run)."""
+    latest = R.office_latest(a["lines"])
+    return a["out"] or (latest.lstrip("! ") if latest.startswith("!") else latest) or R.office_word(a)
+
+
 def cards(info, R):
-    """One card per agent of the last run (in run order) and one per agent in its own job: light, name, one line, one number. A card is the
-    label of its department's radio, so a tap opens that department's panel below (no script needed)."""
+    """The grid on top of the Office tab: one card per agent of the last run (in run order) and one per agent in its own job, each with its
+    icon on a badge in its state colour, its name, one number and one line. A card is the label of its department's radio, so a tap picks
+    that department in the Details fold (the script opens the fold and brings the panel into view). Only spans inside a card: the cards
+    are labels."""
     home = {m["id"]: d["key"] for d in info["depts"] + [info["brain"]] for m in d["agents"]}
     out = []
     for a in info["agents"] + (info.get("ext") or []):
         ext = bool(a.get("ext"))
         st = a["st"] if a["st"] in R.OFFICE_ST else "skipped"
-        if ext:
-            line, stat = a["out"], a["stat"]
-        else:
-            latest = R.office_latest(a["lines"])
-            line = a["out"] or (latest.lstrip("! ") if latest.startswith("!") else latest) or R.office_word(a)    # a warning without its mark, as the panel shows it
-            stat = (R.fmt_secs(a["secs"], True) + (" · beside" if a["bg"] else "")) if a["ran"] else R.office_word(a)
-        word = a["word"] if ext else R.office_word(a)
+        line = a["out"] if ext else card_line(a, R)
+        stat = a["stat"] if ext else (R.fmt_secs(a["secs"], True) if a["ran"] else "–")
+        word = a["word"] if ext else R.office_word(a) + (", beside the others" if a["bg"] and a["ran"] else "")
         tag = (' data-ext="%s"' % _e(a["id"])) if ext else ""
         x = (lambda k: ' data-ext-%s="%s"' % (k, _e(a["id"]))) if ext else (lambda k: "")
         live = "" if ext else ('<span class="chip" data-lv data-live-chip="%s" hidden></span><span class="ocl" data-lv data-live-line="%s" data-live-max="%d" hidden></span>' % (
             _e(a["id"]), _e(a["id"]), CARD_LINE))
-        out.append('<label class="ocard%s" for="od-%s" data-agent="%s"%s title="%s: %s"><span class="och"><span class="olt %s"%s aria-hidden="true">●</span>'
-                   '<span class="ocn">%s</span></span><span class="ocl"%s>%s</span>%s<span class="ocs"%s>%s</span></label>' % (
-                       " ext" if ext else "", _e(home.get(a["id"], "ops")), _e(a["id"]), tag, _e(a["name"]), _e(word), st, x("lt"), _e(a["name"]),
-                       x("line"), _e(clip(line, CARD_LINE)), live, x("stat"), _e(stat)))
-    return ('<div class="ocards" data-po-tz="%s" data-po-tzn="%s" role="group" aria-label="The agents: tap one to open its department">%s</div>' % (
+        out.append('<label class="ocard%s" for="od-%s" data-agent="%s"%s title="%s: %s · %s"><span class="olt %s"%s>%s</span>'
+                   '<span class="ocn">%s</span><span class="ocs"%s>%s</span><span class="ocl"%s>%s</span>%s<span class="sr"%s> %s</span></label>' % (
+                       " ext" if ext else "", _e(home.get(a["id"], "ops")), _e(a["id"]), tag, _e(a["name"]), _e(word), _e(clip(line, 160)), st, x("lt"),
+                       icon(a["id"], a["name"]), _e(a["name"]), x("stat"), _e(stat), x("line"), _e(clip(line, CARD_LINE)), live, x("word"), _e(word)))
+    return ('<div class="ocards" data-po-tz="%s" data-po-tzn="%s" role="group" aria-label="The agents of the last scan: tap one to open its department">%s</div>' % (
         "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", _e(R.TZ_NAME), "".join(out)))
+
+
+# ---------------------------------------------------------------- the paper account's line under the cards
+def _eur(v, signed=False):
+    """1,234.56 € with a real minus sign and a no-break space, as the Account card writes it."""
+    s = format(abs(v), ",.2f")
+    if v < 0 and s.strip("0.,"):
+        return "−" + s + " €"
+    return ("+" if signed and v > 0 else "") + s + " €"
+
+
+def balance(D, R):
+    """The paper account's profit or loss after every run since the restart (memecurve "paper", the Account card's balance line), compact:
+    the number now on top, the line with break-even dashed. Recommend mode only; fake money."""
+    P = D.get("paper") if isinstance(D.get("paper"), dict) else None
+    if not P or not D.get("rec"):
+        return ""
+    since = _num(P.get("since")) or 0
+    pts = sorted((int(_ms(c.get("t"))), _num(c["paper"].get("pnl"))) for c in D.get("curve") or []
+                 if isinstance(c, dict) and _ms(c.get("t")) and _ms(c.get("t")) >= since and isinstance(c.get("paper"), dict) and _num(c["paper"].get("pnl")) is not None)
+    now_v = _num((P.get("acct") or {}).get("pnl")) if isinstance(P.get("acct"), dict) else None
+    now_v = now_v if now_v is not None else (pts[-1][1] if pts else None)
+    tone = "flat" if now_v is None or abs(now_v) < 0.005 else ("good" if now_v > 0 else "bad")
+    when = ("since %s" % R.local(since).strftime("%b %d")) if since else "since the restart"
+    head = ('<div class="obal-h"><span class="k">Paper account</span><span class="s">P/L %s</span><b class="v">%s</b></div>' % (
+        _e(when), _e(_eur(now_v, True) if now_v is not None else "–")))
+    if len(pts) < 2:
+        return '<div class="obal %s" data-po-bal>%s<p class="obal-e">the line starts after two runs</p></div>' % (tone, head)
+    W, Hh, pad = 600.0, 64.0, 4.0
+    t0, t1 = pts[0][0], pts[-1][0]
+    vs = [v for _, v in pts] + [0.0]
+    lo, hi = min(vs), max(vs)
+    lo, hi = (lo - 1, hi + 1) if hi - lo < 1e-9 else (lo, hi)
+    X = lambda t: (t - t0) / float((t1 - t0) or 1) * W
+    Y = lambda v: pad + (hi - v) / (hi - lo) * (Hh - 2 * pad)
+    path = " ".join("%s%.1f %.1f" % ("M" if i == 0 else "L", X(t), Y(v)) for i, (t, v) in enumerate(pts))
+    y0 = Y(0.0)
+    return ('<div class="obal %s" data-po-bal>%s<div class="obal-c" role="img" aria-label="Paper account profit or loss after every run %s, now %s">'
+            '<svg viewBox="0 0 %d %d" preserveAspectRatio="none" aria-hidden="true"><line class="z" x1="0" y1="%.1f" x2="%d" y2="%.1f"/>'
+            '<path class="a" d="%s L%.1f %.1f L0 %.1f Z"/><path class="l" d="%s"/></svg></div></div>') % (
+        tone, head, _e(when), _e(_eur(now_v, True) if now_v is not None else "–"), W, Hh, y0, W, y0, path, W, y0, y0, path)
 
 
 # ---------------------------------------------------------------- the daily overview
@@ -460,8 +537,9 @@ def scan_strip(D, R):
     hm = lambda ms: R.local(ms).strftime("%H:%M")
     state = ("last %s" % hm(last)) if last else "no scan yet"
     info = ("The full scan checks every source, names the pick and runs the paper account, about once an hour (about 26 minutes). "
-            "The next start is estimated from the last scans. Scan now opens its page on GitHub: tap “Run workflow” there; "
-            "a start while a scan runs waits until it ends. The Radar tab is the second, faster scan.")
+            "The next start is estimated from the last scans. Scan now opens its page on GitHub: tap “Run workflow” there and come back in about ten "
+            "minutes; a start while a scan runs waits until it ends. The page is rebuilt after every scan and reloads itself (the app when you come "
+            "back to it). The Radar tab is the second, faster scan: each scan runs on its own, and both can run at the same time.")
     return ('<style>%s</style><div class="sstrip" data-sstrip data-run-t="%d" data-next="%d" data-po-tz="%s"><span class="sdot%s" data-ss-dot aria-hidden="true"></span>'
             '<b>Full scan</b><span class="sst" data-ss-state>%s</span><span class="sst" data-ss-next>next ≈ %s</span>'
             '<a class="sbtn" data-ss-now target="_blank" rel="noopener" hidden><span>Scan now ↗</span></a>'
@@ -475,7 +553,9 @@ def hour_css():
 
 
 STRIP_CSS = r"""
-/* the full scan's strip on the Pick tab (page_office.py) */
+/* the full scan's strip on the Pick tab (page_office.py): the one place for the next start and Scan now, so the website's Live box with its
+   own Scan now button goes wherever the strip is on the page (the box stays in the HTML: the strip takes the repository from its link) */
+.wrap:has([data-sstrip]) > .live { display:none }
 .sstrip { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:8px 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface);
   font-size:var(--fs-s); color:var(--fg2); position:relative }
 .sstrip b { color:var(--fg); font-weight:600 } .sstrip .sst { font-variant-numeric:tabular-nums; white-space:nowrap } .sstrip .sst[hidden] { display:none }
@@ -497,23 +577,40 @@ STRIP_CSS = r"""
 CSS = r"""
 .fold-lite > summary { min-height:44px; display:flex; align-items:center }   /* a 44 px tap target */
 /* the office's agent cards, the Launch radar's desk and the daily overview (page_office.py); page tokens only, light and dark */
-.ocards { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; padding:2px 2px 10px; scrollbar-width:thin; max-width:100% }
-.ocard { flex:0 0 152px; scroll-snap-align:start; display:grid; gap:3px; align-content:start; min-width:0; padding:9px 11px; border:1px solid var(--line); border-radius:8px;
-  background:var(--surface); cursor:pointer } .ocard:hover { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)) }
+/* the agent cards: 2 columns on a phone, 4 from 700 px; a card is icon + number, name, one line (phone) or icon, name, number and one line */
+.ocards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
+.ocard { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"ic . nu" "nm nm nm" "ln ln ln"; align-items:center; gap:4px 8px; min-width:0;
+  padding:9px 10px 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface); cursor:pointer; position:relative }
+.ocard:hover { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)) } .ocard:active { transform:translateY(1px) }
 .ocard.ext { border-style:dashed; border-color:color-mix(in srgb,var(--s3) 60%,var(--line)) }
-.ocard .och { display:flex; align-items:center; gap:6px; min-width:0 } .ocard .ocn { font-weight:600; font-size:var(--fs-s); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.ocard .ocl { font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere }
-.ocard .ocl[hidden] { display:none }
-.ocard .ocs { font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.ocard .chip { justify-self:start; font-size:11px; padding:1px 7px }
-.olt { font-size:11px; line-height:1; color:var(--muted) } .olt.done { color:var(--good-mark) } .olt.failed { color:var(--bad-mark) } .olt.fallback { color:var(--warn-mark) } .olt.running { color:var(--accent) }
-/* during a scan (the live view): a card at work shows its live line instead of last run's, a waiting card is faded as on the floor */
+.ocard:has(> .olt.failed) { border-color:color-mix(in srgb,var(--bad-mark) 55%,var(--line)) } .ocard:has(> .olt.fallback) { border-color:color-mix(in srgb,var(--warn-mark) 55%,var(--line)) }
+.ocard .olt { grid-area:ic; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb,currentColor 15%,transparent) }
+.ocard .olt svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round } .ocard .olt b { font-size:13px; line-height:1 }
+.ocard .ocn { grid-area:nm; font-weight:600; font-size:var(--fs-s); line-height:1.25; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ocard .ocs { grid-area:nu; justify-self:end; font-size:15px; font-weight:600; line-height:1.2; color:var(--fg); font-variant-numeric:tabular-nums; white-space:nowrap }
+.ocard .ocl { grid-area:ln; font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ocard .ocl[hidden], .ocard .chip[data-live-chip] { display:none }
+.olt.done { color:var(--good-mark) } .olt.failed { color:var(--bad-mark) } .olt.fallback { color:var(--warn-mark) } .olt.running { color:var(--accent) } .olt.skipped { color:var(--muted) }
+/* during a scan (the live view): a card at work pulses and shows its live line instead of last run's, a waiting card is faded as on the floor */
 .ocard[data-live="work"] .olt { color:var(--accent); animation:opulse 1.2s ease-in-out infinite } .ocard[data-live="done"] .olt { color:var(--good-mark) }
 .ocard[data-live="fail"] .olt { color:var(--bad-mark) } .ocard[data-live="wait"] .olt { color:var(--muted) } .ocard[data-live="wait"] { opacity:.55 }
 .ocard:has(> .ocl[data-live-line]:not([hidden])) > .ocl:not([data-live-line]) { display:none }
-@media (prefers-reduced-motion: reduce) { .ocard[data-live="work"] .olt { animation:none } }
-@media (min-width:700px) { .ocards { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); overflow:visible; padding-bottom:2px }
-  .ocard .ocn { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.25 } }
+@media (prefers-reduced-motion: reduce) { .ocard[data-live="work"] .olt { animation:none } .ocard:active { transform:none } }
+@media (min-width:700px) { .ocards { grid-template-columns:repeat(4,minmax(0,1fr)) } .ocard { grid-template-areas:"ic nm nu" "ln ln ln"; padding:10px 12px 9px } }
+/* the paper account's line under the cards */
+.obal { display:grid; gap:4px; padding:10px 12px 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface); min-width:0 }
+.obal-h { display:flex; align-items:baseline; gap:4px 10px; flex-wrap:wrap; min-width:0 } .obal-h .k { font-size:var(--fs-xs); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:500 }
+.obal-h .s { font-size:var(--fs-xs); color:var(--muted) } .obal-h .v { margin-left:auto; font-size:20px; font-weight:600; letter-spacing:-.01em; font-variant-numeric:tabular-nums; white-space:nowrap }
+.obal.good .v { color:var(--good) } .obal.bad .v { color:var(--bad) }
+.obal-c { position:relative; height:64px; min-width:0 } .obal-c svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible }
+.obal .l { fill:none; stroke:var(--muted); stroke-width:2; vector-effect:non-scaling-stroke; stroke-linejoin:round } .obal .a { fill:var(--muted); opacity:.1 }
+.obal.good .l { stroke:var(--good-mark) } .obal.good .a { fill:var(--good-mark) } .obal.bad .l { stroke:var(--bad-mark) } .obal.bad .a { fill:var(--bad-mark) }
+.obal .z { stroke:var(--muted); stroke-width:1; stroke-dasharray:4 3; vector-effect:non-scaling-stroke } .obal-e { margin:0; font-size:var(--fs-xs); color:var(--muted) }
+/* while a scan runs the cards say who is at work: the live box keeps its badge and its counts, its "Right now" list goes */
+.olive > div:has(> ul.onow) { display:none }
+/* the Details fold: everything else of the office */
+details.ofold > .ofold-in { display:grid; gap:16px; min-width:0 } details.ofold > summary { min-height:44px; box-sizing:border-box }
+.otop { display:grid; gap:10px; min-width:0 }
 .ofl .desk[data-ext].off .who { display:none } .olegend .oj::before { width:22px; height:12px; border-radius:6px; background:color-mix(in srgb,var(--s3) 18%,var(--surface)); border:1px solid var(--s3) } .ofl .pill.own { fill:color-mix(in srgb,var(--s3) 18%,var(--surface)); stroke:var(--s3) }
 .oext .olinkb { color:var(--accent); cursor:pointer; text-decoration:underline; display:inline-flex; align-items:center; min-height:44px; margin:-12px 0 }
 .oext [hidden] { display:none }
@@ -577,7 +674,7 @@ var O=window.MemebotOffice={
     else line=(lead?lead+' · ':'')+n(c.seen)+' seen · '+n(c.good)+' without traps · '+n(c.pushed)+' pushed';
     var ck=d&&isn(d.t)&&st!=='none'?'checked '+fmt(d.t):'no check yet',r=d&&d.run&&typeof d.run==='object'?d.run:null;
     var until=r&&isn(r.end)&&r.end>0&&(st==='running'||st==='late')?' · this run until '+fmt(r.end):'';
-    return {light:light,word:word,line:line,stat:d&&isn(d.t)&&st!=='none'?ck:'own job',checked:ck,here:st==='running'||st==='late',until:until,quiet:QUIET.indexOf(st)>=0};},
+    return {light:light,word:word,line:line,stat:d&&isn(d.t)&&st!=='none'?fmt(d.t):'own job',checked:ck,here:st==='running'||st==='late',until:until,quiet:QUIET.indexOf(st)>=0};},
   // the full scan's strip for a live-view state (MemebotLive.state): null keeps the page's own words
   scan:function(st,doc,runT,fmt){var d=doc&&typeof doc==='object'?doc:null,t=d&&isn(+d.t)?+d.t:0,up=d?+(d.updated||d.end)||0:0;fmt=fmt||hhmm;
     if(!d||!(t>runT))return null;
@@ -633,13 +730,19 @@ window.addEventListener('memebot-radar',function(e){O.radar(e&&e.detail);});
 D.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;
   // "Open the Radar tab": the browser page checks the tab's radio (the label); the installed app switches tabs on a hash change, so its bar follows
   if(t.closest('[data-po-radar] label')&&D.documentElement.classList.contains('app')){e.preventDefault();try{location.hash='#tab-radar';}catch(x){}return;}
-  // a tap on a card opens its department; on a phone (one column) the panel is far below the floor plan, so it scrolls into view
-  var c=t.closest('label.ocard');if(!c||window.innerWidth>=1080)return;
+  // a tap on a card picks its department (the card is the radio's label), opens the Details fold and brings the panel into view (on a
+  // desktop the panel sits beside the floor plan, on a phone below it)
+  var c=t.closest('label.ocard');if(!c)return;
+  var f=D.querySelector('details[data-po-fold]');if(f&&!f.open)f.open=true;
   var k=c.getAttribute('for'),p=k&&D.querySelector('.opanel.k-'+k.replace(/^od-/,'').replace(/[^a-z]/g,''));if(!p)return;
-  var to=c.hasAttribute('data-ext')&&p.querySelector('.oext')||p;     // the radar's card: its own block, not the top of the Analysts panel
+  var to=c.hasAttribute('data-ext')&&p.querySelector('.oext')||(window.innerWidth>=1080&&p.closest('.ogrid'))||p;     // the radar's card: its own block
   setTimeout(function(){try{to.scrollIntoView({block:'start',behavior:window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}catch(x){}},30);});
 window.addEventListener('memebot-live',function(e){lastScan=e&&e.detail&&typeof e.detail==='object'?e.detail:null;try{strip();}catch(x){}});
-function ready(){try{link();}catch(e){}
+// the Details fold stays open across the page's own reloads (a new report) once the reader opened it in this tab; closed on a first visit
+function fold(){var f=D.querySelector('details[data-po-fold]');if(!f||f._po)return;f._po=1;
+  try{if(sessionStorage.getItem('memebot-office-fold')==='1')f.open=true;}catch(e){}
+  f.addEventListener('toggle',function(){try{sessionStorage.setItem('memebot-office-fold',f.open?'1':'0');}catch(e){}});}
+function ready(){try{link();}catch(e){}try{fold();}catch(e){}
   try{if(!D.getElementById('tab-radar'))all('[data-po-radar]').forEach(function(e){e.hidden=true;});}catch(e){}     // a page without the Radar tab: no dead link
   try{if(!last&&window.MemebotRadar&&MemebotRadar.last)O.radar(MemebotRadar.last);else draw();}catch(e){}try{strip();}catch(e){}
   if(D.querySelector('[data-sstrip]'))setInterval(function(){try{strip();}catch(e){}},60000);}

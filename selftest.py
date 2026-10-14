@@ -1223,7 +1223,7 @@ def spotter_checks(check):
     pl, pp = open(out_live, encoding="utf-8").read(), open(out_plain, encoding="utf-8").read()
     bare = re.sub(r'<script>\s*\(function\(\)\{\s*var MB=window\.MemebotLive=.*?</script>', "", re.sub(
         r'<p class="note olink" data-lv data-live-link>.*?</p><div class="olive".*?<p class="note" data-lv data-live-off hidden></p></div>', "", pl, flags=re.S), flags=re.S)
-    bare = re.sub(r'<p class="note ehint">.*?</p><details class="early" data-early.*?</details>', "", bare.replace(R.EARLY_CSS, "", 1), flags=re.S)
+    bare = re.sub(r'<p class="note ehint">.*?</p>|<details class="early" data-early.*?</details>', "", bare.replace(R.EARLY_CSS, "", 1), flags=re.S)   # the hint (behind the tab's ⓘ) and the early box
     box = re.search(r'<details class="early" data-early[^>]*>', pl)
     ed_doc = json.loads(html.unescape(re.search(r'data-early-doc="([^"]*)"', box.group(0)).group(1))) if box and "data-early-doc" in box.group(0) else {}
     fin = json.loads(html.unescape(re.search(r'data-final="([^"]*)"', box.group(0)).group(1))) if box and "data-final" in box.group(0) else {}
@@ -1673,7 +1673,8 @@ def app_browser_checks(check, sd, young):
             pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
             pg.goto(pages_url)
             pg.wait_for_selector(".appbar", timeout=8000)
-            scan_btn = pg.evaluate("(() => { const b = document.querySelector('.live .btn'); return b && b.getClientRects().length ? b.getBoundingClientRect().height : 0; })()")
+            scan_btn = pg.evaluate("(() => { const b = document.querySelector('[data-ss-now]'), l = document.querySelector('.wrap > .live');"
+                                   " return b && !b.hidden && b.getClientRects().length && !(l && l.getClientRects().length) ? b.getBoundingClientRect().height : 0; })()")
             got_badge = True
             try:
                 pg.wait_for_function("n => ((document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')||{}).textContent||'') === String(n)", arg=n, timeout=10000)
@@ -1765,7 +1766,7 @@ def app_browser_checks(check, sd, young):
               office[0][:20], calls_main["status"], calls_main["current"], calls_main["github"], "" if done_ok and after == [str(n), False, n] else " %s %s %s" % (done_ok, after, office)))
     check(aria == ["New coins, %d listed now" % n, "Office, a scan is running now"] and nobadge == [False, "New coins"] and scan_btn >= 44,
           "installed app: the New coins badge only with a scan's early list (none while the scan has not listed yet), the tabs' badge and dot read out in words"
-          " (%s), Scan now %d px tall" % (aria, scan_btn))
+          " (%s), the full scan's strip has the one Scan now (%d px tall; the Live box with its own button is not shown)" % (aria, scan_btn))
     check(wait_ok and 0 < deep["y"] and -1 <= deep["box"] <= 40 and deep["card"] + 60 <= deep["bar"] and deep["status"].startswith("Found at") and deep["hscroll"] <= 0
           and deep["tok"].startswith("token 12 days old (Raydium LaunchLab Extras) · pumpswap-amm-v2-extended"),
           "installed app at 320 x 640, opened by the new coins notification (#tab-young): once the list is in, the page scrolls to the early box (its top at %.0f px),"
@@ -2939,7 +2940,7 @@ def main():
     bare_live = re.sub(r'<script>\s*\(function\(\)\{\s*var MB=window\.MemebotLive=.*?</script>', "", re.sub(
         r'<p class="note olink" data-lv data-live-link>.*?</p><div class="olive".*?<p class="note" data-lv data-live-off hidden></p></div>', "", page_live, flags=re.S), flags=re.S)
     import report as R_
-    bare_live = re.sub(r'<p class="note ehint">.*?</p><details class="early" data-early.*?</details>', "", bare_live.replace(R_.EARLY_CSS, "", 1), flags=re.S)   # the early list (website only)
+    bare_live = re.sub(r'<p class="note ehint">.*?</p>|<details class="early" data-early.*?</details>', "", bare_live.replace(R_.EARLY_CSS, "", 1), flags=re.S)   # the early list (website only)
     check('Live during a scan: <a href="https://some-owner.github.io/Meme-Bot/">' in page_live and "https://api.github.com/repos/Some-Owner/Meme-Bot/contents/live.json?ref=live" in page_live
           and "MEMEBOT_LIVE_SRC" in page_live and 'data-agents="scouts deep"' in page_live and 'data-agent="scouts"' in page_live
           and page_plain and "Live during a scan" not in page_plain and "live.json" not in page_plain and "MEMEBOT_LIVE_SRC" not in page_plain and bare_live == page_plain,
@@ -3642,7 +3643,8 @@ console.log(JSON.stringify(o));
           and "Take-profit levels, 1 h later" in page2 and "sold at +30%" in page2 and "after %d min" % tp_all[0]["tpMin"]["20"] in page2,
           "every result with candles (1 h, and now the horizon too: %d of %d) is replayed at +10/+20/+30/+50%% from the entry price on (%s)" % (len(out_c), len(scored), tp_all[0].get("tpMin") if tp_all else "-"))
     one_h = [o for doc in recs for o in ((doc.get("outs") or {}).get("1") or {}).get("picks", [])]
-    check(recs and scored and one_h and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next scan starts about" in page2 and "1 h later" in page2 and "24 h later" in page2,
+    check(recs and scored and one_h and "Track record" in r.stdout and "Recommendations, hour by hour" in page2 and "next ≈ " in page2 and "next scan starts about" not in page2
+          and "1 h later" in page2 and "24 h later" in page2,
           "the tips were recorded and priced again at 1 h and at the horizon (%d docs, %d scored, %d at 1 h)" % (len(recs), len(scored), len(one_h)))
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--now", str(T0 + 25 * H), "--recommend", "--horizon", "2h", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     recs = [json.load(open(f)) for f in glob.glob(os.path.join(hd, "db", "memerec", "*.json"))]

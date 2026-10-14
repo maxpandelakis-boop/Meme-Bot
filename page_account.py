@@ -14,10 +14,13 @@ load(d, now, pos=None, px=None, since=None) -> dict
       "counts" priced N of M, waiting, estimated, 15-min, not booked (unit), windows still open
       "feed"   paper buys (at entryAt) and sales (exit "at", else "t") since the restart, newest first (at most FEED_MAX)
       "rows"   one row per position since the restart, newest first, with its result and its peak doc
+      "noloss" without the stop-loss (hindsight): the trades sold at the stop and at the take-profit, and all trades, each with
+               the sum and the extreme of their best (max profit) and lowest (max loss) close within 6 h, what the rule really made
+               with the same trades, and how many went back above the entry after the stop (rose further after the take-profit)
 
 section(D, bought=None) -> HTML
-    The survival header (big P/L since the restart, its rate, the balance line, four tiles), the three category strips, the
-    activity feed, the top trades in four orders (newest, top %, worst %, best in 6 h) with the two hindsight columns, the open
+    The survival header (big P/L since the restart, its rate, the balance line, four tiles), the three category strips, the block
+    "Without the stop-loss" (two tiles, the all-trades line, the folded per-trade list of max profit and max loss), the activity feed, the top trades in four orders (newest, top %, worst %, best in 6 h) with the two hindsight columns, the open
     positions (report.py's own `bought`), the trades before the restart and the curve fold with the dashed "best within 6 h" line.
     Everything is static HTML and CSS; the only script shows the trader's latest line while a scan runs, and only when the page
     already holds the live doc (report.py's live poll fires the "memebot-live" event; this module starts no poll of its own).
@@ -49,6 +52,7 @@ CUT_WORDS = (("rug", "pool dead"), ("dead", "pool dead"), ("liq", "pool dead"), 
 FEED_WHY = {"tp": "take-profit", "stop": "stop", "time": "6 h limit", "rug": "rug", "reset": "restart", "manual": "by hand", "filters": "filters",
             "target": "half at 2x"}
 SORTS = (("new", "Newest"), ("top", "Top %"), ("worst", "Worst %"), ("best", "Best in 6 h"))
+NL_SHOWN, NL_MAX = 50, 300          # the per-trade list without the stop-loss: rows in its first fold, rows in all (the rest in a fold inside)
 
 
 def num(v):
@@ -178,16 +182,18 @@ def peak_doc(doc):
     treated as still waiting: an unreadable number is never booked."""
     if not isinstance(doc, dict) or doc.get("state") not in PEAK_STATES:
         return None
-    g = {k: num(doc.get(k)) for k in ("x", "x6", "eur", "eur6", "at", "entryAt", "end", "rawX", "ticket", "tries", "res")}
+    g = {k: num(doc.get(k)) for k in ("x", "x6", "eur", "eur6", "at", "entryAt", "end", "rawX", "ticket", "tries", "res", "lo", "loAt", "eurLo")}
     st = doc["state"]
     if st in BOOKED and (g["x"] is None or g["x"] < 0):
         st = "waiting"
     cut = [str(c)[:120] for c in doc.get("cut") or [] if isinstance(c, (str, int, float))][:8] if isinstance(doc.get("cut"), list) else []
     src = doc.get("src") if doc.get("src") in ("m1", "m15", "est") else None
     x6 = g["x6"] if g["x6"] is not None and g["x6"] >= 0 else None
+    lo = g["lo"] if st in BOOKED and g["lo"] is not None and g["lo"] >= 0 else None      # the low within 6 h (peak.py PEAK_V 2)
     return {"state": st, "src": src, "x": g["x"] if st in BOOKED else None, "x6": x6 if st in BOOKED else None, "eur": g["eur"], "eur6": g["eur6"],
             "at": g["at"], "entryAt": g["entryAt"], "end": g["end"], "rawX": g["rawX"], "tries": g["tries"], "cut": cut,
-            "dead": isinstance(doc.get("dead"), dict)}
+            "dead": isinstance(doc.get("dead"), dict), "lo": lo, "loAt": g["loAt"] if lo is not None else None,
+            "eurLo": g["eurLo"] if lo is not None and g["eurLo"] is not None and g["eurLo"] >= 0 else None}
 
 
 def _stats(items):
@@ -208,7 +214,8 @@ def load(d, now, pos=None, px=None, since=None):
         empty = _stats([])
         return {"since": since, "err": "%s: %s" % (type(e).__name__, str(e)[:160]), "stop": dict(M.paper_account({}, since), winRate=None),
                 "best": empty, "six": empty, "counts": {"M": 0, "priced": 0, "est": 0, "m15": 0, "unit": 0, "waiting": 0, "open": 0},
-                "feed": [], "feedN": 0, "rows": [], "bestTrade": None, "peakPts": [], "sameBest": None, "sameSix": None, "noPx": 0}
+                "feed": [], "feedN": 0, "rows": [], "bestTrade": None, "peakPts": [], "sameBest": None, "sameSix": None, "noPx": 0,
+                "noloss": noloss_data([])}
 
 
 def _load(d, now, pos, px, since):
@@ -267,6 +274,8 @@ def _load(d, now, pos, px, since):
             pk["eur"] = round(M.pos_value(r["p"], 1.0, pk["x"]), 2)
         if pk["x6"] is not None and pk["eur6"] is None:
             pk["eur6"] = round(M.pos_value(r["p"], 1.0, pk["x6"]), 2)
+        if pk["lo"] is not None and pk["eurLo"] is None:
+            pk["eurLo"] = round(M.pos_value(r["p"], 1.0, pk["lo"]), 2)
     six = [r for r in booked if r["pk"]["x6"] is not None]
     best = _stats([(r["ticket"], r["pk"]["eur"]) for r in booked])
     six_st = _stats([(r["ticket"], r["pk"]["eur6"]) for r in six])
@@ -297,7 +306,58 @@ def _load(d, now, pos, px, since):
            "same": round(sum(x for _, _, x in old_bk), 2) if old_bk else None}
     return {"since": since, "err": None, "old": old, "stop": stop, "best": best, "six": six_st, "counts": counts, "feed": feed[:FEED_MAX], "feedN": len(feed),
             "rows": rows, "bestTrade": {"pnl": top["pnl"], "sym": top["sym"]} if top else None, "peakPts": pts,
-            "sameBest": same(booked), "sameSix": same(six), "noPx": sum(1 for r in rows if r["open"] and r["value"] is None)}
+            "sameBest": same(booked), "sameSix": same(six), "noPx": sum(1 for r in rows if r["open"] and r["value"] is None),
+            "noloss": noloss_data(rows)}
+
+
+def nl_priced(r):
+    """Whether a trade row has both ends of its 6 hours: a booked best (eur) and a booked low (eurLo, peak.py PEAK_V 2)."""
+    pk = r.get("pk")
+    return bool(pk) and pk["state"] in BOOKED and pk["x"] is not None and pk["eur"] is not None and pk["lo"] is not None and pk["eurLo"] is not None
+
+
+def nl_pct(r, hi):
+    """A priced trade sold at its best (hi) or its lowest close within 6 h: what came back over the ticket, minus 1 (after the paper
+    fees, as the real result's %)."""
+    v = r["pk"]["eur"] if hi else r["pk"]["eurLo"]
+    return v / r["ticket"] - 1.0 if r["ticket"] > 0 else 0.0
+
+
+def _exit_t(r, why):
+    """The time of a row's first sale for this reason (the candle that sold it, else the run's), or None."""
+    ts = [num(e.get("at")) or num(e.get("t")) for e in r["status"] if e.get("why") == why]
+    ts = [t for t in ts if t]
+    return min(ts) if ts else None
+
+
+def nl_stats(rs, why=None, over=1.0):
+    """Without the stop-loss, for a set of trade rows: "of" trades, "n" priced (both ends booked), and over the priced ones "best" (the
+    P/L had each been sold at its best close within 6 h), "worst" (at its lowest), "real" (what the rule made with them), "bestP" and
+    "loP" (the best trade at its best and the worst at its lowest, as a share of its ticket after the paper fees, like the real
+    result's %) and, with why, "back": how many had their best above over times the entry after that sale (the stop: back above the
+    entry; the take-profit: higher than where it sold)."""
+    pr = [r for r in rs if nl_priced(r)]
+    out = {"of": len(rs), "n": len(pr), "best": None, "worst": None, "real": None, "bestP": None, "loP": None, "back": None}
+    if not pr:
+        return out
+    out.update(best=round(sum(r["pk"]["eur"] - r["ticket"] for r in pr), 2), worst=round(sum(r["pk"]["eurLo"] - r["ticket"] for r in pr), 2),
+               real=round(sum(r["pnl"] for r in pr), 2), bestP=max(nl_pct(r, True) for r in pr), loP=min(nl_pct(r, False) for r in pr))
+    if why:
+        sold = [(r, _exit_t(r, why)) for r in pr]
+        out["back"] = sum(1 for r, t in sold if t and r["pk"]["x"] > over and r["pk"]["at"] is not None and r["pk"]["at"] > t)
+    return out
+
+
+def noloss_data(rows):
+    """The block "Without the stop-loss" from the trade rows: "stop" (sold at the stop), "tp" (sold at the take-profit), "all" (every
+    trade since the restart) and "list" (the rows whose 6-hour window has closed, newest first, at most NL_MAX) with "listN" (all of
+    them); "open": the trades still inside their first 6 hours (counted nowhere yet). All three count only trades whose 6 hours are
+    over ("of"), and sum only the priced ones ("n")."""
+    done = [r for r in rows if not r["windowOpen"] or nl_priced(r)]     # the trades whose 6 hours are over
+    stop = [r for r in done if any(e.get("why") == "stop" for e in r["status"])]
+    tp = [r for r in done if any(e.get("why") == "tp" for e in r["status"])]
+    return {"stop": nl_stats(stop, "stop", 1.0), "tp": nl_stats(tp, "tp", 1.0 + M.HOLD_TP), "all": nl_stats(done),
+            "list": done[:NL_MAX], "listN": len(done), "open": len(rows) - len(done)}
 
 
 # ---------------------------------------------------------------- the parts of the page
@@ -387,7 +447,7 @@ def header(D, A):
     return ('<div class="pa-hero" data-pa="header"><div class="pl"><div class="pa-eyebrow"><span>Stop-loss account</span><span class="chip neutral">the rule</span>'
             '<span>fake money</span></div><div class="pa-k">P/L since %s</div><div class="pa-big %s" data-pa-v="pnl">%s</div>'
             '<div class="pa-rate %s" data-pa-v="rate">%s</div>'
-            '<details class="pa-i"><summary aria-label="How this is counted">ⓘ how this is counted</summary><p>%s</p></details></div>%s'
+            '<details class="pa-i"><summary aria-label="How this is counted"><span class="dt-only">ⓘ how this is counted</span><span class="ph-only">ⓘ</span></summary><p>%s</p></details></div>%s'
             '<div class="pa-tiles">%s</div></div>') % (
         E(when or "the restart"), tone(a["pnl"]), E(eur(a["pnl"], True)), tone(rate),
         ('%s<span> on %s invested</span>' % (E(pct1(rate)), E(eur(a["invested"])))) if rate is not None else "<span>nothing bought yet</span>", E(info),
@@ -462,6 +522,123 @@ def strips(D, A):
     cat2 = hind("peak", "Best within 6 h", b, A.get("sameBest"), how2, priced)
     cat3 = hind("six", "Held 6 h, then sold", s, A.get("sameSix"), how3, "%d of %d trades" % (s["n"], c["M"]) if s["n"] else "no 6-hour price known yet")
     return '<div class="pa-cats">%s%s%s</div>' % (cat1, cat2, cat3)
+
+
+def pct_f(v):
+    """A share as a move with thousands separators: 8.4 -> +840%, -0.32 -> −32%, -1 -> −100%, 839 -> +83,900%."""
+    v = num(v)
+    if v is None:
+        return "–"
+    p = 100 * v
+    if abs(p) < 0.05:
+        return "0%"
+    s = "{:+,.0f}%".format(p) if abs(p) >= 9.95 else "%+.1f%%" % p
+    return (MINUS + s[1:]) if s[0] == "-" else s
+
+
+def _rng(worst, best, real, who):
+    """The range bar of a tile: from the sum at the lowest closes (red, left of break-even) to the sum at the best closes (green,
+    right of it) on one scale, with a dot where the rule really ended."""
+    m = max(abs(worst), abs(best), abs(real), 0.01)
+    pos = lambda v: 50.0 + 50.0 * v / m
+    seg = lambda a, b, c: ('<i class="%s" style="left:%.1f%%;width:%.1f%%"></i>' % (c, pos(a), pos(b) - pos(a))) if b > a else ""
+    return ('<div class="nl-rng" role="img" aria-label="%s">%s%s<i class="z"></i><b style="left:%.1f%%"></b></div>') % (
+        E("at the lowest closes %s, at the best %s, %s %s" % (eur(worst, True), eur(best, True), who, eur(real, True))),
+        seg(worst, min(best, 0.0), "dn"), seg(max(worst, 0.0), best, "up"), pos(real))
+
+
+def _nl_tile(key, title, st, who, back_txt, none_txt):
+    """One tile of the block: max loss (left) and max profit (right) as sums with the worst and the best move, the range bar with
+    the rule's dot, and one count line."""
+    cnt = ("%d trade%s" % (st["n"], "" if st["n"] == 1 else "s")) if st["n"] == st["of"] else "priced %d of %d" % (st["n"], st["of"])
+    if not st["of"]:
+        return ('<div class="nl-tile %s" data-nl="%s"><div class="nl-t"><span>%s</span></div><p class="nl-none">%s</p></div>') % (key, key, E(title), E(none_txt))
+    if not st["n"]:
+        return ('<div class="nl-tile %s" data-nl="%s"><div class="nl-t"><span>%s</span><b>%s</b></div><p class="nl-none">priced after the next scans</p></div>') % (
+            key, key, E(title), E(cnt))
+    back = ('<span>%s</span>' % E(back_txt % (st["back"], st["n"]))) if st["back"] is not None else ""
+    return ('<div class="nl-tile %s" data-nl="%s"><div class="nl-t"><span>%s</span><b>%s</b></div>'
+            '<div class="nl-lh"><div class="lo"><span class="k">max loss</span><span class="v %s" data-nl-v="worst">%s</span><span class="p">worst trade %s</span></div>'
+            '<div class="hi"><span class="k">max profit</span><span class="v %s" data-nl-v="best">%s</span><span class="p">best trade %s</span></div></div>'
+            '%s<div class="nl-f"><span class="nl-dot"><i></i>%s <b class="%s" data-nl-v="real">%s</b></span>%s</div></div>') % (
+        key, key, E(title), E(cnt), tone(st["worst"]), E(eur(st["worst"], True)), E(pct_f(st["loP"])), tone(st["best"]), E(eur(st["best"], True)),
+        E(pct_f(st["bestP"])), _rng(st["worst"], st["best"], st["real"], who), E(who), tone(st["real"]), E(eur(st["real"], True)), back)
+
+
+def _nl_cell(r, hi):
+    """A per-trade cell: the max profit (hi) or the max loss as % of the ticket after the fees (as the result), and when it came
+    after the entry."""
+    pk = r["pk"]
+    if not nl_priced(r):
+        word = "not booked" if pk and pk["state"] == "unit" else "waiting"
+        return '<td class="%s"><span class="muted">%s</span></td>' % ("hi" if hi else "lo", word)
+    v, t = nl_pct(r, hi), (pk["at"] if hi else pk["loAt"])
+    when = mins_txt((t - (pk["entryAt"] or r["tBuy"])) if t is not None else None)
+    c = tone(v)
+    return '<td class="%s"><span%s>%s</span><small>%s</small></td>' % ("hi" if hi else "lo", (' class="%s"' % c) if c else "", E(pct_f(v)), E(("at " + when) if when else ""))
+
+
+def _nl_rows(rows, R):
+    out = []
+    for r in rows:
+        why = ", ".join(R.exit_label(e, r["p"]) for e in r["status"]) or ("open" if r["open"] else "sold")
+        pk = r["pk"] if nl_priced(r) else None
+        lab = ("estimate" if pk["state"] == "est" else ("15-min candles" if pk["src"] == "m15" else "")) if pk else ""
+        out.append('<tr><td class="c"><strong>%s</strong><small>%s</small></td><td class="r"><span class="%s">%s</span><small>%s</small></td>%s%s</tr>' % (
+            E(r["sym"]), E(" · ".join(x for x in (why, R.fmt_dt(r["tBuy"], True), lab) if x)), tone(r["pnl"]), E(eur(r["pnl"], True)),
+            E(pct_move(r["pct"])) if r["pct"] is not None else "no price", _nl_cell(r, True), _nl_cell(r, False)))
+    return "".join(out)
+
+
+def _nl_table(rows, R):
+    return ('<div class="tbl nl-tbl"><table><thead><tr><th>coin</th><th class="n">result</th><th class="n">max profit</th><th class="n">max loss</th></tr></thead>'
+            '<tbody>%s</tbody></table></div>') % _nl_rows(rows, R)
+
+
+def noloss(D, A):
+    """Without the stop-loss (hindsight): two tiles (the trades sold at the stop, the trades sold at the take-profit: max loss and max
+    profit within 6 h as sums with the worst and best trade, the range bar with what the rule made, one count), one line for all
+    trades, and the per-trade list (newest first, NL_SHOWN rows, the rest up to NL_MAX in a fold inside it). Almost no text: the how
+    sits behind the ⓘ."""
+    R = _report()
+    N = A.get("noloss") or noloss_data([])
+    st, tp, al = N["stop"], N["tp"], N["all"]
+    stop_pct, tp_pct = MINUS + str(round(100 * M.HOLD_STOP)), "+" + format(round(100 * M.HOLD_TP), ",")
+    if not al["of"]:
+        cnt = "no 6 hours over yet"
+    elif al["n"] < al["of"]:
+        cnt = "priced %d of %d" % (al["n"], al["of"])
+    else:
+        cnt = "%d trades" % al["n"]
+    if N.get("open"):
+        cnt += " · %d inside their 6 h" % N["open"]
+    tiles = (_nl_tile("stop", "Sold at %s%% (stop)" % stop_pct, st, "the stop made", "%d of %d back above the entry", "no trade sold at the stop yet")
+             + _nl_tile("tp", "Sold at %s%% (take-profit)" % tp_pct, tp, "the take-profit made", "%d of %d rose further", "no trade sold at the take-profit yet"))
+    if al["n"]:
+        line = ('<div class="nl-all" data-nl="all"><span class="k">%s</span><span>at the best <b class="%s" data-nl-v="best">%s</b></span>'
+                '<span>at the lowest <b class="%s" data-nl-v="worst">%s</b></span><span>the rule made <b class="%s" data-nl-v="real">%s</b></span></div>') % (
+            E("All %d trades, sold each" % al["n"] if al["n"] == al["of"] else "All %d priced trades, sold each" % al["n"]), tone(al["best"]), E(eur(al["best"], True)),
+            tone(al["worst"]), E(eur(al["worst"], True)), tone(al["real"]), E(eur(al["real"], True)))
+    else:
+        line = ""
+    lst = N.get("list") or []
+    if lst:
+        more = lst[NL_SHOWN:]
+        rest = N.get("listN", len(lst)) - len(lst)
+        inner = ('<details class="fold-lite pa-f"><summary>Older trades (%d)</summary>%s%s</details>' % (
+            len(more) + rest, _nl_table(more, R), ('<p class="note">The newest %d are here; %d older ones are not shown.</p>' % (NL_MAX, rest)) if rest else "")) if more else ""
+        fold = '<details class="fold-lite pa-f nl-list"><summary>Per trade (%d)</summary>%s%s</details>' % (N.get("listN", len(lst)), _nl_table(lst[:NL_SHOWN], R), inner)
+    else:
+        fold = ""
+    how = ("Hindsight, not a rule that ran: each paper trade since the restart, sold at its highest (max profit) or its lowest (max loss) minute-candle "
+           "close within 6 hours after the entry, on the pool it was bought on, after the paper fees. Wicks, dust candles and one-candle glitches do not "
+           "count; a pool that died counts as a total loss. The dot is what the rule (stop at %s%%, take-profit at %s%%, 6 hours) really made with "
+           "the same trades; 'back above the entry' and 'rose further' count the trades whose best came after that sale. Estimates and 15-minute "
+           "candles are bounds. Nobody knows the top or the bottom in advance. Fake money, nothing is bought "
+           "for real.") % (stop_pct, tp_pct)
+    return ('<div class="pa-nl" data-pa="noloss"><div class="nl-head"><h3>Without the stop-loss</h3><span class="chip warn">hindsight</span>'
+            '<span class="nl-cnt">%s</span></div><div class="nl-tiles">%s</div>%s%s<details class="pa-i"><summary>ⓘ how</summary><p>%s</p></details></div>') % (
+        E(cnt), tiles, line, fold, E(how))
 
 
 def feed_row(f, R, cls=""):
@@ -660,8 +837,8 @@ def section(D, bought=None):
     (one line while folded) come before the open positions, which can fill several phone screens."""
     R = _report()
     A = _acct(D)
-    parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)), R.safe("activity", lambda: feed(D, A)),
-             R.safe("trades", lambda: trades(D, A))]
+    parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)),
+             R.safe("without the stop-loss", lambda: noloss(D, A)), R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
     if bought:
         parts.append(R.safe("open positions", bought))
     parts += [R.safe("closed trades", lambda: old_trades(D)), R.safe("account curve", lambda: curve(D, A))]
@@ -758,6 +935,30 @@ details.pa-i > summary::-webkit-details-marker { display:none } details.pa-i p {
 .pa-zleg::before { width:16px !important; height:0 !important; border-top:1px dashed var(--muted); background:none !important; border-radius:0 !important; vertical-align:3px !important }
 .chart-svg .line.dash { stroke-dasharray:7 5 }
 section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
+/* without the stop-loss (hindsight): two tiles, max loss left and max profit right over a range bar with the rule's dot */
+.pa-nl { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px 4px; display:grid; gap:10px; min-width:0 }
+.nl-head { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px } .nl-head h3 { margin:0 } .nl-cnt { margin-left:auto; font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums }
+.nl-tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px }
+.nl-tile { --tc:var(--muted); border:1px solid var(--line); border-left:4px solid var(--tc); border-radius:10px; padding:10px 14px 12px; display:grid; gap:8px; min-width:0; align-content:start }
+.nl-tile.stop { --tc:var(--bad-mark) } .nl-tile.tp { --tc:var(--good-mark) }
+.nl-t { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:2px 10px } .nl-t span { font-weight:600; font-size:15px }
+.nl-t b { font-weight:500; font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums }
+.nl-lh { display:grid; grid-template-columns:1fr 1fr; gap:10px } .nl-lh > div { display:grid; gap:0; min-width:0 } .nl-lh .hi { text-align:right }
+.nl-lh .k { font-size:var(--fs-xs); color:var(--muted) } .nl-lh .v { font-size:24px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; letter-spacing:-.01em }
+.nl-lh .p { font-size:var(--fs-s); color:var(--fg2); font-variant-numeric:tabular-nums; white-space:nowrap }
+.pa-nl .good { color:var(--good) } .pa-nl .bad { color:var(--bad) }
+.nl-rng { position:relative; height:10px; border-radius:999px; background:var(--line2); margin:2px 0 }
+.nl-rng i { position:absolute; top:0; bottom:0 } .nl-rng i.dn { background:var(--bad-mark); border-radius:999px 0 0 999px } .nl-rng i.up { background:var(--good-mark); border-radius:0 999px 999px 0 }
+.nl-rng i.z { left:50%; width:2px; margin-left:-1px; top:-3px; bottom:-3px; background:var(--fg2) }
+.nl-rng b { position:absolute; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%; background:var(--fg); border:2px solid var(--surface) }
+.nl-f { display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 12px; font-size:var(--fs-s); color:var(--fg2) } .nl-f b { font-variant-numeric:tabular-nums }
+.nl-dot { display:inline-flex; align-items:baseline; gap:6px } .nl-dot i { width:9px; height:9px; border-radius:50%; background:var(--fg); align-self:center }
+.nl-none { margin:0; font-size:var(--fs-s); color:var(--muted) }
+.nl-all { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 18px; padding:8px 0 0; border-top:1px solid var(--line2); font-size:var(--fs-s); color:var(--fg2) }
+.nl-all .k { font-weight:600; color:var(--fg) } .nl-all b { font-size:15px; font-variant-numeric:tabular-nums; white-space:nowrap }
+.nl-tbl td small { display:block; font-size:var(--fs-xs); color:var(--muted); margin-top:1px; font-variant-numeric:tabular-nums }
+.nl-tbl td.c { overflow-wrap:anywhere } .nl-tbl td.c strong { font-weight:600 } .nl-tbl th.n, .nl-tbl td.r, .nl-tbl td.hi, .nl-tbl td.lo { text-align:right }
+.nl-tbl td.r span, .nl-tbl td.hi span, .nl-tbl td.lo span { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap }
 @media (max-width:820px) {
   .pa-cats { grid-template-columns:1fr; gap:10px } .pa-hero { grid-template-columns:1fr; grid-template-areas:"pl" "line" "tiles" }
   .pa-cat { padding:10px 14px 0; gap:4px } .pa-cat .vr { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 10px }
@@ -771,8 +972,30 @@ section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
   .pa-tbl table, .pa-tbl tbody, .pa-tbl tr, .pa-tbl td { display:block } .pa-tbl thead { display:none }
   .pa-tbl tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"c p" "w m" "h1 h1" "h2 h2"; gap:2px 12px; padding:10px 12px; border-top:1px solid var(--line2) }
   .pa-tbl tr:first-child { border-top:0 } .pa-tbl td { border-top:0; padding:0; min-width:0 }
+  .pa-nl { padding:12px 12px 2px } .nl-tiles { grid-template-columns:1fr; gap:10px } .nl-tile { padding:10px 12px 12px } .nl-lh .v { font-size:22px }
+  .nl-all { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px 10px } .nl-all .k { grid-column:1 / -1 } .nl-all span:not(.k) { display:grid; font-size:var(--fs-xs); color:var(--muted) }
+  .nl-tbl table, .nl-tbl tbody, .nl-tbl tr, .nl-tbl td { display:block } .nl-tbl thead { display:none }
+  .nl-tbl tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"c r" "hi lo"; gap:2px 12px; padding:8px 4px; border-top:1px solid var(--line2) }
+  .nl-tbl tr:first-child { border-top:0 } .nl-tbl td { border-top:0; padding:0; min-width:0 } .nl-tbl td.c { grid-area:c } .nl-tbl td.r { grid-area:r }
+  .nl-tbl td.hi { grid-area:hi; text-align:left } .nl-tbl td.lo { grid-area:lo }
+  .nl-tbl td.hi::before { content:"max profit"; display:block; color:var(--muted); font-size:var(--fs-xs) } .nl-tbl td.lo::before { content:"max loss"; display:block; color:var(--muted); font-size:var(--fs-xs) }
+  .nl-tbl td.hi small, .nl-tbl td.lo small { display:inline; margin:0 0 0 6px; white-space:nowrap }
   .pa-tbl td.c { grid-area:c } .pa-tbl td.p { grid-area:p } .pa-tbl td.m { grid-area:m } .pa-tbl td.w { grid-area:w }
   .pa-tbl td.h { grid-area:h1; display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; font-size:var(--fs-s) } .pa-tbl td.h + td.h { grid-area:h2 }
   .pa-tbl td.h1::before { content:"best in 6 h (hindsight)"; color:var(--muted); font-size:var(--fs-xs) } .pa-tbl td.h2::before { content:"at 6 h (hindsight)"; color:var(--muted); font-size:var(--fs-xs) } .pa-tbl td.h small { display:inline; margin:0 } .pa-tbl td.h .chip { margin:0 } }
+/* a phone: each category in short rows: its name and chip beside the P/L, its rate beside the ⓘ, then the same trades; an open ⓘ takes the full width */
+@media (max-width:820px) {
+  .pa-cat { grid-template-columns:minmax(0,1fr) auto; column-gap:10px; row-gap:0 }
+  .pa-cat .head { grid-column:1; grid-row:1; flex-direction:column; align-items:flex-start; justify-content:center; align-self:center; gap:4px }
+  .pa-cat .vr { display:contents } .pa-cat .v { grid-column:2; grid-row:1; justify-self:end; align-self:center }
+  .pa-cat .r { grid-column:1; grid-row:2; align-self:center } .pa-cat details.pa-i { grid-column:2; grid-row:2; justify-self:end }
+  .pa-cat details.pa-i > summary { padding:0 }
+  .pa-cat details.pa-i[open] { grid-column:1 / -1; grid-row:auto; justify-self:stretch } .pa-cat .same { grid-column:1 / -1; grid-row:3 }
+  .pa-cat .chip { font-size:12px; padding:2px 8px; white-space:nowrap } .pa-cat .same { padding-bottom:8px }
+  /* the header's ⓘ sits at the end of the rate's line (an open one takes the full width below it) */
+  .pa-hero .pl { grid-template-columns:minmax(0,1fr) auto } .pa-hero .pl > * { grid-column:1 / -1 } .pa-hero .pl > .pa-rate { grid-column:1; align-self:center }
+  .pa-hero .pl > details.pa-i:not([open]) { grid-column:2; grid-row:4 } .pa-hero .pl > details.pa-i > summary { min-width:44px; padding:0; justify-content:center; font-size:15px }
+}
+@media (max-width:560px) { .pa-cat .v { font-size:24px } .pa-cat .r { font-size:var(--fs-xs) } }
 @media (prefers-reduced-motion: reduce) { .pa-livel i { animation:none } }
 """
