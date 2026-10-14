@@ -92,6 +92,12 @@ MINT_SKEW_S = 120           # s: a pool up to this long "before" its mint is two
 TIME_MIN_MS = 1e12          # a time at or below this (2001) is a zero or a seconds value, never a launch time (traps.TIME_MIN_MS)
 RES_EVERY = 15 * 60_000     # results (train.json, spotter.json, positions, 30 days of records) fetched again after this
 FEED_EVERY = 30 * 60_000    # radar-feed (walletmem, xlinks, symmc) fetched again after this
+LIVE_ENV = "MEMEBOT_RADAR_FEED"   # the live pump.fun feed (radar_feed.url_of): radar.yml's 'pumpportal', or 'off'; a loop only
+LIVE_DEBOUNCE_MS = 20_000   # an early cycle waits this long after a graduation (DexScreener needs time to list a new pool)
+LIVE_MIN_GAP_MS = 60_000    # at least this between two cycle starts
+LIVE_LEAD_MS = 30_000       # no early cycle when the grid point is closer than this
+LIVE_EARLY_PER_H = 12       # early cycles at most in a rolling hour
+LIVE_FRESH_MS = 3 * 60_000  # the feed's graduations this recent are asked of DexScreener right after the coins on the radar
 DOC_MAX = 48_000            # bytes: radar.json; over it the fold (others) is cut first, then recent
 FAIL_DEGRADED, FAIL_EXIT = 3, 10
 ROUND_EVERY = 3_600_000     # the hourly scan starts one round at the end of each full scan: about an hour apart
@@ -411,6 +417,7 @@ class Radar:
         self.publishes, self.out_pk, self.one_round, self.push_failed = 0, set(), False, False
         self.mismatch_said, self.exch, self.pos, self.last_c, self.paid_at = set(), set(), None, {}, {}
         self.run_start = self.run_end = None
+        self.live, self.mig, self.early, self.cyc_at = None, {}, [], None
 
     # ---------------------------------------------------------------- log
     def say(self, s):
@@ -679,6 +686,8 @@ class Radar:
                "seenAge": round((now - pool) / 60_000.0, 2), "px": fin(b.get("price")), "liq": fin(b.get("liq"), 2), "mc": fin(b.get("mc"), 2),
                "rt": [], "good": None, "goodPx": None, "sig": {}, "chk": {}, "push": None, "later": {}, "peak60": None, "out": None}
         doc["coins"][a] = rec
+        if a in self.mig:                       # the live feed saw it graduate before first sight: when, and how long before (s)
+            rec["feed"] = {"mig": self.mig[a], "lag": round((now - self.mig[a]) / 1000.0, 1)}
         self.rec_hour[a] = hour
         return rec
 
@@ -845,12 +854,16 @@ class Radar:
         self.say("run %s (%s): %s, a cycle every %g s, active hours %d-%d Berlin%s" % (
             self.run_id, self.source, ("until %s UTC" % dt.datetime.fromtimestamp(self.run_end / 1000, dt.timezone.utc).strftime("%H:%M")) if self.run_end else "until stopped",
             self.step / 1000.0, self.hours[0], self.hours[1], "" if self.github else ", no kill switch (no GitHub)"))
-        k = 0
+        self.live_start()
+        k, grid = 0, self.run_start
         while True:
-            t_k = self.run_start + k * self.step
+            t_k = grid + k * self.step
             if self.run_end and t_k >= self.run_end:
                 break
-            self.clock.wait(t_k)
+            t0 = self.idle(t_k)
+            if t0 < t_k:                        # an early cycle (a graduation on the live feed): the grid restarts here, the run's end stays
+                grid, t_k = grid - (t_k - t0), t0
+            self.cyc_at = self.clock.now()
             last = bool(self.run_end and t_k + self.step >= self.run_end)
             try:
                 res = self.cycle(k, t_k, last)
@@ -872,12 +885,13 @@ class Radar:
                         self.say("outside the active hours: sleeping until %s UTC" % dt.datetime.fromtimestamp(ns / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M"))
                         self.clock.wait(ns)
                         self.run_start, k = self.clock.now(), 0
+                        grid = self.run_start
                         continue
                 return 0
             if self.clock.fake:
                 k += 1
             else:
-                k = max(k + 1, int(math.ceil((self.clock.now() - self.run_start) / float(self.step))))
+                k = max(k + 1, int(math.ceil((self.clock.now() - grid) / float(self.step))))
         if self.push_failed and isinstance(self.last_doc, dict) and self.restore_state == "ok":
             self.say("radar-data push failed: once more (no cycle comes after this run's last)")       # its records would be lost
             self.http.until = time.time() + 40
@@ -904,6 +918,86 @@ class Radar:
             self.store_row(doc)
         except Exception as e:
             self.say("degraded state not written (%s)" % RS.short(e))
+
+    # ---------------------------------------------------------------- the live pump.fun feed (radar_feed.py; a loop only)
+    def live_start(self):
+        """The feed's thread, when MEMEBOT_RADAR_FEED names a feed. With --mock or the fake clock only a local ws:// feed is taken, so a
+        test never reaches out. Any error: no feed, the radar runs as without it."""
+        try:
+            RF = import_opt("radar_feed")
+            url = RF.url_of(os.environ.get(LIVE_ENV)) if RF else None
+            if url and (self.a.mock or self.clock.fake) and not url.startswith("ws://"):
+                self.say("live feed: not started (a test run takes only a local ws:// feed)")
+                url = None
+            if url:
+                self.live = RF.LiveFeed(url, self.clock.now).start()
+                self.say("live feed: started (pump.fun graduations and new coins, one websocket)")
+        except Exception as e:
+            self.live = None
+            self.say("live feed: not started (%s): the radar runs without it" % RS.short(e))
+
+    def live_stop(self):
+        """The feed's thread stopped (main's finally; it is a daemon thread too). Never raises."""
+        if self.live is None:
+            return
+        try:
+            self.live.stop()
+            self.live_take(self.clock.now())
+            self.say("live feed: stopped (%s)" % ", ".join("%s %d" % kv for kv in sorted(self.live.stats().items())))
+        except Exception as e:
+            self.say("live feed: not stopped cleanly (%s)" % RS.short(e))
+
+    def live_take(self, now):
+        """The feed's graduations into self.mig (mint -> ms, the first one kept; 2 hours, at most 5000) and its log lines into the log."""
+        if self.live is None:
+            return
+        try:
+            for s in self.live.lines():
+                self.say("live feed: " + s)
+            evs = [e for e in self.live.take() if e.get("kind") == "migrate"]
+            for e in evs:
+                self.mig.setdefault(e["mint"], int(e["t"]))
+            if evs:
+                self.mig = dict(sorted(((a, t) for a, t in self.mig.items() if now - t < 2 * H), key=lambda kv: kv[1])[-5000:])
+        except Exception as e:
+            self.say("live feed: events not taken (%s)" % RS.short(e))
+
+    def live_fresh(self, now):
+        """The feed's graduations of the last LIVE_FRESH_MS, newest first, at most 30 (one DexScreener request)."""
+        return [a for a, t in sorted(self.mig.items(), key=lambda kv: -kv[1]) if now - t < LIVE_FRESH_MS][:30]
+
+    def live_meta(self, a):
+        """The feed's facts of a new coin ({t: when the feed got its create, creator}), None without them."""
+        try:
+            return self.live.info(a) if self.live is not None else None
+        except Exception:
+            return None
+
+    def early_due(self, now, t_k):
+        """Whether a cycle starts now instead of at the grid point t_k: a graduation from the feed that no cycle asked about yet (it came
+        after the last cycle's start), its first one at least LIVE_DEBOUNCE_MS old, the last cycle started LIVE_MIN_GAP_MS ago or more,
+        the grid point LIVE_LEAD_MS away or more, and fewer than LIVE_EARLY_PER_H early cycles in the last hour."""
+        new = [t for t in self.mig.values() if self.cyc_at is None or t > self.cyc_at]
+        return bool(new) and now - min(new) >= LIVE_DEBOUNCE_MS and (self.cyc_at is None or now - self.cyc_at >= LIVE_MIN_GAP_MS) \
+            and t_k - now >= LIVE_LEAD_MS and sum(1 for t in self.early if now - t < H) < LIVE_EARLY_PER_H
+
+    def idle(self, t_k):
+        """Waits for the grid point t_k and returns it. With the live feed it wakes every second or sooner to take the events, and
+        returns now instead when an early cycle is due. Without the feed or with the fake clock: the clock's wait (then the events)."""
+        if self.live is None or self.clock.fake:
+            self.clock.wait(t_k)
+            self.live_take(self.clock.now())
+            return t_k
+        while True:
+            now = self.clock.now()
+            self.live_take(now)
+            if now >= t_k:
+                return t_k
+            if self.early_due(now, t_k):
+                self.early = [t for t in self.early if now - t < H] + [now]
+                self.say("early cycle: a pump.fun graduation on the live feed (%d s before the grid point)" % ((t_k - now) // 1000))
+                return now
+            self.clock.wait(min(t_k, now + 1000))
 
     # ---------------------------------------------------------------- one cycle
     def cycle(self, k, t_k, last):
@@ -1059,6 +1153,8 @@ class Radar:
             for a, rec in (doc.get("coins") or {}).items():
                 if now - (num(rec.get("pool")) or 0) < FINISH_MIN * 60_000:
                     add(a)
+        for a in self.live_fresh(now):          # the live feed's graduations of the last 3 minutes: no recheck wait (a new pool lists late)
+            add(a)
         pf, ptags = M.load_side(sb, "pf", M.PF_COLS)
         gt, _ = M.load_side(sb, "gt", M.GT_COLS)
         jup, _ = M.load_side(sb, "jup", M.JUP_COLS)
@@ -1453,11 +1549,12 @@ class Radar:
         return out[:10]
 
     def mint_of(self, a, r):
-        """The mint time (ms): pump.fun's list row or coins-v3, LaunchLab's createdAt, Jupiter's createdAt, then the RPC's oldest
-        signature; None when none is known."""
+        """The mint time (ms): pump.fun's list row or coins-v3, LaunchLab's createdAt, Jupiter's createdAt, the live feed's create (when
+        it came), then the RPC's oldest signature; None when none is known."""
         meta = self.cache["pf"].get(a) or {}
         ll = (r["pr"].get("ll") or {}) if r else {}
-        return num(meta.get("t")) or M.parse_ms(ll.get("createdAt")) or num((self.cache["jup"].get(a) or {}).get("t")) or num(self.cache["mint"].get(a)) or None
+        return num(meta.get("t")) or M.parse_ms(ll.get("createdAt")) or num((self.cache["jup"].get(a) or {}).get("t")) \
+            or num((self.live_meta(a) or {}).get("t")) or num(self.cache["mint"].get(a)) or None
 
     def prelim(self, r, now):
         try:
@@ -1775,6 +1872,8 @@ class Radar:
                 st = self.http.state(host)
                 if st != "unused" or label not in hosts:
                     hosts[label] = st
+        if self.live is not None:
+            hosts["pumpportal"] = self.live.state()
         notes = list(self.notes_run)
         rc_host = "api.rugcheck.xyz"
         miss = sum(1 for x in rated if (self.cache["rc"].get(x["addr"]) or {}).get("st") != "ok")
@@ -2155,7 +2254,12 @@ def main(argv=None, log=None, notifier=None):
     if a.cmd == "hours":
         return cmd_hours(a, log)
     R = Radar(a, log=log, notifier=notifier)
-    return R.round() if a.cmd == "round" else R.loop()
+    if a.cmd == "round":
+        return R.round()
+    try:
+        return R.loop()
+    finally:
+        R.live_stop()
 
 
 if __name__ == "__main__":

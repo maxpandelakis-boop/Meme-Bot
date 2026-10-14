@@ -3703,6 +3703,8 @@ console.log(JSON.stringify(o));
     finally:
         time.sleep = nosleep
     SKIPS.extend(selftest_radar.SKIPPED)
+    import selftest_feed                        # the radar's live pump.fun feed (radar_feed.py, PumpPortal's websocket) and its hooks
+    selftest_feed.checks(check, REAL_SLEEP)
     import selftest_peak                        # the peak category: best price within 6 h of every paper position (peak.py)
     selftest_peak.peak_checks(check)
     import app as A_x, launch_radar as LR_x       # cross-review fixes of the 13.10 build
