@@ -24,7 +24,8 @@ P9  booking without candles: the 2-minute settle wait, the order and cap of item
     time exit, where the DexScreener points come from, the rug exit's last healthy scan clamped to the entry, the coverage test,
     malformed docs
 P10 GeckoTerminal failing (in-process runs on a copy of the recommend-mode db): 5xx (also between 404s), timeouts, 429s through the wait ladder, a block
-    page, a changed shape, candle rows it cannot read (objects, ms, ISO, tiny timestamps or ones newer than asked; closes of 0 are still an answer), one pool
+    page, a changed shape, candle rows it cannot read (objects, ms, ISO, tiny timestamps or ones newer than asked, closes null or text; numeric strings
+    and closes of 0 are still an answer), one pool
     answering oddly after a readable first answer, an answer sent a byte at a time; no doc for windows under 48 h, a waiting doc
     with one more try for older ones, GeckoTerminal off for the run, the next healthy run prices from minute candles, docs written
     as the run goes
@@ -621,7 +622,8 @@ class _GT:
     (JSON without ohlcv_list), "429", "hang" (answers after 3 s), "trickle" (the answer a byte every 0.2 s, cut off after 8 s). Every request is noted
     with the number of memepeak docs on disk at that moment (watch: the run's db folder). "alt": 404 and 503 by turns. Candle rows it
     cannot read: "dicts" (rows as objects), "ms" (timestamps in ms), "iso" (timestamps as ISO text), "small" (candle numbers 0, 1, 2 for timestamps), "future" (seconds, but a day
-    past the before_timestamp asked); "zero": readable rows whose
+    past the before_timestamp asked), "nullclose" (seconds, but every close null), "textclose" (seconds, but every value text
+    such as "1e-05 USD"); "strnum": every value a numeric string (readable); "zero": readable rows whose
     closes are all 0. "odd1": the pool odd_pool answers without ohlcv_list, every other pool as "ok"; "okshape": the first request
     as "ok", every later one without ohlcv_list."""
 
@@ -671,6 +673,12 @@ class _GT:
                         lst = [[i] + r[1:] for i, r in enumerate(lst)]
                     elif mode == "future":
                         lst = [[r[0] + 86400] + r[1:] for r in lst]
+                    elif mode == "nullclose":
+                        lst = [r[:4] + [None] + r[5:] for r in lst]
+                    elif mode == "textclose":
+                        lst = [[r[0]] + ["%g USD" % v for v in r[1:]] for r in lst]
+                    elif mode == "strnum":
+                        lst = [[str(r[0])] + [repr(v) for v in r[1:]] for r in lst]
                     elif mode == "zero":
                         lst = [[r[0], 0, 0, 0, 0, 1000.0] for r in lst]
                     raw = json.dumps({"data": {"attributes": {"ohlcv_list": lst}}}).encode()
@@ -739,9 +747,10 @@ def _p10(check, PK, M, S, tmp):
         go("429new", "429", new)
         go("html", "html", old)
         go("shape", "shape", old)
-        for name in ("dicts", "ms", "iso", "small", "future"):
+        for name in ("dicts", "ms", "iso", "small", "future", "nullclose", "textclose"):
             go(name, name, old)
         go("zero", "zero", new)
+        go("strnum", "strnum", old)
         its = PK.items(rec, old)
         n_of = {}
         for it in its:
@@ -784,7 +793,8 @@ def _p10(check, PK, M, S, tmp):
               "P10 %s: one request, GeckoTerminal off for the run, logged once, no doc (not even for the old window asked) (%s)"
               % ("a block page (HTML)" if name == "html" else "an answer in another shape", o["why"]))
     for name, what in (("dicts", "rows as objects"), ("ms", "timestamps in ms"), ("iso", "timestamps as ISO text"), ("small", "candle numbers for timestamps"),
-                       ("future", "a day newer than the before_timestamp asked")):
+                       ("future", "a day newer than the before_timestamp asked"), ("nullclose", "closes null"),
+                       ("textclose", "values as text such as 1e-05 USD")):
         o, c, docs, lines, secs, _ = runs[name]
         check(o["why"] == PK.GT_SHAPE and len(c) == 1 and not docs and sum(1 for l in lines if "off for the rest of this run" in l) == 1,
               "P10 candle rows it cannot read (%s): a changed shape, not an empty answer: one request, GeckoTerminal off, no doc, "
@@ -793,8 +803,12 @@ def _p10(check, PK, M, S, tmp):
     asked = len({(it["pool"], it["key"]) for it in PK.items(rec, new)})
     check(o["why"] == "all asked" and len(c) == 2 * asked and not any("off for the rest" in l for l in lines)
           and st(docs) == [("waiting", 1, None)] * len(PK.items(rec, new)),
-          "P10 readable rows whose closes are all 0: an empty answer, not a changed shape (the structure decides, never a close): every "
+          "P10 readable rows whose closes are all 0: an empty answer, not a changed shape (a close of 0 is a number; its value never decides): every "
           "window asked as minute and 15-minute candles, waiting with tries 1 (%s, %d requests)" % (o["why"], len(c)))
+    o, c, docs, lines, secs, _ = runs["strnum"]
+    check(o["why"] == "all asked" and len(docs) == n and all(x["state"] == "ok" and x["src"] == "m1" and x["x"] == 1.0 for x in docs.values())
+          and not any("GeckoTerminal answered" in l for l in lines),
+          "P10 every value a numeric string (\"1e-05\"): readable rows, every window priced from minute candles (%s)" % st(docs))
     o, c, docs, lines, secs, _ = runs["odd1"]
     odd = [pid for pid, x in docs.items() if x["state"] == "waiting"]
     check(o["why"] == "all asked" and len(docs) == n and len(odd) == 1 and docs[odd[0]]["pair"] == gt.odd_pool and docs[odd[0]]["tries"] == 1

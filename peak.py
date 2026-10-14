@@ -448,16 +448,17 @@ def gt_url(pool, end, agg=1):
 def ohlcv_rows(j, before=None, agg=1):
     """GeckoTerminal's OHLCV answer -> [[ms, o, h, l, c, vol], ...] oldest first; [] when it holds no candle (or only closes of 0);
     None when it is not the expected shape: no ohlcv_list, or a non-empty one in which no row is a list [seconds, o, h, l, c, vol]
-    (rows as objects, timestamps in ms or as text). Only the structure decides, never a close: a pool whose closes are all 0 is
-    an answer, not a changed shape. A timestamp counts as seconds from 1e9 up to before (epoch s, the request's before_timestamp)
-    plus one candle of agg minutes, or below 1e10 without before; a row outside that is not read."""
+    with a close that is a number (rows as objects, timestamps in ms or as text, closes null or text such as "1e-05 USD"). Only the
+    structure decides, never a close's value: a close of 0 is a number, so a pool whose closes are all 0 is an answer, not a changed
+    shape. A timestamp counts as seconds from 1e9 up to before (epoch s, the request's before_timestamp) plus one candle of agg
+    minutes, or below 1e10 without before; a row outside that is not read."""
     if not isinstance(j, dict):
         return None
     lst = ((j.get("data") or {}).get("attributes") or {}).get("ohlcv_list") if isinstance(j.get("data"), dict) else None
     if not isinstance(lst, list):
         return None
     hi = before + agg * 60 if before else 1e10
-    good = [c for c in lst if isinstance(c, list) and len(c) >= 5 and 1e9 <= (num(c[0]) or 0) <= hi]
+    good = [c for c in lst if isinstance(c, list) and len(c) >= 5 and 1e9 <= (num(c[0]) or 0) <= hi and num(c[4]) is not None]
     if lst and not good:
         return None
     return _rows([[num(c[0]) * 1000] + list(c[1:6]) for c in good])
