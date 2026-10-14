@@ -810,7 +810,7 @@ def _s6(check, scan, tmp):
           and on_keys(radar) == {"workflow_dispatch"} and "schedule" not in text.split("jobs:")[0] and rj.get("timeout-minutes") == 70
           and set(((radar.get("on") or radar.get(True) or {}).get("workflow_dispatch") or {}).get("inputs") or {}) == {"source"}
           and len(lp) == 1 and lp[0].get("id") == "loop" and lp[0].get("timeout-minutes") == 62
-          and len(nx) == 1 and nx[0].get("if") == "steps.loop.outcome == 'success'" and nx[0].get("continue-on-error") is True and nx[0].get("timeout-minutes") == 1
+          and len(nx) == 1 and nx[0].get("if") == "steps.loop.outcome == 'success' && github.ref_name == github.event.repository.default_branch" and nx[0].get("continue-on-error") is True and nx[0].get("timeout-minutes") == 1
           and steps_.index(nx[0]) > steps_.index(lp[0]) and "secrets." not in json.dumps(nx[0].get("env") or {})
           and not any(re.search(r"\b(results|live|radar-feed)\b", l) for l in push_lines)
           and "memebot-scan" not in json.dumps(radar.get("concurrency")),

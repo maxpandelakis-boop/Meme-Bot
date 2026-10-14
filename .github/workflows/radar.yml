@@ -110,7 +110,7 @@ jobs:
           path: rdcache
           key: radar-cache-${{ github.run_id }}
       - name: Start the next run (when the loop ended well, inside the hours, the workflow active and no other radar run running or waiting)
-        if: steps.loop.outcome == 'success'
+        if: steps.loop.outcome == 'success' && github.ref_name == github.event.repository.default_branch   # a run on a test branch stays one run
         continue-on-error: true
         timeout-minutes: 1
         env:
