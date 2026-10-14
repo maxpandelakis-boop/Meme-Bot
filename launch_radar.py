@@ -473,7 +473,7 @@ class Radar:
             self.chained = True
             self.say("successor: not started (another radar run is waiting)")
             return False
-        mins = int(max(DEFAULT_MINUTES, min(MAX_MINUTES, math.ceil(self.run_minutes))))
+        mins = DEFAULT_MINUTES                       # every successor runs 55 minutes, whatever a hand-started run was given (radar.yml)
         st, _ = self.http.api("POST", "/repos/%s/actions/workflows/radar.yml/dispatches" % self.repo,
                               {"ref": self.ref, "inputs": {"minutes": str(mins), "source": "chain"}}, token=self.token, until=time.time() + 10)
         self.dispatches += 1

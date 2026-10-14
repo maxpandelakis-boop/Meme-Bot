@@ -43,6 +43,8 @@ jobs:
       HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}   # only true or false: the secrets themselves go to the steps that use them
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # no token in .git/config: the radar pushes through its own remote, the pip step runs without one
       - name: Active hours (outside them radar.json says when the radar starts again, once, and the run ends here)
         id: hours
         timeout-minutes: 4

@@ -529,6 +529,8 @@ jobs:
       PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # no token in .git/config: only the restore and push steps get it
       - name: Restore the bot's state from the results branch
         id: restore
         env:

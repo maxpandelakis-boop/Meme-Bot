@@ -728,7 +728,7 @@ def notify(kind, title, body, url=None):
 
 
 def _sym(v):
-    s = re.sub(r"[\x00-\x1f\x7f]", "", " ".join(str(v or "").split()))
+    s = re.sub(r"[\x00-\x1f\x7f\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", " ".join(str(v or "").split()))   # no bidi controls: they would flip the title
     return s[:16] or "?"
 
 

@@ -3674,6 +3674,15 @@ console.log(JSON.stringify(o));
     SKIPS.extend(selftest_radar.SKIPPED)
     import selftest_peak                        # the peak category: best price within 6 h of every paper position (peak.py)
     selftest_peak.peak_checks(check)
+    import app as A_x, launch_radar as LR_x       # cross-review fixes of the 13.10 build
+    ry, sy = open(os.path.join(HERE, ".github", "workflows", "radar.yml")).read(), open(os.path.join(HERE, ".github", "workflows", "scan.yml")).read()
+    peaks_job = sy[sy.find("\n  peaks:"):]
+    check(A_x._sym("AB\u202eCD\u2066E\u200f") == "ABCDE" and A_x._sym("\u202e") == "?"
+          and "\\u202a-\\u202e\\u2066-\\u2069" in open(os.path.join(HERE, "page_radar.py"), encoding="utf-8").read()
+          and ry.count("persist-credentials: false") == 1 and "persist-credentials: false" in peaks_job[:peaks_job.find("Restore the bot's state")]
+          and "mins = DEFAULT_MINUTES" in open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() and LR_x.DEFAULT_MINUTES == 55,
+          "build: bidi controls are stripped from push titles and the radar page's text, the radar job and the peaks job check out without "
+          "the token in .git/config, every radar successor runs 55 minutes")
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
 

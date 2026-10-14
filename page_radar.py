@@ -793,7 +793,7 @@ var LABELS=__LABELS__,UNK=__UNKNOWN__,SK=__SKEYS__,MEASURED=__MEASURED__,INFO=__
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function num(v){return isn(v)?v:null;}
 function ms(v){return isn(v)&&v>=0&&v<1e14?v:null;}
-function str(v,n){return (typeof v==='string'||isn(v)?String(v):'').replace(/[\u0000-\u001f\u007f\u2028\u2029]/g,' ').slice(0,n);}
+function str(v,n){return (typeof v==='string'||isn(v)?String(v):'').replace(/[\u0000-\u001f\u007f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,' ').slice(0,n);}
 function names(v){return Array.isArray(v)?v.filter(function(x){return typeof x==='string'&&NM.test(x);}).slice(0,20):[];}
 function line(v){return (Array.isArray(v)?v:[]).filter(function(x){return Array.isArray(x)&&LV.indexOf(x[0])>=0&&typeof x[1]==='string'&&x[1].trim();}).slice(0,12).map(function(x){return [x[0],str(x[1],120)];});}
 function scal(v){return v===null||typeof v==='boolean'||isn(v)?{ok:1,v:v}:typeof v==='string'?{ok:1,v:str(v,60)}:{ok:0};}
