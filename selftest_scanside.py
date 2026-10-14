@@ -28,7 +28,7 @@ S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with t
     step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the radar's safety net)
     against a stand-in GitHub API: it starts radar.yml (source hourly) after each full scan, only when the workflow is active, inside
     the hours and no radar run is running or waiting (any status but completed), never when MEMEBOT_RADAR is 0; radar.yml (when on this
-    branch): group memebot-radar, no schedule, a round every 5 minutes for 55 minutes (timeout 70), never pushes results, live or
+    branch): group memebot-radar, no schedule, a round every 2 minutes for 55 minutes (timeout 70), never pushes results, live or
     radar-feed; its last step starts the next run (source auto) only after a loop that ended well, inside the hours, never counting
     itself as another run
 S7  step B "Feed the launch radar": traps.py feed on a mock db in < 60 s writes the four files, which go to radar-feed as one orphan
@@ -804,7 +804,7 @@ def _s6(check, scan, tmp):
     code = [l.split(" #")[0] for l in text.splitlines() if not l.strip().startswith("#")]        # the workflow without its comments
     push_lines = [l for l in code if re.search(r"\bgit\b.*\bpush\b", l) or re.search(r"refs/heads/", l)]
     steps_ = rj.get("steps") or []
-    lp = [s_ for s_ in steps_ if (s_.get("run") or "").strip() == "python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55"]
+    lp = [s_ for s_ in steps_ if (s_.get("run") or "").strip() == "python3 launch_radar.py loop --dir rd --cadence 120 --deadline 100 --minutes 55"]
     nx = [s_ for s_ in steps_ if "/dispatches" in (s_.get("run") or "")]
     check((radar.get("concurrency") or {}).get("group") == "memebot-radar" and (radar.get("concurrency") or {}).get("cancel-in-progress") is False
           and on_keys(radar) == {"workflow_dispatch"} and "schedule" not in text.split("jobs:")[0] and rj.get("timeout-minutes") == 70
@@ -815,7 +815,7 @@ def _s6(check, scan, tmp):
           and not any(re.search(r"\b(results|live|radar-feed)\b", l) for l in push_lines)
           and "memebot-scan" not in json.dumps(radar.get("concurrency")),
           "radar.yml: group memebot-radar (never memebot-scan), started by workflow_dispatch only (no schedule, input source only), a round every"
-          " 5 minutes for 55 minutes (launch_radar.py loop, step timeout 62, job 70), then one soft step that starts the next run (only after a loop"
+          " 2 minutes for 55 minutes (launch_radar.py loop, step timeout 62, job 70), then one soft step that starts the next run (only after a loop"
           " that ended well, the job's own token, no secret), no push to results, live or radar-feed")
     if nx:
         _chain_start(check, rj, nx[0], tmp)

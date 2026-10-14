@@ -4,17 +4,18 @@ reads comes from here (the paper account of memebot.py and its docs db/memepos, 
 
 What it does: the best 5 of the radar's first round in each UTC hour are bought on paper for TICKET (3 EUR) each, at the price the
 radar saw, at the round's time, and so is every coin the radar listed as good in any round (good among that round's best 5; the radar
-makes a round every 5 minutes, and every round's best 5 would be about 25 buys an hour, more than the peaks job can price). A coin is bought at most once (in its first
+makes a round every 2 minutes, and every round's best 5 would be 25 or more buys an hour, more than the peaks job can price). A coin is bought at most once (in its first
 such round; a coin bought before is skipped, no digging deeper). Each buy is marked green when the radar rated it good in that round.
 Two accounts are summed from the same buys: "all 5" and "green only".
 
 Where the buys come from: the radar's hour docs db/memeradar/<UTC hour>.json (launch_radar.py; the scan's step A imports them into
 the results branch, which keeps 30 days). A record with "top" was among a round's best 5 at least once; its ratings rt
-[[round time, verdict, points, push], ...] say in which rounds it was rated. A round is one rating time. Its best 5: the records
-with "top" rated at that time while their pool was under 10 minutes old (30 s of clock slack), in launch_radar.rank's order as far
-as a record keeps it: that round's verdict (good, watch, trap), then its points (fewer first), then the liquidity at first sight
-(more first), then the address. The record does not keep the radar's upside score or its liquidity at that round, so two good coins
-of one round, or two coins with the same points at places 5 and 6, can stand in another order than on the radar's list.
+[[round time, verdict, points, push, price, upside], ...] (older records: the first four) say in which rounds it was rated. A round
+is one rating time. Its best 5: the records with "top" rated at that time while their pool was under 10 minutes old (30 s of clock
+slack), in launch_radar.rank's order as far as a record keeps it: that round's verdict (good, watch, trap), then its points (fewer
+first), then the liquidity at first sight (more first), then the address. The upside score (older records lack it) and the liquidity
+at that round (no record keeps it) are not used, so two good coins of one round, or two coins with the same points at places 5 and 6,
+can stand in another order than on the radar's list.
 The price: the record's px (DexScreener at first sight) when the buy round is the coin's first sight, else none (then the minute
 candle's close is the price paid). Once a coin has a doc here, the doc is the buy: a later run never moves it to another round.
 

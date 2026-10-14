@@ -3712,10 +3712,10 @@ console.log(JSON.stringify(o));
           and "\\u202a-\\u202e\\u2066-\\u2069" in open(os.path.join(HERE, "page_radar.py"), encoding="utf-8").read()
           and ry.count("persist-credentials: false") == 1 and "persist-credentials: false" in peaks_job[:peaks_job.find("Restore the bot's state")]
           and "/dispatches" not in open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() and not hasattr(LR_x.Radar, "chain")
-          and "run: python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55\n" in ry and '"inputs": {"source": "hourly"}' in sy
+          and "run: python3 launch_radar.py loop --dir rd --cadence 120 --deadline 100 --minutes 55\n" in ry and '"inputs": {"source": "hourly"}' in sy
           and '"inputs": {"source": "auto"}' in ry and "if: steps.loop.outcome == 'success'" in ry and 'str(r.get("id")) != me' in ry,
           "build: bidi controls are stripped from push titles and the radar page's text, the radar job and the peaks job check out without "
-          "the token in .git/config, a radar run makes a round every 5 minutes for 55 minutes and starts the next only after a loop that "
+          "the token in .git/config, a radar run makes a round every 2 minutes for 55 minutes and starts the next only after a loop that "
           "ended well (never counting itself as another run); the scan's last step starts one when none runs")
     check(not re.search(r"vars\.[A-Z_]+ *[!=]=", ry + sy) and ry.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1
           and sy.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1 and sy.count("(vars.MEMEBOT_PEAKS || '1') != '0'") == 1,

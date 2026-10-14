@@ -1,8 +1,8 @@
-# The launch radar: its own job beside the hourly scan (scan.yml). A round every 5 minutes, 7 to 24 h Berlin: each round rates the coins
+# The launch radar: its own job beside the hourly scan (scan.yml). A round every 2 minutes, 7 to 24 h Berlin: each round rates the coins
 # whose DEX pool is under 10 minutes old (launch_radar.py loop; the sources in radar_src.py), keeps the best 5 for the page's New tab,
 # records every rating with the later prices the next rounds catch, and sends a push notification only for a coin without a trap found.
 # Fake money only: nothing is bought anywhere, and the paper trader never reads what this job writes.
-# How it keeps going (no cron: GitHub's timed starts come late or not at all): one run makes a round every 5 minutes for 55 minutes, then its
+# How it keeps going (no cron: GitHub's timed starts come late or not at all): one run makes a round every 2 minutes for 55 minutes, then its
 # last step starts the next run (source auto) when the loop ended well, the Berlin time is inside the hours, the workflow is active and no
 # other radar run is running or waiting. The hourly scan's first step starts one when none runs (source hourly: the hours began, or the
 # chain broke), "Run workflow" by hand too (source manual); a start while one runs waits in the group until that run ends.
@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       source:
-        description: 'who starts it: manual (Run workflow), hourly (the scan, when no radar runs) or auto (the run before); a round every 5 minutes for 55 minutes'
+        description: 'who starts it: manual (Run workflow), hourly (the scan, when no radar runs) or auto (the run before); a round every 2 minutes for 55 minutes'
         type: choice
         options: ['manual', 'hourly', 'auto']
         default: 'manual'
@@ -93,16 +93,16 @@ jobs:
           else
             echo "pywebpush could not be installed: no push notifications this run, the scan and the live view go on"
           fi
-      - name: A round every 5 minutes for 55 minutes (the new pools rated, the records and their later prices, the page's list, a push for a good coin)
+      - name: A round every 2 minutes for 55 minutes (the new pools rated, the records and their later prices, the page's list, a push for a good coin)
         id: loop
         if: steps.hours.outputs.inside == 'true'
-        timeout-minutes: 62              # each round stops itself after 125 s; the loop ends after 55 minutes, at the end of the hours or when switched off
+        timeout-minutes: 62              # each round stops itself after 100 s; the loop ends after 55 minutes, at the end of the hours or when switched off
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}                          # the kill switch (GitHub's API only, never printed)
           RADAR_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git   # radar-data, read and written
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}                          # the app's live store (row "radar") and its push notifications;
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}            # empty without the secrets: nothing of it runs
-        run: python3 launch_radar.py loop --dir rd --cadence 300 --deadline 125 --minutes 55
+        run: python3 launch_radar.py loop --dir rd --cadence 120 --deadline 100 --minutes 55
       - name: Save the radar's working caches
         if: always() && steps.hours.outputs.inside == 'true'
         uses: actions/cache/save@v4
