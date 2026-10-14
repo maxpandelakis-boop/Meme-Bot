@@ -464,7 +464,7 @@ var MB=window.MemebotLive,R=window.MemebotRadar,A=window.MemebotApp,o={};
 var N=1e12,M=60000,doc=function(t,x){return Object.assign({kind:'radar',t:t,next:t+150000,state:'running',coins:[]},x||{});};
 o.state=[R.radarState(doc(N-30000),N,0),R.radarState(doc(N-8*M),N,0),R.radarState(doc(N-40*M),N,0),R.radarState(doc(N,{state:'off'}),N,0),
   R.radarState(doc(N-M,{state:'hours',next:N+3*3600000}),N,0),R.radarState(null,N,0),R.radarState({kind:'live',t:N},N,0),
-  R.radarState(doc(N-2*3600000,{state:'hours',next:N-3600000}),N,0),
+  R.radarState(doc(N-2*3600000,{state:'hours',next:N-5400000}),N,0),
   // a phone clock 10 minutes fast: running once the doc was seen to move (got/moved), never from the phone's clock alone
   R.radarState(doc(N-30000),N+600000,N+600000-20000,true),R.radarState(doc(N-30000),N+600000,0)];   // ... before a doc moved, the phone's clock is the first guess
 // the hourly radar's rounds (state done, or degraded with run.mode round): done until doc.next + 30 min (next unknown: an hour after the

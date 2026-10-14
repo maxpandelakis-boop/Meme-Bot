@@ -131,7 +131,7 @@ def radar_state(doc, ref):
     if doc.get("state") == "off":
         return "off"
     if doc.get("state") == "hours":
-        return "stopped" if doc.get("next") and doc["t"] + age > doc["next"] + LATE_MS else "hours"
+        return "stopped" if doc.get("next") and doc["t"] + age > doc["next"] + HOUR_MS else "hours"     # MemebotRadar.radarState: the first scan starts it
     if is_round(doc):
         over = ref - (doc.get("next") or doc["t"] + HOUR_MS)
         return "done" if over <= DONE_GRACE_MS else ("late" if over <= DONE_GRACE_MS + HOUR_MS else "stopped")

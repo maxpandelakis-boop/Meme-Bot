@@ -3,8 +3,8 @@
 reads comes from here (the paper account of memebot.py and its docs db/memepos, db/memeexit stay exactly as they are).
 
 What it does: the best 5 of the radar's first round in each UTC hour are bought on paper for TICKET (3 EUR) each, at the price the
-radar saw, at the round's time, and so is every coin the radar rated good in any round (the radar makes a round every 5 minutes;
-every round's best 5 would be about 25 buys an hour, more than the peaks job can price). A coin is bought at most once (in its first
+radar saw, at the round's time, and so is every coin the radar listed as good in any round (good among that round's best 5; the radar
+makes a round every 5 minutes, and every round's best 5 would be about 25 buys an hour, more than the peaks job can price). A coin is bought at most once (in its first
 such round; a coin bought before is skipped, no digging deeper). Each buy is marked green when the radar rated it good in that round.
 Two accounts are summed from the same buys: "all 5" and "green only".
 
@@ -13,8 +13,8 @@ the results branch, which keeps 30 days). A record with "top" was among a round'
 [[round time, verdict, points, push], ...] say in which rounds it was rated. A round is one rating time. Its best 5: the records
 with "top" rated at that time while their pool was under 10 minutes old (30 s of clock slack), in launch_radar.rank's order as far
 as a record keeps it: that round's verdict (good, watch, trap), then its points (fewer first), then the liquidity at first sight
-(more first), then the address. The record does not keep the radar's upside score, so two good coins of one round can stand in
-another order than on the radar's list.
+(more first), then the address. The record does not keep the radar's upside score or its liquidity at that round, so two good coins
+of one round, or two coins with the same points at places 5 and 6, can stand in another order than on the radar's list.
 The price: the record's px (DexScreener at first sight) when the buy round is the coin's first sight, else none (then the minute
 candle's close is the price paid). Once a coin has a doc here, the doc is the buy: a later run never moves it to another round.
 
@@ -67,7 +67,7 @@ WINDOW_MS = int(M.HOLD_MAX_H * H)
 SETTLE_MS = P.SETTLE_MS     # a window counts once now >= end + 2 min
 STOP_X = 1.0 - M.HOLD_STOP  # 0.70
 TP_X = 1.0 + M.HOLD_TP      # 11.0
-AGE_MAX_MS = int(10.5 * MIN)   # launch_radar.MAX_AGE_MIN (a pool under 10 minutes is on the radar) plus 30 s of clock slack
+AGE_MAX_MS = int(10 * MIN)     # launch_radar.MAX_AGE_MIN: a pool under 10 minutes is on the radar (a later rating is for the record only)
 MAX_ITEMS = 15              # windows a run asks GeckoTerminal for (oldest first), after peak.py's own
 MAX_TRIES = P.MAX_TRIES     # empty answers before a window is estimated
 EST_AFTER_H = P.EST_AFTER_H
@@ -118,7 +118,7 @@ def rounds_of(recs):
             if not isinstance(e, (list, tuple)) or len(e) < 2 or not num(e[0]):
                 continue
             t = int(num(e[0]))
-            if pool and t - pool > AGE_MAX_MS:
+            if pool and t - pool >= AGE_MAX_MS:
                 continue                    # rated for the record after it left the radar (a pending check): not in that round's list
             v = e[1] if e[1] in VRANK else "watch"
             pts = num(e[2]) if len(e) > 2 else None

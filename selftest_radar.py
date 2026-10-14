@@ -1293,6 +1293,36 @@ def checks(check, env_=None):
               "cycles that fail: from the 3rd in a row radar.json says degraded with the reason (%s), the next good cycle says running again; after "
               "10 the run ends (exit 1) and radar.json still says degraded" % first_d)
 
+        # radar.yml's loop (a round every 5 minutes for 55 minutes, each run starting the next): when its next round would fall outside the
+        # hours, its last radar.json says hours (no run follows to say it); a failed push of its last round is tried once more (no cycle follows)
+        import launch_radar as LR_l
+        rem_le = fresh_remote(T, tmp, "remote-loop-end", T0)
+        c_le, R_le, l_le, _ = run_radar(T, P, url, rem_le, os.path.join(tmp, "rdLe"), T0 + 50 * MIN, minutes=10, hours="0-15")
+        d_le = radar_json(rem_le)
+        lastfail = []
+
+        def flaky_last(R_):
+            real = R_.git.push_tree
+
+            def pt(files, *a, **k):
+                try:
+                    st_ = json.load(open(files["radar.json"], encoding="utf-8")).get("state")
+                except Exception:
+                    st_ = None
+                if st_ == "ending" and not lastfail:
+                    lastfail.append(1)
+                    raise RuntimeError("push refused (test)")
+                return real(files, *a, **k)
+            R_.git.push_tree = pt
+        rem_lp = fresh_remote(T, tmp, "remote-loop-push", T0)
+        c_lp, R_lp, l_lp, _ = run_radar(T, P, url, rem_lp, os.path.join(tmp, "rdLp"), T0, minutes=10, patch=flaky_last)
+        d_lp = radar_json(rem_lp)
+        check(c_le == 0 and d_le.get("state") == "hours" and d_le.get("next") and LR_l.berlin(d_le["next"]).hour == 0
+              and c_lp == 0 and lastfail == [1] and any("once more" in l for l in l_lp) and d_lp.get("state") == "ending",
+              "the loop: its next round outside the hours (a run ending at 15:00 with hours 0-15) leaves radar.json in state hours with the next "
+              "start (%s); the last round's push that failed is tried once more and lands (%s)" % (d_le.get("state"), d_lp.get("state"))
+              + ("" if c_le == 0 and c_lp == 0 and lastfail == [1] else " %s" % [c_le, c_lp, lastfail]))
+
         wf = open(os.path.join(HERE, ".github", "workflows", "radar.yml"), encoding="utf-8").read()
         sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml"), encoding="utf-8").read().splitlines()
         body = lambda lines: lines[lines.index(next(l for l in lines if "Install the push sender" in l)) + 2:][:30]

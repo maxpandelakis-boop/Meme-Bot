@@ -676,7 +676,7 @@ def berlin_hour():
 
 
 def _round_start(check, job, tmp):
-    st = step(job, "Start one launch radar round")
+    st = step(job, "Start the launch radar")
     gh = GH()
     srv = serve_gh(gh)
     api = "http://127.0.0.1:%d" % srv.server_address[1]
@@ -757,12 +757,12 @@ def _s6(check, scan, tmp):
     check(cache == CACHE_STEP, "the cache step is unchanged: the same paths, key and restore-keys, so the old caches stay restorable (I9)")
     names = [s.get("name") or s.get("uses") or "" for s in job["steps"]]
     pos = [step_index(job, n) for n in BASE_STEPS]
-    a, b, d_ = (step_index(job, n) for n in ("Import the launch radar's records", "Feed the launch radar", "Start one launch radar round"))
+    a, b, d_ = (step_index(job, n) for n in ("Import the launch radar's records", "Feed the launch radar", "Start the launch radar"))
     sa, sb, sd = (job["steps"][i] if i >= 0 else {} for i in (a, b, d_))
     check(scan.get("concurrency") == {"group": "memebot-scan", "cancel-in-progress": False} and scan.get("permissions") == {"contents": "write", "actions": "write"}
           and all(x >= 0 for x in pos) and pos == sorted(pos) and len(names) == len(BASE_STEPS) + 3 and job.get("timeout-minutes") == 55,
           "every step of the scan job from before is still there, in its order, plus three new ones; the workflow-level group and permissions are unchanged")
-    check(pos[2] < a < pos[3] and b == pos[7] + 1 and d_ == len(names) - 1
+    check(pos[2] < a < pos[3] and b == pos[7] + 1 and d_ == 1 and pos[0] == 0
           and sa.get("continue-on-error") is True and sa.get("timeout-minutes") == 1 and sa.get("if") == "steps.recent.outputs.skip != 'true'"
           and sb.get("continue-on-error") is True and sb.get("timeout-minutes") == 3 and sb.get("if") == "steps.recent.outputs.skip != 'true'"
           and sd.get("continue-on-error") is True and sd.get("timeout-minutes") == 1
@@ -831,7 +831,12 @@ def _chain_start(check, rj, st, tmp):
     inside = "%d-%d" % (h, h + 2) if h + 2 <= 24 else "%d-%d" % (h, (h + 2) % 24)
     outside = "%d-%d" % ((h + 2) % 24, ((h + 3) % 24) or 24)
     env0 = dict(rj.get("env") or {}, **(st.get("env") or {}))
-    env0.update(GH_TOKEN=FAKE_TOKEN, GITHUB_API_URL=api, GITHUB_REPOSITORY="own/repo", RADAR_REF="main", MEMEBOT_RADAR_HOURS=inside, GITHUB_RUN_ID="30")
+    docs = os.path.join(tmp, "s6-next-docs")
+    os.makedirs(docs, exist_ok=True)
+    for name, state_ in (("hours", "hours"), ("off", "off"), ("ending", "ending")):
+        json.dump({"kind": "radar", "t": 1, "state": state_}, open(os.path.join(docs, name + ".json"), "w"))
+    env0.update(GH_TOKEN=FAKE_TOKEN, GITHUB_API_URL=api, GITHUB_REPOSITORY="own/repo", RADAR_REF="main", MEMEBOT_RADAR_HOURS=inside, GITHUB_RUN_ID="30",
+                RADAR_DOC=os.path.join(docs, "none.json"))
     res = {}
 
     def go(label, **kw):
@@ -844,6 +849,9 @@ def _chain_start(check, rj, st, tmp):
     go("waiting")
     gh.runs = [{"id": 30, "status": "in_progress"}]
     go("outside", MEMEBOT_RADAR_HOURS=outside)
+    go("hoursdoc", RADAR_DOC=os.path.join(docs, "hours.json"))
+    go("offdoc", RADAR_DOC=os.path.join(docs, "off.json"))
+    go("ending", RADAR_DOC=os.path.join(docs, "ending.json"), MEMEBOT_RADAR_HOURS=outside)
     gh.state = "disabled_manually"
     go("disabled")
     gh.state = "active"
@@ -863,6 +871,13 @@ def _chain_start(check, rj, st, tmp):
     po, co, _ = res["outside"]
     pd, cd, _ = res["disabled"]
     pn, _, _ = res["down"]
+    ph, ch, _ = res["hoursdoc"]
+    pf, cf, _ = res["offdoc"]
+    pe, ce, _ = res["ending"]
+    check(ph.returncode == 0 and not ch and "state hours" in ph.stdout and pf.returncode == 0 and not cf and "state off" in pf.stdout
+          and [c["m"] for c in ce] == ["GET", "GET", "POST"],
+          "radar.yml's last step follows the loop's own last radar.json: state hours (the hours ended, the loop said so) or off: no call; a loop that "
+          "ended inside the hours (ending) starts the next run even when the clock has just passed the end (that run's hours step then says hours)")
     check(pw.returncode == 0 and not [c for c in cw if c["m"] == "POST"] and "another radar run" in pw.stdout and po.returncode == 0 and not co
           and "hours" in po.stdout and pd.returncode == 0 and len(cd) == 1 and "not active" in pd.stdout and pn.returncode == 0 and "did not answer" in pn.stdout
           and all(FAKE_TOKEN not in p_.stdout + p_.stderr for p_, _, _ in res.values()) and all(s_ < 30 for _, _, s_ in res.values()),

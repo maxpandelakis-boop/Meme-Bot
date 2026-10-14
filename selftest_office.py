@@ -228,7 +228,7 @@ def office_checks(check, skips=None):
         # its state at the scan's start (the copy is made then; the page comes about 25 minutes later), as MB.radarState names them
         sts = []
         for age, kw in ((5 * MIN, {}), (7 * MIN, {}), (20 * MIN, {}), (60_000, {"state": "off"}), (60_000, {"state": "hours", "next": NOW + H}),
-                        (40 * MIN, {"state": "hours", "next": NOW - 20 * MIN})):
+                        (90 * MIN, {"state": "hours", "next": NOW - 70 * MIN})):
             dd = os.path.join(tmp, "st%d" % len(sts))
             wj(os.path.join(dd, "radar_live.json"), radar_doc(NOW - age, **kw))
             sts.append(PO.radar_state(PO.radar_doc(dd), NOW))

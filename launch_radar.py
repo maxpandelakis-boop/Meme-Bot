@@ -834,7 +834,9 @@ class Radar:
         return 0
 
     def loop(self):
-        """The cycles of this run (a VM; radar.yml runs one round). Returns the exit code. It never starts another run."""
+        """The cycles of this run (radar.yml: a round every 5 minutes for 55 minutes; a VM: until stopped). Returns the exit code. It never
+        starts another run (radar.yml's last step does)."""
+        self.start()          # the stores first: cycle 0 then sits on its own grid point, so the 5-minute price of its coins is due at cycle 1
         self.run_start = self.clock.now()
         mins = self.run_minutes = run_minutes(self.a.minutes, not self.github)
         if num(self.a.minutes) and self.a.minutes > mins:
@@ -843,7 +845,6 @@ class Radar:
         self.say("run %s (%s): %s, a cycle every %g s, active hours %d-%d Berlin%s" % (
             self.run_id, self.source, ("until %s UTC" % dt.datetime.fromtimestamp(self.run_end / 1000, dt.timezone.utc).strftime("%H:%M")) if self.run_end else "until stopped",
             self.step / 1000.0, self.hours[0], self.hours[1], "" if self.github else ", no kill switch (no GitHub)"))
-        self.start()
         k = 0
         while True:
             t_k = self.run_start + k * self.step
@@ -877,6 +878,13 @@ class Radar:
                 k += 1
             else:
                 k = max(k + 1, int(math.ceil((self.clock.now() - self.run_start) / float(self.step))))
+        if self.push_failed and isinstance(self.last_doc, dict) and self.restore_state == "ok":
+            self.say("radar-data push failed: once more (no cycle comes after this run's last)")       # its records would be lost
+            self.http.until = time.time() + 40
+            self.publish(self.last_doc)
+        now = self.clock.now()
+        if not in_hours(max(t_k, now), self.hours):      # the next round would be outside the hours: radar.json says so (no run follows to)
+            self.finish_doc("hours", now, "outside the active hours %02d:00-%02d:00 Berlin" % self.hours, after=max(t_k, now))
         self.save_cache()
         return 0
 
@@ -1820,11 +1828,14 @@ class Radar:
                "lastGood": last_good, "recent": recent[:20], "record": record, "hosts": hosts, "notes": notes[:6], "lines": list(self.cycle_lines)}
         return fit_size(doc)
 
-    def finish_doc(self, state, now, why):
+    def finish_doc(self, state, now, why, after=None):
         """radar.json in state off or hours (the coins of the last list are dropped, the record line, model and last good coin stay),
-        pushed once to radar-data and the app's row."""
+        pushed once to radar-data and the app's row. after: the hours' next start is counted from this time instead of now (a loop's end:
+        its next round's time, already outside the hours)."""
         prev = self.last_doc if isinstance(self.last_doc, dict) else {}
         doc = finish_from(prev, state, now, why, self.run_id, self.run_start, self.run_end, self.source, self.hours)
+        if state == "hours" and after is not None:
+            doc["next"] = next_start(max(int(after), int(now)), self.hours)
         doc["run"]["mode"] = "round" if self.one_round else "loop"
         landed = self.publish(doc)
         self.say("radar.json state %s: %s" % (state, self.saved(landed, self.store_row(doc))))

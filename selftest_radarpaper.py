@@ -206,7 +206,9 @@ def _buys(check, tmp):
     TP = TA - 15 * MIN                   # 13:01: the first round of 13 h (round A at 13:16 is not; its coins come from the old rule's test above)
     r5 = [rec("p%d" % i, "PFIRST%d" % i, TP, [(TP, "watch", float(i))]) for i in range(1, 7)]
     r5 += [rec("q1", "QWATCH", TP + 5 * MIN, [(TP + 5 * MIN, "watch", 0.0)]), rec("q2", "QGOOD", TP + 5 * MIN, [(TP + 5 * MIN, "good", 1.0)]),
-           rec("r1", "RNEXTHOUR", TP + H, [(TP + H, "trap", 4.0)])]
+           rec("r1", "RNEXTHOUR", TP + H, [(TP + H, "trap", 4.0)]),
+           # a rating at pool age 10.3 min (for the record only, never on the radar's list), 30 s before the hour's first round: no buy, no round
+           rec("z1", "LATEFIN", TP - 11 * MIN, [(TP - 30_000, "good", 0.0)], pool=TP - 30_000 - int(10.3 * MIN))]
     b5 = RP.buys_of(r5)
     check(sorted(b5) == ["p1", "p2", "p3", "p4", "p5", "q2", "r1"] and b5["q2"]["entryAt"] == TP + 5 * MIN and b5["q2"]["green"] is True
           and b5["r1"]["entryAt"] == TP + H and RP.counted(TP, {int(TP // H): TP}) and not RP.counted(TP + 5 * MIN, {int(TP // H): TP}),

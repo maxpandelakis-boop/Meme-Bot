@@ -75,9 +75,10 @@ SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to poo
          "xUsed": "older coins with this X account", "tweetShared": "coins off the same tweet", "snip30": "supply sniped in 30 s, %", "snip30N": "sniper wallets",
          "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder"}
 MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar's own records confirm it."
-INFO_TEXT = ("The radar checks the newest pools every 5 minutes on its own, 7 to 24 h Berlin: each run lasts about an hour and starts the next. "
-             "Start and Stop open its page on GitHub. Start (only when it is stopped): tap \u201cRun workflow\u201d, the first round comes in about 2 minutes. "
-             "Stop: the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Fake money: the radar never buys anything.")
+INFO_TEXT = ("The radar checks the newest pools every 5 minutes on its own during its hours (7 to 24 h Berlin unless changed), from the first full "
+             "scan after they begin: each run lasts about an hour and starts the next. Start and Stop open its page on GitHub. Start (only when it is "
+             "stopped): tap \u201cRun workflow\u201d, the first list comes in about 4 minutes. Stop: the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. "
+             "Fake money: the radar never buys anything.")
 
 
 # ------------------------------------------------------------------------------------------------------------------ small helpers
@@ -867,12 +868,12 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     return 'next after the next full scan';},
   // a round: done (until its next round is due and DONE_GRACE more), late (one more hour), stopped (older). A loop: running (checked within
   // 2 of its cycles and a minute), late (15 minutes), stopped (older). off (switched off), hours (outside its hours: the doc names the next start;
-  // a doc past that start by 15 minutes is stopped), none (no doc)
+  // a doc past that start by an hour is stopped: the first full scan inside the hours starts the radar), none (no doc)
   radarState:function(doc,now,got,moved){
     if(!doc||typeof doc!=='object'||doc.kind!=='radar'||!(+doc.t>0))return 'none';
     var a=R.age(doc,now,got,moved);
     if(doc.state==='off')return 'off';
-    if(doc.state==='hours')return +doc.next>0&&+doc.t+a>+doc.next+R.LATE?'stopped':'hours';
+    if(doc.state==='hours')return +doc.next>0&&+doc.t+a>+doc.next+R.HOUR?'stopped':'hours';     // the first full scan of the hours starts it: up to an hour
     if(R.round(doc)){var over=+doc.t+a-R.due(doc);return over<=R.DONE_GRACE?'done':over<=R.DONE_GRACE+R.HOUR?'late':'stopped';}
     return a<=2*R.cycle(doc)+R.GRACE?'running':a<=R.LATE?'late':'stopped';},
   // a loop's own cadence: the doc's next minus its time (the radar's 5 minutes, the old loop's 2.5), CYCLE to CYCLE_MAX; CYCLE without a next

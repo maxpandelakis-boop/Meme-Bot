@@ -4,13 +4,13 @@
 # Fake money only: nothing is bought anywhere, and the paper trader never reads what this job writes.
 # How it keeps going (no cron: GitHub's timed starts come late or not at all): one run makes a round every 5 minutes for 55 minutes, then its
 # last step starts the next run (source auto) when the loop ended well, the Berlin time is inside the hours, the workflow is active and no
-# other radar run is running or waiting. The hourly scan's last step starts one when none runs (source hourly: the chain broke, or the
-# hours began), "Run workflow" by hand too (source manual); a start while one runs waits in the group until that run ends.
+# other radar run is running or waiting. The hourly scan's first step starts one when none runs (source hourly: the hours began, or the
+# chain broke), "Run workflow" by hand too (source manual); a start while one runs waits in the group until that run ends.
 # What it writes: the one-commit branch radar-data (radar.json, the records of the last 48 hours, model.json, pushed.json), the app's
 # live store row "radar" (with the Supabase secrets) and its working caches (actions/cache, key radar-cache-<run id>).
 # Stop it: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (GitHub refuses every start; the running loop sees the switch at
-# its next round, writes state off and ends without starting another). Repository variable MEMEBOT_RADAR=0: no run does anything (the
-# scan starts none, a start is skipped). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; the loop ends when they end, a start
+# its next round, writes state off and ends without starting another). Repository variable MEMEBOT_RADAR=0: the run going on ends
+# within the hour (a variable is read when a job starts), then no run does anything (the scan starts none, a start is skipped). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; the loop ends when they end, a start
 # outside them only writes state hours with the next start.
 name: Meme-Bot launch radar
 run-name: "Launch radar · ${{ inputs.source || 'manual' }}"
@@ -138,8 +138,17 @@ jobs:
               except urllib.error.HTTPError as e:
                   return e.code, None
 
+          # the loop's own last radar.json decides (it checks the hours at every round and at its end: state hours when they are over);
+          # the clock only when that file cannot be read
+          try:
+              last = json.load(open(os.environ.get("RADAR_DOC") or "rd/out/radar.json", encoding="utf-8")).get("state")
+          except Exception:
+              last = None
           hours = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS"))
-          if not in_hours(int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000) + 60_000, hours):
+          if last in ("hours", "off"):
+              say("the loop ended with state %s: no start (the first full scan inside the hours starts the radar)" % last)
+              sys.exit(0)
+          if last is None and not in_hours(int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000) + 60_000, hours):
               say("the active hours %d-%d Berlin are over: no start (the first full scan inside them starts the radar)" % hours)
               sys.exit(0)
           try:

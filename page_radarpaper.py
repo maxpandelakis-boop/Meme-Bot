@@ -93,7 +93,7 @@ def section(D):
     head = ('<div class="rp-head"><h3>Radar account</h3><span class="rp-sub">bought within minutes</span><span class="chip neutral">fake money</span>'
             '<span class="rp-cnt">%s</span></div>') % E(" · ".join(sub))
     how = ("The best 5 coins (pools under 10 minutes old) of the radar's first round each hour go in here for %s each, at the price the radar "
-           "saw, at the round's time, and every coin the radar rated good in any of its 5-minute rounds; a coin only once. Green: the radar rated it "
+           "saw, at the round's time, and every coin the radar listed as good in any of its 5-minute rounds; a coin only once. Green: the radar rated it "
            "good in that round. Sold by the paper account's rules on the pool's minute candles: "
            "the first close at %s%% or lower is a stop, the first level of +%s%% or more that the next close confirms is a take-profit (at that "
            "level), else the close at %d hours; a pool that died is a total loss; paper fees on both sides. Hindsight: the same coins sold at their best "
