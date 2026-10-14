@@ -69,9 +69,36 @@ def check_push_reason(check):
           "only for a 403 while no kind has reached a phone (%r), not after the pick went through (%r)" % (young[:150], test[-40:], radar[-60:]))
 
 
+# ---------------------------------------------------------------------------------------------------------------- F3/K2 sync log
+def check_sync_redact(check):
+    """F3/K2: bot.py sync never logs the credential of its remote: the success line (a token URL rewritten by git's insteadOf to a local
+    bare repo) and a failed push's message (a token URL nothing answers at)."""
+    tmp = tempfile.mkdtemp(prefix="memebot-audit-sync-")
+    bare, mb, mb2 = os.path.join(tmp, "bare.git"), os.path.join(tmp, "mb"), os.path.join(tmp, "mb2")
+    subprocess.run(["git", "init", "-q", "--bare", bare], check=True)
+    for d in (mb, mb2):
+        os.makedirs(d)
+        with open(os.path.join(d, "report.html"), "w") as f:
+            f.write("<p>fake money</p>")
+    secret = "s3cretAuditTok"
+    url = "https://x-access-token:%s@example.invalid/Meme-Bot.git" % secret
+    env = dict(os.environ, GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="url.%s.insteadOf" % bare, GIT_CONFIG_VALUE_0=url, GIT_TERMINAL_PROMPT="0")
+    p = subprocess.run([PY, os.path.join(HERE, "bot.py"), "sync", "--dir", mb, "--remote", url], capture_output=True, text=True, env=env, timeout=120)
+    ok_line = next((l for l in p.stderr.splitlines() if l.startswith("sync: ")), "")
+    pushed = subprocess.run(["git", "-C", bare, "ls-tree", "--name-only", "results"], capture_output=True, text=True).stdout.split()
+    bad = "https://x-access-token:%s@127.0.0.1:9/Meme-Bot.git" % secret
+    q = subprocess.run([PY, os.path.join(HERE, "bot.py"), "sync", "--dir", mb2, "--remote", bad], capture_output=True, text=True,
+                       env=dict(os.environ, GIT_TERMINAL_PROMPT="0"), timeout=120)
+    check(p.returncode == 0 and "report.html" in pushed and ok_line.startswith("sync: new commit -> https://example.invalid/Meme-Bot.git results")
+          and secret not in p.stdout + p.stderr and q.returncode != 0 and secret not in q.stdout + q.stderr,
+          "F3/K2 sync: the log line names the remote without its credential (%r); a failed push's message carries none either (exit %s)"
+          % (ok_line[:90].replace(secret, "<token>"), q.returncode))
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
     check_push_reason(check)
+    check_sync_redact(check)
 
 
 def main():

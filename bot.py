@@ -1258,7 +1258,7 @@ def sync(d, remote=None, branch="results"):
     def git(*a, check=False):
         p = subprocess.run(["git", "-C", mb] + list(a), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
         if check and p.returncode != 0:
-            raise SystemExit("git %s failed: %s" % (a[0], (p.stderr or p.stdout).strip()[-800:]))
+            raise SystemExit(redact("git %s failed: %s" % (a[0], (p.stderr or p.stdout).strip()[-800:])))
         return p
 
     if not os.path.isdir(os.path.join(mb, ".git")):
@@ -1285,7 +1285,7 @@ def sync(d, remote=None, branch="results"):
         git("-c", "user.name=memebot", "-c", "user.email=memebot@localhost", "merge", "-q", "-s", "ours", "--allow-unrelated-histories", "-m", "merge results", "FETCH_HEAD")
         git("push", "-q", "-u", "origin", "HEAD:" + branch, check=True)
     head = git("rev-parse", "--short", "HEAD").stdout.strip()
-    log("sync: %s -> %s %s (%s)" % ("new commit" if changed else "nothing new", remote, branch, head))
+    log("sync: %s -> %s %s (%s)" % ("new commit" if changed else "nothing new", redact(remote), branch, head))
     return head
 
 
