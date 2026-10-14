@@ -582,7 +582,7 @@ except ImportError:           # a copy of the code without page_office.py (the s
         EXT_HOME, CSS = {"radar": "analysts"}, ""
         scan_minute = staticmethod(lambda runs, default: int(default) % 60)
         ext_agents = staticmethod(lambda *a: [])
-        cards = daily = scan_strip = balance = staticmethod(lambda *a: "")
+        cards = daily = scan_strip = balance = desk = staticmethod(lambda *a: "")
 OFFICE_HOSTS = (("launch-mint", "LaunchLab"), ("dexscreener", "DexScreener"), ("geckoterminal", "GeckoTerminal"), ("jup.ag", "Jupiter"), ("pump.fun", "pump.fun"),
                 ("raydium", "Raydium"), ("orca.so", "Orca"), ("rugcheck", "RugCheck"), ("coingecko", "CoinGecko"), ("coinmarketcap", "CoinMarketCap"), ("reddit", "Reddit"),
                 ("warpcast", "Farcaster"), ("mastodon", "Mastodon"), ("4cdn", "4chan"), ("gmgn", "GMGN"), ("gopluslabs", "GoPlus"), ("solana.com", "Solana RPC"),
@@ -3200,7 +3200,7 @@ def render(data, fragment=False):
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_pick = strip_html + pane_pick     # the full scan: last, next, Scan now (page_office.py)
         pane_young = safe("launch radar", lambda: PR.block(D)) + safe("new launches", lambda: young_section(D))     # the radar: its status and its start link (WP5b)
-        pane_office = safe("agent office", lambda: office_section(D))
+        pane_office = safe("radar desk", lambda: PO.desk(D, sys.modules[__name__])) + safe("agent office", lambda: office_section(D))     # the Launch radar first (page_office.py)
         tabs = ('<style>%s</style><div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
                 '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>New<span class="tl-long"> launches</span></span>%s'
                 '<span class="cnt" data-y-tabcnt title="Full scan: coins under 1 h">%d</span></label><label for="tab-office" role="tab">Office</label></div>'
