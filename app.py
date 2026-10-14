@@ -78,6 +78,7 @@ _state = {"t": None, "cur_sig": None, "cur_at": 0.0, "ver": None, "nver": None, 
 _sink_on = []                     # the cut-off switch of the sink's request on its way (end_sink)
 _said = set()
 _last_push = {}
+_reached = set()                  # the kinds whose push reached a phone in this process (then a refusal is not the VAPID keys)
 _vapid = {}
 
 
@@ -528,26 +529,37 @@ def _send(wp, sub, data, ttl, urgency, topic, until=None):
     """One push: "ok", "gone" (404/410: delete the row), "retry" (429/5xx: one more try after a pause), "net" (no answer at all: DNS,
     refused, reset, timeout, TLS; no retry and no pause, counted against the row by notify), "config" (400/403/413: our keys or headers
     are wrong; the row stays) or "error" (anything else, e.g. pywebpush could not use the subscription: the row stays and the log says it
-    once; only keys_ok decides that a row is unusable); with the HTTP status or the error's name."""
+    once; only keys_ok decides that a row is unusable); with the HTTP status or the error's name, and the push service's answer for a
+    refused push (_why: Apple names the reason there; "" otherwise)."""
     webpush, WPE = wp
     headers = {"Authorization": vapid_auth(sub["endpoint"]), "Urgency": urgency, "Topic": topic}
     left = PUSH_TIMEOUT if until is None else max(1.0, min(PUSH_TIMEOUT, until - time.time()))
     try:
         webpush(sub, data, headers=headers, ttl=ttl, timeout=left)
-        return "ok", 201
+        return "ok", 201, ""
     except WPE as e:
         code = getattr(e, "status_code", None)
         if code is None:
             code = getattr(getattr(e, "response", None), "status_code", None)
         if code in (404, 410):
-            return "gone", code
+            return "gone", code, ""
         if code in (429, 500, 502, 503, 504):
-            return "retry", code
-        return ("config" if code in (400, 403, 413) else "error"), code
+            return "retry", code, _why(e)
+        return ("config" if code in (400, 403, 413) else "error"), code, _why(e)
     except OSError as e:               # the network (requests' errors are OSErrors too): no answer, no retry
-        return "net", type(e).__name__
+        return "net", type(e).__name__, ""
     except Exception as e:             # ValueError, TypeError, the encryption's errors: kept (keys_ok passed), said once
-        return "error", type(e).__name__
+        return "error", type(e).__name__, ""
+
+
+def _why(e):
+    """The push service's own answer to a refused push (Apple sends {"reason": "..."}), on one line without control characters, at most
+    80 characters; "" when there is none."""
+    try:
+        txt = getattr(getattr(e, "response", None), "text", None)
+    except Exception:
+        return ""
+    return re.sub(r"[\x00-\x1f\x7f-\x9f\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", " ".join(str(txt or "").split()))[:80]
 
 
 def _sub_ok(s):
@@ -687,13 +699,13 @@ def notify(kind, title, body, url=None):
             begun[i] = True
             row = targets[i]
             if not keys_ok(row["sub"]):
-                res, code = "bad", "keys"
+                res, code, why = "bad", "keys", ""
             else:
-                res, code = _send(wp, row["sub"], data, ttl, urgency, kind, until)
+                res, code, why = _send(wp, row["sub"], data, ttl, urgency, kind, until)
                 if res == "retry" and time.time() + 3 < until:
                     time.sleep(2)
-                    res, code = _send(wp, row["sub"], data, ttl, urgency, kind, until)
-            results[i] = (res, code)
+                    res, code, why = _send(wp, row["sub"], data, ttl, urgency, kind, until)
+            results[i] = (res, code, why)
             if res in ("gone", "bad"):
                 _drop(row["endpoint"])
     threads = [threading.Thread(target=worker, daemon=True) for _ in range(min(SEND_THREADS, len(targets)))]
@@ -701,6 +713,8 @@ def notify(kind, title, body, url=None):
         t.start()
     for t in threads:
         t.join(max(0.0, until - time.time()))
+    if any(r and r[0] == "ok" for r in results):
+        _reached.add(kind)            # a push of this kind reached a phone: the VAPID keys work, a refusal of another kind is its headers
     for i, r in enumerate(list(results)):
         if r is None:
             out["failed"] += 1
@@ -709,15 +723,16 @@ def notify(kind, title, body, url=None):
             else:
                 say("push: a %s notification was not tried: the %d s for this notification were used up by slower pushes" % (kind, NOTIFY_BUDGET), once="untried-%s" % kind)
             continue
-        res, code = r
+        res, code, why = r
         if res == "ok":
             out["sent"] += 1
         elif res in ("gone", "bad"):
             out[res] += 1
         else:
             out["failed"] += 1
-            say("push: a %s notification failed (%s %s)%s" % (kind, res, code, ": check the VAPID keys" if res == "config" else
-                                                            ": the subscription stays" if res == "error" else ""), once="fail-%s-%s-%s" % (kind, res, code))
+            say("push: a %s notification failed (%s %s)%s%s" % (kind, res, code, ', the push service said "%s"' % why if why else "",
+                                                              ": check the VAPID keys" if res == "config" and code == 403 and not _reached else
+                                                              ": the subscription stays" if res == "error" else ""), once="fail-%s-%s-%s" % (kind, res, code))
     if marks:
         _settle([targets[i]["endpoint"] for i, r in enumerate(results) if r and r[0] == "ok"], [targets[i] for i, r in enumerate(results) if r and r[0] == "net"],
                 any(r and isinstance(r[1], int) for r in results), until)
