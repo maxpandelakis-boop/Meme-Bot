@@ -197,6 +197,43 @@ def check_age_rounding(check):
           "K4 radar: ageMin 2.14 (traps) against 2.13823 (the radar) is no mismatch (%d lines); 2.14 against 3.0 is said once (%r)" % (len(quiet), said))
 
 
+# ---------------------------------------------------------------------------------------------------------------- K3 step A git
+def check_import_git_fails(check):
+    """K3: scan.yml step A with a local git that fails ls-tree after a good fetch of radar-feed: the mark for the feed step stays
+    "failed" (step B fetches the X-link index again), never "none" (which would rebuild the index from this scan alone)."""
+    import gzip
+    import json
+    import shutil
+    import selftest_scanside as SS
+    try:
+        job = SS.load_yaml(SS.SCAN_YML)["jobs"]["scan"]
+    except ImportError:
+        print("  SKIP K3 step A: PyYAML is not installed here")
+        return
+    tmp = tempfile.mkdtemp(prefix="memebot-audit-import-")
+    try:
+        remote = os.path.join(tmp, "r.git")
+        SS.git("init", "-q", "--bare", remote)
+        now = int(time.time() * 1000)
+        doc = lambda d: gzip.compress(json.dumps(d).encode())
+        SS.put_branch(remote, "radar-feed", {"walletmem.json.gz": doc({"v": 1, "t": now, "nCoins": 3}), "xlinks.json.gz": doc({"v": 1, "t": now, "links": {}})}, tmp)
+        shim = os.path.join(tmp, "shim")
+        os.makedirs(shim)
+        with open(os.path.join(shim, "git"), "w") as f:
+            f.write('#!/bin/bash\ncase " $* " in\n  *" ls-tree "*) echo "fatal: bad object (test)" >&2; exit 128;;\nesac\nexec %s "$@"\n' % shutil.which("git"))
+        os.chmod(os.path.join(shim, "git"), 0o755)
+        ws = os.path.join(tmp, "ws")
+        os.makedirs(os.path.join(ws, "mb"))
+        p, _ = SS._import(job, ws, remote, tmp, PATH=shim + os.pathsep + os.environ.get("PATH", ""))
+        mark = SS.import_mark(os.path.join(ws, "mb"))
+        feed = next((l for l in p.stdout.splitlines() if "radar-feed" in l), "")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    check(p.returncode == 0 and mark == "failed" and "radar-feed stopped (RuntimeError)" in feed,
+          "K3 step A: a local git ls-tree that fails after a good fetch leaves the mark 'failed' (%s), so step B fetches the X-link index "
+          "itself (%r)" % (mark, feed[-80:]))
+
+
 def audit_checks(check):
     print("== error audit (WP7): one check for each fix")
     check_push_reason(check)
@@ -204,6 +241,7 @@ def audit_checks(check):
     check_dev_budget(check)
     check_radar_saved(check)
     check_age_rounding(check)
+    check_import_git_fails(check)
 
 
 def main():
