@@ -37,6 +37,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
       MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
+      MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}   # optional, e.g. swap_trades=0,ll_new=1 (radar_src.ADAPTERS holds the defaults)
       RADAR_SOURCE: ${{ inputs.source || 'manual' }}
       HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}   # only true or false: the secrets themselves go to the steps that use them
     steps:

@@ -4,15 +4,19 @@ phone, it never buys anything, and the paper trader never reads what it writes.
 
 Every 150 s (a fixed grid from the run's start; an overrun skips grid points, it never bursts) one cycle, one thread, 125 s at most:
   1. kill switch (the radar workflow's state on GitHub) and the active hours (MEMEBOT_RADAR_HOURS, default 7-24 Berlin)
-  2. discovery (radar_src): pump.fun graduated and newest coins, GeckoTerminal new pools, Jupiter recent, DexScreener profiles,
-     LaunchLab newest, into the cycle's sandbox rd/sb/<k> with fetch.py's writers
+  2. discovery (radar_src, the WP0 probe's set): pump.fun graduated (pages 1-4) and newest coins (pages 1-2), GeckoTerminal new
+     pools (pages 1-2), Jupiter recent, DexScreener profiles (LaunchLab newest only when switched on), into the cycle's sandbox
+     rd/sb/<k> with fetch.py's writers
   3. DexScreener tokens/v1 for the new addresses (a pool-age cache skips old pools), the live coins and the due later prices
   4. memebot's own gather and scan on the sandbox; eligible = pool under 10 minutes old (pairCreatedAt), a price, liquidity of at
      least YOUNG_MIN_LIQ, none of the gates price/curve/nodex/honeypot/copy, and no bigger coin with its ticker (symmc)
-  5. tier 1 per eligible coin: RugCheck report (cached 5 min), pump.fun coin facts, DexScreener paid profile
-  6. tier 2, coins without a hard trap first: did the creator sell (fetch.dev_check), dev wallet age and earlier launches, top
-     holders' age and funding (Solana RPC, capped), launch trades and holder flags (when the probe allows them); GeckoTerminal minute
-     candles between them (staircase so far, the peak within the hour)
+  5. tier 1 per eligible coin: RugCheck report (cached 5 min), pump.fun coins-v3 facts only when no list gave a mint time,
+     DexScreener paid profile
+  6. tier 2, coins without a hard trap first: did the creator sell (fetch.dev_check, at most DEV_RPC_CAP RPC calls), the mint time from
+     the chain as the last fallback (pump.fun list, Jupiter createdAt, coins-v3, then RPC), dev wallet age and earlier launches
+     (pump.fun coins?creator=), swap-api candles from the mint (staircase so far, and before the pool), launch trades and the top
+     holders' entry times (pump.fun), the top 10 holders' age and the funding of the fresh ones (Solana RPC, capped, 1.1 s per method);
+     GeckoTerminal minute candles between them (other pools' staircase so far, the peak within the hour)
   7. traps.rate on traps.signals_radar of every eligible coin; the best 5: good coins by upside, then watch, then trap coins; only
      good coins are listed, the rest go to the fold
   8. every eligible coin is recorded with every rating and its prices 5, 15, 30 and 60 minutes later (db/memeradar/<UTC hour>.json);
@@ -47,11 +51,16 @@ STEP_END = {"discover": 25, "ds": 35, "tier1": 60, "tier2": 95, "rate": 105, "pu
 MAX_AGE_MIN = 10.0          # a coin is on the radar while its DEX pool is younger than this
 FINISH_MIN = 12.5           # a coin that turned 10 min with a check pending is finished for the record until this age (never pushed)
 BEST_N = 5
-DS_MAX_REQ = 10             # DexScreener tokens/v1 requests a cycle (30 addresses each)
-TIER1_CAP = 12              # tier-1 requests a cycle (RugCheck, pump.fun coin, DexScreener orders)
-RPC_CAP = 15                # Solana RPC calls a cycle
-PF_DEEP_CAP = 6             # pump.fun creator / holder / trade calls a cycle
-GT_SLOTS = 3                # GeckoTerminal candle calls a cycle (10 s apart)
+DS_MAX_REQ = 12             # DexScreener tokens/v1 requests a cycle (30 addresses each; the probe needed 10-11 a cycle, limit 300 a minute)
+DS_FIRST_REQ = 20           # ... in a run's first cycle (a cold pool-age cache: the probe asked about 570 addresses in 20 requests)
+TIER1_CAP = 12              # tier-1 requests a cycle (RugCheck, pump.fun coins-v3, DexScreener orders)
+RPC_CAP = 15                # Solana RPC calls a cycle (the probe: keep it; the public node allows 10 per method per 10 s)
+DEV_RPC_CAP = 8             # of them for fetch.dev_check (did the creator sell), so the dev wallet, the mint and the holders keep the rest
+FUND_CAP = 5                # of them for the funding of fresh holders (getTransaction)
+PF_DEEP_CAP = 6             # frontend-api-v3 calls a cycle for the dev's launches and the top holders
+SWAP_CAP = 6                # swap-api calls a cycle (candles from the mint, launch trades: 3 pages a coin at most)
+SWAP_STAIR_N = 2            # coins a cycle whose swap-api candles are taken (staircase so far and before the pool)
+GT_SLOTS = 3                # GeckoTerminal candle calls a cycle (10 s apart; GeckoTerminal new pools pages 1-2 come first)
 RC_TTL = 300_000            # a RugCheck report is asked again after this while its coin is under 10 min
 DEV_TTL = 6 * 3_600_000     # a dev's launch history is kept this long
 LATER = (5, 15, 30, 60)     # minutes after first sight: the later prices
@@ -361,7 +370,7 @@ class Radar:
         self.cdir = os.path.abspath(a.cache)
         self.horizon = a.horizon
         M.apply_profile(self.horizon)
-        self.cache = {k: load_json(os.path.join(self.cdir, k + ".json"), {}) or {} for k in ("pool", "rc", "pf", "dev", "wallets", "xidx", "peak", "mint", "paid")}
+        self.cache = {k: load_json(os.path.join(self.cdir, k + ".json"), {}) or {} for k in ("pool", "rc", "pf", "jup", "dev", "wallets", "xidx", "peak", "mint", "paid")}
         self.docs, self.rec_hour, self.pushed, self.model = {}, {}, {}, {}
         self.restore_state, self.last_counts, self.last_doc = "none", None, None
         self.res_at = self.feed_at = None
@@ -371,7 +380,7 @@ class Radar:
         self.W = self.W_prior
         self.fails, self.notes_run, self.cycle_lines, self.work, self.closes = 0, [], [], {}, {}
         self.chained, self.dispatches, self.publishes, self.out_pk = False, 0, 0, set()
-        self.mismatch_said, self.exch, self.pos = set(), set(), None
+        self.mismatch_said, self.exch, self.pos, self.last_c = set(), set(), None, {}
         self.run_start = self.run_end = None
 
     # ---------------------------------------------------------------- log
@@ -577,7 +586,8 @@ class Radar:
         c["pool"] = {a: v for a, v in c["pool"].items() if isinstance(v, list) and now - (num(v[2]) or 0) < 2 * 86_400_000}
         c["rc"] = {a: v for a, v in c["rc"].items() if isinstance(v, dict) and now - (num(v.get("t")) or 0) < 30 * 60_000}
         c["pf"] = dict(sorted(((a, v) for a, v in c["pf"].items() if isinstance(v, dict)), key=lambda kv: -(num(kv[1].get("seen")) or 0))[:20_000])
-        c["dev"] = {a: v for a, v in c["dev"].items() if isinstance(v, dict) and now - (num(v.get("t")) or 0) < 7 * 86_400_000}
+        c["jup"] = dict(sorted(((a, v) for a, v in c["jup"].items() if isinstance(v, dict)), key=lambda kv: -(num(kv[1].get("seen")) or 0))[:20_000])
+        c["dev"] = {a: v for a, v in c["dev"].items() if isinstance(v, dict) and "rows" in v and now - (num(v.get("t")) or 0) < 7 * 86_400_000}
         c["wallets"] = dict(sorted(((a, v) for a, v in c["wallets"].items() if isinstance(v, dict)), key=lambda kv: -(num(kv[1].get("used")) or 0))[:50_000])
         c["xidx"] = dict(list(c["xidx"].items())[-50_000:])
         c["mint"] = dict(list(c["mint"].items())[-5_000:])
@@ -781,12 +791,14 @@ class Radar:
             shutil.rmtree(old, ignore_errors=True)
         # 2. discovery
         self.http.until = end(STEP_END["discover"])
-        n_disc = self.src.discover(sb, self.cache["pf"], now)
+        self.last_c = {}
+        n_disc = self.src.discover(sb, self.cache["pf"], now, self.cache["jup"])
         self.index_x(now)
         # 3. DexScreener
         self.http.until = end(STEP_END["ds"])
-        asks = self.ds_asks(sb, now)
-        answered, nreq = self.src.ds_tokens(sb, asks, DS_MAX_REQ)
+        cap = DS_FIRST_REQ if k == 0 else DS_MAX_REQ
+        asks = self.ds_asks(sb, now, cap)
+        answered, nreq = self.src.ds_tokens(sb, asks, cap)
         self.write_rc_rows(sb)
         # 4. memebot's gather and scan on the sandbox
         rows, pairs = self.run_scan(sb, now)
@@ -888,10 +900,11 @@ class Radar:
         except Exception:
             return None
 
-    def ds_asks(self, sb, now):
-        """The addresses DexScreener is asked about, in this order: due later prices, the coins on the radar, then new candidates by
-        source (pump.fun graduated, GeckoTerminal, LaunchLab, Jupiter, DexScreener profiles, pump.fun newest); none whose pool is known
-        to be 10 minutes or older, none still on pump.fun's curve."""
+    def ds_asks(self, sb, now, cap=DS_MAX_REQ):
+        """The addresses DexScreener is asked about (at most cap requests of 30), in this order: due later prices, the coins on the
+        radar, then new candidates by source: Jupiter recent and GeckoTerminal new pools first (short lists, and in the WP0 probe each
+        found 3 fresh pools nobody else listed, Jupiter the earliest), then pump.fun graduated, pump.fun newest, DexScreener profiles,
+        LaunchLab; none whose pool is known to be 10 minutes or older, none still on pump.fun's curve."""
         out, seen = [], set()
 
         def add(a):
@@ -909,8 +922,8 @@ class Radar:
         jup, _ = M.load_side(sb, "jup", M.JUP_COLS)
         lists = M.load_lists(sb)
         tagged = lambda tag: [a for a in pf if tag in ptags.get(a, ())]
-        cand = tagged("pf:graduated") + list(gt) + list(lists.get("llNew", [])) + list(jup) + list(lists.get("profiles", [])) + \
-            [a for a in tagged("pf:new") if pf[a].get("complete")]
+        cand = list(jup) + list(gt) + tagged("pf:graduated") + [a for a in tagged("pf:new") if pf[a].get("complete")] + \
+            list(lists.get("profiles", [])) + list(lists.get("llNew", []))
         for a in cand:
             pc = self.cache["pool"].get(a)
             if isinstance(pc, list):
@@ -920,7 +933,7 @@ class Radar:
                 if (curve or not born) and now - at < 120_000:
                     continue                 # on a curve, or no pair: asked again after two minutes
             add(a)
-        return out[:DS_MAX_REQ * 30]
+        return out[:cap * 30]
 
     def pool_cache(self, pairs, answered, now):
         """addr -> [pool opened (ms) or None, a launch curve's pair, when seen]: an old pool is never asked again, a curve pair or no pair
@@ -1009,31 +1022,41 @@ class Radar:
     def gt_jobs(self, live, now):
         """GeckoTerminal's candle calls of this cycle: the peak within the hour of records 62 minutes old (ever good or in the best 5,
         each at most 3 tries), then the staircase so far of up to 2 coins with a pool of 6 minutes or more."""
-        jobs = []
+        peaks = []
         for doc in self.docs.values():
             for a, rec in (doc.get("coins") or {}).items():
                 if rec.get("peak60") is None and (rec.get("good") or rec.get("top")) and rec.get("pair") and now - rec["first"] >= PEAK_AT \
                         and int(self.cache["peak"].get(a, 0)) < 3 and now - rec["first"] < 6 * H:
-                    jobs.append(("peak", a))
+                    peaks.append((0 if rec.get("good") else 1, num(rec.get("first")) or 0, a))
+        jobs = [("peak", a) for _, _, a in sorted(peaks)]     # ever-good coins first (the record line's calls), then the best 5's others
         for r in sorted(live, key=lambda r: -r["age"]):
             a = r["a"]
             got = self.closes.get(a)
+            if self.swap_stair(r):
+                continue                     # swap-api's candles give this pump.fun coin's staircase (tier 2)
             if r["age"] >= 6 and r["pr"].get("pairAddress") and (got is None or (got[0] < 8.0 and r["age"] >= 8.5)):
                 jobs.append(("stair", a, r["pr"]["pairAddress"], num(r["pr"].get("pairCreatedAt")), r["age"]))
             if sum(1 for j in jobs if j[0] == "stair") >= 2:
                 break
         return jobs[:GT_SLOTS]
 
+    def swap_stair(self, r):
+        """Whether swap-api's candles (not GeckoTerminal's) give this coin's staircase: a pump.fun coin, the adapter on, and the candles
+        reached its pool (they cover 100 minutes from the mint)."""
+        return self.pumpish(r) and self.src.use("swap_candles") and (self.work.get(r["a"]) or {}).get("swapc") != "nopool"
+
     def gt_slot(self, jobs, now):
-        """One GeckoTerminal call (its 10 s gap keeps the other hosts' calls between them)."""
-        if not jobs:
+        """One GeckoTerminal call (its 10 s gap keeps the other hosts' calls between them). While GeckoTerminal cools down after a 429
+        (15, 30, then 60 s) the job waits for a later slot; a peak try counts only when the call was sent."""
+        if not jobs or self.http.blocked(RS.GT_HOST):
             return
         j = jobs.pop(0)
         if j[0] == "peak":
             a = j[1]
             rec = self.rec(a)
-            self.cache["peak"][a] = int(self.cache["peak"].get(a, 0)) + 1
             cands = self.src.candles(rec["pair"], rec["first"] - 60_000, rec["first"] + H + 120_000)
+            if self.http.code != "skip":
+                self.cache["peak"][a] = int(self.cache["peak"].get(a, 0)) + 1
             if cands and self.P is not None and rec.get("px"):
                 try:
                     pk = self.P.peak_of([c[:6] for c in cands], rec["first"], rec["first"] + H, rec["px"])
@@ -1071,9 +1094,8 @@ class Radar:
                 elif not (isinstance(c, dict) and isinstance(c.get("rep"), dict)) and st in ("404", "429", "err"):
                     self.cache["rc"][a] = {"t": now, "st": st, "rep": None}     # an older report stays when a refresh fails
                 w["rc"] = st if st in ("ok", "404", "429", "err") else "pending"
-            meta = self.cache["pf"].get(a) or {}
-            if not meta.get("t") and self.pumpish(r) and not w.get("pfcoin") and self.http.n - n0 < TIER1_CAP:
-                w["pfcoin"] = 1
+            if not self.mint_of(a, r) and self.pumpish(r) and not w.get("pfcoin") and self.http.n - n0 < TIER1_CAP:
+                w["pfcoin"] = 1                  # the mint time: pump.fun's list row, then Jupiter's createdAt, then coins-v3, then the RPC
                 self.src.pf_coin(a, self.cache["pf"], now)
             if a not in self.cache["paid"]:
                 paid_ask.append(a)
@@ -1095,18 +1117,27 @@ class Radar:
         rc = (self.cache["rc"].get(a) or {}).get("rep") or {}
         ll = ((r or {}).get("pr") or {}).get("ll") or {}
         w = self.work.get(a) or {}
-        return meta.get("creator") or F.addr_of(ll.get("creator")) or rc.get("creator") or w.get("devWallet")
+        return meta.get("creator") or F.addr_of(ll.get("creator")) or (self.cache["jup"].get(a) or {}).get("dev") or rc.get("creator") or w.get("devWallet")
 
     def tier2(self, sb, live, finish, now):
         """Coins without a hard trap first, each coin's checks once (a check that misses the budget stays pending for the next cycle):
-        did the creator sell (fetch.dev_check), the mint time from the chain for the best coins without one, the dev wallet's age and
-        earlier launches, pump.fun's launch facts (when on), the top 10 holders' age and funding."""
+        did the creator sell (fetch.dev_check, at most DEV_RPC_CAP RPC calls), the mint time from the chain for the best coin without
+        one (the last fallback, 3 pages at most), the dev wallet's age (one RPC call) and earlier launches (pump.fun coins?creator=),
+        swap-api candles from the mint, the launch trades (3 pages at most) and the top holders' entry times (pump.fun), the top 10
+        holders' age (one RPC call each) and the funding of the fresh ones (at most FUND_CAP a cycle)."""
         coins = [(r, self.prelim(r, now)) for r in live + finish]
         coins.sort(key=lambda x: (1 if x[1] == "trap" else 0, x[0]["age"]))
         todo = [r for r, _ in coins if (self.work.get(r["a"]) or {}).get("dev") not in ("ok", "skip")]
         if todo and self.src.use("dev_check"):
+            left = self.http.rpc_left
+            cap = DEV_RPC_CAP if left is None else min(left, DEV_RPC_CAP)
+            self.http.rpc_left = cap
             ddir = os.path.join(sb, "dev2")
-            F.dev_check(self.http, ddir, [r["a"] for r in todo[:4]], now / 1000.0)
+            try:
+                F.dev_check(self.http, ddir, [r["a"] for r in todo[:4]], now / 1000.0)
+            finally:
+                used = cap - max(0, self.http.rpc_left or 0)
+                self.http.rpc_left = None if left is None else max(0, left - used)
             rows, _ = M.load_side(ddir, "dev", M.DEV_COLS)
             for r in todo[:4]:
                 w = self.work.setdefault(r["a"], {})
@@ -1116,65 +1147,120 @@ class Radar:
                     w["devRow"] = row
                     w["devWallet"] = row.get("devWallet")
                 w["dev"] = "ok" if row is not None and row.get("devSold") is not None else ("skip" if w["devTries"] >= 3 else "pending")
-        pf_deep = PF_DEEP_CAP
+        pf_deep, swap, fund = PF_DEEP_CAP, self.swap_candles(coins, now, SWAP_CAP), FUND_CAP
         mint_done = False
+        wallets = self.cache["wallets"]
         for r, verdict in coins:
             a = r["a"]
             w = self.work.setdefault(a, {})
             if time.time() > (self.http.until or 0):
                 break
-            if not mint_done and verdict != "trap" and not self.mint_of(a, r) and a not in self.cache["mint"] and self.http.rpc_left and self.http.rpc_left >= 3:
+            mint = self.mint_of(a, r)
+            if not mint_done and verdict != "trap" and not mint and a not in self.cache["mint"] and self.src.use("rpc_mint_time") \
+                    and (self.http.rpc_left or 0) >= 3:
                 mint_done = True
                 t = self.src.mint_time(a)
-                self.cache["mint"][a] = t or 0
+                if t is not None:                 # 0: the pages did not reach the mint (unknown, not asked again); None: no answer (asked again)
+                    self.cache["mint"][a] = t
+                mint = self.mint_of(a, r)
             creator = self.creator_of(a, r)
-            if creator and self.src.use("rpc_wallet"):
-                wc = self.cache["wallets"].get(creator)
-                if wc is None and self.http.rpc_left:
-                    res = self.src.wallet_age(creator)
+            if creator and self.src.use("rpc_dev_age"):
+                if creator not in wallets and self.http.rpc_left:
+                    res = self.src.wallet_age(creator, "rpc_dev_age")
                     if res is not None:
-                        self.cache["wallets"][creator] = dict(res, used=now)
-                w["devage"] = "ok" if creator in self.cache["wallets"] else "pending"
-            if creator and (self.src.use("pf_dev") or (self.cache["rc"].get(a) or {}).get("rep")):
+                        wallets[creator] = dict(res, used=now)
+                w["devage"] = "ok" if creator in wallets else "pending"
+            if creator and self.src.use("pf_dev_history"):
                 dc = self.cache["dev"].get(creator)
-                if (dc is None or now - num(dc.get("t")) > DEV_TTL) and pf_deep > 0 and self.src.use("pf_dev"):
-                    pf_deep -= 1
+                if (not isinstance(dc, dict) or "rows" not in dc or now - (num(dc.get("t")) or 0) > DEV_TTL) and pf_deep > 0:
+                    n0 = self.http.n
                     res = self.src.pf_dev(creator, now)
+                    pf_deep -= max(1, self.http.n - n0)
                     if res is not None:
                         self.cache["dev"][creator] = dict(res, t=now)
-                w["devhist"] = "ok" if creator in self.cache["dev"] else "pending"
-            if (self.src.use("pf_trades") or self.src.use("pf_holders")) and self.pumpish(r) and not w.get("pfdeep") and pf_deep > 0:
-                pf_deep -= 1
-                w["pfdeep"] = 1
-                tr = self.src.pf_trades(a) if self.src.use("pf_trades") else None
-                if tr is not None:
-                    w["trades"] = tr
-                elif self.src.use("pf_holders") and pf_deep > 0:
-                    pf_deep -= 1
-                    ho = self.src.pf_holders(a)
+                w["devhist"] = "ok" if "rows" in (self.cache["dev"].get(creator) or {}) else "pending"
+            if self.pumpish(r):
+                if self.src.use("swap_trades") and "trades" not in w and swap >= 3:
+                    n0 = self.http.n
+                    tr = self.src.pf_trades(a, mint, pages=3)
+                    swap -= max(1, self.http.n - n0)
+                    if tr is not None:
+                        w["trades"] = tr
+                if self.src.use("pf_top_holders") and "pfholders" not in w and mint and pf_deep > 0:
+                    n0 = self.http.n
+                    ho = self.src.pf_holders(a, mint, skip=self.pools_of(a, r))
+                    pf_deep -= max(1, self.http.n - n0)
                     if ho is not None:
                         w["pfholders"] = ho
             holders = self.holders_of(a)
-            if holders and self.src.use("rpc_wallet"):
+            if holders and self.src.use("rpc_holder_age"):
                 for owner, _ in holders:
-                    if not self.http.rpc_left:
-                        break
-                    wc = self.cache["wallets"].get(owner)
+                    wc = wallets.get(owner)
                     if wc is None:
-                        res = self.src.wallet_age(owner)
+                        if not self.http.rpc_left:
+                            break
+                        res = self.src.wallet_age(owner, "rpc_holder_age")
                         if res is None:
                             break
-                        self.cache["wallets"][owner] = wc = dict(res, used=now)
+                        wallets[owner] = dict(res, used=now)
                     else:
                         wc["used"] = now
-                    if not wc.get("sig"):
-                        wc.setdefault("by", None)
-                    if self.src.use("rpc_funding") and "by" not in wc and self.http.rpc_left:
+                if self.src.use("rpc_funding"):
+                    for owner, _ in holders:
+                        wc = wallets.get(owner)
+                        if not wc or "by" in wc or RS.wallet_fresh(wc, now) is not True:
+                            continue
+                        if not wc.get("sig"):
+                            wc["by"] = None
+                            continue
+                        if fund <= 0 or not self.http.rpc_left:
+                            break
+                        fund -= 1
                         fu = self.src.funder(owner, wc["sig"])
-                        if fu is not None:
-                            wc.update(by=fu.get("by"), at=fu.get("at"))
-                done = all(o in self.cache["wallets"] and ("by" in self.cache["wallets"][o] or not self.src.use("rpc_funding")) for o, _ in holders)
-                w["holders"] = "ok" if done else "pending"
+                        if fu is None:
+                            break
+                        wc.update(by=fu.get("by"), at=fu.get("at"))
+                known = all(o in wallets for o, _ in holders)
+                funded = not self.src.use("rpc_funding") or all("by" in wallets[o] for o, _ in holders if o in wallets and RS.wallet_fresh(wallets[o], now))
+                w["holders"] = "ok" if known and funded else "pending"
+
+    def swap_candles(self, coins, now, budget):
+        """swap-api's 1-minute candles from the mint of up to SWAP_STAIR_N pump.fun coins a cycle (oldest pool first): the closes from the
+        pool's open (the staircase so far, instead of a GeckoTerminal call) and the curve's last 15 closes before the pool (the staircase
+        before the pool, measured only). A coin is asked at first sight, again at 6 and at 8.5 minutes. Returns the budget left."""
+        if not self.src.use("swap_candles"):
+            return budget
+        n = 0
+        for r, _ in sorted(coins, key=lambda x: -x[0]["age"]):
+            if budget <= 0 or n >= SWAP_STAIR_N or time.time() > (self.http.until or 0):
+                break
+            a = r["a"]
+            w = self.work.setdefault(a, {})
+            last = w.get("swapAge")
+            if not self.swap_stair(r) or not (last is None or last < 6.0 <= r["age"] or (last < 8.0 and r["age"] >= 8.5)):
+                continue
+            n0 = self.http.n
+            cands = self.src.pf_candles(a)
+            budget -= max(1, self.http.n - n0)
+            n += 1
+            if cands is None:
+                continue
+            w["swapAge"] = r["age"]
+            pool = num(r["pr"].get("pairCreatedAt")) or 0
+            pool_c = [c for c in cands if c[0] > pool - 60_000]       # the minute the pool opened in, and later (as GeckoTerminal's)
+            curve_c = [c for c in cands if c[0] <= pool - 60_000]     # whole minutes before the pool: the curve
+            if not pool_c and len(cands) >= 100:
+                w["swapc"] = "nopool"            # the 100 minutes from the mint end before the pool: GeckoTerminal measures it
+                continue
+            w["swapc"] = "ok"
+            self.closes[a] = (r["age"], [c[4] for c in pool_c if c[4]][:15])
+            if curve_c:
+                w["curve"] = [c[4] for c in curve_c if c[4]][-15:]
+        return budget
+
+    def pools_of(self, a, r):
+        """The coin's pool accounts (DexScreener's pair, pump.fun's PumpSwap pool): holders, not buyers."""
+        return {x for x in (r["pr"].get("pairAddress"), (self.cache["pf"].get(a) or {}).get("pool")) if x}
 
     def holders_of(self, a):
         """The top 10 holders of RugCheck's report ([owner, pct]), without the wallets the wallet memory calls common (pools, programs)."""
@@ -1188,9 +1274,11 @@ class Radar:
         return out[:10]
 
     def mint_of(self, a, r):
+        """The mint time (ms): pump.fun's list row or coins-v3, LaunchLab's createdAt, Jupiter's createdAt, then the RPC's oldest
+        signature; None when none is known."""
         meta = self.cache["pf"].get(a) or {}
         ll = (r["pr"].get("ll") or {}) if r else {}
-        return num(meta.get("t")) or M.parse_ms(ll.get("createdAt")) or num(self.cache["mint"].get(a)) or None
+        return num(meta.get("t")) or M.parse_ms(ll.get("createdAt")) or num((self.cache["jup"].get(a) or {}).get("t")) or num(self.cache["mint"].get(a)) or None
 
     def prelim(self, r, now):
         try:
@@ -1219,16 +1307,18 @@ class Radar:
         return S, c
 
     def coin(self, r, now):
-        """The merged coin dict c that traps.signals_radar(c) reads (the frozen interface leaves its shape to this package):
-          - every S key at the top level, read by the radar itself from its sources (S_KEYS: instantPool, mintToPoolS, swAvg, rugHolders,
-            wmChecked, brand, buys, rcReport, rcDanger, rcWarn, cluster, netSize, creatorSold, m5, socN, ageMin, x, xKind, paid, tweet,
-            lists, stair, mc, liq, creatorPct, pumpswap, devN, devDead, devGrad, devAgeH, xUsed, tweetShared, snip30, snip30N, slotN,
-            slotPct, freshN, fundN); None = unknown;
-          - the raw parts: addr, sym, name, now, pool and mint (ms), pair (memebot's merged pair: priceUsd, liquidityUsd, chgM5, buysH1,
-            socials, xUrl, pairCreatedAt, dexId, tags, pf/ll facts), f (memebot's factors), rc (RugCheck's report, trimmed by
-            radar_src.rc_trim) and rcStatus (ok/404/429/err/pending), pf (pump.fun facts), dev (fetch.dev_check's row), wm (walletmem)
-            and wmState (ok/old/missing), holders ([owner, pct] of the top 10 without wm.common), funders ([owner, funder, ms]),
-            closes (minute closes from the pool's start), devWallet, devTx, holdersN.
+        """The merged coin dict c that traps.signals_radar(c) reads, in the shape traps.py documents for it (WP1):
+          - now, addr, sym, name, dex, pool and mint (ms), first (first sight), px, liq, mc, m5, buys, socN, x, paid, lists, rc (RugCheck's
+            report, trimmed by radar_src.rc_trim; None without one), wm (walletmem), devSold, creatorPct, dev {"n", "dead", "grad",
+            "ageH", "txs"}, xUsed, tweetShared, snip30, snip30N, slotN, slotPct, freshN, freshOf, fundN, fundMin, closes (minute closes
+            from the pool's open). The top holders come from rc, so traps' wallet check reads the same holders as the radar's;
+          - every other S key at the top level, read by the radar itself (S_KEYS: instantPool, mintToPoolS, swAvg, rugHolders,
+            wmChecked, wmState, brand, rcReport, rcDanger, rcWarn, cluster, netSize, creatorSold, ageMin, xKind, tweet, stair, pumpswap,
+            devN, devDead, devGrad, devAgeH, devTxs); None = unknown. The record's sig keeps every S_KEYS value (traps.fit reads them);
+          - the radar's own parts: pair (memebot's merged pair), f (memebot's factors), rcStatus (ok/404/429/err/pending), pf (pump.fun
+            facts), devRow (fetch.dev_check's row), top10 ([owner, pct] of the top 10 without wm.common), funders ([owner, funder, ms]
+            of fresh holders), devWallet, devTx (= devTxs), holdersN, stairCurve (the staircase of the curve's last closes before the
+            pool, from swap-api's candles: measured, no weight).
         launch_radar takes traps' reading where it knows a value, the radar's own where traps returns None (signals())."""
         a, pr, b, f = r["a"], r["pr"], r["basic"], r["f"]
         rcc = self.cache["rc"].get(a) or {}
@@ -1238,12 +1328,14 @@ class Radar:
         mint = self.mint_of(a, r)
         meta = self.cache["pf"].get(a) or {}
         w = self.work.get(a) or {}
+        rec = self.rec(a) or {}
         c = {"addr": a, "sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "now": now, "pool": pool, "mint": mint,
-             "pair": pr, "f": f, "rc": rep, "rcStatus": st, "pf": meta, "dev": w.get("devRow"), "wm": self.wm, "wmState": self.wm_state(now)}
+             "dex": str(pr.get("dexId") or "")[:24] or None, "first": num(rec.get("first")) or now, "px": num(b.get("price")),
+             "pair": pr, "f": f, "rc": rep, "rcStatus": st, "pf": meta, "devRow": w.get("devRow"), "wm": self.wm, "wmState": self.wm_state(now)}
         c["mintToPoolS"] = (pool - mint) / 1000.0 if pool and mint else None
         c["instantPool"] = (0 <= c["mintToPoolS"] < 60) if c["mintToPoolS"] is not None else None
-        holders = self.holders_of(a)
-        c["holders"] = holders
+        top10 = self.holders_of(a)
+        c["top10"] = top10
         if c["wmState"] == "ok" and rep is not None:
             wl = self.T.walletmem_lookup([h.get("owner") for h in rep.get("topHolders") or [] if isinstance(h, dict) and h.get("owner")], self.wm) or {}
             c["swAvg"], c["rugHolders"], c["wmChecked"] = wl.get("swAvg"), wl.get("rugHolders"), bool(wl.get("checked"))
@@ -1261,10 +1353,11 @@ class Radar:
         c["rcDanger"] = [str(x.get("name"))[:60] for x in (rep or {}).get("risks") or [] if lvl(x) == "danger"] if rep is not None else None
         c["rcWarn"] = [str(x.get("name"))[:60] for x in (rep or {}).get("risks") or [] if lvl(x) == "warn"] if rep is not None else None
         net = num((rep or {}).get("graphInsidersDetected"))
-        c["netSize"] = net
+        c["netSize"] = RS.net_size(rep)
         c["cluster"] = (bool(net and net > 50) or any("holder correlation" in n.lower() for n in (c["rcWarn"] or []) + (c["rcDanger"] or []))) if rep is not None else None
         drow = w.get("devRow") or {}
         c["creatorSold"] = (bool(drow.get("devSold")) if drow.get("devSold") is not None else None) if drow else None
+        c["devSold"] = c["creatorSold"]
         c["m5"] = num(pr.get("chgM5"))
         c["socN"] = num(pr.get("socials"))
         c["ageMin"] = (now - pool) / 60_000.0 if pool else None
@@ -1276,11 +1369,16 @@ class Radar:
         c["tweet"] = (c["xKind"] == "tweet") if x else False
         c["lists"] = num(f.get("srcN"))
         cl = self.closes.get(a)
-        c["closes"] = list(cl[1]) if cl else None
+        c["closes"] = list(cl[1]) if cl and cl[1] else None
         try:
             c["stair"] = self.T.staircase(cl[1], n_min=10) if cl and cl[1] else None
         except Exception:
             c["stair"] = None
+        cv = w.get("curve")
+        try:
+            c["stairCurve"] = self.T.staircase(cv, n_min=10) if cv and len(cv) >= 2 else None
+        except Exception:
+            c["stairCurve"] = None
         c["mc"], c["liq"] = num(b.get("mc")), num(b.get("liq"))
         cp = None
         if rep is not None:
@@ -1291,36 +1389,48 @@ class Radar:
         creator = self.creator_of(a, r)
         c["devWallet"] = creator
         dh = self.cache["dev"].get(creator) if creator else None
-        tok = (rep or {}).get("creatorTokens")
-        rc_n = len([t for t in tok if isinstance(t, dict) and t.get("mint") != a]) if isinstance(tok, list) else None
-        rc_dead = len([t for t in tok if isinstance(t, dict) and t.get("mint") != a and (num(t.get("marketCap")) or 0) < 10_000]) if isinstance(tok, list) else None
-        c["devN"] = max([v for v in ((dh or {}).get("n"), rc_n) if v is not None], default=None)
-        c["devDead"] = max([v for v in ((dh or {}).get("dead"), rc_dead) if v is not None], default=None)
-        c["devGrad"] = (dh or {}).get("grad")
+        rows = [x for x in (dh or {}).get("rows") or [] if isinstance(x, list) and len(x) >= 3 and x[0] != a] if isinstance(dh, dict) and "rows" in dh else None
+        cnt = num((dh or {}).get("count")) if rows is not None else None      # all the dev's launches, this coin included
+        c["devN"] = (max(len(rows), int(cnt) - 1) if cnt is not None else len(rows)) if rows is not None else None    # earlier launches
+        c["devDead"] = sum(1 for x in rows if x[2]) if rows is not None else None
+        c["devGrad"] = sum(1 for x in rows if x[1]) if rows is not None else None
+        tok = (rep or {}).get("creatorTokens") if self.src.use("rc_creator_tokens") else None
+        if isinstance(tok, list):
+            rc_n = len([t for t in tok if isinstance(t, dict) and t.get("mint") != a])
+            rc_dead = len([t for t in tok if isinstance(t, dict) and t.get("mint") != a and (num(t.get("marketCap")) or 0) < 10_000])
+            c["devN"] = max(rc_n, c["devN"] or 0)
+            c["devDead"] = max(rc_dead, c["devDead"] or 0)
         wa = self.cache["wallets"].get(creator) if creator else None
-        c["devAgeH"] = round((now - wa["first"]) / H, 2) if wa and wa.get("first") else None     # a lower bound when it has 1,000+ signatures
-        c["devTx"] = (wa.get("n") if not wa.get("full") else 1000) if wa else None
+        fresh_dev = RS.wallet_fresh(wa, now) if wa else None
+        c["devAgeH"] = round((now - wa["first"]) / H, 2) if wa and wa.get("first") and not (wa.get("full") and fresh_dev is None) else None   # full: a lower bound
+        c["devTx"] = c["devTxs"] = (wa.get("n") if not wa.get("full") else 1000) if wa else None
+        c["dev"] = {"n": c["devN"], "dead": c["devDead"], "grad": c["devGrad"], "ageH": c["devAgeH"], "txs": c["devTx"]}
         c["xUsed"], c["tweetShared"] = self.x_reuse(a, nx, num(meta.get("t")) or now)
-        tr = w.get("trades") or {}
+        tr = w.get("trades") if isinstance(w.get("trades"), dict) and not w["trades"].get("many") else {}
         ho = w.get("pfholders") or {}
-        c["snip30"] = num(tr.get("snip30")) if tr.get("snip30") is not None else num(ho.get("snipPct"))
-        c["snip30N"] = num(tr.get("snip30N")) if tr.get("snip30N") is not None else num(ho.get("snipN"))
-        c["slotN"] = num(tr.get("slotN")) if tr.get("slotN") is not None else num(ho.get("bundN"))
-        c["slotPct"] = num(tr.get("slotPct")) if tr.get("slotPct") is not None else num(ho.get("bundPct"))
+        pick = lambda k1, k2: num(tr.get(k1)) if tr.get(k1) is not None else num(ho.get(k2))
+        c["snip30"], c["snip30N"] = pick("snip30", "snip30"), pick("snip30N", "snip30N")
+        c["slotN"], c["slotPct"] = pick("slotN", "bundN"), pick("slotPct", "bundPct")
         fresh, funders, n_known = 0, [], 0
         exch = self.exch
-        for o, _ in holders:
+        for o, _ in top10:
             wc = self.cache["wallets"].get(o)
-            if not wc:
+            fr = RS.wallet_fresh(wc, now) if wc else None
+            if fr is None:
                 continue
             n_known += 1
-            if not wc.get("full") and ((wc.get("first") and now - wc["first"] < 24 * H) or (num(wc.get("n")) or 0) < 10):
+            if fr:
                 fresh += 1
-            if wc.get("by") and wc["by"] not in exch and wc.get("at"):
-                funders.append([o, wc["by"], wc["at"]])
-        c["freshN"] = fresh if holders and n_known == len(holders) else (fresh if n_known >= 5 else None)
+                if wc.get("by") and wc["by"] not in exch and wc.get("at"):
+                    funders.append([o, wc["by"], wc["at"]])
+        all_known = bool(top10) and n_known == len(top10)
+        c["freshN"] = fresh if (all_known or n_known >= 5) else None
+        c["freshOf"] = n_known if c["freshN"] is not None else None
         c["holdersN"] = n_known
-        c["fundN"] = fund_cluster(funders) if funders else (0 if holders and n_known == len(holders) else None)
+        funded = all_known and all("by" in self.cache["wallets"][o] for o, _ in top10 if RS.wallet_fresh(self.cache["wallets"][o], now))
+        fn, fmin = fund_cluster(funders) if funders else (0, None)
+        c["fundN"] = fn if (funders or funded) else None
+        c["fundMin"] = fmin if c["fundN"] else None
         c["funders"] = funders
         return c
 
@@ -1352,6 +1462,7 @@ class Radar:
         """traps.rate on the coin's signals; the record gets the rating (every one, at most 5), its first good moment and its signals."""
         a = r["a"]
         S, c = self.signals(r, now)
+        self.last_c[a] = c
         rt = self.T.rate(S, self.W) or {}
         try:
             line = [list(x)[:2] for x in (self.T.chips(rt, S) or [])][:8]
@@ -1373,8 +1484,9 @@ class Radar:
         zp, up = M.chances(self.train[0], self.train[1], r["f"]) if self.train[0] or self.train[1] else (None, None)
         pr, b = r["pr"], r["basic"]
         d = {k: fin(S.get(k), 3) for k in D_KEYS if fin(S.get(k)) is not None}
-        if isinstance(S.get("stair"), dict):
-            d["stair"] = {k: fin(S["stair"].get(k), 3) if not isinstance(S["stair"].get(k), bool) else S["stair"].get(k) for k in ("n", "rise", "green", "pull", "stair")}
+        for key, st in (("stair", S.get("stair")), ("stairCurve", c.get("stairCurve"))):
+            if isinstance(st, dict):
+                d[key] = stair_doc(st)
         if zp is not None or up is not None:
             d["odds"] = {"up": fin(up, 3), "zero": fin(zp, 3), "note": "not used: on coins under 1 h they did not separate winners"}
         d["score"] = fin(r.get("sc"), 1)
@@ -1391,17 +1503,19 @@ class Radar:
     def coin_extra(self, a, r, S, c):
         rep = (self.cache["rc"].get(a) or {}).get("rep") or {}
         cl = self.closes.get(a)
-        return {"x": S.get("x") or "", "dev": c.get("devWallet"), "holders": c.get("holders") or [],
+        return {"x": S.get("x") or "", "dev": c.get("devWallet"), "holders": c.get("top10") or [],
                 "funders": [[o, b, t] for o, b, t in (c.get("funders") or [])][:10],
-                "closes": list(cl[1])[:15] if cl else [],
+                "closes": list(cl[1])[:15] if cl else [], "stairCurve": stair_doc(c["stairCurve"]) if isinstance(c.get("stairCurve"), dict) else None,
                 "rc": {"danger": list(S.get("rcDanger") or [])[:6], "warn": list(S.get("rcWarn") or [])[:6], "score": fin(rep.get("score_normalised") if rep.get("score_normalised") is not None else rep.get("score"))}}
 
     def chk(self, a, S, now, record_only):
         w = self.work.get(a) or {}
         st = (self.cache["rc"].get(a) or {}).get("st") or w.get("rc") or "pending"
         wms = self.wm_state(now)
-        hold = "off" if not self.src.use("rpc_wallet") else ("ok" if w.get("holders") == "ok" else "skip")
-        trades = "off" if not (self.src.use("pf_trades") or self.src.use("pf_holders")) else ("ok" if (w.get("trades") or w.get("pfholders")) else "skip")
+        hold = "off" if not self.src.use("rpc_holder_age") else ("ok" if w.get("holders") == "ok" else "skip")
+        tr = w.get("trades") if isinstance(w.get("trades"), dict) and not w["trades"].get("many") else None
+        trades = "off" if not (self.src.use("swap_trades") or self.src.use("pf_top_holders")) else \
+            ("ok" if tr or (w.get("pfholders") or {}).get("snip30") is not None else "skip")
         return {"rc": st if st in ("ok", "404", "429", "err") else "pending", "mint": "ok" if S.get("mintToPoolS") is not None else "unknown",
                 "wm": wms, "dev": "ok" if w.get("dev") == "ok" else ("err" if w.get("dev") == "err" else "skip"),
                 "holders": hold, "trades": trades, "candles": "ok" if self.closes.get(a) else "skip"}
@@ -1462,7 +1576,7 @@ class Radar:
         record, n_out, _ = self.summary(now)
         hosts = {}
         for host, label in RS.HOST_LABEL.items():
-            used = [n for n, h in RS.ADAPTER_HOST.items() if h == host]
+            used = [n for n, hs in RS.ADAPTER_HOST.items() if host in hs]
             if used and not any(self.src.use(n) for n in used):
                 hosts[label] = "off"
             else:
@@ -1552,9 +1666,16 @@ class Radar:
 
 S_KEYS = ("instantPool", "mintToPoolS", "swAvg", "rugHolders", "wmChecked", "brand", "buys", "rcReport", "rcDanger", "rcWarn", "cluster", "netSize",
           "creatorSold", "m5", "socN", "ageMin", "x", "xKind", "paid", "tweet", "lists", "stair", "mc", "liq", "creatorPct", "pumpswap",
-          "devN", "devDead", "devGrad", "devAgeH", "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "fundN")
+          "devN", "devDead", "devGrad", "devAgeH", "devTxs", "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "freshOf",
+          "fundN", "fundMin", "wmState")
 D_KEYS = ("mintToPoolS", "swAvg", "rugHolders", "buys", "m5", "socN", "lists", "mc", "liq", "creatorPct", "netSize", "devN", "devDead", "devGrad", "devAgeH",
+          "devTxs", "freshOf", "fundMin",
           "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "fundN")
+
+
+def stair_doc(st):
+    """A staircase reading (traps.staircase) in the docs' few numbers."""
+    return {k: fin(st.get(k), 3) if not isinstance(st.get(k), bool) else st.get(k) for k in ("n", "rise", "green", "pull", "stair")}
 
 
 def clean_json(v, depth=0):
@@ -1582,8 +1703,8 @@ def found_of(pr):
 
 
 def fund_cluster(funders):
-    """The most top holders funded by one wallet within 15 minutes ([[owner, funder, ms], ...])."""
-    best = 0
+    """The most top holders funded by one wallet within 15 minutes ([[owner, funder, ms], ...]) and the minutes they span: (n, min)."""
+    best, span = 0, None
     by = {}
     for _, f, t in funders:
         by.setdefault(f, []).append(t)
@@ -1593,8 +1714,9 @@ def fund_cluster(funders):
         for i in range(len(ts)):
             while ts[i] - ts[j] > 15 * 60_000:
                 j += 1
-            best = max(best, i - j + 1)
-    return best
+            if i - j + 1 > best:
+                best, span = i - j + 1, round((ts[i] - ts[j]) / 60_000.0, 1)
+    return best, span
 
 
 def sig_of(S, extra):
