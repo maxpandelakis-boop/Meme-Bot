@@ -275,10 +275,10 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
     finally:
         srv.shutdown()
         srv.server_close()
-    closed = {H_["_id"], Y0["_id"], Y1["_id"], Y2["_id"], Y3["_id"], Y4["_id"], pid_a, pid_b}
-    check(r1.returncode == 0 and set(docs1) == closed and o1.get("items") == 8 and o1.get("ok") == 6 and o1.get("m15") == 1 and o1.get("waiting") == 1
+    closed = {H_["_id"], Y0["_id"], Y1["_id"], Y2["_id"], Y3["_id"], Y4["_id"], pid_a, pid_b, pid_old}   # the pre-restart buy too (shown apart)
+    check(r1.returncode == 0 and set(docs1) == closed and o1.get("items") == 9 and o1.get("ok") == 7 and o1.get("m15") == 1 and o1.get("waiting") == 1
           and set(o1) == {"items", "ok", "m15", "est", "unit", "waiting", "secs", "why"},
-          "P3 docs only for the 8 closed in_account windows: none for the open window, the pre-restart buy or the pick-mode position (%s)" % json.dumps(o1))
+          "P3 docs for the 8 closed in_account windows and the pre-restart buy (shown apart); none for the open window or the pick-mode position (%s)" % json.dumps(o1))
     new = set(after) - set(before)
     changed = [k for k in before if k in after and before[k] != after[k]]
     check(not changed and all(k.startswith(("db/memepeak/", "candles/")) for k in new) and all(re.search(r"_pk\d+\.txt$", k) for k in new if k.startswith("candles/")),
@@ -347,7 +347,7 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
           % (len(fa), ", train.json" if "db/memebot/train.json" in fa else "; no train.json in this db", diffs or ""))
     src = open(os.path.join(HERE, "peak.py"), encoding="utf-8").read()
     used = set(re.findall(r"\bM\.([A-Za-z_][A-Za-z0-9_]*)", src))
-    check(used <= {"num", "load_json", "load_docs", "positions", "in_account", "pos_value", "HOLD_TP"} and not re.search(r"\b(learn|bin_model|blended_weights|cmd_train|train)\(", src)
+    check(used <= {"num", "load_json", "load_docs", "positions", "in_account", "pos_value", "HOLD_TP", "PAPER_GROUPS"} and not re.search(r"\b(learn|bin_model|blended_weights|cmd_train|train)\(", src)
           and "memepeak" not in open(os.path.join(HERE, "memebot.py"), encoding="utf-8").read(),
           "P5 peak.py reads memebot only through %s; memebot.py never names memepeak (hindsight feeds nothing)" % sorted(used))
 
@@ -610,11 +610,11 @@ def _p9(check, PK, M, tmp):
     got = PK.items(None, now, fake)
     ends = lambda xs: [x["end"] for x in xs]
     recent = sorted((k for k in fpos if k.startswith("r")), key=lambda k: fpos[k]["t"])
-    rest = sorted([k for k in fpos if k.startswith("o")] + recent[10:] + ["prevv"], key=lambda k: fpos[k]["t"])
+    rest = sorted([k for k in fpos if k.startswith("o")] + recent[10:] + ["prevv", "before"], key=lambda k: fpos[k]["t"])
     check(len(got) == PK.PEAK_MAX_ITEMS == 60 and [x["pid"] for x in got[:10]] == recent[:10] and [x["pid"] for x in got[10:]] == rest[:50]
-          and ends(got[10:]) == sorted(ends(got[10:])) and not {"settled", "tried3", "pick", "before"} & {x["pid"] for x in got} and "prevv" in {x["pid"] for x in got},
-          "P9 items: up to 10 windows closed in the last 3 h first, then the backlog oldest first, at most 60; settled docs, 3 tries, pick mode and "
-          "pre-restart positions left out, a doc of an older version priced again (%d items)" % len(got))
+          and ends(got[10:]) == sorted(ends(got[10:])) and not {"settled", "tried3", "pick"} & {x["pid"] for x in got} and {"prevv", "before"} <= {x["pid"] for x in got},
+          "P9 items: up to 10 windows closed in the last 3 h first, then the backlog oldest first, at most 60; settled docs, 3 tries and pick mode "
+          "left out, pre-restart positions and a doc of an older version priced (%d items)" % len(got))
 
 
 class _GT:

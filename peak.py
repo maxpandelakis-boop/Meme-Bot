@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """peak.py: the hindsight category "best price within 6 h" of the paper account. Fake money only: nothing is ever bought.
 
-For every paper position since the restart (state.json "paperSince", memebot.in_account), open or sold, once its 6-hour window has
+For every paper position (since the restart, and the few bought before it, shown apart), open or sold, once its 6-hour window has
 closed, this books the highest minute-candle CLOSE of the bought pool within 6 hours after the paper buy, through a glitch filter, and
 next to it what selling at exactly 6 hours would have given. One doc per position: db/memepeak/<pid>.json. It is hindsight, not a
 trading rule: the stop-loss account (memebot.py) is the paper account that really runs, and it is not touched. Nothing here is read
@@ -45,7 +45,7 @@ import argparse, json, os, re, sys, time, urllib.error, urllib.parse, urllib.req
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import memebot as M      # read only: positions, paper fees, in_account
+import memebot as M      # read only: positions, paper fees, PAPER_GROUPS
 import fetch as F        # read only: Http (pacing, cooldowns, circuit breaker), GT, HOST_GAP, HOST_429, row
 
 PEAK_V = 1                  # the doc version: a settled doc is recomputed only when this changes
@@ -406,15 +406,20 @@ def paths_for(ctx, p):
     return out
 
 
+def priced(p):
+    """Whether a position gets its best within 6 h: every paper position, the ones bought before the restart too (the user asked for
+    them; the page shows them apart, outside the account since the restart)."""
+    return isinstance(p, dict) and p.get("grp") in M.PAPER_GROUPS
+
+
 def items(d, now, ctx=None):
-    """The windows to price this run: in_account positions whose window has closed, without a settled doc (ok, est, unit of this
+    """The windows to price this run: paper positions (priced(): since the restart and before it) whose window has closed, without a settled doc (ok, est, unit of this
     PEAK_V) and with fewer than MAX_TRIES empty fetches; up to RECENT_N that closed in the last RECENT_H hours first, then the
     backlog oldest first; at most PEAK_MAX_ITEMS. -> [{"pid", "pool", "key", "entryAt", "end", "tries"}]"""
     ctx = ctx or context(d)
-    since = ctx["since"]
     todo = []
     for pid, p in ctx["pos"].items():
-        if not M.in_account(p, since):
+        if not priced(p):
             continue
         entry, end = window(p)
         if not entry or now < end + SETTLE_MS:
@@ -730,7 +735,7 @@ def settle(d, now, fetched, ctx=None):
     for pid, info in sorted(fetched.items()):
         p = ctx["pos"].get(pid)
         old = ctx["docs"].get(pid)
-        if p is None or not M.in_account(p, ctx["since"]) or (isinstance(old, dict) and old.get("v") == PEAK_V and old.get("state") in SETTLED):
+        if p is None or not priced(p) or (isinstance(old, dict) and old.get("v") == PEAK_V and old.get("state") in SETTLED):
             continue
         doc = book(d, ctx, pid, p, info, now, old)
         if doc is None:

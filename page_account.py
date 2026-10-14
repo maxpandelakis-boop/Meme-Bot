@@ -281,7 +281,21 @@ def _load(d, now, pos, px, since):
         run += r["pk"]["eur"] - r["ticket"]
         pts.append((r["pk"]["end"] or r["end"], round(run, 2)))
     same = lambda rs: round(sum(r["pnl"] for r in rs), 2) if rs else None
-    return {"since": since, "err": None, "stop": stop, "best": best, "six": six_st, "counts": counts, "feed": feed[:FEED_MAX], "feedN": len(feed),
+    old_n, old_bk = 0, []                                 # the trades before the restart: their best within 6 h, shown apart (old_trades)
+    for pid, p in pos.items():
+        if M.in_account(p, since) or p.get("grp") not in M.PAPER_GROUPS:
+            continue
+        old_n += 1
+        pk = docs.get(pid)
+        if not pk or pk["state"] not in BOOKED:
+            continue
+        ticket = num(p.get("ticket")) or 0.0
+        eur = pk["eur"] if pk["eur"] is not None else round(M.pos_value(p, 1.0, pk["x"]), 2)
+        back = sum(num(e.get("eur")) or 0 for e in p.get("_exits") or [] if isinstance(e, dict))
+        old_bk.append((ticket, eur, round(back - ticket, 2)))
+    old = {"n": old_n, "priced": len(old_bk), "best": _stats([(t, e) for t, e, _ in old_bk]),
+           "same": round(sum(x for _, _, x in old_bk), 2) if old_bk else None}
+    return {"since": since, "err": None, "old": old, "stop": stop, "best": best, "six": six_st, "counts": counts, "feed": feed[:FEED_MAX], "feedN": len(feed),
             "rows": rows, "bestTrade": {"pnl": top["pnl"], "sym": top["sym"]} if top else None, "peakPts": pts,
             "sameBest": same(booked), "sameSix": same(six), "noPx": sum(1 for r in rows if r["open"] and r["value"] is None)}
 
@@ -593,8 +607,17 @@ def old_trades(D):
         return ""
     since = (D.get("paper") or {}).get("since")
     note = ("bought before the paper account restarted on %s; not counted above" % R.fmt_dt(since, True)) if since else "bought before the paper account restarted; not counted above"
-    return '<details class="fold-lite pa-f"><summary>Before the restart (%d trade%s)</summary>%s</details>' % (
-        len(old), "" if len(old) == 1 else "s", R.safe("closed trades", lambda: R.closed_fold(old, note)))
+    o = ((D.get("paper") or {}).get("acct2") or {}).get("old") or {}
+    if o.get("priced"):
+        b = o["best"]
+        hint = ('<p class="note">Best within 6 h (hindsight, not a rule): <b class="%s">%s</b> on %d of %d trades; the same trades as they were sold: '
+                '<b class="%s">%s</b></p>') % (tone(b["pnl"]), E(eur(b["pnl"], True)), o["priced"], o["n"], tone(o["same"]), E(eur(o["same"], True)))
+    elif o.get("n"):
+        hint = '<p class="note">Best within 6 h (hindsight): priced after the next scans.</p>'
+    else:
+        hint = ""
+    return '<details class="fold-lite pa-f"><summary>Before the restart (%d trade%s)</summary>%s%s</details>' % (
+        len(old), "" if len(old) == 1 else "s", hint, R.safe("closed trades", lambda: R.closed_fold(old, note)))
 
 
 def _no_ref(svg):

@@ -3227,7 +3227,7 @@ console.log(JSON.stringify(o));
           and len(again) == 1 and Pz[again[0]].get("grp") == "hold" and Pz[again[0]].get("ticket") == 50.0 and not Pz[again[0]]["_exits"] and len(Pz[old1]["_exits"]) == 1
           and sum(1 for p in Pz.values() if p.get("grp") == "young") == 5 and (st_z.get("paper") or {}).get("invested") == 65.0 and (st_z.get("paper") or {}).get("n") == 6,
           "the restart closed the two open old positions at this run's price with the old fees (%s), and the coin of one was bought again under a new id (%s, not %s)" % (resets, again, old1))
-    check("Before the restart (5 trades)" in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
+    check("Before the restart (5 trades)" in page_z and "Best within 6 h (hindsight): priced after the next scans." in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
           and "48-hour limit" in page_z and "old rule · 20\u00a0€" in page_z and "old rule · 17.27\u00a0€" in page_z and "Top trades · 0 closed" in page_z and "65.00" in page_z
           and "bought before the paper account restarted on " in page_z and "bought under the rules before" not in page_z
           and "nothing sold yet" in page_z and "−3.1% on 65.00\u00a0€ invested" in page_z,
@@ -3686,6 +3686,20 @@ console.log(JSON.stringify(o));
     check(not re.search(r"vars\.[A-Z_]+ *[!=]=", ry + sy) and ry.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1
           and sy.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1 and sy.count("(vars.MEMEBOT_PEAKS || '1') != '0'") == 1,
           "build: a repository variable that is not set counts as on (GitHub skipped the radar job on a bare vars.X != '0')")
+    import page_account as PA_x, peak as PK_x       # the trades before the restart get their best within 6 h too, shown apart
+    tmpo = tempfile.mkdtemp(prefix="mb-old-")
+    os.makedirs(os.path.join(tmpo, "db", "memepeak"))
+    with open(os.path.join(tmpo, "db", "memepeak", "o1.json"), "w") as f:
+        json.dump({"v": 1, "state": "ok", "src": "m1", "x": 3.0, "x6": 0.5}, f)
+    pos_o = {"o1": {"grp": "hold", "t": 1000, "ticket": 20.0, "px": 1.0, "_left": 0, "_exits": [{"eur": 10.0, "t": 2000, "px": 0.5}]},
+             "n1": {"grp": "young", "t": 5000, "ticket": 3.0, "px": 1.0, "_left": 1, "_exits": []}}
+    A_o = PA_x.load(tmpo, 10 ** 13, pos=pos_o, px={}, since=4000)
+    o_ = A_o.get("old") or {}
+    check(PK_x.priced(pos_o["o1"]) and PK_x.priced(pos_o["n1"]) and not PK_x.priced({"grp": "watch"}) and o_.get("n") == 1 and o_.get("priced") == 1
+          and o_.get("same") == -10.0 and (o_.get("best") or {}).get("pnl", 0) > 0 and A_o["counts"]["M"] == 1,
+          "build: the peak job prices the trades bought before the restart too, and the account sums their best within 6 h apart "
+          "(not in the account since the restart): %s" % o_)
+    shutil.rmtree(tmpo, ignore_errors=True)
     import page_radar as PR_x, page_office as PO_x
     yh = PR_x.young_head({"a": {"v": "trap"}}, [{"addr": "a"}])
     check("body:has(#tab-radar:checked) .wrap > .live { display:none }" in PR_x.CSS and "the trap check does not stop them (fake money)" in yh
