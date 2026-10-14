@@ -324,6 +324,11 @@ def collect(d, now):
              "noPx": sum(1 for r in open_rows if M.in_account(r["p"], since) and r["value"] is None),
              "closed": [r for r in closed_rows if since is not None and (M.num(r["p"].get("t")) or 0) >= since],
              "old": [r for r in closed_rows if since is None or (M.num(r["p"].get("t")) or 0) < since]}
+    try:                             # the paper account's hindsight categories, activity feed and trade rows (page_account.py; reads only)
+        import page_account as PA
+        paper["acct2"] = PA.load(d, now, pos=pos, px=px, since=since)
+    except Exception:                # a missing or broken page_account.py costs only the account block: render falls back to the plain strip
+        paper["acct2"] = None
 
     # big test: chunks of the same snapshot run -> one group
     groups = {}
@@ -3110,9 +3115,14 @@ def render(data, fragment=False):
     if D.get("rec") and D["pos"]:
         # recommend mode holds the coins it names: the paper account and its open positions come first, then the pick and its record,
         # the closed trades (the ones before the restart behind their own fold) and the account's profit or loss since the restart
+        try:
+            import page_account as PA    # the survival header, the three categories, the activity feed and the trades in four orders (page_account.py)
+            acct_html = safe("account", lambda: PA.section(D, bought))
+        except Exception as e:           # page_account.py missing or broken: the plain account strip as before, with a note; the rest of the page is unaffected
+            acct_html = ('<p class="note">The hindsight categories and the activity feed could not be loaded this time (%s).</p>' % E(type(e).__name__) + safe("account", lambda: dash_section(D))
+                         + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
         account = section("Paper account", "fake money, no budget · every scan buys the top pick for %s and the first %d new launches for %s each · counted since the restart" % (
-                              fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET)),
-                          safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
+                              fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET)), acct_html)
         shown = [tabs, app_tab(account, "account"), app_tab(safe("profit", lambda: profit_section(D)), "pick")]
         rest.append(safe("candidates", candidates))
     elif tabs:
