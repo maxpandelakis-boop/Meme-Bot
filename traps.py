@@ -10,15 +10,16 @@ API (frozen, SPEC 13.10 section 5 WP1):
   load_weights(path=None, model=None) -> W        radar_weights.json; then the learned changes of model.json if they passed
   norm_x(url) -> (kind, key) | None               kind "tweet" | "account" | "community"
   staircase(closes, n_min=10) -> {"n","rise","green","pull","stair"}
-  walletmem_lookup(holders, wm, now=None) -> {"swAvg","rugHolders","checked"}
-  signals_scan(y, pr_mint_ms, wm, now=None, pool=None) -> S     one recommend.json young row
+  walletmem_lookup(holders, wm, now=None, W=None) -> {"swAvg","rugHolders","checked","state"}
+  signals_scan(y, pr_mint_ms, wm, now=None, pool=None) -> S     one recommend.json young row; pr_mint_ms may be the coin's
+                                                   mb/pairs.json entry (then the mint and the pool time both come from it)
   signals_radar(c) -> S                            the radar's merged coin dict (keys in its docstring)
   rate(S, W=None) -> {"verdict","pts","upside","hard","soft","plus","info","unknown","push","n"}
   chips(rating, S, W=None) -> [[level, text]]     level: bad | warn | unk | ok | info; at most 8
   outcome(rec) -> {"rug1h","win1h","x60"}
   fit(records, W, now) -> (W2 | None, report)     report is what the radar writes as model.json
   feed(d, out, now) -> meta                        python3 traps.py feed --dir mb --out feed --now <ms>
-Helpers: rc_summary(report), xlinks_add(links, url, addr, ms), x_reuse(url, addr, first_ms, links), instant(pool_ms, mint_ms),
+Helpers: rc_summary(report), xlinks_add(links, url, addr, ms), x_reuse(url, addr, ref_ms, links), instant(pool_ms, mint_ms),
 pair_times(pairs_json_entry) -> (mint ms, pool ms), flag(name, S, W), apply_changes(W, changes), blank_signals().
 Stdlib only. memebot is imported read-only, and only by feed().
 """
@@ -37,7 +38,11 @@ TWEET_LINK = re.compile(r"^https://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]{1,3
 DEAD_LIQ, REAL_LIQ, RUG_X, WIN_X, AMM_MIN, AMM_MAX, PEAK_MAX = 1_000.0, 5_000.0, 0.10, 2.0, 0.5, 1.5, 30.0
 XUSES_MAX = 8               # earliest coins kept per X link in xlinks.json.gz
 XLINK_KEEP_MS = 30 * DAY
-WALLET_MAX_AGE_MS = 3 * H   # older wallet memory: the check counts as not done (no greens)
+WALLET_MAX_AGE_H = 3.0      # older wallet memory: the check counts as not done (no greens); radar_weights.json thresholds.wmMaxAgeH wins
+WALLET_MIN_COINS = 500      # a memory built from fewer scored coins is "too small" (thresholds.wmMinCoins wins)
+MINT_SKEW_S = 120           # a pool up to this long "before" its mint is clock skew on a same-slot launch (thresholds.mintSkewS wins)
+TIME_MIN_MS = 1e12          # a time at or below this (2001) is a zero or a seconds value, never a real launch time
+FEED_DAYS = 14              # feed reads the scored snapshots of the newest 14 days (the study had 8): a flat run time as the cache grows
 
 S_KEYS = ("instantPool", "mintToPoolS", "swAvg", "rugHolders", "wmChecked", "wmState",
           "brand", "buys", "rcReport", "rcDanger", "rcWarn", "cluster", "netSize",
@@ -166,23 +171,35 @@ def norm_x(url):
     return ("account", "x.com/" + low[0])
 
 
+def _uses(e):
+    """The [[addr, ms], ...] of an xlinks entry, as a new list of well-formed pairs sorted by time (anything malformed is dropped).
+    A single-coin entry is stored without its list: [addr, ms, 1, kind, last, []] reads as [[addr, ms]]."""
+    if not isinstance(e, list) or len(e) < 6 or not isinstance(e[5], list):
+        return []
+    src = e[5] if e[5] else [[e[0], e[1]]]
+    out = []
+    for u in src:
+        if isinstance(u, (list, tuple)) and len(u) == 2 and isinstance(u[0], str) and u[0] and num(u[1]) is not None:
+            out.append([u[0], int(num(u[1]))])
+    out.sort(key=lambda u: (u[1], u[0]))
+    return out
+
+
 def xlinks_add(links, url, addr, ms):
-    """Index one coin's X link: links[key] = [first addr, first ms, coins, kind, last ms, [[addr, ms], ...earliest XUSES_MAX]]
-    (the file stores a one-coin entry with an empty list). A coin already indexed keeps its earliest time. Returns the key, or
-    None for a link that is not an X link."""
+    """Index one coin's X link: links[key] = [first addr, first ms, n, kind, last ms, [[addr, ms], ...earliest XUSES_MAX]] (the file
+    stores a one-coin entry with an empty list). A coin already indexed keeps its earliest time. n counts the coins that ever entered
+    the kept list, so it is at least the list's length and stays put when the same coins are added again every hour; XUSES_MAX or more
+    reads as "8+". A malformed entry is rebuilt. Returns the key, or None for a link that is not an X link."""
     nk = norm_x(url)
     ms = num(ms)
-    if not nk or not addr or ms is None:
+    if not nk or not isinstance(addr, str) or not addr or ms is None or not isinstance(links, dict):
         return None
     kind, key = nk
     ms = int(ms)
     e = links.get(key)
-    if not isinstance(e, list) or len(e) < 6 or not isinstance(e[5], list):
-        e = [addr, ms, 0, kind, ms, []]
-        links[key] = e
-    elif not e[5] and int(e[2]) >= 1:
-        e[5] = [[e[0], int(e[1])]]          # a compacted single-coin entry (see _uses)
-    uses = e[5]
+    uses = _uses(e)
+    n = int(num(e[2]) or 0) if uses and isinstance(e, list) and len(e) >= 3 else 0
+    last = int(num(e[4]) or ms) if uses and len(e) >= 5 else ms
     for u in uses:
         if u[0] == addr:
             u[1] = min(u[1], ms)
@@ -190,38 +207,34 @@ def xlinks_add(links, url, addr, ms):
     else:
         if len(uses) < XUSES_MAX or ms < uses[-1][1]:
             uses.append([addr, ms])
-        e[2] = int(e[2]) + 1
+            n += 1
     uses.sort(key=lambda u: (u[1], u[0]))
     del uses[XUSES_MAX:]
-    e[0], e[1] = uses[0][0], uses[0][1]
-    e[4] = max(int(e[4]), ms)
-    e[3] = kind
+    links[key] = [uses[0][0], uses[0][1], max(n, len(uses)), kind, max(last, ms), uses]
     return key
 
 
-def _uses(e):
-    """The [[addr, ms], ...] of an xlinks entry; a single-coin entry is stored without its list (it is [e[0], e[1]])."""
-    if not isinstance(e, list) or len(e) < 6 or not isinstance(e[5], list):
-        return []
-    return e[5] if e[5] else ([[e[0], e[1]]] if e[0] else [])
-
-
-def x_reuse(url, addr, first_ms, links, gap_s=600):
-    """How the coin's X link was used before: {"kind","key","used","shared"}. used = older coins (at least gap_s earlier, never
-    the coin itself) with the same account or community link; a tweet link counts in shared instead (other coins off the same
-    tweet: in our data that is a good sign, not a clone). XUSES_MAX or more prints as that many."""
+def x_reuse(url, addr, ref_ms, links, gap_s=600):
+    """How the coin's X link was used before: {"kind","key","used","shared"}. used = older coins (created at least gap_s before
+    this coin, never the coin itself) with the same account or community link; a tweet link counts in shared instead (other coins
+    off the same tweet: in our data that is a good sign, not a clone). The index stores each coin's creation time (its mint, else
+    its pool), so the coin's own time is the earlier of ref_ms (its mint when known, else its first sighting) and its own entry in
+    the index. At most XUSES_MAX coins are kept per link."""
     nk = norm_x(url)
     out = {"kind": nk[0] if nk else None, "key": nk[1] if nk else None, "used": None, "shared": None}
     if not nk:
         return out
-    uses = _uses((links or {}).get(nk[1]))
-    first_ms = num(first_ms)
+    uses = _uses((links or {}).get(nk[1]) if isinstance(links, dict) else None)
     if nk[0] == "tweet":
         out["used"], out["shared"] = 0, sum(1 for u in uses if u[0] != addr)
         return out
-    if first_ms is None:
+    refs = [u[1] for u in uses if u[0] == addr]
+    if num(ref_ms) is not None:
+        refs.append(num(ref_ms))
+    if not refs:
         return out
-    out["used"] = sum(1 for u in uses if u[0] != addr and num(u[1]) is not None and u[1] <= first_ms - gap_s * 1000)
+    ref = min(refs)
+    out["used"] = sum(1 for u in uses if u[0] != addr and u[1] <= ref - gap_s * 1000)
     out["shared"] = 0
     return out
 
@@ -234,7 +247,7 @@ def staircase(closes, n_min=10, th=None):
     closes: numbers, or candles [t, o, h, l, c, ...]."""
     th = th or {"rise": 0.2, "green": 0.7, "pull": 0.05}
     vals = []
-    for x in closes or []:
+    for x in closes if isinstance(closes, (list, tuple)) else []:
         if isinstance(x, (list, tuple)) and len(x) >= 5:
             o, c = num(x[1]), num(x[4])
         else:
@@ -273,72 +286,92 @@ _WM_SETS = {"id": None, "sig": None, "sets": None}
 
 
 def _wm_sets(wm):
-    sig = (len(wm.get("common") or ()), len(wm.get("rug") or ()), wm.get("t"))
+    common, rug = wm.get("common"), wm.get("rug")
+    sig = (len(common) if isinstance(common, list) else -1, len(rug) if isinstance(rug, list) else -1, str(wm.get("t")))
     if _WM_SETS["id"] != id(wm) or _WM_SETS["sig"] != sig:
-        _WM_SETS.update(id=id(wm), sig=sig, sets=(set(wm.get("common") or ()), set(wm.get("rug") or ())))
+        as_set = lambda xs: {w for w in xs if isinstance(w, str)} if isinstance(xs, list) else set()
+        _WM_SETS.update(id=id(wm), sig=sig, sets=(as_set(common), as_set(rug)))
     return _WM_SETS["sets"]
 
 
-def walletmem_lookup(holders, wm, now=None):
+def walletmem_lookup(holders, wm, now=None, W=None):
     """The wallet memory (walletmem.json.gz, from the scan's scored snapshots) against a coin's top holders.
     swAvg: the mean past result per 20 of the holders that have a record (memebot's sw.avg, all holders, wallets with 2+ coins).
     rugHolders: holders, minus the common program accounts, that were top holders of a coin that went to zero (the study's
-    'holders in earlier rugs'). checked: the memory is there, built from at least one coin, not older than 3 h at `now`, and
-    the coin has top holders. state: ok | old | empty | missing | noholders."""
+    'holders in earlier rugs'). checked: the memory is there, built from at least thresholds.wmMinCoins scored coins, not older
+    than thresholds.wmMaxAgeH at `now`, and the coin has top holders. now=None means the caller has checked the age itself (the
+    radar's wm_state and the page's load_wm do, before they call); the radar's signals_radar and the page's signals_scan pass
+    their clock. A memory that is not checked still raises its red flags (fewer red flags, never a false green).
+    state: ok | old | small | empty | missing | noholders."""
     out = {"swAvg": None, "rugHolders": None, "checked": False, "state": "missing"}
     if not isinstance(wm, dict) or wm.get("v") != 1 or not isinstance(wm.get("rug"), list):
         return out
     hs, seen = [], set()
-    for h in holders or []:
-        if isinstance(h, str) and h not in seen:
+    for h in holders if isinstance(holders, (list, tuple)) else []:
+        if isinstance(h, str) and h and h not in seen:
             seen.add(h)
             hs.append(h)
     if not hs:
         out["state"] = "noholders"
         return out
+    th = (W or load_weights())["thresholds"]
     common, rug = _wm_sets(wm)
     sw = wm.get("sw") if isinstance(wm.get("sw"), dict) else {}
     known = [num(sw[w]) for w in hs if w in sw and num(sw[w]) is not None]
     out["swAvg"] = round(sum(known) / len(known), 3) if known else None
     out["rugHolders"] = sum(1 for w in hs if w in rug and w not in common)
-    t = num(wm.get("t"))
-    fresh = now is None or (t is not None and now - t <= WALLET_MAX_AGE_MS)
-    empty = wm.get("nCoins") is not None and not num(wm.get("nCoins"))      # a memory built from no coin at all checks nothing
-    out["checked"] = bool(fresh) and not empty
-    out["state"] = "empty" if empty else ("ok" if fresh else "old")
+    t, now, n = num(wm.get("t")), num(now), num(wm.get("nCoins"))
+    max_age = (num(th.get("wmMaxAgeH")) or WALLET_MAX_AGE_H) * H
+    min_coins = num(th.get("wmMinCoins")) or WALLET_MIN_COINS
+    if now is not None and (t is None or now - t > max_age):
+        out["state"] = "old"
+    elif not n:
+        out["state"] = "empty"                       # built from no coin at all: it checks nothing
+    elif n < min_coins:
+        out["state"] = "small"                       # refilling after a lost cache: most rugger wallets are not in it yet
+    else:
+        out["state"], out["checked"] = "ok", True
     return out
 
 
 # ---------------------------------------------------------------- RugCheck
 def rc_summary(rep):
     """A RugCheck report (raw /report JSON, as fetch.rc_row reads it) or a stored summary (memebot.risk_doc) -> {"danger","warn",
-    "holders","creatorPct","net"}; None when there is no report. Names are cut to 60 characters like memebot.names; a raw
-    report's insider graph over 50 wallets adds the warning "insider network of N wallets" exactly as fetch.rc_row does."""
-    if not isinstance(rep, dict) or not rep:
+    "holders","creatorPct","net"}; None when there is no report. A raw report needs its "risks" or "topHolders" list, a summary its
+    "danger" or "warn" list: an error answer ({"error": ...}) or an empty shell is no report. A report without its danger list gives
+    danger None (the danger check is then not done, never passed). Names are cut to 60 characters like memebot.names; a raw
+    report's insider graph over 50 wallets adds the warning "insider network of N wallets" exactly as fetch.rc_row does. holders:
+    the top holders' owners, up to 40 (a raw report lists about 20; the study's lists were RugCheck's top 12 plus GMGN's top buyers,
+    up to 40; the first 12 are exactly fetch.rc_row's)."""
+    if not isinstance(rep, dict):
         return None
-    if "risks" in rep or "topHolders" in rep:
-        risks = [r for r in (rep.get("risks") or []) if isinstance(r, dict)]
+    lst = lambda k: rep.get(k) if isinstance(rep.get(k), list) else None
+    clean = lambda v: re.sub(r"[|\r\n;]", " ", str(v or "")).strip()[:60]
+    if lst("risks") is not None or lst("topHolders") is not None:
+        risks = [r for r in (lst("risks") or []) if isinstance(r, dict)]
         lvl = lambda r: str(r.get("level") or "").lower()
-        clean = lambda v: re.sub(r"[|\r\n;]", " ", str(v or "")).strip()[:60]
-        danger = [clean(r.get("name")) for r in risks if lvl(r) == "danger" and clean(r.get("name"))]
+        danger = [clean(r.get("name")) for r in risks if lvl(r) == "danger" and clean(r.get("name"))] if lst("risks") is not None else None
         warn = [clean(r.get("name")) for r in risks if lvl(r) == "warn" and clean(r.get("name"))]
         net = num(rep.get("graphInsidersDetected"))
         if net and net > 50:
             warn.append("insider network of %d wallets" % int(net))
         holders = []
-        for h in rep.get("topHolders") or []:
+        for h in lst("topHolders") or []:
             if isinstance(h, dict):
                 a = str(h.get("owner") or h.get("address") or "").strip()
                 if B58.match(a) and a not in holders:
                     holders.append(a)
-        supply = num((rep.get("token") or {}).get("supply")) if isinstance(rep.get("token"), dict) else None
+        supply = num(rep["token"].get("supply")) if isinstance(rep.get("token"), dict) else None
         cb = num(rep.get("creatorBalance"))
         cpct = (cb / supply * 100) if supply and cb is not None else None
-        sizes = [num(n.get("size")) for n in (rep.get("insiderNetworks") or []) if isinstance(n, dict) and num(n.get("size")) is not None]
+        sizes = [num(n.get("size")) for n in (lst("insiderNetworks") or []) if isinstance(n, dict) and num(n.get("size")) is not None]
         return {"danger": danger, "warn": warn, "holders": holders[:40], "creatorPct": cpct, "net": max(sizes) if sizes else None}
-    names = lambda k: [str(x.get("name") if isinstance(x, dict) else x)[:60] for x in (rep.get(k) or []) if x]
-    hs = [h for h in (rep.get("holders") or []) if isinstance(h, str)]
-    return {"danger": names("danger"), "warn": names("warn"), "holders": hs[:40], "creatorPct": num(rep.get("creatorPct")), "net": None}
+    if lst("danger") is None and lst("warn") is None:
+        return None
+    names = lambda k: [str(x.get("name") if isinstance(x, dict) else x)[:60] for x in lst(k) or [] if x]
+    hs = [h for h in (lst("holders") or []) if isinstance(h, str) and h]
+    return {"danger": names("danger") if lst("danger") is not None else None, "warn": names("warn"), "holders": hs[:40],
+            "creatorPct": num(rep.get("creatorPct")), "net": None}
 
 
 def _rc_into(S, s):
@@ -346,8 +379,9 @@ def _rc_into(S, s):
         S["rcReport"], S["rcDanger"], S["rcWarn"], S["cluster"], S["netSize"] = False, None, None, None, None
         return
     S["rcReport"] = True
-    S["rcDanger"], S["rcWarn"] = list(s["danger"]), list(s["warn"])
-    low = [x.lower() for x in s["danger"] + s["warn"]]
+    S["rcDanger"] = list(s["danger"]) if isinstance(s.get("danger"), list) else None
+    S["rcWarn"] = list(s["warn"]) if isinstance(s.get("warn"), list) else []
+    low = [x.lower() for x in (S["rcDanger"] or []) + S["rcWarn"]]
     sizes = [int(m.group(1)) for x in low for m in [INSIDER_NET.search(x)] if m]
     S["cluster"] = bool(sizes) or any("holder correlation" in x for x in low)      # the study's flag: what RugCheck warned about
     if s.get("net"):
@@ -356,37 +390,57 @@ def _rc_into(S, s):
 
 
 def parse_ms(v):
-    """Milliseconds from a number (ms or s) or an ISO date (memebot.parse_ms, copied so the page and the radar need no memebot)."""
-    if v is None or v == "":
+    """Milliseconds from a number (ms or s) or an ISO date (memebot.parse_ms, copied so the page and the radar need no memebot). An
+    ISO date without a zone is read as UTC (the runners' zone), so the result never depends on the machine's time zone."""
+    if v is None or v == "" or isinstance(v, bool):
         return None
     x = num(v)
     if x is not None:
         return x * 1000 if x < 1e11 else x
     try:
         import datetime as _dt
-        return _dt.datetime.fromisoformat(str(v).strip().replace("Z", "+00:00")).timestamp() * 1000
-    except (ValueError, TypeError):
+        d = _dt.datetime.fromisoformat(str(v).strip().replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=_dt.timezone.utc)
+        return d.timestamp() * 1000
+    except (ValueError, TypeError, OverflowError):
         return None
+
+
+def _real_ms(v):
+    x = num(v)
+    return x if x is not None and x > TIME_MIN_MS else None
 
 
 def pair_times(pr):
     """(mint ms, pool ms) of one mb/pairs.json entry: the mint from pump.fun (pf.createdAt) or LaunchLab (ll.createdAt), the pool
-    from DexScreener (pairCreatedAt). Either is None when unknown."""
+    from DexScreener (pairCreatedAt). Either is None when unknown (a zero or a time before 2001 is unknown)."""
     pr = pr if isinstance(pr, dict) else {}
-    mint = parse_ms((pr.get("pf") or {}).get("createdAt")) if isinstance(pr.get("pf"), dict) else None
+    mint = _real_ms(parse_ms(pr["pf"].get("createdAt"))) if isinstance(pr.get("pf"), dict) else None
     if mint is None and isinstance(pr.get("ll"), dict):
-        mint = parse_ms(pr["ll"].get("createdAt"))
-    pool = num(pr.get("pairCreatedAt"))
-    return mint, (pool if pool and pool > 1e12 else None)
+        mint = _real_ms(parse_ms(pr["ll"].get("createdAt")))
+    return mint, _real_ms(pr.get("pairCreatedAt"))
+
+
+def _gap(pool_ms, mint_ms, W):
+    """(seconds from mint to pool, instant) or (None, None) when it cannot be told. A pool cannot open before its mint: a gap a little
+    under 0 (up to thresholds.mintSkewS) is two clocks on a launch in the same slot, so it is instant (the study: 351 of 397 instant
+    pools have a gap of exactly 0 s). A pool further "before" its mint, or a time that is no real launch time, is unknown, never
+    "not instant"."""
+    p, m = _real_ms(pool_ms), _real_ms(mint_ms)
+    if p is None or m is None:
+        return None, None
+    th = W["thresholds"]
+    s = (p - m) / 1000.0
+    if s < -(num(th.get("mintSkewS")) or MINT_SKEW_S):
+        return None, None
+    return s, s < th["instantPoolS"]
 
 
 def instant(pool_ms, mint_ms, W=None):
-    """Pool opened within 60 s of the mint -> True; later -> False; unknown -> None (the study's instantPool: 0 <= gap < 60 s)."""
-    p, m = num(pool_ms), num(mint_ms)
-    if p is None or m is None:
-        return None
-    s = (p - m) / 1000.0
-    return 0 <= s < (W or load_weights())["thresholds"]["instantPoolS"]
+    """Pool opened within 60 s of the mint -> True; later -> False; unknown -> None (the study's instantPool: gap < 60 s; a small
+    negative gap is clock skew and counts as instant, a large one is unknown)."""
+    return _gap(pool_ms, mint_ms, W or load_weights())[1]
 
 
 # ---------------------------------------------------------------- signals
@@ -397,15 +451,14 @@ def _brand(sym, name, W):
 
 
 def _mint_pool(S, pool, mint, W):
-    pool, mint = num(pool), num(mint)
-    if pool is not None and mint is not None:
-        gap = (pool - mint) / 1000.0
+    gap, inst = _gap(pool, mint, W)
+    if gap is not None:
         S["mintToPoolS"] = round(gap, 1)
-        S["instantPool"] = 0 <= gap < W["thresholds"]["instantPoolS"]          # on the exact gap, as the study (not the rounded one)
+        S["instantPool"] = bool(inst)                     # on the exact gap, as the study (not the rounded one)
 
 
-def _wm_into(S, holders, wm, now):
-    lk = walletmem_lookup(holders, wm, now)
+def _wm_into(S, holders, wm, now, W):
+    lk = walletmem_lookup(holders, wm, now, W)
     S["rugHolders"], S["wmChecked"], S["wmState"] = lk["rugHolders"], lk["checked"], lk["state"]
     if S.get("swAvg") is None:
         S["swAvg"] = lk["swAvg"]
@@ -414,10 +467,16 @@ def _wm_into(S, holders, wm, now):
 def signals_scan(y, pr_mint_ms, wm, now=None, pool=None, W=None):
     """S for one recommend.json young row (memebot rec() + ageMin): y["f"] carries the scan's factors (sw.avg, socN, buys1, m5,
     x, ds.paid, vt.tweet, srcN, dev.sold, ageH), y["risk"] the RugCheck summary with its top holders. pr_mint_ms: the mint time
-    from mb/pairs.json (pf.createdAt or ll.createdAt) or None. The pool's open time is `pool` (pairs.json pairCreatedAt), else
-    y["pool"], else now (recommend.json "t") minus the row's age. Without a mint time or a pool time the row cannot be green."""
+    from mb/pairs.json (pf.createdAt or ll.createdAt) or None, or the coin's whole mb/pairs.json entry (then its pairCreatedAt is
+    the pool time too). The pool's open time is `pool`, else the pairs.json entry's, else y["pool"], else now (recommend.json "t")
+    minus the row's age. now (recommend.json "t") also dates the wallet memory (without it the caller must have checked its age).
+    Without a mint time and a pool time (or `now` to place the pool) the row cannot be green. The page's call:
+    signals_scan(row, pairs_by_addr.get(row["addr"]), walletmem, now=recommend["t"])."""
     W = W or load_weights()
     y = y if isinstance(y, dict) else {}
+    if isinstance(pr_mint_ms, dict):
+        pr_mint_ms, pr_pool = pair_times(pr_mint_ms)
+        pool = pool if pool is not None else pr_pool
     f = y.get("f") if isinstance(y.get("f"), dict) else {}
     risk = y.get("risk") if isinstance(y.get("risk"), dict) else None
     S = blank_signals()
@@ -431,7 +490,7 @@ def signals_scan(y, pr_mint_ms, wm, now=None, pool=None, W=None):
     s = rc_summary(risk)
     _rc_into(S, s)
     S["swAvg"] = g("sw.avg")
-    _wm_into(S, (s or {}).get("holders") or [], wm, num(now) if now is not None else None)
+    _wm_into(S, (s or {}).get("holders") or [], wm, num(now) if now is not None else None, W)
     S["brand"] = _brand(y.get("sym"), y.get("name"), W)
     S["buys"], S["m5"], S["socN"], S["lists"] = g("buys1"), g("m5"), g("socN"), g("srcN")
     sold = g("dev.sold")
@@ -456,7 +515,8 @@ def signals_radar(c, W=None):
       paid (DexScreener orders: paid profile), lists (how many sources found it),
       rc (raw RugCheck report, or a summary with danger/warn/holders, or None when there is none yet), holders (top holder
       owners, else taken from rc), wm (walletmem dict), devSold, creatorPct,
-      dev {"n","dead","grad","ageH","txs"}, xUsed / tweetShared (else from xlinks: an xlinks.json.gz "links" dict),
+      dev {"n","dead","grad","ageH","txs"}, xUsed / tweetShared (else from xlinks: an xlinks.json.gz "links" dict; the coin's
+      own time for "older coins" is its mint, else its own index entry or first sight),
       snip30, snip30N, slotN, slotPct, freshN, freshOf, fundN, fundMin, closes (minute closes or candles from pool open)."""
     W = W or load_weights()
     c = c if isinstance(c, dict) else {}
@@ -468,7 +528,7 @@ def signals_radar(c, W=None):
     s = rc_summary(c.get("rc"))
     _rc_into(S, s)
     holders = c.get("holders") if isinstance(c.get("holders"), list) else (s or {}).get("holders") or []
-    _wm_into(S, holders, c.get("wm"), now)
+    _wm_into(S, holders, c.get("wm"), now, W)
     S["brand"] = _brand(c.get("sym"), c.get("name"), W)
     for k in ("buys", "m5", "socN", "lists", "mc", "liq"):
         S[k] = num(c.get(k))
@@ -485,8 +545,8 @@ def signals_radar(c, W=None):
     if c.get("xUsed") is not None or c.get("tweetShared") is not None:
         S["xUsed"], S["tweetShared"] = num(c.get("xUsed")), num(c.get("tweetShared"))
     elif isinstance(c.get("xlinks"), dict) and S["x"]:
-        r = x_reuse(S["x"], c.get("addr"), num(c.get("first")) if num(c.get("first")) is not None else now, c["xlinks"],
-                    W["thresholds"].get("xGapS", 600))
+        ref = mint if _real_ms(mint) is not None else (num(c.get("first")) if num(c.get("first")) is not None else now)
+        r = x_reuse(S["x"], c.get("addr"), ref, c["xlinks"], W["thresholds"].get("xGapS", 600))
         S["xUsed"], S["tweetShared"] = r["used"], r["shared"]
     for k in ("snip30", "snip30N", "slotN", "slotPct", "freshN", "freshOf", "fundN", "fundMin"):
         S[k] = num(c.get(k))
@@ -512,7 +572,9 @@ def flag(name, S, W=None):
         if g("instantPool") is not None:
             return bool(g("instantPool"))
         m = n("mintToPoolS")
-        return None if m is None else 0 <= m < th["instantPoolS"]
+        if m is None or m < -(num(th.get("mintSkewS")) or MINT_SKEW_S):
+            return None
+        return m < th["instantPoolS"]
     if name == "rugger_wallets":
         sw, rh = n("swAvg"), n("rugHolders")
         if (sw is not None and sw <= th["swAvg"]) or (rh is not None and rh >= th["rugHolders"]):
@@ -523,7 +585,7 @@ def flag(name, S, W=None):
     if name == "bot_volume":
         return None if n("buys") is None else n("buys") >= th["buys"]
     if name == "rc_danger":
-        return bool(g("rcDanger")) if g("rcReport") is True else None
+        return bool(g("rcDanger")) if g("rcReport") is True and isinstance(g("rcDanger"), list) else None
     if name in ("staircase10", "staircase_early"):
         st = g("stair")
         k = num(st.get("n")) if isinstance(st, dict) else None
@@ -536,7 +598,7 @@ def flag(name, S, W=None):
     if name == "no_socials":
         return None if n("socN") is None else n("socN") <= 0
     if name == "holder_cluster":
-        return bool(g("cluster")) if g("rcReport") is True else None
+        return bool(g("cluster")) if g("rcReport") is True and g("cluster") is not None else None
     if name == "creator_sold":
         return None if g("creatorSold") is None else bool(g("creatorSold"))
     if name == "pumping_5m":
@@ -587,10 +649,12 @@ def flag(name, S, W=None):
 
 
 def rate(S, W=None):
-    """The verdict. trap: any hard signal. good: no hard signal, a RugCheck report, the mint time known, the wallet memory
-    checked, every hard check that can apply decided, and at most maxSoft soft warnings. watch: everything else; `unknown`
-    lists what blocked good. push = good, no pushBlock signal and nothing unknown. pts = max(sum of all points, sum of the hard
-    points): good signs never cancel a hard trap. Measured (M) signals only show in `info` unless W promoted them to soft."""
+    """The verdict. trap: any hard signal. good: no hard signal, a RugCheck report with its danger list, the mint time known, the
+    wallet memory checked, every hard check that can apply decided (brand needs a name, bot volume the buy count), and at most
+    maxSoft soft warnings. watch: everything else; `unknown` lists what blocked good (rc_report, mint_time, walletmem,
+    brand_name, bot_volume, rc_danger). push = good, no pushBlock signal and nothing unknown. pts = max(sum of all points, sum
+    of the hard points): good signs never cancel a hard trap. Measured (M) signals only show in `info` unless W promoted them to
+    soft. n = the checks that ran (a missing RugCheck report is not counted)."""
     W = W or load_weights()
     S = S if isinstance(S, dict) else {}
     P = W["points"]
@@ -603,8 +667,8 @@ def rate(S, W=None):
         unknown.append("mint_time")
     if S.get("wmChecked") is not True and S.get("rcReport") is True:
         unknown.append("walletmem")
-    for k in ("brand_name", "bot_volume"):
-        if flag(k, S, W) is None:
+    for k in ("brand_name", "bot_volume", "rc_danger"):
+        if flag(k, S, W) is None and (k != "rc_danger" or S.get("rcReport") is True):
             unknown.append(k)
     plus = [g for g in GOOD_SIGNS if flag(g, S, W)]
     info = [m for m in list(W.get("measured", ())) + list(W.get("infoOnly", ())) if m not in W["soft"] and flag(m, S, W)]
@@ -618,7 +682,7 @@ def rate(S, W=None):
     upside = sum(v for k, v in W["upside"].items() if flag(k, S, W))
     verdict = "trap" if hard else ("good" if not unknown and len(soft) <= W["maxSoft"] else "watch")
     push = verdict == "good" and not unknown and not any(flag(b, S, W) for b in W.get("pushBlock", ()))
-    done = sum(1 for k in CHECKS if (flag(k, S, W) is not None if k != "rc_report" else True))
+    done = sum(1 for k in CHECKS if (flag(k, S, W) is not None if k != "rc_report" else S.get("rcReport") is True))
     return {"verdict": verdict, "pts": int(pts), "upside": int(upside), "hard": hard, "soft": soft, "plus": plus, "info": info,
             "unknown": unknown, "push": bool(push), "n": done}
 
@@ -659,7 +723,7 @@ def _text(name, S, W):
     if name == "bot_volume":
         return "3,000+ buys already"
     if name == "rc_danger":
-        d = S.get("rcDanger") or []
+        d = S.get("rcDanger") if isinstance(S.get("rcDanger"), list) else []
         return "RugCheck danger: %s" % (str(d[0])[:40] if d else "flag")
     if name == "staircase10":
         return "staircase chart"
@@ -685,7 +749,8 @@ def _text(name, S, W):
         return "X %s used by %d%s older %s" % ("community" if S.get("xKind") == "community" else "account", k, "+" if k >= XUSES_MAX else "",
                                                _s(k, "coin", "coins"))
     if name == "tweet_shared":
-        return "%d coins off the same tweet" % (_n(S.get("tweetShared")) + 1)
+        k = _n(S.get("tweetShared")) + 1
+        return "%s coins off the same tweet" % ("%d+" % XUSES_MAX if k >= XUSES_MAX else "%d" % k)
     if name == "sniped30":
         k = _n(S.get("snip30N"))
         return "%d%% sniped in 30 s" % round(100 * (n("snip30") or 0)) + (" (%d %s)" % (k, _s(k, "wallet", "wallets")) if n("snip30N") is not None else "")
@@ -698,12 +763,14 @@ def _text(name, S, W):
         k = _n(S.get("fundN"))
         return "%d top holders funded by one wallet" % k + (" in %d min" % max(1, _n(S.get("fundMin"))) if n("fundMin") is not None else "")
     if name == "staircase_early":
-        st = S.get("stair") or {}
+        st = S.get("stair") if isinstance(S.get("stair"), dict) else {}
         return "staircase so far (%d min)" % _n(st.get("n"))
     return name.replace("_", " ")
 
 
-UNKNOWN_TEXT = {"rc_report": "RugCheck pending", "mint_time": "mint time unknown", "brand_name": "name unknown", "bot_volume": "buy count unknown"}
+UNKNOWN_TEXT = {"rc_report": "RugCheck pending", "mint_time": "mint time unknown", "brand_name": "name unknown", "bot_volume": "number of buys unknown",
+                "rc_danger": "RugCheck danger list missing"}
+WM_TEXT = {"noholders": "top holders unknown", "small": "wallet memory too small", "empty": "wallet memory too small"}
 
 
 def chips(rating, S, W=None):
@@ -716,7 +783,8 @@ def chips(rating, S, W=None):
     out += [["warn", _text(s, S, W)] for s in rating.get("soft") or []]
     for u in rating.get("unknown") or []:
         if u == "walletmem":
-            out.append(["unk", "top holders unknown" if S.get("wmState") == "noholders" else "wallet memory unavailable"])
+            st = S.get("wmState")
+            out.append(["unk", WM_TEXT.get(st, "wallet memory unavailable") if isinstance(st, str) else "wallet memory unavailable"])
         else:
             out.append(["unk", UNKNOWN_TEXT.get(u, u.replace("_", " ") + " unknown")])
     ok = []
@@ -724,7 +792,7 @@ def chips(rating, S, W=None):
         ok.append(["ok", "curve %s before pool" % _ago(S["mintToPoolS"])])
     if flag("rugger_wallets", S, W) is False:
         ok.append(["ok", "no rugger wallets"])
-    if S.get("rcReport") is True and not S.get("rcDanger"):
+    if S.get("rcReport") is True and isinstance(S.get("rcDanger"), list) and not S["rcDanger"]:
         ok.append(["ok", "RugCheck report"])
     out += ok[:3]
     out += [["info", _text(m, S, W)] for m in rating.get("info") or []]
@@ -857,6 +925,23 @@ def _band_rate(rows, draws, hidx, pick):
     return {"n": N, "k": K, "rate": round(K / N, 4), "lo": round(_pctl(rs, 2.5), 4), "hi": round(_pctl(rs, 97.5), 4)}
 
 
+def decide(row, cfg):
+    """One tested signal's change (the study's rule): ("soft", points) for a measured signal whose rug-rate ratio is above 1 with
+    95% confidence (interval low > 1), significant after Benjamini-Hochberg (q < cfg q) and above 1 in both time halves, points =
+    clamp(round(2 ln ratio), 0, maxPoints), at least 1; ("zero", 0) for a V soft signal whose ratio is below 1 the same way
+    (interval high < 1, q, both halves below 1); else ("none", 0)."""
+    q, lo, hi, ratio, halves = num(row.get("q")), num(row.get("lo")), num(row.get("hi")), num(row.get("ratio")), row.get("halves") or []
+    if q is None or q >= cfg["q"] or lo is None or hi is None or not ratio or len(halves) != 2:
+        return "none", 0
+    hv = [num(h) for h in halves]
+    if row.get("kind") == "M" and lo > 1 and all(h is not None and h > 1 for h in hv):
+        pts = max(0, min(int(cfg["maxPoints"]), int(round(2 * math.log(ratio)))))
+        return ("soft", pts) if pts >= 1 else ("none", 0)
+    if row.get("kind") == "V" and hi < 1 and all(h is not None and h < 1 for h in hv):
+        return "zero", 0
+    return "none", 0
+
+
 def fit(records, W=None, now=None):
     """The radar model ("it trains itself"): on radar records with a known 1 h outcome, every measured signal and every V soft
     signal is tested the study's way (rug rate with vs without, 95% interval from a bootstrap that resamples whole hours,
@@ -864,11 +949,12 @@ def fit(records, W=None, now=None):
     clamp(round(2 ln ratio), 0, 2)); a V soft signal that reverses significantly goes to 0; hard signals never change.
     The changes are decided on the records before the last 2 days and kept only if, on the last 2 days, the rug AUC is at least
     the prior's minus 0.01 and the good band's rug rate is not above the prior's interval. W must be the prior.
+    A coin recorded twice (in two hour docs) counts once: its earliest record with an outcome.
     Returns (W2, report) or (None, report); the report is the radar's model.json."""
     W = W or load_weights()
     cfg = W["fit"]
     now = int(now if now is not None else time.time() * 1000)
-    rows = []
+    rows, by_addr = [], {}
     for r in records or []:
         if not isinstance(r, dict):
             continue
@@ -876,8 +962,15 @@ def fit(records, W=None, now=None):
         t = num(r.get("first")) if num(r.get("first")) is not None else num(r.get("t"))
         if o.get("rug1h") is None or t is None or not isinstance(r.get("sig"), dict):
             continue
-        rows.append((int(t), r["sig"], bool(o["rug1h"])))
-    rows.sort(key=lambda x: x[0])
+        row = (int(t), r["sig"], bool(o["rug1h"]))
+        a = r.get("addr")
+        if isinstance(a, str) and a:
+            if a not in by_addr or row[0] < by_addr[a][0]:
+                by_addr[a] = row
+        else:
+            rows.append(row)
+    rows += list(by_addr.values())
+    rows.sort(key=lambda x: (x[0], bool(x[2])))
     rep = {"v": 1, "from": "prior", "n": len(rows), "need": cfg["minRecords"], "at": now, "prior": W.get("src"), "auc": None, "aucPrior": None,
            "nTrain": 0, "nTest": 0, "changes": {"soft": {}, "zero": []}, "signals": [], "why": ""}
     if len(rows) < cfg["minRecords"]:
@@ -935,14 +1028,11 @@ def fit(records, W=None, now=None):
         tested.append(row)
     for row, q in zip(tested, _bh([r["p"] for r in tested])):
         row["q"] = round(q, 4)
-        both_up = all(h is not None and h > 1 for h in row["halves"])
-        both_down = all(h is not None and h < 1 for h in row["halves"])
-        if row["kind"] == "M" and q < cfg["q"] and row["lo"] > 1 and both_up:
-            pts = max(0, min(cfg["maxPoints"], int(round(2 * math.log(row["ratio"])))))
-            if pts >= 1:
-                row["pts"], row["action"] = pts, "soft"
-                rep["changes"]["soft"][row["signal"]] = pts
-        elif row["kind"] == "V" and q < cfg["q"] and row["hi"] < 1 and both_down:
+        act, pts = decide(row, cfg)
+        if act == "soft":
+            row["pts"], row["action"] = pts, "soft"
+            rep["changes"]["soft"][row["signal"]] = pts
+        elif act == "zero":
             row["action"] = "zero"
             rep["changes"]["zero"].append(row["signal"])
     W2 = apply_changes(W, rep["changes"])
@@ -996,41 +1086,74 @@ def _gz_read(path):
         return None
 
 
-def feed(d, out, now):
+_NAME_DAY = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T")
+
+
+def _name_ms(fn):
+    """The day a scored-snapshot file was taken, from its name (<run id YYYY-MM-DDTHHMM>-<k>.json, UTC), or None."""
+    m = _NAME_DAY.match(os.path.basename(fn))
+    if not m:
+        return None
+    import datetime as _dt
+    try:
+        return _dt.datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)), tzinfo=_dt.timezone.utc).timestamp() * 1000
+    except ValueError:
+        return None
+
+
+def _snap_holders(c):
+    rc = c.get("rc")
+    hs = rc.get("holders") if isinstance(rc, dict) else None
+    return [h for h in hs if isinstance(h, str)] if isinstance(hs, list) else []
+
+
+def feed(d, out, now, days=FEED_DAYS):
     """The radar's feed from the scan's own data (mb/), written to <out>:
       walletmem.json.gz {"v":1,"t","nCoins","common":[...],"sw":{wallet: avg},"rug":[wallets]}: the study's wallet memory (build.py)
-        from db/memesnapres: common = top holder of more than max(20, 1% of the coins with holder lists); rug = top holders (minus
+        from the db/memesnapres snapshots taken in the last `days` days (by their t0; a file whose name says it is older is not
+        even opened): common = top holder of more than max(20, 1% of the coins with holder lists); rug = top holders (minus
         common) of a coin that went to zero (gone or under 0.1x) with the result known at `now`; sw = memebot.wallet_table avg on
-        the results known at `now`.
+        the results known at `now`. The window keeps the run time flat while the snapshot cache grows (about 2 s a day of
+        snapshots) and keeps the memory close to the 8 days the study calibrated on.
       xlinks.json.gz {"v":1,"t","links":{key: [addr, firstMs, n, kind, lastMs, [[addr, ms], ...]]}}: X links from pf/*.txt and
         pairs.json, merged with the previous <d>/xlinks.json.gz, links last used over 30 days ago dropped.
       symmc.json.gz {"v":1,"t","sym":{SYM: max market cap}}: the copy gate's table (memebot.scan).
-      meta.json: counts, sizes and seconds. Deterministic: the same inputs give the same bytes."""
+      meta.json: counts, sizes, the days and files read, and seconds. Deterministic: the same inputs give the same bytes."""
     if HERE not in sys.path:
         sys.path.insert(0, HERE)     # also under python3 -I, which leaves the script's folder off the path
     import memebot as M              # read only
     t_start = time.time()
     now = int(now)
+    days = max(1, int(num(days) or FEED_DAYS))
+    since = now - days * DAY
     os.makedirs(out, exist_ok=True)
-    # one streaming pass over the scored snapshots (about 1.5 GB of JSON): only the holder lists, outcomes and euros are kept
+    # one streaming pass over the scored snapshots of the window (about 2 s a day): only holder lists, outcomes and euros are kept
     events, seen, slim = [], {}, {}
+    n_read = n_skip = 0
     for fn in sorted(glob.glob(os.path.join(d, "db", "memesnapres", "*.json"))):
+        day = _name_ms(fn)
+        if day is not None and day + DAY <= since:
+            n_skip += 1                                   # taken on a day that ended before the window: not opened
+            continue
         doc = M.load_json(fn, None)
+        n_read += 1
         if not isinstance(doc, dict):
             continue
         t0, t1 = num(doc.get("t0")), num(doc.get("t"))
+        if t0 is not None and t0 < since:
+            continue
         coins = [c for c in (doc.get("coins") or []) if isinstance(c, dict)]
         known = t1 if t1 else ((t0 or 0) + 2 * H)
         if known <= now:      # memebot.wallet_table reads exactly these two fields of a coin: eur and rc.holders
-            slim[os.path.basename(fn)[:-5]] = {"coins": [{"eur": c.get("eur"), "rc": {"holders": c["rc"].get("holders")}} for c in coins
+            slim[os.path.basename(fn)[:-5]] = {"coins": [{"eur": c.get("eur"), "rc": {"holders": _snap_holders(c)}} for c in coins
                                                          if num(c.get("eur")) is not None and isinstance(c.get("rc"), dict)]}
         if not t0:
             continue
         for c in coins:
-            rc = c.get("rc")
-            if not isinstance(rc, dict) or not rc.get("holders"):
+            hl = _snap_holders(c)
+            if not hl:
                 continue
-            hs = {h for h in rc["holders"][:40] if isinstance(h, str) and B58.match(h)}
+            hs = {h for h in hl[:40] if B58.match(h)}
             for h in hs:
                 seen[h] = seen.get(h, 0) + 1
             mult = num(c.get("mult"))
@@ -1050,7 +1173,7 @@ def feed(d, out, now):
         M.load_docs = orig
     sw = {w: v["avg"] for w, v in table.items()}
     wm = {"v": 1, "t": now, "nCoins": n_coins, "common": sorted(common), "sw": sw, "rug": sorted(rug)}
-    meta = {"v": 1, "t": now, "files": {}}
+    meta = {"v": 1, "t": now, "days": days, "snapFiles": n_read, "snapSkipped": n_skip, "files": {}}
     meta["files"]["walletmem.json.gz"] = {"nCoins": n_coins, "common": len(common), "sw": len(sw), "rug": len(rug),
                                           "bytes": _gz_write(os.path.join(out, "walletmem.json.gz"), wm)}
     del slim, events
@@ -1064,20 +1187,23 @@ def feed(d, out, now):
     n_prev = len(links)
     pf, _ = M.load_side(d, "pf", M.PF_COLS)
     for a in sorted(pf):
-        r = pf[a]
-        ms = M.parse_ms(r.get("createdAt")) or now
+        r = pf[a] if isinstance(pf[a], dict) else {}
+        ms = _real_ms(parse_ms(r.get("createdAt"))) or now
         xlinks_add(links, r.get("twitter"), a, min(ms, now))
     pairs = M.load_pairs(d)
+    pairs = pairs if isinstance(pairs, dict) else {}
     for a in sorted(pairs):
-        pr = pairs[a]
-        ms = (M.parse_ms((pr.get("pf") or {}).get("createdAt")) or M.parse_ms((pr.get("ll") or {}).get("createdAt"))
-              or num(pr.get("pairCreatedAt")) or now)
+        pr = pairs[a] if isinstance(pairs[a], dict) else {}
+        mint, pool = pair_times(pr)
+        ms = mint or pool or now
         xlinks_add(links, pr.get("xUrl"), a, min(ms, now))
     links = {k: (e[:5] + [[]] if len(e[5]) == 1 else e) for k, e in links.items() if e[4] >= now - XLINK_KEEP_MS}   # one coin: no list
     meta["files"]["xlinks.json.gz"] = {"links": len(links), "before": n_prev,
                                        "bytes": _gz_write(os.path.join(out, "xlinks.json.gz"), {"v": 1, "t": now, "links": links})}
     sym = {}
     for a, pr in pairs.items():
+        if not isinstance(pr, dict):
+            continue
         s = str(pr.get("symbol") or "").upper()
         mc = num(pr.get("marketCap")) or 0
         if s and mc >= sym.get(s, 0):
@@ -1097,11 +1223,12 @@ def main(argv):
     f.add_argument("--dir", required=True)
     f.add_argument("--out", required=True)
     f.add_argument("--now", type=int, default=None)
+    f.add_argument("--days", type=int, default=FEED_DAYS, help="days of scored snapshots to read (default %d)" % FEED_DAYS)
     a = ap.parse_args(argv)
     if a.cmd != "feed":
         ap.print_help()
         return 2
-    meta = feed(a.dir, a.out, a.now if a.now is not None else int(time.time() * 1000))
+    meta = feed(a.dir, a.out, a.now if a.now is not None else int(time.time() * 1000), a.days)
     print(json.dumps(meta, sort_keys=True))
     return 0
 

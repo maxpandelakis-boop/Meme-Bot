@@ -253,7 +253,7 @@ zero.append({"signal": "zp", "label": "trained chance of going to zero", "reason
 W = {
     "v": 1,
     "src": "study 2026-10-13",
-    "note": "Fake money only. The study's rule D made strict: unknown is never clean. Weights move only through traps.fit (radar data, walk-forward guarded).",
+    "note": "Fake money only. The study's rule D made strict: a check that could not run never counts as passed. Weights move only through traps.fit (radar data, walk-forward guarded).",
     "hard": ["instant_pool", "rugger_wallets", "brand_name", "bot_volume", "rc_danger", "staircase10"],
     "soft": ["no_socials", "holder_cluster", "creator_sold", "pumping_5m"],
     "maxSoft": 1,
@@ -265,12 +265,12 @@ W = {
     "measured": ["dev_dead", "dev_young", "x_copied", "sniped30", "bundle_slot", "fresh_holders", "fund_cluster", "staircase_early"],
     "infoOnly": ["tweet_shared"],
     "thresholds": {
-        "instantPoolS": 60, "curve2mS": 120,
+        "instantPoolS": 60, "mintSkewS": 120, "curve2mS": 120,
         "swAvg": -7.0, "swMinRecords": 2, "rugHolders": 3,
         "buys": 3000, "m5": 20.0, "youngMin": 5.0,
         "stair": {"n": 10, "rise": 0.2, "green": 0.7, "pull": 0.05}, "stairEarlyN": 6,
         "creatorPct": 5.0, "mc": 500000.0, "liqMc": 0.15, "lists": 3,
-        "wmMaxAgeH": 3.0,
+        "wmMaxAgeH": 3.0, "wmMinCoins": 500,
         "devDead": {"n": 3, "share": 0.8}, "devYoungH": 24.0, "devYoungTxs": 10,
         "xGapS": 600, "sniped30": 0.3, "bundleSlot": 3, "freshHolders": 3, "fundCluster": 3, "fundMinutes": 15, "fundExchange": 25,
     },
@@ -287,7 +287,7 @@ W = {
     "zero": zero,
     "caveats": ["8 days of data, one market regime", "points were set after seeing the data: the halves show stability, not an independent test",
                 "survivorship: coins that rugged before minute 5 or never left the curve are not in the data",
-                "RugCheck 'clean' on a coin minutes old is no safety sign", "the radar's own records are the first forward test"],
+                "a RugCheck report without warnings on a coin minutes old proves little", "the radar's own records are the first forward test"],
 }
 with open(DEST, "w", encoding="utf-8") as f:
     json.dump(W, f, indent=1, sort_keys=False, ensure_ascii=False)

@@ -77,6 +77,9 @@ creator holding over 5% 0.0% of 69, market cap $500k+ 4.8% vs 11.0%, holder clus
 | all | 30% / 9% | 41% / 9% | 55% / 3% | 16% / 9% |
 
 Rule D is the radar's "no trap found". The radar makes it strict: the mint time and the wallet memory must be known too.
+A pool up to 2 minutes "before" its mint is clock skew on a same-slot launch and counts as an instant pool (351 of the 397
+instant pools in the study opened 0 s after the mint); a larger negative gap leaves the mint time unknown. A wallet memory
+built from fewer than 500 scored coins (after a lost cache) or older than 3 hours counts as not checked.
 
 ## T5. Rule D inside the radar's own population (coins under 10 minutes old)
 
@@ -160,7 +163,7 @@ staircase.
 - 8 days of data, one market regime.
 - The points were set after seeing the data: the halves show stability, not an independent test.
 - Survivorship: coins that rugged before minute 5 or never left the bonding curve are not in the data.
-- RugCheck "clean" on a coin minutes old is no safety sign.
+- A RugCheck report without warnings on a coin minutes old proves little.
 - The radar's own records (every rated coin, with its prices 5/15/30/60 minutes later) are the first forward test. Its
   model (`traps.fit`) only moves a measured signal to soft (at most 2 points) or a soft one to 0, and only after a
   walk-forward check on the last 2 days; hard traps change only by hand.

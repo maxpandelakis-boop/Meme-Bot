@@ -6,7 +6,7 @@
 selftest.py calls checks(check, env) after spotter_checks. Needs no network, no mock server and no other package's files:
 the radar's coin dicts below are built here the way launch_radar.py hands them to traps.signals_radar.
 """
-import ast, glob, gzip, json, math, os, random, re, shutil, subprocess, sys, tempfile, time
+import ast, copy, glob, gzip, json, math, os, random, re, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -16,6 +16,18 @@ PY = sys.executable
 H, MIN, DAY = 3_600_000, 60_000, 86_400_000
 NOW = 1_792_000_000_000            # a fixed clock (2026-10-14 UTC); traps never reads the wall clock when given one
 ALPH = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+ADVICE = re.compile(r"\b(safe|safety|buy|guaranteed|clean)\b", re.I)      # never in a text that can reach the page (I12)
+
+
+def strings(o):
+    """Every string inside a JSON value."""
+    if isinstance(o, str):
+        return [o]
+    if isinstance(o, dict):
+        return [x for k, v in o.items() for x in strings(k) + strings(v)]
+    if isinstance(o, list):
+        return [x for v in o for x in strings(v)]
+    return []
 
 
 def wallet(rng, suffix=""):
@@ -73,8 +85,14 @@ def _weights(check, W):
           and W["soft"] == ["no_socials", "holder_cluster", "creator_sold", "pumping_5m"] and W["maxSoft"] == 1
           and W["needChecked"] == ["rc_report", "mint_time", "walletmem"] and W["pushBlock"] == ["holder_cluster"]
           and th["instantPoolS"] == 60 and th["swAvg"] == -7 and th["swMinRecords"] == 2 and th["rugHolders"] == 3 and th["buys"] == 3000
-          and th["m5"] == 20 and th["youngMin"] == 5 and th["stair"] == {"n": 10, "rise": 0.2, "green": 0.7, "pull": 0.05} and th["curve2mS"] == 120,
-          "radar_weights.json v1 'study 2026-10-13': hard, soft (maxSoft 1), needChecked, pushBlock and thresholds as the spec says")
+          and th["m5"] == 20 and th["youngMin"] == 5 and th["stair"] == {"n": 10, "rise": 0.2, "green": 0.7, "pull": 0.05} and th["curve2mS"] == 120
+          and th["mintSkewS"] == 120 and th["wmMinCoins"] == 500 and th["wmMaxAgeH"] == 3.0,
+          "radar_weights.json v1 'study 2026-10-13': hard, soft (maxSoft 1), needChecked, pushBlock and thresholds as the spec says "
+          "(plus clock skew 120 s, wallet memory from 500 coins, 3 h old at most)")
+    texts = [t for k, v in W.items() if k != "brand" for t in strings(v)]
+    bad = [t for t in texts if ADVICE.search(t) or "\u2014" in t]
+    check(not bad, "no text of radar_weights.json (note, labels, evidence, weight-0 reasons, caveats: %d strings) says safe, safety, buy, "
+          "guaranteed or clean, or has an em dash%s" % (len(texts), "" if not bad else ": %s" % bad[:3]))
     ev_need = set(W["hard"]) | set(W["soft"]) | {"no_rc_report", "young_5m", "x_and_paid", "tweet", "lists3"}
     ev_ok = all(W["evidence"].get(k, {}).get("rows") for k in ev_need)
     ev_rows = [r for k in ev_need for r in W["evidence"][k]["rows"]]
@@ -151,6 +169,80 @@ def _t1(check, W, rng):
           and ["warn", "holder cluster (insider network of 232)"] in lines["CLUSTER"] and ["bad", "3 holders from rugged coins"] in lines["RUGGERS"]
           and ["info", "X account used by 1 older coin"] in lines["XCOPY"] and ["ok", "curve 4 min before pool"] in lines["CLEAN"],
           "Appendix B coins through signals_radar: %s" % ", ".join("%s %s%s" % (k, v[0], " push" if v[1] else "") for k, v in got.items()))
+    _t1_unknown(check, W, rng, wm, clean)
+
+
+def _t1_unknown(check, W, rng, wm, clean):
+    """I5 'unknown is never clean': every check that could not run blocks green and the push (review fix1: B1, S3, SF2, N1, N2, nits)."""
+    rr = lambda c: T.rate(T.signals_radar(c, W), W)
+    # B1: a pool cannot open before its mint; a small negative gap is clock skew on a same-slot launch, a large one is unknown
+    skew = {ms: rr(dict(clean, mint=clean["pool"] + ms)) for ms in (100, 1000, 5000, 119_000)}
+    far = rr(dict(clean, mint=clean["pool"] + H))
+    zero = rr(dict(clean, mint=0))
+    secs = rr(dict(clean, mint=(clean["pool"] - 4 * MIN) / 1000.0))
+    fb = {m: T.rate(base_S(mintToPoolS=m, instantPool=None), W) for m in (-3.0, -119.0, -121.0, -3600.0)}
+    check(all(r["verdict"] == "trap" and r["hard"] == ["instant_pool"] for r in skew.values())
+          and far["verdict"] == "watch" and far["unknown"] == ["mint_time"] and not far["push"] and zero["unknown"] == ["mint_time"] and not zero["push"]
+          and secs["unknown"] == ["mint_time"] and T.instant(NOW, NOW + 100) is True and T.instant(NOW, NOW + H) is None and T.instant(NOW, 0) is None
+          and fb[-3.0]["hard"] == ["instant_pool"] and fb[-119.0]["hard"] == ["instant_pool"] and fb[-121.0]["unknown"] == ["mint_time"]
+          and fb[-3600.0]["unknown"] == ["mint_time"] and T.pair_times({"pf": {"createdAt": 0}, "pairCreatedAt": 5}) == (None, None),
+          "a pool 0.1 s to 119 s 'before' its mint is the same launch (clock skew) -> instant pool trap; 1 h before, a mint time of 0 "
+          "or in seconds -> mint time unknown, watch, no push")
+    # the young tab without a pool time: recommend.json's age is rounded to 4 decimals (0.36 s), so a gap-0 pool can read as -0.1 s
+    y = {"sym": "INST", "name": "Instant Coin", "dex": "pumpswap", "x": "https://x.com/inst", "mc": 70_000.0, "liq": 21_000.0,
+         "f": {"ageH": 0.0833, "buys1": 300.0, "m5": 4.0, "socN": 2.0, "x": 1.0, "ds.paid": 0.0, "vt.tweet": 0.0, "srcN": 2.0},
+         "risk": {"danger": [], "warn": [], "holders": [wallet(rng) for _ in range(8)], "creatorPct": 0.5}}
+    young = T.rate(T.signals_scan(y, NOW - 0.0833 * H + 100, wm, now=NOW), W)
+    check(young["verdict"] == "trap" and young["hard"] == ["instant_pool"] and not young["push"],
+          "young tab: a pool opened with the mint whose rounded age puts it 0.1 s before the mint -> trap, never good + push")
+    # SF2 / nit 1: brand and bot volume that could not be checked block green
+    nb = T.rate(base_S(buys=None), W)
+    nn = T.rate(base_S(brand=None), W)
+    nn2 = T.rate(T.signals_radar(dict(clean, sym=None, name=None), W), W)
+    check(nb["verdict"] == "watch" and nb["unknown"] == ["bot_volume"] and not nb["push"] and ["unk", "number of buys unknown"] in T.chips(nb, base_S(buys=None), W)
+          and nn["verdict"] == "watch" and nn["unknown"] == ["brand_name"] and not nn["push"] and ["unk", "name unknown"] in T.chips(nn, base_S(brand=None), W)
+          and nn2["unknown"] == ["brand_name"] and not nn2["push"],
+          "no buy count -> watch, 'number of buys unknown'; no symbol and no name -> watch, 'name unknown'; neither is pushed")
+    # nit 5 / N1: a report needs its danger list; an error answer or an empty shell is no report
+    dl = T.rate(base_S(rcDanger=None), W)
+    err = {k: rr(dict(clean, rc=v, holders=[wallet(rng) for _ in range(10)])) for k, v in
+           (("error", {"error": "not found"}), ("429", {"error": "Too Many Requests"}), ("shell", {"risks": None, "topHolders": None}))}
+    nodanger = T.signals_radar(dict(clean, rc={"topHolders": clean["rc"]["topHolders"]}), W)
+    check(dl["verdict"] == "watch" and dl["unknown"] == ["rc_danger"] and not dl["push"] and ["unk", "RugCheck danger list missing"] in T.chips(dl, base_S(rcDanger=None), W)
+          and ["ok", "RugCheck report"] not in T.chips(dl, base_S(rcDanger=None), W)
+          and all(r["verdict"] == "watch" and "rc_report" in r["unknown"] and not r["push"] for r in err.values())
+          and T.rc_summary({"error": "not found"}) is None and T.rc_summary({"risks": 5, "topHolders": True}) is None and T.rc_summary({}) is None
+          and nodanger["rcReport"] is True and nodanger["rcDanger"] is None and T.rate(nodanger, W)["unknown"] == ["rc_danger"],
+          "a RugCheck report without its danger list -> watch ('RugCheck danger list missing'); an error answer or an empty shell is no "
+          "report ('RugCheck pending'), even with the top holders given separately")
+    # S3: a memory refilling after a lost cache checks too little; its red flags still count
+    mk = lambda n: {"v": 1, "t": NOW - 20 * MIN, "nCoins": n, "common": [], "rug": list(wm["rug"]), "sw": {}}
+    sm = rr(dict(clean, wm=mk(499)))
+    ok500 = rr(dict(clean, wm=mk(500)))
+    rug3 = dict(clean, wm=mk(40))
+    rug3["rc"] = dict(clean["rc"], topHolders=[{"owner": w, "pct": 4.0} for w in wm["rug"][:3]] + clean["rc"]["topHolders"][3:])
+    small_trap = rr(rug3)
+    S_sm = T.signals_radar(dict(clean, wm=mk(499)), W)
+    check(sm["verdict"] == "watch" and sm["unknown"] == ["walletmem"] and not sm["push"] and S_sm["wmState"] == "small"
+          and ["unk", "wallet memory too small"] in T.chips(sm, S_sm, W) and ok500["verdict"] == "good" and ok500["push"]
+          and small_trap["verdict"] == "trap" and small_trap["hard"] == ["rugger_wallets"],
+          "a wallet memory from 499 coins is too small (watch, 'wallet memory too small'), from 500 it counts; a small memory still "
+          "raises its red flags (3 rugger holders -> trap)")
+    # nit 7: the age limit is read from radar_weights.json; without a clock the caller has checked the age (it still needs 500 coins)
+    hs = [h["owner"] for h in clean["rc"]["topHolders"]]
+    W1 = copy.deepcopy(W)
+    W1["thresholds"]["wmMaxAgeH"] = 0.25
+    th_old = T.walletmem_lookup(hs, mk(900), NOW, W1)
+    th_ok = T.walletmem_lookup(hs, mk(900), NOW, W)
+    nc_ok, nc_small = T.walletmem_lookup(hs, mk(900)), T.walletmem_lookup(hs, mk(40))
+    check(th_old["state"] == "old" and not th_old["checked"] and th_ok["state"] == "ok" and th_ok["checked"] and nc_ok["checked"] and nc_small["state"] == "small"
+          and not nc_small["checked"], "the 3 h limit is thresholds.wmMaxAgeH (20 min old with a 15 min limit -> old); without a clock "
+          "the caller has checked the age, the 500-coin floor still holds")
+    # nit 6: n counts the checks that ran; a missing report is not one
+    n_full = T.rate(base_S(), W)["n"]
+    n_norc = T.rate(base_S(rcReport=False, rcDanger=None, rcWarn=None, cluster=None), W)["n"]
+    check(n_full == 10 and n_norc == 7, "checks counted: %d with a report (staircase needs 10 candles), %d without one (report, danger "
+          "list and cluster not run)" % (n_full, n_norc))
 
 
 # ---------------------------------------------------------------- T2
@@ -244,10 +336,10 @@ def _t4(check):
 def _records(rng, n_days, per_hour, sig_fn, start):
     out = []
     for h in range(n_days * 24):
-        for _ in range(per_hour):
+        for i in range(per_hour):
             t = start + h * H + rng.randrange(H)
             S, rug = sig_fn(rng, t)
-            out.append({"first": t, "sig": S, "out": {"rug1h": rug, "win1h": False, "x60": 0.0 if rug else 1.0}})
+            out.append({"addr": "R%d-%05d%02dpump" % (start // H, h, i), "first": t, "sig": S, "out": {"rug1h": rug, "win1h": False, "x60": 0.0 if rug else 1.0}})
     return out
 
 
@@ -302,6 +394,89 @@ def _t5(check, W):
     W5, rep5 = T.fit(_records(random.Random(8), 6, 5, flips, start), W, NOW)
     check(W5 is None and rep5["from"] == "prior" and rep5["changes"]["soft"].get("dev_dead") and rep5["why"].startswith("study prior kept: walk-forward"),
           "the walk-forward guard refuses a signal that reverses in the last 2 days ('%s')" % rep5["why"])
+    _t5_gates(check, W, start)
+
+
+def _t5_gates(check, W, start):
+    """Each gate of the fit on its own (review fix1, SF2): the decision table, Benjamini-Hochberg, null and one-half effects, the
+    good-band guard, the train/test sizes, one coin counted once."""
+    cfg = W["fit"]
+    row = lambda kind, q, lo, hi, ratio, h1, h2: {"kind": kind, "q": q, "lo": lo, "hi": hi, "ratio": ratio, "halves": [h1, h2]}
+    table = [(row("M", 0.01, 1.4, 4.0, 2.2, 2.0, 2.5), ("soft", 2)), (row("M", 0.01, 1.1, 2.0, 1.5, 1.4, 1.6), ("soft", 1)),
+             (row("M", 0.05, 1.4, 4.0, 2.2, 2.0, 2.5), ("none", 0)), (row("M", 0.01, 1.0, 4.0, 2.2, 2.0, 2.5), ("none", 0)),
+             (row("M", 0.01, 1.4, 4.0, 2.2, 2.0, 1.0), ("none", 0)), (row("M", 0.01, 1.4, 4.0, 2.2, 0.9, 2.5), ("none", 0)),
+             (row("M", 0.01, 1.05, 1.5, 1.2, 1.1, 1.3), ("none", 0)), (row("M", 0.01, 1.4, 4.0, 20.0, 9.0, 30.0), ("soft", 2)),
+             (row("M", 0.01, 0.2, 0.7, 0.4, 0.5, 0.3), ("none", 0)), (row("V", 0.01, 0.2, 0.7, 0.4, 0.5, 0.3), ("zero", 0)),
+             (row("V", 0.06, 0.2, 0.7, 0.4, 0.5, 0.3), ("none", 0)), (row("V", 0.01, 0.2, 1.0, 0.4, 0.5, 0.3), ("none", 0)),
+             (row("V", 0.01, 0.2, 0.7, 0.4, 1.0, 0.3), ("none", 0)), (row("V", 0.01, 0.2, 0.7, 0.4, 0.5, 1.2), ("none", 0)),
+             (row("V", 0.01, 1.4, 4.0, 2.2, 2.0, 2.5), ("none", 0)), (row("M", None, 1.4, 4.0, 2.2, 2.0, 2.5), ("none", 0))]
+    got = [T.decide(r, cfg) for r, _ in table]
+    check(got == [w for _, w in table], "the fit's decision: a measured signal needs q < 0.05, interval low > 1, both halves above 1 and "
+          "round(2 ln ratio) >= 1 (capped at 2); a V soft signal goes to 0 only with q < 0.05, interval high < 1 and both halves below 1 "
+          "(%d cases%s)" % (len(table), "" if got == [w for _, w in table] else ": got %s" % got))
+    q = [round(x, 4) for x in T._bh([0.01, 0.04, 0.03, 0.5])]
+    check(q == [0.04, 0.0533, 0.0533, 0.5], "Benjamini-Hochberg: p 0.01 / 0.04 / 0.03 / 0.5 -> q %s" % q)
+
+    def many(rng, t):                     # 10 signals tested: 9 without any effect, dev_dead weakly up (rug 30% vs 21%)
+        dd = rng.random() < 0.4
+        S = base_S(devN=10.0 if dd else 1.0, devDead=10.0 if dd else 0.0, devAgeH=rng.choice([2.0, 100.0]), snip30=rng.choice([0.1, 0.5]),
+                   slotN=rng.choice([1.0, 5.0]), freshN=rng.choice([0.0, 5.0]), fundN=rng.choice([0.0, 4.0]), xUsed=rng.choice([0.0, 2.0]),
+                   xKind="account", socN=rng.choice([0.0, 2.0, 2.0]), creatorSold=rng.random() < 0.3, m5=rng.choice([5.0, 30.0, 5.0]))
+        return S, rng.random() < (0.30 if dd else 0.21)
+    Wm, repm = T.fit(_records(random.Random(116), 6, 5, many, start), W, NOW)
+    dd = {r["signal"]: r for r in repm["signals"]}.get("dev_dead") or {}
+    tested = [r for r in repm["signals"] if r["q"] is not None]
+    check(Wm is None and repm["changes"] == {"soft": {}, "zero": []} and len(tested) == 10 and dd.get("p", 1) < 0.05 <= dd.get("q", 0)
+          and dd.get("lo", 0) > 1 and all(h > 1 for h in dd.get("halves") or [0]),
+          "null signals stay at weight 0 (%d tested); a weak one (p %.3f, interval low %.2f, both halves up) is kept at 0 by "
+          "Benjamini-Hochberg (q %.2f)" % (len(tested), dd.get("p") or 0, dd.get("lo") or 0, dd.get("q") or 0))
+
+    def one_half(rng, t):                 # dev_dead rugs 7x more in the first half of the training days only
+        dd = rng.random() < 0.3
+        S = base_S(devN=10.0 if dd else 1.0, devDead=10.0 if dd else 0.0)
+        if t < start + 2 * DAY:
+            return S, rng.random() < (0.7 if dd else 0.1)
+        return S, rng.random() < (0.18 if dd else 0.2)
+    Wh, reph = T.fit(_records(random.Random(20), 6, 5, one_half, start), W, NOW)
+    hh = {r["signal"]: r for r in reph["signals"]}.get("dev_dead") or {}
+    check(Wh is None and reph["changes"]["soft"] == {} and (hh.get("q") or 1) < 0.05 and (hh.get("lo") or 0) > 1
+          and (hh.get("halves") or [0, 9])[0] > 1 > (hh.get("halves") or [0, 9])[1],
+          "an effect in one time half only (ratios %s) stays at weight 0 although q %.4f and interval low %.2f pass"
+          % (hh.get("halves"), hh.get("q") or 0, hh.get("lo") or 0))
+
+    def band(rng, t):                     # dev_dead holds up in training; in the last 2 days its coins without socials never rug
+        dd = rng.random() < 0.4
+        soc0 = rng.random() < 0.5
+        S = base_S(devN=10.0 if dd else 1.0, devDead=10.0 if dd else 0.0, socN=0.0 if soc0 else 2.0)
+        if t < NOW - 2 * DAY:
+            return S, rng.random() < (0.6 if dd else 0.12)
+        return S, rng.random() < ((0.0 if soc0 else 0.95) if dd else 0.4)
+    Wb, repb = T.fit(_records(random.Random(31), 6, 5, band, start), W, NOW)
+    g = repb.get("good") or {}
+    check(Wb is None and repb["changes"]["soft"].get("dev_dead") and repb["auc"] >= repb["aucPrior"] - cfg["aucSlack"]
+          and repb["why"].startswith("study prior kept: the good band rugged more") and g["learned"]["rate"] > g["prior"]["hi"],
+          "the walk-forward guard refuses a model whose good band rugs more (learned %.0f%% vs the prior's %.0f%%, interval to %.0f%%) "
+          "although its AUC is fine (%.2f vs %.2f)" % (100 * g["learned"]["rate"], 100 * g["prior"]["rate"], 100 * g["prior"]["hi"],
+                                                      repb["auc"], repb["aucPrior"]))
+
+    def plain(rng, t):
+        dd = rng.random() < 0.3
+        return base_S(devN=10.0 if dd else 1.0, devDead=10.0 if dd else 0.0), rng.random() < (0.6 if dd else 0.12)
+    recent = _records(random.Random(9), 2, 7, plain, NOW - 2 * DAY)
+    old = _records(random.Random(10), 4, 5, plain, NOW - 6 * DAY)
+    few_test = old[:288] + _records(random.Random(11), 1, 1, plain, NOW - DAY)              # 288 before, 24 in the last 2 days
+    few_train = _records(random.Random(12), 1, 5, plain, NOW - 3 * DAY) + recent[:200]       # 120 before, 200 in them
+    outs = [T.fit(x, W, NOW) for x in (recent, old, few_test, few_train)]
+    sizes = [(r["nTrain"], r["nTest"]) for _, r in outs]
+    check(all(w is None and r["why"].startswith("walk-forward needs") for w, r in outs) and sizes == [(0, 336), (480, 0), (288, 24), (120, 200)],
+          "the walk-forward needs %d calls before the last 2 days and %d in them: recent-only, old-only, too few recent and too few old "
+          "records keep the prior (%s)" % (cfg["minTrain"], cfg["minTest"], sizes))
+    recs = _records(random.Random(5), 6, 5, plain, start)
+    dup = [dict(r, first=r["first"] + 30 * MIN) for r in recs[::2]]
+    _, rep1 = T.fit(recs, W, NOW)
+    _, rep2 = T.fit(recs + dup, W, NOW)
+    check(rep2["n"] == rep1["n"] == len(recs) and rep2["signals"] == rep1["signals"],
+          "a coin recorded in two hour docs counts once (%d records + %d copies -> n %d, same test)" % (len(recs), len(dup), rep2["n"]))
 
 
 # ---------------------------------------------------------------- T6
@@ -335,12 +510,51 @@ def _t6(check, W):
           and rr["verdict"] == "good" and "x_copied" not in rr["info"],
           "a shared tweet is an info chip ('3 coins off the same tweet'), never 'X link copied'")
     many = {}
-    for i in range(12):
-        T.xlinks_add(many, "https://x.com/serial", "%s%02dpump" % ("D" * 38, i), NOW - (60 - i) * MIN)
+    coins12 = ["%s%02dpump" % ("D" * 38, i) for i in range(12)]
+    ns = []
+    for _ in range(3):                    # the feed adds every coin again each hour (pf rows and pairs.json, then the merge)
+        for i, a in enumerate(coins12):
+            T.xlinks_add(many, "https://x.com/serial", a, NOW - (60 - i) * MIN)
+            T.xlinks_add(many, "https://twitter.com/Serial/", a, NOW - (60 - i) * MIN)
+        ns.append(many["x.com/serial"][2])
+    back = {}
+    for _ in range(2):
+        for i, a in reversed(list(enumerate(coins12))):
+            T.xlinks_add(back, "https://x.com/serial", a, NOW - (60 - i) * MIN)
     rm = T.x_reuse("https://x.com/serial", "Z" * 40 + "pump", NOW, many)
-    check(rm["used"] == T.XUSES_MAX and many["x.com/serial"][2] == 12 and len(many["x.com/serial"][5]) == T.XUSES_MAX
-          and "8+ older coins" in T._text("x_copied", base_S(xUsed=8.0, xKind="account"), W),
-          "a link used by many coins keeps the earliest %d and prints '8+ older coins'" % T.XUSES_MAX)
+    check(rm["used"] == T.XUSES_MAX and ns == [8, 8, 8] and len(many["x.com/serial"][5]) == T.XUSES_MAX and back["x.com/serial"][2] >= 8
+          and back["x.com/serial"][5] == many["x.com/serial"][5] and "8+ older coins" in T._text("x_copied", base_S(xUsed=8.0, xKind="account"), W)
+          and T._text("tweet_shared", base_S(tweetShared=8.0), W) == "8+ coins off the same tweet"
+          and T._text("tweet_shared", base_S(tweetShared=6.0), W) == "7 coins off the same tweet",
+          "a link used by 12 coins keeps the earliest %d; its coin count stays %s when the same coins come again every hour (it read 16, "
+          "24, 32 before); '8+ older coins', '8+ coins off the same tweet'" % (T.XUSES_MAX, ns))
+    # SF1: the coin's own creation time is the reference, not its first sighting
+    orig, cp = "O" * 40 + "pump", "P" * 40 + "pump"
+    lk = {}
+    T.xlinks_add(lk, "https://x.com/origcoin", orig, NOW - 120 * MIN)
+    T.xlinks_add(lk, "https://x.com/origcoin", cp, NOW - 60 * MIN)
+    base = {"now": NOW, "x": "https://x.com/origcoin", "xlinks": lk, "pool": NOW - 5 * MIN, "first": NOW - 4 * MIN}
+    So = T.signals_radar(dict(base, addr=orig, mint=NOW - 120 * MIN), W)
+    So2 = T.signals_radar(dict(base, addr=orig, mint=None), W)             # mint unknown: its own entry in the index
+    Sc = T.signals_radar(dict(base, addr=cp, mint=NOW - 60 * MIN), W)
+    ro, rc2 = T.rate(base_S(xUsed=So["xUsed"], xKind=So["xKind"]), W), T.rate(base_S(xUsed=Sc["xUsed"], xKind=Sc["xKind"]), W)
+    check(So["xUsed"] == 0 and So2["xUsed"] == 0 and Sc["xUsed"] == 1 and "x_copied" not in ro["info"] and "x_copied" in rc2["info"]
+          and ["info", "X account used by 1 older coin"] in T.chips(rc2, base_S(xUsed=1.0, xKind="account"), W),
+          "the original (minted 2 h ago, first seen now) is not 'copied' by a coin minted an hour after it; the copy is (%d / %d / %d)"
+          % (So["xUsed"], So2["xUsed"], Sc["xUsed"]))
+    own = {}
+    T.xlinks_add(own, "https://x.com/curvecoin", c, NOW - 90 * MIN)           # the coin's own entry, long before its first sighting
+    T.xlinks_add(own, "https://x.com/curvecoin", b, NOW - 30 * MIN)           # a younger coin with the same link
+    r_own = T.x_reuse("https://x.com/curvecoin", c, NOW, own)
+    r_b = T.x_reuse("https://x.com/curvecoin", b, NOW, own)
+    check(r_own["used"] == 0 and r_b["used"] == 1, "a coin that spent 90 min on the curve: its own index entry is never an 'older coin', "
+          "nor is a younger coin (%d); the younger one sees it (%d)" % (r_own["used"], r_b["used"]))
+    bad = {"x.com/junk": "junk", "x.com/junk2": ["A", "x", "n", "account", 0, [[1, 2], "q", ["Q" * 44]]]}
+    kj = T.xlinks_add(bad, "https://x.com/junk", a, NOW)
+    kj2 = T.xlinks_add(bad, "https://x.com/junk2", a, NOW)
+    check(kj == "x.com/junk" and bad[kj][5] == [[a, NOW]] and bad[kj2][5] == [[a, NOW]] and T.x_reuse("https://x.com/junk2", b, NOW + H, bad)["used"] == 1
+          and T.xlinks_add(bad, None, a, NOW) is None and T.xlinks_add(bad, "https://x.com/junk", None, NOW) is None,
+          "a malformed index entry is rebuilt, never a crash")
 
 
 # ---------------------------------------------------------------- T7
@@ -359,7 +573,7 @@ def _mk_mb(d, rng, now):
     docs = []
     # 30 ordinary coins with the common program account among their holders, half of them gone, results known
     for i in range(30):
-        hs = [common] + rng.sample(filler, 3)
+        hs = [common] + rng.sample(filler, 3) + (late_rug if i == 0 else [])
         docs.append(("2026-10-12T%02d%02d-1" % (i % 24, i), _snap_doc(now - 30 * H + i * MIN, now - 27 * H + i * MIN,
                      [{"a": wallet(rng, "pump"), "s": "C%d" % i, "mult": 0.05 if i % 2 else 1.4, "gone": False, "eur": -18.0 if i % 2 else 6.0,
                        "rc": {"holders": hs}, "f": {"ageH": 0.5}}])))
@@ -368,7 +582,15 @@ def _mk_mb(d, rng, now):
     docs.append(("2026-10-13T0200-1", _snap_doc(now - 1 * H, now + 1 * H, [{"a": wallet(rng, "pump"), "s": "RUG2", "mult": 0.01, "gone": False, "eur": -20.0,
                                                                            "rc": {"holders": late_rug}, "f": {}}])))
     docs.append(("2026-10-13T0300-1", _snap_doc(now - 6 * H, now - 4 * H, [{"a": wallet(rng, "pump"), "s": "FINE", "mult": 1.8, "gone": False, "eur": 15.0,
-                                                                           "rc": {"holders": [ok_w] + early_rug[:1]}, "f": {}}])))
+                                                                           "rc": {"holders": [ok_w] + early_rug[:1] + late_rug}, "f": {}},
+                                                                          {"a": wallet(rng, "pump"), "s": "ODD", "mult": 1.0, "eur": 0.0, "rc": {"holders": 7}},
+                                                                          {"a": wallet(rng, "pump"), "s": "ODD2", "mult": 1.0, "eur": 0.0, "rc": "x"}])))
+    # outside the 14-day window: a dated file that is not even opened, and an undated one whose t0 is too old
+    old_rug = [wallet(rng) for _ in range(3)]
+    docs.append(("2026-09-20T0100-1", _snap_doc(now - 24 * DAY, now - 24 * DAY + 2 * H, [{"a": wallet(rng, "pump"), "s": "OLD1", "mult": 0.0, "gone": True,
+                                                                                         "eur": -20.0, "rc": {"holders": old_rug}}])))
+    docs.append(("zz-undated", _snap_doc(now - 20 * DAY, now - 20 * DAY + 2 * H, [{"a": wallet(rng, "pump"), "s": "OLD2", "mult": 0.0, "gone": True,
+                                                                                  "eur": -20.0, "rc": {"holders": old_rug}}])))
     for name, doc in docs:
         with open(os.path.join(d, "db", "memesnapres", name + ".json"), "w", encoding="utf-8") as f:
             json.dump(doc, f)
@@ -379,14 +601,41 @@ def _mk_mb(d, rng, now):
         f.write("%s|BBB|Bbb|40000|40000|40000|0|false|false|%d|https://twitter.com/aaacoin/|null|null\n" % (pf_b, (now - 20 * MIN) // 1000))
     pairs = [{"address": pf_a, "symbol": "AAA", "marketCap": 50_000, "xUrl": "https://x.com/AaaCoin", "pairCreatedAt": now - 90 * MIN, "pf": {"createdAt": str((now - 2 * H) // 1000)}},
              {"address": wallet(rng, "pump"), "symbol": "aaa", "marketCap": 900_000, "pairCreatedAt": now - 30 * H},
-             {"address": wallet(rng, "pump"), "symbol": "ZED", "marketCap": 12_000, "xUrl": "https://x.com/zed/status/18009999999", "pairCreatedAt": now - 10 * MIN}]
+             {"address": wallet(rng, "pump"), "symbol": "ZED", "marketCap": 12_000, "xUrl": "https://x.com/zed/status/18009999999", "pairCreatedAt": now - 10 * MIN},
+             {"address": wallet(rng, "pump"), "symbol": "LLC", "marketCap": 30_000, "xUrl": "https://x.com/llcoin", "pairCreatedAt": now - 5 * MIN,
+              "pf": [1, 2], "ll": {"createdAt": "2026-10-14T00:00:00"}}]
     with open(os.path.join(d, "pairs.json"), "w", encoding="utf-8") as f:
         json.dump(pairs, f)
     old_links = {"x.com/oldcoin": ["O" * 40 + "pump", now - 40 * DAY, 1, "account", now - 35 * DAY, [["O" * 40 + "pump", now - 40 * DAY]]],
                  "x.com/keepcoin": ["K" * 40 + "pump", now - 20 * DAY, 1, "account", now - 20 * DAY, [["K" * 40 + "pump", now - 20 * DAY]]]}
     with open(os.path.join(d, "xlinks.json.gz"), "wb") as f:
         f.write(gzip.compress(json.dumps({"v": 1, "t": now - H, "links": old_links}).encode(), mtime=0))
-    return {"common": common, "early": early_rug, "late": late_rug, "ok": ok_w, "pf_a": pf_a, "pf_b": pf_b}
+    return {"common": common, "early": early_rug, "late": late_rug, "ok": ok_w, "pf_a": pf_a, "pf_b": pf_b, "old": old_rug}
+
+
+def _t7_xlinks_rerun(check, tmp, rng):
+    """S1/SF4: the scan runs the feed every hour on its own previous output; a link's coin count must not grow by itself."""
+    mb = os.path.join(tmp, "mbx")
+    os.makedirs(os.path.join(mb, "db", "memesnapres"))
+    os.makedirs(os.path.join(mb, "pf"))
+    coins = [wallet(rng, "pump") for _ in range(12)]
+    with open(os.path.join(mb, "pf", "new.txt"), "w", encoding="utf-8") as f:
+        for i, a in enumerate(coins):
+            f.write("%s|SER|Serial %d|50000|50000|60000|3|false|false|%d|https://x.com/SerialCoin|null|null\n" % (a, i, (NOW - (90 - i) * MIN) // 1000))
+    with open(os.path.join(mb, "pairs.json"), "w", encoding="utf-8") as f:
+        json.dump([{"address": a, "symbol": "SER", "marketCap": 50_000, "xUrl": "https://twitter.com/serialcoin", "pairCreatedAt": NOW - (80 - i) * MIN,
+                    "pf": {"createdAt": (NOW - (90 - i) * MIN) // 1000}} for i, a in enumerate(coins)], f)
+    ns, blobs = [], []
+    for run in range(3):
+        out = os.path.join(tmp, "fx%d" % run)
+        T.feed(mb, out, NOW + run * H)
+        shutil.copy(os.path.join(out, "xlinks.json.gz"), os.path.join(mb, "xlinks.json.gz"))
+        e = json.load(gzip.open(os.path.join(out, "xlinks.json.gz"), "rt"))["links"]["x.com/serialcoin"]
+        ns.append(e[2])
+        blobs.append(json.dumps(e[5]))
+    check(len(set(ns)) == 1 and 8 <= ns[0] <= 12 and len(set(blobs)) == 1, "three hourly feeds, each merging the last one's xlinks: a link "
+          "of 12 coins keeps its count (%s: the coins that entered the earliest 8, at most the 12 there are) and the same earliest 8 (it "
+          "grew 16, 24, 32 before)" % ns)
 
 
 def _t7(check, W, tmp):
@@ -403,12 +652,28 @@ def _t7(check, W, tmp):
           "common accounts (top holder of more than max(20, 1%%) of %d coins) are listed and never counted as rugger wallets" % wm["nCoins"])
     check(set(k["early"]) <= set(wm["rug"]) and not set(k["late"]) & set(wm["rug"]) and k["ok"] not in wm["rug"],
           "no look-ahead: a rug whose result is known only after 'now' is not in the memory yet")
+    late_avg = {w: wm["sw"].get(w) for w in k["late"]}
     meta_later = T.feed(mb, os.path.join(tmp, "f3"), NOW + 2 * H)
     wm3 = json.load(gzip.open(os.path.join(tmp, "f3", "walletmem.json.gz"), "rt"))
+    late_avg3 = {w: wm3["sw"].get(w) for w in k["late"]}
+    check(set(late_avg.values()) == {10.5} and set(late_avg3.values()) == {round((6.0 + 15.0 - 20.0) / 3, 2)},
+          "no look-ahead in sw either: the late rug's holders also held 2 earlier coins; at 'now' their average is those two (+10.50), "
+          "two hours later it includes the rug (%s)" % sorted(set(late_avg3.values())))
     look = T.walletmem_lookup([k["common"]] + k["early"], dict(wm, rug=wm["rug"] + [k["common"]]), NOW + 10 * MIN)
-    check(set(k["late"]) <= set(wm3["rug"]) and look == {"swAvg": look["swAvg"], "rugHolders": 3, "checked": True, "state": "ok"},
-          "two hours later the late rug is known; the lookup skips the common account even if it were listed (3 rugger holders)")
-    done = {n: dd for n, dd in M.load_docs(mb, "memesnapres").items() if dd["t"] <= NOW}
+    look9 = T.walletmem_lookup([k["common"]] + k["early"], dict(wm, rug=wm["rug"] + [k["common"]], nCoins=900), NOW + 10 * MIN)
+    check(set(k["late"]) <= set(wm3["rug"]) and look["rugHolders"] == 3 and look["state"] == "small" and look["checked"] is False
+          and look9["state"] == "ok" and look9["checked"] is True and look9["rugHolders"] == 3,
+          "two hours later the late rug is known; the lookup skips the common account even if it were listed (3 rugger holders); this "
+          "memory of 33 coins is 'too small' (not checked) yet raises the flag")
+    check(not set(k["old"]) & set(wm["rug"]) and meta["days"] == T.FEED_DAYS and meta["snapSkipped"] == 1 and meta["snapFiles"] == 34,
+          "the feed reads the newest %d days: a file dated 24 days ago is not opened, an undated one with an old snapshot time is left "
+          "out (%d files read, %d skipped)" % (meta["days"], meta["snapFiles"], meta["snapSkipped"]))
+    wide = T.feed(mb, os.path.join(tmp, "f4"), NOW, days=30)
+    wmw = json.load(gzip.open(os.path.join(tmp, "f4", "walletmem.json.gz"), "rt"))
+    check(wmw["nCoins"] == 35 and set(k["old"]) <= set(wmw["rug"]) and wide["snapSkipped"] == 0,
+          "with --days 30 the older snapshots count again (%d coins)" % wmw["nCoins"])
+    done = {n: dict(dd, coins=[c for c in dd["coins"] if isinstance(c.get("rc"), dict) and isinstance(c["rc"].get("holders"), list)])
+            for n, dd in M.load_docs(mb, "memesnapres").items() if dd["t"] <= NOW and dd["t0"] >= NOW - T.FEED_DAYS * DAY}   # memebot crashes on odd holders
     orig = M.load_docs
     M.load_docs = lambda d_, c_: done if c_ == "memesnapres" else orig(d_, c_)
     try:
@@ -420,14 +685,31 @@ def _t7(check, W, tmp):
     xl = json.load(gzip.open(os.path.join(tmp, "f1", "xlinks.json.gz"), "rt"))["links"]
     sm = json.load(gzip.open(os.path.join(tmp, "f1", "symmc.json.gz"), "rt"))["sym"]
     check("x.com/aaacoin" in xl and xl["x.com/aaacoin"][0] == k["pf_a"] and xl["x.com/aaacoin"][2] == 2 and "x.com/keepcoin" in xl and "x.com/oldcoin" not in xl
-          and "x.com/i/status/18009999999" in xl and sm == {"AAA": 900_000, "ZED": 12_000},
-          "xlinks from pf/*.txt and pairs.json merged with the previous feed (30 days kept); symmc = the copy gate's max market cap per ticker")
+          and "x.com/i/status/18009999999" in xl and sm == {"AAA": 900_000, "ZED": 12_000, "LLC": 30_000} and xl["x.com/llcoin"][1] == 1791936000000,
+          "xlinks from pf/*.txt and pairs.json merged with the previous feed (30 days kept); symmc = the copy gate's max market cap per ticker; "
+          "odd inputs (holders as a number, pf as a list) are skipped; a LaunchLab time without a zone is UTC")
     T.feed(mb, os.path.join(tmp, "f2"), NOW)
     same = all(open(os.path.join(tmp, "f1", n), "rb").read() == open(os.path.join(tmp, "f2", n), "rb").read()
                for n in ("walletmem.json.gz", "xlinks.json.gz", "symmc.json.gz"))
     fb = meta["files"]
     check(same and all(fb[n]["bytes"] > 0 for n in fb) and set(fb) == {"walletmem.json.gz", "xlinks.json.gz", "symmc.json.gz"} and meta["secs"] < 60,
           "deterministic: two runs give the same bytes; sizes reported (%s; %.2f s)" % (", ".join("%s %d B" % (n, fb[n]["bytes"]) for n in sorted(fb)), secs))
+    _t7_xlinks_rerun(check, tmp, rng)
+    old_tz = os.environ.get("TZ")
+    try:
+        os.environ["TZ"] = "America/Los_Angeles"
+        time.tzset()
+        T.feed(mb, os.path.join(tmp, "f5"), NOW)
+        tz_same = all(open(os.path.join(tmp, "f1", n), "rb").read() == open(os.path.join(tmp, "f5", n), "rb").read()
+                      for n in ("walletmem.json.gz", "xlinks.json.gz", "symmc.json.gz"))
+        tz_parse = T.parse_ms("2026-10-14T00:00:00") == 1791936000000
+    finally:
+        if old_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = old_tz
+        time.tzset()
+    check(tz_same and tz_parse, "the feed's bytes do not depend on the machine's time zone (an ISO time without a zone is UTC)")
     out = os.path.join(tmp, "cli")
     t0 = time.time()
     p = subprocess.run([PY, os.path.join(HERE, "traps.py"), "feed", "--dir", mb, "--out", out, "--now", str(NOW)], capture_output=True, text=True, timeout=120)
@@ -494,9 +776,12 @@ def _extras(check, W, rng, tmp):
     allt = [T._text(n, m, W) for n in W["measured"] if n != "staircase_early"]
     check(texts == want and "6 of 10 top holders fresh" in allt and "4 top holders funded by one wallet in 3 min" in allt,
           "grey measured texts: %s" % "; ".join(allt))
-    every = [t for S_ in (full, m, base_S(), base_S(rcReport=False), base_S(wmChecked=False, wmState="missing")) for _, t in T.chips(T.rate(S_, W), S_, W)]
-    check(not any(re.search(r"\b(safe|buy|guaranteed|clean)\b", t, re.I) for t in every) and not any("\u2014" in t for t in every),
-          "no chip says safe, buy, guaranteed or clean, and none has an em dash (%d texts)" % len(every))
+    every = [t for S_ in (full, m, base_S(), base_S(rcReport=False), base_S(wmChecked=False, wmState="missing"), base_S(buys=None, brand=None, rcDanger=None),
+                          base_S(wmChecked=False, wmState="small"), base_S(wmChecked=False, wmState="noholders"), base_S(tweetShared=9.0, x="https://x.com/a/status/123456"),
+                          base_S(stair={"n": 7, "rise": 0.3, "green": 0.9, "pull": 0.0}, fundN=5.0, freshN=4.0, freshOf=10.0, devAgeH=None, devTxs=3.0))
+             for _, t in T.chips(T.rate(S_, W), S_, W)] + list(T.UNKNOWN_TEXT.values()) + list(T.WM_TEXT.values())
+    check(not any(ADVICE.search(t) for t in every) and not any("\u2014" in t for t in every),
+          "no chip says safe, buy, guaranteed or clean, and none has an em dash (%d texts, every 'not checked' text included)" % len(every))
     # the young tab's path: without walletmem and pairs.json no row can be green
     y = {"sym": "NEWC", "name": "New Coin", "dex": "pumpswap", "x": "https://x.com/newc", "mc": 70_000.0, "liq": 21_000.0,
          "f": {"ageH": 0.2, "buys1": 300.0, "m5": 4.0, "socN": 2.0, "x": 1.0, "ds.paid": 0.0, "vt.tweet": 0.0, "srcN": 2.0},
@@ -514,6 +799,76 @@ def _extras(check, W, rng, tmp):
     check((mint, pool) == (NOW - 16 * MIN, NOW - 12 * MIN) and T.pair_times({"ll": {"createdAt": "2026-10-14T00:00:00Z"}})[0] == 1791936000000
           and T.pair_times({}) == (None, None) and e["verdict"] == "good" and ["ok", "curve 4 min before pool"] in T.chips(e, T.signals_scan(y, mint, wm, now=NOW, pool=pool), W),
           "pair_times reads the mint (pump.fun or LaunchLab createdAt, seconds, ms or ISO) and the pool time of a pairs.json entry")
+    # SF3: the page passes the coin's pairs.json entry and recommend.json's clock; the 3-argument call can never be green
+    ins = {"pairCreatedAt": NOW - 12 * MIN, "pf": {"createdAt": NOW - 12 * MIN - 20_000}}
+    S3 = T.signals_scan(y, ins, dict(wm, t=NOW - 5 * H), now=NOW)
+    r3 = T.rate(S3, W)
+    r3a = T.rate(T.signals_scan(y, ins["pf"]["createdAt"], dict(wm, t=NOW - 5 * H)), W)
+    ok_e = T.rate(T.signals_scan(y, pr, wm, now=NOW), W)
+    check(r3["hard"] == ["instant_pool"] and S3["mintToPoolS"] == 20.0 and "walletmem" in r3["unknown"] and S3["wmState"] == "old"
+          and r3a["verdict"] == "watch" and r3a["unknown"] == ["mint_time"] and not r3a["push"] and ok_e["verdict"] == "good" and ok_e["push"],
+          "signals_scan(row, pairs entry, walletmem, now=recommend t): a pool 20 s after the mint is the instant-pool trap and a 5-hour-old "
+          "memory is not checked; the same row with only the mint time stays '? mint time unknown' (never green)")
+    # boundaries (review nit 10)
+    fl = lambda name, **kw: T.flag(name, base_S(**kw), W)
+    st_ = lambda **kw: dict({"n": 10, "rise": 0.25, "green": 0.8, "pull": 0.01, "stair": True}, **kw)
+    seven = [[i, 1.0 + 0.04 * i, 0, 0, (1.0 + 0.04 * i) * (1.03 if i % 10 < 7 else 0.999)] for i in range(10)]
+    check(fl("pumping_5m", m5=20.0) is True and fl("pumping_5m", m5=19.9) is False and fl("lists3", lists=3.0) is True and fl("lists3", lists=2.0) is False
+          and fl("instant_pool", mintToPoolS=60.0, instantPool=None) is False and fl("instant_pool", mintToPoolS=59.9, instantPool=None) is True
+          and fl("staircase10", stair=st_(green=0.7)) is True and fl("staircase10", stair=st_(green=0.69)) is False
+          and fl("staircase10", stair=st_(pull=0.049)) is True and fl("staircase10", stair=st_(pull=0.05)) is False
+          and fl("staircase10", stair=st_(rise=0.2)) is True and fl("staircase10", stair=st_(rise=0.19)) is False
+          and T.staircase(seven)["green"] == 0.7 and T.staircase(seven)["stair"] is True,
+          "edges: +20%% in 5 min warns, 19.9 not; 3 lists is a good sign, 2 not; 60 s from mint to pool is not instant, 59.9 is; staircase at "
+          "green 70%% and rise 20%% yes, pullback 5%% no (7 of 10 green candles: %s)" % T.staircase(seven)["green"])
+    ds = T.signals_scan(dict(y, risk=dict(y["risk"], dev={"devSold": True})), mint, wm, now=NOW, pool=pool)
+    tw = {k: T.signals_radar({"now": NOW, "x": v}, W)["tweet"] for k, v in (("tweet", "https://x.com/foo/status/1800123456789"), ("account", "https://x.com/foo"),
+                                                                            ("none", None), ("empty", ""))}
+    check(ds["creatorSold"] is True and "creator_sold" in T.rate(ds, W)["soft"] and tw == {"tweet": True, "account": False, "none": None, "empty": False},
+          "the young tab takes 'creator sold' from RugCheck's dev facts when the factor is missing; the radar reads a tweet link as a tweet (%s)" % tw)
+    _fuzz(check, W)
+
+
+def _fuzz(check, W, n=400):
+    """N3: type-confused inputs (numbers for lists, lists for strings, NaN, ...) never raise in the rule core."""
+    rng = random.Random(1310)
+    junk = [None, "", "abc", "1e400", 0, -1, 1.5, float("nan"), float("inf"), True, [], [1, "x"], {}, {"a": 1}, [[1, 2]], "https://x.com/a", 10 ** 30]
+
+    def mut(o, p):
+        if isinstance(o, dict):
+            return {k: (rng.choice(junk) if rng.random() < p else mut(v, p)) for k, v in o.items()}
+        if isinstance(o, list):
+            return [rng.choice(junk) if rng.random() < p else mut(v, p) for v in o]
+        return o
+    wm = {"v": 1, "t": NOW - 20 * MIN, "nCoins": 900, "common": ["1" * 44], "rug": ["2" * 44], "sw": {"3" * 44: -9.0}}
+    coin = radar_coin(random.Random(3), wm)
+    coin.update(dev={"n": 3, "dead": 2, "grad": 0, "ageH": 1, "txs": 4}, closes=[1, 1.1, 1.2], snip30=0.3, slotN=2, freshN=1, fundN=1,
+                xlinks={"x.com/cleancoin": ["A" * 44, NOW - H, 2, "account", NOW, [["A" * 44, NOW - H]]]})
+    y = {"sym": "NEWC", "name": "New Coin", "dex": "pumpswap", "x": "https://x.com/newc", "mc": 7e4, "liq": 2.1e4,
+         "f": {"ageH": 0.2, "buys1": 300.0, "m5": 4.0, "socN": 2.0, "x": 1.0, "ds.paid": 0.0, "vt.tweet": 0.0, "srcN": 2.0, "sw.avg": -1, "dev.sold": 0},
+         "risk": {"danger": ["Freeze"], "warn": ["insider network of 99 wallets"], "holders": ["4" * 44], "creatorPct": 0.5, "dev": {"devSold": True}}}
+    errs = []
+    for i in range(n):
+        p = rng.choice((0.05, 0.15, 0.3))
+        c, yy, w2 = mut(copy.deepcopy(coin), p), mut(copy.deepcopy(y), p), mut(copy.deepcopy(wm), 0.2)
+        links = mut(copy.deepcopy(coin["xlinks"]), 0.3)
+        Sj = mut(base_S(devN=12.0, devDead=11.0, xUsed=2.0, xKind="account", stair={"n": 10, "rise": 0.3, "green": 0.8, "pull": 0.01}), 0.3)
+        steps = (lambda: T.chips(T.rate(T.signals_radar(c, W), W), T.signals_radar(c, W), W),
+                 lambda: T.chips(T.rate(T.signals_scan(yy, rng.choice([NOW - 9 * MIN, None, "x", 0, {"pf": [1]}]), w2, now=rng.choice([NOW, None]), W=W), W), {}, W),
+                 lambda: T.chips(T.rate(Sj, W), Sj, W),
+                 lambda: T.rc_summary(mut(copy.deepcopy(coin["rc"]), 0.3)),
+                 lambda: T.walletmem_lookup(mut(["1" * 44, "2" * 44], 0.3), w2, NOW, W),
+                 lambda: T.xlinks_add(links, rng.choice(["https://x.com/cleancoin", None, 5]), rng.choice(["Q" * 44, None, 5]), rng.choice([NOW, None, "x"])),
+                 lambda: T.x_reuse("https://x.com/cleancoin", "Q" * 44, rng.choice([NOW, None, "x"]), links),
+                 lambda: T.staircase(mut([[0, 1, 1, 1, 1], [1, 1, 1, 1, 1.1], 1.2, 1.3], 0.4)),
+                 lambda: T.pair_times(mut({"pairCreatedAt": NOW, "pf": {"createdAt": NOW - 9 * MIN}, "ll": {"createdAt": "2026-10-14T00:00:00Z"}}, 0.4)))
+        for k, fn in enumerate(steps):
+            try:
+                fn()
+            except Exception as e:      # noqa: BLE001 - the point of the check
+                errs.append("%d %s: %s" % (k, type(e).__name__, str(e)[:60]))
+    check(not errs, "%d rounds of malformed inputs through signals, rate, chips, rc_summary, walletmem_lookup, xlinks_add, x_reuse, "
+          "staircase and pair_times: no exception%s" % (n, "" if not errs else " (%d: %s)" % (len(errs), errs[:3])))
 
 
 def main():

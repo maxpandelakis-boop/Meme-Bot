@@ -1,7 +1,7 @@
 {
  "v": 1,
  "src": "study 2026-10-13",
- "note": "Fake money only. The study's rule D made strict: unknown is never clean. Weights move only through traps.fit (radar data, walk-forward guarded).",
+ "note": "Fake money only. The study's rule D made strict: a check that could not run never counts as passed. Weights move only through traps.fit (radar data, walk-forward guarded).",
  "hard": [
   "instant_pool",
   "rugger_wallets",
@@ -66,6 +66,7 @@
  ],
  "thresholds": {
   "instantPoolS": 60,
+  "mintSkewS": 120,
   "curve2mS": 120,
   "swAvg": -7.0,
   "swMinRecords": 2,
@@ -85,6 +86,7 @@
   "liqMc": 0.15,
   "lists": 3,
   "wmMaxAgeH": 3.0,
+  "wmMinCoins": 500,
   "devDead": {
    "n": 3,
    "share": 0.8
@@ -4257,7 +4259,7 @@
   "8 days of data, one market regime",
   "points were set after seeing the data: the halves show stability, not an independent test",
   "survivorship: coins that rugged before minute 5 or never left the curve are not in the data",
-  "RugCheck 'clean' on a coin minutes old is no safety sign",
+  "a RugCheck report without warnings on a coin minutes old proves little",
   "the radar's own records are the first forward test"
  ]
 }
