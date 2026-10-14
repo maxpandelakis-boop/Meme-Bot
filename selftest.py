@@ -925,7 +925,7 @@ def spotter_checks(check):
           "MEMEBOT_EARLY=0 starts no spotter and the live view says the early list is off; a stale early list of an earlier cycle is deleted at the start and never pushed")
     code = os.path.join(tmp, "code")
     os.makedirs(code)
-    for n in ("bot.py", "memebot.py", "fetch.py", "report.py"):
+    for n in ("bot.py", "memebot.py", "fetch.py", "report.py", "page_account.py", "page_radar.py", "page_office.py", "traps.py", "radar_weights.json"):
         shutil.copy(os.path.join(HERE, n), code)
     with open(os.path.join(code, "radar.py"), "w") as f:      # stand-ins for the spotter: one that fails (and whose check fails too), one that never ends
         f.write("import json, os, sys, time\n"
@@ -1477,7 +1477,7 @@ def browser_checks(check, page_html, tmp):
           " 10 minutes off (%s)" % (num_age(a1), num_age(a2), num_age(a3)))
     check(sel0 and kept == [True, sel0, True], "browser: a selected symbol and the focused link survive the redraws (the cards are not rebuilt every 15 s: %s)" % kept)
     check(n_calls["tab-pick"] == 0 and n_calls["tab-young"] >= 1 and n_calls["tab-office"] >= 1 and hash_after == "" and tab_after == [True, False],
-          "browser: the page polls on the New launches and Agent office tabs, not on The pick (%s); #new is used once, a reload keeps the tab chosen" % n_calls)
+          "browser: the page polls on the New launches and Agent office tabs, not on Pick (%s); #new is used once, a reload keeps the tab chosen" % n_calls)
     check(fast_ok and not fast[1] and slow0 and "updated" in slow0 and slow_ok and dimmed[0] and all(o >= 0.79 for _, o in dimmed[1]) and any(old for old, _ in dimmed[1]),
           "browser: a phone 10 minutes fast reads a pushing scan as live (%s); one 10 minutes slow reads a stalled one as paused after 5 minutes; a dimmed list"
           " never dims an old card twice (opacities %s)" % (fast[0][:60], [round(o, 2) for _, o in dimmed[1]]))
@@ -1891,7 +1891,8 @@ def app_tests(check, mock, url):
     has_crypto = importlib.util.find_spec("cryptography") is not None
     base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
     base.update(PYTHONUTF8="1", MEMEBOT_PAUSE="0")
-    env_app = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=APP_SECRET)
+    env_app = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=APP_SECRET, MEMEBOT_PUSH_YOUNG="1")   # the scan's "new coins" push is off unless
+    # MEMEBOT_PUSH_YOUNG=1 (selftest_scanside S4 checks the default); these checks test it switched on, exactly as before
     if not real:
         env_app["PYTHONPATH"] = fake + os.pathsep + base.get("PYTHONPATH", "")
 
@@ -3144,7 +3145,7 @@ console.log(JSON.stringify(o));
           and e4.get("why") == "stop" and near(e4.get("px"), M.num(px_x[y4["addr"]]["priceUsd"])) and abs(e4["px"] / y4["px"] - 0.6) < 1e-3 and e4.get("eur") == val(y4, e4["px"] / y4["px"]) == 1.64,
           "no candles this run: the run's own price decides, 12x is a take-profit at 11x (31.58 back for 3), 0.6x a stop at that price (%s)" % [(e.get("why"), e.get("eur")) for e in (e3, e4)])
     check(not ex_of(y1_id) and M.num(px_x[y1["addr"]].get("chgH1")) == -60 and -60 <= M.GATE_CRASH["chgH1"] and not ex_of(y2_id)
-          and "take-profit +1000%" in page_x and "stop-loss −30%" in page_x and "Closed trades (4)" in page_x,
+          and "take-profit +1000%" in page_x and "stop-loss −30%" in page_x and "Top trades · 4 closed" in page_x,
           "a coin that fails the crash filter is not sold any more; the page names each sale by the paper rules")
     hcd = tempfile.mkdtemp(prefix="memebot-hc-")
     os.makedirs(os.path.join(hcd, "candles"))
@@ -3227,9 +3228,9 @@ console.log(JSON.stringify(o));
           and sum(1 for p in Pz.values() if p.get("grp") == "young") == 5 and (st_z.get("paper") or {}).get("invested") == 65.0 and (st_z.get("paper") or {}).get("n") == 6,
           "the restart closed the two open old positions at this run's price with the old fees (%s), and the coin of one was bought again under a new id (%s, not %s)" % (resets, again, old1))
     check("Before the restart (5 trades)" in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
-          and "48-hour limit" in page_z and "old rule · 20\u00a0€" in page_z and "old rule · 17.27\u00a0€" in page_z and "Closed trades (0)" in page_z and "65.00" in page_z
+          and "48-hour limit" in page_z and "old rule · 20\u00a0€" in page_z and "old rule · 17.27\u00a0€" in page_z and "Top trades · 0 closed" in page_z and "65.00" in page_z
           and "bought before the paper account restarted on " in page_z and "bought under the rules before" not in page_z
-          and "nothing sold yet" in page_z and "−3.1% on 65.00 invested" in page_z,
+          and "nothing sold yet" in page_z and "−3.1% on 65.00\u00a0€ invested" in page_z,
           "page: the account counts from the restart, the five old trades sit behind the fold with their old rule and reasons")
     rz2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", zd, "--now", str(T0 + 4 * 60000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     st_z2 = json.load(open(os.path.join(zd, "db", "memebot", "state.json")))
@@ -3662,6 +3663,13 @@ console.log(JSON.stringify(o));
     check(spot_modes and not any(on for _, on in spot_modes),
           "the launch spotter starts in no scan without --recommend, light ones included (%s)" % ", ".join(sorted({m for m, _ in spot_modes})))
     spotter_checks(check)
+    import selftest_traps                       # the launch radar's rule core and study weights (traps.py)
+    selftest_traps.checks(check, {})
+    import selftest_radar                       # the launch radar job (launch_radar.py, radar_src.py, radar.yml)
+    selftest_radar.checks(check)
+    SKIPS.extend(selftest_radar.SKIPPED)
+    import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
+    selftest_scanside.scanside_checks(check)
 
     print("== sync: page and small docs to a results branch")
     bare = tempfile.mkdtemp(prefix="memebot-bare-")
@@ -3718,6 +3726,12 @@ console.log(JSON.stringify(o));
     shutil.rmtree(os.path.join(d, ".git"), ignore_errors=True)
 
     app_tests(check, mock, url)
+    import selftest_account                     # the paper account block (page_account.py)
+    selftest_account.account_checks(check, SKIPS)
+    import selftest_radarui                     # the Radar tab, the trap-check line and the "no good coin" marks (page_radar.py)
+    selftest_radarui.checks(check, {"skips": SKIPS})
+    import selftest_office                      # the office's agent cards, the radar desk and the daily overview (page_office.py)
+    selftest_office.office_checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:
