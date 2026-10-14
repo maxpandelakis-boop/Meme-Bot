@@ -769,9 +769,15 @@ def notify_pick(rec):
     return notify("pick", title, "%s. Paper trading only, nothing is bought for real." % (lead or sym), "#tab-pick")
 
 
+def _finite(v):
+    """A number that is finite (not NaN, not infinite), else None: an infinite age, count or liquidity reads as unknown."""
+    v = _num(v)
+    return v if v is not None and v not in (float("inf"), float("-inf")) else None
+
+
 def _usd(v):
     """A liquidity for a notification: $23k, $1.2M, $800, or "unknown"."""
-    v = _num(v)
+    v = _finite(v)
     if v is None or v < 0:
         return "unknown"
     if v >= 999_500:
@@ -789,7 +795,7 @@ def notify_radar(coins):
     if not cs:
         return {"skipped": "no coins"}
     c = cs[0]
-    age, n = _num(c.get("age")), _num(c.get("n"))
+    age, n = _finite(c.get("age")), _finite(c.get("n"))
     pool = (" (pool %s min)" % (int(age) if age >= 1 else "<1")) if age is not None and age >= 0 else ""
     more = (" +%d more" % (len(cs) - 1)) if len(cs) > 1 else ""
     checks = ("%d checks passed" % n) if n is not None and n >= 1 else "All checks passed"

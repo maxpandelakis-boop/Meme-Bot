@@ -7,24 +7,33 @@
 The workflow steps are tested as they are written: each step's script is read from .github/workflows/scan.yml (parsed as YAML) and run
 with bash -e against local git remotes and a local stand-in for GitHub's API, never against the network.
 
-S1  step A "Import the launch radar's records": radar-data's hour docs and radar.json (as mb/radar_live.json) and radar-feed's
-    walletmem/xlinks reach mb/, added or overwritten, never deleted; junk (other names, symlinks, not a JSON object, no time) is left
-    out; missing branches or a dead remote change nothing and print one line each; no credential in the output
+S1  step A "Import the launch radar's records": radar-feed's walletmem/xlinks and radar-data's hour docs and radar.json (as
+    mb/radar_live.json) reach mb/, added or overwritten, never deleted; junk (other names, symlinks, not a JSON object, no time) is left
+    out; missing branches or a dead remote change nothing and print one line each; no credential in the output; each branch on its own
+    (a radar-data fetch that fails still brings radar-feed, a radar-feed fetch that hangs still brings radar-data, inside the minute);
+    the mark mb/.radar_feed_import says ok, none or failed for the feed step
 S2  launch spotter check 1, extended: the trader's docs are byte for byte the same with and without mb/radar_live.json, mb/db/memeradar,
-    mb/walletmem.json.gz (and mb/xlinks.json.gz, mb/db/memepeak) present; the cycle leaves those files as they were (old radar docs pruned)
+    mb/walletmem.json.gz (and mb/xlinks.json.gz, mb/.radar_feed_import, mb/db/memepeak) present; the cycle leaves those files as they
+    were (old radar docs pruned)
 S3  bot.py SYNC_IGNORE carries memepeak and memeradar; prune removes memeradar docs older than 30 days and never a memepeak doc; sync
-    carries both to the results branch (a pruned doc leaves it) and never the page-only inputs (radar_live.json, walletmem, xlinks)
+    carries both to the results branch (a pruned doc leaves it) and never the page-only inputs (radar_live.json, walletmem, xlinks, the
+    import mark)
 S4  young_published sends nothing by default (MEMEBOT_PUSH_YOUNG unset or not "1"); with MEMEBOT_PUSH_YOUNG=1 it sends as before, once
     per cycle; scan.yml passes the repository variable with the default 0
 S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar -> young: a phone with "New coins" off gets no radar push; the rate guard;
-    notify_radar's words say fake money and never buy, safe or clean, and open the Radar tab
+    notify_radar's words say fake money and never buy, safe or clean, and open the Radar tab; an infinite age, count or liquidity reads
+    as unknown
 S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with their timeouts and places, C exports memeradar, job
-    peaks needs scan with timeout <= 12 and, run as written (with a stand-in pricing step), adds its docs to results as one commit on
-    top of the scan's; no step pushes radar-data; step D (the watchdog) against a stand-in GitHub API: it starts
+    peaks needs scan with timeout <= 12, the token only in its restore and push steps, and, run as written (with a stand-in pricing
+    step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the watchdog) against a
+    stand-in GitHub API: it starts
     radar.yml only when the workflow is active, inside the hours and no run is alive (any status but completed); radar.yml (when on
     this branch): group memebot-radar, no schedule, timeout 75, never pushes results, live or radar-feed
 S7  step B "Feed the launch radar": traps.py feed on a mock db in < 60 s writes the four files, which go to radar-feed as one orphan
-    commit (force-pushed, all four or none) at the scan's clock; the next scan's step A imports them
+    commit (force-pushed, all four or none: a feed that fails or writes three pushes nothing) at the scan's clock (a run doc dated hours
+    ahead is ignored); the X-link history survives a step A that could not fetch radar-feed (step B fetches it itself, else leaves
+    radar-feed as it is); the next scan's step A imports the feed
+A check group that stops with an exception is one FAIL line; the other groups still run.
 """
 import contextlib, glob, gzip, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -160,8 +169,15 @@ def jbytes(obj):
 
 # ---------------------------------------------------------------- the checks
 def scanside_checks(check):
-    """S1 to S7 (each prints its own heading)."""
+    """S1 to S7 (each prints its own heading). A group that raises is one FAIL line and the next group still runs (selftest.main has no
+    guard of its own around a check group)."""
     tmp = tempfile.mkdtemp(prefix="memebot-scanside-")
+
+    def guard(label, fn, *a):
+        try:
+            fn(check, *a)
+        except Exception as e:
+            check(False, "%s stopped with %s: %s (the other groups still run)" % (label, type(e).__name__, str(e).replace(FAKE_TOKEN, "<token>")[-300:]))
     try:
         try:
             scan = load_yaml(SCAN_YML)
@@ -170,28 +186,61 @@ def scanside_checks(check):
             skip("S1, S6 and S7: the workflow steps (PyYAML is not installed here)")
         job = (scan or {}).get("jobs", {}).get("scan") or {}
         if scan:
-            _s1(check, job, tmp)
-        _s2(check, tmp)
-        _s3(check, tmp)
-        _s4(check, scan, tmp)
-        _s5(check, tmp)
+            guard("S1", _s1, job, tmp)
+        guard("S2", _s2, tmp)
+        guard("S3", _s3, tmp)
+        guard("S4", _s4, scan, tmp)
+        guard("S5", _s5, tmp)
         if scan:
-            _s6(check, scan, tmp)
-            _s7(check, job, tmp)
+            guard("S6", _s6, scan, tmp)
+            guard("S7", _s7, job, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def _import(job, ws, remote, tmp):
-    """Step A run in workspace ws (its mb/) against remote."""
-    st = step(job, "Import the launch radar's records")
+def git_shim(tmp):
+    """{PATH: ...} with a git in front that fails (SHIM_FAIL) or hangs (SHIM_HANG) a fetch whose arguments hold that text, like a remote
+    that refuses or never answers for one branch; every other git call is the real git."""
+    d = os.path.join(tmp, "gitshim")
+    if not os.path.isdir(d):
+        os.makedirs(d)
+        with open(os.path.join(d, "git"), "w") as f:
+            f.write('#!/bin/bash\ncase " $* " in\n  *" fetch "*)\n'
+                    '    if [ -n "$SHIM_FAIL" ] && [[ " $* " == *"$SHIM_FAIL"* ]]; then echo "fatal: unable to access the remote (test)" >&2; exit 128; fi\n'
+                    '    if [ -n "$SHIM_HANG" ] && [[ " $* " == *"$SHIM_HANG"* ]]; then exec sleep 120; fi;;\n'
+                    'esac\nexec %s "$@"\n' % shutil.which("git"))
+        os.chmod(os.path.join(d, "git"), 0o755)
+    return {"PATH": d + os.pathsep + os.environ.get("PATH", "")}
+
+
+def runner_temp(tmp):
     rt = os.path.join(tmp, "runner-temp")
     os.makedirs(rt, exist_ok=True)
-    return run_script(st["run"], ws, dict(st.get("env") or {}, RESULTS_URL=remote, RUNNER_TEMP=rt), timeout=90)
+    return rt
+
+
+def _import(job, ws, remote, tmp, **extra):
+    """Step A run in workspace ws (its mb/) against remote (extra: more environment, e.g. the git stand-in)."""
+    st = step(job, "Import the launch radar's records")
+    return run_script(st["run"], ws, dict(st.get("env") or {}, RESULTS_URL=remote, RUNNER_TEMP=runner_temp(tmp), **extra), timeout=90)
+
+
+def _feed(job, ws, remote, tmp, **extra):
+    """Step B run in workspace ws against remote."""
+    st = step(job, "Feed the launch radar")
+    return run_script(st["run"], ws, dict(st.get("env") or {}, RESULTS_URL=remote, RUNNER_TEMP=runner_temp(tmp), **extra), timeout=180)
+
+
+def import_mark(mb):
+    """What step A left for step B in mb/.radar_feed_import (None: no mark)."""
+    try:
+        return open(os.path.join(mb, ".radar_feed_import"), "rb").read().decode()
+    except OSError:
+        return None
 
 
 def _s1(check, job, tmp):
-    print("== scan side S1: step A imports the launch radar's records, adding or overwriting, never deleting")
+    print("== scan side S1: step A imports the launch radar's records, adding or overwriting, never deleting; each branch on its own")
     rng = random.Random(41)
     now = int(time.time() * 1000) // H * H
     remote = os.path.join(tmp, "s1.git")
@@ -211,19 +260,23 @@ def _s1(check, job, tmp):
     put_branch(remote, "radar-data", data, tmp, links)
     put_branch(remote, "radar-feed", feed, tmp)
     put_branch(remote, "results", {"report.html": b"<html></html>"}, tmp)
-    ws = os.path.join(tmp, "s1ws")
-    mb = os.path.join(ws, "mb")
     old20 = radar_hour_doc(h20, 2, rng, "old")
     keep_old = radar_hour_doc(h_old, 3, rng)
-    for rel, obj in (("db/memeradar/%s.json" % hour_id(h20), old20), ("db/memeradar/%s.json" % hour_id(h_old), keep_old),
-                     ("db/memepos/p1.json", {"grp": "young", "sym": "KEEP"})):
-        os.makedirs(os.path.dirname(os.path.join(mb, rel)), exist_ok=True)
-        with open(os.path.join(mb, rel), "wb") as f:
-            f.write(jbytes(obj))
+
+    def workspace(name):
+        ws = os.path.join(tmp, name)
+        for rel, obj in (("db/memeradar/%s.json" % hour_id(h20), old20), ("db/memeradar/%s.json" % hour_id(h_old), keep_old),
+                         ("db/memepos/p1.json", {"grp": "young", "sym": "KEEP"})):
+            os.makedirs(os.path.dirname(os.path.join(ws, "mb", rel)), exist_ok=True)
+            with open(os.path.join(ws, "mb", rel), "wb") as f:
+                f.write(jbytes(obj))
+        return ws, os.path.join(ws, "mb")
+    ws, mb = workspace("s1ws")
     before = tree_bytes(mb)
     p, secs = _import(job, ws, remote, tmp)
     after = tree_bytes(mb)
     lines = [l for l in p.stdout.splitlines() if l.strip()]
+    dl = next((l for l in lines if "radar-data:" in l), "")
     print("  " + "\n  ".join(lines))
     mr = sorted(k for k in after if k.startswith("db" + os.sep + "memeradar"))
     want = sorted(os.path.join("db", "memeradar", "%s.json" % hour_id(x)) for x in (h20, h21, h_old))
@@ -234,21 +287,47 @@ def _s1(check, job, tmp):
           " lands as mb/radar_live.json, other folders untouched" % ", ".join(os.path.basename(x) for x in mr))
     check(after.get("walletmem.json.gz") == feed["walletmem.json.gz"] and after.get("xlinks.json.gz") == feed["xlinks.json.gz"]
           and not {"symmc.json.gz", "meta.json", "model.json", "pushed.json", "radar.json"} & set(after) and not [k for k in after if k.startswith(".radartmp")]
-          and not [k for k in after if "notes" in k or (os.sep + "x" + os.sep) in k] and len(lines) == 2 and "(3 skipped" in lines[0],
-          "radar-feed's walletmem.json.gz and xlinks.json.gz reach mb/ byte for byte; model, pushed, symmc and meta stay out; another name, a symlink,"
-          " a JSON list, a doc without its time and broken JSON are left out (%s)" % ((re.search(r"\(\d+ skipped[^)]*\)", lines[0]) or [None])[0] if lines else "-"))
+          and not [k for k in after if "notes" in k or (os.sep + "x" + os.sep) in k] and len(lines) == 2 and "radar-feed:" in lines[0] and "(3 skipped" in dl
+          and import_mark(mb) == "ok",
+          "radar-feed's walletmem.json.gz and xlinks.json.gz reach mb/ byte for byte (first: its X-link history exists nowhere else) and the mark"
+          " says ok; model, pushed, symmc and meta stay out; another name, a symlink, a JSON list, a doc without its time and broken JSON are"
+          " left out (%s)" % ((re.search(r"\(\d+ skipped[^)]*\)", dl) or [None])[0]))
     # missing branches: one line each, nothing changes; a dead remote: one line, nothing changes, no credential printed
     empty = os.path.join(tmp, "s1-empty.git")
     git("init", "-q", "--bare", empty)
-    before = tree_bytes(mb)
+    strip = lambda t: {k: v for k, v in t.items() if k != ".radar_feed_import"}
+    before = strip(tree_bytes(mb))
     p2, _ = _import(job, ws, empty, tmp)
+    m2, same2 = import_mark(mb), strip(tree_bytes(mb)) == before
     p3, secs3 = _import(job, ws, "https://x-access-token:%s@127.0.0.1:9/nothing.git" % FAKE_TOKEN, tmp)
+    m3, same3 = import_mark(mb), strip(tree_bytes(mb)) == before
     l2, l3 = [l for l in p2.stdout.splitlines() if l.strip()], [l for l in p3.stdout.splitlines() if l.strip()]
     print("  " + "\n  ".join(l2 + l3))
-    check(p2.returncode == 0 and p3.returncode == 0 and tree_bytes(mb) == before and len(l2) == 2 and "no branch radar-data yet" in l2[0] and "no branch radar-feed yet" in l2[1]
-          and len(l3) == 1 and "did not answer" in l3[0] and secs3 < 30 and FAKE_TOKEN not in p3.stdout + p3.stderr + p2.stdout + p2.stderr,
-          "no radar branches: one line each and mb/ byte for byte as before (the cycle sees what it would without the step); a dead remote: one"
-          " line after %.1f s, nothing changed, the credential never printed" % secs3)
+    check(p2.returncode == 0 and p3.returncode == 0 and same2 and same3 and len(l2) == 2 and "no branch radar-feed yet" in l2[0] and "no branch radar-data yet" in l2[1]
+          and len(l3) == 1 and "did not answer" in l3[0] and secs3 < 30 and FAKE_TOKEN not in p3.stdout + p3.stderr + p2.stdout + p2.stderr
+          and (m2, m3) == ("none", "failed"),
+          "no radar branches: one line each, mb/ byte for byte as before (the cycle sees what it would without the step) and the mark says none"
+          " (nothing to keep); a dead remote: one line after %.1f s, nothing changed, the mark says failed, the credential never printed" % secs3)
+    # each branch on its own: radar-data refused still brings radar-feed; radar-feed hanging still brings radar-data, inside the minute
+    shim = git_shim(tmp)
+    wsf, mbf = workspace("s1-datafail")
+    pf, _ = _import(job, wsf, remote, tmp, SHIM_FAIL="refs/heads/radar-data", **shim)
+    gotf = tree_bytes(mbf)
+    wsh, mbh = workspace("s1-feedhang")
+    ph, secs_h = _import(job, wsh, remote, tmp, SHIM_HANG="refs/heads/radar-feed", **shim)
+    goth = tree_bytes(mbh)
+    lf, lh = [l for l in pf.stdout.splitlines() if l.strip()], [l for l in ph.stdout.splitlines() if l.strip()]
+    print("  " + "\n  ".join(lf + lh) + "  (%.1f s)" % secs_h)
+    check(pf.returncode == 0 and len(lf) == 2 and lf[0].endswith("radar-feed: walletmem.json.gz, xlinks.json.gz into mb/") and "radar-data could not be fetched" in lf[1]
+          and gotf.get("xlinks.json.gz") == feed["xlinks.json.gz"] and "radar_live.json" not in gotf and import_mark(mbf) == "ok"
+          and gotf.get(os.path.join("db", "memeradar", "%s.json" % hour_id(h20))) == jbytes(old20),
+          "a radar-data fetch that fails: one line, the records keep the results branch's copy, radar-feed still comes (the mark says ok)")
+    check(ph.returncode == 0 and len(lh) == 2 and "radar-feed took too long" in lh[0] and "radar-data: 2 hour docs" in lh[1]
+          and goth.get(os.path.join("db", "memeradar", "%s.json" % hour_id(h21))) == jbytes(new21) and goth.get("radar_live.json") == jbytes(radar_json)
+          and "walletmem.json.gz" not in goth and "xlinks.json.gz" not in goth and import_mark(mbh) == "failed" and secs_h < 30
+          and not [k for k in goth if k.startswith(".radartmp")],
+          "a radar-feed fetch that never answers: it gives up after its own limit, the mark says failed (the feed step then fetches the X-link"
+          " index itself), radar-data's docs still come, and the step ends in %.1f s, inside its minute" % secs_h)
 
 
 def _with_radar_files(d, now, rng):
@@ -256,7 +335,7 @@ def _with_radar_files(d, now, rng):
     put = {}
     files = {"radar_live.json": jbytes({"v": 1, "kind": "radar", "t": now - 90_000, "state": "running", "coins": [], "others": []}),
              "walletmem.json.gz": gz({"v": 1, "t": now - H, "nCoins": 99, "common": [], "sw": {b58(rng): -9.5}, "rug": [b58(rng)]}),
-             "xlinks.json.gz": gz({"v": 1, "t": now - H, "links": {}})}
+             "xlinks.json.gz": gz({"v": 1, "t": now - H, "links": {}}), ".radar_feed_import": b"ok"}
     for k in (now - 2 * H, now - 29 * D):
         files["db/memeradar/%s.json" % hour_id(k)] = jbytes(radar_hour_doc(k // H * H, 3, rng))
     files["db/memeradar/%s.json" % hour_id(now - 31 * D)] = jbytes(radar_hour_doc((now - 31 * D) // H * H, 2, rng))
@@ -285,7 +364,8 @@ def _s2(check, tmp):
     print("  cycles %.1f s without, %.1f s with the radar's files; %d trader docs" % (sa, sb, len(fa)))
     check(pa.returncode == pb.returncode == 0 and set(fa) == set(fb) and len(fa) > 15 and not diffs,
           "the trader's %d docs (positions, tips, new launches, snapshots, weights, state, recommend, marks, pairs.json, universe.json) are byte for byte"
-          " the same with mb/radar_live.json, mb/db/memeradar, mb/walletmem.json.gz, mb/xlinks.json.gz and mb/db/memepeak present %s" % (len(fa), diffs or ""))
+          " the same with mb/radar_live.json, mb/db/memeradar, mb/walletmem.json.gz, mb/xlinks.json.gz, mb/.radar_feed_import and mb/db/memepeak"
+          " present %s" % (len(fa), diffs or ""))
     pruned = "db/memeradar/%s.json" % hour_id(S.T0 - 31 * D)
     left = {rel: os.path.exists(os.path.join(db_, rel)) and raw(os.path.join(db_, rel)) == b for rel, b in put.items()}
     check(pb.returncode == 0 and not os.path.exists(os.path.join(db_, pruned)) and all(ok for rel, ok in left.items() if rel != pruned)
@@ -311,7 +391,7 @@ def _s3(check, tmp):
         os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
         json.dump(obj, open(os.path.join(d, rel), "w"))
     for rel, raw in (("radar_live.json", b"{}"), ("walletmem.json.gz", gz({"v": 1})), ("xlinks.json.gz", gz({"v": 1})), (".radartmp/x.json", b"{}"),
-                     ("report.html", b"<html>page</html>"), ("db/memebot/state.json", b"{}")):
+                     (".radar_feed_import", b"ok"), ("report.html", b"<html>page</html>"), ("db/memebot/state.json", b"{}")):
         os.makedirs(os.path.dirname(os.path.join(d, rel)) or d, exist_ok=True)
         open(os.path.join(d, rel), "wb").write(raw)
     bare = os.path.join(tmp, "s3.git")
@@ -327,10 +407,11 @@ def _s3(check, tmp):
     check(gone == 2 and left == {"db/memeradar/a-29d.json", "db/memepeak/c-400d.json", "db/memepeak/d-new.json"},
           "prune removes the radar doc of 31 days (and the early doc of 31 days, as before), keeps the one of 29 days and both peak docs, a"
           " 400-day-old one too (%d removed)" % gone)
-    page_only = {"radar_live.json", "walletmem.json.gz", "xlinks.json.gz", ".radartmp/x.json"}
+    page_only = {"radar_live.json", "walletmem.json.gz", "xlinks.json.gz", ".radartmp/x.json", ".radar_feed_import"}
     check({"db/memeradar/a-29d.json", "db/memeradar/b-31d.json", "db/memepeak/c-400d.json", "db/memepeak/d-new.json", "report.html"} <= ls1 and not ls1 & page_only
           and "db/memeradar/b-31d.json" not in ls2 and {"db/memeradar/a-29d.json", "db/memepeak/c-400d.json"} <= ls2 and not ls2 & page_only,
-          "sync carries memepeak and memeradar to the results branch and never the page-only inputs; the pruned radar doc leaves the branch at the"
+          "sync carries memepeak and memeradar to the results branch and never the page-only inputs (nor step A's mark); the pruned radar doc"
+          " leaves the branch at the"
           " next sync (%d files, then %d)" % (len(ls1), len(ls2)))
 
 
@@ -421,8 +502,9 @@ def _s5(check, tmp):
     saved = A.notify
     try:
         A.notify = lambda kind, title, body, url=None: texts.append((kind, title, body, url)) or {"kind": kind}
+        inf = float("inf")
         variants = [[coin], [coin, dict(coin, sym="TWO")], [dict(coin, age=0.3, liq=1_234_567, n=None, sym="X\x07<b>Y")], [dict(coin, age=None, liq=None, sym=None)],
-                    [dict(coin, sym="Buy Safe Clean")]]
+                    [dict(coin, sym="Buy Safe Clean")], [dict(coin, age=inf, n=inf, liq=inf)], [dict(coin, age=-inf, n=float("nan"), liq=-inf)]]
         for v in variants:
             A.notify_radar(v)
         empty = [A.notify_radar([]), A.notify_radar(None), A.notify_radar(["x", 3])]
@@ -431,13 +513,17 @@ def _s5(check, tmp):
     words = [t + " " + b for _, t, b, _ in texts[:4]]
     check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young"} and all(A.KINDS.get(k) == v for k, v in (("young", (1800, "normal", 300)), ("pick", (3600, "high", 300)))),
           "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar to the phone's young switch; young and pick unchanged")
-    check(len(texts) == 5 and texts[0][1:] == ("HIRE: no trap found (pool 6 min)", "9 checks passed · liquidity $23k · fake money, nothing is bought.", "#tab-radar")
+    check(len(texts) == 7 and texts[0][1:] == ("HIRE: no trap found (pool 6 min)", "9 checks passed · liquidity $23k · fake money, nothing is bought.", "#tab-radar")
           and texts[1][1] == "HIRE: no trap found (pool 6 min) +1 more" and texts[2][1] == "X<b>Y: no trap found (pool <1 min)"
           and texts[2][2] == "All checks passed · liquidity $1.2M · fake money, nothing is bought." and texts[3][1] == "?: no trap found"
           and all(k == "radar" and u == "#tab-radar" and b.endswith("fake money, nothing is bought.") for k, _, b, u in texts)
           and not any(NO_WORDS.search(w) for w in words) and empty == [{"skipped": "no coins"}] * 3,
           "notify_radar: \"%s\" / \"%s\"; a second coin is \"+1 more\"; every body ends \"fake money, nothing is bought.\", no buy, safe, clean"
           " or em dash in our words; an empty list sends nothing" % texts[0][1:3])
+    unknown = ("radar", "HIRE: no trap found", "All checks passed · liquidity unknown · fake money, nothing is bought.", "#tab-radar")
+    check(texts[5:] == [unknown, unknown],
+          "notify_radar: an infinite or NaN age, check count or liquidity reads as unknown (no pool age, \"All checks passed\", liquidity unknown),"
+          " never an error or \"$infM\" (%s)" % [t[1:3] for t in texts[5:]])
     a = _app_env(tmp)
     if a is None:
         skip("S5 pushes through app.py (cryptography is not installed here)")
@@ -512,14 +598,16 @@ def serve_gh(gh):
     return srv
 
 
-STANDIN_PEAK = '''"""A stand-in for peak.py run (the peak category's own package; its pricing is checked by P1 to P7): one settled doc, one candle file."""
+STANDIN_PEAK = '''"""A stand-in for peak.py run (the peak category's own package; its pricing is checked by P1 to P7): one settled doc, one candle file;
+it says whether the token reached its environment."""
 import json, os, sys
 d = sys.argv[sys.argv.index("--dir") + 1]
 os.makedirs(os.path.join(d, "db", "memepeak"), exist_ok=True)
 os.makedirs(os.path.join(d, "candles"), exist_ok=True)
 json.dump({"v": 1, "pos": "y-1", "state": "ok", "x": 3.2}, open(os.path.join(d, "db", "memepeak", "y-1.json"), "w"))
 open(os.path.join(d, "candles", "Pool_pk1.txt"), "w").write("1|1|1|1|1|30\\n")
-print(json.dumps({"items": 1, "ok": 1, "deadline": sys.argv[sys.argv.index("--deadline-s") + 1]}))
+print(json.dumps({"items": 1, "ok": 1, "deadline": sys.argv[sys.argv.index("--deadline-s") + 1],
+                  "token": "RESULTS_URL" in os.environ or any("x-access-token" in v for v in os.environ.values())}))
 '''
 
 
@@ -543,16 +631,24 @@ def _peaks_job(check, scan, tmp):
     open(os.path.join(ws, "peak.py"), "w").write(STANDIN_PEAK)
     outf = os.path.join(tmp, "s6-peaks-output")
     open(outf, "w").close()
-    logs, codes = [], []
+    logs, codes, priced = [], [], {}
     for st in pk["steps"][1:]:
         if "steps.restore.outputs.ok == 'true'" in str(st.get("if")) and "ok=true" not in open(outf).read():
             continue
-        p, _ = run_script(st["run"], ws, dict(pk.get("env") or {}, **(st.get("env") or {}), RESULTS_URL=url, GITHUB_OUTPUT=outf, PYTHONUTF8="1"))
+        env = dict(pk.get("env") or {}, **(st.get("env") or {}))
+        if "RESULTS_URL" in env:                     # the token's address, only where the workflow gives it (the restore and the push)
+            env["RESULTS_URL"] = url
+        p, _ = run_script(st["run"], ws, dict(env, GITHUB_OUTPUT=outf, PYTHONUTF8="1"))
         codes.append(p.returncode)
         logs.append((p.stdout + p.stderr).strip().splitlines()[-1:] or [""])
-    head = git("-C", remote, "rev-parse", "refs/heads/results").strip()
-    parent = git("-C", remote, "rev-parse", "refs/heads/results^").strip()
-    ls = set(git("-C", remote, "ls-tree", "-r", "--name-only", "results").split())
+        if "peak.py run" in st["run"]:
+            try:
+                priced = json.loads(logs[-1][0])
+            except ValueError:
+                priced = {}
+    head = git("-C", remote, "rev-parse", "-q", "--verify", "refs/heads/results", check=False).strip()
+    parent = git("-C", remote, "rev-parse", "-q", "--verify", "refs/heads/results^", check=False).strip()     # none when the job added no commit
+    ls = set(git("-C", remote, "ls-tree", "-r", "--name-only", "results", check=False).split())
     print("  " + "\n  ".join(l[0][:160] for l in logs))
     empty = os.path.join(tmp, "s6-peaks-empty.git")
     git("init", "-q", "--bare", empty)
@@ -561,10 +657,14 @@ def _peaks_job(check, scan, tmp):
     out2 = os.path.join(tmp, "s6-peaks-output2")
     open(out2, "w").close()
     p2, _ = run_script(pk["steps"][1]["run"], ws2, dict(RESULTS_URL="file://" + empty, GITHUB_OUTPUT=out2))
-    check(codes == [0, 0, 0] and parent == scan_head and head != scan_head and {"db/memepeak/y-0.json", "db/memepeak/y-1.json", "db/memepos/y-1.json", "report.html"} <= ls
+    check(codes == [0, 0, 0] and bool(parent) and parent == scan_head and head != scan_head
+          and {"db/memepeak/y-0.json", "db/memepeak/y-1.json", "db/memepos/y-1.json", "report.html"} <= ls
           and not any(x.startswith("candles/") for x in ls) and p2.returncode == 0 and "ok=true" not in open(out2).read() and not os.path.exists(os.path.join(ws2, "mb")),
           "job peaks as written: it clones the results the scan just pushed, prices (a stand-in here), and its sync adds the peak doc as one commit on"
           " top of the scan's (the candle files stay on the runner); without a results branch it prices nothing and pushes nothing")
+    check(priced.get("items") == 1 and priced.get("token") is False and "RESULTS_URL" not in (pk.get("env") or {})
+          and [bool((s.get("env") or {}).get("RESULTS_URL")) for s in pk["steps"]] == [False, True, False, True],
+          "job peaks: the token's address is only in the restore and the push step; the pricing step (GeckoTerminal only) runs without it")
 
 
 def berlin_hour():
@@ -735,7 +835,8 @@ def _mock_mb(d, now, rng, n_docs=60, per_doc=200):
     return now
 
 
-STANDIN_TRAPS = '''"""A stand-in for traps.py feed (the rule core of another package, not on this branch): the four files, the scan's clock in meta.json."""
+STANDIN_TRAPS = '''"""A stand-in for traps.py feed (the rule core of another package, not on this branch): the four files, the scan's clock in meta.json,
+the X-link index merged with the previous <dir>/xlinks.json.gz (as the real feed does)."""
 import gzip, json, os, sys
 a = sys.argv
 d, out, now = a[a.index("--dir") + 1], a[a.index("--out") + 1], int(a[a.index("--now") + 1])
@@ -743,20 +844,34 @@ if os.environ.get("STANDIN_FAIL"):
     os.makedirs(out, exist_ok=True)
     open(os.path.join(out, "walletmem.json.gz"), "wb").write(gzip.compress(b"{}"))
     sys.exit(1)
+try:
+    prev = json.loads(gzip.decompress(open(os.path.join(d, "xlinks.json.gz"), "rb").read()))
+except (OSError, EOFError, ValueError):
+    prev = None
+links = prev["links"] if isinstance(prev, dict) and prev.get("v") == 1 and isinstance(prev.get("links"), dict) else {}
 os.makedirs(out, exist_ok=True)
-for n, doc in (("walletmem.json.gz", {"v": 1, "t": now, "nCoins": 0, "common": [], "sw": {}, "rug": []}), ("xlinks.json.gz", {"v": 1, "t": now, "links": {}}),
+for n, doc in (("walletmem.json.gz", {"v": 1, "t": now, "nCoins": 0, "common": [], "sw": {}, "rug": []}), ("xlinks.json.gz", {"v": 1, "t": now, "links": links}),
                ("symmc.json.gz", {"v": 1, "t": now, "sym": {}})):
     open(os.path.join(out, n), "wb").write(gzip.compress(json.dumps(doc).encode(), mtime=0))
-json.dump({"v": 1, "t": now, "files": {}}, open(os.path.join(out, "meta.json"), "w"))
+if not os.environ.get("STANDIN_THREE"):        # STANDIN_THREE: a feed that ends well but wrote only three of the four files
+    json.dump({"v": 1, "t": now, "files": {}}, open(os.path.join(out, "meta.json"), "w"))
 print(json.dumps({"t": now}))
 '''
 
 
+def _xlink_keys(remote):
+    raw = subprocess.run(["git", "-C", remote, "show", "radar-feed:xlinks.json.gz"], capture_output=True).stdout
+    try:
+        return set((json.loads(gzip.decompress(raw)) or {}).get("links") or {})
+    except (OSError, EOFError, ValueError, AttributeError):
+        return set()
+
+
 def _s7(check, job, tmp):
     print("== scan side S7: step B feeds the launch radar: traps.py feed on the mock db, one orphan commit on radar-feed")
-    st = step(job, "Feed the launch radar")
     rng = random.Random(53)
-    now = int(time.time() * 1000) // 60_000 * 60_000
+    wall = int(time.time() * 1000) // 60_000 * 60_000
+    now = wall - 2 * H                       # the newest run doc two hours back, so the next scan's (one hour later) is still in the past
     ws = os.path.join(tmp, "s7ws")
     mb = os.path.join(ws, "mb")
     clock = _mock_mb(mb, now, rng)
@@ -771,8 +886,10 @@ def _s7(check, job, tmp):
     git("init", "-q", "--bare", remote)
     put_branch(remote, "results", {"report.html": b"<html>results</html>"}, tmp)
     res0 = git("-C", remote, "rev-parse", "refs/heads/results").strip()
-    env = dict(st.get("env") or {}, RESULTS_URL=remote)
-    p, secs = run_script(st["run"], ws, env, timeout=180)
+    tip = lambda: git("-C", remote, "rev-parse", "-q", "--verify", "refs/heads/radar-feed", check=False).strip()
+    pa0, _ = _import(job, ws, remote, tmp)                   # the first scan: no radar-feed yet, so step A's mark says none
+    m0 = import_mark(mb)
+    p, secs = _feed(job, ws, remote, tmp)
     print("  " + "\n  ".join((p.stdout.strip().splitlines() or ["-"])[-2:]) + ("" if p.returncode == 0 else "\n  " + p.stderr[-600:]))
     files = sorted(git("-C", remote, "ls-tree", "--name-only", "radar-feed", check=False).split())
     n_commits = git("-C", remote, "rev-list", "--count", "refs/heads/radar-feed", check=False).strip()
@@ -780,37 +897,71 @@ def _s7(check, job, tmp):
     local = {n: open(os.path.join(ws, "feed", n), "rb").read() for n in FEED_FILES if os.path.exists(os.path.join(ws, "feed", n))}
     pushed = {n: subprocess.run(["git", "-C", remote, "show", "radar-feed:" + n], capture_output=True).stdout for n in FEED_FILES}
     wm = json.loads(gzip.decompress(pushed["walletmem.json.gz"])) if pushed.get("walletmem.json.gz") else {}
-    check(p.returncode == 0 and files == sorted(FEED_FILES) and n_commits == "1" and local == pushed and meta.get("t") == clock and wm.get("v") == 1
-          and wm.get("t") == clock and (not real or (wm.get("nCoins") == 60 * 200 and secs < 60)),
+    check(m0 == "none" and p.returncode == 0 and files == sorted(FEED_FILES) and n_commits == "1" and local == pushed and meta.get("t") == clock and wm.get("v") == 1
+          and wm.get("t") == clock and "step A did not import" not in p.stderr and (not real or (wm.get("nCoins") == 60 * 200 and secs < 60)),
           "traps.py feed%s writes the four files in %.1f s (budget 60 s) at the scan's clock (the newest run doc's time), and radar-feed holds exactly them"
-          " in one commit%s" % ("" if real else " (stand-in)", secs, " (walletmem from %d coins)" % wm.get("nCoins", 0) if real else ""))
-    # the next scan: a second orphan commit replaces the first; a feed that fails pushes nothing; results is never touched
-    first = git("-C", remote, "rev-parse", "refs/heads/radar-feed").strip()
+          " in one commit (step A's mark: none, a first feed)%s" % ("" if real else " (stand-in)", secs, " (walletmem from %d coins)" % wm.get("nCoins", 0) if real else ""))
+    # the next scan: step A brings the index back (mark ok); a second orphan commit replaces the first; a run doc dated 5 h ahead is ignored
+    first, k1 = tip(), _xlink_keys(remote)
     json.dump({"t": clock + H, "mode": "full"}, open(os.path.join(mb, "db", "memeruns", "r9.json"), "w"))
-    p2, _ = run_script(st["run"], ws, env, timeout=180)
-    second = git("-C", remote, "rev-parse", "refs/heads/radar-feed").strip()
+    json.dump({"t": wall + 5 * H, "mode": "full"}, open(os.path.join(mb, "db", "memeruns", "r9-ahead.json"), "w"))
+    pa1, _ = _import(job, ws, remote, tmp)
+    m1 = import_mark(mb)
+    p2, _ = _feed(job, ws, remote, tmp)
+    second, k2 = tip(), _xlink_keys(remote)
     meta2 = json.loads(git("-C", remote, "show", "radar-feed:meta.json", check=False) or "{}")
     n2 = git("-C", remote, "rev-list", "--count", "refs/heads/radar-feed", check=False).strip()
+    check(m1 == "ok" and p2.returncode == 0 and second != first and n2 == "1" and meta2.get("t") == clock + H and k1 <= k2 and "step A did not import" not in p2.stderr,
+          "the next scan (step A's mark ok) replaces it with one new commit (force-pushed, still 1 commit) at its clock (%+d min; a run doc dated"
+          " 5 h ahead of the wall clock is ignored)" % ((meta2.get("t", 0) - clock) // 60_000))
+    # step A could not fetch radar-feed (fresh runner, no index in mb/): step B fetches the index itself, so 30 days of X links survive
+    planted = {"x.com/oldacct%d" % i: [b58(rng), clock - 3 * D, 1, "account", clock - 2 * D, []] for i in range(50)}
+    put_branch(remote, "radar-feed", {"walletmem.json.gz": gz({"v": 1, "t": clock, "nCoins": 1, "common": [], "sw": {}, "rug": []}),
+                                      "xlinks.json.gz": gz({"v": 1, "t": clock, "links": planted}), "symmc.json.gz": gz({"v": 1, "t": clock, "sym": {}}),
+                                      "meta.json": b'{"v":1}'}, tmp)
+    held = tip()
+    shim = git_shim(tmp)
+    with contextlib.suppress(FileNotFoundError):            # a fresh runner: no index in mb/ (gone already when step B wrote none)
+        os.remove(os.path.join(mb, "xlinks.json.gz"))
+    pa3, _ = _import(job, ws, remote, tmp, SHIM_FAIL="refs/heads/radar-feed", **shim)
+    m3 = import_mark(mb)
+    p4, _ = _feed(job, ws, remote, tmp)
+    k4, after4 = _xlink_keys(remote), tip()
+    print("  " + "\n  ".join(l for l in (p4.stderr.strip().splitlines()[:1] + p4.stdout.strip().splitlines()[-1:])))
+    check(m3 == "failed" and p4.returncode == 0 and after4 != held and set(planted) <= k4 and "fetched it here instead" in p4.stderr,
+          "step A could not fetch radar-feed (mark failed): step B fetches the X-link index itself and the new feed keeps all %d old links"
+          " (%d of %d)" % (len(planted), len(set(planted) & k4), len(planted)))
+    # step B cannot fetch it either: radar-feed is left as it is (one line, the step ends well)
+    with contextlib.suppress(FileNotFoundError):            # a fresh runner: no index in mb/ (gone already when step B wrote none)
+        os.remove(os.path.join(mb, "xlinks.json.gz"))
+    pa5, _ = _import(job, ws, remote, tmp, SHIM_FAIL="refs/heads/radar-feed", **shim)
+    p5, _ = _feed(job, ws, remote, tmp, SHIM_FAIL="refs/heads/radar-feed", **shim)
+    print("  " + "\n  ".join(p5.stderr.strip().splitlines()[:1] + p5.stdout.strip().splitlines()[-1:]))
+    check(import_mark(mb) == "failed" and p5.returncode == 0 and tip() == after4 and set(planted) <= _xlink_keys(remote)
+          and "radar-feed left as it is" in p5.stdout and "could not be fetched here either" in p5.stderr and not os.path.exists(os.path.join(mb, "xlinks.json.gz")),
+          "neither step A nor step B can fetch radar-feed: no feed from this scan alone, radar-feed keeps its last commit and its X links (one line)")
+    # a feed that fails, or ends well with three of the four files: nothing is pushed; results is never touched
+    kept = tip()
     bad_ws = os.path.join(tmp, "s7bad")
     os.makedirs(bad_ws)
     os.symlink(mb, os.path.join(bad_ws, "mb"))
     open(os.path.join(bad_ws, "traps.py"), "w").write(STANDIN_TRAPS)
-    p3, _ = run_script(st["run"], bad_ws, dict(env, STANDIN_FAIL="1"), timeout=60)
-    third = git("-C", remote, "rev-parse", "refs/heads/radar-feed").strip()
+    open(os.path.join(mb, ".radar_feed_import"), "w").write("ok")
+    p6, _ = _feed(job, bad_ws, remote, tmp, STANDIN_FAIL="1")
+    p7, _ = _feed(job, bad_ws, remote, tmp, STANDIN_THREE="1")
     heads = sorted(git("-C", remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").split())
-    check(p2.returncode == 0 and second != first and n2 == "1" and meta2.get("t") == clock + H and p3.returncode != 0 and third == second
+    check(p6.returncode != 0 and p7.returncode != 0 and "did not write meta.json" in p7.stdout and tip() == kept
           and git("-C", remote, "rev-parse", "refs/heads/results").strip() == res0 and heads == ["radar-feed", "results"],
-          "the next scan replaces it with one new commit (force-pushed, still 1 commit, its clock %+d min); a feed that fails pushes nothing (the"
-          " branch keeps the last good feed); results is untouched and no other branch appears %s" % ((meta2.get("t", 0) - clock) // 60_000, heads))
+          "all four or none: a feed that fails, or ends well having written three of the four files, pushes nothing (the branch keeps the last"
+          " good feed); results is untouched and no other branch appears %s" % heads)
     # the next scan's step A brings the wallet memory and the X-link index back into mb/
-    if job and step(job, "Import the launch radar's records"):
-        ws2 = os.path.join(tmp, "s7next")
-        os.makedirs(os.path.join(ws2, "mb"))
-        pa, _ = _import(job, ws2, remote, tmp)
-        got = {n: open(os.path.join(ws2, "mb", n), "rb").read() for n in ("walletmem.json.gz", "xlinks.json.gz") if os.path.exists(os.path.join(ws2, "mb", n))}
-        want = {n: subprocess.run(["git", "-C", remote, "show", "radar-feed:" + n], capture_output=True).stdout for n in ("walletmem.json.gz", "xlinks.json.gz")}
-        check(pa.returncode == 0 and got == want and len(got) == 2 and "no branch radar-data yet" in pa.stdout,
-              "the next scan's step A imports the feed it pushed (walletmem.json.gz, xlinks.json.gz into mb/) and says radar-data is not there yet")
+    ws2 = os.path.join(tmp, "s7next")
+    os.makedirs(os.path.join(ws2, "mb"))
+    pa, _ = _import(job, ws2, remote, tmp)
+    got = {n: open(os.path.join(ws2, "mb", n), "rb").read() for n in ("walletmem.json.gz", "xlinks.json.gz") if os.path.exists(os.path.join(ws2, "mb", n))}
+    want = {n: subprocess.run(["git", "-C", remote, "show", "radar-feed:" + n], capture_output=True).stdout for n in ("walletmem.json.gz", "xlinks.json.gz")}
+    check(pa.returncode == 0 and got == want and len(got) == 2 and "no branch radar-data yet" in pa.stdout and import_mark(os.path.join(ws2, "mb")) == "ok",
+          "the next scan's step A imports the feed it pushed (walletmem.json.gz, xlinks.json.gz into mb/, mark ok) and says radar-data is not there yet")
 
 
 def main():

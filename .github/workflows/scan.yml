@@ -103,20 +103,33 @@ jobs:
         env:
           GIT_TERMINAL_PROMPT: '0'
         run: |
-          # radar-data (written only by the radar job): radar.json goes to mb/radar_live.json for the page, the hour docs of its last 48
-          # hours to mb/db/memeradar (the results branch keeps them 30 days). radar-feed (written by "Feed the launch radar" below): the
-          # wallet memory and the X-link index go to mb/ for the page and the next feed. Files are added or overwritten, never deleted (a
-          # wiped radar-data branch cannot wipe the results copy), each checked first (a JSON object; an hour doc named by its hour, with
-          # its time) and written whole. A missing branch is one line. The trader never reads any of these files.
+          # radar-feed (written by "Feed the launch radar" below): the wallet memory and the X-link index go to mb/ for the page and the
+          # next feed. radar-data (written only by the radar job): radar.json goes to mb/radar_live.json for the page, the hour docs of its
+          # last 48 hours to mb/db/memeradar (the results branch keeps them 30 days). Files are added or overwritten, never deleted (a wiped
+          # radar-data branch cannot wipe the results copy), each checked first (a JSON object; an hour doc named by its hour, with its
+          # time) and written whole. Each branch has its own fetch and time limit, radar-feed first (its X-link history exists nowhere
+          # else); every git call ends within 50 s, so the mark mb/.radar_feed_import (for the feed step: ok, none when there is nothing to
+          # keep, failed) is always written. A missing branch is one line. The trader never reads any of these files.
           python3 - <<'PY'
-          import gzip, json, math, os, re, shutil, subprocess, sys
+          import gzip, json, math, os, re, shutil, signal, subprocess, time
           url, mb = os.environ["RESULTS_URL"], "mb"
           tmp = os.path.join(os.environ.get("RUNNER_TEMP") or "/tmp", "radar-import")
           HOUR = re.compile(r"db/memeradar/\d{4}-\d{2}-\d{2}T\d{2}\.json")
+          END = time.monotonic() + 50
           say = lambda s: print("radar import: " + s, flush=True)
 
-          def git(*a, t=18):          # ls-remote 15 s + two fetches 18 s each: inside the step's minute
-              return subprocess.run(["git", "-C", tmp] + list(a), capture_output=True, timeout=t)
+          def git(repo, *a, t=18):    # ls-remote 15 s, each fetch 18 s, all within END; in its own process group, so that a timeout
+              left = END - time.monotonic()                     # kills git and its https helper together
+              if left < 1:
+                  raise subprocess.TimeoutExpired("git " + a[0], 0)
+              p = subprocess.Popen(["git", "-C", repo] + list(a), stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+              try:
+                  out, _ = p.communicate(timeout=min(t, left))
+              except subprocess.TimeoutExpired:
+                  os.killpg(p.pid, signal.SIGKILL)
+                  p.communicate()
+                  raise
+              return p.returncode, out
 
           def obj(raw, gz=False):
               try:
@@ -134,66 +147,85 @@ jobs:
                   f.write(raw)
               os.replace(part, dst)
 
-          def tree():                 # {path: blob sha} of the fetched commit's plain files
+          def mark(s):                # for the feed step: was radar-feed's X-link index brought in
+              put(".radar_feed_import", s.encode())
+
+          def tree(repo):             # {path: blob sha} of the fetched commit's plain files
               out = {}
-              for e in git("ls-tree", "-r", "-z", "--full-tree", "FETCH_HEAD").stdout.decode("utf-8", "replace").split("\0"):
+              for e in git(repo, "ls-tree", "-r", "-z", "--full-tree", "FETCH_HEAD")[1].decode("utf-8", "replace").split("\0"):
                   meta, _, path = e.partition("\t")
                   if meta.split(" ")[:2] == ["100644", "blob"]:
                       out[path] = meta.split(" ")[2]
               return out
 
-          def blob(sha, cap):
-              raw = git("cat-file", "blob", sha).stdout
+          def blob(repo, sha, cap):
+              raw = git(repo, "cat-file", "blob", sha)[1]
               return raw if len(raw) <= cap else None
+
+          def feed(heads, repo):
+              if "refs/heads/radar-feed" not in heads:
+                  mark("none")
+                  return "no branch radar-feed yet: the page's wallet check shows unknown"
+              rc = git(repo, "fetch", "-q", "--depth", "1", url, "refs/heads/radar-feed")[0]
+              if rc != 0:
+                  return "radar-feed could not be fetched (git exit %d): the page's wallet check shows unknown; the feed step tries once more" % rc
+              files, got = tree(repo), []
+              for name in ("walletmem.json.gz", "xlinks.json.gz"):
+                  raw = blob(repo, files[name], 95 << 20) if name in files else None
+                  d = obj(raw, gz=True) if raw is not None else None
+                  if d is not None and d.get("v") == 1:
+                      put(name, raw)
+                      got.append(name)
+              mark("ok" if "xlinks.json.gz" in got else "none")      # none: radar-feed holds no usable X-link index, so nothing to keep
+              return "radar-feed: %s" % (", ".join(got) + " into mb/" if got else "no usable file")
+
+          def data(heads, repo):
+              if "refs/heads/radar-data" not in heads:
+                  return "no branch radar-data yet (the radar has not run): no records"
+              rc = git(repo, "fetch", "-q", "--depth", "1", url, "refs/heads/radar-data")[0]
+              if rc != 0:
+                  return "radar-data could not be fetched (git exit %d): the records keep the results branch's copy" % rc
+              files, n, bad = tree(repo), 0, 0
+              for path in sorted(files):
+                  if not HOUR.fullmatch(path):
+                      continue
+                  raw = blob(repo, files[path], 8 << 20)
+                  d = obj(raw) if raw is not None else None
+                  t = d.get("t") if d else None
+                  if not (isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t)):
+                      bad += 1
+                      continue
+                  put(path, raw)
+                  n += 1
+              raw = blob(repo, files["radar.json"], 1 << 20) if "radar.json" in files else None
+              live = raw is not None and obj(raw) is not None
+              if live:
+                  put("radar_live.json", raw)
+              return "radar-data: %d hour docs into mb/db/memeradar%s; radar.json %s" % (
+                  n, " (%d skipped: not a JSON object with its time)" % bad if bad else "", "as mb/radar_live.json" if live else "missing or not a JSON object")
 
           try:
               shutil.rmtree(tmp, ignore_errors=True)
-              subprocess.run(["git", "init", "-q", tmp], check=True, capture_output=True)
-              ls = git("ls-remote", "--heads", url, "radar-data", "radar-feed", t=15)
-              if ls.returncode != 0:
-                  say("the remote did not answer (git exit %d): nothing imported" % ls.returncode)
-                  sys.exit(0)
-              heads = {l.split("\t", 1)[1] for l in ls.stdout.decode("utf-8", "replace").splitlines() if "\t" in l}
-              if "refs/heads/radar-data" not in heads:
-                  say("no branch radar-data yet (the radar has not run): no records")
-              elif git("fetch", "-q", "--depth", "1", url, "refs/heads/radar-data").returncode != 0:
-                  say("radar-data could not be fetched: the page and the results keep their last copy")
+              for r in ("feed", "data"):
+                  subprocess.run(["git", "init", "-q", os.path.join(tmp, r)], check=True, capture_output=True)
+              mark("failed")
+              rc, out = git(os.path.join(tmp, "feed"), "ls-remote", "--heads", url, "radar-data", "radar-feed", t=15)
+              if rc != 0:
+                  say("the remote did not answer (git exit %d): nothing imported" % rc)
               else:
-                  files, n, bad = tree(), 0, 0
-                  for path in sorted(files):
-                      if not HOUR.fullmatch(path):
-                          continue
-                      raw = blob(files[path], 8 << 20)
-                      d = obj(raw) if raw is not None else None
-                      t = d.get("t") if d else None
-                      if not (isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t)):
-                          bad += 1
-                          continue
-                      put(path, raw)
-                      n += 1
-                  raw = blob(files["radar.json"], 1 << 20) if "radar.json" in files else None
-                  live = raw is not None and obj(raw) is not None
-                  if live:
-                      put("radar_live.json", raw)
-                  say("radar-data: %d hour docs into mb/db/memeradar%s; radar.json %s" % (
-                      n, " (%d skipped: not a JSON object with its time)" % bad if bad else "", "as mb/radar_live.json" if live else "missing or not a JSON object"))
-              if "refs/heads/radar-feed" not in heads:
-                  say("no branch radar-feed yet: the page's wallet check shows unknown")
-              elif git("fetch", "-q", "--depth", "1", url, "refs/heads/radar-feed").returncode != 0:
-                  say("radar-feed could not be fetched: the page's wallet check uses the last copy, if any")
-              else:
-                  files, got = tree(), []
-                  for name in ("walletmem.json.gz", "xlinks.json.gz"):
-                      raw = blob(files[name], 95 << 20) if name in files else None
-                      d = obj(raw, gz=True) if raw is not None else None
-                      if d is not None and d.get("v") == 1:
-                          put(name, raw)
-                          got.append(name)
-                  say("radar-feed: %s" % (", ".join(got) + " into mb/" if got else "no usable file"))
+                  heads = {l.split("\t", 1)[1] for l in out.decode("utf-8", "replace").splitlines() if "\t" in l}
+                  for name, part, repo in (("radar-feed", feed, "feed"), ("radar-data", data, "data")):
+                      try:
+                          say(part(heads, os.path.join(tmp, repo)))
+                      except subprocess.TimeoutExpired:
+                          say("%s took too long: %s" % (name, "the page's wallet check shows unknown; the feed step tries once more" if name == "radar-feed"
+                                                            else "the records keep the results branch's copy (hour docs copied so far stay)"))
+                      except Exception as e:
+                          say("%s stopped (%s): what was copied stays" % (name, type(e).__name__))
           except subprocess.TimeoutExpired:
-              say("git took too long: what was imported stays, the rest keeps its last copy")
+              say("the remote took too long to answer: nothing imported")
           except Exception as e:
-              say("stopped (%s): what was imported stays" % type(e).__name__)
+              say("stopped (%s): nothing imported" % type(e).__name__)
           finally:
               shutil.rmtree(os.path.join(mb, ".radartmp"), ignore_errors=True)
               shutil.rmtree(tmp, ignore_errors=True)
@@ -274,17 +306,74 @@ jobs:
           GIT_TERMINAL_PROMPT: '0'
         run: |
           # traps.py feed reads only mb/ (the scored snapshots for the wallet memory, the X links pump.fun and DexScreener list, the
-          # symbols' market caps) at this scan's clock (the newest run doc's time) and writes four files. They go to the branch
-          # radar-feed as one commit, force-pushed (this step is that branch's only writer); the radar job reads them. All four or none.
+          # symbols' market caps) at this scan's clock (the newest run doc's time; a doc dated over 10 minutes past the wall clock is
+          # ignored) and writes four files. They go to the branch radar-feed as one commit, force-pushed (this step is that branch's only
+          # writer); the radar job reads them. All four or none. The new X-link index is merged with the one on radar-feed (30 days, kept
+          # nowhere else), which step A brought into mb/: its mark says ok, or none when there is nothing to keep. Otherwise this step
+          # fetches that index once more, and when that fails too, radar-feed is left as it is: a feed from this scan alone would drop the
+          # history (the radar's wallet memory is then one scan older, inside its 3-hour limit).
+          got=$(cat mb/.radar_feed_import 2>/dev/null || true)
+          if [ "$got" != ok ] && [ "$got" != none ]; then
+            got=$(python3 - <<'PY'
+          import gzip, json, os, shutil, signal, subprocess, sys
+          url, tmp = os.environ["RESULTS_URL"], os.path.join(os.environ.get("RUNNER_TEMP") or "/tmp", "radar-feed-prev")
+
+          def git(*a, t):             # in its own process group: a timeout kills git and its https helper together
+              p = subprocess.Popen(["git", "-C", tmp] + list(a), stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+              try:
+                  return p.communicate(timeout=t)[0], p.returncode
+              except subprocess.TimeoutExpired:
+                  os.killpg(p.pid, signal.SIGKILL)
+                  p.communicate()
+                  return b"", -1
+
+          got, why = "failed", ""
+          try:
+              shutil.rmtree(tmp, ignore_errors=True)
+              subprocess.run(["git", "init", "-q", tmp], check=True, capture_output=True)
+              out, rc = git("ls-remote", "--heads", url, "radar-feed", t=15)
+              if rc == 0 and not out.strip():
+                  got, why = "none", "there is no branch radar-feed, so a fresh index"
+              elif rc != 0 or git("fetch", "-q", "--depth", "1", url, "refs/heads/radar-feed", t=30)[1] != 0:
+                  why = "radar-feed could not be fetched here either"
+              else:
+                  lst, rc = git("ls-tree", "FETCH_HEAD", "xlinks.json.gz", t=10)
+                  raw, rc2 = git("cat-file", "blob", "FETCH_HEAD:xlinks.json.gz", t=10) if rc == 0 and lst.strip() else (b"", 0)
+                  try:
+                      d = json.loads(gzip.decompress(raw).decode("utf-8")) if raw else None
+                  except (OSError, EOFError, ValueError):
+                      d = None
+                  if rc != 0 or rc2 != 0:
+                      why = "radar-feed could not be read here either"
+                  elif not (isinstance(d, dict) and d.get("v") == 1):
+                      got, why = "none", "radar-feed holds no usable index, so a fresh one"
+                  else:
+                      with open("mb/.xlinks.part", "wb") as f:
+                          f.write(raw)
+                      os.replace("mb/.xlinks.part", "mb/xlinks.json.gz")
+                      got, why = "ok", "fetched it here instead"
+          except Exception as e:
+              why = "stopped (%s)" % type(e).__name__
+          finally:
+              shutil.rmtree(tmp, ignore_errors=True)
+          print("radar feed: step A did not import the X-link index; " + why, file=sys.stderr, flush=True)
+          print(got)
+          PY
+          ) || got=failed
+          fi
+          if [ "$got" != ok ] && [ "$got" != none ]; then
+            echo "radar-feed left as it is: its X-link history could not be read, and a feed from this scan alone would drop it"
+            exit 0
+          fi
           now=$(python3 - <<'PY'
-          import glob, json
-          ts = []
+          import glob, json, time
+          ts, late = [], int(time.time() * 1000) + 600_000
           for f in glob.glob("mb/db/memeruns/*.json"):
               try:
                   t = json.load(open(f, encoding="utf-8")).get("t")
               except Exception:
                   continue
-              if isinstance(t, int) and not isinstance(t, bool) and t > 0:
+              if isinstance(t, int) and not isinstance(t, bool) and 0 < t <= late:
                   ts.append(t)
           print(max(ts) if ts else "")
           PY
@@ -292,6 +381,9 @@ jobs:
           [ -n "$now" ] || now=$(date +%s%3N)
           rm -rf feed
           python3 traps.py feed --dir mb --out feed --now "$now"
+          for f in walletmem.json.gz xlinks.json.gz symmc.json.gz meta.json; do
+            [ -s "feed/$f" ] || { echo "the feed did not write $f: radar-feed left as it is"; exit 1; }
+          done
           cd feed && git init -q && git checkout -q -b radar-feed
           git add walletmem.json.gz xlinks.json.gz symmc.json.gz meta.json
           git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "radar feed $(date -u -d "@$((now / 1000))" +%Y-%m-%dT%H:%MZ)"
@@ -435,11 +527,12 @@ jobs:
       contents: write                # the results branch: the scan job pushed it before this job starts, and nothing else writes it meanwhile
     env:
       PYTHONUTF8: '1'
-      RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
     steps:
       - uses: actions/checkout@v4
       - name: Restore the bot's state from the results branch
         id: restore
+        env:
+          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git   # only here and in the push
         run: |
           if git ls-remote --exit-code --heads "$RESULTS_URL" results >/dev/null; then
             git clone -q --depth 1 --branch results "$RESULTS_URL" mb || (sleep 10 && git clone -q --depth 1 --branch results "$RESULTS_URL" mb)
@@ -454,4 +547,6 @@ jobs:
         run: python3 peak.py run --dir mb --deadline-s 600
       - name: Push the peak docs to the results branch
         if: ${{ !cancelled() && steps.restore.outputs.ok == 'true' }}
+        env:
+          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: python3 bot.py sync --remote "$RESULTS_URL"
