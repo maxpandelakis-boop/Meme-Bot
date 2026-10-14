@@ -2,7 +2,8 @@
 """launch_radar.py: the launch radar, its own job beside the hourly scan. Fake money only: it rates new coins for the page and the
 phone, it never buys anything, and the paper trader never reads what it writes.
 
-Every 150 s (a fixed grid from the run's start; an overrun skips grid points, it never bursts) one cycle, one thread, 125 s at most:
+One round per start (radar.yml runs `round`: the hourly scan's last step starts one after every full scan inside the active hours, and
+"Run workflow" starts one by hand), one cycle, one thread, 125 s at most; the whole job takes about 2 to 3 minutes:
   1. kill switch (the radar workflow's state on GitHub) and the active hours (MEMEBOT_RADAR_HOURS, default 7-24 Berlin)
   2. discovery (radar_src, the WP0 probe's set): pump.fun graduated (pages 1-4) and newest coins (pages 1-2), GeckoTerminal new
      pools (pages 1-2), Jupiter recent, DexScreener profiles (LaunchLab newest only when switched on), into the cycle's sandbox
@@ -23,16 +24,22 @@ Every 150 s (a fixed grid from the run's start; an overrun skips grid points, it
      radar.json, the records of the last 48 hours, model.json and pushed.json go to the branch radar-data (one commit, force-pushed,
      never smaller than the last tree), radar.json to the app's live store (row "radar"); a push notification only for a good coin
      without a holder cluster and without anything unknown, once per coin, at most 4 an hour
-About 2 minutes before its end the run starts its successor (radar.yml, source chain, 55 minutes) when the workflow is active, the
-active hours last at least 10 more minutes and no other radar run is waiting. Disabling the workflow stops it within one cycle (state
-off). A run lasts at most 70 minutes (the job stops at 75).
+A round never starts another run: no successor, no keep-alive. Disabling the workflow stops it (a running round sees it at its start:
+state off; a disabled workflow refuses every start). The loop (a cycle every 150 s for --minutes) stays for a VM.
 
 Usage:
+  python3 launch_radar.py round --dir rd [--mock URL] [--clock fake --now <ms>] [--no-github] [--remote URL]
+                                                           one round (radar.yml's default): the stores, one cycle, the caches
   python3 launch_radar.py loop --dir rd --minutes 55 --cadence 150 [--mock URL] [--clock fake --now <ms>] [--no-github] [--remote URL]
   python3 launch_radar.py hours --dir rd [--remote URL]      the job's hours gate: prints inside=true|false (outside: state "hours" once)
---no-github turns off the kill switch and the chaining (a VM); there --minutes 0 runs until stopped and sleeps through the hours outside
-the active ones (with GitHub, 0 means the default 55). Further options: --cache (the working
-caches, default rdcache), --deadline (s a cycle may take, default 125 at cadence 150), --source, --horizon (the scan's profile, 2h).
+After a round radar.json says state "done", with "next" about when the next round comes (an hour after the last round the scan started,
+inside the active hours; null when none is known) and "hourly" (when the scan last started one). The loop: --no-github turns off the
+kill switch (a VM); there --minutes 0 runs until stopped and sleeps through the hours outside the active ones (with GitHub, 0 means 55).
+Further options: --cache (the working caches, default rdcache), --deadline (s a cycle may take, default 125 at cadence 150), --source,
+--horizon (the scan's profile, 2h).
+Later prices: due at 5, 15, 30 and 60 minutes after first sight, taken at the first cycle at or after each, at most half the offset late
+(marked late); a round also takes the 1 h price up to 15 minutes early (marked early), since the next round comes about an hour later.
+A price no cycle caught stays missing (never 0); the 1 h outcome (and so the radar model) needs only the 1 h price.
 Secrets come only from the environment: GITHUB_TOKEN (the API), RADAR_URL (the git remote with its token), SUPABASE_* (app.py); none is
 ever printed or written, and git runs without them (child_env). When radar-data exists but cannot be read, nothing is pushed there and
 no notification goes out until a later cycle reads it.
@@ -66,8 +73,9 @@ GT_SLOTS = 3                # GeckoTerminal candle calls a cycle (10 s apart; Ge
 RC_TTL = 300_000            # a RugCheck report is asked again after this while its coin is under 10 min
 DEV_TTL = 6 * 3_600_000     # a dev's launch history is kept this long
 LATER = (5, 15, 30, 60)     # minutes after first sight: the later prices
-DUE_SLACK = 2_000           # ms: the clock's jitter between two grid points (first sight is a cycle's start); a price is never taken earlier
-LATE_X = 1.5                # a later price the radar missed (it was not running) is taken up to this many times its offset late, marked late
+DUE_SLACK = 2_000           # ms: the clock's jitter between two grid points (first sight is a cycle's start); a price is never taken earlier (a round's 1 h price aside)
+LATE_X = 0.5                # a later price the radar missed (it was not running) is taken up to this many times its offset late, marked late
+EARLY_60 = 15 * 60_000      # ms: a round (no cycle comes after it for about an hour) takes the 1 h price this early, marked early (45 to 90 min)
 PEAK_AT = 62 * 60_000       # the peak within the hour is priced from this age of the record (one GeckoTerminal call, at most 3 tries)
 PAID_RECHECK = 3 * 60_000   # a coin without a paid DexScreener profile is asked again after this while it is on the radar
 KEEP_MS = 48 * 3_600_000    # hour docs on radar-data
@@ -84,11 +92,10 @@ RES_EVERY = 15 * 60_000     # results (train.json, spotter.json, positions, 30 d
 FEED_EVERY = 30 * 60_000    # radar-feed (walletmem, xlinks, symmc) fetched again after this
 DOC_MAX = 48_000            # bytes: radar.json; over it the fold (others) is cut first, then recent
 FAIL_DEGRADED, FAIL_EXIT = 3, 10
-CHAIN_BEFORE = 120_000      # ms before the run's end: the successor is dispatched
-CHAIN_ROOM = 10 * 60_000    # ms: a successor starts only when the active hours last at least this long after this run's end
-CHAIN_TRIES = 2             # a GitHub hiccup (no answer, a refused dispatch) gets one more try, half a minute later
-DEFAULT_MINUTES = 55        # a run's length (radar.yml's default); every successor runs this long, or this run's length when longer
-MAX_MINUTES = 70            # the longest run: radar.yml's job stops at 75 minutes, start and cache included
+ROUND_EVERY = 3_600_000     # the hourly scan starts one round at the end of each full scan: about an hour apart
+ROUND_KNOWN = 3 * 3_600_000 # the last round the scan started dates the next one while it is at most this old
+DEFAULT_MINUTES = 55        # a loop run's length when --minutes is 0 or missing with GitHub (a VM without GitHub runs until stopped)
+MAX_MINUTES = 70            # the longest loop run with an end (a VM's --minutes 0 has none)
 LOG_KEEP = 2_000            # log lines kept in memory (a VM runs for days)
 MODEL_NEED = 300            # records with a known 1 h outcome before the radar model is fitted
 TICKET = 3.0                # the record line's paper stake per call (the new-launch ticket)
@@ -176,8 +183,8 @@ def parse_hours(s):
 
 
 def run_minutes(m, forever_ok):
-    """A run's length in minutes: at most MAX_MINUTES (radar.yml's job stops at 75; a longer run would be cut before it starts its
-    successor). 0 = until stopped, only where nothing stops it from outside (forever_ok: no GitHub, a VM); else the default."""
+    """A loop run's length in minutes (the loop is for a VM; radar.yml runs one round): at most MAX_MINUTES. 0 = until stopped, only
+    where nothing stops it from outside (forever_ok: no GitHub, a VM); else the default."""
     m = num(m)
     if m is None or m <= 0:
         return 0.0 if forever_ok else float(DEFAULT_MINUTES)
@@ -399,7 +406,7 @@ class Radar:
         self.W_prior = self.T.load_weights()
         self.W = self.W_prior
         self.fails, self.notes_run, self.cycle_lines, self.work, self.closes = 0, [], [], {}, {}
-        self.chained, self.chain_tries, self.dispatches, self.publishes, self.out_pk = False, 0, 0, 0, set()
+        self.publishes, self.out_pk, self.one_round, self.push_failed = 0, set(), False, False
         self.mismatch_said, self.exch, self.pos, self.last_c, self.paid_at = set(), set(), None, {}, {}
         self.run_start = self.run_end = None
 
@@ -418,7 +425,7 @@ class Radar:
         if s not in self.notes_run:
             self.notes_run.append(s)
 
-    # ---------------------------------------------------------------- GitHub (kill switch, successor)
+    # ---------------------------------------------------------------- GitHub (the kill switch)
     def gh_fresh(self):
         """api.github.com is asked again whatever it answered before: the kill switch is read every cycle, so three refusals (a 403 of
         GitHub's secondary rate limit) or a 429 never give it up for the run (radar_src's breaker is for the coin hosts)."""
@@ -436,59 +443,25 @@ class Radar:
             return j["state"]
         return None
 
-    def others_alive(self):
-        """Whether another radar run is not completed yet (queued, waiting, pending or running: C4); None when GitHub did not answer."""
-        st, j = self.http.api("GET", "/repos/%s/actions/workflows/radar.yml/runs?per_page=20" % self.repo, token=self.token, until=time.time() + 8)
-        if st != 200 or not isinstance(j, dict) or not isinstance(j.get("workflow_runs"), list):
+    def next_round(self, now):
+        """About when the next round starts (radar.json "next" after a round): an hour after the last round the scan started (this one,
+        or the one the last radar.json names as "hourly"), the first such time inside the active hours; None when no round the scan
+        started is known from the last 3 hours (the page then says: with the next full scan)."""
+        base = self.hourly_at()
+        if not base or now - base > ROUND_KNOWN:
             return None
-        return any(isinstance(r, dict) and str(r.get("id")) != str(self.run_id) and r.get("status") != "completed" for r in j["workflow_runs"])
+        t = base + ROUND_EVERY * max(1, int(math.ceil((now + 60_000 - base) / float(ROUND_EVERY))))
+        for _ in range(48):
+            if in_hours(t, self.hours):
+                return int(t)
+            t += ROUND_EVERY
+        return None
 
-    def chain(self):
-        """The successor run (source chain; DEFAULT_MINUTES long, or this run's length when longer, at most MAX_MINUTES): only when this
-        run was long enough to have one (2 x CHAIN_BEFORE), the workflow is active, the active hours last CHAIN_ROOM after this run's end
-        and no other radar run is waiting or running. Those answers are final; a GitHub hiccup (no answer, a refused dispatch) gets one
-        more try (CHAIN_TRIES)."""
-        if self.chained or not self.github or not self.run_end:
-            return False
-        if self.run_end - self.run_start < 2 * CHAIN_BEFORE:
-            self.chained = True
-            self.say("successor: not started (a run of %.1f min starts none)" % ((self.run_end - self.run_start) / 60_000.0))
-            return False
-        self.chain_tries += 1
-        st = self.workflow_state()
-        if st is None:
-            return self.chain_hiccup("GitHub did not answer about the workflow")
-        if st != "active":
-            self.chained = True
-            self.say("successor: not started (the radar workflow is not active)")
-            return False
-        if not (in_hours(self.run_end + 60_000, self.hours) and in_hours(self.run_end + CHAIN_ROOM, self.hours)):
-            self.chained = True
-            self.say("successor: not started (the active hours %d-%d Berlin end within %d min of this run's end)" % (self.hours[0], self.hours[1], CHAIN_ROOM // 60_000))
-            return False
-        alive = self.others_alive()
-        if alive is None:
-            return self.chain_hiccup("GitHub did not list the runs")
-        if alive:
-            self.chained = True
-            self.say("successor: not started (another radar run is waiting)")
-            return False
-        mins = DEFAULT_MINUTES                       # every successor runs 55 minutes, whatever a hand-started run was given (radar.yml)
-        st, _ = self.http.api("POST", "/repos/%s/actions/workflows/radar.yml/dispatches" % self.repo,
-                              {"ref": self.ref, "inputs": {"minutes": str(mins), "source": "chain"}}, token=self.token, until=time.time() + 10)
-        self.dispatches += 1
-        if st in (200, 201, 204):
-            self.chained = True
-            self.say("successor: dispatched (%d min)" % mins)
-            return True
-        return self.chain_hiccup("dispatch refused (HTTP %s)" % st)
-
-    def chain_hiccup(self, why):
-        last = self.chain_tries >= CHAIN_TRIES
-        if last:
-            self.chained = True
-        self.say("successor: not started (%s)%s" % (why, "" if last else ", tried once more"))
-        return False
+    def hourly_at(self):
+        """When the hourly scan last started a round: this run's start when it did, else what the last radar.json says."""
+        if self.source == "hourly" and self.run_start:
+            return int(self.run_start)
+        return num((self.last_doc or {}).get("hourly")) if isinstance(self.last_doc, dict) else None
 
     # ---------------------------------------------------------------- stores
     def load_tree(self, files):
@@ -738,6 +711,7 @@ class Radar:
         True when it landed."""
         write_json(os.path.join(self.out, "radar.json"), doc)
         self.write_docs()
+        self.push_failed = False
         if not self.remote:
             return True
         if self.restore_state != "ok":
@@ -762,6 +736,7 @@ class Radar:
             self.publishes += 1
             return True
         except Exception as e:
+            self.push_failed = True
             self.say("radar-data push failed (%s): again next cycle" % RS.short(e))
             self.note("radar-data push failed: the page shows the app copy or an older list")
             return False
@@ -823,23 +798,49 @@ class Radar:
         self.W = self.W_prior
         return False
 
+    def round(self):
+        """One quick round (radar.yml's way): the stores, ONE cycle, the caches, then the run ends. It never starts another run: the
+        hourly scan's last step starts the next round after its next full scan, "Run workflow" starts one by hand. Returns the exit
+        code (1 when the cycle itself failed: radar.json then says degraded with the reason)."""
+        self.one_round = True
+        self.run_start = self.clock.now()
+        self.run_minutes, self.run_end = 0.0, None
+        self.say("run %s (%s): one round, active hours %d-%d Berlin%s" % (self.run_id, self.source, self.hours[0], self.hours[1],
+                                                                          "" if self.github else ", no kill switch (no GitHub)"))
+        self.start()
+        t_k = self.clock.now()
+        try:
+            res = self.cycle(0, t_k, True)
+        except Exception as e:
+            self.fails = 1
+            self.say("the round failed (%s): radar.json says degraded, the next round starts after the next full scan" % RS.short(e))
+            self.degraded(t_k, 0, "the round failed: %s" % RS.short(e))
+            self.save_cache()
+            return 1
+        if res == "ok" and self.push_failed and isinstance(self.last_doc, dict) and self.restore_state == "ok":
+            self.say("radar-data push failed: once more (no cycle comes after this round)")        # the round's records would be lost
+            self.http.until = time.time() + 40
+            self.publish(self.last_doc)
+        self.save_cache()
+        return 0
+
     def loop(self):
-        """The cycles of this run. Returns the exit code."""
+        """The cycles of this run (a VM; radar.yml runs one round). Returns the exit code. It never starts another run."""
         self.run_start = self.clock.now()
         mins = self.run_minutes = run_minutes(self.a.minutes, not self.github)
         if num(self.a.minutes) and self.a.minutes > mins:
-            self.say("%g minutes asked: a run is at most %d minutes (radar.yml's job stops at 75), so this one runs %d" % (self.a.minutes, MAX_MINUTES, mins))
+            self.say("%g minutes asked: a run is at most %d minutes, so this one runs %d" % (self.a.minutes, MAX_MINUTES, mins))
         self.run_end = self.run_start + int(mins * 60_000) if mins else None
         self.say("run %s (%s): %s, a cycle every %g s, active hours %d-%d Berlin%s" % (
             self.run_id, self.source, ("until %s UTC" % dt.datetime.fromtimestamp(self.run_end / 1000, dt.timezone.utc).strftime("%H:%M")) if self.run_end else "until stopped",
-            self.step / 1000.0, self.hours[0], self.hours[1], "" if self.github else ", no kill switch or successor (no GitHub)"))
+            self.step / 1000.0, self.hours[0], self.hours[1], "" if self.github else ", no kill switch (no GitHub)"))
         self.start()
         k = 0
         while True:
             t_k = self.run_start + k * self.step
             if self.run_end and t_k >= self.run_end:
                 break
-            self.wait_until(t_k)
+            self.clock.wait(t_k)
             last = bool(self.run_end and t_k + self.step >= self.run_end)
             try:
                 res = self.cycle(k, t_k, last)
@@ -851,7 +852,7 @@ class Radar:
                 if self.fails >= FAIL_DEGRADED:
                     self.degraded(t_k, k)
                 if self.fails >= FAIL_EXIT:
-                    self.say("%d cycles in a row failed: the run ends (the scan's watchdog starts the radar again)" % self.fails)
+                    self.say("%d cycles in a row failed: the run ends (the next full scan starts a round)" % self.fails)
                     return 1
             if res in ("off", "hours"):
                 self.save_cache()
@@ -867,36 +868,25 @@ class Radar:
                 k += 1
             else:
                 k = max(k + 1, int(math.ceil((self.clock.now() - self.run_start) / float(self.step))))
-        if self.run_end and not self.chained:
-            self.wait_until(self.run_end - CHAIN_BEFORE, chain=False)
-            self.chain()
-            if not self.chained:                 # a GitHub hiccup: once more, half a minute later
-                self.clock.wait(min(self.clock.now() + 30_000, self.run_end - 15_000))
-                self.chain()
         self.save_cache()
         return 0
 
-    def degraded(self, t_k, k):
-        """radar.json while cycles fail (FAIL_DEGRADED in a row or more): state degraded with the reason, the last list's coins dropped
-        (the record line, model and last good coin kept), to radar-data and the app's row. Never raises."""
+    def degraded(self, t_k, k, why=None):
+        """radar.json while cycles fail (FAIL_DEGRADED in a row or more, or a round's one cycle): state degraded with the reason, the
+        last list's coins dropped (the record line, model and last good coin kept), to radar-data and the app's row. Never raises."""
         try:
             now = self.clock.now()
-            doc = finish_from(self.last_doc if isinstance(self.last_doc, dict) else {}, "degraded", now, "%d cycles in a row failed" % self.fails,
+            why = why or "%d cycles in a row failed" % self.fails
+            doc = finish_from(self.last_doc if isinstance(self.last_doc, dict) else {}, "degraded", now, why[:200],
                               self.run_id, self.run_start, self.run_end, self.source, self.hours)
-            doc["next"], doc["run"]["cycle"] = t_k + self.step, k
+            doc["next"], doc["run"]["cycle"] = self.next_round(now) if self.one_round else t_k + self.step, k
+            doc["hourly"], doc["run"]["mode"] = self.hourly_at(), "round" if self.one_round else "loop"
             doc["wm"] = {"t": num((self.wm or {}).get("t")), "nCoins": num((self.wm or {}).get("nCoins"))}
-            doc["notes"] = ["%d cycles in a row failed: the list is not current" % self.fails]
+            doc["notes"] = [(why[:160] if self.one_round else "%d cycles in a row failed" % self.fails) + ": the list is not current"]
             self.publish(doc)
             self.store_row(doc)
         except Exception as e:
             self.say("degraded state not written (%s)" % RS.short(e))
-
-    def wait_until(self, t, chain=True):
-        """Waits for clock time t; the successor is dispatched on the way when the wait passes the run's end minus CHAIN_BEFORE."""
-        if chain and self.run_end and not self.chained and t >= self.run_end - CHAIN_BEFORE:
-            self.clock.wait(self.run_end - CHAIN_BEFORE)
-            self.chain()
-        self.clock.wait(t)
 
     # ---------------------------------------------------------------- one cycle
     def cycle(self, k, t_k, last):
@@ -969,10 +959,11 @@ class Radar:
         for x in to_push:                        # pushed.json (radar-data) holds the coin before anything is sent, so a restart never sends it
             self.pushed[x["addr"]] = now         # twice; the record and radar.json say "pushed" only once the notification went out
         secs = round(time.time() - T0, 1)
-        state = "ending" if last else "running"
+        state = "done" if self.one_round else "ending" if last else "running"      # done: a round is over, its list stays until the next one
+        nxt = self.next_round(now) if self.one_round else t_k + self.step
         line = lambda n: "cycle %d: %d seen, %d without traps, %d pushed (%d s)" % (k, len(rated), len(coins), n, round(secs))
         self.cycle_lines = (self.cycle_lines + [line(0)])[-6:]
-        doc = self.build_doc(state, coins, others, rated, now, t_k + self.step, secs, k)
+        doc = self.build_doc(state, coins, others, rated, now, nxt, secs, k)
         landed = self.publish(doc)
         if to_push and not landed and self.remote:
             for x in to_push:                    # the mark could not be saved: no notification now, the next cycle tries again
@@ -990,7 +981,7 @@ class Radar:
                     rec["push"] = now
         if sent:                                 # radar.json and the records say pushed right after the notification (3.6)
             self.cycle_lines[-1] = line(len(sent))
-            doc = self.build_doc(state, coins, others, rated, now, t_k + self.step, secs, k)
+            doc = self.build_doc(state, coins, others, rated, now, nxt, secs, k)
             self.publish(doc)
         self.store_row(doc)
         self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items()))))
@@ -1000,12 +991,19 @@ class Radar:
             self.work.pop(a, None)
             self.closes.pop(a, None)
         self.save_cache()
-        self.maybe_fit(now)
-        nxt = (t_k + self.step - self.clock.now()) / 1000.0 if not self.clock.fake else 60.0
+        if self.maybe_fit(now) and self.one_round:     # no later cycle carries the new model.json to radar-data: once more now
+            self.http.until = time.time() + 40
+            doc = self.build_doc(state, coins, others, rated, now, nxt, secs, k)
+            if self.publish(doc):
+                self.store_row(doc)
+                self.last_doc = doc
+        if self.one_round:
+            return "ok"                          # a round ends here: the periodic reads are for the next cycle of a loop
+        gap = (t_k + self.step - self.clock.now()) / 1000.0 if not self.clock.fake else 60.0
         if self.res_at is None or now - self.res_at >= RES_EVERY:
-            self.fetch_results(timeout=max(10.0, min(60.0, nxt - 5)))
+            self.fetch_results(timeout=max(10.0, min(60.0, gap - 5)))
         if self.feed_at is None or now - self.feed_at >= FEED_EVERY:
-            self.fetch_feed(timeout=max(10.0, min(60.0, nxt - 5)))
+            self.fetch_feed(timeout=max(10.0, min(60.0, gap - 5)))
         return "ok"
 
     # ---------------------------------------------------------------- steps
@@ -1117,28 +1115,40 @@ class Radar:
         return any(w.get(k) == "pending" for k in ("rc", "dev", "holders", "devage", "devhist"))
 
     @staticmethod
-    def later_due(first, m, now):
+    def later_due(first, m, now, early=0):
         """Whether the price m minutes after first sight may be taken now: at or after its due time (DUE_SLACK is only the clock's jitter
-        between grid points), and at most LATE_X times the offset late (the radar was not running then: marked late)."""
+        between grid points; early ms before it for a round's 1 h price), and at most LATE_X times the offset late (the radar was not
+        running then: marked late). Outside that window the price stays missing for good: nothing waits for it."""
         due = first + m * 60_000
-        return due - DUE_SLACK <= now <= due + LATE_X * m * 60_000 + DUE_SLACK
+        return due - max(DUE_SLACK, early) <= now <= due + LATE_X * m * 60_000 + DUE_SLACK
+
+    def early_ms(self, m):
+        """How early the price m minutes after first sight may be taken: a round's 1 h price up to EARLY_60 (the next round comes about an
+        hour later, past the 90 minutes a 1 h price may be late), so a round 45 to 90 minutes after first sight gives the 1 h outcome;
+        a loop's prices only at their time (the clock's jitter)."""
+        return EARLY_60 if self.one_round and m == 60 else 0
 
     def due_later(self, now):
         out = []
         for doc in self.docs.values():
             for a, rec in (doc.get("coins") or {}).items():
                 first = num(rec.get("first"))
-                if first and any(str(m) not in (rec.get("later") or {}) and self.later_due(first, m, now) for m in LATER):
+                if first and any(str(m) not in (rec.get("later") or {}) and self.later_due(first, m, now, self.early_ms(m)) for m in LATER):
                     out.append(a)
         return out
 
     def later_prices(self, pairs, answered, now):
         """The prices 5, 15, 30 and 60 minutes after first sight, at the first cycle at or after each; when the radar was not running
-        then, up to 1.5x the offset late, marked late (later than one cycle and half a minute after the due time). gone only when
-        DexScreener answered for the coin and had no pair."""
+        then, up to half the offset late, marked late (later than one cycle and half a minute after the due time); a round's 1 h price
+        up to 15 minutes early, marked early. A price no cycle caught stays missing (the hourly rounds catch the 1 h price only). gone
+        only when DexScreener answered for the coin and had no pair."""
         late_ms = self.step + 30_000
         for a in self.due_later(now):
             rec = self.rec(a)
+            if rec is None:
+                continue
+            if not isinstance(rec.get("later"), dict):
+                rec["later"] = {}
             p = pairs.get(a)
             px = num((p or {}).get("priceUsd"))
             if p and px and px > 0:
@@ -1149,8 +1159,8 @@ class Radar:
                 continue
             for m in LATER:
                 due = rec["first"] + m * 60_000
-                if str(m) not in rec["later"] and self.later_due(rec["first"], m, now):
-                    rec["later"][str(m)] = dict(obs, late=True) if now - due > late_ms else dict(obs)
+                if str(m) not in rec["later"] and self.later_due(rec["first"], m, now, self.early_ms(m)):
+                    rec["later"][str(m)] = dict(obs, late=True) if now - due > late_ms else dict(obs, early=True) if now < due - DUE_SLACK else dict(obs)
             self.touch(a, now)
 
     def gt_jobs(self, live, now):
@@ -1773,15 +1783,18 @@ class Radar:
                 o = (rec.get("later") or {}).get(str(m))
                 lt[str(m)] = 0.0 if isinstance(o, dict) and o.get("gone") else (round(o["px"] / gp, 3) if isinstance(o, dict) and num(o.get("px")) and gp else None)
             pk = rec.get("peak60") if isinstance(rec.get("peak60"), dict) and fin(rec["peak60"].get("x")) is not None else None
+            first = num(rec.get("first")) or rec["good"]
+            miss60 = "60" not in (rec.get("later") or {}) and now > first + (1 + LATE_X) * H + DUE_SLACK     # the 1 h price can no longer come
             recent.append({"addr": a, "sym": rec.get("sym"), "good": rec["good"], "push": rec.get("push"), "later": lt,
-                           "peak60": {"x": fin(pk.get("x"), 4), "at": pk.get("at")} if pk else None, "out": rec.get("out")})
+                           "peak60": {"x": fin(pk.get("x"), 4), "at": pk.get("at")} if pk else None, "out": rec.get("out"), "miss60": miss60})
         seen_ages = sorted(num(rec.get("seenAge")) for doc in self.docs.values() for rec in (doc.get("coins") or {}).values()
                            if num(rec.get("seenAge")) is not None and now - (num(rec.get("first")) or 0) < 3 * H)
         med = seen_ages[len(seen_ages) // 2] if seen_ages else None
         enough = (num(self.model.get("n")) or 0) >= MODEL_NEED       # under it the page says "radar data n of 300 needed" itself
         model = {"from": self.model.get("from") or "prior", "n": n_out, "need": MODEL_NEED, "auc": fin(self.model.get("auc"), 3),
                  "prior": fin(self.model.get("aucPrior"), 3), "at": self.model.get("at"), "why": str(self.model.get("why") or "")[:200] if enough else ""}
-        doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "run": {"id": str(self.run_id)[:40], "start": self.run_start, "end": self.run_end, "cycle": k, "source": self.source},
+        doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "hourly": self.hourly_at(),
+               "run": {"id": str(self.run_id)[:40], "start": self.run_start, "end": self.run_end, "cycle": k, "source": self.source, "mode": "round" if self.one_round else "loop"},
                "state": state, "why": "", "secs": secs, "model": model,
                "counts": {"seen": len(rated), "good": len(coins), "pushed": sum(1 for x in rated if (self.rec(x["addr"]) or {}).get("push")), "seenAgeMed": fin(med, 1)},
                "wm": {"t": num((self.wm or {}).get("t")), "nCoins": num((self.wm or {}).get("nCoins"))},
@@ -1795,18 +1808,19 @@ class Radar:
         pushed once to radar-data and the app's row."""
         prev = self.last_doc if isinstance(self.last_doc, dict) else {}
         doc = finish_from(prev, state, now, why, self.run_id, self.run_start, self.run_end, self.source, self.hours)
+        doc["run"]["mode"] = "round" if self.one_round else "loop"
         self.publish(doc)
         self.store_row(doc)
         self.last_doc = doc
         return doc
 
     def maybe_fit(self, now):
-        """traps.fit at the first cycle of a UTC day, and when the records with an outcome pass the next hundred (4.8)."""
+        """traps.fit at the first cycle of a UTC day, and when the records with an outcome pass the next hundred (4.8). True when it ran."""
         _, n_out, _ = self.summary(now)
         at = num(self.model.get("at"))
         due = (at is None or utc_hour(at)[:10] != utc_hour(now)[:10]) or n_out // 100 > int(num(self.model.get("nOut")) or 0) // 100
         if not due:
-            return
+            return False
         recs = []
         for f in glob.glob(os.path.join(self.res, "db", "memeradar", "*.json")):
             doc = load_json(f)
@@ -1826,6 +1840,7 @@ class Radar:
                       "w": clean_json(W2) if isinstance(W2, dict) else None, "report": clean_json(rep)}
         self.W = self.model["w"] if isinstance(W2, dict) else self.W_prior
         self.say("radar model: %s (%d records with an outcome%s)" % (self.model["from"], n_out, ("; " + self.model["why"]) if self.model["why"] else ""))
+        return True
 
 
 S_KEYS = ("instantPool", "mintToPoolS", "swAvg", "rugHolders", "wmChecked", "brand", "buys", "rcReport", "rcDanger", "rcWarn", "cluster", "netSize",
@@ -1970,7 +1985,7 @@ def fit_size(doc):
 
 
 def finish_from(prev, state, now, why, run_id, start, end, source, hw):
-    keep = {k: prev.get(k) for k in ("model", "lastGood", "recent", "record", "wm") if prev.get(k) is not None}
+    keep = {k: prev.get(k) for k in ("model", "lastGood", "recent", "record", "wm", "hourly") if prev.get(k) is not None}
     nxt = next_start(now, hw) if state == "hours" else None
     doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "run": {"id": str(run_id)[:40], "start": start, "end": end, "cycle": None, "source": source},
            "state": state, "why": why, "secs": 0.0, "model": {"from": "prior", "n": 0, "need": MODEL_NEED, "auc": None, "prior": None, "at": None, "why": ""},
@@ -2076,9 +2091,9 @@ def cmd_hours(a, log=None):
 
 def args_of(argv=None):
     ap = argparse.ArgumentParser(description="the launch radar (fake money only)")
-    ap.add_argument("cmd", choices=["loop", "hours"])
+    ap.add_argument("cmd", choices=["round", "loop", "hours"])
     ap.add_argument("--dir", default="rd")
-    ap.add_argument("--minutes", type=float, default=DEFAULT_MINUTES, help="at most %d; 0 = until stopped, only without GitHub (a VM)" % MAX_MINUTES)
+    ap.add_argument("--minutes", type=float, default=DEFAULT_MINUTES, help="loop only: at most %d; 0 = until stopped, only without GitHub (a VM)" % MAX_MINUTES)
     ap.add_argument("--cadence", type=float, default=CYCLE_S)
     ap.add_argument("--deadline", type=float, default=None, help="s a cycle may take (default 125 at cadence 150, scaled)")
     ap.add_argument("--mock", default=os.environ.get("MEMEBOT_MOCK", ""))
@@ -2102,7 +2117,8 @@ def main(argv=None, log=None, notifier=None):
     a = args_of(argv)
     if a.cmd == "hours":
         return cmd_hours(a, log)
-    return Radar(a, log=log, notifier=notifier).loop()
+    R = Radar(a, log=log, notifier=notifier)
+    return R.round() if a.cmd == "round" else R.loop()
 
 
 if __name__ == "__main__":

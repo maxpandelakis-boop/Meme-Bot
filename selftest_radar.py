@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""selftest_radar.py: the launch radar's checks R1-R10 (SPEC 11) and R11 (the WP0 probe's findings applied: adapter defaults, routes,
-rate rules), against a local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle), a local bare git
-remote and a local stand-in for the app's live store. Fake money only.
+"""selftest_radar.py: the launch radar's checks R1-R10 (SPEC 11), R11 (the WP0 probe's findings applied: adapter defaults, routes,
+rate rules) and R12 (one round per start, as radar.yml runs it: no successor, the later prices hourly rounds can catch), against a
+local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle), a local bare git remote and a local
+stand-in for the app's live store. Fake money only.
 
   python3 selftest_radar.py        runs the checks on their own (PASS/FAIL per check, "RADAR ALL PASS" at the end)
   checks(check, env=None)          the same from selftest.py's main (check(ok, what) as there)
@@ -733,12 +734,13 @@ class Sink:
         return {"kind": "radar", "sent": 1}
 
 
-def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24", extra=None, deadline=8.0, patch=None, envs=None):
-    """One radar run in this process: (exit code, the Radar, its log lines, seconds)."""
+def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24", extra=None, deadline=8.0, patch=None, envs=None, cmd="loop", source="manual"):
+    """One radar run in this process: (exit code, the Radar, its log lines, seconds). cmd loop (a VM's way: --minutes long) or round
+    (radar.yml's way: one cycle)."""
     import launch_radar as LR
     lines = []
-    argv = ["loop", "--dir", rd, "--minutes", str(minutes), "--cadence", "1", "--clock", "fake", "--now", str(int(now)), "--deadline", str(deadline),
-            "--cache", rd + "-cache", "--source", "manual"] + (["--mock", url] if url else []) + (["--remote", remote] if remote else []) + (extra or [])
+    argv = [cmd, "--dir", rd] + (["--minutes", str(minutes)] if cmd == "loop" else []) + ["--cadence", "1", "--clock", "fake", "--now", str(int(now)),
+            "--deadline", str(deadline), "--cache", rd + "-cache", "--source", source] + (["--mock", url] if url else []) + (["--remote", remote] if remote else []) + (extra or [])
     e = dict(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9001", GITHUB_REF_NAME="main", MEMEBOT_RADAR_HOURS=hours, RADAR_URL=None,
              SUPABASE_URL=None, SUPABASE_SECRET_KEY=None, MEMEBOT_RADAR_ADAPTERS=None)
     e.update(envs or {})
@@ -749,7 +751,7 @@ def run_radar(T, P, url, remote, rd, now, minutes=10, notifier=None, hours="0-24
             m.clock = R.clock.now
         if patch:
             patch(R)
-        code = R.loop()
+        code = R.round() if cmd == "round" else R.loop()
     return code, R, lines, time.time() - t
 
 
@@ -806,7 +808,7 @@ def checks(check, env_=None):
     rules = memebot_rules()
     rules.__enter__()
     try:
-        # ---- R1, R2, R4 (first part), R7 (refs), R5 (chain): a run of 4 cycles at T0
+        # ---- R1, R2, R4 (first part), R7 (refs), R5 (no successor): a loop run of 4 cycles at T0
         print("== launch radar R1: 4 cycles on the fixtures -> radar.json and a record for every eligible coin")
         sink = Sink()
         code, R, lines, secs = run_radar(T, P, url, remote, os.path.join(tmp, "rdA"), T0, minutes=10, notifier=sink)
@@ -1055,16 +1057,33 @@ def checks(check, env_=None):
         check(dcl.get("push") and isinstance(dcl.get("peak60"), dict) and dcl["peak60"].get("x") and dcl["peak60"].get("at"),
               "radar.json's recent calls carry push and peak60 (CLEAN: pushed %s, best close within 1 h %s), the fields the page's Later pane reads"
               % (dcl.get("push"), dcl.get("peak60")))
-        win = {"10 s before due": T0 - 5 * MIN + 10_000, "1 s before due (clock jitter)": T0 - 5 * MIN + 1_000, "7 min late": T0 - 12 * MIN, "8 min late": T0 - 13 * MIN}
+        win = {"10 s before due": T0 - 5 * MIN + 10_000, "1 s before due (clock jitter)": T0 - 5 * MIN + 1_000, "2 min late": T0 - 7 * MIN, "3 min late": T0 - 8 * MIN}
         wa = {n: addr(600 + i) for i, n in enumerate(win)}
         Rg.docs = {"w": {"coins": {wa[n]: {"addr": wa[n], "first": f, "later": {}, "px": 1.0} for n, f in win.items()}}}
         Rg.rec_hour = {a: "w" for a in wa.values()}
         Rg.later_prices({a: {"priceUsd": "1.5", "liquidityUsd": 9000.0} for a in wa.values()}, set(wa.values()), T0)
         p5 = {n: Rg.docs["w"]["coins"][wa[n]]["later"].get("5") for n in win}
         check(p5["10 s before due"] is None and p5["1 s before due (clock jitter)"] and not p5["1 s before due (clock jitter)"].get("late")
-              and (p5["7 min late"] or {}).get("late") is True and p5["8 min late"] is None,
-              "the 5-minute price: never taken before it is due (only the clock's 2 s jitter), taken up to 1.5x its offset late (7 of 7.5 min) and "
-              "marked late, missing after that (%s)" % {n: (None if v is None else ("late" if v.get("late") else "on time")) for n, v in p5.items()})
+              and p5["2 min late"] and not p5["2 min late"].get("late") and p5["3 min late"] is None and LR.LATE_X == 0.5,
+              "the 5-minute price: never taken before it is due (only the clock's 2 s jitter), taken up to half its offset late (2 of 2.5 min, inside "
+              "a cycle and half a minute, so not marked late), missing after that (%s)" % {n: (None if v is None else ("late" if v.get("late") else "on time")) for n, v in p5.items()})
+        w60 = {"44 min": T0 - 44 * MIN, "46 min": T0 - 46 * MIN, "61 min": T0 - 61 * MIN, "89 min": T0 - 89 * MIN, "91 min": T0 - 91 * MIN, "33 min": T0 - 33 * MIN}
+        got60 = {}
+        for mode in ("round", "loop"):
+            wb = {n: addr(650 + i) for i, n in enumerate(w60)}
+            Rg.docs = {"w": {"coins": {wb[n]: {"addr": wb[n], "first": f, "later": {}, "px": 1.0} for n, f in w60.items()}}}
+            Rg.rec_hour, Rg.one_round = {a: "w" for a in wb.values()}, mode == "round"
+            Rg.later_prices({a: {"priceUsd": "1.5", "liquidityUsd": 9000.0} for a in wb.values()}, set(wb.values()), T0)
+            lab = lambda v: None if v is None else "late" if v.get("late") else "early" if v.get("early") else "on time"
+            got60[mode] = {n: (lab(Rg.docs["w"]["coins"][wb[n]]["later"].get("60")), sorted(Rg.docs["w"]["coins"][wb[n]]["later"])) for n in w60}
+        Rg.one_round = False
+        check(got60["round"] == {"44 min": (None, ["30"]), "46 min": ("early", ["60"]), "61 min": ("on time", ["60"]), "89 min": ("late", ["60"]), "91 min": (None, []),
+                                 "33 min": (None, ["30"])}
+              and got60["loop"] == {"44 min": (None, ["30"]), "46 min": (None, []), "61 min": ("on time", ["60"]), "89 min": ("late", ["60"]), "91 min": (None, []),
+                                    "33 min": (None, ["30"])},
+              "the 1 h price in a round (the next one comes about an hour later): taken 45 to 90 minutes after first sight (46 min: marked early, "
+              "89: late), missing outside that; a loop never takes it early; a round 33 minutes in takes only the 30-minute price, and the prices "
+              "no round caught stay missing (no key, never 0): %s" % got60["round"])
         ap = addr(700)
         first = T0 - 63 * MIN
         rec_p = {"addr": ap, "sym": "DEADPK", "pair": "DeadPool", "first": first, "px": 1.0, "liq": 20_000.0, "mc": 50_000.0, "good": first, "peak60": None,
@@ -1122,41 +1141,11 @@ def checks(check, env_=None):
               "DexScreener's paid profile: asked again 3 minutes after an unpaid answer (a profile paid while the coin is on the radar is seen), "
               "never again once paid")
 
-        print("== launch radar R5: kill switch, active hours, the successor")
-        n_disp = len(mock.dispatches)
-        check(n_disp >= 1 and mock.dispatches[0] == {"ref": "main", "inputs": {"minutes": "55", "source": "chain"}} and sum(1 for l in lines if l.startswith("successor: dispatched")) == 1
-              and mock.auth_bad == 0 and any("a run of 2.5 min starts none" in l for l in linesb) and not any(l.startswith("successor: dispatched") for l in linesb + lines2),
-              "run A (10 minutes) dispatched its successor once at its end minus 2 minutes, a 55-minute one (%s); a 2.5-minute run starts none" % mock.dispatches[:1])
-        mock.runs = [{"id": 1234, "status": "pending"}]
-        d0 = len(mock.dispatches)
-        code, Rp, linesp, _ = run_radar(T, P, url, remote, os.path.join(tmp, "rdP"), T0 + 2 * H, minutes=5, notifier=Sink())
-        mock.runs = []
-        check(len(mock.dispatches) == d0 and any("another radar run is waiting" in l for l in linesp), "no successor while another radar run is pending (C4)")
-        mock.runs500 = 1
-        d0 = len(mock.dispatches)
-        chain_at = []
-
-        def chain_times(R_):
-            real = R_.chain
-            R_.chain = lambda: (chain_at.append(R_.clock.now() - R_.run_end), real())[1]
-        code, Rq, linesq, _ = run_radar(T, P, url, fresh_remote(T, tmp, "remote-chain", T0 + 2 * H), os.path.join(tmp, "rdQ"), T0 + 2 * H, minutes=5, notifier=Sink(),
-                                        patch=chain_times)
-        hic = [l for l in linesq if l.startswith("successor:")]
-        check(mock.runs500 == 0 and len(mock.dispatches) == d0 + 1 and len(hic) == 2 and "GitHub did not list the runs" in hic[0] and hic[0].endswith("tried once more") and hic[1].startswith("successor: dispatched")
-              and len(chain_at) == 2 and abs(chain_at[0] + LR.CHAIN_BEFORE) < 1_000 and 29_000 <= chain_at[1] - chain_at[0] <= 31_000,
-              "a GitHub hiccup at the chain point (the run list answered 500) is tried once more half a minute later: %s, at the run's end %s s"
-              % (hic, [t_ / 1000 for t_ in chain_at]))
-        with env(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9001", GITHUB_REF_NAME="main"), memebot_rules():
-            outs = []
-            for label, end_at in (("ends 5 min before 14:00", T0 - 5 * MIN), ("ends 30 s after 14:00", T0 + 30_000), ("ends 15 min before 14:00", T0 - 15 * MIN)):
-                Rc = LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, "rdCh"), "--clock", "fake", "--now", str(T0), "--cache", os.path.join(tmp, "rdCh-c"), "--mock", url]),
-                              log=lambda s_: None, traps=T, peak=P)
-                Rc.hours, Rc.run_start, Rc.run_end, Rc.run_minutes = (13, 14), end_at - 30 * MIN, end_at, 30.0
-                n0 = len(mock.dispatches)
-                outs.append((label, Rc.chain(), len(mock.dispatches) - n0, Rc.chained))
-        check([o[1:] for o in outs] == [(False, 0, True), (False, 0, True), (True, 1, True)] and mock.dispatches[-1]["inputs"]["minutes"] == "55",
-              "active hours 13-14 Berlin: no successor when the hours end within 10 minutes of the run's end or before it; one (55 minutes) with "
-              "15 minutes left (%s)" % outs)
+        print("== launch radar R5: kill switch, active hours, no successor")
+        src_lr = open(LR.__file__, encoding="utf-8").read()
+        check(not mock.dispatches and mock.auth_bad == 0 and not any("successor" in l for l in lines + linesb + lines2 + lines3)
+              and not hasattr(LR.Radar, "chain") and not hasattr(LR, "CHAIN_BEFORE") and "/dispatches" not in src_lr,
+              "no radar run starts another: the 10-minute loop, the restart and the later runs dispatched nothing (the scan's last step starts each round)")
         span = {}
         for m_, ex_ in ((100, []), (0, []), (0, ["--no-github"])):
             lines_m = []
@@ -1168,8 +1157,8 @@ def checks(check, env_=None):
             span[(m_, bool(ex_))] = ((Rm_.run_end - Rm_.run_start) / MIN if Rm_.run_end else None, any("100 minutes asked" in l for l in lines_m))
         check([LR.run_minutes(m, f) for m, f in ((120, False), (330, False), (70, False), (10, False), (0, False), (0, True), (None, False))] == [70, 70, 70, 10, 55, 0, 55]
               and span == {(100, False): (70.0, True), (0, False): (55.0, False), (0, True): (None, False)},
-              "a run lasts at most 70 minutes (the job stops at 75: a longer run would be cut before it starts its successor); 0 = until stopped only "
-              "without GitHub (a VM), else 55; the loop itself runs that long (%s)" % span)
+              "a loop run (a VM's way) lasts at most 70 minutes; 0 = until stopped only without GitHub (a VM), else 55; the loop itself runs that "
+              "long (%s)" % span)
         rem_k = fresh_remote(T, tmp, "remote-kill", T0 + 3 * H)
         mock.gh403, mock.workflow = 3, "disabled_manually"
         code_k, Rk, linesk, _ = run_radar(T, P, url, rem_k, os.path.join(tmp, "rdK"), T0 + 3 * H, minutes=10, notifier=Sink())
@@ -1308,18 +1297,22 @@ def checks(check, env_=None):
         sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml"), encoding="utf-8").read().splitlines()
         body = lambda lines: lines[lines.index(next(l for l in lines if "Install the push sender" in l)) + 2:][:30]
         job_env = wf.split("    steps:")[0]
+        wf_code = "\n".join(l for l in wf.splitlines() if not l.strip().startswith("#"))
+        inputs = wf_code.split("permissions:")[0]
         check(re.search(r"^on:\n  workflow_dispatch:", wf, re.M) and "schedule" not in wf and "group: memebot-radar" in wf and "cancel-in-progress: false" in wf
-              and re.search(r"^    timeout-minutes: 75\b", wf, re.M) and "if: (vars.MEMEBOT_RADAR || '1') != '0'" in wf and body(wf.splitlines()) == body(sc)
+              and re.search(r"^    timeout-minutes: 10\b", wf, re.M) and "if: (vars.MEMEBOT_RADAR || '1') != '0'" in wf and body(wf.splitlines()) == body(sc)
               and "RADAR_URL" not in job_env and "SUPABASE_SECRET_KEY: ${{" not in job_env and not re.search(r"git push|refs/heads/(results|live|radar-feed)", wf)
-              and "launch_radar.py loop --dir rd --minutes \"$MIN\" --cadence 150" in wf and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf
+              and "run: python3 launch_radar.py round --dir rd\n" in wf_code and "launch_radar.py loop" not in wf_code and not re.search(r"^      minutes:", inputs, re.M)
+              and "options: ['manual', 'hourly']" in inputs and not re.search(r"\b(chain|watchdog|successor)\b", wf_code)
+              and "actions/cache/save@v4" in wf and "if: always() && steps.hours.outputs.inside == 'true'" in wf
               and "MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}" in job_env
-              and "(at most %d: the job stops at 75)" % LR.MAX_MINUTES in wf and LR.MAX_MINUTES + 5 <= 75 and "330" not in wf
-              and 'out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"' in wf and len(re.findall(r"^        timeout-minutes: [234]\b", wf, re.M)) == 3
+              and 'out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"' in wf
+              and sorted(int(x) for x in re.findall(r"^        timeout-minutes: (\d+)\b", wf, re.M)) == [2, 3, 4, 6]
               and all("--max-time" in l or re.search(r"\btimeout \d+ curl\b", l) for l in wf.splitlines() if re.search(r"\bcurl\b", l) and not l.strip().startswith("#"))
               and len(re.findall(r"\bcurl -sS --max-time \d+", wf)) == 2,
-              "radar.yml: dispatch only, group memebot-radar, 75 min, minutes at most 70, MEMEBOT_RADAR gate, the adapter switches from a repository "
-              "variable, the push sender's install step as in scan.yml, the token only in the steps that use it, the hours and tidy steps bounded "
-              "in time (they hold the radar's group)")
+              "radar.yml: dispatch only (source manual or hourly, no minutes), group memebot-radar, ONE round (launch_radar.py round, never the loop), "
+              "job timeout 10 min (the round step 6), MEMEBOT_RADAR gate, the adapter switches from a repository variable, the push sender's install "
+              "step as in scan.yml, the token only in the steps that use it, the hours and tidy steps bounded in time (they hold the radar's group)")
 
         print("== launch radar R6: limits")
         lim = fixture("LIMIT", 11, pool=T0 + 4 * H - MIN, mint=T0 + 4 * H - 5 * MIN)
@@ -1446,7 +1439,7 @@ def checks(check, env_=None):
                     pass
         for b in ("radar-data", "results", "radar-feed"):
             blobs += list(branch_files(remote, b).values())
-        allt = b"\n".join(blobs) + "\n".join(lines + lines2 + lines3 + lines6 + lines9 + linesx + linesf + linesb + linesp + lineso + linesh + hout).encode() + json.dumps(row).encode()
+        allt = b"\n".join(blobs) + "\n".join(lines + lines2 + lines3 + lines6 + lines9 + linesx + linesf + linesb + linesk + lineso + linesh + hout).encode() + json.dumps(row).encode()
         secrets = [GH_TOKEN.encode(), APP_SECRET.encode()]
         said_r = []
         with env(GITHUB_TOKEN=GH_TOKEN, SUPABASE_SECRET_KEY=APP_SECRET):
@@ -1524,6 +1517,7 @@ def checks(check, env_=None):
         f2 = LR.fit_size(dict(json.loads(json.dumps(big)), others=big["others"][:5], recent=[{"addr": "B" * 44, "sym": "R", "good": T0, "later": {"x": "y" * 2000}} for _ in range(40)]))
         check(size(f1) <= LR.DOC_MAX and len(f1["recent"]) == 20 and 0 < len(f1["others"]) < 400 and size(f2) <= LR.DOC_MAX and f2["others"] == [] and 0 < len(f2["recent"]) < 40,
               "radar.json over 48 KB: the fold (others) is cut first (%d of 400 left, recent kept), then recent (%d of 40 left)" % (len(f1["others"]), len(f2["recent"])))
+        round_checks(check, LR, T, P, tmp)
         probe_checks(check, LR, T, P, url, mock, heads_a, recs, by, tmp)
         if not real_push(check, T, P, url, remote, tmp):
             SKIPPED.append("R4's PushSink leg (app.notify_radar comes with WP4)")
@@ -1533,6 +1527,126 @@ def checks(check, env_=None):
         srv.shutdown()
         srv.server_close()
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def round_checks(check, LR, T, P, tmp):
+    """R12: one round per start (radar.yml's way, the scan starting one after each full scan): one cycle and the run ends, never a
+    successor; radar.json state done with about when the next round comes; the later prices a later round can still catch (the 1 h
+    price 45 to 90 minutes after first sight gives the outcome; the 5/15/30-minute ones stay missing, never 0, and nothing waits for
+    them); a round that fails, a push to radar-data that fails, a model fitted in a round, the kill switch."""
+    print("== launch radar R12: one round per start (no successor), the later prices hourly rounds can catch")
+    TR = T0 + 7 * H                          # 19:00 UTC, 21:00 Berlin
+    ca = fixture("RNDA", 31, pool=TR - 2 * MIN, mint=TR - 6 * MIN)
+    cb = fixture("RNDB", 32, pool=TR - 3 * MIN, mint=TR - 7 * MIN)
+    cc = fixture("RNDC", 33, pool=TR + 18 * MIN, mint=TR + 14 * MIN)     # launched between the hourly rounds: the manual round finds it
+    m3 = RadarMock([ca, cb])
+    srv3 = serve(m3)
+    url3 = "http://127.0.0.1:%d" % srv3.server_address[1]
+    rem = fresh_remote(T, tmp, "remote-round", TR)
+    ncyc = lambda L: len([l for l in L if re.match(r"^cycle \d+:", l)])
+    go = lambda name, at, src, remote=rem, **kw: run_radar(T, P, url3, remote, os.path.join(tmp, name), at, cmd="round", source=src, notifier=kw.pop("notifier", Sink()), **kw)
+    try:
+        c1, R1, l1, s1 = go("rdR1", TR, "hourly")
+        d1, r1 = radar_json(rem), hour_recs(rem)
+        run1 = d1.get("run") or {}
+        model1 = json.loads(branch_files(rem, "radar-data").get("model.json") or b"{}")
+        check(c1 == 0 and ncyc(l1) == 1 and any("one round" in l for l in l1) and d1.get("state") == "done" and run1.get("mode") == "round"
+              and run1.get("source") == "hourly" and run1.get("end") is None and d1.get("hourly") == R1.run_start and d1.get("next") == R1.run_start + H
+              and {ca["a"], cb["a"]} <= set(r1) and all(r1[x]["later"] == {} for x in (ca["a"], cb["a"])) and not m3.dispatches
+              and not any("successor" in l for l in l1) and s1 < 60,
+              "a round (radar.yml's way, started by the scan): exactly one cycle and the run ends (%.1f s here); radar.json state done, mode round, "
+              "the next round about an hour after this one (%s), both new coins recorded; nothing dispatched"
+              % (s1, LR.berlin(d1["next"]).strftime("%H:%M Berlin") if d1.get("next") else "?"))
+        check(model1.get("at") and model1.get("from") in ("prior", "learned"),
+              "a round that fits the radar model pushes model.json again right after (no later cycle would): radar-data's model.json dated %s" % model1.get("at"))
+        m3.coins[cc["a"]] = cc
+        c2, R2, l2, _ = go("rdR2", TR + 20 * MIN, "manual")
+        d2, r2 = radar_json(rem), hour_recs(rem)
+        la2 = r2[ca["a"]]["later"]
+        check(c2 == 0 and ncyc(l2) == 1 and d2.get("state") == "done" and (d2.get("run") or {}).get("source") == "manual" and d2.get("hourly") == R1.run_start
+              and d2.get("next") == R1.run_start + H and sorted(la2) == ["15"] and la2["15"].get("late") is True and cc["a"] in r2
+              and not any(l.startswith("radar model:") for l in l2),
+              "a round by hand 20 minutes later: the next hourly round stays an hour after the scan's last one; it takes the 15-minute price "
+              "(%s, late) and the 5-minute one stays missing; the model fitted in the first round is kept, not fitted again" % sorted(la2))
+        m3.gone.add(cb["a"])
+        c3, R3, l3, _ = go("rdR3", TR + 52 * MIN, "hourly")
+        m3.gone.discard(cb["a"])
+        d3, r3 = radar_json(rem), hour_recs(rem)
+        la, lb, lc = (r3[x["a"]]["later"] for x in (ca, cb, cc))
+        oa, ob = r3[ca["a"]].get("out") or {}, r3[cb["a"]].get("out") or {}
+        ra = next((x for x in d3.get("recent") or [] if x.get("addr") == ca["a"]), {})
+        check(c3 == 0 and ncyc(l3) == 1 and sorted(la) == ["15", "60"] and la["60"].get("early") is True and la["60"].get("px") and lb["60"].get("gone") is True
+              and oa.get("rug1h") is False and ob.get("rug1h") is True and sorted(lc) == ["30"] and d3.get("hourly") == R3.run_start and d3.get("next") == R3.run_start + H
+              and (ra.get("later") or {}).get("5") is None and (ra.get("later") or {}).get("30") is None and isinstance((ra.get("later") or {}).get("60"), float)
+              and ra.get("miss60") is False and ((d3.get("record") or {}).get("n60") or 0) >= 1,
+              "the next hourly round, 52 minutes in: the first round's coins get their 1 h price (8 minutes early, marked early; RNDB's pool gone) "
+              "and so a 1 h outcome for the record line and the model (RNDA alive, RNDB rugged); the coin the manual round found gets its "
+              "30-minute price; radar.json's later for RNDA: %s (null = not caught, shown as a dash; never 0)" % (ra.get("later"),))
+        c4, R4, l4, _ = go("rdR4", TR + 112 * MIN, "hourly")
+        d4, r4 = radar_json(rem), hour_recs(rem)
+        rc4 = r4[cc["a"]]
+        rcd = next((x for x in d4.get("recent") or [] if x.get("addr") == cc["a"]), {})
+        rad = next((x for x in d4.get("recent") or [] if x.get("addr") == ca["a"]), {})
+        check(c4 == 0 and ncyc(l4) == 1 and "60" not in rc4["later"] and rc4.get("out") is None and sorted(rc4["later"]) == ["30"]
+              and rcd.get("miss60") is True and (rcd.get("later") or {}).get("60") is None and rad.get("miss60") is False and (rad.get("out") or {}).get("rug1h") is False
+              and not m3.dispatches and not any("successor" in l for l in l1 + l2 + l3 + l4),
+              "a coin whose 1 h price no round caught (the next round came 92 minutes after first sight): the price stays missing, no outcome, "
+              "nothing waits or fails (radar.json marks it miss60 for the page); four rounds, one cycle each, nothing ever dispatched")
+        Rn = unit_radar(T, P, tmp, "rdN", now=TR)
+        late_eve = TR + 150 * MIN                                       # 23:30 Berlin
+        Rn.hours, Rn.source, Rn.run_start = (7, 24), "hourly", late_eve
+        nx_night = Rn.next_round(late_eve + 2 * MIN)
+        Rn.source, Rn.last_doc = "manual", {"hourly": TR - 130 * MIN}
+        Rn.hours = (0, 24)
+        nx_man = Rn.next_round(TR)
+        Rn.last_doc = {"hourly": TR - 4 * H}
+        nx_old = Rn.next_round(TR)
+        Rn.last_doc = {}
+        nx_none = Rn.next_round(TR)
+        check(nx_night == late_eve + 8 * H and LR.berlin(nx_night).strftime("%H:%M") == "07:30" and nx_man == TR + 50 * MIN and nx_old is None and nx_none is None,
+              "the next round's time: an hour after the scan's last round, inside the active hours (a round at 23:30 Berlin -> 07:30); for a "
+              "round by hand from the last hourly one (2 h 10 min ago -> in 50 min); unknown when none is known from the last 3 hours")
+
+        def boom(R_):
+            def bad(k, t, last):
+                raise RuntimeError("cycle broken (test)")
+            R_.cycle = bad
+        rem_x = fresh_remote(T, tmp, "remote-round-x", TR)
+        cx, Rx, lx, _ = go("rdRx", TR, "hourly", remote=rem_x, patch=boom)
+        dx = radar_json(rem_x)
+        check(cx == 1 and dx.get("state") == "degraded" and str(dx.get("why")).startswith("the round failed: ") and (dx.get("run") or {}).get("mode") == "round"
+              and dx.get("next") == Rx.run_start + H and not dx.get("coins"),
+              "a round whose cycle fails: exit 1 (the run shows red), radar.json says degraded with the reason (%s) and the next round's time" % dx.get("why"))
+        fails = []
+
+        def flaky(R_):
+            real = R_.git.push_tree
+
+            def pt(*a, **k):
+                if len(fails) < 2:
+                    fails.append(1)
+                    raise RuntimeError("push refused (test)")
+                return real(*a, **k)
+            R_.git.push_tree = pt
+        rem_p = fresh_remote(T, tmp, "remote-round-p", TR)
+        cp, Rp, lp, _ = go("rdRp", TR, "hourly", remote=rem_p, patch=flaky)
+        rp = hour_recs(rem_p)
+        check(cp == 0 and len(fails) == 2 and any("once more" in l for l in lp) and {ca["a"], cb["a"]} <= set(rp) and radar_json(rem_p).get("state") == "done",
+              "a round whose pushes to radar-data fail (the list's and the model's) tries once more at its end, since no cycle comes after it: "
+              "its records land (%d)" % len(rp))
+        m3.workflow = "disabled_manually"
+        co, Ro, lo, so = go("rdRo", TR + 113 * MIN, "manual")
+        m3.workflow = "active"
+        do = radar_json(rem)
+        ch, Rh, lh, _ = go("rdRh", TR + 114 * MIN, "hourly", hours="1-2")
+        dh = radar_json(rem)
+        check(co == 0 and do.get("state") == "off" and ncyc(lo) == 0 and do.get("record") and ch == 0 and dh.get("state") == "hours" and ncyc(lh) == 0
+              and dh.get("next") and LR.berlin(dh["next"]).hour == 1 and not m3.dispatches,
+              "kill switches unchanged: a round that starts while the workflow is disabled (one queued before the switch) ends at once with "
+              "state off; one outside the active hours ends with state hours and the next start")
+    finally:
+        srv3.shutdown()
+        srv3.server_close()
 
 
 # the WP0 probe's hand-off (research/probe-radar.md, ADAPTERS block and its two constants), as the probe wrote it

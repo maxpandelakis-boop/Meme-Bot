@@ -1,40 +1,38 @@
-# The launch radar: its own job beside the hourly scan (scan.yml). Every 150 s it rates the coins whose DEX pool is under 10 minutes old
-# (launch_radar.py; the sources in radar_src.py), keeps the best 5 for the page's Radar tab, records every rating with the prices 5, 15,
-# 30 and 60 minutes later, and sends a push notification only for a coin without a trap found. Fake money only: nothing is bought
-# anywhere, and the paper trader never reads what this job writes.
-# It runs only when started (no cron): by hand ("Run workflow"), by its own previous run about 2 minutes before that one ends (source
-# chain), or by the hourly scan's watchdog step when no radar run is alive (source watchdog). Each run watches for `minutes` (55, at
-# most 70 so it ends inside the job's 75 minutes); every successor runs 55.
+# The launch radar: its own job beside the hourly scan (scan.yml). One quick round per start, about 2 to 3 minutes in all: it rates the
+# coins whose DEX pool is under 10 minutes old (launch_radar.py round; the sources in radar_src.py), keeps the best 5 for the page's
+# Radar tab, records every rating with the later prices a round can still catch (the 1 h price at the next hourly round), and sends a
+# push notification only for a coin without a trap found. Fake money only: nothing is bought anywhere, and the paper trader never
+# reads what this job writes.
+# Who starts it (no cron): the hourly scan's last step, after every full scan inside the active hours (source hourly), and "Run
+# workflow" by hand (source manual). A round never starts another run. The loop of the old continuous radar stays in launch_radar.py
+# for a VM (python3 launch_radar.py loop --no-github --minutes 0); this workflow never runs it.
 # What it writes: the one-commit branch radar-data (radar.json, the records of the last 48 hours, model.json, pushed.json), the app's
 # live store row "radar" (with the Supabase secrets) and its working caches (actions/cache, key radar-cache-<run id>).
-# Stop it at once: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (the loop sees it within one cycle, the page says off,
-# and neither the chain nor the watchdog can start it again). Repository variable MEMEBOT_RADAR=0: no new run starts (a running one
-# ends at its end). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; outside them the page shows the next start.
+# Stop it: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (GitHub refuses every start, so no round runs any more; a round
+# already going ends within its 2 minutes, with state off when it saw the switch). Repository variable MEMEBOT_RADAR=0: no round runs
+# (the scan starts none, a start by hand is skipped). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; the scan starts
+# rounds only inside them, and a start outside them only writes state hours with the next start.
 name: Meme-Bot launch radar
 run-name: "Launch radar · ${{ inputs.source || 'manual' }}"
 on:
   workflow_dispatch:
     inputs:
-      minutes:
-        description: 'how long this run watches, in minutes (at most 70: the job stops at 75); it starts a 55-minute successor about 2 minutes before its end'
-        type: number
-        default: 55
       source:
-        description: 'who starts it: manual, chain (its previous run) or watchdog (the hourly scan)'
+        description: 'who starts it: manual (Run workflow) or hourly (the scan, after each full scan); either way one round of about 2 to 3 minutes'
         type: choice
-        options: ['manual', 'chain', 'watchdog']
+        options: ['manual', 'hourly']
         default: 'manual'
 permissions:
   contents: write                    # the one-commit branch radar-data
-  actions: write                     # its own workflow's state (the kill switch), its successor, the tidy-up of old runs
+  actions: write                     # the tidy-up of old runs (the kill switch only reads its own workflow's state)
 concurrency:
-  group: memebot-radar               # one radar at a time; the successor waits here until this run ends (never the scan's group)
+  group: memebot-radar               # one round at a time; a second start waits here until this one ends (never the scan's group)
   cancel-in-progress: false
 jobs:
   radar:
     if: (vars.MEMEBOT_RADAR || '1') != '0'   # an unset variable counts as on (compared bare, GitHub skipped the job)
     runs-on: ubuntu-latest
-    timeout-minutes: 75              # a 55-minute run plus its start, its last cycle and the cache
+    timeout-minutes: 10              # one round takes about 2 to 3 minutes: setup, the push sender, the round (6 at most), the cache
     env:
       PYTHONUTF8: '1'
       MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
@@ -45,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false   # no token in .git/config: the radar pushes through its own remote, the pip step runs without one
-      - name: Active hours (outside them radar.json says when the radar starts again, once, and the run ends here)
+      - name: Active hours (outside them radar.json says when the radar starts again, once, and the job ends here)
         id: hours
         timeout-minutes: 4
         env:
@@ -53,7 +51,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
-          # prints inside=true or inside=false; when the check itself fails the loop runs and checks the hours every cycle
+          # prints inside=true or inside=false; when the check itself fails the round runs and checks the hours itself
           out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"
           echo "${out:-inside=true}" | tail -1 >> "$GITHUB_OUTPUT"
       - name: Restore the radar's working caches (dev wallets, holder wallets, X links, pool ages; a lost cache only makes signals unknown)
@@ -95,15 +93,15 @@ jobs:
           else
             echo "pywebpush could not be installed: no push notifications this run, the scan and the live view go on"
           fi
-      - name: Watch the new launches (a cycle every 150 s until the run's end; the successor is started about 2 minutes before it)
+      - name: One round (the new pools rated, the records and their later prices, the page's list, a push for a good coin; 2 minutes or so)
         if: steps.hours.outputs.inside == 'true'
+        timeout-minutes: 6               # a round's cycle stops itself after 125 s; the restore and the push come on top
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}                          # the kill switch and the successor (GitHub's API only, never printed)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}                          # the kill switch (GitHub's API only, never printed)
           RADAR_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git   # radar-data, read and written
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}                          # the app's live store (row "radar") and its push notifications;
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}            # empty without the secrets: nothing of it runs
-          MIN: ${{ inputs.minutes || 55 }}
-        run: python3 launch_radar.py loop --dir rd --minutes "$MIN" --cadence 150
+        run: python3 launch_radar.py round --dir rd
       - name: Save the radar's working caches
         if: always() && steps.hours.outputs.inside == 'true'
         uses: actions/cache/save@v4
@@ -112,7 +110,7 @@ jobs:
           key: radar-cache-${{ github.run_id }}
       - name: Tidy the run list (successful radar runs older than two days are deleted)
         continue-on-error: true
-        timeout-minutes: 2                 # it holds the radar's group: a hanging call never keeps the successor waiting
+        timeout-minutes: 2                 # it holds the radar's group: a hanging call never keeps the next round waiting
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

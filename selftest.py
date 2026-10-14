@@ -3680,9 +3680,10 @@ console.log(JSON.stringify(o));
     check(A_x._sym("AB\u202eCD\u2066E\u200f") == "ABCDE" and A_x._sym("\u202e") == "?"
           and "\\u202a-\\u202e\\u2066-\\u2069" in open(os.path.join(HERE, "page_radar.py"), encoding="utf-8").read()
           and ry.count("persist-credentials: false") == 1 and "persist-credentials: false" in peaks_job[:peaks_job.find("Restore the bot's state")]
-          and "mins = DEFAULT_MINUTES" in open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() and LR_x.DEFAULT_MINUTES == 55,
+          and "/dispatches" not in open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read() and not hasattr(LR_x.Radar, "chain")
+          and "run: python3 launch_radar.py round --dir rd\n" in ry and '"inputs": {"source": "hourly"}' in sy,
           "build: bidi controls are stripped from push titles and the radar page's text, the radar job and the peaks job check out without "
-          "the token in .git/config, every radar successor runs 55 minutes")
+          "the token in .git/config, a radar run is one round and never starts another (the scan's last step starts one per full scan)")
     check(not re.search(r"vars\.[A-Z_]+ *[!=]=", ry + sy) and ry.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1
           and sy.count("(vars.MEMEBOT_RADAR || '1') != '0'") == 1 and sy.count("(vars.MEMEBOT_PEAKS || '1') != '0'") == 1,
           "build: a repository variable that is not set counts as on (GitHub skipped the radar job on a bare vars.X != '0')")

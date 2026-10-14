@@ -25,10 +25,10 @@ S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar -> young: a phone wit
     as unknown
 S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with their timeouts and places, C exports memeradar, job
     peaks needs scan with timeout <= 12, the token only in its restore and push steps, and, run as written (with a stand-in pricing
-    step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the watchdog) against a
-    stand-in GitHub API: it starts
-    radar.yml only when the workflow is active, inside the hours and no run is alive (any status but completed); radar.yml (when on
-    this branch): group memebot-radar, no schedule, timeout 75, never pushes results, live or radar-feed
+    step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (one radar round) against a
+    stand-in GitHub API: it starts ONE round of radar.yml (source hourly) after each full scan, only when the workflow is active, inside
+    the hours and no radar run is running or waiting (any status but completed), never when MEMEBOT_RADAR is 0; radar.yml (when on this
+    branch): group memebot-radar, no schedule, timeout 10 (one round), never pushes results, live or radar-feed
 S7  step B "Feed the launch radar": traps.py feed on a mock db in < 60 s writes the four files, which go to radar-feed as one orphan
     commit (force-pushed, all four or none: a feed that fails or writes three pushes nothing) at the scan's clock (a run doc dated hours
     ahead is ignored); the X-link history survives a step A that could not fetch radar-feed (step B fetches it itself, else leaves
@@ -559,7 +559,7 @@ def _app_secret():
 
 
 class GH:
-    """A stand-in for GitHub's API as the watchdog uses it: the radar workflow's state, its runs, the dispatch."""
+    """A stand-in for GitHub's API as step D uses it: the radar workflow's state, its runs, the dispatch."""
 
     def __init__(self):
         self.state, self.wf_code, self.runs, self.dispatch_code, self.log, self.lock = "active", 200, [], 204, [], threading.Lock()
@@ -673,8 +673,8 @@ def berlin_hour():
     return dt.datetime.now(dt.timezone.utc).astimezone(ZoneInfo("Europe/Berlin")).hour
 
 
-def _watchdog(check, job, tmp):
-    st = step(job, "Keep the launch radar going")
+def _round_start(check, job, tmp):
+    st = step(job, "Start one launch radar round")
     gh = GH()
     srv = serve_gh(gh)
     api = "http://127.0.0.1:%d" % srv.server_address[1]
@@ -718,23 +718,23 @@ def _watchdog(check, job, tmp):
         print("  %-11s %s" % (label, (p.stdout.strip() or p.stderr.strip()[-200:])))
     disp = [c for c in c1 if c["m"] == "POST"]
     body = json.loads(disp[0]["body"]) if disp else {}
-    check(p1.returncode == 0 and [c["m"] for c in c1] == ["GET", "GET", "POST"] and c1[1]["p"].endswith("/runs?per_page=20") and body == {"ref": "main", "inputs": {"source": "watchdog"}}
-          and all(c["auth"] == "Bearer " + FAKE_TOKEN for c in c1) and "started one (source watchdog)" in p1.stdout,
-          "step D: with the radar workflow active, inside the hours (%s Berlin) and every radar run completed, it starts radar.yml on this branch"
-          " with source watchdog (3 API calls, the token in the Authorization header only)" % inside)
-    check(all(p.returncode == 0 and not [c for c in calls if c["m"] == "POST"] and len(calls) == 2 and ("alive (%s)" % s_) in p.stdout for s_, (p, calls) in alive.items()),
-          "a radar run that is queued, in progress, waiting, pending or requested counts as alive: no start (C4)")
+    check(p1.returncode == 0 and [c["m"] for c in c1] == ["GET", "GET", "POST"] and c1[1]["p"].endswith("/runs?per_page=20") and body == {"ref": "main", "inputs": {"source": "hourly"}}
+          and all(c["auth"] == "Bearer " + FAKE_TOKEN for c in c1) and "started one round (source hourly" in p1.stdout and len(disp) == 1,
+          "step D: with the radar workflow active, inside the hours (%s Berlin) and every radar run completed, it starts ONE round of radar.yml"
+          " on this branch, source hourly, no minutes (3 API calls, the token in the Authorization header only)" % inside)
+    check(all(p.returncode == 0 and not [c for c in calls if c["m"] == "POST"] and len(calls) == 2 and ("still going (%s): no second one" % s_) in p.stdout for s_, (p, calls) in alive.items()),
+          "a radar run that is queued, in progress, waiting, pending or requested is still going: no second round (C4)")
     check(p3.returncode == 0 and len(c3) == 1 and "disabled_manually" in p3.stdout and p4.returncode == 0 and len(c4) == 1 and "not on this branch" in p4.stdout
           and p5.returncode == 0 and not c5 and "outside the active hours" in p5.stdout and p6.returncode == 0 and [c["m"] for c in c6] == ["GET", "GET", "POST"]
           and p7.returncode == 0 and "refused (HTTP 422)" in p7.stdout and p8.returncode == 0 and "did not answer" in p8.stdout,
           "a disabled workflow (Disable workflow, the stop switch) or a missing radar.yml: no start after one call; outside the hours (%s): no call at all;"
           " a window wrapping past midnight (%s) starts it; a refused start or GitHub down: one line, exit 0" % (outside, wrap))
     check(all(FAKE_TOKEN not in p.stdout + p.stderr for _, p, _, _ in cases) and all(secs < 30 for _, _, _, secs in cases),
-          "the watchdog never prints the token and ends within its minute in every case (slowest %.1f s)" % max(secs for _, _, _, secs in cases))
-    # the watchdog's hours rule is the radar's own (launch_radar.parse_hours), when that module is on this branch
+          "step D never prints the token and ends within its minute in every case (slowest %.1f s)" % max(secs for _, _, _, secs in cases))
+    # step D's hours rule is the radar's own (launch_radar.parse_hours), when that module is on this branch
     m = re.search(r"(def hours\(s\):.*?return a, b\n)", st["run"], re.S)
     ns = {"re": re}
-    exec(compile(m.group(1) if m else "", "watchdog-hours", "exec"), ns)
+    exec(compile(m.group(1) if m else "", "step-d-hours", "exec"), ns)
     samples = ["7-24", "0-24", "22-6", "5-5", "24-24", "25-3", "abc", "", None, " 8 - 23 ", "0-0", "23-24", "7-25", "-1-4"]
     mine = [ns["hours"](x) for x in samples] if "hours" in ns else []
     want = [(7, 24), (0, 24), (22, 6), (0, 24), (0, 24), (7, 24), (7, 24), (7, 24), (7, 24), (8, 23), (0, 24), (23, 24), (7, 24), (7, 24)]
@@ -742,20 +742,20 @@ def _watchdog(check, job, tmp):
         import importlib
         LR = importlib.import_module("launch_radar")
         theirs = [LR.parse_hours(x) for x in samples]
-        check(mine == theirs == want, "the watchdog reads MEMEBOT_RADAR_HOURS exactly as the radar does (launch_radar.parse_hours): %s" % list(zip(samples, mine))[:6])
+        check(mine == theirs == want, "step D reads MEMEBOT_RADAR_HOURS exactly as the radar does (launch_radar.parse_hours): %s" % list(zip(samples, mine))[:6])
     else:
-        check(mine == want, "the watchdog reads MEMEBOT_RADAR_HOURS as the radar's spec says (a-b Berlin, wrap past midnight, a-a all day, else 7-24)")
+        check(mine == want, "step D reads MEMEBOT_RADAR_HOURS as the radar's spec says (a-b Berlin, wrap past midnight, a-a all day, else 7-24)")
         skip("S6 parity of the hours rule with launch_radar.parse_hours (launch_radar.py of WP3 is not on this branch)")
 
 
 def _s6(check, scan, tmp):
-    print("== scan side S6: scan.yml and radar.yml, parsed as YAML; the watchdog against a stand-in GitHub API")
+    print("== scan side S6: scan.yml and radar.yml, parsed as YAML; step D (one radar round) against a stand-in GitHub API")
     job = scan["jobs"]["scan"]
     cache = step(job, "Keep the big-test snapshots between runs")
     check(cache == CACHE_STEP, "the cache step is unchanged: the same paths, key and restore-keys, so the old caches stay restorable (I9)")
     names = [s.get("name") or s.get("uses") or "" for s in job["steps"]]
     pos = [step_index(job, n) for n in BASE_STEPS]
-    a, b, d_ = (step_index(job, n) for n in ("Import the launch radar's records", "Feed the launch radar", "Keep the launch radar going"))
+    a, b, d_ = (step_index(job, n) for n in ("Import the launch radar's records", "Feed the launch radar", "Start one launch radar round"))
     sa, sb, sd = (job["steps"][i] if i >= 0 else {} for i in (a, b, d_))
     check(scan.get("concurrency") == {"group": "memebot-scan", "cancel-in-progress": False} and scan.get("permissions") == {"contents": "write", "actions": "write"}
           and all(x >= 0 for x in pos) and pos == sorted(pos) and len(names) == len(BASE_STEPS) + 3 and job.get("timeout-minutes") == 55,
@@ -767,7 +767,7 @@ def _s6(check, scan, tmp):
           and sd.get("if") == "always() && steps.recent.outputs.skip != 'true' && (vars.MEMEBOT_RADAR || '1') != '0'"
           and (step(job, "Scan and recommend") or {}).get("run", "").strip() == 'python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN',
           "step A sits after the restore and before the cache step, B right after the results push, D last; each is continue-on-error with a"
-          " timeout (1, 3, 1 min); D runs even after a failed scan unless MEMEBOT_RADAR is 0; none is inside bot.py cycle")
+          " timeout (1, 3, 1 min); D runs even after a failed scan, never when MEMEBOT_RADAR is 0 (an unset variable counts as on); none is inside bot.py cycle")
     bt = step(job, "Export the big-test results to the bigtest branch") or {}
     check("tar -C mb/db -czf bt/memeradar.tgz memeradar" in (bt.get("run") or "") and "if [ -d mb/db/memeradar ]" in (bt.get("run") or ""),
           "step C: the daily bigtest export also packs db/memeradar (when there is one)")
@@ -788,7 +788,7 @@ def _s6(check, scan, tmp):
     check(len(pushes) == 2 and not any("radar-data" in l for _, l in pushes) and all(re.search(r"\b(bigtest|radar-feed)\b", l) for _, l in pushes),
           "no step of scan.yml pushes radar-data (the radar job is its only writer); the git pushes go to bigtest and radar-feed (%d), results via bot.py sync" % len(pushes))
     _peaks_job(check, scan, tmp)
-    _watchdog(check, job, tmp)
+    _round_start(check, job, tmp)
     try:
         radar = load_yaml(RADAR_YML)
     except ImportError:
@@ -802,11 +802,13 @@ def _s6(check, scan, tmp):
     code = [l.split(" #")[0] for l in text.splitlines() if not l.strip().startswith("#")]        # the workflow without its comments
     push_lines = [l for l in code if re.search(r"\bgit\b.*\bpush\b", l) or re.search(r"refs/heads/", l)]
     check((radar.get("concurrency") or {}).get("group") == "memebot-radar" and (radar.get("concurrency") or {}).get("cancel-in-progress") is False
-          and on_keys(radar) == {"workflow_dispatch"} and "schedule" not in text.split("jobs:")[0] and rj.get("timeout-minutes") == 75
+          and on_keys(radar) == {"workflow_dispatch"} and "schedule" not in text.split("jobs:")[0] and rj.get("timeout-minutes") == 10
+          and set(((radar.get("on") or radar.get(True) or {}).get("workflow_dispatch") or {}).get("inputs") or {}) == {"source"}
+          and "python3 launch_radar.py round --dir rd" in [(s_.get("run") or "").strip() for s_ in rj.get("steps") or []]
           and not any(re.search(r"\b(results|live|radar-feed)\b", l) for l in push_lines)
           and "memebot-scan" not in json.dumps(radar.get("concurrency")),
-          "radar.yml: group memebot-radar (never memebot-scan), started by workflow_dispatch only (no schedule), job timeout 75 min, no push to"
-          " results, live or radar-feed")
+          "radar.yml: group memebot-radar (never memebot-scan), started by workflow_dispatch only (no schedule, input source only), ONE round"
+          " (launch_radar.py round), job timeout 10 min, no push to results, live or radar-feed")
 
 
 def _mock_mb(d, now, rng, n_docs=60, per_doc=200):

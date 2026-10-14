@@ -297,22 +297,32 @@ update has no early box yet, because the polling script comes with the page the 
 
 ### Launch radar (coins under 10 minutes)
 
-A second, faster job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). Every
-150 s it rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data plus the trap checks of
-`traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet under a day old, a
-staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the page's Radar
-tab and in the app, and keeps every rating with the prices 5, 15, 30 and 60 minutes later, so its record is measurable.
-Only coins without a trap found are listed as good; when there is none, the tab says so. A push goes out only for a good
-coin. Fake money only: the radar buys nothing and the paper trader never reads it.
+A second, quick job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). Each start is
+ONE round of about 2 to 3 minutes: it rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
+plus the trap checks of `traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet
+under a day old, a staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the
+page's Radar tab and in the app, records every rating, and sends a push only for a coin without a trap found. Fake money only:
+the radar buys nothing and the paper trader never reads it.
+
+When it runs: the hourly scan starts one round at its end (so about one an hour, inside the active hours), and "Run workflow"
+on the radar's Actions page starts one by hand. A round never starts another one. The list on the page stays until the next
+round.
+
+Later prices: a record keeps the prices 5, 15, 30 and 60 minutes after the coin was first seen, but only those a later round
+catches (at most half the offset late; the 1 h price from 45 to 90 minutes). With one round an hour that is usually the 1 h
+price only; the 5, 15 and 30 minute fields then stay empty (shown as "–"), never zero. The 1 h outcome (rugged, doubled) and
+the record line need only the 1 h price.
 
 Which trap checks count, and how much, comes from our own rug data (`research/rugstudy/`, `radar_weights.json`): the
 signals the study could not confirm stay visible on the page but carry no weight. Once enough rated coins have their 1 h
 outcome, the radar retrains its weights by itself (`model.json` on branch `radar-data`, tested walk-forward like the main
 model, the study as the starting point).
 
-Nothing to set up. It runs 7:00 to 24:00 Berlin, started by the hourly scan's watchdog and then by itself every 55 minutes.
+Nothing to set up. Active 7:00 to 24:00 Berlin. For a free VM instead, `python3 launch_radar.py loop --no-github --minutes 0`
+runs the old continuous loop (a cycle every 150 s).
 Switches (repository variables, Settings > Secrets and variables > Actions > Variables):
-- `MEMEBOT_RADAR=0`: no new radar run starts. To stop it at once: Actions > "Meme-Bot launch radar" > Disable workflow.
+- `MEMEBOT_RADAR=0`: no round runs (the scan starts none, a start by hand is skipped). Also a stop: Actions > "Meme-Bot
+  launch radar" > Disable workflow.
 - `MEMEBOT_RADAR_HOURS=8-22`: other active hours (Berlin).
 - `MEMEBOT_PUSH_YOUNG=1`: the scan's own "new coins" push again (off by default now; the radar's push replaces it).
 - `MEMEBOT_PEAKS=0`: no "best within 6 h" pricing job after the scan.
