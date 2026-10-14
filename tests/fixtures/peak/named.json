@@ -1,0 +1,640 @@
+{
+ "about": "SPEC 11 check P2: the named cases of the peak research (tonight/peak/proto_out.txt, study/out/glitches.json). Entry prices, times, liquidity, market caps, the rug exit's last healthy scan and every DexScreener point (ms, priceUsd, liquidityUsd) are real, copied from the results branch (memepos, memeexit, memeruns, memeearly) and the big-test index of the research (a snapshot's market cap turned into a price at the same supply). GeckoTerminal was not reachable from the build sandbox, so the minute candles are synthetic: 'shape' lists segments [from minute, to minute, close from, close to, dollars of volume per candle] after the entry minute (geometric between the two closes, a later segment wins a shared minute), drawn through the real points. HIRE's 38.57x DexScreener price was seen on its later main pool (Meteora WD8AA...), not on the bought pool, so the real bought-pool result may be lower; the case checks that a 38x climb with real volume and liquid prices beside it is kept, not capped.",
+ "cases": [
+  {
+   "name": "Doggo",
+   "kind": "early list 2026-10-12T1045, as if bought for 3 at its list price and time (never bought)",
+   "addr": "CnU3PiYpLDDC3wfD6jY23LE95zSbtRiiFjhidFnvpump",
+   "pair": "BhqeHgxdZs5yyMDRifqLwzS8uXkFwsMxnCM1BXbHmRTu",
+   "entryAt": 1791802197220,
+   "px": 8.944e-05,
+   "liq0": 38204.05,
+   "mc0": 89447.0,
+   "ticket": 3.0,
+   "grp": "young",
+   "rugOkAt": null,
+   "ds": [
+    [
+     1791803358078,
+     5.075e-12,
+     null,
+     "early p2: price gone, liquidity not reported"
+    ],
+    [
+     1791805561795,
+     5.308155987453575,
+     0.0,
+     "big test snapshot: mc $5.3B on liquidity $0"
+    ],
+    [
+     1791805798759,
+     5.3,
+     0.0,
+     "early p60: 59,257x on liquidity $0"
+    ]
+   ],
+   "shape": [
+    [
+     0,
+     18,
+     1.0,
+     0.93,
+     900
+    ],
+    [
+     18,
+     18,
+     5.674e-08,
+     5.674e-08,
+     4
+    ],
+    [
+     19,
+     25,
+     5.674e-08,
+     5.674e-08,
+     1
+    ],
+    [
+     56,
+     62,
+     59257.6,
+     59257.6,
+     0.02
+    ],
+    [
+     120,
+     125,
+     59348.8,
+     59348.8,
+     0.02
+    ]
+   ],
+   "expect": {
+    "xMax": 1.0,
+    "x6": 0.0,
+    "dead": true,
+    "rawXMin": 59000
+   }
+  },
+  {
+   "name": "Banana Cat",
+   "kind": "early list 2026-10-12T2023, as if bought for 3 at its list price and time (never bought)",
+   "addr": "HtRsumYk7tBcDHKAVpvn2kEX1LDzoYQ4trmKa7onGTVJ",
+   "pair": "H95zHiPCtZ95urfCq3XM8tuPRPYJFWUtpPCbTN4wYbmp",
+   "entryAt": 1791836890333,
+   "px": 0.001027,
+   "liq0": 53428.35,
+   "mc0": 1027141.0,
+   "ticket": 3.0,
+   "grp": "young",
+   "rugOkAt": null,
+   "ds": [
+    [
+     1791838091119,
+     0.001962,
+     74185.47,
+     "early p2: 1.91x on liquidity $74k"
+    ],
+    [
+     1791841631941,
+     9.73,
+     0.0,
+     "early p60: 9,474x on liquidity $0"
+    ],
+    [
+     1791844949836,
+     null,
+     0.0,
+     "big test: gone"
+    ]
+   ],
+   "shape": [
+    [
+     0,
+     20,
+     1.0,
+     1.91,
+     5000
+    ],
+    [
+     20,
+     21,
+     1.91,
+     1.89,
+     4000
+    ],
+    [
+     21,
+     45,
+     1.89,
+     1.55,
+     3000
+    ],
+    [
+     45,
+     45,
+     9.7e-07,
+     9.7e-07,
+     3
+    ],
+    [
+     46,
+     50,
+     9.7e-07,
+     9.7e-07,
+     1
+    ],
+    [
+     75,
+     80,
+     9474.2,
+     9474.2,
+     0.05
+    ]
+   ],
+   "expect": {
+    "xMax": 1.91,
+    "x6": 0.0,
+    "dead": true,
+    "rawXMin": 9000
+   }
+  },
+  {
+   "name": "Husky",
+   "kind": "early list 2026-10-13T0544, as if bought for 3 at its list price and time (never bought)",
+   "addr": "GbvQvUKvaBP7sEmDbFFNbLyV9AcMK9kqhpRkaN9sjt38",
+   "pair": "CUTnWvAyNHv8jTsGprzpduDUTXD72wbEVGqY1E9YMRqZ",
+   "entryAt": 1791870564375,
+   "px": 2.808e-05,
+   "liq0": 45474.1,
+   "mc0": 28087.0,
+   "ticket": 3.0,
+   "grp": "young",
+   "rugOkAt": null,
+   "ds": [
+    [
+     1791871849181,
+     4.825e-05,
+     59918.4,
+     "early p2: 1.72x on liquidity $60k"
+    ],
+    [
+     1791873660541,
+     0.00036565384697546905,
+     0.01,
+     "big test snapshot: 13x on liquidity $0.01"
+    ],
+    [
+     1791873946814,
+     0.0003657,
+     0.01,
+     "early p60: 13.02x on liquidity $0.01"
+    ],
+    [
+     1791876866053,
+     null,
+     0.0,
+     "big test: gone"
+    ]
+   ],
+   "shape": [
+    [
+     0,
+     21,
+     1.0,
+     1.72,
+     4000
+    ],
+    [
+     21,
+     22,
+     1.72,
+     1.7,
+     3000
+    ],
+    [
+     22,
+     40,
+     1.7,
+     1.35,
+     2500
+    ],
+    [
+     40,
+     40,
+     2e-06,
+     2e-06,
+     2
+    ],
+    [
+     41,
+     45,
+     2e-06,
+     2e-06,
+     1
+    ],
+    [
+     50,
+     58,
+     13.02,
+     13.02,
+     0.01
+    ],
+    [
+     60,
+     64,
+     8.6169,
+     8.6169,
+     0.01
+    ]
+   ],
+   "expect": {
+    "xMax": 1.72,
+    "x6": 0.0,
+    "dead": true,
+    "rawXMin": 13.0
+   }
+  },
+  {
+   "name": "SpaceX AI",
+   "kind": "paper position 2026-10-11T090508-y-SpaceXAI-4GBya1 (rug exit at the 09:51 scan)",
+   "addr": "4GBya1JxSZ2EnVCK3zYBnSvhWDTDR1JMivsrfvNwLUk5",
+   "pair": "2ss5tiaZjsWC9hTRbh5MfP4GRDmMYrAeD9Jz7vWsEsRG",
+   "entryAt": 1791710503425,
+   "px": 2.349e-05,
+   "liq0": 29970.72,
+   "mc0": 23493.0,
+   "ticket": 3.0,
+   "grp": "young",
+   "rugOkAt": 1791709508634,
+   "ds": [
+    [
+     1791712279687,
+     7.386556633890947e-05,
+     0.0,
+     "big test snapshot at the rug scan: 3.14x on liquidity $0"
+    ],
+    [
+     1791715277269,
+     7.386556633890947e-05,
+     0.0,
+     "big test snapshot: 3.14x on liquidity $0"
+    ]
+   ],
+   "shape": [
+    [
+     0,
+     20,
+     1.0,
+     1.05,
+     600
+    ],
+    [
+     20,
+     22,
+     1.05,
+     1.0,
+     500
+    ],
+    [
+     22,
+     22,
+     1e-06,
+     1e-06,
+     2
+    ],
+    [
+     23,
+     26,
+     1e-06,
+     1e-06,
+     1
+    ],
+    [
+     30,
+     36,
+     3.1446,
+     3.1446,
+     0.03
+    ],
+    [
+     60,
+     62,
+     3.1447,
+     3.1447,
+     0.03
+    ]
+   ],
+   "expect": {
+    "xMax": 1.0,
+    "x6": 0.0,
+    "dead": true,
+    "rawXMin": 3.0
+   }
+  },
+  {
+   "name": "HIRE",
+   "kind": "paper position 2026-10-12T135650-y-HIRE-98AG3z (take-profit at 15:05)",
+   "addr": "98AG3zJUawbvDnpgbDhmxpMKva43vtgPLLPSXqo1pump",
+   "pair": "2U5kdozDrdgYzyGRNbTdBejGLYEeRt1FkERQmyPbV85P",
+   "entryAt": 1791814578738,
+   "px": 5.115e-05,
+   "liq0": 18262.44,
+   "mc0": 51108.0,
+   "ticket": 3.0,
+   "grp": "young",
+   "rugOkAt": null,
+   "ds": [
+    [
+     1791814878578,
+     6.526e-05,
+     21012.98,
+     "early p2 (bought pool): 1.28x on liquidity $21k"
+    ],
+    [
+     1791816587741,
+     0.00041585946818501997,
+     58353.33,
+     "big test snapshot: 8.1x on liquidity $58k"
+    ],
+    [
+     1791816889168,
+     0.0002241,
+     41743.88,
+     "early p60 (bought pool): 4.38x on liquidity $42k"
+    ],
+    [
+     1791819969784,
+     0.0014585666500352196,
+     118152.37,
+     "big test snapshot: 28.5x on liquidity $118k"
+    ],
+    [
+     1791822058781,
+     0.0015226282519370743,
+     121541.17,
+     "big test snapshot: 29.8x on liquidity $122k"
+    ],
+    [
+     1791824334381,
+     0.0010397057173045317,
+     88263.39,
+     "big test snapshot: 20.3x on liquidity $88k"
+    ],
+    [
+     1791825980036,
+     0.000819345776590749,
+     90063.09,
+     "big test snapshot: 16.0x on liquidity $90k"
+    ],
+    [
+     1791828429770,
+     0.00039657463312984273,
+     62798.21,
+     "big test snapshot: 7.8x on liquidity $63k"
+    ]
+   ],
+   "shape": [
+    [
+     0,
+     5,
+     1.0,
+     1.276,
+     1500
+    ],
+    [
+     5,
+     38,
+     1.276,
+     4.38,
+     3000
+    ],
+    [
+     38,
+     48,
+     4.38,
+     11.3,
+     6000
+    ],
+    [
+     48,
+     90,
+     11.3,
+     28.5,
+     8000
+    ],
+    [
+     90,
+     113,
+     28.5,
+     38.6,
+     9000
+    ],
+    [
+     113,
+     116,
+     38.6,
+     38.6,
+     9000
+    ],
+    [
+     116,
+     124,
+     38.6,
+     29.8,
+     7000
+    ],
+    [
+     124,
+     162,
+     29.8,
+     20.3,
+     5000
+    ],
+    [
+     162,
+     190,
+     20.3,
+     16.0,
+     4000
+    ],
+    [
+     190,
+     231,
+     16.0,
+     7.75,
+     3000
+    ],
+    [
+     231,
+     359,
+     7.75,
+     7.93,
+     2000
+    ]
+   ],
+   "expect": {
+    "xMin": 38.0,
+    "noCut": [
+     "cap",
+     "jump"
+    ],
+    "x6Min": 7.5
+   }
+  },
+  {
+   "name": "hi",
+   "kind": "paper position 2026-10-12T234153-y-hi-6x4Z2d (take-profit at 01:10)",
+   "addr": "6x4Z2dr5DgHUBCKvta8T8GNsFTxJhsBZxNrycWQ8pump",
+   "pair": "GLN7Dr7AsP9GRxAjxiVBk9Rnwyn74ar2R3BuGk8ZxQn1",
+   "entryAt": 1791849643358,
+   "px": 4.2e-05,
+   "liq0": 15935.52,
+   "mc0": 42010.0,
+   "ticket": 3.0,
+   "grp": "young",
+   "rugOkAt": null,
+   "ds": [
+    [
+     1791849938128,
+     6.263e-05,
+     20017.75,
+     "early p2: 1.49x on liquidity $20k"
+    ],
+    [
+     1791852934192,
+     0.00043618514639371574,
+     59338.45,
+     "big test snapshot: 10.4x on liquidity $59k"
+    ],
+    [
+     1791853236905,
+     0.0004584,
+     59338.45,
+     "early p60: 10.9x on liquidity $59k"
+    ],
+    [
+     1791855929270,
+     0.00016865284456081883,
+     36684.99,
+     "big test snapshot: 4.0x on liquidity $37k"
+    ],
+    [
+     1791859498740,
+     0.00012071325874791716,
+     31214.35,
+     "big test snapshot: 2.9x on liquidity $31k"
+    ],
+    [
+     1791863208217,
+     6.0977481552011424e-05,
+     21880.8,
+     "big test snapshot: 1.45x on liquidity $22k"
+    ],
+    [
+     1791866822536,
+     4.5142009616238425e-05,
+     9890.710751497514,
+     "big test snapshot: 1.07x on liquidity $9.9k"
+    ],
+    [
+     1791870299388,
+     6.412769713371343e-05,
+     11695.148589341548,
+     "big test snapshot: 1.53x on liquidity $12k"
+    ]
+   ],
+   "shape": [
+    [
+     0,
+     5,
+     1.0,
+     1.49,
+     1200
+    ],
+    [
+     5,
+     55,
+     1.49,
+     10.39,
+     4000
+    ],
+    [
+     55,
+     60,
+     10.39,
+     10.91,
+     6000
+    ],
+    [
+     60,
+     69,
+     10.91,
+     11.8,
+     6000
+    ],
+    [
+     69,
+     72,
+     11.8,
+     11.8,
+     5000
+    ],
+    [
+     72,
+     104,
+     11.8,
+     4.02,
+     4000
+    ],
+    [
+     104,
+     164,
+     4.02,
+     2.87,
+     3000
+    ],
+    [
+     164,
+     226,
+     2.87,
+     1.45,
+     2000
+    ],
+    [
+     226,
+     286,
+     1.45,
+     1.07,
+     1200
+    ],
+    [
+     286,
+     344,
+     1.07,
+     1.53,
+     1500
+    ],
+    [
+     344,
+     359,
+     1.53,
+     1.53,
+     1500
+    ]
+   ],
+   "expect": {
+    "xMin": 11.0,
+    "xMax": 12.0,
+    "noCut": [
+     "cap",
+     "jump",
+     "pool dead",
+     "collapse"
+    ],
+    "x6Min": 1.4
+   }
+  }
+ ]
+}
