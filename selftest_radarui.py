@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selftest_radarui.py: the checks of the Radar tab, the trap-check line and the "no good coin" marks (WP5b; SPEC 11: U3, U4, U5, U8, U10, A3).
+"""selftest_radarui.py: the checks of the launch radar on the New tab (the old Radar tab, merged into New), the trap-check line and the "no good coin" marks (WP5b; SPEC 11: U3, U4, U5, U8, U10, A3).
 
   python3 selftest_radarui.py                 -> PASS/FAIL per check, "ALL PASS" at the end (exit code 1 on any failure)
   python3 selftest_radarui.py --shots DIR     -> also writes the screenshots of SPEC 12 (1-5, 10, 11) into DIR
@@ -115,7 +115,8 @@ def b58(rng, suffix="pump"):
 def radar_doc(now, kind="good", rng=None):
     """A radar.json (Appendix A) as the radar job writes it: kind good (one coin without traps; a watch coin in "coins" that the page
     must not show as a card), empty (none, seven with traps or unchecked), late, stopped, off, hours, xss and xss-empty (tags for every
-    name, note and host state, a javascript: X link), hosts (WP3's routine host states, one limited and one down, an old wallet memory)."""
+    name, note and host state, a javascript: X link), hosts (WP3's routine host states, one limited and one down, an old wallet memory), round
+    (one round of the hourly radar: state done, the next round in 55 minutes, a call with miss60)."""
     rng = rng or random.Random(5)
     lag = {"late": 8 * MIN, "stopped": 40 * MIN}.get(kind, 30_000)
     t = now - lag
@@ -150,7 +151,12 @@ def radar_doc(now, kind="good", rng=None):
            "recent": recent, "record": {"calls": 37, "rug": 0.03, "win": 0.14, "eur": -1.2, "n60": 33, "ci": {"rug": [0.0, 0.1], "win": [0.05, 0.27]}},
            "hosts": {"dexscreener": "ok", "rugcheck": "ok", "pump.fun": "ok", "geckoterminal": "ok", "rpc": "ok"},
            "notes": ["RugCheck limited: 2 coins not fully checked"] if kind == "empty" else [], "lines": ["cycle 8: 8 seen, 1 without traps, 1 pushed (63 s)"]}
-    if kind == "off":
+    if kind == "round":
+        # one round of the hourly radar (launch_radar.py round): state done, the next round in 55 minutes, run.mode round, no run end; a call
+        # whose 1 h price no round caught (miss60) and one still waiting for it
+        doc.update(state="done", next=t + 55 * MIN, hourly=t, run={"id": "5678", "start": t - 2 * MIN, "end": None, "cycle": 1, "source": "hourly", "mode": "round"})
+        doc["recent"] = recent[:4] + [{"addr": b58(rng), "sym": "GONE", "good": t - 100 * MIN, "later": {"5": None, "15": 0.8, "30": None, "60": None}, "out": None, "miss60": True}]
+    elif kind == "off":
         doc.update(state="off", coins=[], others=[], next=None)
     elif kind == "hours":
         doc.update(state="hours", coins=[], others=[], next=t + 6 * H)
@@ -378,19 +384,34 @@ def py_checks(check, tmp, T, standin):
     cb = P.clean_doc(big)
     huge = dict(radar_doc(now, "good"), notes=["n" * 160] * 8, coins=[dict(radar_doc(now, "good")["coins"][0], d={"k%d" % i: "v" * 60 for i in range(60)})] * 5)
     tabs = re.findall(r'<label for="(tab-\w+)" role="tab">', page)
+    radios = re.findall(r'<input type="radio" name="tab" id="(tab-\w+)"', page)
     check(m and emb.get("kind") == "radar" and len(m.group(1).encode()) <= P.DOC_MAX and "</" not in m.group(1) and cb and len(json.dumps(cb, separators=(",", ":")).encode()) <= P.DOC_MAX
           and len(cb["others"]) < 40 and P.clean_doc({"kind": "radar"}) is None and P.clean_doc({"kind": "live", "t": now}) is None
-          and tabs == ["tab-pick", "tab-radar", "tab-young", "tab-office"] and not re.search(r"ghp_[A-Za-z0-9]{10}|github_pat_|x-access-token:|sb_secret_|Bearer [A-Za-z0-9]", page),
-          "the Radar tab sits second (Pick, Radar, New, Office); the embedded radar.json is whitelisted, %d bytes (at most %d; a big doc is trimmed to %d others) and cannot close "
-          "its script block; no token in the page" % (len(m.group(1).encode()) if m else -1, P.DOC_MAX, len(cb["others"]) if cb else -1))
-    radar_of = lambda pg: pg.split('id="pane-radar">', 1)[1].split('<div class="pane" id="pane-young">', 1)[0]
+          and tabs == ["tab-pick", "tab-young", "tab-office"] and radios == tabs and not re.search(r"ghp_[A-Za-z0-9]{10}|github_pat_|x-access-token:|sb_secret_|Bearer [A-Za-z0-9]", page),
+          "three tabs, Pick, New, Office, one radio each (%s); the embedded radar.json is whitelisted, %d bytes (at most %d; a big doc is trimmed to %d others) and cannot close "
+          "its script block; no token in the page" % (radios, len(m.group(1).encode()) if m else -1, P.DOC_MAX, len(cb["others"]) if cb else -1))
+    ids = re.findall(r'\bid="([^"]+)"', re.sub(r"(?s)<script\b.*?</script>", "", page))
+    yp = young_pane(page)
+    lab = re.search(r'<label for="tab-young" role="tab">(.*?)</label>', page)
+    check('id="tab-radar"' not in page and 'id="pane-radar"' not in page and len(ids) == len(set(ids)) and yp.find("data-radar") >= 0
+          and yp.find("data-radar") < yp.find("under an hour old") and yp.count("data-radar ") + yp.count("data-radar>") == 1 and "Launch radar" in yp
+          and lab and "data-r-tabcnt" in lab.group(1) and re.search(r'<span class="cnt" title="[^"]*">8</span>', lab.group(1))
+          and "#tab-radar:checked" not in page and "pane-radar" not in P.CSS + P.JS,
+          "New holds the radar: no Radar tab or pane left, no id twice (%d ids), the radar's block on top of the New pane above the full scan's new launches, "
+          "the New label carries the radar's count (hidden at 0) beside the scan's 8 %r" % (len(ids), re.sub(r"<[^>]+>", "|", lab.group(1)) if lab else None))
+    rd = P.clean_doc(radar_doc(now, "round"))
+    check(rd and rd["state"] == "done" and rd["run"]["mode"] == "round" and rd["hourly"] == now - 30_000 and [r["miss60"] for r in rd["recent"]] == [False] * 4 + [True]
+          and P.clean_doc(dict(radar_doc(now, "round"), run={"mode": "<x>"}))["run"]["mode"] == "" and "done" in P.STATES
+          and P.clean_doc(dict(radar_doc(now, "round"), recent=[dict(radar_doc(now, "round")["recent"][4], miss60="yes")]))["recent"][0]["miss60"] is False,
+          "the hourly radar's doc keeps its state done, run.mode round, hourly and each call's miss60 (only a real true) through the whitelist")
+    radar_of = lambda pg: pg.split('<section class="radar"', 1)[1].split('</section>', 1)[0]
     plain = page_of(d, now, repo=None)
     check(radar_of(plain) == radar_of(page) and "radar.yml" not in visible_text(page) and 'data-r-actions hidden' in radar_of(page),
-          "the Radar tab's HTML is the same with and without GITHUB_REPOSITORY (its script finds the repository in the office's live box for the GitHub poll and the Start and Stop links)")
+          "the radar's HTML is the same with and without GITHUB_REPOSITORY (its script finds the repository in the office's live box for the GitHub poll and the Start and Stop links)")
     ns = re.search(r'<noscript><p class="note">(.*?)</p></noscript>', radar_of(page))
     ns0 = re.search(r'<noscript><p class="note">(.*?)</p></noscript>', P.pane({"now": now, "dir": None, "_radar": {"doc": None, "young": {}, "weights": None, "traps": False}}))
     check(ns and "needs JavaScript" in ns.group(1) and "1 coin without traps" in ns.group(1) and ns0 and "No radar check is in this build yet" in ns0.group(1),
-          "the Radar tab without a script says one line: %r" % (ns.group(1) if ns else None))
+          "the radar without a script says one line: %r" % (ns.group(1) if ns else None))
     hc = P.clean_doc(huge)
     check(hc is None or len(json.dumps(hc, separators=(",", ":"), ensure_ascii=False).encode()) <= P.DOC_MAX, "a doc too big even without its folds is left out whole, never cut mid-coin")
     hd = P.clean_doc(dict(radar_doc(now, "hosts")))
@@ -446,6 +467,17 @@ o.state=[R.radarState(doc(N-30000),N,0),R.radarState(doc(N-8*M),N,0),R.radarStat
   R.radarState(doc(N-2*3600000,{state:'hours',next:N-3600000}),N,0),
   // a phone clock 10 minutes fast: running once the doc was seen to move (got/moved), never from the phone's clock alone
   R.radarState(doc(N-30000),N+600000,N+600000-20000,true),R.radarState(doc(N-30000),N+600000,0)];   // ... before a doc moved, the phone's clock is the first guess
+// the hourly radar's rounds (state done, or degraded with run.mode round): done until doc.next + 30 min (next unknown: an hour after the
+// round), then late for an hour, then stopped; a loop's 6-minute rule does not apply to them
+var rd=function(t,x){return doc(t,Object.assign({state:'done',next:t+55*M,run:{mode:'round'}},x||{}));};
+o.round=[R.radarState(rd(N-20*M),N,0),R.radarState(rd(N-80*M),N,0),R.radarState(rd(N-84*M),N,0),R.radarState(rd(N-86*M),N,0),R.radarState(rd(N-144*M),N,0),
+  R.radarState(rd(N-146*M),N,0),R.radarState(rd(N-80*M,{next:null}),N,0),R.radarState(rd(N-100*M,{next:null}),N,0),
+  R.radarState(rd(N-10*M,{state:'degraded'}),N,0),R.radarState(doc(N-10*M,{state:'done',next:N+50*M}),N,0),R.radarState(rd(N-10*M,{state:'off'}),N,0)];
+o.live=[R.live('done',rd(N-14*M),N,0),R.live('done',rd(N-16*M),N,0),R.live('running',doc(N-30000),N,0),R.live('late',rd(N-90*M),N,0),R.live('done',null,N,0)];
+// the next poll of a round: near doc.next (+ ROUND, the round's own minutes), at most IDLE apart on GitHub (a Start by hand), SB_DONE on the live store
+o.rnext=[R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:rd(N-55*M,{next:N+5*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,
+  R.radarNext({doc:rd(N-70*M,{next:N-10*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:rd(N-58*M,{next:N-1*M}),now:N,last:N,tab:'radar',via:'supabase',got:N})-N,
+  R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'app',via:'supabase',got:N})-N,R.radarNext({doc:rd(N-100*M,{next:N-40*M}),now:N,last:N,tab:'office',via:'github',got:N})-N];
 var U='https://abcref.supabase.co',K='sb_publishable_AbC_12-3',now=N;
 o.transport=[R.radarTransport(U,K,'gh',60,N/1000+1800,now,0),R.radarTransport(U,K,'gh',60,N/1000+1800,now,now+60000),R.radarTransport('','','gh',null,0,now,0),
   R.radarTransport('','','gh',11,N/1000+1800,now,0),R.radarTransport('','','gh',10,N/1000+1800,now,0),R.radarTransport('','','gh',3,N/1000-10,now,0),
@@ -469,12 +501,20 @@ function sim(officeOn,tab,rem0){var Hh=3600000,T=1e12,rem=rem0,reset=(T+Hh)/1000
     minRem=Math.min(minRem,rem);}
   return [calls,minRem,raw];}
 o.sim=[sim(true,'office',60),sim(false,'radar',60),sim(true,'office',25),sim(true,'radar',60)];
+// one hour on the New tab with the hourly radar: a round 5 minutes ago, the next in 55 minutes (it lands 3 minutes after that)
+o.simRound=(function(){var T=1e12,calls=0,rN=T,d=rd(T-5*M,{next:T+55*M});for(var now=T;now<T+3600000;now+=1000){if(now>=T+58*M&&d.t<T)d=rd(now,{next:now+60*M});
+  if(now>=rN){calls++;rN=R.radarNext({doc:d,now:now,last:now,tab:'radar',via:'github',got:now,moved:false});}}return calls;})();
 o.badge=[A.radarBadge({state:'running',doc:{coins:[{v:'good'},{v:'good'},{v:'watch'}]}}),A.radarBadge({state:'running',doc:{coins:[{v:'watch'}]}}),
-  A.radarBadge({state:'late',doc:{coins:[{v:'good'}]}}),A.radarBadge({state:'stopped',doc:{coins:[{v:'good'}]}}),A.radarBadge(null),A.radarBadge({state:'running',doc:{coins:'x'}})];
-o.tabs=A.TABS;o.tab=[A.tab('#tab-radar'),A.tab('tab-radar'),A.tab('#radar'),A.tab('#tab-young')];
+  A.radarBadge({state:'late',doc:{coins:[{v:'good'}]}}),A.radarBadge({state:'stopped',doc:{coins:[{v:'good'}]}}),A.radarBadge(null),A.radarBadge({state:'running',doc:{coins:'x'}}),
+  A.radarBadge({state:'done',good:2,doc:{coins:[{v:'good'},{v:'good'}]}}),A.radarBadge({state:'done',good:0,doc:{coins:[{v:'good'}]}}),A.radarBadge({state:'done',doc:{coins:[{v:'good'}]}})];
+o.newBadge=[A.newBadge(2,7),A.newBadge(null,7),A.newBadge(null,null),A.newBadge(0,0)];
+o.tabs=A.TABS;o.tab=[A.tab('#tab-radar'),A.tab('tab-radar'),A.tab('#radar'),A.tab('#tab-young'),A.tab('#new'),A.tab('#tab-x'),A.tab('#newer')];
+o.radarLink=[A.radarLink('#tab-radar'),A.radarLink('#radar'),A.radarLink('#tab-young'),A.radarLink('#new')];
 var c=R.clean({kind:'radar',t:N,coins:[{addr:'1111111111111111111111111111111111111111pump',sym:'<b>x</b>',x:'javascript:alert(1)',v:'good',line:[['bad','a'],['evil','b'],['ok',5]],d:{a:1,'b c':2,e:{f:1}}},
   {addr:'0x<b>',v:'good'}],others:[{addr:'nope'}],notes:['a\u2028b'],hosts:{'x<y':'ok','pump.fun trades':'down',rugcheck:'limited'}});
 o.clean=[c.coins.length,c.coins[0].x===undefined,c.coins[0].line.length,Object.keys(c.coins[0].d).join(','),c.others.length,c.notes[0],Object.keys(c.hosts).join(','),R.clean({kind:'radar'}),R.clean(null)];
+var cr=R.clean({kind:'radar',t:N,state:'done',hourly:N-5,run:{mode:'round',end:null},recent:[{addr:'1111111111111111111111111111111111111111pump',miss60:true},{addr:'1111111111111111111111111111111111111112pump',miss60:'yes'}]});
+o.cleanRound=[cr.state,cr.run.mode,cr.hourly,cr.recent.map(function(r){return r.miss60;}),R.clean({kind:'radar',t:N,run:{mode:'x'}}).run.mode];
 o.verdict=[R.verdict({v:'good',n:9})[1],R.verdict({v:'trap',hard:['a','b']})[1],R.verdict({v:'watch',unknown:['rc_report']})[1],R.verdict({v:'watch',soft:['a','b']})[1]];
 var rec=function(n){return {calls:37,rug:0.03,win:0.14,eur:-1.2,n60:n,ci:{rug:[0,0.1],win:[0.05,0.27]}};};
 o.rec=[R.recShort(rec(19)),R.recShort(rec(20)),R.recLine(rec(19)),R.recLine(rec(20))];
@@ -519,8 +559,22 @@ def node_checks(check, tmp, skips):
     check(sim[0][0] <= 50 and sim[0][1] >= 10 and sim[1][0] <= 25 and sim[2][0] <= 15 and sim[2][1] >= 10 and sim[3][0] <= 50 and sim[3][1] >= 10,
           "U3 the shared GitHub budget: a simulated hour with the office poll during a live scan and the radar poll on the Office tab makes %d counted calls (at most 50, %d left, "
           "%d raw reads); the radar alone %d; starting with 25 left, %d calls and %d kept" % (sim[0][0], sim[0][1], sim[0][2], sim[1][0], sim[2][0], sim[2][1]))
-    check(o["badge"] == [2, None, None, None, None, None] and "radar" in o["tabs"] and o["tabs"].index("radar") == 1 and len(o["tabs"]) == 5 and o["tab"] == ["radar", "radar", None, "young"],
-          "A3 MemebotApp: TABS %s, tab('#tab-radar') = radar, the badge counts coins with no trap found only while the radar runs and none at 0 %s" % (o["tabs"], o["badge"]))
+    check(o["round"] == ["done", "done", "done", "late", "late", "stopped", "done", "late", "done", "done", "off"],
+          "U3 the hourly radar's rounds: done from doc.next until 30 min past it (an hour after the round when next is unknown), late for an hour after that, then "
+          "stopped; a failed round (degraded, run.mode round) is done too, never 'running' from a loop's 6-minute rule %s" % o["round"])
+    check(o["live"] == [True, False, True, False, False],
+          "U3 a round's coins are current (cards in colour, the count) for 15 minutes after it, a loop's while it runs, never when late %s" % o["live"])
+    rn = o["rnext"]
+    check(rn == [600000, 480000, 600000, 120000, 300000, 600000] and o["simRound"] <= 9,
+          "U3 the poll of a round: near doc.next (8 min away: at its round's end, 480 s), else every 10 min (a Start by hand shows), the live store every 5 min or at "
+          "the next round; an hour on the New tab makes %d GitHub calls (was every 2.5 min) %s" % (o["simRound"], rn))
+    check(o["badge"] == [2, None, None, None, None, None, 2, None, None] and o["newBadge"] == [{"n": 2, "good": True}, {"n": 7, "good": False}, None, None]
+          and o["tabs"] == ["pick", "young", "office", "account"] and o["tab"] == ["young", "young", "young", "young", "young", None, None]
+          and o["radarLink"] == [True, True, False, False],
+          "A3 MemebotApp: TABS %s (one New tab); the old Radar links #tab-radar, #radar and #tab-young, #new open New (a radar link at its top, no jump to the early list); "
+          "the radar's count while its list is current (a round: the event's good), green before the early list's count on New's one badge %s %s" % (o["tabs"], o["badge"], o["newBadge"]))
+    check(o["cleanRound"] == ["done", "round", 1e12 - 5, [True, False], ""],
+          "U3 the script's whitelist keeps a round's state done, run.mode, hourly and miss60 (only a real true) %s" % o["cleanRound"])
     check(o["clean"] == [1, True, 1, "a,e", 0, "a b", "pump.fun trades,rugcheck", None, None] and o["verdict"] == ["✓ No trap found · 9 checks", "✕ 2 traps", "? not fully checked", "! 2 warnings"]
           and [g[0] for g in o["groups"]] == ["bad", "warn", "unk", "ok", "info"] and o["groups"][0][2] == ["brand/celebrity name", "pool opened with the mint"]
           and o["groups"][2][2] == ["mint time unknown"],
@@ -542,7 +596,7 @@ RADAR_JS = """() => { const b = document.querySelector('[data-radar]'), q = s =>
     if (!c) return false; const r = document.createRange(); r.selectNodeContents(c); const cs = getComputedStyle(c), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     const need = r.getBoundingClientRect().width, box = c.getBoundingClientRect().width - pad;
     return need > box + 0.01 && need + pad + more.reduce((a, x) => a + x.getBoundingClientRect().width + 4, 0) <= l.clientWidth; };
-  return { tab: document.getElementById('tab-radar').checked, hash: location.hash, pill: q('[data-r-pill-t]').textContent, st: q('[data-r-pill]').getAttribute('data-st'),
+  return { tab: document.getElementById('tab-young').checked, hash: location.hash, pill: q('[data-r-pill-t]').textContent, st: q('[data-r-pill]').getAttribute('data-st'),
     cards: b.querySelectorAll('[data-r-cards] > li').length, dim: b.querySelectorAll('[data-r-cards] > li.dim').length, listHidden: q('[data-r-cards]').hidden,
     lines: Array.from(b.querySelectorAll('[data-r-cards] .tline')).map(l => Array.from(l.children).map(c => [c.className, c.textContent])),
     chips: Array.from(b.querySelectorAll('[data-r-cards] .rchips .chip')).map(c => c.textContent),
@@ -550,6 +604,7 @@ RADAR_JS = """() => { const b = document.querySelector('[data-radar]'), q = s =>
     ocnt: q('[data-r-ocnt]').textContent, others: vis(q('[data-r-others]')), tabcnt: (document.querySelector('[data-r-tabcnt]') || {}).hidden ? '' : (document.querySelector('[data-r-tabcnt]') || {}).textContent,
     orows: Array.from(b.querySelectorAll('[data-r-olist] > li')).map(li => [li.className, li.querySelector('.rs').textContent]),
     notes: Array.from(b.querySelectorAll('[data-r-notes] li')).map(l => l.textContent), recent: Array.from(b.querySelectorAll('[data-r-recent] .rrec tbody tr td:nth-child(2)')).map(t => t.textContent),
+    oc: Array.from(b.querySelectorAll('[data-r-recent] .rrec tbody tr')).map(tr => [tr.children[1].textContent, tr.lastElementChild.firstChild.textContent, tr.lastElementChild.title]),
     stats: q('[data-r-stats]').innerText, rec: q('[data-r-recline]').textContent, recIn: (q('[data-r-recent] .rrline') || {}).textContent || '', model: q('[data-r-model]').textContent,
     links: Array.from(b.querySelectorAll('[data-r-cards] a')).map(a => [a.getAttribute('href'), a.rel, a.target]),
     act: Array.from(b.querySelectorAll('[data-r-actions] a')).map(a => [a.textContent, a.getAttribute('href'), vis(a) && a.getBoundingClientRect().height, a.className]),
@@ -566,7 +621,7 @@ ICON_GAP_JS = """(sel) => Array.from(document.querySelectorAll(sel + ' .tline .t
 
 
 def browser(check, tmp, d, skips, shots=None):
-    """The Radar tab, the New launches tab and the installed app in Chromium. GitHub's API, raw.githubusercontent and the live store are
+    """The New tab (the radar on top, the full scan's new launches below) and the installed app in Chromium. GitHub's API, raw.githubusercontent and the live store are
     stubbed with the fixture docs (fresh times), every other request is refused."""
     try:
         from playwright.sync_api import sync_playwright
@@ -752,6 +807,27 @@ def browser(check, tmp, d, skips, shots=None):
             pg.wait_for_timeout(1200)
             out["states"]["none"] = pg.evaluate(RADAR_JS)
             ctx.close()
+            # the hourly radar: a round 5 minutes old (its coin current), 25 minutes old (done, its coin greyed), late and stopped from doc.next
+            out["rounds"] = {}
+            for name, age in (("fresh", 5 * MIN), ("old", 25 * MIN), ("late", 100 * MIN), ("stopped", 3 * H)):
+                state["doc"] = (lambda a: lambda: radar_doc(ms() - a, "round"))(age)
+                ctx, pg = ctx_page(html_=nodoc)
+                wait(pg, "() => (window.__rev || [])[2] === 'github'")
+                pg.evaluate("document.querySelector('[data-r-rec]').open = true")
+                pg.wait_for_timeout(150)
+                out["rounds"][name] = pg.evaluate(RADAR_JS)
+                out["rounds"][name]["errAttr"] = pg.evaluate("document.querySelector('[data-r-pill]').hasAttribute('data-err')")
+                if name in ("fresh", "old"):
+                    shot(pg, "4b-radar-round-%s-light-390x844.png" % name, el="[data-radar]")
+                ctx.close()
+            # the old links of the Radar and New tabs open New in a browser (the hash is dropped)
+            state["doc"] = lambda: radar_doc(ms(), "good")
+            out["links"] = {}
+            for h_ in ("#radar", "#tab-young", "#new"):
+                ctx, pg = ctx_page(hash_=h_)
+                pg.wait_for_timeout(600)
+                out["links"][h_] = pg.evaluate("[document.getElementById('tab-young').checked, location.hash, document.querySelectorAll('input[name=\"tab\"]:checked').length]")
+                ctx.close()
             # WP3's routine host states ("unused", "off") make no note; a limited or down host does, unless the radar's own notes name it;
             # an old wallet memory gets the page's own note
             state["doc"] = lambda: radar_doc(ms(), "hosts")
@@ -764,7 +840,8 @@ def browser(check, tmp, d, skips, shots=None):
             state["doc"] = lambda: radar_doc(ms(), "good")
             state["rawdoc"] = lambda: radar_doc(ms() - 25 * MIN, "empty")
             gh0 = len([u for u in state["gh"] if "radar.json" in u])
-            ctx, pg = ctx_page(init=("try{localStorage.setItem('memebot-live https://api.github.com/x',JSON.stringify({rem:5,reset:Math.floor(Date.now()/1000)+1800,at:Date.now()}));}catch(e){}",))
+            # (its time is ahead: on New the live script polls too, and its stubbed 404 for live.json carries no rate-limit numbers to share)
+            ctx, pg = ctx_page(init=("try{localStorage.setItem('memebot-live https://api.github.com/x',JSON.stringify({rem:5,reset:Math.floor(Date.now()/1000)+1800,at:Date.now()+600000}));}catch(e){}",))
             wait(pg, "() => / · slower copy, as of /.test(document.querySelector('[data-r-pill-t]').textContent)", 6000)
             out["raw"] = pg.evaluate(RADAR_JS)
             out["raw"]["calls"] = [len(state["raw"]), len([u for u in state["gh"] if "radar.json" in u]) - gh0]
@@ -821,7 +898,7 @@ def browser(check, tmp, d, skips, shots=None):
                 if w == 390 and not dark:
                     pg.wait_for_timeout(2500)              # the Pick tab: no radar poll (SPEC 6.1: only on the Radar or Office tab, or in the app)
                     out["pickPoll"] = len([u for u in state["gh"] if "radar.json" in u]) - gh0
-                for tab in ("tab-pick", "tab-radar", "tab-young", "tab-office"):
+                for tab in ("tab-pick", "tab-young", "tab-office"):
                     pg.click('label[for="%s"]' % tab)
                     pg.wait_for_timeout(150)
                     if tab == "tab-young":
@@ -833,7 +910,7 @@ def browser(check, tmp, d, skips, shots=None):
                         out.setdefault("youngW", {})[w] = pg.evaluate(FIRST_CUT_JS, "#pane-young tbody")
                         out.setdefault("tblScroll", {})[w] = pg.evaluate("(() => { const t = document.querySelector('#pane-young .tbl'); return t.scrollWidth - t.clientWidth; })()")
                     if tab == "tab-young" and w == 390 and not dark:
-                        out["young"] = pg.evaluate("""() => { const p = document.getElementById('pane-young'), rows = Array.from(p.querySelectorAll('tbody tr'));
+                        out["young"] = pg.evaluate("""() => { const p = document.getElementById('pane-young'), rows = Array.from(p.querySelectorAll('tbody tr')).filter(r => !r.closest('[data-radar]'));
                           return { rows: rows.length, red: rows.filter(r => r.classList.contains('trap')).length, tint: rows.filter(r => r.classList.contains('trap')).map(r => getComputedStyle(r.querySelector('td')).backgroundColor),
                             lines: rows.map(r => { const l = r.querySelector('.tline'); return l ? l.getBoundingClientRect().height : 0; }),
                             verdicts: rows.map(r => (r.querySelector('.chip.tv') || {}).textContent || ''), imgs: p.querySelectorAll('img').length }; }""")
@@ -857,25 +934,26 @@ def browser(check, tmp, d, skips, shots=None):
                         out.setdefault("banner", pg.evaluate("(() => { const b = document.querySelector('#pane-pick .nogood'); return b ? [b.className, b.innerText, getComputedStyle(b).backgroundColor] : null; })()"))
                         shot(pg, "11-pick-banner-light-%dx%d.png" % (w, h))
                 ctx.close()
-            # 10. the installed app: five tabs, the Radar tab from the live store (no GitHub poll), its badge, the deep links; the badge follows the
-            # radar's news (the live store's row turns to no good coin: the badge goes)
+            # 10. the installed app: four tabs, the radar on New from the live store (no GitHub poll), New's green badge, the deep links; the badge
+            # follows the radar's news (the live store's row turns to no good coin: the badge goes)
             state["doc"] = lambda: radar_doc(ms(), "good")
             state["gh"].clear()
             state["sb"].clear()
             out["app"] = {}
             for w, h, dark in ((390, 844, False), (390, 844, True), (320, 640, False)):
                 ctx, pg = ctx_page(w, h, dark, hash_="#tab-radar", app=True, init=("window.MEMEBOT_RADAR_T={SB_APP:1500};",))
-                ok = wait(pg, "() => document.documentElement.classList.contains('app') && ((document.querySelector('.appbar [data-tab=\"radar\"] .ab-cnt') || {}).textContent || '') === '1'", 10000)
+                ok = wait(pg, "() => document.documentElement.classList.contains('app') && ((document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt.good') || {}).textContent || '') === '1'", 10000)
                 a = pg.evaluate("""() => ({ app: document.documentElement.classList.contains('app'), tabs: Array.from(document.querySelectorAll('.appbar button')).map(b => b.getAttribute('data-tab')),
                   names: Array.from(document.querySelectorAll('.appbar button > span:not([class])')).map(s => s.textContent), apptab: document.documentElement.getAttribute('data-apptab'),
-                  radar: document.getElementById('tab-radar').checked, aria: document.querySelector('.appbar [data-tab="radar"]').getAttribute('aria-label'),
+                  radar: document.getElementById('tab-young').checked, aria: document.querySelector('.appbar [data-tab="young"]').getAttribute('aria-label'), y: Math.round(scrollY),
+                  badgeBg: (() => { const c = document.querySelector('.appbar [data-tab="young"] .ab-cnt'); return c ? getComputedStyle(c).backgroundColor : ''; })(),
                   hscroll: document.documentElement.scrollWidth - innerWidth, cards: document.querySelectorAll('[data-r-cards] > li').length,
                   btnW: Math.min(...Array.from(document.querySelectorAll('.appbar button')).map(b => b.getBoundingClientRect().width)),
                   over: Array.from(document.querySelectorAll('.appbar button > span:not([class])')).filter(s => s.scrollWidth > s.clientWidth + 1).length })""")
                 a["badge_ok"] = ok
                 out["app"]["%dx%d %s" % (w, h, "dark" if dark else "light")] = a
                 if w == 390:
-                    shot(pg, "10-app-shell-radar-%s-390x844.png" % ("dark" if dark else "light"))
+                    shot(pg, "10-app-shell-new-radar-%s-390x844.png" % ("dark" if dark else "light"))
                 if w == 390 and not dark:
                     for t in ("young", "office", "account", "pick"):
                         pg.click('.appbar button[data-tab="%s"]' % t)
@@ -884,10 +962,10 @@ def browser(check, tmp, d, skips, shots=None):
                     # a tap on the radar notification while the app is open: the service worker tells it which tab to show
                     pg.evaluate("navigator.serviceWorker && navigator.serviceWorker.dispatchEvent(new MessageEvent('message', {data: {type: 'memebot-open', url: location.href.split('#')[0] + '#tab-radar'}}))")
                     pg.wait_for_timeout(200)
-                    out["deep"] = pg.evaluate("[document.documentElement.getAttribute('data-apptab'), document.getElementById('tab-radar').checked]")
+                    out["deep"] = pg.evaluate("[document.documentElement.getAttribute('data-apptab'), document.getElementById('tab-young').checked]")
                     state["doc"] = lambda: radar_doc(ms(), "empty")
-                    gone = wait(pg, "() => !document.querySelector('.appbar [data-tab=\"radar\"] .ab-cnt') || getComputedStyle(document.querySelector('.appbar [data-tab=\"radar\"] .ab-cnt')).display === 'none' || !document.querySelector('.appbar [data-tab=\"radar\"] .ab-cnt').textContent", 8000)
-                    out["badgeGone"] = [gone, pg.evaluate("document.querySelector('.appbar [data-tab=\"radar\"]').getAttribute('aria-label')")]
+                    gone = wait(pg, "() => !document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt') || getComputedStyle(document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')).display === 'none' || !document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt').textContent", 8000)
+                    out["badgeGone"] = [gone, pg.evaluate("document.querySelector('.appbar [data-tab=\"young\"]').getAttribute('aria-label')")]
                     state["doc"] = lambda: radar_doc(ms(), "good")
                 ctx.close()
             out["calls"] = {"gh": len(state["gh"]), "sb": len([u for u in state["sb"] if "id=eq.radar" in u]), "other": state["other"][:3]}
@@ -896,20 +974,21 @@ def browser(check, tmp, d, skips, shots=None):
         check(False, "the radar page's browser checks could not run (Playwright is installed; Chromium needs a short TMPDIR path): %s" % str(e)[:300])
         return
     g, e_ = out["good"], out["empty"]
-    check(g["tab"] and g["hash"] == "" and g["st"] == "running" and g["pill"].startswith("Radar running · checked ") and " · next " in g["pill"] and "this run until" in g["pill"]
+    check(g["tab"] and g["hash"] == "" and g["st"] == "running" and g["pill"].startswith("Radar running · checked ") and " · next " in g["pill"] and "this run until" not in g["pill"]
           and g["cards"] == 1 and g["dim"] == 0 and g["chips"][:1] == ["✓ No trap found · 9 checks"] and g["tabcnt"] == "1" and g["ocnt"] == "7" and g["others"]
           and [c[1] for c in g["lines"][0]] == ["!no socials", "✓curve 4 min before pool", "✓no rugger wallets", "+3", "+4"]
           and g["ev"] == ["running", 1, "github"] and "8" in g["stats"] and g["rec"] == "37 calls · 3% rugged · 14% doubled" and "(95%: 0%-10% / 5%-27%) · paper, 3 € each" in g["recIn"]
           and "radar data 212 of 300 needed" in g["model"]
           and [a[:2] for a in g["act"]] == [["Start ↗", "https://github.com/some-owner/Meme-Bot/actions/workflows/radar.yml"], ["Stop ↗", "https://github.com/some-owner/Meme-Bot/actions/workflows/radar.yml"]]
           and all(a[2] >= 44 for a in g["act"]),
-          "U3 browser: #tab-radar opens the Radar tab with Start and Stop links to radar.yml (44 px); the GitHub poll brings the doc; only the good coin gets a card (the doc's watch "
+          "U3 browser: #tab-radar (the old Radar tab's link) opens New with the radar's Start and Stop links to radar.yml (44 px); the GitHub poll brings the doc; only the good coin gets a card (the doc's watch "
           "coin does not), with its chip and its line (3 chips and +3), the tab count 1, the fold count 7, the model status; the Track record fold's title is short (%r), the "
           "intervals and the paper euros inside; the memebot-radar event says running, 1 good %s" % (g["rec"], {k: g[k] for k in ("pill", "chips", "ev")}))
+    rs_ = out.get("rounds") or {}
     check([a[3] for a in g["act"]] == ["rbtn quiet", "rbtn quiet"] and [a[3] for a in out["states"]["off"]["act"]][:1] == ["rbtn"] and [a[3] for a in out["states"]["stopped"]["act"]][:1] == ["rbtn"]
-          and [a[3] for a in out["states"]["late"]["act"]][:1] == ["rbtn quiet"],
-          "UX N3 Start is the main button only while the radar is off, stopped, sleeping or not started (a tap while it runs only queues a run): running %s, off %s" % (
-              [a[3] for a in g["act"]], [a[3] for a in out["states"]["off"]["act"]]))
+          and [a[3] for a in out["states"]["late"]["act"]][:1] == ["rbtn"] and [a[3] for a in (rs_.get("old") or {}).get("act", [])][:2] == ["rbtn", "rbtn quiet"],
+          "UX N3 Start is the main button unless a radar loop is running (a tap then only queues a run); between the hourly rounds it is one more round: running %s, off %s, "
+          "done %s" % ([a[3] for a in g["act"]], [a[3] for a in out["states"]["off"]["act"]], [a[3] for a in (rs_.get("old") or {}).get("act", [])]))
     ts = out.get("tblScroll") or {}
     check(len(ts) == 2 and all(v <= 0 for v in ts.values()),
           "U8 the New launches table keeps every column in view at 390 and 1280 (a long trap line never widens the coin column: no sideways scroll inside the table) %s" % ts)
@@ -926,7 +1005,7 @@ def browser(check, tmp, d, skips, shots=None):
           and not any("jup.ag" in u or "swap" in u for u, _, _ in g["links"]),
           "U3 browser: the card's links are DexScreener, pump.fun and X only, in a new tab, no swap link %s" % [u[:40] for u, _, _ in g["links"]])
     orows = dict((sym.split(" ", 1)[1], (cls, sym[0])) for cls, sym in e_["orows"])
-    check(e_["cards"] == 0 and e_["listHidden"] and "No clean coin right now" in e_["empty"] and "7 seen in the last 10 min · all with traps or not fully checked · checks every 2½ min" in e_["empty"]
+    check(e_["cards"] == 0 and e_["listHidden"] and "No clean coin right now" in e_["empty"] and "7 seen under 10 min · all with traps or not fully checked" in e_["empty"] and "2½" not in e_["empty"]
           and "last coin without traps: HIRE, 34 min ago" in e_["empty"] and e_["ocnt"] == "7" and e_["tabcnt"] == "" and all(x <= 0 for x in out["empty_h"])
           and orows.get("GROKAI") == ("rrow bad", "✕") and orows.get("NORC") == ("rrow warn", "?") and orows.get("TWOWARN") == ("rrow warn", "!") and orows.get("PUMPY") == ("rrow warn", "!")
           and e_["recent"] == ["PEPE2", "CALM", "HIRE", "SEALS"],
@@ -992,18 +1071,33 @@ def browser(check, tmp, d, skips, shots=None):
     bn = out.get("banner")
     check(bn and "nogood warn" in bn[0] and bn[1].endswith(P_BANNER()), "U5 browser: the fallback pick shows the amber banner %s" % (bn[:2] if bn else bn))
     hs = out["h"]
-    check(all(v <= 0 for v in hs.values()) and all(a["hscroll"] <= 0 for a in out["app"].values()) and len(hs) >= 20,
-          "U8 no sideways scroll on Pick, Radar, New and Office at 390 x 844 and 1280 x 900, light and dark, and in the installed app on all five tabs (%d views%s)" % (
+    check(all(v <= 0 for v in hs.values()) and all(a["hscroll"] <= 0 for a in out["app"].values()) and len(hs) >= 16,
+          "U8 no sideways scroll on Pick, New (with the radar) and Office at 390 x 844 and 1280 x 900, light and dark, and in the installed app on all four tabs (%d views%s)" % (
               len(hs) + len(out["app"]), "" if all(v <= 0 for v in hs.values()) else " " + str({k: v for k, v in hs.items() if v > 0})))
     ap = out["app"]["390x844 light"]
-    check(ap["app"] and ap["tabs"] == ["pick", "radar", "young", "office", "account"] and ap["names"] == ["Pick", "Radar", "New", "Office", "Account"] and ap["radar"]
-          and ap["apptab"] == "radar" and ap["badge_ok"] and ap["aria"] == "Radar, 1 listed now" and ap["cards"] == 1 and out.get("deep") == ["radar", True]
+    check(ap["app"] and ap["tabs"] == ["pick", "young", "office", "account"] and ap["names"] == ["Pick", "New", "Office", "Account"] and ap["radar"]
+          and ap["apptab"] == "young" and ap["badge_ok"] and ap["aria"] == "New coins, 1 without traps now" and ap["cards"] == 1 and out.get("deep") == ["young", True] and ap["y"] == 0
           and out["calls"]["gh"] == 0 and out["calls"]["sb"] >= 1 and all(a["over"] == 0 and a["btnW"] >= 60 for a in out["app"].values()) and not errs,
-          "A3 installed app: five tabs (Pick, Radar, New, Office, Account), #tab-radar and the notification's message open the Radar tab, its badge says 1 (read out in words), "
-          "the live store's row radar feeds it and GitHub is not polled; no label cut at 320 px %s" % ({k: ap[k] for k in ("names", "aria")} if not errs else [errs[:2], ap, out.get("deep"), out["calls"]]))
+          "A3 installed app: four tabs (Pick, New, Office, Account), #tab-radar and the radar notification's message open New at its top (the radar), New's badge says 1 in "
+          "green (%s, read out in words), the live store's row radar feeds it and GitHub is not polled; no label cut at 320 px %s" % (
+              ap.get("badgeBg"), {k: ap[k] for k in ("names", "aria")} if not errs else [errs[:2], ap, out.get("deep"), out["calls"]]))
     bg = out.get("badgeGone") or [False, "?"]
-    check(bg[0] and bg[1] == "Radar",
-          "S4 A3 the app's Radar badge follows the radar's news: the live store's row turns to no good coin and the badge goes (%s)" % bg)
+    check(bg[0] and bg[1] == "New coins",
+          "S4 A3 the app's New badge follows the radar's news: the live store's row turns to no good coin and the badge goes (%s)" % bg)
+    rf, ro, rl, rt = (rs_.get(k) or {} for k in ("fresh", "old", "late", "stopped"))
+    hm = re.compile(r"^Last round \d\d:\d\d · next about \d\d:\d\d$")
+    oc = dict((x[0], x[1:]) for x in rf.get("oc", []))
+    check(rf.get("st") == "done" and hm.match(rf.get("pill", "")) and rf.get("cards") == 1 and rf.get("dim") == 0 and rf.get("tabcnt") == "1" and (rf.get("ev") or [0])[:2] == ["done", 1]
+          and ro.get("st") == "done" and hm.match(ro.get("pill", "")) and ro.get("cards") == 1 and ro.get("dim") == 1 and ro.get("tabcnt") == "" and (ro.get("ev") or [0])[:2] == ["done", 0]
+          and any(c.startswith("as of ") for c in ro.get("chips", [])) and not rf.get("errAttr")
+          and rl.get("st") == "late" and rl.get("pill", "").startswith("Radar late · last round ") and rt.get("st") == "stopped" and rt.get("pill", "").startswith("Radar stopped · last round "),
+          "U3 browser, the hourly radar: a round says %r; its coin is current (in colour, the count 1, the event done with 1 good) for 15 minutes, then greyed 'as of' with no "
+          "count; 30 minutes past doc.next it is late, an hour later stopped (%r, %r)" % (rf.get("pill"), rl.get("pill"), rt.get("pill")))
+    check(oc.get("GONE") == ["–", "no 1 h price"] and oc.get("CALM") == ["…", "pending"] and oc.get("HIRE") == ["⇈", "2x"],
+          "U3 browser: a call whose 1 h price no round caught (miss60) shows '–' (no 1 h price), not '… pending' forever; one still waiting shows '…' %s" % oc)
+    lk = out.get("links") or {}
+    check(all(v == [True, "", 1] for v in lk.values()) and len(lk) == 3,
+          "the old links #radar, #tab-young and #new open New in a browser, once (the hash is dropped), one tab radio checked %s" % lk)
 
 
 def P_BANNER():
@@ -1014,7 +1108,7 @@ def P_BANNER():
 def checks(check, env=None):
     env = env or {}
     skips = env.get("skips") if isinstance(env.get("skips"), list) else []
-    print("== the Radar tab, the trap-check line and the no-good-coin marks (WP5b)")
+    print("== the launch radar on the New tab, the trap-check line and the no-good-coin marks (WP5b, WP10)")
     T, standin = traps_for_test()
     tmp = tempfile.mkdtemp(prefix="mb-rui-")
     old_mod = {k: sys.modules.get(k) for k in ("page_radar",)}

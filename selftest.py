@@ -1354,6 +1354,8 @@ def browser_checks(check, page_html, tmp):
                     u = route.request.url
                     if u.startswith(pages_url):
                         route.fulfill(status=200, body=html_ or page_html, headers={"Content-Type": "text/html; charset=utf-8"})
+                    elif u.startswith("https://api.github.com/") and "/radar.json" in u:      # the radar's own poll (New holds the radar): not the live view's
+                        route.fulfill(status=404, body="{}", headers={"Access-Control-Allow-Origin": "*"})
                     elif u.startswith("https://api.github.com/"):
                         calls.append(u)
                         code_, body_ = answer()
@@ -2631,9 +2633,9 @@ var o={};
     import report as R_h
     check("A.hold=function(){return !!P.busy||cur==='account';}" in pj and "MemebotApp.hold()" in R_h.OFFICE_LIVE_JS and "&&!hold){" in R_h.OFFICE_LIVE_JS
           and "baseCnt" not in pj and ".live .btn { margin-left:auto; display:inline-flex; align-items:center; min-height:44px;" in R_h.CSS
-          and "aria-label',NAMES[t]+(c?', '+c.textContent+' listed now':'')+(d?', a scan is running now':'')" in pj,
+          and "aria-label',NAMES[t]+(c?', '+c.textContent+(c.classList.contains('good')?' without traps now':' listed now'):'')+(d?', a scan is running now':'')" in pj,
           "the installed app is not reloaded under a tap: never while on Account or while the notifications card is at work (it reloads at the next answer"
-          " after); the New coins badge only with a scan's early list; Scan now 44 px tall; the tabs' badge and dot read out in words")
+          " after); the New coins badge only with a scan's early list (or the radar's coins without traps, in green); Scan now 44 px tall; the tabs' badge and dot read out in words")
 
     # 9. supabase/setup.sql on PostgreSQL (MEMEBOT_PG=<host or socket folder>:<port>)
     pg = os.environ.get("MEMEBOT_PG")
@@ -3443,7 +3445,7 @@ console.log(JSON.stringify(o));
     check(young and all(0 <= M.num(y.get("ageMin")) < 60 and y.get("addr") and "upP" in y and "floor" in y and y.get("liq", 0) >= M.YOUNG_MIN_LIQ for y in young)
           and all(y["addr"] not in {c["addr"] for c in rec.get("picks", [])} for y in young) and rec.get("youngOf", 0) >= len(young),
           "new launches under an hour old are listed with odds and safety, none of them picked (%d of %d: %s)" % (len(young), rec.get("youngOf", 0), [(y.get("sym"), y.get("ageMin")) for y in young[:4]]))
-    check('id="tab-young"' in page and 'New <span class="tl-long">launches </span>&lt;1h' in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
+    check('id="tab-young"' in page and '<label for="tab-young" role="tab"><span>New<span class="tl-long"> launches</span></span>' in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
           "page has the new-launches tab with the coins, their cards and the age record")
     rk_young = [y for y in young if isinstance(y.get("risk"), dict) and y["risk"]]
     check(rk_young, "the new launches got safety reports with the shortlist (%d of %d)" % (len(rk_young), len(young)))
@@ -3705,10 +3707,10 @@ console.log(JSON.stringify(o));
     shutil.rmtree(tmpo, ignore_errors=True)
     import page_radar as PR_x, page_office as PO_x
     yh = PR_x.young_head({"a": {"v": "trap"}}, [{"addr": "a"}])
-    check("body:has(#tab-radar:checked) .wrap > .live { display:none }" in PR_x.CSS and "the trap check does not stop them (fake money)" in yh
+    check(".wrap:has([data-sstrip]) > .live { display:none }" in PO_x.STRIP_CSS and "tab-radar:checked" not in PR_x.CSS + PO_x.CSS and "the trap check does not stop them (fake money)" in yh
           and '<span class="chip bad">1 with traps or unchecked</span>' in yh and ".fold-lite > summary { min-height:44px" in PO_x.CSS,
-          "build: the Radar tab hides the full scan's Scan now box (the radar has its own Start), the New tab says paper buys ignore the "
-          "trap check, the daily overview's table fold is a 44 px target")
+          "build: the full scan's Scan now box goes wherever its strip is (the radar keeps its own Start on New, no Radar tab rule left), the New tab says paper buys "
+          "ignore the trap check, the daily overview's table fold is a 44 px target")
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
     import selftest_audit                       # the error audit's fixes (WP7), one check each

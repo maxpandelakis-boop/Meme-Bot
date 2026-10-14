@@ -18,11 +18,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import memebot as M
 try:
-    import page_radar as PR  # the Radar tab, the trap-check line and the "no good coin" marks (WP5b)
+    import page_radar as PR  # the launch radar on the New tab, the trap-check line and the "no good coin" marks (WP5b)
 except ModuleNotFoundError as e:  # only a copy of the code without page_radar.py (the selftest's stand-in spotter): no radar parts; any other error is raised
     if e.name != "page_radar":
         raise
-    PR = __import__("types").SimpleNamespace(pane=lambda D: "", CSS="", JS="", tab_label=lambda: "Radar", young=lambda D: {}, row_chips=lambda rt: "", row_attr=lambda rt: "", row_safety=lambda rt, chip: chip,
+    PR = __import__("types").SimpleNamespace(pane=lambda D: "", block=lambda D: "", CSS="", JS="", tab_label=lambda: "", young=lambda D: {}, row_chips=lambda rt: "", row_attr=lambda rt: "", row_safety=lambda rt, chip: chip,
                                              card_safety=lambda c, chip: chip, young_head=lambda t, rows: "", card_trap=lambda c, now=None: "", pick_banner=lambda picks: "")
 
 TITLE = "Meme-Bot Ledger"
@@ -573,7 +573,7 @@ OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services 
     "refresh": ("Price refresher", "fetches fresh prices for the candidates right before the pick", ("DexScreener",)),
     "trader": ("Paper trader", "", ()),
     "reporter": ("Reporter", "writes this page", ())}
-OFFICE_AGENTS["radar"] = ("Launch radar", "rates every coin whose pool is under 10 minutes old, every 2½ minutes, in its own job; only coins without traps are shown and pushed",
+OFFICE_AGENTS["radar"] = ("Launch radar", "rates every coin whose pool is under 10 minutes old in one quick round after each scan, in its own job; only coins without traps are shown and pushed",
                           ("DexScreener", "pump.fun", "GeckoTerminal", "Jupiter", "RugCheck", "Solana RPC", "LaunchLab"))
 try:
     import page_office as PO  # the agent cards, the Launch radar's desk (its own job: page_office.EXT_HOME), the daily overview, the scan strip (WP5c)
@@ -1079,6 +1079,7 @@ function go(){
   function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'&&+s.at>S.at&&typeof s.next==='number'){S=s;return true;}}catch(e){}return false;}
   function save(){S.at=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
   try{keep=JSON.parse(sessionStorage.getItem('memebot-keep'))||{};}catch(e){}
+  if(keep.tab==='tab-radar')keep.tab='tab-young';      // the Radar tab is part of New now
   if(location.hash==='#new'&&document.getElementById('tab-young')){keep.tab='tab-young';try{sessionStorage.setItem('memebot-keep',JSON.stringify(keep));}catch(e){}
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}     // once: a reload keeps the tab the reader chose
   all('input[name="tab"],input[name="odept"]').forEach(function(r){if(keep[r.name]===r.id)r.checked=true;
@@ -1955,7 +1956,7 @@ def young_section(D):
     rc = D.get("rec") or {}
     young = [c for c in (rc.get("young") or []) if isinstance(c, dict)]
     n_all = int(M.num(rc.get("youngOf")) or len(young))
-    head = ("coins under an hour old with a DEX pair and at least %s of liquidity at the scan · never a pick (the %s profile picks from coins %g to %g hours old); "
+    head = ("from the hourly full scan: coins under an hour old with a DEX pair and at least %s of liquidity at the scan · never a pick (the %s profile picks from coins %g to %g hours old); "
             "the first %d are bought for %s each as paper positions · fake money") % (fmt_money(M.YOUNG_MIN_LIQ), M.HORIZON, M.GATE_MIN_AGE_H, M.GATE_MAX_AGE_H or 0, M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET))
     held = {r["p"].get("addr"): r for r in (D.get("open") or []) if r["p"].get("grp") in M.PAPER_GROUPS}
     # memebot marks only the first YOUNG_BUY_N; a coin further down the tab that the paper account holds is "already held" too
@@ -3034,7 +3035,7 @@ def office_section(D):
     radios = "".join('<input type="radio" name="odept" id="od-%s"%s aria-label="%s">' % (d["key"], " checked" if d["key"] == info["pick"] else "", E(d["name"])) for d in every)
     legend = ('<div class="legend olegend"><span style="--c:var(--good-mark)">done</span><span style="--c:var(--accent)">at work</span><span style="--c:var(--warn-mark)">fallback</span><span style="--c:var(--bad-mark)">failed</span>'
               '<span style="--c:var(--muted)">skipped</span><span class="ob">beside: ran in its own process, at the same time as the others</span>%s</div>') % (
-        '<span class="oj">own job: runs on its own every 2½ min, not in the hourly scan</span>' if info.get("ext") else "")     # the Launch radar (page_office.py)
+        '<span class="oj">own job: one quick round after each scan, not inside it</span>' if info.get("ext") else "")     # the Launch radar (page_office.py)
     floor = '<div class="chart omap"><div class="wide"><div class="ofloor">%s</div></div><div class="narrow"><div class="ofloor">%s</div></div>%s</div>' % (
         office_floor(info, T, OFFICE_W), office_floor(info, T, NARROW), legend)
     panels = '<div class="opanels">%s</div>' % "".join(office_panel(d, info, D) for d in every)
@@ -3184,18 +3185,19 @@ def render(data, fragment=False):
     body = [head]
     tabs = ""
     if D.get("rec"):
-        # four tabs: the pick (and its track record), the launch radar, the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
+        # three tabs: the pick (and its track record), New (the launch radar's pools under 10 minutes on top, the full scan's new launches under
+        # an hour old below) and the agent office; CSS-only, so the fragment works without scripts. The old Radar tab's links (#tab-radar, #radar)
+        # open New (page_radar.py's script; app.py PAGE_JS in the installed app)
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_pick = strip_html + pane_pick     # the full scan: last, next, Scan now (page_office.py)
-        pane_young = safe("new launches", lambda: young_section(D))
+        pane_young = safe("launch radar", lambda: PR.block(D)) + safe("new launches", lambda: young_section(D))     # the radar: its status and its start link (WP5b)
         pane_office = safe("agent office", lambda: office_section(D))
-        pane_radar = safe("launch radar", lambda: PR.pane(D))      # the second scan: its own tab, its status and its start link (WP5b)
-        tabs = ('<style>%s</style><div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-radar"><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
-                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">Pick</label><label for="tab-radar" role="tab">%s</label><label for="tab-young" role="tab">New <span class="tl-long">launches </span>&lt;1h <span class="cnt">%d</span></label>'
-                '<label for="tab-office" role="tab">Office</label></div>'
-                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-radar">%s</div><div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div></div><script>%s</script>' % (
-                    PR.CSS, PR.tab_label(), n_young, pane_pick, pane_radar, pane_young, pane_office, PR.JS))
+        tabs = ('<style>%s</style><div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
+                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>New<span class="tl-long"> launches</span></span>%s'
+                '<span class="cnt" title="Full scan: coins under 1 h">%d</span></label><label for="tab-office" role="tab">Office</label></div>'
+                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div></div><script>%s</script>' % (
+                    PR.CSS, PR.tab_label(), n_young, pane_pick, pane_young, pane_office, PR.JS))
     rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
     rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     shown = []

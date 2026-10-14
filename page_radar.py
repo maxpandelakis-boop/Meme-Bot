@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""page_radar.py: the Radar tab, the trap-check line and the "no good coin" marks of the page. Fake money only: nothing here buys,
+"""page_radar.py: the launch radar on top of the New tab, the trap-check line and the "no good coin" marks of the page. Fake money only: nothing here buys,
 advises or links to a swap; green means "no trap found in N checks", never more.
 
 report.py calls it in a few one-line hooks; everything the page shows of the launch radar lives here:
 
-  pane(D)              the Radar tab: a shell the script RADAR_JS fills from the copy of radar.json embedded at build time
+  block(D)             the radar's part of the New tab (on top of the full scan's new launches): its heading and pane(D)
+  pane(D)              the radar: a shell the script RADAR_JS fills from the copy of radar.json embedded at build time
                        (mb/radar_live.json, whitelisted, at most 48 KB) and then from its polls (the live store's row "radar", else the
                        GitHub contents API on the branch radar-data inside the budget the office poll keeps, else raw.githubusercontent).
                        The script has no rule logic: every chip text comes from the doc (traps.chips, computed by the radar job).
@@ -46,7 +47,7 @@ HOST = re.compile(r"^[A-Za-z0-9.-][A-Za-z0-9. -]{0,23}$")     # the radar's host
 LEVELS = ("bad", "warn", "unk", "ok", "info")
 ICON = {"bad": "✕", "warn": "!", "unk": "?", "ok": "✓", "info": "·"}
 VERDICTS = ("good", "watch", "trap")
-STATES = ("running", "degraded", "ending", "off", "hours")
+STATES = ("running", "degraded", "ending", "off", "hours", "done")     # done: a round is over (launch_radar.py round), its list stays until the next one
 BANNER = "No good coin this scan: shown for the record, marked, not a recommendation"
 LATER = ("5", "15", "30", "60")
 
@@ -74,8 +75,9 @@ SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to poo
          "xUsed": "older coins with this X account", "tweetShared": "coins off the same tweet", "snip30": "supply sniped in 30 s, %", "snip30N": "sniper wallets",
          "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder"}
 MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar's own records confirm it."
-INFO_TEXT = ("Both open the radar's page on GitHub. Start: tap \u201cRun workflow\u201d; a start while a run is going waits until it ends. Stop: the \u201c\u2026\u201d menu, "
-             "then \u201cDisable workflow\u201d; the radar stops within one check (2\u00bd min) and stays off until you enable it again. Fake money: the radar never buys anything.")
+INFO_TEXT = ("The radar runs one quick round right after each full scan. Start and Stop open its page on GitHub. Start: tap \u201cRun workflow\u201d for one more "
+             "round (about 2 to 3 minutes); a start while a round runs waits until it ends. Stop: the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d; no round "
+             "starts any more until you enable it again. The two scans run side by side, and each can be started on its own. Fake money: the radar never buys anything.")
 
 
 # ------------------------------------------------------------------------------------------------------------------ small helpers
@@ -191,10 +193,11 @@ def clean_doc(doc):
     bytes as JSON ("others" trimmed first, then "recent")."""
     if not isinstance(doc, dict) or doc.get("kind") != "radar" or _ms(doc.get("t")) is None:
         return None
-    o = {"v": _num(doc.get("v")), "kind": "radar", "t": _ms(doc.get("t")), "next": _ms(doc.get("next")),
+    o = {"v": _num(doc.get("v")), "kind": "radar", "t": _ms(doc.get("t")), "next": _ms(doc.get("next")), "hourly": _ms(doc.get("hourly")),
          "state": doc.get("state") if doc.get("state") in STATES else "running", "why": _str(doc.get("why"), 200), "secs": _num(doc.get("secs"))}
     run = doc.get("run") if isinstance(doc.get("run"), dict) else {}
-    o["run"] = {"id": _str(run.get("id"), 40), "start": _ms(run.get("start")), "end": _ms(run.get("end")), "cycle": _num(run.get("cycle")), "source": _str(run.get("source"), 12)}
+    o["run"] = {"id": _str(run.get("id"), 40), "start": _ms(run.get("start")), "end": _ms(run.get("end")), "cycle": _num(run.get("cycle")), "source": _str(run.get("source"), 12),
+                "mode": run.get("mode") if run.get("mode") in ("round", "loop") else ""}
     md = doc.get("model") if isinstance(doc.get("model"), dict) else {}
     o["model"] = {"from": md.get("from") if md.get("from") in ("prior", "learned") else "prior", "n": _num(md.get("n")), "need": _num(md.get("need")),
                   "auc": _num(md.get("auc")), "prior": _num(md.get("prior")), "at": _ms(md.get("at")), "why": _str(md.get("why"), 200)}
@@ -216,7 +219,7 @@ def clean_doc(doc):
         rec.append({"addr": r["addr"], "sym": _str(r.get("sym"), 24), "good": _ms(r.get("good")), "push": _ms(r.get("push")),
                     "later": {k: _num(lt.get(k)) for k in LATER}, "peak60": {"x": _num(pk.get("x")), "at": _ms(pk.get("at"))} if pk and _num(pk.get("x")) is not None else None,
                     "out": {"rug1h": out.get("rug1h") if isinstance(out.get("rug1h"), bool) else None, "win1h": out.get("win1h") if isinstance(out.get("win1h"), bool) else None,
-                            "x60": _num(out.get("x60"))} if out else None})
+                            "x60": _num(out.get("x60"))} if out else None, "miss60": r.get("miss60") is True})
     o["recent"] = rec[:40]
     rd = doc.get("record") if isinstance(doc.get("record"), dict) else None
     if rd:
@@ -540,7 +543,7 @@ def pick_banner(picks):
     return '<p class="nogood %s" role="note"><b aria-hidden="true">%s</b><span>%s</span></p>' % (cls, ICON["bad"] if cls == "bad" else "!", E(BANNER))
 
 
-# ------------------------------------------------------------------------------------------------------------------ the Radar tab
+# ------------------------------------------------------------------------------------------------------------------ the radar on the New tab
 def _ev_row(e):
     """The headline row of one evidence entry of radar_weights.json ({label, rows: [{cohort, outcome, with, without, n, lift, lo, hi,
     verdict, ...}]}): the listed new launches (cohort L) and a rug outcome first, a row whose verdict holds first, then the biggest n.
@@ -629,7 +632,7 @@ def why_fold(W):
 
 
 def pane(D):
-    """The Radar tab. RADAR_JS fills it from the embedded copy and the polls; without a script it says one line. The HTML is the same with and
+    """The radar on the New tab. RADAR_JS fills it from the embedded copy and the polls; without a script it says one line. The HTML is the same with and
     without GITHUB_REPOSITORY: the script finds the repository in the office's live view box (GitHub poll, raw copy, Start and Stop links)."""
     rd = data(D)
     doc = rd["doc"]
@@ -661,17 +664,21 @@ def _hhmm(ms):
 
 
 def tab_label():
-    """The website's tab label: "Radar" and the count of coins without traps while the radar runs (RADAR_JS sets it)."""
-    return 'Radar <span class="cnt" data-r-tabcnt hidden></span>'
+    """The radar's count on the website's New tab label: the coins without traps while the radar's list is current (RADAR_JS sets it;
+    hidden at 0), beside the full scan's count."""
+    return '<span class="cnt" data-r-tabcnt title="Radar: coins without traps now" hidden></span>'
+
+
+def block(D):
+    """The radar's part of the New tab, above the full scan's new launches: a heading and the pane."""
+    return ('<section class="rsec"><div class="sec-head"><h2>Launch radar <span class="h2s">pools under 10 min</span></h2></div>%s</section>' % pane(D))
 
 
 # ------------------------------------------------------------------------------------------------------------------ styles
 CSS = r"""
-/* the Radar tab (page_radar.py): its tab and pane beside the other three; the trap-check line, the verdict chip and the detail view
-   (also on the New launches tab and the pick); the "no good coin" banner. Page tokens only, so light and dark both work. */
-#tab-radar:checked ~ .tabbar label[for="tab-radar"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
-#tab-radar:checked ~ #pane-radar { display:grid }
-body:has(#tab-radar:checked) .wrap > .live { display:none }   /* the full scan's "Scan now" box is not shown on the Radar tab: the radar has its own Start */
+/* the launch radar (page_radar.py) on top of the New tab; the trap-check line, the verdict chip and the detail view (also on the full
+   scan's new launches and the pick); the "no good coin" banner. Page tokens only, so light and dark both work. */
+.rsec .sec-head h2 .h2s { font-size:var(--fs-s); font-weight:400; color:var(--muted); margin-left:4px; white-space:nowrap }
 .tabbar .cnt.good { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) }
 .tsum .tbuy { flex:1 1 100%; color:var(--muted); font-size:var(--fs-s) }
 .tline { display:flex; flex-wrap:nowrap; gap:4px; min-width:0; max-width:100%; overflow:hidden; flex:1 1 100%; contain:inline-size }   /* its chips never widen a table column */
@@ -718,7 +725,7 @@ details.tdet > summary { color:var(--accent); font-weight:500; min-height:44px; 
 .nogood b { flex:none; width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; font-size:12px; color:#fff }
 .nogood.warn { background:color-mix(in srgb,var(--warn-mark) 15%,var(--surface)); color:var(--warn); border:1px solid color-mix(in srgb,var(--warn-mark) 45%,var(--line)) } .nogood.warn b { background:var(--warn-mark) }
 .nogood.bad { background:color-mix(in srgb,var(--bad-mark) 12%,var(--surface)); color:var(--bad); border:1px solid color-mix(in srgb,var(--bad-mark) 45%,var(--line)) } .nogood.bad b { background:var(--bad-mark) }
-/* the Radar tab */
+/* the radar on the New tab */
 .radar { display:grid; gap:14px; min-width:0 }
 .rhead { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; justify-content:space-between; position:relative }
 .rpill { margin:0; display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:6px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line);
@@ -726,7 +733,8 @@ details.tdet > summary { color:var(--accent); font-weight:500; min-height:44px; 
 .rpill span { min-width:0; overflow-wrap:anywhere }
 .rdot { flex:none; width:9px; height:9px; border-radius:50%; background:var(--muted) }
 .rpill[data-st="running"] .rdot { background:var(--good-mark); animation:rpulse 2s ease-in-out infinite } .rpill[data-st="late"] .rdot { background:var(--warn-mark) }
-.rpill[data-st="stopped"] .rdot { background:var(--bad-mark) } .rpill[data-st="running"] { color:var(--fg) }
+.rpill[data-st="stopped"] .rdot { background:var(--bad-mark) } .rpill[data-st="running"], .rpill[data-st="done"] { color:var(--fg) }
+.rpill[data-st="done"] .rdot { background:var(--good-mark) } .rpill[data-st="done"][data-err] .rdot { background:var(--warn-mark) }
 @keyframes rpulse { 50% { opacity:.35 } }
 .ractions { display:flex; align-items:center; gap:8px }
 .rbtn { display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:999px; background:var(--accent); color:#fff; font-weight:500; font-size:var(--fs-s) }
@@ -782,7 +790,7 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 .rwhy-list { list-style:none; margin:0; padding:0; display:grid; gap:8px } .rwhy-list li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; min-width:0 }
 .rwhy-list .rw-n { font-weight:500 } .rwhy-list .chip { font-size:var(--fs-xs) } .rwhy-list small { flex-basis:100%; color:var(--fg2); font-size:var(--fs-xs); font-variant-numeric:tabular-nums }
 .rmodel:empty { display:none } details.rfold.dim .rrows { opacity:.7 }
-@media (max-width:560px) { .rstats { grid-template-columns:1fr 1fr } .rstats > div:nth-child(3) { border-left:0 } .rstats > div:nth-child(n+3) { border-top:1px solid var(--line2) }
+@media (max-width:560px) { .rstats > div { padding:8px 8px } .rstats b { font-size:20px }
   .rhead { gap:8px } .rpill { width:100% } .rrec th, .rrec td { padding:6px 3px } .rrec .ow { display:none } .rrec td:nth-child(2) { max-width:7ch } }
 @media (prefers-reduced-motion: reduce) { .rpill[data-st="running"] .rdot { animation:none } details.rfold > summary::before { transition:none } }
 """
@@ -817,14 +825,14 @@ function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
-var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
+var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
   TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
     if(!d||typeof d!=='object'||d.kind!=='radar'||ms(d.t)==null)return null;
     var run=obj(d.run),md=obj(d.model),cn=obj(d.counts),wm=obj(d.wm),lg=obj(d.lastGood),rd=d.record&&typeof d.record==='object'?d.record:null,hs=obj(d.hosts),o;
-    o={v:num(d.v),kind:'radar',t:d.t,next:ms(d.next),state:['running','degraded','ending','off','hours'].indexOf(d.state)>=0?d.state:'running',why:str(d.why,200),secs:num(d.secs),
-      run:{id:str(run.id,40),start:ms(run.start),end:ms(run.end),cycle:num(run.cycle),source:str(run.source,12)},
+    o={v:num(d.v),kind:'radar',t:d.t,next:ms(d.next),hourly:ms(d.hourly),state:['running','degraded','ending','off','hours','done'].indexOf(d.state)>=0?d.state:'running',why:str(d.why,200),secs:num(d.secs),
+      run:{id:str(run.id,40),start:ms(run.start),end:ms(run.end),cycle:num(run.cycle),source:str(run.source,12),mode:run.mode==='round'||run.mode==='loop'?run.mode:''},
       model:{from:md.from==='learned'?'learned':'prior',n:num(md.n),need:num(md.need),auc:num(md.auc),prior:num(md.prior),at:ms(md.at),why:str(md.why,200)},
       counts:{seen:num(cn.seen),good:num(cn.good),pushed:num(cn.pushed),seenAgeMed:num(cn.seenAgeMed)},wm:{t:ms(wm.t),nCoins:num(wm.nCoins)},
       coins:(Array.isArray(d.coins)?d.coins:[]).map(function(c){return coin(c,1);}).filter(Boolean).slice(0,5),
@@ -833,7 +841,7 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,RESERVE:10,GH_MI
       recent:(Array.isArray(d.recent)?d.recent:[]).filter(function(r){return r&&typeof r==='object'&&typeof r.addr==='string'&&B58.test(r.addr);}).slice(0,40).map(function(r){
         var lt=obj(r.later),out=r.out&&typeof r.out==='object'?r.out:null,l={};['5','15','30','60'].forEach(function(k){l[k]=num(lt[k]);});
         var pk=r.peak60&&typeof r.peak60==='object'&&isn(r.peak60.x)?{x:r.peak60.x,at:ms(r.peak60.at)}:null;
-        return {addr:r.addr,sym:str(r.sym,24),good:ms(r.good),push:ms(r.push),later:l,peak60:pk,out:out?{rug1h:typeof out.rug1h==='boolean'?out.rug1h:null,win1h:typeof out.win1h==='boolean'?out.win1h:null,x60:num(out.x60)}:null};}),
+        return {addr:r.addr,sym:str(r.sym,24),good:ms(r.good),push:ms(r.push),later:l,peak60:pk,out:out?{rug1h:typeof out.rug1h==='boolean'?out.rug1h:null,win1h:typeof out.win1h==='boolean'?out.win1h:null,x60:num(out.x60)}:null,miss60:r.miss60===true};}),
       record:null,hosts:{},notes:(Array.isArray(d.notes)?d.notes:[]).filter(function(x){return typeof x==='string';}).slice(0,8).map(function(x){return str(x,160);}),
       lines:(Array.isArray(d.lines)?d.lines:[]).filter(function(x){return typeof x==='string';}).slice(0,12).map(function(x){return str(x,200);})};
     if(rd){var ci=obj(rd.ci),pr=function(v){return Array.isArray(v)&&v.length===2&&isn(v[0])&&isn(v[1])?[v[0],v[1]]:null;};
@@ -844,14 +852,22 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,RESERVE:10,GH_MI
   // doc replaced an older one here (moved, at most LAG); before that the phone's clock is the first guess (MemebotLive.age's pattern)
   age:function(doc,now,got,moved){var t=+(doc&&doc.t)||0,loc=got>0?Math.max(0,now-got):null;
     return loc==null?now-t:moved?loc+Math.min(R.LAG,Math.max(0,got-t)):Math.max(loc,now-t);},
-  // running (checked within 2 cycles and a minute), late (15 minutes), stopped (older), off (switched off), hours (outside its hours:
-  // the doc names the next start; a doc past that start by 15 minutes is stopped), none (no doc)
+  // a doc of one round (launch_radar.py round: state done, or degraded when its cycle failed): the radar runs one round after each full scan
+  round:function(doc){return !!doc&&(doc.state==='done'||!!doc.run&&doc.run.mode==='round');},
+  // when the next round is due (ms): the doc's next, else an hour after its round
+  due:function(doc){return +doc.next>0?+doc.next:+doc.t+R.HOUR;},
+  // a round: done (until its next round is due and DONE_GRACE more), late (one more hour), stopped (older). A loop: running (checked within
+  // 2 cycles and a minute), late (15 minutes), stopped (older). off (switched off), hours (outside its hours: the doc names the next start;
+  // a doc past that start by 15 minutes is stopped), none (no doc)
   radarState:function(doc,now,got,moved){
     if(!doc||typeof doc!=='object'||doc.kind!=='radar'||!(+doc.t>0))return 'none';
     var a=R.age(doc,now,got,moved);
     if(doc.state==='off')return 'off';
     if(doc.state==='hours')return +doc.next>0&&+doc.t+a>+doc.next+R.LATE?'stopped':'hours';
+    if(R.round(doc)){var over=+doc.t+a-R.due(doc);return over<=R.DONE_GRACE?'done':over<=R.DONE_GRACE+R.HOUR?'late':'stopped';}
     return a<=2*R.CYCLE+R.GRACE?'running':a<=R.LATE?'late':'stopped';},
+  // the coins are current (a card in full colour, the tab's count): a running loop, or a round within FRESH of its check
+  live:function(st,doc,now,got,moved){return st==='running'||st==='done'&&!!doc&&R.age(doc,now,got,moved)<=R.FRESH;},
   // supabase when the page carries the live store (and it did not just fail: back), else github while the shared budget keeps more
   // than RESERVE requests, else raw (raw.githubusercontent.com: not counted, can be minutes old), else none
   radarTransport:function(url,key,src,rem,reset,now,back){
@@ -866,9 +882,12 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,RESERVE:10,GH_MI
   radarNext:function(o){
     var now=o.now,doc=o.doc,st=R.radarState(doc,now,o.got,o.moved),tab=o.tab||'radar',t,last=+o.last||0;
     var srv=doc&&+doc.t>0?+doc.t+R.age(doc,now,o.got,o.moved):now,loc=function(x){return now+(x-srv);};
-    if(o.via==='supabase')t=now+(tab==='radar'?(st==='running'?R.SB_FRESH:R.SB_STALE):tab==='app'?R.SB_APP:R.SB_OTHER);
+    // a round: the next one is due at its next (it takes about ROUND); until then a poll every IDLE at most (a Start by hand), after it every IDLE
+    var due=doc&&R.round(doc)&&(st==='done'||st==='late')?loc(R.due(doc)+R.ROUND):null;
+    if(o.via==='supabase')t=due!=null?now+(due>now?Math.min(due-now,R.SB_DONE):R.SB_DONE):now+(tab==='radar'?(st==='running'?R.SB_FRESH:R.SB_STALE):tab==='app'?R.SB_APP:R.SB_OTHER);
     else{var gap=tab==='radar'?R.GH_MIN:R.GH_OFFICE;
-      if(st==='running'||st==='late')t=Math.max(last+gap,+doc.next>0?loc(+doc.next+15000):now);
+      if(due!=null)t=Math.max(last+gap,due>now?Math.min(due,last+R.IDLE):last+R.IDLE);
+      else if(st==='running'||st==='late')t=Math.max(last+gap,+doc.next>0?loc(+doc.next+15000):now);
       else if(st==='hours'&&+doc.next>0)t=Math.max(last+R.IDLE,loc(+doc.next+60000));
       else t=last+Math.max(gap,R.IDLE);
       if(o.via!=='raw'&&isn(o.rem)&&o.rem>R.RESERVE&&+o.reset>0){var left=Math.min(3600000,Math.max(0,o.reset*1000-now));t=Math.max(t,now+left/(o.rem-R.RESERVE));}}
@@ -906,7 +925,7 @@ function go(){
   var tz=box.getAttribute('data-tz')||'UTC',tzn=box.getAttribute('data-tzn')||'UTC',root=document.documentElement;
   var sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var KEY='memebot-radar '+(src||sbUrl||'page'),$=function(s){return box.querySelector(s);};
-  var tR=document.getElementById('tab-radar'),tO=document.getElementById('tab-office');
+  var tR=document.getElementById('tab-young'),tO=document.getElementById('tab-office');     // the radar sits on top of the New tab
   var S={doc:null,got:0,moved:false,next:0,fails:0,rem:null,reset:0,remAt:0,last:0,at:0,via:'',back:0},busy=false,key=null,cards=[],startA=null,ghNow=false,ghFor=null;
   try{S.doc=R.clean(JSON.parse(document.getElementById('radar-doc').textContent));}catch(e){}
   function now(){return Date.now();}
@@ -942,13 +961,14 @@ function go(){
       var ul=el('ul');g[2].forEach(function(t){var li=el('li','tc '+g[0]),b=el('b','',IC[g[0]]);b.setAttribute('aria-hidden','true');li.appendChild(b);li.appendChild(document.createTextNode(t));ul.appendChild(li);});
       var m=S.doc&&S.doc.model;w.appendChild(ul);if(g[0]==='info')w.appendChild(el('p','tnote',MEASURED+(m&&m.from!=='learned'&&isn(m.need)?' Radar data so far: '+(isn(m.n)?m.n:0)+' of '+m.need+' calls with a 1 h result.':'')));return w;});}
   function srvNow(n){var d=S.doc;return d?+d.t+R.age(d,n,S.got,S.moved):n;}
-  function emit(st){var det={doc:S.doc,state:st,via:S.via||'embedded',good:st==='running'?R.good(S.doc):0};R.last=det;
+  function fresh(st,n){return R.live(st,S.doc,n,S.got,S.moved);}
+  function emit(st){var det={doc:S.doc,state:st,via:S.via||'embedded',good:fresh(st,now())?R.good(S.doc):0};R.last=det;
     try{window.dispatchEvent(new CustomEvent('memebot-radar',{detail:det}));}catch(e){}}
   function setText(e,t){if(e&&e.textContent!==t)e.textContent=t;}
   function ageText(c,live,docAge){var a=isn(c.age)?c.age+(live?docAge/60000:0):null,m=isn(c.mint)&&S.doc?(+S.doc.t-c.mint)/60000+(live?docAge/60000:0):null;
     return 'pool '+(a==null?'age ?':dur(a))+' · '+(m==null?'mint time unknown':'minted '+dur(m)+' ago');}
-  function card(c,i,st,docAge,rec){
-    var live=st==='running',li=el('li','rcard'+(live?'':' dim')),det=el('details'),sm=el('summary');
+  function card(c,i,live,docAge,rec){
+    var li=el('li','rcard'+(live?'':' dim')),det=el('details'),sm=el('summary');
     var top=el('div','rtop');top.appendChild(el('span','rsym',c.sym||'?'));if(c.name&&c.name!==c.sym)top.appendChild(el('span','rname',c.name));
     var ag=el('span','rage',ageText(c,live,docAge));top.appendChild(ag);li._age=ag;li._c=c;sm.appendChild(top);
     var nums=el('div','rnums');[['liq',usd(c.liq)],['mc',usd(c.mc)],['5 min',pc(c.m5)]].forEach(function(x){var s=el('span');s.appendChild(el('i','',x[0]));s.appendChild(document.createTextNode(x[1]));nums.appendChild(s);});
@@ -973,29 +993,30 @@ function go(){
     var th=el('thead');th.appendChild(hd);t.appendChild(th);var tb=el('tbody');
     rows.forEach(function(r){var tr=el('tr');tr.appendChild(el('td','',isn(r.good)?hhmm(r.good):'?'));tr.appendChild(el('td','',r.sym||'?'));
       ['5','15','30','60'].forEach(function(k){var v=r.later?r.later[k]:null;tr.appendChild(el('td','mx '+(!isn(v)?'na':v>=1?'up':'dn'),mult(v)));});
-      var o=r.out,oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(r.later&&r.later['60']))?['','✓','alive']:['muted','…','pending'];
+      var o=r.out,oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(r.later&&r.later['60']))?['','✓','alive']:r.miss60?['na','–','no 1 h price']:['muted','…','pending'];
       var td=el('td','oc '+oc[0],oc[1]);td.title=oc[2];td.appendChild(el('span','ow',' '+oc[2]));tr.appendChild(td);tb.appendChild(tr);});
-    t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money)'));return w;}
-  function pill(st){var d=S.doc,run=d&&d.run||{},t;
-    if(st==='running')t='Radar running · checked '+hhmm(+d.t)+(isn(d.next)?' · next '+hhmm(d.next):'')+(isn(run.end)?' · this run until '+hhmm(run.end):'')+(d.state==='degraded'?' · with errors':'');
-    else if(st==='late')t='Radar late · last check '+hhmm(+d.t);
-    else if(st==='stopped')t='Radar stopped · last check '+hhmm(+d.t);
+    t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money); – no round caught that price'));return w;}
+  function pill(st){var d=S.doc,t,w=R.round(d)?'last round ':'last check ';
+    if(st==='done')t='Last round '+hhmm(+d.t)+(d.state==='degraded'?' had errors':'')+(isn(d.next)?' · next about '+hhmm(d.next):'');
+    else if(st==='running')t='Radar running · checked '+hhmm(+d.t)+(isn(d.next)?' · next '+hhmm(d.next):'')+(d.state==='degraded'?' · with errors':'');
+    else if(st==='late')t='Radar late · '+w+hhmm(+d.t);
+    else if(st==='stopped')t='Radar stopped · '+w+hhmm(+d.t);
     else if(st==='off')t='Radar off · switched off on GitHub';
     else if(st==='hours')t='Radar sleeping'+(isn(d.next)?' · next start '+hhmm(d.next):'');
     else t='Radar not started yet';
     if(S.via==='raw'&&d)t+=' · slower copy, as of '+hhmm(+d.t);return t;}
   function draw(){
-    var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,k=[d?d.t:0,st,S.via].join('|');
-    var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);setText($('[data-r-pill-t]'),pill(st));}
-    if(startA)startA.className='rbtn'+(['off','stopped','hours','none'].indexOf(st)>=0?'':' quiet');    // a tap while it runs only queues a run
-    var tc=document.querySelector('[data-r-tabcnt]'),g=st==='running'?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
-    if(k===key){cards.forEach(function(li){setText(li._age,ageText(li._c,st==='running',docAge));});return;}
+    var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,live=fresh(st,n),k=[d?d.t:0,st,live,S.via].join('|');
+    var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);if(st==='done'&&d.state==='degraded')p.setAttribute('data-err','');else p.removeAttribute('data-err');setText($('[data-r-pill-t]'),pill(st));}
+    if(startA)startA.className='rbtn'+(st==='running'?' quiet':'');    // a tap while a loop runs only queues a run; between rounds Start is one more round
+    var tc=document.querySelector('[data-r-tabcnt]'),g=live?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
+    if(k===key){cards.forEach(function(li){setText(li._age,ageText(li._c,live,docAge));});return;}
     key=k;emit(st);
     var stats=$('[data-r-stats]'),notes=$('[data-r-notes]'),list=$('[data-r-cards]'),empty=$('[data-r-empty]'),of=$('[data-r-others]'),rf=$('[data-r-rec]');
     stats.textContent='';notes.textContent='';list.textContent='';cards=[];
-    var has=!!d&&['running','late','stopped'].indexOf(st)>=0,cn=d?d.counts:{};
-    stats.hidden=!has;stats.className='rstats'+(st==='running'?'':' dim');
-    if(has)[[cn.seen,'seen under 10 min',''],[cn.good,'no trap found',cn.good?'good':''],[cn.pushed,'pushed',''],[isn(cn.seenAgeMed)?Math.round(cn.seenAgeMed)+' min':null,'median pool age when seen','']].forEach(function(x){
+    var has=!!d&&['running','done','late','stopped'].indexOf(st)>=0,cn=d?d.counts:{};
+    stats.hidden=!has;stats.className='rstats'+(live||st==='done'?'':' dim');
+    if(has)[[cn.seen,'seen',''],[cn.good,'no trap found',cn.good?'good':''],[cn.pushed,'pushed',''],[isn(cn.seenAgeMed)?Math.round(cn.seenAgeMed)+' min':null,'median age','']].forEach(function(x){
       var c=el('div',x[2]);c.appendChild(el('b','',x[0]!=null?String(x[0]):'?'));c.appendChild(el('span','',x[1]));stats.appendChild(c);});
     var nts=d&&has?d.notes.slice():[];
     if(has&&(!isn(d.wm.t)||+d.t-d.wm.t>3*3600000)&&!nts.some(function(x){return /wallet/i.test(x);}))nts.push('wallet check unavailable: no greens until the wallet memory is back');
@@ -1004,19 +1025,19 @@ function go(){
     nts.forEach(function(x){notes.appendChild(el('li','',x));});notes.hidden=!nts.length;
     var good=has?d.coins.filter(function(c){return c.v==='good';}):[],byAddr={};
     (d&&d.recent||[]).forEach(function(r){byAddr[r.addr]=r;});
-    good.forEach(function(c,i){var li=card(c,i,st,docAge,byAddr[c.addr]);cards.push(li);list.appendChild(li);});
+    good.forEach(function(c,i){var li=card(c,i,live,docAge,byAddr[c.addr]);cards.push(li);list.appendChild(li);});
     list.hidden=!good.length;empty.hidden=!!good.length;
     if(!good.length){var big,sub='';
       if(st==='none'){big='Radar not started yet';sub='It starts with the next full scan, or tap Start.';}
       else if(st==='off'){big='Radar is switched off';sub='Start: enable the workflow on GitHub.';}
-      else if(st==='hours'){big='Radar sleeping';sub=isn(d.next)?'It checks again from '+hhmm(d.next)+'.':'Outside its hours.';}
-      else{big=st==='running'?'No clean coin right now':'No clean coin at '+hhmm(+d.t);var s=isn(cn.seen)?cn.seen:d.others.length;
-        sub=(s?s+' seen in the last 10 min · all with traps or not fully checked':'Nothing under 10 min old seen')+' · checks every 2½ min';}
+      else if(st==='hours'){big='Radar sleeping';sub=isn(d.next)?'The next round comes with the first scan after '+hhmm(d.next)+'.':'Outside its hours.';}
+      else{big=live&&st==='running'?'No clean coin right now':'No clean coin at '+hhmm(+d.t);var s=isn(cn.seen)?cn.seen:d.others.length;
+        sub=(s?s+' seen under 10 min · all with traps or not fully checked':'Nothing under 10 min old seen')+(R.round(d)?' · one round an hour':'');}
       setText($('[data-r-empty-t]'),big);setText($('[data-r-empty-s]'),sub);
       var lg=$('[data-r-lastgood]'),l=d&&d.lastGood;lg.hidden=!(l&&isn(l.at));if(!lg.hidden)setText(lg,'last coin without traps: '+(l.sym||'?')+', '+R.ago(srvNow(n)-l.at));}
-    var oth=has?d.others:[],ol=$('[data-r-olist]');ol.textContent='';of.hidden=!oth.length;of.classList.toggle('dim',st!=='running');setText($('[data-r-ocnt]'),String(oth.length));
+    var oth=has?d.others:[],ol=$('[data-r-olist]');ol.textContent='';of.hidden=!oth.length;of.classList.toggle('dim',!live);setText($('[data-r-ocnt]'),String(oth.length));
     oth.forEach(function(c){var li=el('li','rrow '+(c.v==='trap'?'bad':'warn')),vd=R.verdict(c);li.title=vd[1];
-      li.appendChild(el('span','rs',vd[1].charAt(0)+' '+(c.sym||'?')));li.appendChild(el('span','ra',isn(c.age)?'pool '+dur(c.age+(st==='running'?docAge/60000:0)):''));li.appendChild(lineEl(c.line,3));ol.appendChild(li);});
+      li.appendChild(el('span','rs',vd[1].charAt(0)+' '+(c.sym||'?')));li.appendChild(el('span','ra',isn(c.age)?'pool '+dur(c.age+(live?docAge/60000:0)):''));li.appendChild(lineEl(c.line,3));ol.appendChild(li);});
     var rr=d?d.recent.filter(function(r){return isn(r.good)&&srvNow(n)-r.good<=R.RECENT;}).sort(function(a,b){return b.good-a.good;}):[],rl=R.recLine(d&&d.record);
     rf.hidden=!(rr.length||rl);setText($('[data-r-recline]'),R.recShort(d&&d.record)||rr.length+' call'+(rr.length===1?'':'s')+' in the last 3 h');
     var rc=$('[data-r-recent]');rc.textContent='';if(rl)rc.appendChild(el('p','note rrline',rl));
@@ -1056,13 +1077,14 @@ function go(){
     .then(function(){busy=false;S.via=via;S.last=now();var b2=R.budget(office(),S);
       S.next=ghNow?now()+1000:R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved});ghNow=false;save();try{draw();}catch(e){}});
   }
-  // a tab change: the next poll comes at the new tab's pace (sooner on the Radar tab), never before the budget allows
+  // a tab change: the next poll comes at the new tab's pace (sooner on the New tab), never before the budget allows
   function retime(){if(!S.last||busy)return;var b=R.budget(office(),S);S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:S.via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved}));}
   Array.prototype.forEach.call(document.querySelectorAll('input[name="tab"]'),function(r){r.addEventListener('change',function(){retime();poll();});});
   window.addEventListener('storage',function(e){if(e.key===KEY&&load())try{draw();}catch(x){}});
   document.addEventListener('visibilitychange',poll);
-  // #tab-radar (or #radar) opens the tab once in a browser tab; the installed app reads the hash itself (app.py PAGE_JS)
-  setTimeout(function(){if(!inApp()&&tR&&/^#(tab-)?radar$/.test(location.hash)){tR.checked=true;try{tR.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}
+  // #tab-radar, #radar, #tab-young or #new (the old Radar and New links) open the New tab once in a browser tab; the installed app reads the
+  // hash itself (app.py PAGE_JS)
+  setTimeout(function(){if(!inApp()&&tR&&/^#(tab-radar|radar|tab-young|new)$/.test(location.hash)){tR.checked=true;try{tR.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}if(document.activeElement===tR)tR.blur();}},0);   // the jump to the radio must not ring every tab
   var act=box.querySelector('[data-r-actions]');       // Start and Stop: plain links to the radar's page on GitHub (no token, nothing is started from here)
   if(act&&repo){var wf='https://github.com/'+repo+'/actions/workflows/radar.yml',inf=el('details','rinfo'),sm=el('summary','','\u24d8');

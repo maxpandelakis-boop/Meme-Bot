@@ -301,7 +301,7 @@ A second, quick job beside the hourly scan (`.github/workflows/radar.yml`, `laun
 ONE round of about 2 to 3 minutes: it rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
 plus the trap checks of `traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet
 under a day old, a staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the
-page's Radar tab and in the app, records every rating, and sends a push only for a coin without a trap found. Fake money only:
+top of the page's New tab (above the full scan's new launches) and in the app, records every rating, and sends a push only for a coin without a trap found. Fake money only:
 the radar buys nothing and the paper trader never reads it.
 
 When it runs: the hourly scan starts one round at its end (so about one an hour, inside the active hours), and "Run workflow"
