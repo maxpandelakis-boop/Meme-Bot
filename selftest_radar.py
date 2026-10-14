@@ -900,15 +900,29 @@ def checks(check, env_=None):
         check(got_live == sorted(["ok", "soft fail", "at YOUNG_MIN_LIQ", "ticker, mc over a third"]) and got_fin == ["10.5 min, check pending"],
               "eligible: pool under 10 min, a price over 0, liquidity at least YOUNG_MIN_LIQ, none of the gates price/curve/nodex/honeypot/copy, no "
               "ticker of a coin 3x bigger (%s); a recorded coin past 10 min with a check pending is finished for the record until 12.5 min (%s)" % (got_live, got_fin))
-        an = addr(710)
-        Ru.cache["pf"][an] = {"t": T0 + 30_000}                     # the mint 30 s after the pool: two sources' clocks disagree
-        rn = {"a": an, "pr": {"pairCreatedAt": T0, "symbol": "NEG", "name": "Negative Gap", "dexId": "pumpswap", "pairAddress": "NegPool"},
-              "basic": {"price": 1e-5, "liq": 20_000.0, "mc": 50_000.0}, "f": {}, "age": 5.0}
-        Sn, cn = Ru.signals(rn, T0 + 5 * MIN)
-        rtn = T.rate(Sn, Ru.W_prior)
-        check(cn["mint"] is None and cn["mintToPoolS"] is None and Sn.get("instantPool") is None and Sn.get("mintToPoolS") is None and rtn["verdict"] != "good"
-              and "mint_time" in (rtn.get("unknown") or []),
-              "a pool that opened before its mint (the clocks disagree): the gap is unknown, never 'not instant' (verdict %s, unknown %s)" % (rtn["verdict"], rtn.get("unknown")))
+        neg, rn = {}, None
+        for skew in (1, 30, 119, 300):
+            an = addr(710 + skew)
+            Ru.cache["pf"][an] = {"t": T0 + skew * 1000}            # the mint `skew` s after the pool: two sources' clocks on one launch
+            rn_ = {"a": an, "pr": {"pairCreatedAt": T0, "symbol": "NEG", "name": "Negative Gap", "dexId": "pumpswap", "pairAddress": "NegPool"},
+                   "basic": {"price": 1e-5, "liq": 20_000.0, "mc": 50_000.0}, "f": {}, "age": 5.0}
+            rn = rn if rn else rn_
+            Sn, cn = Ru.signals(rn_, T0 + 5 * MIN)
+            rtn = T.rate(Sn, Ru.W_prior)
+            S2n = T.signals_radar(dict(cn)) or {}
+            neg[skew] = (cn["mint"] == T0 + skew * 1000, Sn.get("instantPool"), cn.get("instantPool"), S2n.get("instantPool"), rtn["verdict"],
+                         "instant_pool" in (rtn.get("hard") or []), "mint_time" in (rtn.get("unknown") or []), Ru.chk(an, Sn, T0 + 5 * MIN, False)["mint"])
+        hard_ = (True, True, True, True, "trap", True, False, "ok")
+        check(neg == {1: hard_, 30: hard_, 119: hard_, 300: (True, None, None, None, neg[300][4], False, True, "unknown")} and neg[300][4] != "good",
+              "a pool up to 120 s before its mint (thresholds.mintSkewS: two clocks on one launch) is the instant-pool trap in the radar's own "
+              "reading as in traps' (the raw mint goes to traps); 300 s before is unknown, never 'not instant' (%s)" % neg)
+        th_ = Ru.thresholds()
+        Ru.W = dict(Ru.W_prior, thresholds=dict(th_, mintSkewS=10, instantPoolS=30))
+        g10 = (Ru.gap(T0, T0 + 30_000), Ru.gap(T0 + 29_000, T0), Ru.gap(T0 + 31_000, T0), Ru.gap(T0, 1_700_000))
+        Ru.W = Ru.W_prior
+        check(g10 == ((None, None), (29.0, True), (31.0, False), (None, None)) and Ru.gap(T0, T0 + 30_000) == (-30.0, True) and Ru.gap(T0 + 61_000, T0) == (61.0, False),
+              "the radar's own gap reads radar_weights.json's thresholds (I7): mintSkewS 10 makes a pool 30 s before its mint unknown, "
+              "instantPoolS 30 moves the line; a time that is no launch time (1970) is unknown (%s)" % (g10,))
         Ru.W = dict(Ru.W_prior, brand=None)
         cb = Ru.coin(dict(rn, pr=dict(rn["pr"], name="Grok Agent")), T0 + 5 * MIN)
         Ru.W = dict(Ru.W_prior, brand="(")
@@ -916,6 +930,73 @@ def checks(check, env_=None):
         Ru.W = Ru.W_prior
         check(cb["brand"] is None and cb2["brand"] is None and Ru.coin(dict(rn, pr=dict(rn["pr"], name="Grok Agent")), T0 + 5 * MIN)["brand"] is True,
               "the brand check reads only radar_weights.json's list (I7): without a list, or with one that does not compile, it is unknown, never passed")
+
+        wm0 = {"v": 1, "t": T0 - MIN, "nCoins": 500, "common": [], "sw": {}, "rug": []}
+        aw, an_ = addr(730), addr(733)
+        Ru.cache["rc"][aw] = {"st": "ok", "t": T0, "rep": {"topHolders": [{"owner": addr(731, ""), "pct": 4.0, "address": addr(732, "")}], "risks": [],
+                                                         "token": {"supply": 1e9}, "creatorBalance": 0}}
+        got_w = {}
+        for label, wm_ in (("ok", wm0), ("small", dict(wm0, nCoins=100)), ("empty", dict(wm0, nCoins=0)), ("old", dict(wm0, t=T0 - 4 * H)), ("missing", None)):
+            Ru.wm = wm_
+            Sw_, _ = Ru.signals(dict(rn, a=aw), T0 + 5 * MIN)
+            Sx_, _ = Ru.signals(dict(rn, a=an_), T0 + 5 * MIN)
+            nts_ = Ru.build_doc("running", [], [], [], T0 + 5 * MIN, T0 + 5 * MIN + 150_000, 0.0, 0)["notes"]
+            got_w[label] = (Ru.wm_state(T0 + 5 * MIN), Ru.chk(aw, Sw_, T0 + 5 * MIN, False)["wm"], Ru.chk(an_, Sx_, T0 + 5 * MIN, False)["wm"], Sw_.get("wmChecked") is True,
+                            next((n_ for n_ in nts_ if "wallet" in n_), ""))
+        Ru.wm = None
+        wn_ = lambda w_: "wallet check unavailable (%s): no coin can be without traps" % w_
+        check(got_w == {"ok": ("ok", "ok", "ok", True, ""), "small": ("small", "small", "small", False, wn_("wallet memory too small: 100 of 500 coins")),
+                        "empty": ("empty", "empty", "empty", False, wn_("wallet memory empty")), "old": ("old", "old", "old", False, wn_("wallet memory older than 3 h")),
+                        "missing": ("missing", "missing", "missing", False, wn_("no wallet memory yet"))},
+              "the wallet memory's state as traps judges it (thresholds wmMinCoins 500, wmMaxAgeH 3): a memory of 100 coins is too small, one of 0 "
+              "empty; neither checks anything, the record's chk says so (traps' reading; the memory's own state for a coin without holders yet) and "
+              "the header gives the reason (%s)" % got_w)
+        ax, bx1, bx2, xurl = addr(740), addr(741), addr(742), "https://x.com/somedog"
+        nkx = T.norm_x(xurl)
+        Ru.docs["x"] = {"coins": {ax: {"addr": ax, "first": T0 - 8 * MIN}}}
+        Ru.rec_hour[ax] = "x"
+        Ru.cache["pf"][ax] = {"x": xurl}                         # a pump.fun row without the mint time: the reference is the first sighting
+        Ru.cache["xidx"][nkx[1]] = {bx1: T0 - 13 * MIN, bx2: T0 - 19 * MIN}       # 5 and 11 minutes before the coin was first seen
+        rx_ = {"a": ax, "pr": {"pairCreatedAt": T0 - 9 * MIN, "symbol": "XREF", "name": "X Ref"}, "basic": {"price": 1e-5, "liq": 20_000.0, "mc": 50_000.0}, "f": {}, "age": 9.0}
+        xl0, Ru.xlinks = Ru.xlinks, {}
+        x_local = Ru.coin(rx_, T0)["xUsed"]
+        Ru.cache["xidx"].pop(nkx[1])
+        Ru.xlinks = {nkx[1]: [bx1, T0 - 15 * MIN, 1, nkx[0], T0 - 15 * MIN, [[bx1, T0 - 15 * MIN]]]}
+        x_feed = Ru.coin(rx_, T0)["xUsed"]
+        Ru.xlinks = xl0
+        check(x_local == 1 and x_feed == 0,
+              "x_copied for a coin without a mint time is counted from its first sighting (traps.x_reuse's reference), not from now: in the "
+              "radar's own index only the coin 11 minutes older counts, not the one 5 minutes older (%s); in the scan's index a coin 7 "
+              "minutes older than the first sighting is not counted (%s)" % (x_local, x_feed))
+        wo_ = [LR.went_out(o_) for o_ in ({"kind": "radar", "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None}, {"sent": 1, "skipped": None},
+                                          {"sent": 2, "skipped": "rate guard"}, {"skipped": "no push sender"}, None, "sent")]
+        gh_ = LR.urllib_host(LR.RS.GH_API)
+        Ru.http.dead.add(gh_)
+        Ru.http.fails[gh_] = 3
+        Ru.http.mute.add(gh_)
+        Ru.http.hit429.add(gh_)
+        Ru.http.cool[gh_] = time.time() + 600
+        Ru.gh_fresh()
+        gh_ok = gh_ not in Ru.http.dead and gh_ not in Ru.http.fails and gh_ not in Ru.http.mute and gh_ not in Ru.http.hit429 and gh_ not in Ru.http.cool
+        Ru.lines_log = []
+        for i_ in range(LR.LOG_KEEP + 7):
+            Ru.say("line %d" % i_)
+        lp_ = LR.later_points({"later": {"5": {"t": T0 + 5 * MIN, "px": 2e-5, "liq": 9_000.0}, "30": {"t": T0 + 30 * MIN, "gone": True}, "15": {"px": 1.0}}})
+        check(wo_ == [False, True, False, False, False, False] and gh_ok and len(Ru.lines_log) <= LR.LOG_KEEP and Ru.lines_log[-1] == "line %d" % (LR.LOG_KEEP + 6)
+              and lp_ == [(T0 + 5 * MIN, 2e-5, 9_000.0), (T0 + 30 * MIN, None, 0.0)],
+              "small parts: a notification counts as sent only with sent >= 1 and nothing skipped (%s); the kill switch's host is cleared of every "
+              "breaker mark before each read; the log in memory stays under LOG_KEEP lines; a later price found gone is liquidity 0 for the "
+              "peak's glitch filter (a dead pool), one without a time is left out" % wo_)
+        mw_ = json.loads(json.dumps(Ru.W_prior))
+        mw_["marker"] = "learned"
+        Ru.model, Ru.W = {"v": 1, "from": "prior", "at": T0}, Ru.W_prior
+        Ru.load_tree({"model.json": json.dumps({"v": 1, "from": "learned", "at": T0 + MIN, "n": 420, "src": Ru.W_prior.get("src"), "w": mw_}).encode()})
+        took = Ru.W.get("marker") == "learned" and Ru.model.get("from") == "learned"
+        Ru.model, Ru.W = {"v": 1, "from": "prior", "at": T0 + 2 * MIN}, Ru.W_prior
+        Ru.load_tree({"model.json": json.dumps({"v": 1, "from": "learned", "at": T0 + MIN, "n": 420, "src": Ru.W_prior.get("src"), "w": mw_}).encode()})
+        kept = Ru.W is Ru.W_prior and Ru.model.get("from") == "prior"
+        Ru.model, Ru.W = {}, Ru.W_prior
+        check(took and kept, "a restored model.json is put in use at once (its weights with it), unless the run already fitted a newer one")
 
         print("== launch radar R2b: an old wallet memory, a notification that did not go out")
         rem_w = fresh_remote(T, tmp, "remote-wm", T0 + 2 * MIN, wm_age=4 * H)
@@ -933,14 +1014,14 @@ def checks(check, env_=None):
             R_.store_row = lambda doc: (rows_s.append(json.loads(json.dumps(doc))), orig(doc))[1]
         rem_s = fresh_remote(T, tmp, "remote-skip", T0 + MIN)
         code_s, Rsk, liness, _ = run_radar(T, P, url, rem_s, os.path.join(tmp, "rdSk"), T0 + MIN, minutes=2.5, patch=keep_rows,
-                                           notifier=lambda coins: {"kind": "radar", "sent": 0, "skipped": "no push sender"})
+                                           notifier=lambda coins: {"kind": "radar", "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None})
         ds, rsk = radar_json(rem_s), hour_recs(rem_s)
         pj_s = json.loads(branch_files(rem_s, "radar-data").get("pushed.json") or b"{}")
         said = [d_ for d_ in rows_s + [ds] if (d_.get("counts") or {}).get("pushed") or any(c.get("push") for c in d_.get("coins") or [])]
         check(code_s == 0 and rows_s and not said and not (rsk.get(by["CLEAN"]) or {}).get("push") and by["CLEAN"] in pj_s
               and any(n.get("sym") == "CLEAN" for d_ in rows_s for n in d_.get("coins") or [])
               and all(", 0 pushed " in l for l in liness if re.match(r"^cycle \d+:", l)),
-              "a notification that did not go out (no push sender): neither radar.json nor the app's row nor the record says pushed, the cycle "
+              "a notification that reached no phone (app.notify's answer when none is subscribed: sent 0, nothing skipped): neither radar.json nor the app's row nor the record says pushed, the cycle "
               "line says 0 pushed; the coin stays in pushed.json, so it is never sent later")
 
         print("== launch radar R3: later prices, late, gone, outcome")
@@ -1053,10 +1134,18 @@ def checks(check, env_=None):
         check(len(mock.dispatches) == d0 and any("another radar run is waiting" in l for l in linesp), "no successor while another radar run is pending (C4)")
         mock.runs500 = 1
         d0 = len(mock.dispatches)
-        code, Rq, linesq, _ = run_radar(T, P, url, fresh_remote(T, tmp, "remote-chain", T0 + 2 * H), os.path.join(tmp, "rdQ"), T0 + 2 * H, minutes=5, notifier=Sink())
+        chain_at = []
+
+        def chain_times(R_):
+            real = R_.chain
+            R_.chain = lambda: (chain_at.append(R_.clock.now() - R_.run_end), real())[1]
+        code, Rq, linesq, _ = run_radar(T, P, url, fresh_remote(T, tmp, "remote-chain", T0 + 2 * H), os.path.join(tmp, "rdQ"), T0 + 2 * H, minutes=5, notifier=Sink(),
+                                        patch=chain_times)
         hic = [l for l in linesq if l.startswith("successor:")]
-        check(mock.runs500 == 0 and len(mock.dispatches) == d0 + 1 and len(hic) == 2 and "GitHub did not list the runs" in hic[0] and hic[0].endswith("tried once more") and hic[1].startswith("successor: dispatched"),
-              "a GitHub hiccup at the chain point (the run list answered 500) is tried once more half a minute later: %s" % hic)
+        check(mock.runs500 == 0 and len(mock.dispatches) == d0 + 1 and len(hic) == 2 and "GitHub did not list the runs" in hic[0] and hic[0].endswith("tried once more") and hic[1].startswith("successor: dispatched")
+              and len(chain_at) == 2 and abs(chain_at[0] + LR.CHAIN_BEFORE) < 1_000 and 29_000 <= chain_at[1] - chain_at[0] <= 31_000,
+              "a GitHub hiccup at the chain point (the run list answered 500) is tried once more half a minute later: %s, at the run's end %s s"
+              % (hic, [t_ / 1000 for t_ in chain_at]))
         with env(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9001", GITHUB_REF_NAME="main"), memebot_rules():
             outs = []
             for label, end_at in (("ends 5 min before 14:00", T0 - 5 * MIN), ("ends 30 s after 14:00", T0 + 30_000), ("ends 15 min before 14:00", T0 - 15 * MIN)):
@@ -1068,9 +1157,19 @@ def checks(check, env_=None):
         check([o[1:] for o in outs] == [(False, 0, True), (False, 0, True), (True, 1, True)] and mock.dispatches[-1]["inputs"]["minutes"] == "55",
               "active hours 13-14 Berlin: no successor when the hours end within 10 minutes of the run's end or before it; one (55 minutes) with "
               "15 minutes left (%s)" % outs)
-        check([LR.run_minutes(m, f) for m, f in ((120, False), (330, False), (70, False), (10, False), (0, False), (0, True), (None, False))] == [70, 70, 70, 10, 55, 0, 55],
+        span = {}
+        for m_, ex_ in ((100, []), (0, []), (0, ["--no-github"])):
+            lines_m = []
+            with env(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9001", GITHUB_REF_NAME="main", MEMEBOT_RADAR_HOURS="0-24"), memebot_rules():
+                Rm_ = LR.Radar(LR.args_of(["loop", "--dir", os.path.join(tmp, "rdMin"), "--minutes", str(m_), "--clock", "fake", "--now", str(T0), "--cache",
+                                           os.path.join(tmp, "rdMin-c")] + ex_), log=lines_m.append, traps=T, peak=P)
+                Rm_.cycle = lambda k_, t_, last_: "off"            # the loop's own length only: no cycle runs
+                Rm_.loop()
+            span[(m_, bool(ex_))] = ((Rm_.run_end - Rm_.run_start) / MIN if Rm_.run_end else None, any("100 minutes asked" in l for l in lines_m))
+        check([LR.run_minutes(m, f) for m, f in ((120, False), (330, False), (70, False), (10, False), (0, False), (0, True), (None, False))] == [70, 70, 70, 10, 55, 0, 55]
+              and span == {(100, False): (70.0, True), (0, False): (55.0, False), (0, True): (None, False)},
               "a run lasts at most 70 minutes (the job stops at 75: a longer run would be cut before it starts its successor); 0 = until stopped only "
-              "without GitHub (a VM), else 55")
+              "without GitHub (a VM), else 55; the loop itself runs that long (%s)" % span)
         rem_k = fresh_remote(T, tmp, "remote-kill", T0 + 3 * H)
         mock.gh403, mock.workflow = 3, "disabled_manually"
         code_k, Rk, linesk, _ = run_radar(T, P, url, rem_k, os.path.join(tmp, "rdK"), T0 + 3 * H, minutes=10, notifier=Sink())
@@ -1113,14 +1212,43 @@ def checks(check, env_=None):
               "the hours gate: inside=true inside the window; outside it writes state hours once and keeps every record file as it was")
         put_branch(remote, "radar-data", dict(after, **{"radar.json": json.loads(after["radar.json"]) | {"state": "running"}}), tmp)
         sha_h, files_h, hout2 = refs(remote).get("refs/heads/radar-data"), branch_files(remote, "radar-data"), []
-        real_exists = LR.Git.exists
+        fa = types.ModuleType("app")                              # the app's live store, recorded (app.call / put_row / enabled as app.py has them)
+        fa.rows, fa.puts, fa.fail = {"radar": json.loads(files_h["radar.json"])}, [], False
+
+        def fa_call(method, path, body=None, **kw):
+            if fa.fail:
+                raise RuntimeError("HTTP 503")
+            return [{"doc": fa.rows["radar"]}] if method == "GET" and "id=eq.radar" in path and "radar" in fa.rows else []
+        fa.call, fa.enabled = fa_call, lambda: True
+        fa.put_row = lambda rid, doc, track=None: (fa.puts.append((rid, json.loads(json.dumps(doc)))), fa.rows.__setitem__(rid, doc))
+        real_exists, real_app = LR.Git.exists, sys.modules.get("app")
         LR.Git.exists = lambda self_, branch, timeout=30: None          # git ls-remote got no answer
+        sys.modules["app"] = fa
+        app_puts = []
         try:
-            with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=remote, GITHUB_TOKEN=None):
+            with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=remote, GITHUB_TOKEN=None, SUPABASE_URL="http://127.0.0.1:9", SUPABASE_SECRET_KEY="sb_secret_TESTonlyNOTaKEY"):
                 with contextlib.redirect_stdout(io.StringIO()):
                     rc_n = LR.main(["hours", "--dir", os.path.join(tmp, "hours4"), "--now", str(T0 + 3 * H)], log=hout2.append)
+                    app_puts.append(len(fa.puts))
+                    LR.main(["hours", "--dir", os.path.join(tmp, "hours4b"), "--now", str(T0 + 3 * H + MIN)], log=hout2.append)
+                    app_puts.append(len(fa.puts))
+                    fa.rows["radar"], fa.fail = dict(fa.rows["radar"], state="running"), True
+                    LR.main(["hours", "--dir", os.path.join(tmp, "hours4c"), "--now", str(T0 + 3 * H + 2 * MIN)], log=hout2.append)
+                    app_puts.append(len(fa.puts))
         finally:
             LR.Git.exists = real_exists
+            if real_app is None:
+                sys.modules.pop("app", None)
+            else:
+                sys.modules["app"] = real_app
+        prev_h = json.loads(files_h["radar.json"])
+        put_h = fa.puts[0][1] if fa.puts else {}
+        check(app_puts == [1, 1, 1] and fa.puts[0][0] == "radar" and put_h.get("state") == "hours" and put_h.get("next") and put_h.get("record") == prev_h.get("record")
+              and put_h.get("lastGood") == prev_h.get("lastGood") and any("already says so" in l for l in hout2) and any("not read either: nothing written" in l for l in hout2)
+              and not any("sb_secret_TEST" in l for l in hout2),
+              "the hours gate when GitHub does not answer about radar-data: the app's row still says hours (the page shows the night, not a "
+              "stopped radar) and keeps the record line and the last good coin from the row's own last doc; not twice; when the app's store "
+              "does not answer either nothing is written")
         rem_n = os.path.join(tmp, "remote-nobranch.git")
         git("init", "-q", "--bare", rem_n)
         with env(MEMEBOT_RADAR_HOURS="1-2", RADAR_URL=rem_n, GITHUB_TOKEN=None):
@@ -1128,7 +1256,7 @@ def checks(check, env_=None):
                 rc_m = LR.main(["hours", "--dir", os.path.join(tmp, "hours5"), "--now", str(T0 + 3 * H)], log=hout2.append)
         check(rc_n == 0 and refs(remote).get("refs/heads/radar-data") == sha_h and branch_files(remote, "radar-data") == files_h and any("did not answer" in l for l in hout2)
               and rc_m == 0 and "refs/heads/radar-data" not in refs(rem_n) and any("does not exist yet: not made here" in l for l in hout2),
-              "the hours gate when GitHub does not answer about radar-data: nothing written (no tree of radar.json alone over the records); without "
+              "the hours gate when GitHub does not answer about radar-data: radar-data is not written (no tree of radar.json alone over the records); without "
               "the branch it is not made there (the first run makes it from the results copy)")
         vm_t = []
 
@@ -1187,7 +1315,8 @@ def checks(check, env_=None):
               and "MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}" in job_env
               and "(at most %d: the job stops at 75)" % LR.MAX_MINUTES in wf and LR.MAX_MINUTES + 5 <= 75 and "330" not in wf
               and 'out=$(timeout 150 python3 launch_radar.py hours --dir rd) || out="inside=true"' in wf and len(re.findall(r"^        timeout-minutes: [234]\b", wf, re.M)) == 3
-              and all("--max-time" in l for l in wf.splitlines() if re.search(r"\bcurl -sS\b", l) and "api" in l),
+              and all("--max-time" in l or re.search(r"\btimeout \d+ curl\b", l) for l in wf.splitlines() if re.search(r"\bcurl\b", l) and not l.strip().startswith("#"))
+              and len(re.findall(r"\bcurl -sS --max-time \d+", wf)) == 2,
               "radar.yml: dispatch only, group memebot-radar, 75 min, minutes at most 70, MEMEBOT_RADAR gate, the adapter switches from a repository "
               "variable, the push sender's install step as in scan.yml, the token only in the steps that use it, the hours and tidy steps bounded "
               "in time (they hold the radar's group)")
@@ -1333,8 +1462,9 @@ def checks(check, env_=None):
 
         print("== launch radar R10: the radar model")
         planted = lambda n, ok: plant(T, n, ok)
+        rem_of = {}
         for name, n, ok, want in (("few", 250, True, "prior"), ("good", 420, True, "learned"), ("reversed", 420, False, "prior")):
-            rem_m = os.path.join(tmp, "remote-%s.git" % name)
+            rem_m = rem_of[name] = os.path.join(tmp, "remote-%s.git" % name)
             git("init", "-q", "--bare", rem_m)
             put_branch(rem_m, "results", planted(n, ok), tmp)
             put_branch(rem_m, "radar-feed", feed_files(T, T0 + 6 * H), tmp)
@@ -1348,6 +1478,38 @@ def checks(check, env_=None):
                   and (md_["n"] == n) and ((want == "learned") == (Rm.W is not Rm.W_prior)) and why_ok and prior_ok,
                   "%d planted records (%s): model %s, radar.json says %s of %s needed%s" % (n, name, mj.get("from"), dm.get("model", {}).get("n"), dm.get("model", {}).get("need"),
                                                                                          ("; " + mj.get("why")) if mj.get("why") else ""))
+        rem_g = rem_of["good"]
+        fg = branch_files(rem_g, "radar-data")
+        mg = json.loads(fg["model.json"])
+        mg["w"]["marker"] = "from radar-data"
+        put_branch(rem_g, "radar-data", dict(fg, **{"model.json": mg}), tmp)
+        seen_m = {}
+
+        def model_seen(fail_n, fit=True):
+            def patch(R_):
+                ob, of = R_.build_doc, R_.git.fetch
+                left = [fail_n]
+
+                def bd(*a_, **k_):
+                    d_ = ob(*a_, **k_)
+                    seen_m.setdefault(fail_n, []).append((d_["model"]["from"], (R_.W or {}).get("marker")))
+                    return d_
+
+                def fetch(*a_, **k_):
+                    if a_ and a_[0] == "radar-data" and left[0] > 0:
+                        left[0] -= 1
+                        raise RuntimeError("planted: radar-data not readable")
+                    return of(*a_, **k_)
+                R_.build_doc, R_.git.fetch = bd, fetch
+                if not fit:
+                    R_.maybe_fit = lambda now_: None             # the run fits nothing itself: only the restored model can be in use
+            return patch
+        run_radar(T, P, url, rem_g, os.path.join(tmp, "rdM-start"), T0 + 6 * H + 10 * MIN, minutes=2.5, notifier=Sink(), patch=model_seen(0))
+        run_radar(T, P, url, rem_g, os.path.join(tmp, "rdM-retry"), T0 + 6 * H + 20 * MIN, minutes=4, notifier=Sink(), patch=model_seen(4, fit=False))
+        check(seen_m.get(0, [None])[0] == ("learned", "from radar-data") and [x for x in seen_m.get(4, [])][:1] == [("prior", None)]
+              and seen_m.get(4, [None])[-1] == ("learned", "from radar-data"),
+              "a learned model.json on radar-data is in use from the run's first cycle (%s); when radar-data is read only at a later cycle, its "
+              "model and weights are put in use together then, never 'learned' over the prior's weights (%s)" % (seen_m.get(0, [])[:1], seen_m.get(4)))
         Ru.model = {"from": "learned", "w": {"v": 1, "points": {}}, "src": "another study"}
         stale = Ru.apply_model()
         stale_ok = stale is False and Ru.W is Ru.W_prior and Ru.model == {}

@@ -74,7 +74,12 @@ KEEP_MS = 48 * 3_600_000    # hour docs on radar-data
 GUARD_MS = 47 * 3_600_000   # the never-shrink guard counts the hour docs this recent
 PUSHED_MS = 7 * 86_400_000  # pushed.json keeps a coin this long
 PUSH_PER_H = 4              # radar notifications per rolling hour
-WM_MAX_AGE = 3 * 3_600_000  # an older wallet memory checks nothing (no green verdicts)
+WM_MAX_AGE = 3 * 3_600_000  # an older wallet memory checks nothing (no green verdicts); radar_weights.json thresholds.wmMaxAgeH wins
+WM_STATES = ("ok", "old", "small", "empty", "missing")   # the wallet memory's own states (traps: "noholders" is the coin's, not the memory's)
+WM_MIN_COINS = 500          # a wallet memory built from fewer scored coins is too small to check (thresholds.wmMinCoins wins)
+INSTANT_S = 60              # s from mint to pool: under it the pool is instant (thresholds.instantPoolS wins)
+MINT_SKEW_S = 120           # s: a pool up to this long "before" its mint is two clocks on one launch, so instant (thresholds.mintSkewS)
+TIME_MIN_MS = 1e12          # a time at or below this (2001) is a zero or a seconds value, never a launch time (traps.TIME_MIN_MS)
 RES_EVERY = 15 * 60_000     # results (train.json, spotter.json, positions, 30 days of records) fetched again after this
 FEED_EVERY = 30 * 60_000    # radar-feed (walletmem, xlinks, symmc) fetched again after this
 DOC_MAX = 48_000            # bytes: radar.json; over it the fold (others) is cut first, then recent
@@ -488,9 +493,10 @@ class Radar:
     # ---------------------------------------------------------------- stores
     def load_tree(self, files):
         """The files of a radar-data tree (or a local copy) into memory and rd/out: hour docs of the last 48 h, pushed.json, model.json,
-        radar.json."""
+        radar.json. model.json is taken unless this run already holds a newer model (one it fitted while radar-data could not be read),
+        and its weights are put in use at once (apply_model), at the run's start as at a later cycle's restore."""
         now = self.clock.now()
-        docs = {}
+        docs, model = {}, None
         for path, raw in files.items():
             name = os.path.basename(path)
             try:
@@ -505,11 +511,14 @@ class Radar:
                     if num(t) and now - t < PUSHED_MS:
                         self.pushed[a] = max(int(t), self.pushed.get(a, 0))
             elif path == "model.json" and isinstance(doc, dict):
-                self.model = doc
+                model = doc
             elif path == "radar.json" and isinstance(doc, dict):
                 self.last_doc = doc
         for hour, doc in docs.items():
             self.merge_doc(hour, doc)
+        if model is not None and (not self.model or (num(model.get("at")) or 0) >= (num(self.model.get("at")) or 0)):
+            self.model = model
+            self.apply_model()
         return docs
 
     def merge_doc(self, hour, doc):
@@ -629,10 +638,38 @@ class Radar:
         except (OSError, ValueError, EOFError):
             return None
 
+    def thresholds(self):
+        """radar_weights.json's thresholds (the learned model's copy when one is in use); {} without them (the module defaults apply)."""
+        for w in (self.W, self.W_prior):
+            if isinstance(w, dict) and isinstance(w.get("thresholds"), dict):
+                return w["thresholds"]
+        return {}
+
     def wm_state(self, now):
+        """The wallet memory as traps.walletmem_lookup judges it (WP1), with the same thresholds: missing; old (over wmMaxAgeH, or
+        without a time); empty (built from no coin); small (under wmMinCoins scored coins: refilling after a lost cache); ok. Only ok
+        checks anything, so only then can a coin be green."""
         if not self.wm:
             return "missing"
-        return "ok" if now - num(self.wm.get("t")) <= WM_MAX_AGE else "old"
+        th = self.thresholds()
+        t, n = num(self.wm.get("t")), num(self.wm.get("nCoins"))
+        if t is None or now - t > (num(th.get("wmMaxAgeH")) * H if num(th.get("wmMaxAgeH")) else WM_MAX_AGE):
+            return "old"
+        if not n:
+            return "empty"
+        return "small" if n < (num(th.get("wmMinCoins")) or WM_MIN_COINS) else "ok"
+
+    def gap(self, pool, mint):
+        """(seconds from mint to pool, instant) as traps reads them (WP1 _gap, the same thresholds): a pool up to mintSkewS (120 s)
+        "before" its mint is two sources' clocks on a launch in the same slot, so it is instant (the study: most instant pools have a
+        gap of exactly 0 s); a pool further before its mint, or a time that is no real launch time, is unknown, never "not instant"."""
+        if pool is None or mint is None or pool <= TIME_MIN_MS or mint <= TIME_MIN_MS:
+            return None, None
+        th = self.thresholds()
+        s = (pool - mint) / 1000.0
+        if s < -(num(th.get("mintSkewS")) or MINT_SKEW_S):
+            return None, None
+        return s, s < (num(th.get("instantPoolS")) or INSTANT_S)
 
     def save_cache(self):
         now = self.clock.now()
@@ -772,7 +809,6 @@ class Radar:
             self.say("radar-data restore failed (%s): records kept on the runner, not pushed" % RS.short(e))
             self.restore_state = "failed"
         self.fetch_feed()
-        self.apply_model()
 
     def apply_model(self):
         """model.json's learned weights, only when they were fitted on this study prior (radar_weights.json's src, as traps.load_weights
@@ -946,7 +982,7 @@ class Radar:
         if to_push:
             out = self.notify([dict(x["doc"], push=now) for x in to_push])
             self.say("notification for %s: %s" % (", ".join(x["sym"] for x in to_push), json.dumps(out)[:160] if isinstance(out, dict) else out))
-            if isinstance(out, dict) and not out.get("skipped") and (num(out.get("sent")) or 0) > 0:
+            if went_out(out):
                 sent = to_push                   # nothing went out (rate guard, no push sender, no phone): the coin stays marked, never "pushed" on the page
             for x in sent:
                 rec = self.rec(x["addr"])
@@ -1433,17 +1469,14 @@ class Radar:
         rep = rcc.get("rep") if isinstance(rcc.get("rep"), dict) else None
         st = rcc.get("st") or (self.work.get(a) or {}).get("rc") or "pending"
         pool = num(pr.get("pairCreatedAt"))
-        mint = self.mint_of(a, r)
-        if pool and mint and pool < mint:
-            mint = None                  # the pool before the mint: two sources' clocks disagree, the gap is unknown (never "not instant")
+        mint = self.mint_of(a, r)        # raw: traps decides what a pool "before" its mint means (thresholds.mintSkewS), and so does gap()
         meta = self.cache["pf"].get(a) or {}
         w = self.work.get(a) or {}
         rec = self.rec(a) or {}
         c = {"addr": a, "sym": str(pr.get("symbol") or "?")[:24], "name": str(pr.get("name") or "")[:48], "now": now, "pool": pool, "mint": mint,
              "dex": str(pr.get("dexId") or "")[:24] or None, "first": num(rec.get("first")) or now, "px": num(b.get("price")),
              "pair": pr, "f": f, "rc": rep, "rcStatus": st, "pf": meta, "devRow": w.get("devRow"), "wm": self.wm, "wmState": self.wm_state(now)}
-        c["mintToPoolS"] = (pool - mint) / 1000.0 if pool and mint else None
-        c["instantPool"] = (c["mintToPoolS"] < 60) if c["mintToPoolS"] is not None else None
+        c["mintToPoolS"], c["instantPool"] = self.gap(pool, mint)
         top10 = self.holders_of(a)
         c["top10"] = top10
         if c["wmState"] == "ok" and rep is not None:
@@ -1516,7 +1549,7 @@ class Radar:
         c["devAgeH"] = round((now - wa["first"]) / H, 2) if wa and wa.get("first") and not (wa.get("full") and fresh_dev is None) else None   # full: a lower bound
         c["devTx"] = c["devTxs"] = (wa.get("n") if not wa.get("full") else 1000) if wa else None
         c["dev"] = {"n": c["devN"], "dead": c["devDead"], "grad": c["devGrad"], "ageH": c["devAgeH"], "txs": c["devTx"]}
-        c["xUsed"], c["tweetShared"] = self.x_reuse(a, x, nx, num(meta.get("t")) or now)
+        c["xUsed"], c["tweetShared"] = self.x_reuse(a, x, nx, mint if mint and mint > TIME_MIN_MS else c["first"])
         tr = w.get("trades") if isinstance(w.get("trades"), dict) and not w["trades"].get("many") else {}
         ho = w.get("pfholders") or {}
         pick = lambda k1, k2: num(tr.get(k1)) if tr.get(k1) is not None else num(ho.get(k2))
@@ -1554,15 +1587,20 @@ class Radar:
         return {k for k, n in cnt.items() if n >= 25}
 
     def x_reuse(self, a, url, nx, t):
-        """(xUsed, tweetShared) at t (the coin's mint, else now): older coins, minted XGAP (10 min) or more before, with the same account or
-        community link (C10), and other coins off the same tweet. Two indexes: the radar's own (pump.fun's lists) and the scan's (radar-feed
-        xlinks, counted by traps.x_reuse: never the coin itself, never a younger coin). They overlap, so the larger count is taken."""
+        """(xUsed, tweetShared) at t (the coin's mint from any source, else its first sighting: traps.x_reuse's reference, WP1): older
+        coins, created xGapS (10 min) or more before, with the same account or community link (C10), and other coins off the same tweet.
+        The coin's own time is the earlier of t and its own entry in an index (as traps does). Two indexes: the radar's own (pump.fun's
+        lists) and the scan's (radar-feed xlinks, counted by traps.x_reuse: never the coin itself, never a younger coin). They overlap,
+        so the larger count is taken."""
         if not nx:
             return 0, 0
         kind, key = nx
-        gap = num(((self.W or {}).get("thresholds") or {}).get("xGapS")) if isinstance(self.W, dict) else None
+        gap = num(self.thresholds().get("xGapS"))
         gap = gap if gap is not None else 600.0
-        local = {b: tb for b, tb in (self.cache["xidx"].get(key) or {}).items() if b != a}
+        idx = self.cache["xidx"].get(key) or {}
+        if num(idx.get(a)):
+            t = min(t, num(idx[a]))
+        local = {b: tb for b, tb in idx.items() if b != a}
         fe = {}
         if self.xlinks and hasattr(self.T, "x_reuse"):
             try:
@@ -1630,7 +1668,7 @@ class Radar:
     def chk(self, a, S, now, record_only):
         w = self.work.get(a) or {}
         st = (self.cache["rc"].get(a) or {}).get("st") or w.get("rc") or "pending"
-        wms = self.wm_state(now)
+        wms = S.get("wmState") if S.get("wmState") in WM_STATES else self.wm_state(now)     # traps' reading of the memory wins
         hold = "off" if not self.src.use("rpc_holder_age") else ("ok" if w.get("holders") == "ok" else "skip")
         tr = w.get("trades") if isinstance(w.get("trades"), dict) and not w["trades"].get("many") else None
         trades = "off" if not (self.src.use("swap_trades") or self.src.use("pf_top_holders")) else \
@@ -1711,7 +1749,10 @@ class Radar:
             notes.append("RugCheck down: no coin can be without traps")
         wms = self.wm_state(now)
         if wms != "ok":
-            notes.append("wallet check unavailable (%s): no coin can be without traps" % ("wallet memory older than 3 h" if wms == "old" else "no wallet memory yet"))
+            why = {"old": "wallet memory older than %g h" % ((num(self.thresholds().get("wmMaxAgeH")) or WM_MAX_AGE / H)),
+                   "small": "wallet memory too small: %d of %d coins" % (num((self.wm or {}).get("nCoins")) or 0, num(self.thresholds().get("wmMinCoins")) or WM_MIN_COINS),
+                   "empty": "wallet memory empty"}.get(wms, "no wallet memory yet")
+            notes.append("wallet check unavailable (%s): no coin can be without traps" % why)
         for n in self.src.off_why:
             notes.append("%s not checked (source down)" % n.replace("_", " "))
         good_recs = [(a, rec) for doc in self.docs.values() for a, rec in (doc.get("coins") or {}).items() if rec.get("good")]
@@ -1893,6 +1934,12 @@ def summ(rec):
             "win": out.get("win1h") if isinstance(out.get("win1h"), bool) else None}
 
 
+def went_out(out):
+    """True when a notification reached at least one phone: app.notify's answer says sent >= 1 and nothing skipped (rate guard, no push
+    sender, no live store). sent 0 (no phone subscribed, every send failed) is not "pushed" anywhere."""
+    return isinstance(out, dict) and not out.get("skipped") and (num(out.get("sent")) or 0) > 0
+
+
 def push_text(coins):
     """The notification's words (3.6): title "SYM: no trap found (pool 6 min)", "+1 more" for a second coin; body checks, liquidity and
     that it is fake money. Never "buy", "safe" or "clean"."""
@@ -1935,11 +1982,34 @@ def finish_from(prev, state, now, why, run_id, start, end, source, hw):
 
 
 # ---------------------------------------------------------------- the hours gate (radar.yml's first step)
+def app_row(doc=None, say=None):
+    """The app's live store row "radar": doc is written (upsert); without doc the row's current doc is read ({} when there is none).
+    None when the store is not set up or did not answer. Never raises; the secret key stays in app.py's request header."""
+    try:
+        if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY")):
+            return None
+        import app as A
+        if not A.enabled():
+            return None
+        if doc is not None:
+            A.put_row("radar", doc)
+            return doc
+        rows = A.call("GET", "live?id=eq.radar&select=doc")
+        got = rows[0].get("doc") if isinstance(rows, list) and rows and isinstance(rows[0], dict) else None
+        return got if isinstance(got, dict) else {}
+    except Exception as e:
+        if say:
+            say("hours: app store row not %s (%s)" % ("written" if doc is not None else "read", RS.short(e)))
+        return None
+
+
 def cmd_hours(a, log=None):
     """Inside the active hours: inside=true. Outside: radar.json state "hours" with the next start, once (not again when the last doc
-    already says hours), pushed to radar-data with every other file of the branch as it is; inside=false. radar-data is written only
-    when it exists and was read: when GitHub does not answer nothing is written (a tree of radar.json alone would wipe the records),
-    and a missing branch is left to the first radar run (it starts it from the results copy); the app's row is written either way."""
+    already says hours), pushed to radar-data with every other file of the branch as it is, and to the app's row; inside=false.
+    radar-data is written only when it exists and was read: when GitHub does not answer, or the fetch fails, nothing goes there (a
+    tree of radar.json alone would wipe the records), and a missing branch is left to the first radar run (it starts it from the
+    results copy). The app's row is written either way; when radar-data could not be read, the row's own last doc gives the record
+    line, the model and the last good coin that the hours doc keeps."""
     say = log or (lambda s: print("radar: " + redact(s), file=sys.stderr, flush=True))
     now = int(a.now) if a.now else int(time.time() * 1000)
     hw = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS") or "7-24")
@@ -1949,57 +2019,57 @@ def cmd_hours(a, log=None):
     print("inside=false")
     remote = a.remote or os.environ.get("RADAR_URL") or ""
     d = os.path.abspath(a.dir)
-    files, prev, ex = {}, {}, None
+    files, prev, ex, read = {}, {}, None, True
     if remote:
         g = Git(os.path.join(d, "git"), remote, say)
         try:
             g.init()
             ex = g.exists("radar-data")
             if ex is None:
-                say("hours: GitHub did not answer about radar-data: nothing written")
-                return 0
-            if ex:
+                read = False
+                say("hours: GitHub did not answer about radar-data: radar-data not written, the app's row only")
+            elif ex:
                 g.fetch("radar-data", "refs/radar/data")
                 files = g.files("refs/radar/data", g.paths("refs/radar/data"))
                 prev = json.loads(files.get("radar.json", b"{}").decode("utf-8") or "{}")
         except Exception as e:
-            say("hours: radar-data not read (%s): nothing written" % RS.short(e))
-            return 0
+            read, files, prev = False, {}, {}
+            say("hours: radar-data not read (%s): radar-data not written, the app's row only" % RS.short(e))
     else:
         prev = load_json(os.path.join(d, "out", "radar.json"), {}) or {}
+    if not read:
+        prev = app_row(say=say)
+        if prev is None:                  # no app store, or it did not answer either: nothing is written anywhere
+            say("hours: the app's row not read either: nothing written")
+            return 0
     if isinstance(prev, dict) and prev.get("state") == "hours":
         say("outside the active hours %d-%d Berlin: radar.json already says so" % hw)
         return 0
     doc = finish_from(prev if isinstance(prev, dict) else {}, "hours", now, "outside the active hours %02d:00-%02d:00 Berlin" % hw,
                       os.environ.get("GITHUB_RUN_ID") or "local", None, None, os.environ.get("RADAR_SOURCE") or "manual", hw)
-    out = os.path.join(d, "hours")
-    shutil.rmtree(out, ignore_errors=True)
-    paths = {}
-    for p, raw in files.items():
-        if p != "radar.json" and safe_path(p):
-            fp = os.path.join(out, *p.split("/"))
-            os.makedirs(os.path.dirname(fp), exist_ok=True)
-            with open(fp, "wb") as f:
-                f.write(raw)
-            paths[p] = fp
-    write_json(os.path.join(out, "radar.json"), doc)
-    paths["radar.json"] = os.path.join(out, "radar.json")
-    if remote and ex:
-        try:
-            Git(os.path.join(d, "git"), remote, say).push_tree(paths, "radar-data", "launch radar: outside the active hours (fake money)")
-        except Exception as e:
-            say("hours: radar-data push failed (%s)" % RS.short(e))
-    elif remote:
-        say("hours: radar-data does not exist yet: not made here (the first radar run makes it from the results copy)")
-    else:
-        write_json(os.path.join(d, "out", "radar.json"), doc)
-    try:
-        if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY"):
-            import app as A
-            if A.enabled():
-                A.put_row("radar", doc)
-    except Exception as e:
-        say("hours: app store row not written (%s)" % RS.short(e))
+    if read:
+        out = os.path.join(d, "hours")
+        shutil.rmtree(out, ignore_errors=True)
+        paths = {}
+        for p, raw in files.items():
+            if p != "radar.json" and safe_path(p):
+                fp = os.path.join(out, *p.split("/"))
+                os.makedirs(os.path.dirname(fp), exist_ok=True)
+                with open(fp, "wb") as f:
+                    f.write(raw)
+                paths[p] = fp
+        write_json(os.path.join(out, "radar.json"), doc)
+        paths["radar.json"] = os.path.join(out, "radar.json")
+        if remote and ex:
+            try:
+                Git(os.path.join(d, "git"), remote, say).push_tree(paths, "radar-data", "launch radar: outside the active hours (fake money)")
+            except Exception as e:
+                say("hours: radar-data push failed (%s)" % RS.short(e))
+        elif remote:
+            say("hours: radar-data does not exist yet: not made here (the first radar run makes it from the results copy)")
+        else:
+            write_json(os.path.join(d, "out", "radar.json"), doc)
+    app_row(doc, say)
     say("outside the active hours %d-%d Berlin: state hours, next start %s UTC" % (hw[0], hw[1], dt.datetime.fromtimestamp(doc["next"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M") if doc["next"] else "?"))
     return 0
 
