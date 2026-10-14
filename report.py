@@ -628,6 +628,15 @@ header .meta { color:var(--muted); font-size:var(--fs-s) }
 section { display:grid; gap:12px }
 .sec-head { display:flex; flex-wrap:wrap; gap:2px 16px; align-items:baseline; justify-content:space-between }
 .sec-head p { margin:0; color:var(--fg2); font-size:var(--fs-s); text-wrap:pretty }
+/* an ⓘ (info_i): a 44 px tap target that opens the explanation; beside a heading it sits at the heading's right end and keeps its place */
+details.hi > summary { list-style:none; cursor:pointer; color:var(--muted); width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:17px; line-height:1 }
+details.hi > summary::-webkit-details-marker { display:none } details.hi > summary:hover, details.hi[open] > summary { color:var(--accent) }
+.hi-b { display:grid; gap:6px; font-size:var(--fs-s); color:var(--fg2) } .hi-b p { margin:0 } .hi-b .note { max-width:none }
+.sec-head.hasi { position:relative; padding-right:40px; row-gap:0 } .sec-head > details.hi { flex-basis:100% }
+.sec-head > details.hi > summary { position:absolute; top:-11px; right:-10px } .sec-head > details.hi[open] { margin-right:-40px } .sec-head > details.hi[open] > .hi-b { margin-top:6px }
+.paper details.hi, .ift details.hi { display:inline } .paper details.hi > summary, .ift details.hi > summary { display:inline-flex; vertical-align:middle; margin:-14px -6px -14px 0 }
+.paper details.hi[open] > .hi-b, .ift details.hi[open] > .hi-b { margin-top:4px }
+
 details.fold > summary { list-style:none; display:grid; grid-template-columns:1fr auto; column-gap:12px; align-items:center; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:8px; cursor:pointer; color:var(--fg) }
 details.fold > summary::-webkit-details-marker { display:none }
 details.fold > summary .t { font-weight:600; font-size:17px; line-height:1.25 } details.fold > summary .sum { font-size:var(--fs-s); color:var(--fg2); grid-column:1 }
@@ -687,7 +696,7 @@ details.fold > summary:hover { border-color:var(--accent) }
 .safety::before { content:"Safety check · " attr(data-src); display:block; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:2px }
 .safety.flag { border-left-color:var(--warn-mark) }
 .why { font-size:var(--fs-m); color:var(--fg2); margin:6px 0 0 } .why + .why { margin-top:4px }
-details.more > summary { color:var(--accent); font-weight:500 }
+details.more > summary { color:var(--accent); font-weight:500 } .tipf-b { display:grid; gap:12px } .tipf-b > .verdict { margin:0 } details.chartf[open] > .embed { margin-top:8px }
 .embed { width:100%; height:360px; border:0; border-radius:6px; background:var(--chip) }
 a { color:var(--accent); text-decoration:none } a:hover, a:focus-visible { text-decoration:underline }
 .links { display:flex; flex-wrap:wrap; gap:8px }
@@ -748,7 +757,7 @@ details.safe.ok > summary .ic { background:color-mix(in srgb,var(--good-mark) 18
 details.safe.bad > summary .ic { background:color-mix(in srgb,var(--bad-mark) 18%,var(--surface)); color:var(--bad) }
 details.safe > summary::after { content:"›"; color:var(--accent); margin-left:2px } details.safe[open] > summary::after { content:"‹" }
 .paper { margin:0; padding:8px 12px; border-radius:6px; font-size:var(--fs-s); background:color-mix(in srgb,var(--accent) 9%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line)) }
-.paper .k { display:block; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--accent); font-weight:600 }
+.paper .k { font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-right:4px }
 .checks { border:1px solid var(--line); border-radius:6px; padding:10px 12px; display:grid; gap:8px }
 details.more > .checks { margin-top:8px }
 .checks-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 12px; align-items:baseline }
@@ -853,7 +862,7 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
   .office[data-live] .ofl .plat[data-live="work"] .halo { opacity:.7 } }
 @media (max-width:700px) { .chart .wide { display:none } .chart .narrow { display:block } }
 @media (max-width:560px) {
-  body { font-size:15px } h1 { font-size:21px } .wrap { gap:20px }
+  body { font-size:15px } h1 { font-size:21px } .wrap { gap:16px } .pane { gap:20px } footer { padding-top:10px }
   .tabbar { gap:0 } .tabbar label { padding:8px 9px; gap:5px; font-size:14px; white-space:nowrap } .tabbar .cnt { padding:1px 6px }
   .note, .why, .safety, .sec-head p, details, table, .legend, .tile .sub, header .meta, .live, .links a { font-size:14px } .chip { font-size:13px }
   .hero { grid-template-columns:1fr 1fr } .hero .tile.lead { grid-column:1 / -1 } .hero .tile:last-child:nth-child(even) { grid-column:1 / -1 } .tile.lead .value { font-size:32px }
@@ -861,6 +870,8 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
   .acct .cell:nth-child(3) { border-left:1px solid var(--line2) } .acct .cell:last-child { grid-column:1 / -1; border-top:1px solid var(--line2) }
   details.hold > summary { grid-template-columns:1fr auto; grid-template-areas:"who plv" "track track" "meta meta"; padding:12px 14px } details.hold .body { padding:12px 14px }
   .verdicts .v { font-size:20px } .spark-box { padding-right:46px }
+  .card.rec .links { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin-inline:-16px; padding-inline:16px; scroll-padding-inline:16px }
+  .card.rec .links::-webkit-scrollbar { display:none } .card.rec .links a { flex:none }
   .kv { grid-template-columns:1fr 1fr } .embed { height:240px } .card { gap:12px } .odds { grid-template-columns:1fr 1fr } .odds .tile:last-child { grid-column:1 / -1 }
   .stack table, .stack tbody, .stack tr, .stack td { display:block } .stack thead { display:none } .stack tr { padding:10px 12px; border-top:1px solid var(--line2) } .stack tr:first-child { border-top:0 }
   .stack td { border-top:0; padding:2px 0; text-align:left; white-space:normal; min-width:0; max-width:none } .stack td.n, .stack td.w, .stack td.m, .stack td.act { display:inline-block; padding-right:12px }
@@ -1317,7 +1328,17 @@ def fold(title, summary, inner, open_=False):
         " open" if open_ else "", E(title), ('<span class="sum">%s</span>' % E(summary)) if summary else "", inner)
 
 
-def section(h2, sub, body):
+def info_i(inner, label="More about this"):
+    """An ⓘ that opens a short explanation: the page's sentences sit behind it, so a tab's first view is numbers, labels and colour.
+    inner is HTML (escaped by the caller)."""
+    return '<details class="hi"><summary aria-label="%s" title="%s">ⓘ</summary><div class="hi-b">%s</div></details>' % (E(label), E(label), inner)
+
+
+def section(h2, sub, body, info=False, more=""):
+    """A section with its heading. info: the sub line (and more, HTML) sit behind an ⓘ beside the heading instead of under it."""
+    if info and (sub or more):
+        return '<section><div class="sec-head hasi"><h2>%s</h2>%s</div>%s</section>' % (
+            h2, info_i(('<p>%s</p>' % E(sub) if sub else "") + more, "About: " + re.sub(r"<[^>]*>", "", html.unescape(h2))), body)
     return '<section><div class="sec-head"><h2>%s</h2>%s</div>%s</section>' % (h2, ('<p>%s</p>' % E(sub)) if sub else "", body)
 
 
@@ -1773,13 +1794,17 @@ def rec_card(c, now, embed, peers=None, held=None):
     elif c.get("tier") == "risky":
         notes = '<p class="note">No coin had a clean safety report this scan. This is the tradable coin with the best trained odds (chance of profit minus chance of zero), not a clean pick.%s</p>' % (
             (" It also failed: %s." % E("; ".join(str(x) for x in c.get("relaxed") or []))) if c.get("relaxed") else "")
-    chart = ('<iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe>' % (E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""
+    chart = ('<details class="more chartf"><summary>Live chart</summary><iframe class="embed" src="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0" title="%s chart" loading="lazy"></iframe></details>' % (
+        E(c.get("pair") or c.get("addr")), E(c.get("sym")))) if embed else ""     # behind a tap: a closed fold never loads the chart
     kv = [(k, v) for k, v in kv if k not in STRIP_KV]
     groups = [(name, [(k, v) for k, v in kv if test(k)]) for name, test in (("Trading", lambda k: k not in SAFETY_KV and k not in STORY_KV),
                                                                             ("Holders & safety", lambda k: k in SAFETY_KV), ("Story & attention", lambda k: k in STORY_KV))]
     numbers = '<details class="more nums"><summary>All numbers (%d)</summary><div class="groups">%s</div>%s</details>' % (
         len(kv), "".join('<div class="grp"><h4>%s</h4><div class="kv">%s</div></div>' % (E(name), kv_html(items)) for name, items in groups if items), sources_row(c.get("src")))
-    paper_html = ('<p class="paper"><span class="k">paper position</span>%s</p>' % E(paper)) if paper else ""
+    paper_html = ""
+    if paper:       # the position in a few words; the selling rule and the rest behind its ⓘ
+        first, _, rest_ = paper.partition(" · ")
+        paper_html = '<div class="paper"><span class="k">paper position</span> %s%s</div>' % (E(first), (" " + info_i('<p>%s</p>' % E(rest_), "The paper position in full")) if rest_ else "")
     rows = safety_checks(rk)
     if rows:
         worst = next((s_ for s_ in ("bad", "warn") if any(r_[0] == s_ for r_ in rows)), "ok")
@@ -1836,7 +1861,7 @@ def rec_section(D, embed):
         tr = "".join('<tr>%s%s%s</tr>' % (coin_cell(c.get("rank") or "?", c.get("sym"), c.get("name"), safety_chip(c.get("ok"), c.get("safety"))),
                                           num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))) for c in runners)
         body += '<details><summary>Runners-up (%d)</summary><div class="tbl stack"><table>%s<tbody>%s</tbody></table></div></details>' % (len(runners), COIN_HEAD, tr)
-    return section(E(h2), head, body)
+    return section(E(h2), head, body, info=True)
 
 
 def story_chip(c):
@@ -1919,7 +1944,8 @@ def young_history(D):
             bits.append("%d h later: %d priced, %d went up, %d to zero, average %s per 20" % (h, len(sc), up, sum(1 for o in sc if o.get("gone") or (M.num(o.get("mult")) or 0) < 0.02), fmt_amt(sum(M.num(o.get("eur")) or 0 for o in sc) / len(sc), True)) + ((" · " + tp_stats(sc)) if tp_stats(sc) else ""))
     head = '<thead><tr><th>scan at</th><th>coin</th><th class="n">score</th><th class="n">market cap then</th>%s<th></th></tr></thead>' % "".join('<th class="n">%d h later</th>' % h for h in M.TIP_CHECKS)
     note = ("the earlier new launches: " + "; ".join(bits)) if bits else "the earlier new launches: none priced again yet"
-    return '<h3>What the earlier new launches did</h3><p class="note">%s · 20 in each at the scan price, after fees · fake money</p><details><summary>%d new launches from the last scans</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details>' % (
+    return ('<details class="fold-lite"><summary>What the earlier new launches did</summary><p class="note">%s · 20 in each at the scan price, after fees · fake money</p>'
+            '<details><summary>%d new launches from the last scans</summary><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div></details></details>') % (
         E(note), len(rows), head, "".join(rows))
 
 
@@ -1943,7 +1969,11 @@ def young_section(D):
             chips = '%s<span class="chip">%d min old</span>%s%s%s%s' % (PR.row_chips(traps.get(c.get("addr"))), int(M.num(c.get("ageMin")) or 0), buy,
                                                                        PR.row_safety(traps.get(c.get("addr")), safety_chip(c.get("ok"), c.get("safety"))), odds_chip(c), story_chip(c))
             rows_html.append('<tr%s>%s%s%s</tr>' % (PR.row_attr(traps.get(c.get("addr"))), coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
-        body = PR.young_head(traps, young) + '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
+        n_top = 3                              # in view: the best three; the others one tap below
+        body = PR.young_head(traps, young) + '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html[:n_top]))
+        if rows_html[n_top:]:
+            body += '<details class="fold-lite"><summary>%d more new launch%s</summary><div class="tbl stack"><table>%s<tbody>%s</tbody></table></div></details>' % (
+                len(rows_html) - n_top, "" if len(rows_html) - n_top == 1 else "es", COIN_HEAD, "".join(rows_html[n_top:]))
         cards = "".join(rec_card(dict(c, tier="young", _trap=traps.get(c.get("addr"))), D["now"], embed=False, peers=young, held=held) for c in young)
         body += '<details><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
         gates = [(c.get("sym"), c.get("gates") or []) for c in young if c.get("gates")]
@@ -1956,13 +1986,15 @@ def young_section(D):
         body = '<div class="empty">No coin under an hour old had a DEX pair with %s of liquidity in this scan (%d coins scanned).</div>' % (fmt_money(M.YOUNG_MIN_LIQ), int(M.num(rc.get("scanned")) or 0))
     else:
         body = '<div class="empty">No scan yet.</div>'
-    body = '<h3>The record by age</h3>%s<h3>This scan</h3>%s%s' % (age_record(D.get("train")), body, young_history(D))
+    body = '<h3>This scan</h3>%s<details class="fold-lite"><summary>The record by age</summary>%s</details>%s' % (body, age_record(D.get("train")), young_history(D))
+    hint = ""
     if live_repo():
-        body = early_box(D, young, held) + body
+        hint, box = early_box(D, young, held)     # the hint behind the heading's ⓘ, the early box (hidden until a scan lists coins) on top
+        body = box + body
     h2 = ("%d new launch%s under an hour old" % (n_all, "" if n_all == 1 else "es")) if rc else "New launches"
     if n_all > len(young) and young:
         h2 += " (the %d best shown)" % len(young)
-    return section(E(h2), head, body)
+    return section(E(h2), head, body, info=True, more=hint)
 
 
 EARLY_LABEL = ("Fake money · not advice. Not scored by the full scan yet and only partly safety-checked: RugCheck only, the creator's wallet is "
@@ -1970,7 +2002,8 @@ EARLY_LABEL = ("Fake money · not advice. Not scored by the full scan yet and on
 
 
 def early_box(D, young, held):
-    """The early list on the New launches tab (a page built on GitHub Actions only): the hint line, and a box the live script fills while a
+    """The early list on the New launches tab (a page built on GitHub Actions only), as (hint, box): the hint (it sits behind the tab
+    heading's ⓘ), and a box the live script fills while a
     scan runs with the coins its launch spotter found about five minutes in (live.json "young"), before they are scored. It carries this
     scan's own early list (data-early-doc, checked as bot.py checks what it pushes) and each coin's fate on the scored list (data-final),
     so after the scan the list stays folded above the scored one. Nothing here is a trade: no swap link, and the label says how it is bought."""
@@ -2009,7 +2042,7 @@ def early_box(D, young, held):
            '<div class="eorder" role="radiogroup" aria-label="Order of the early list">'
            '<label><input type="radio" name="eorder" value="new" checked>Newest first</label><label><input type="radio" name="eorder" value="score">Score order</label></div>'
            '<ol class="ecards" data-early-list></ol></div></details>') % (attrs, E(EARLY_LABEL))
-    return hint + box
+    return hint, box
 
 
 SCAN_MINUTE_UTC = 10      # the scheduled scan starts at this minute of every hour (.github/workflows/scan.yml); a run takes about 15 minutes
@@ -2190,13 +2223,14 @@ def profit_section(D):
         "good" if yes else "bad", "Up so far" if yes else "Down so far", s["n"], "s" if s["n"] != 1 else "", label, s["up"], s["zero"],
         fmt_amt(s["tot"], True), fmt_amt(staked), fmt_amt(s["tot"] / s["n"], True), ""))
     tiles = [tile("All tips together, %s" % label, fmt_amt(s["tot"], True), "%d tips · %s staked · fake money, after fees" % (s["n"], fmt_amt(staked)), lead=True),
-             tile("Tips that went up", "%d of %d" % (s["up"], s["n"]), "a profit after fees needs about %s" % sgn("%+.1f%%" % (100 * (be_mult(M.TICKET) - 1)))),
-             tile("Tips that went to zero", "%d of %d" % (s["zero"], s["n"]), "under 2% of the entry price")]
+             tile("Tips that went up", "%d of %d" % (s["up"], s["n"])), tile("Tips that went to zero", "%d of %d" % (s["zero"], s["n"]))]
+    words = '<p>Went up: a profit after fees, which needs about %s. Went to zero: under 2%% of the entry price.</p>' % E(sgn("%+.1f%%" % (100 * (be_mult(M.TICKET) - 1))))
     a = (D.get("paper") or {}).get("acct") or {}
     if a.get("n"):      # the paper account: the tips bought as positions, sold by the paper rules, not one 20 per tip and window
         tiles.append(tile("Paper account since the restart", fmt_amt(a["pnl"], True), "%d sold · %d open · top pick %s, new launches %s · sold at +%d%%, %s%% or at the first scan after about %d hours" % (
             a["nClosed"], a["nOpen"], fmt_eur(M.TOP_TICKET), fmt_eur(M.YOUNG_TICKET), round(100 * M.HOLD_TP), sgn("-%d" % round(100 * M.HOLD_STOP)), round(M.HOLD_MAX_H))))
-    html_ = '<section class="hero">%s</section>' % "".join(tiles)
+    html_ = '<section class="hero">%s</section>' % "".join(tiles[:3])          # in view: the three numbers; the rest one tap away
+    paper_t = ('<section class="hero">%s</section>' % "".join(tiles[3:])) if tiles[3:] else ""
     trs = []
     for key_, hours_, label_, pts_ in rows:
         st_ = profit_stats(pts_)
@@ -2222,7 +2256,9 @@ def profit_section(D):
     note += ('20 put into every tip one after the other, each time the whole stake, would be %s now after %d tips. ' % (fmt_amt(chain["equity"]), chain["n"])) if chain["n"] else ""
     note += 'Fake money: every tip counts 20 per window here, fees simulated at 0.5%, minimum 0.81 per trade. The paper account at the top is separate: its positions (the top pick for 50, the first new launches for 3) are in "Open positions" and "Closed trades", with paper fees of 1%, minimum 0.10.</p>'
     more = '<details class="fold-lite"><summary>With a take-profit, and how this is counted</summary>%s%s</details>' % (replay, note)
-    return section("Tip record", "a test of the tips, not the paper account: every coin the bot named counted as its own 20, priced again after the window", verdict + html_ + chart + table + more)
+    rest_ = '<details class="fold-lite tipf"><summary>Running total, table and the paper account</summary><div class="tipf-b">%s</div></details>' % (verdict + paper_t + chart + table + more)
+    return section("Tip record", "a test of the tips, not the paper account: every coin the bot named counted as its own 20, priced again after the window",
+                   html_ + rest_, info=True, more=words)
 
 def history_section(D):
     """Every scan of the last days, newest first: what the bot named at that hour (tier, score, the odds it gave), and
@@ -2307,7 +2343,7 @@ def history_section(D):
     body = tip_strip(strip, "Every tip of the last %d days, 1 h later" % HISTORY_DAYS)
     table = '<p class="note">%s.</p><div class="tbl stack hist"><table>%s<tbody>%s</tbody></table></div>' % (E(track), head, "".join(rows))
     body += '<details class="fold-lite"><summary>Every scan, hour by hour (%d)</summary>%s</details>' % (len(rows), table)
-    return section("Recommendations, hour by hour", sub, body)
+    return section("Recommendations, hour by hour", sub, body, info=True)
 
 
 def stat_cells(st):
@@ -3095,8 +3131,9 @@ def render(data, fragment=False):
             body = '<div class="empty">No open positions. %s</div>' % ("The next pick run buys the two best coins when the bankroll has a free slot." if D["runs"] else "Run <code>python3 bot.py cycle</code> to start.")
         if rec_mode:
             return fold("Bought coins", "none yet", '<section><p class="note">%s</p>%s%s</section>' % (E(head), body, rule))
-        if D.get("rec"):
-            return '<h3>Open positions</h3>' + body.replace('<div class="cards">', '<div class="holds">', 1) + rule
+        if D.get("rec"):        # one line until tapped: the open positions can fill several phone screens (their count and value are in the header)
+            return ('<details class="fold-lite pa-f opos" data-pa="open"><summary>Open positions (%d)</summary>' % len(D["open"])
+                    + body.replace('<div class="cards">', '<div class="holds">', 1) + rule + '</details>')
         return section("Bought coins", head, body + rule)
 
     def closed(inline=False):
@@ -3134,19 +3171,23 @@ def render(data, fragment=False):
     def runlog():
         detail = ('<details><summary>Last run in detail</summary><p class="note">%s</p></details>' % E(st["note"])) if st.get("note") else ""
         inner = '<section>%s%s</section>' % (safe("run log", lambda: runs_table(D["runs"], rec_mode)), detail)
-        return fold("Run log", "last %d runs" % min(12, len(D["runs"])), inner)
+        n_runs = int(M.num(st.get("runs")) or len(D["runs"]))
+        return fold("Run log", "last %d of %d run%s" % (min(12, len(D["runs"])), n_runs, "" if n_runs == 1 else "s"), inner)
 
     last_run = st.get("lastRun")
-    nxt = (" · next scan starts about %s" % fmt_when(next_scan_ms(now, D["runs"]), now)) if D.get("rec") else ""
-    head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real · scans every hour</div><h1>%s</h1></div>'
-            '<div class="meta">updated %s%s · %s run%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(nxt), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s")
+    # the full scan's strip on the Pick tab (page_office.py) is the one place for the next start and Scan now; the header says when the page
+    # was updated, and the next start only on a page without the strip
+    strip_html = safe("scan strip", lambda: PO.scan_strip(D, sys.modules[__name__])) if D.get("rec") else ""
+    nxt = (" · next scan starts about %s" % fmt_when(next_scan_ms(now, D["runs"]), now)) if D.get("rec") and not strip_html else ""
+    head = ('<header><div><div class="eyebrow">fake money only · no real trades</div><h1>%s</h1></div>'
+            '<div class="meta">updated %s%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(nxt))
     body = [head]
     tabs = ""
     if D.get("rec"):
         # four tabs: the pick (and its track record), the launch radar, the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
-        pane_pick = safe("scan strip", lambda: PO.scan_strip(D, sys.modules[__name__])) + pane_pick     # the full scan: last, next, Scan now (page_office.py)
+        pane_pick = strip_html + pane_pick     # the full scan: last, next, Scan now (page_office.py)
         pane_young = safe("new launches", lambda: young_section(D))
         pane_office = safe("agent office", lambda: office_section(D))
         pane_radar = safe("launch radar", lambda: PR.pane(D))      # the second scan: its own tab, its status and its start link (WP5b)
@@ -3168,7 +3209,7 @@ def render(data, fragment=False):
             acct_html = ('<p class="note">The hindsight categories and the activity feed could not be loaded this time (%s).</p>' % E(type(e).__name__) + safe("account", lambda: dash_section(D))
                          + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
         account = section("Paper account", "fake money, no budget · every scan buys the top pick for %s and the first %d new launches for %s each · counted since the restart" % (
-                              fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET)), acct_html)
+                              fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET)), acct_html, info=True)
         shown = [tabs, app_tab(account, "account"), app_tab(safe("profit", lambda: profit_section(D)), "pick")]
         rest.append(safe("candidates", candidates))
     elif tabs:
@@ -3187,14 +3228,15 @@ def render(data, fragment=False):
         # the page answers one question: which coin, why, and the numbers behind it; everything else sits behind one tap
         body += [x for x in shown if x]
         n_scan = D["scan_n"] or M.num((D.get("rec") or {}).get("scanned")) or 0
-        body.append(app_tab(fold("Details: training, big test, all candidates, weights, run log", "%s coins in the last scan" % fmt_int(n_scan) + (" · %s coin results scored" % fmt_int(scored) if scored else ""),
+        body.append(app_tab(fold("Details", "training, big test, all candidates, weights, run log · %s coins in the last scan" % fmt_int(n_scan) + (" · %s coin results scored" % fmt_int(scored) if scored else ""),
                                  '<div class="rest">%s</div>' % "\n".join(x for x in rest if x)), "pick"))
         if not (D.get("rec") and D["pos"]):
             body.append(app_tab(safe("profit", lambda: profit_section(D)), "pick"))  # the tip record, every tip priced again (with positions it sits above the details)
     else:
         body += [x for x in rest if x]
-    body.append('<footer><span>generated %s</span><span>rule %s · %s profile</span><span>fees simulated at 0.5%%, minimum 0.81 per trade (paper account: 1%%, minimum 0.10)</span><span>prices from DexScreener at the time of each run</span><span>times in %s</span></footer>' % (
-        E(fmt_dt(now)), E(st.get("rule") or M.RULE), E(M.HORIZON), TZ_NAME))
+    body.append('<footer><span>generated %s</span><span class="ift">rule %s · %s profile %s</span></footer>' % (
+        E(fmt_dt(now)), E(st.get("rule") or M.RULE), E(M.HORIZON), info_i('<p>fees simulated at 0.5%%, minimum 0.81 per trade (paper account: 1%%, minimum 0.10)</p>'
+                                                                         '<p>prices from DexScreener at the time of each run</p><p>times in %s</p>' % TZ_NAME, "Fees, prices and times")))
     content = '<div class="wrap">%s</div>\n<script>%s</script>' % ("\n".join(body), JS)
     head_html = ('<title>%s</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap">\n'
                  '<style>%s</style>') % (E(TITLE), CSS + (EARLY_CSS if live_repo() and D.get("rec") else ""))

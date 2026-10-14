@@ -275,10 +275,12 @@ def office_checks(check, skips=None):
         m_nxt = re.search(r'data-next-scan="(\d+)"', page_live)
         hint = "(next: about %s %s)" % (R.local(nxt + 5 * MIN).strftime("%H:%M"), R.TZ_NAME)
         check(est == [41, 0, 10, 10] and nxt == int(dt.datetime(2026, 10, 13, 18, 41, tzinfo=dt.timezone.utc).timestamp() * 1000) and m_nxt and int(m_nxt.group(1)) == nxt
-              and "next ≈ %s" % R.local(nxt).strftime("%H:%M") in page and 'data-next="%d"' % nxt in page and "next scan starts about %s" % R.fmt_when(nxt, NOW) in page
+              and "next ≈ %s" % R.local(nxt).strftime("%H:%M") in page and 'data-next="%d"' % nxt in page and "next scan starts about" not in page
+              and re.search(r'<div class="meta">updated [^<·]+</div></header>', page)
               and hint in page_live and R.next_scan_ms(NOW) == R.next_scan_ms(NOW, []) == int(dt.datetime(2026, 10, 13, 19, 10, tzinfo=dt.timezone.utc).timestamp() * 1000),
-              "U6 next scan: the median start minute of the last 6 memeruns (:41; :58 to :02 wraps to :00) times data-next-scan, the strip, the header and "
-              "the early list's hint %s; fewer than 3 runs keep SCAN_MINUTE_UTC (%s)" % (hint, est))
+              "U6 next scan: the median start minute of the last 6 memeruns (:41; :58 to :02 wraps to :00) times data-next-scan, the strip and "
+              "the early list's hint %s (the header says only when the page was updated: the strip is the one place for the next start); fewer than 3 runs "
+              "keep SCAN_MINUTE_UTC (%s)" % (hint, est))
         sstrip = lambda p: cut(p, '<div class="sstrip"', "</details></div>")
         check(sstrip(page) and sstrip(page) == sstrip(page_live) and "last %s" % R.local(D1["runs"][0]["t"]).strftime("%H:%M") in sstrip(page)
               and "Scan now ↗" in sstrip(page) and "data-ss-now" in sstrip(page) and " hidden><span>" in sstrip(page) and "href=" not in sstrip(page)
@@ -292,13 +294,13 @@ def office_checks(check, skips=None):
                 shutil.copy(os.path.join(HERE, n), code)
         r = subprocess.run([PY, "-I", os.path.join(code, "report.py"), "--dir", d1, "--out", os.path.join(tmp, "nopo.html"), "--now", str(NOW)], capture_output=True, text=True)
         nopo = open(os.path.join(tmp, "nopo.html"), encoding="utf-8").read() if r.returncode == 0 else ""
-        m_old = re.search(r"next scan starts about ([^<]*?) · ", nopo)
+        m_old = re.search(r'<div class="meta">updated [^<·]+ · next scan starts about ([^<·]*?)</div>', nopo)     # no strip: the header keeps the next start
         check(nopo and "could not be rendered" not in nopo and 'class="ocard' not in nopo and "sstrip" not in nopo and "Daily overview" not in nopo
               and 'data-po-fold open>' in nopo and 'class="otop"' not in nopo
               and 'data-ext="radar"' not in nopo and "<style></style>" not in nopo and 'data-agents="analyst"' in nopo
               and m_old and m_old.group(1) == R.fmt_when(R.next_scan_ms(NOW, []), NOW),
-              "report.py without page_office.py builds the page as before it: no cards, strip, overview or radar desk (the office's fold stands open), the cron "
-              "minute for the next scan (%s)" % (
+              "report.py without page_office.py builds the page as before it: no cards, strip, overview or radar desk (the office's fold stands open), the "
+              "header names the next scan at the cron minute, as the strip is not there (%s)" % (
                   r.stderr[-200:] if r.returncode else m_old and m_old.group(1)))
         names = json.loads(R.html.unescape(re.search(r'data-names="([^"]*)"', page_live).group(1)))
         check("radar" not in names and set(AGENTS) <= set(names) and "all('[data-agent]:not([data-ext])')" in R.OFFICE_LIVE_JS and "all('[data-agent]').forEach" not in R.OFFICE_LIVE_JS,

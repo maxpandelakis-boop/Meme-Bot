@@ -537,8 +537,9 @@ def scan_strip(D, R):
     hm = lambda ms: R.local(ms).strftime("%H:%M")
     state = ("last %s" % hm(last)) if last else "no scan yet"
     info = ("The full scan checks every source, names the pick and runs the paper account, about once an hour (about 26 minutes). "
-            "The next start is estimated from the last scans. Scan now opens its page on GitHub: tap “Run workflow” there; "
-            "a start while a scan runs waits until it ends. The Radar tab is the second, faster scan.")
+            "The next start is estimated from the last scans. Scan now opens its page on GitHub: tap “Run workflow” there and come back in about ten "
+            "minutes; a start while a scan runs waits until it ends. The page is rebuilt after every scan and reloads itself (the app when you come "
+            "back to it). The Radar tab is the second, faster scan: each scan runs on its own, and both can run at the same time.")
     return ('<style>%s</style><div class="sstrip" data-sstrip data-run-t="%d" data-next="%d" data-po-tz="%s"><span class="sdot%s" data-ss-dot aria-hidden="true"></span>'
             '<b>Full scan</b><span class="sst" data-ss-state>%s</span><span class="sst" data-ss-next>next ≈ %s</span>'
             '<a class="sbtn" data-ss-now target="_blank" rel="noopener" hidden><span>Scan now ↗</span></a>'
@@ -552,7 +553,9 @@ def hour_css():
 
 
 STRIP_CSS = r"""
-/* the full scan's strip on the Pick tab (page_office.py) */
+/* the full scan's strip on the Pick tab (page_office.py): the one place for the next start and Scan now, so the website's Live box with its
+   own Scan now button goes wherever the strip is on the page (the box stays in the HTML: the strip takes the repository from its link) */
+.wrap:has([data-sstrip]) > .live { display:none }
 .sstrip { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:8px 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface);
   font-size:var(--fs-s); color:var(--fg2); position:relative }
 .sstrip b { color:var(--fg); font-weight:600 } .sstrip .sst { font-variant-numeric:tabular-nums; white-space:nowrap } .sstrip .sst[hidden] { display:none }

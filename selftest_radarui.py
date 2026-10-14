@@ -257,9 +257,14 @@ def young_pane(page):
     return page.split('id="pane-young"', 1)[1].split('id="pane-office"', 1)[0] if 'id="pane-young"' in page else ""
 
 
+def young_tbody(pane):
+    """The scored list's rows: the first ones in view and the others in the "N more new launches" fold under them (report.young_section);
+    the record tables come after the cards."""
+    return "".join(re.findall(r"<tbody>(.*?)</tbody>", pane.split("Every number behind each coin", 1)[0], re.S))
+
+
 def young_trs(pane):
-    table = pane.split("<tbody>", 1)[1].split("</tbody>", 1)[0] if "<tbody>" in pane else ""
-    return re.findall(r"<tr(?: class=\"trap\")?>.*?</tr>", table, re.S)
+    return re.findall(r"<tr(?: class=\"trap\")?>.*?</tr>", young_tbody(pane), re.S)
 
 
 def weights_shape_checks(check, P, W, what):
@@ -336,7 +341,7 @@ def py_checks(check, tmp, T, standin):
     # without pairs.json and the wallet memory: every row shows "?", none is green
     d2, _ = build_db(tmp, now, side=False, name="db-noside")
     p2 = young_pane(page_of(d2, now))
-    tb2 = p2.split("<tbody>", 1)[1].split("</tbody>", 1)[0]
+    tb2 = young_tbody(p2)
     trs2 = young_trs(p2)
     check(len(trs2) == N and not re.search(r'chip tv good', tb2) and all('<span class="tc unk' in tr for tr in trs2)
           and all(re.search(r'<span class="chip tv (warn|bad)">(\?|✕)', tr) for tr in trs2) and '<span class="chip">0 without traps' in p2,
@@ -346,7 +351,7 @@ def py_checks(check, tmp, T, standin):
     with gzip.open(os.path.join(d3, "walletmem.json.gz"), "wt", encoding="utf-8") as f:
         json.dump({"v": 1, "t": now - 4 * H, "nCoins": 10, "rug": []}, f)
     p3 = young_pane(page_of(d3, now))
-    check("chip tv good" not in p3.split("<tbody>", 1)[1].split("</tbody>", 1)[0], "U4 a wallet memory older than 3 hours gives no green row")
+    check("chip tv good" not in young_tbody(p3) and len(young_trs(p3)) == N, "U4 a wallet memory older than 3 hours gives no green row")
     # the card's detail view: CSS-radio sub-tabs, works without a script
     check(cards.count('<details class="tdet">') == N and cards.count('<div class="dtabs">') == N and "RED FLAGS".lower() in cards.lower() and 'type="radio" name="ty-' in cards
           and ">Overview</label>" in cards and ">Trap check</label>" in cards and ">Numbers</label>" in cards,

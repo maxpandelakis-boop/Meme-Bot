@@ -447,7 +447,7 @@ def header(D, A):
     return ('<div class="pa-hero" data-pa="header"><div class="pl"><div class="pa-eyebrow"><span>Stop-loss account</span><span class="chip neutral">the rule</span>'
             '<span>fake money</span></div><div class="pa-k">P/L since %s</div><div class="pa-big %s" data-pa-v="pnl">%s</div>'
             '<div class="pa-rate %s" data-pa-v="rate">%s</div>'
-            '<details class="pa-i"><summary aria-label="How this is counted">ⓘ how this is counted</summary><p>%s</p></details></div>%s'
+            '<details class="pa-i"><summary aria-label="How this is counted"><span class="dt-only">ⓘ how this is counted</span><span class="ph-only">ⓘ</span></summary><p>%s</p></details></div>%s'
             '<div class="pa-tiles">%s</div></div>') % (
         E(when or "the restart"), tone(a["pnl"]), E(eur(a["pnl"], True)), tone(rate),
         ('%s<span> on %s invested</span>' % (E(pct1(rate)), E(eur(a["invested"])))) if rate is not None else "<span>nothing bought yet</span>", E(info),
@@ -983,5 +983,19 @@ section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
   .pa-tbl td.c { grid-area:c } .pa-tbl td.p { grid-area:p } .pa-tbl td.m { grid-area:m } .pa-tbl td.w { grid-area:w }
   .pa-tbl td.h { grid-area:h1; display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; font-size:var(--fs-s) } .pa-tbl td.h + td.h { grid-area:h2 }
   .pa-tbl td.h1::before { content:"best in 6 h (hindsight)"; color:var(--muted); font-size:var(--fs-xs) } .pa-tbl td.h2::before { content:"at 6 h (hindsight)"; color:var(--muted); font-size:var(--fs-xs) } .pa-tbl td.h small { display:inline; margin:0 } .pa-tbl td.h .chip { margin:0 } }
+/* a phone: each category in short rows: its name and chip beside the P/L, its rate beside the ⓘ, then the same trades; an open ⓘ takes the full width */
+@media (max-width:820px) {
+  .pa-cat { grid-template-columns:minmax(0,1fr) auto; column-gap:10px; row-gap:0 }
+  .pa-cat .head { grid-column:1; grid-row:1; flex-direction:column; align-items:flex-start; justify-content:center; align-self:center; gap:4px }
+  .pa-cat .vr { display:contents } .pa-cat .v { grid-column:2; grid-row:1; justify-self:end; align-self:center }
+  .pa-cat .r { grid-column:1; grid-row:2; align-self:center } .pa-cat details.pa-i { grid-column:2; grid-row:2; justify-self:end }
+  .pa-cat details.pa-i > summary { padding:0 }
+  .pa-cat details.pa-i[open] { grid-column:1 / -1; grid-row:auto; justify-self:stretch } .pa-cat .same { grid-column:1 / -1; grid-row:3 }
+  .pa-cat .chip { font-size:12px; padding:2px 8px; white-space:nowrap } .pa-cat .same { padding-bottom:8px }
+  /* the header's ⓘ sits at the end of the rate's line (an open one takes the full width below it) */
+  .pa-hero .pl { grid-template-columns:minmax(0,1fr) auto } .pa-hero .pl > * { grid-column:1 / -1 } .pa-hero .pl > .pa-rate { grid-column:1; align-self:center }
+  .pa-hero .pl > details.pa-i:not([open]) { grid-column:2; grid-row:4 } .pa-hero .pl > details.pa-i > summary { min-width:44px; padding:0; justify-content:center; font-size:15px }
+}
+@media (max-width:560px) { .pa-cat .v { font-size:24px } .pa-cat .r { font-size:var(--fs-xs) } }
 @media (prefers-reduced-motion: reduce) { .pa-livel i { animation:none } }
 """
