@@ -9,8 +9,9 @@
 # When GitHub Pages is switched on (Settings -> Pages -> Source: GitHub Actions; needs a public repository on the free plan),
 # the second job publishes the page as a website that phones can keep on the home screen.
 # The iPhone app (README "iPhone app"): with the repository secrets SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY and SUPABASE_SECRET_KEY the
-# scan also writes its live view to a free Supabase project every few seconds and sends push notifications (new coins listed, the pick
-# made) through pywebpush, which a step below installs only when those secrets exist; without them the run is exactly as before.
+# scan also writes its live view to a free Supabase project every few seconds and sends push notifications (the pick made; new coins
+# listed only with the repository variable MEMEBOT_PUSH_YOUNG=1) through pywebpush, which a step below installs only when those secrets
+# exist; without them the run is exactly as before.
 # The launch radar (radar.yml, its own job every 2.5 minutes) and this scan meet in four soft steps that never hold up the scan:
 # the scan imports the radar's records (branch radar-data) for the page and the results branch, feeds the radar its wallet memory
 # (branch radar-feed), exports its records once a day with the big test, and restarts the radar when its chain broke. A second job,
