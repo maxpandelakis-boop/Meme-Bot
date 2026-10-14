@@ -17,6 +17,13 @@ import argparse, html, json, math, os, re, sys, datetime as dt
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import memebot as M
+try:
+    import page_radar as PR  # the Radar tab, the trap-check line and the "no good coin" marks (WP5b)
+except ModuleNotFoundError as e:  # only a copy of the code without page_radar.py (the selftest's stand-in spotter): no radar parts; any other error is raised
+    if e.name != "page_radar":
+        raise
+    PR = __import__("types").SimpleNamespace(pane=lambda D: "", CSS="", JS="", tab_label=lambda: "Radar", young=lambda D: {}, row_chips=lambda rt: "", row_attr=lambda rt: "", row_safety=lambda rt, chip: chip,
+                                             card_safety=lambda c, chip: chip, young_head=lambda t, rows: "", card_trap=lambda c, now=None: "", pick_banner=lambda picks: "")
 
 TITLE = "Meme-Bot Ledger"
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
@@ -1109,6 +1116,7 @@ function go(){
       li.appendChild(p);});                                                                                                            // may break: never wider than the card
     var ch=el('div'),rc=c.rc&&typeof c.rc==='object'?c.rc:null,lv=rc?rc.level:null;ch.className='chips';
     ch.appendChild(chip(MB.rcChip(rc,y.rcState),lv==='danger'?'bad':lv==='warn'?'warn':''));
+    if(born!=null&&isn(c.minted)&&born-c.minted>=0&&born-c.minted<60000)ch.appendChild(chip('\u2715 pool opened with the mint','bad'));   // the one validated trap (rug study: instant pool)
     var fh=fate&&fate[a]&&typeof fate[a]==='object'&&fate[a].b==='held';      // the scored list's chip says it already
     if(c.held===true&&!fh)ch.appendChild(chip('paper: already held'));
     if(fate){var f=fate[a],on=f&&typeof f==='object'&&isn(f.k);
@@ -1769,8 +1777,8 @@ def rec_card(c, now, embed, peers=None, held=None):
         safety = safety_box(c.get("safety"), c.get("ok"))
     why = '<details class="more"><summary>%s</summary><p class="why">%s</p></details>' % ("Why it ranks here" if c.get("tier") == "young" else "Why the bot picked it", E(c.get("why") or "")) if c.get("why") else ""
     return ('<article class="card rec"><div class="top"><div><span class="sym">%s</span>%s</div><div class="chips">%s%s</div></div>'
-            '%s%s%s%s%s%s%s%s%s%s<div class="addr">%s</div></article>') % (
-        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), safety_chip(c.get("ok")) + story_chip(c),
+            '%s%s%s%s%s%s%s%s%s%s%s<div class="addr">%s</div></article>') % (
+        E(c.get("sym")), name_html(c.get("sym"), c.get("name")), tier_chip(c), PR.card_safety(c, safety_chip(c.get("ok"))) + story_chip(c), PR.card_trap(c, now),
         stats_html, verdict_html, odds_note, paper_html, safety, why, notes, numbers, chart, links(c), E(c.get("addr")))
 
 
@@ -1808,7 +1816,7 @@ def rec_section(D, embed):
     peers = [c for c in picks + (rc.get("runnersUp") or []) if isinstance(c, dict)]
     held = {r["p"].get("addr"): r for r in (D.get("open") or []) if r["p"].get("grp") in M.PAPER_GROUPS}
     if picks:
-        body = '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed, peers, held) for c in picks)
+        body = PR.pick_banner(picks) + '<div class="cards">%s</div>' % "".join(rec_card(c, D["now"], embed, peers, held) for c in picks)
     else:
         body = '<div class="empty">No recommendation this time: %s. The closest coins and what stopped them are listed below.</div>' % E(rc.get("reason") or ("no top coin had a clean safety report" if rc.get("passed") else "nothing passed the gates"))
     runners = [c for c in (rc.get("runnersUp") or []) if isinstance(c, dict)]
@@ -1915,15 +1923,16 @@ def young_section(D):
     # memebot marks only the first YOUNG_BUY_N; a coin further down the tab that the paper account holds is "already held" too
     young = [dict(c, bought="held") if c.get("bought") is None and c.get("addr") in held else c for c in young]
     if young:
-        rows_html = []
+        rows_html, traps = [], PR.young(D)          # each row's trap check (traps.rate at page build): verdict chip, one-row line, red tint
         for i, c in enumerate(young, 1):
             b = c.get("bought")
             buy = ('<span class="chip neutral">bought for %s</span>' % E(fmt_eur(b))) if isinstance(b, (int, float)) and not isinstance(b, bool) else (
                 '<span class="chip neutral">already held</span>' if b == "held" else "")
-            chips = '<span class="chip">%d min old</span>%s%s%s%s' % (int(M.num(c.get("ageMin")) or 0), buy, safety_chip(c.get("ok"), c.get("safety")), odds_chip(c), story_chip(c))
-            rows_html.append('<tr>%s%s%s</tr>' % (coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
-        body = '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
-        cards = "".join(rec_card(dict(c, tier="young"), D["now"], embed=False, peers=young, held=held) for c in young)
+            chips = '%s<span class="chip">%d min old</span>%s%s%s%s' % (PR.row_chips(traps.get(c.get("addr"))), int(M.num(c.get("ageMin")) or 0), buy,
+                                                                       PR.row_safety(traps.get(c.get("addr")), safety_chip(c.get("ok"), c.get("safety"))), odds_chip(c), story_chip(c))
+            rows_html.append('<tr%s>%s%s%s</tr>' % (PR.row_attr(traps.get(c.get("addr"))), coin_cell(i, c.get("sym"), c.get("name"), chips), num_cells(M.num(c.get("score")) or 0, c.get("mc"), c.get("liq"), c.get("vol")), CHART_CELL % E(c.get("pair") or c.get("addr"))))
+        body = PR.young_head(traps, young) + '<div class="tbl stack"><table>%s<tbody>%s</tbody></table></div>' % (COIN_HEAD, "".join(rows_html))
+        cards = "".join(rec_card(dict(c, tier="young", _trap=traps.get(c.get("addr"))), D["now"], embed=False, peers=young, held=held) for c in young)
         body += '<details><summary>Every number behind each coin (%d cards)</summary><div class="cards">%s</div></details>' % (len(young), cards)
         gates = [(c.get("sym"), c.get("gates") or []) for c in young if c.get("gates")]
         if gates:
@@ -3100,15 +3109,17 @@ def render(data, fragment=False):
     body = [head]
     tabs = ""
     if D.get("rec"):
-        # three tabs: the pick (and its track record), the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
+        # four tabs: the pick (and its track record), the launch radar, the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         pane_young = safe("new launches", lambda: young_section(D))
         pane_office = safe("agent office", lambda: office_section(D))
-        tabs = ('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
-                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">The pick</label><label for="tab-young" role="tab">New <span class="tl-long">launches </span>&lt;1h <span class="cnt">%d</span></label>'
-                '<label for="tab-office" role="tab">Agent office</label></div>'
-                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div></div>' % (n_young, pane_pick, pane_young, pane_office))
+        pane_radar = safe("launch radar", lambda: PR.pane(D))      # the second scan: its own tab, its status and its start link (WP5b)
+        tabs = ('<style>%s</style><div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-radar"><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
+                '<div class="tabbar" role="tablist"><label for="tab-pick" role="tab">Pick</label><label for="tab-radar" role="tab">%s</label><label for="tab-young" role="tab">New <span class="tl-long">launches </span>&lt;1h <span class="cnt">%d</span></label>'
+                '<label for="tab-office" role="tab">Office</label></div>'
+                '<div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-radar">%s</div><div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div></div><script>%s</script>' % (
+                    PR.CSS, PR.tab_label(), n_young, pane_pick, pane_radar, pane_young, pane_office, PR.JS))
     rest = [safe("training", lambda: train_section(D))] if D.get("rec") else []
     rest.append(section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))))
     shown = []
