@@ -484,6 +484,11 @@ o.live=[R.live('done',rd(N-14*M),N,0),R.live('done',rd(N-16*M),N,0),R.live('runn
 o.rnext=[R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:rd(N-55*M,{next:N+5*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,
   R.radarNext({doc:rd(N-70*M,{next:N-10*M}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:rd(N-58*M,{next:N-1*M}),now:N,last:N,tab:'radar',via:'supabase',got:N})-N,
   R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'app',via:'supabase',got:N})-N,R.radarNext({doc:rd(N-100*M,{next:N-40*M}),now:N,last:N,tab:'office',via:'github',got:N})-N];
+// a round on the New tab with the live store: every SB_ROUND (a round by hand shows within a minute); a tap on Start (kick): every SB_FRESH on
+// the live store, GH_MIN after the last GitHub poll, the budget still wins (12 left: 900 s), a failure's back-off too
+o.kick=[R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'supabase',got:N})-N,R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'supabase',got:N,kick:true})-N,
+  R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N-60000,tab:'radar',via:'github',got:N,kick:true})-N,R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'github',got:N,kick:true,rem:12,reset:N/1000+1800})-N,
+  R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'radar',via:'supabase',got:N,kick:true,fails:1})-N,R.radarNext({doc:rd(N-10*M,{next:N+50*M}),now:N,last:N,tab:'office',via:'supabase',got:N})-N];
 var U='https://abcref.supabase.co',K='sb_publishable_AbC_12-3',now=N;
 o.transport=[R.radarTransport(U,K,'gh',60,N/1000+1800,now,0),R.radarTransport(U,K,'gh',60,N/1000+1800,now,now+60000),R.radarTransport('','','gh',null,0,now,0),
   R.radarTransport('','','gh',11,N/1000+1800,now,0),R.radarTransport('','','gh',10,N/1000+1800,now,0),R.radarTransport('','','gh',3,N/1000-10,now,0),
@@ -577,9 +582,12 @@ def node_checks(check, tmp, skips):
     check(o["live"] == [True, False, True, False, False],
           "U3 a round's coins are current (cards in colour, the count) for 15 minutes after it, a loop's while it runs, never when late %s" % o["live"])
     rn = o["rnext"]
-    check(rn == [600000, 480000, 600000, 120000, 300000, 600000] and o["simRound"] <= 9,
-          "U3 the poll of a round: near doc.next (8 min away: at its round's end, 480 s), else every 10 min (a Start by hand shows), the live store every 5 min or at "
-          "the next round; an hour on the New tab makes %d GitHub calls (was every 2.5 min) %s" % (o["simRound"], rn))
+    check(rn == [600000, 480000, 600000, 60000, 300000, 600000] and o["simRound"] <= 9,
+          "U3 the poll of a round: near doc.next (8 min away: at its round's end, 480 s), else every 10 min (a Start by hand shows), the live store every minute on "
+          "New, every 5 min elsewhere or at the next round; an hour on the New tab makes %d GitHub calls (was every 2.5 min) %s" % (o["simRound"], rn))
+    check(o.get("kick") == [60000, 20000, 90000, 900000, 150000, 300000],
+          "U3 a round by hand: the live store every minute on New (5 min on Office); after a tap on Start every 20 s, GitHub 150 s after its last poll, the "
+          "budget (12 left: 900 s) and a failure's back-off still win %s" % o.get("kick"))
     check(o["badge"] == [2, None, None, None, None, None, 2, None, None] and o["newBadge"] == [{"n": 2, "good": True}, {"n": 7, "good": False}, None, None]
           and o["tabs"] == ["pick", "young", "office", "account"] and o["tab"] == ["young", "young", "young", "young", "young", None, None]
           and o["radarLink"] == [True, True, False, False],
@@ -722,6 +730,9 @@ def browser(check, tmp, d, skips, shots=None):
                             route.fulfill(status=204, headers=cors)
                             return
                         state["sb"].append(u)
+                        if state.get("hold") is not None and "id=eq.radar" in u:
+                            state["hold"].append(route)
+                            return
                         body = (state["sbrow"]() if state["sbrow"] else [{"doc": state["doc"](), "updated": "now"}]) if "id=eq.radar" in u else []
                         route.fulfill(status=200, body=json.dumps(body), headers=dict(cors, **{"Content-Type": "application/json"}))
                     else:
@@ -893,6 +904,48 @@ def browser(check, tmp, d, skips, shots=None):
             out["sbonce"] = once + [len(state["sb"]) - sb0, len([u for u in state["gh"] if "radar.json" in u]) - gh0, pg.evaluate("document.querySelector('[data-r-pill]').getAttribute('data-st')")]
             ctx.close()
             state["sbrow"], state["doc"] = None, (lambda: radar_doc(ms(), "good"))
+            # a round by hand (14.10: "it does not even update the time"): a tap on Start says "Waiting for the new round" and asks the live store every
+            # SB_FRESH until the round's doc comes, then its time shows and the pace is back; back on the page it asks at once (one poll for two
+            # events); the page on its way out asks nothing, and a poll cut off by the reload is no failure (the cadences cut to about a second)
+            html_sb = nodoc.replace("<html", '<html data-sb-url="%s" data-sb-key="sb_publishable_OKkey_1234567890"' % sb_url, 1)   # no embedded doc: the row's round shows
+            r_old, r_new = radar_doc(ms() - 20 * MIN, "round"), radar_doc(ms() - 5000, "round")
+            state["sbrow"] = lambda: [{"doc": r_old, "updated": "then"}]
+            ctx, pg = ctx_page(html_=html_sb, hash_="#tab-young", init=("window.MEMEBOT_RADAR_T={SB_ROUND:600000,SB_DONE:600000,SB_FRESH:700,KICK:20000};",))
+            k = {"done": wait(pg, "() => document.querySelector('[data-r-pill]').getAttribute('data-st') === 'done'", 6000)}
+            pill = lambda: [pg.evaluate("document.querySelector('[data-r-pill-t]').textContent"), pg.evaluate("document.querySelector('[data-r-pill]').hasAttribute('data-wait')")]
+
+            def reads(n, ms_):                         # the live-store reads since sb0, waiting up to ms_ for n of them (a slow runner gets its time)
+                for _ in range(ms_ // 100):
+                    if len(state["sb"]) - sb0 >= n:
+                        break
+                    pg.wait_for_timeout(100)
+                return len(state["sb"]) - sb0
+            pg.wait_for_timeout(1200)
+            sb0 = len(state["sb"]); pg.wait_for_timeout(2000); k["idle"] = len(state["sb"]) - sb0
+            pg.evaluate("(function(){var a=document.querySelector('[data-r-actions] a');a.addEventListener('click',function(e){e.preventDefault();});a.click();})()")
+            k["wait"] = pill()
+            sb0 = len(state["sb"]); k["fast"] = reads(3, 9000)          # 3 reads: without the tap the next one is 10 minutes away
+            state["sbrow"] = lambda: [{"doc": r_new, "updated": "now"}]
+            k["got"] = wait(pg, "() => !document.querySelector('[data-r-pill]').hasAttribute('data-wait')", 4000)
+            k["after"] = pill()
+            sb0 = len(state["sb"]); pg.wait_for_timeout(2500); k["calm"] = len(state["sb"]) - sb0
+            pg.wait_for_timeout(500)
+            sb0 = len(state["sb"]); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'));document.dispatchEvent(new Event('visibilitychange'))")
+            reads(1, 4000); pg.wait_for_timeout(300); k["woke"] = len(state["sb"]) - sb0
+            # a poll in flight when the page starts to leave: held, then cut off; S keeps no failure and no new last poll
+            pg.wait_for_timeout(800); state["hold"] = []
+            sb0 = len(state["sb"]); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+            reads(1, 4000); k["held"] = len(state["hold"])
+            pg.evaluate("window.MEMEBOT_RELOADING=true")
+            for r_ in state.pop("hold"):
+                r_.abort()
+            pg.wait_for_timeout(400)
+            k["kept"] = pg.evaluate("(function(){for(var i=0;i<localStorage.length;i++){var x=localStorage.key(i);if(x.indexOf('memebot-radar')===0){var s=JSON.parse(localStorage.getItem(x));return [s.fails,Date.now()-s.last>1000];}}return null;})()")
+            sb0 = len(state["sb"]); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))"); pg.wait_for_timeout(1500); k["gone"] = len(state["sb"]) - sb0
+            k["new_t"] = pg.evaluate("new Date(%d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:document.querySelector('[data-radar]').getAttribute('data-tz')||'UTC'})" % r_new["t"])
+            out["kick"] = k
+            ctx.close()
+            state["sbrow"] = None
             # U10 in the browser: the xss doc on the Radar tab and in the detail view, then the empty one (last good coin, notes, the fold)
             state["doc"] = lambda: radar_doc(ms(), "xss")
             ctx, pg = ctx_page()
@@ -1072,6 +1125,15 @@ def browser(check, tmp, d, skips, shots=None):
     check(so[0] >= 2 and so[1] == 0 and so[2] >= 3 and so[3] == 1 and so[4] == "stopped",
           "nit 3 the live store answers without the radar's row and the page has no radar doc: GitHub is not asked (%d live-store reads, %d GitHub); a radar that "
           "is really stopped in both places costs one GitHub call (%d live-store reads, %d GitHub in all)" % tuple(so[:4]))
+    kk = out.get("kick") or {}
+    check(kk.get("done") and kk.get("idle") == 0 and (kk.get("wait") or [""])[0].startswith("Waiting for the new round · last ") and (kk.get("wait") or [0, 0])[1] is True
+          and kk.get("fast", 0) >= 3 and kk.get("got") and (kk.get("after") or [""])[0].startswith("Last round %s · " % kk.get("new_t")) and (kk.get("after") or [0, 1])[1] is False
+          and kk.get("calm") == 0,
+          "14.10 a round by hand: a tap on Start says 'Waiting for the new round' (pulsing dot) and asks the live store every SB_FRESH (%s reads, %s while idle in 2 s), "
+          "the round's time shows as soon as its doc comes, then the pace is back (%s reads in 2.5 s) %s" % (kk.get("fast"), kk.get("idle"), kk.get("calm"), [kk.get("wait"), kk.get("after")]))
+    check(kk.get("woke") == 1 and kk.get("held") == 1 and kk.get("kept") == [0, True] and kk.get("gone") == 0,
+          "14.10 back on the page the radar asks at once (%s read for two events); a poll cut off by the page's reload is no failure and no new last poll %s; "
+          "a page on its way out asks nothing (%s reads)" % (kk.get("woke"), kk.get("kept"), kk.get("gone")))
     check(out.get("pickPoll") == 0, "6.1 the website polls the radar only on the Radar or Office tab (or in the app): %s GitHub calls in 2.5 s on the Pick tab" % out.get("pickPoll"))
     det = out.get("detail") or {}
     check(det.get("open") and det.get("tabs") == ["Overview", "Trap check", "Numbers", "Later"] and det.get("groups") == ["Warnings 1", "Passed 3", "Measured, not weighted yet 2"]

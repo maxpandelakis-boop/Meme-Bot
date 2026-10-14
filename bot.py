@@ -1443,8 +1443,9 @@ SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" 
 # and the live script reloads it once a newer report is out; both reload when the page comes back after 5 minutes away
 SITE_SCRIPT = ('<script>(function(){var t=Date.now(),app=navigator.standalone===true||!!(window.matchMedia&&matchMedia('
                '"(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)").matches);'
-               'if(!app)setTimeout(function(){location.reload();},900000);document.addEventListener("visibilitychange",function(){'
-               'if(!document.hidden&&Date.now()-t>300000){location.reload();}});})();</script>')
+               'function go(){window.MEMEBOT_RELOADING=true;location.reload();}'   # the flag: the radar's poll stops (page_radar.py)
+               'if(!app)setTimeout(go,900000);document.addEventListener("visibilitychange",function(){'
+               'if(!document.hidden&&Date.now()-t>300000)go();});})();</script>')
 SITE_ICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#2a78d6"/>'
              '<rect x="20" y="55" width="14" height="25" rx="3" fill="#fff"/><rect x="43" y="40" width="14" height="40" rx="3" fill="#fff"/>'
              '<rect x="66" y="25" width="14" height="55" rx="3" fill="#fff"/></svg>')

@@ -735,6 +735,7 @@ details.tdet > summary { color:var(--accent); font-weight:500; min-height:44px; 
 .rpill[data-st="running"] .rdot { background:var(--good-mark); animation:rpulse 2s ease-in-out infinite } .rpill[data-st="late"] .rdot { background:var(--warn-mark) }
 .rpill[data-st="stopped"] .rdot { background:var(--bad-mark) } .rpill[data-st="running"], .rpill[data-st="done"] { color:var(--fg) }
 .rpill[data-st="done"] .rdot { background:var(--good-mark) } .rpill[data-st="done"][data-err] .rdot { background:var(--warn-mark) }
+.rpill[data-wait] { color:var(--fg) } .rpill[data-wait] .rdot { background:var(--good-mark); animation:rpulse 2s ease-in-out infinite }
 @keyframes rpulse { 50% { opacity:.35 } }
 .ractions { display:flex; align-items:center; gap:8px }
 .rbtn { display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:999px; background:var(--accent); color:#fff; font-weight:500; font-size:var(--fs-s) }
@@ -792,7 +793,7 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 .rmodel:empty { display:none } details.rfold.dim .rrows { opacity:.7 }
 @media (max-width:560px) { .rstats > div { padding:8px 8px } .rstats b { font-size:20px }
   .rhead { gap:8px } .rpill { width:100% } .rrec th, .rrec td { padding:6px 3px } .rrec .ow { display:none } .rrec td:nth-child(2) { max-width:7ch } }
-@media (prefers-reduced-motion: reduce) { .rpill[data-st="running"] .rdot { animation:none } details.rfold > summary::before { transition:none } }
+@media (prefers-reduced-motion: reduce) { .rpill[data-st="running"] .rdot, .rpill[data-wait] .rdot { animation:none } details.rfold > summary::before { transition:none } }
 """
 
 # ------------------------------------------------------------------------------------------------------------------ the script
@@ -825,7 +826,7 @@ function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
-var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
+var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
   TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
@@ -886,19 +887,23 @@ var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DON
   budget:function(office,mine){var a=office&&isn(office.rem)&&+office.at>0?{rem:office.rem,reset:+office.reset||0,at:+office.at}:null,
     b=mine&&isn(mine.rem)&&+mine.remAt>0?{rem:mine.rem,reset:+mine.reset||0,at:+mine.remAt}:null,x=!a?b:!b?a:b.at>=a.at?b:a;
     return x?{rem:x.rem,reset:x.reset}:{rem:null,reset:0};},
-  // when the next poll is due (ms). o: doc, now, last (the last poll), tab (radar | office | app), via, rem, reset, fails, got, moved
+  // when the next poll is due (ms). o: doc, now, last (the last poll), tab (radar | office | app), via, rem, reset, fails, got, moved, kick (a
+  // tap on Start within KICK and no newer doc since: every SB_FRESH on the live store, every GH_MIN on GitHub, inside the budget)
   radarNext:function(o){
     var now=o.now,doc=o.doc,st=R.radarState(doc,now,o.got,o.moved),tab=o.tab||'radar',t,last=+o.last||0;
     var srv=doc&&+doc.t>0?+doc.t+R.age(doc,now,o.got,o.moved):now,loc=function(x){return now+(x-srv);};
-    // a round: the next one is due at its next (it takes about ROUND); until then a poll every IDLE at most (a Start by hand), after it every IDLE
+    // a round: the next one is due at its next (it takes about ROUND); until then a poll every IDLE at most (a Start by hand), after it every IDLE;
+    // the live store: every SB_ROUND on the New tab (a round by hand shows within a minute), SB_DONE elsewhere, sooner when the next round is due
     var due=doc&&R.round(doc)&&(st==='done'||st==='late')?loc(R.due(doc)+R.ROUND):null;
-    if(o.via==='supabase')t=due!=null?now+(due>now?Math.min(due-now,R.SB_DONE):R.SB_DONE):now+(tab==='radar'?(st==='running'?R.SB_FRESH:R.SB_STALE):tab==='app'?R.SB_APP:R.SB_OTHER);
+    if(o.via==='supabase')t=due!=null?now+Math.min(due>now?due-now:R.SB_DONE,tab==='radar'?R.SB_ROUND:R.SB_DONE):now+(tab==='radar'?(st==='running'?R.SB_FRESH:R.SB_STALE):tab==='app'?R.SB_APP:R.SB_OTHER);
     else{var gap=tab==='radar'?R.GH_MIN:R.GH_OFFICE;
       if(due!=null)t=Math.max(last+gap,due>now?Math.min(due,last+R.IDLE):last+R.IDLE);
       else if(st==='running'||st==='late')t=Math.max(last+gap,+doc.next>0?loc(+doc.next+15000):now);
       else if(st==='hours'&&+doc.next>0)t=Math.max(last+R.IDLE,loc(+doc.next+60000));
       else t=last+Math.max(gap,R.IDLE);
+      if(o.kick)t=Math.min(t,Math.max(now,last+R.GH_MIN));
       if(o.via!=='raw'&&isn(o.rem)&&o.rem>R.RESERVE&&+o.reset>0){var left=Math.min(3600000,Math.max(0,o.reset*1000-now));t=Math.max(t,now+left/(o.rem-R.RESERVE));}}
+    if(o.kick&&o.via==='supabase')t=Math.min(t,now+R.SB_FRESH);
     var f=Math.max(0,Math.min(10,+o.fails||0));if(f)t=Math.max(t,now+Math.min(1800000,75000*Math.pow(2,f)));
     return Math.max(t,now+1000);},
   good:function(doc){return doc&&Array.isArray(doc.coins)?doc.coins.filter(function(c){return c&&c.v==='good';}).length:0;},
@@ -934,9 +939,11 @@ function go(){
   var sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var KEY='memebot-radar '+(src||sbUrl||'page'),$=function(s){return box.querySelector(s);};
   var tR=document.getElementById('tab-young'),tO=document.getElementById('tab-office');     // the radar sits on top of the New tab
-  var S={doc:null,got:0,moved:false,next:0,fails:0,rem:null,reset:0,remAt:0,last:0,at:0,via:'',back:0},busy=false,key=null,cards=[],startA=null,ghNow=false,ghFor=null;
+  var S={doc:null,got:0,moved:false,next:0,fails:0,rem:null,reset:0,remAt:0,last:0,at:0,via:'',back:0,kick:0,kickT:0},busy=false,key=null,cards=[],startA=null,ghNow=false,ghFor=null;
   try{S.doc=R.clean(JSON.parse(document.getElementById('radar-doc').textContent));}catch(e){}
   function now(){return Date.now();}
+  // a tap on Start (S.kick, this phone's clock) until the round's doc comes (a doc other than the one shown then, kickT) or KICK is over
+  function kicking(){var k=+S.kick||0,a=now()-k;return k>0&&a>=0&&a<R.KICK&&(S.doc?+S.doc.t:0)===(+S.kickT||0);}
   function inApp(){return root.classList.contains('app');}
   function view(){return tR&&tR.checked?'radar':inApp()?'app':tO&&tO.checked?'office':null;}
   // the tabs of one browser share one poll and its answer; a stored doc older than this page's keeps this page's doc and its times
@@ -1010,7 +1017,8 @@ function go(){
   function scanNext(){var b=document.querySelector('[data-sstrip]');return b?+b.getAttribute('data-next')||0:0;}
   function nextW(st,n){return st==='done'&&S.doc?R.nextWords(S.doc,srvNow(n),scanNext(),hhmm):'';}
   function pill(st){var d=S.doc,t,w=R.round(d)?'last round ':'last check ';
-    if(st==='done')t='Last round '+hhmm(+d.t)+(d.state==='degraded'?' had errors':'')+' · '+nextW(st,now());
+    if(kicking())t='Waiting for the new round'+(d?' · last '+hhmm(+d.t):'');
+    else if(st==='done')t='Last round '+hhmm(+d.t)+(d.state==='degraded'?' had errors':'')+' · '+nextW(st,now());
     else if(st==='running')t='Radar running · checked '+hhmm(+d.t)+(isn(d.next)?' · next '+hhmm(d.next):'')+(d.state==='degraded'?' · with errors':'');
     else if(st==='late')t='Radar late · '+w+hhmm(+d.t);
     else if(st==='stopped')t='Radar stopped · '+w+hhmm(+d.t);
@@ -1019,8 +1027,9 @@ function go(){
     else t='Radar not started yet';
     if(S.via==='raw'&&d)t+=' · slower copy, as of '+hhmm(+d.t);return t;}
   function draw(){
-    var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,live=fresh(st,n),k=[d?d.t:0,st,live,S.via,nextW(st,n)].join('|');   // the next words too: the office follows once its time has passed
-    var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);if(st==='done'&&d.state==='degraded')p.setAttribute('data-err','');else p.removeAttribute('data-err');setText($('[data-r-pill-t]'),pill(st));}
+    var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,live=fresh(st,n),kw=kicking(),k=[d?d.t:0,st,live,S.via,nextW(st,n),kw].join('|');   // the next words too: the office follows once its time has passed
+    var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);if(st==='done'&&d.state==='degraded')p.setAttribute('data-err','');else p.removeAttribute('data-err');
+      if(kw)p.setAttribute('data-wait','');else p.removeAttribute('data-wait');setText($('[data-r-pill-t]'),pill(st));}
     if(startA)startA.className='rbtn'+(st==='running'?' quiet':'');    // a tap while a loop runs only queues a run; between rounds Start is one more round
     // the website's New label: the radar's green count while its list is current, else the full scan's count (one number, as the app's badge)
     var tc=document.querySelector('[data-r-tabcnt]'),yc=document.querySelector('[data-y-tabcnt]'),g=live?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
@@ -1075,8 +1084,12 @@ function go(){
     if(r.status===404)return null;if(!r.ok)throw r.status||0;return r.text();}).then(function(t){if(t==null)return null;var j=JSON.parse(t);
     if(j&&typeof j.content==='string'&&j.encoding==='base64')j=decode(j.content);return j;});}
   function rawGet(){return fetchT(raw+(raw.indexOf('?')<0?'?':'&')+'m='+Math.floor(now()/60000),{cache:'no-cache'},R.TIMEOUT).then(function(r){if(r.status===404)return null;if(!r.ok)throw r.status||0;return r.json();});}
+  // the page on its way out (a reload: the site's own after a long break, report.py's after a new scan): no poll, and one cut off by it is no
+  // failure (it would hold the next poll back on the reloaded page)
+  var leaving=false;function gone(){return leaving||!!window.MEMEBOT_RELOADING;}
+  window.addEventListener('beforeunload',function(){leaving=true;});window.addEventListener('pagehide',function(){leaving=true;});
   function poll(){
-    var v=view();if(busy||document.visibilityState!=='visible'||!v)return;
+    var v=view();if(busy||gone()||document.visibilityState!=='visible'||!v)return;
     if(load())draw();
     if(now()<S.next)return;
     var b=R.budget(office(),S),via=R.radarTransport(sbUrl,sbKey,src,b.rem,b.reset,now(),S.back);
@@ -1087,16 +1100,22 @@ function go(){
       // the live store answered, but its row is missing or reads stopped (the radar's write to it failing): GitHub right away, once per
       // doc the page holds (a radar that is really stopped costs one call); with no doc at all the radar has not run: GitHub is not asked
       var st=R.radarState(S.doc,now(),S.got,S.moved);
-      if(via==='supabase'&&src&&S.doc&&(d==null||st==='stopped')&&ghFor!==+S.doc.t){ghFor=+S.doc.t;S.back=now()+R.SB_RETRY;ghNow=true;}},function(code){
+      if(via==='supabase'&&src&&S.doc&&(d==null||st==='stopped')&&ghFor!==+S.doc.t){ghFor=+S.doc.t;S.back=now()+R.SB_RETRY;ghNow=true;}},function(code){if(gone())return;
       S.fails=(+S.fails||0)+1;if(via==='supabase'&&(code===540||S.fails>=2)){S.back=now()+R.SB_RETRY;S.fails=0;}})
-    .then(function(){busy=false;S.via=via;S.last=now();var b2=R.budget(office(),S);
-      S.next=ghNow?now()+1000:R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved});ghNow=false;save();try{draw();}catch(e){}});
+    .then(function(){busy=false;if(gone())return;S.via=via;S.last=now();var b2=R.budget(office(),S);
+      S.next=ghNow?now()+1000:R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved,kick:kicking()});ghNow=false;save();try{draw();}catch(e){}});
   }
-  // a tab change: the next poll comes at the new tab's pace (sooner on the New tab), never before the budget allows
-  function retime(){if(!S.last||busy)return;var b=R.budget(office(),S);S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:S.via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved}));}
-  Array.prototype.forEach.call(document.querySelectorAll('input[name="tab"]'),function(r){r.addEventListener('change',function(){retime();poll();});});
+  // a tab change: the next poll comes at the new tab's pace (sooner on the New tab), never before the budget allows; New opened after a
+  // break asks at once (wake)
+  function retime(){if(!S.last||busy)return;var b=R.budget(office(),S);S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:S.via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved,kick:kicking()}));}
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="tab"]'),function(r){r.addEventListener('change',function(){retime();wake();poll();});});
   window.addEventListener('storage',function(e){if(e.key===KEY&&load())try{draw();}catch(x){}});
-  document.addEventListener('visibilitychange',poll);
+  // back on the page (the app opened again, the tab shown, GitHub's page closed after a Start): a poll now when the last one is SB_FRESH old on
+  // the live store, GH_MIN on GitHub (not while it fails, never below the budget's reserve); the radar of a round by hand shows at once
+  function wake(){if(document.visibilityState!=='visible')return;leaving=false;      // shown again: not leaving (iOS can send pagehide for a mere app switch)
+    if(busy||gone()||+S.fails>0)return;var sb=S.via==='supabase';
+    if((sb||!isn(S.rem)||S.rem>2*R.RESERVE)&&now()-(+S.last||0)>=(sb?R.SB_FRESH:R.GH_MIN))S.next=Math.min(S.next,now());poll();}
+  document.addEventListener('visibilitychange',wake);window.addEventListener('pageshow',wake);window.addEventListener('focus',wake);
   // #tab-radar, #radar, #tab-young or #new (the old Radar and New links) open the New tab once in a browser tab; the installed app reads the
   // hash itself (app.py PAGE_JS)
   setTimeout(function(){if(!inApp()&&tR&&/^#(tab-radar|radar|tab-young|new)$/.test(location.hash)){tR.checked=true;try{tR.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}
@@ -1104,6 +1123,8 @@ function go(){
   var act=box.querySelector('[data-r-actions]');       // Start and Stop: plain links to the radar's page on GitHub (no token, nothing is started from here)
   if(act&&repo){var wf='https://github.com/'+repo+'/actions/workflows/radar.yml',inf=el('details','rinfo'),sm=el('summary','','\u24d8');
     startA=el('a','rbtn','Start \u2197');[startA,el('a','rbtn quiet','Stop \u2197')].forEach(function(a){a.href=wf;a.target='_blank';a.rel='noopener';act.appendChild(a);});
+    // a tap on Start: the page waits for that round (the pill says so) and asks every SB_FRESH (GitHub: GH_MIN) until it comes, KICK at most
+    startA.addEventListener('click',function(){S.kick=now();S.kickT=S.doc?+S.doc.t:0;S.next=Math.min(S.next,now()+R.SB_FRESH);save();key=null;try{draw();}catch(e){}});
     sm.setAttribute('aria-label','About start and stop');inf.appendChild(sm);inf.appendChild(el('p','',INFO));act.appendChild(inf);act.hidden=false;}
   load();try{draw();}catch(e){}
   setInterval(function(){poll();try{draw();}catch(e){}},1000);
