@@ -561,6 +561,16 @@ OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services 
     "refresh": ("Price refresher", "fetches fresh prices for the candidates right before the pick", ("DexScreener",)),
     "trader": ("Paper trader", "", ()),
     "reporter": ("Reporter", "writes this page", ())}
+OFFICE_AGENTS["radar"] = ("Launch radar", "rates every coin whose pool is under 10 minutes old, every 2½ minutes, in its own job; only coins without traps are shown and pushed",
+                          ("DexScreener", "pump.fun", "GeckoTerminal", "Jupiter", "RugCheck", "Solana RPC", "LaunchLab"))
+try:
+    import page_office as PO  # the agent cards, the Launch radar's desk (its own job: page_office.EXT_HOME), the daily overview, the scan strip (WP5c)
+except ImportError:           # a copy of the code without page_office.py (the selftest's stand-in folder): the office and the Pick tab as before it
+    class PO:
+        EXT_HOME, CSS = {"radar": "analysts"}, ""
+        scan_minute = staticmethod(lambda runs, default: int(default) % 60)
+        ext_agents = staticmethod(lambda *a: [])
+        cards = daily = scan_strip = staticmethod(lambda *a: "")
 OFFICE_HOSTS = (("launch-mint", "LaunchLab"), ("dexscreener", "DexScreener"), ("geckoterminal", "GeckoTerminal"), ("jup.ag", "Jupiter"), ("pump.fun", "pump.fun"),
                 ("raydium", "Raydium"), ("orca.so", "Orca"), ("rugcheck", "RugCheck"), ("coingecko", "CoinGecko"), ("coinmarketcap", "CoinMarketCap"), ("reddit", "Reddit"),
                 ("warpcast", "Farcaster"), ("mastodon", "Mastodon"), ("4cdn", "4chan"), ("gmgn", "GMGN"), ("gopluslabs", "GoPlus"), ("solana.com", "Solana RPC"),
@@ -1171,7 +1181,7 @@ function go(){
     all('[data-live-on]',box).forEach(function(e){e.hidden=!on;});off.hidden=on;
     all('[data-static-strip]').forEach(function(e){e.hidden=on;});
     if(office)mark(office,on?'on':'');
-    all('[data-agent]').forEach(function(e){mark(e,on&&word(by[e.getAttribute('data-agent')]));});
+    all('[data-agent]:not([data-ext])').forEach(function(e){mark(e,on&&word(by[e.getAttribute('data-agent')]));});     // not an agent in its own job (the radar)
     all('[data-agents]').forEach(function(e){var w=e.getAttribute('data-agents').split(' ').map(function(i){return word(by[i]);});
       mark(e,on&&(['work','fail','done'].filter(function(k){return w.indexOf(k)>=0;})[0]||'wait'));});
     all('[data-word]').forEach(function(t){var v=t.closest('[data-agents]');v=v&&v.getAttribute('data-live');if(t._w==null)t._w=t.textContent;
@@ -1949,7 +1959,7 @@ def early_box(D, young, held):
     scan's own early list (data-early-doc, checked as bot.py checks what it pushes) and each coin's fate on the scored list (data-final),
     so after the scan the list stays folded above the scored one. Nothing here is a trade: no swap link, and the label says how it is bought."""
     now = D["now"]
-    nxt = next_scan_ms(now) + 5 * 60_000
+    nxt = next_scan_ms(now, D.get("runs")) + 5 * 60_000
     hint = ('<p class="note ehint">During each scan, the coins it finds under an hour old appear here about 5 minutes after it starts, before they are '
             'scored (next: about %s %s). Keep this tab open.</p>') % (E(local(nxt).strftime("%H:%M")), TZ_NAME)
     doc = None
@@ -1991,9 +2001,10 @@ HISTORY_DAYS = 2          # the hour-by-hour list covers this many days
 HISTORY_OPEN = 12         # rows shown before the rest folds (a phone screen's worth)
 
 
-def next_scan_ms(now):
-    """When the next scheduled scan starts, from the hourly cron in scan.yml."""
-    t = dt.datetime.fromtimestamp((M.num(now) or 0) / 1000, dt.timezone.utc).replace(minute=SCAN_MINUTE_UTC, second=0, microsecond=0)
+def next_scan_ms(now, runs=None):
+    """When the next scan starts: at the median start minute of the last runs (db/memeruns; GitHub starts the hourly cron about half an
+    hour late), else at the cron minute SCAN_MINUTE_UTC (page_office.scan_minute)."""
+    t = dt.datetime.fromtimestamp((M.num(now) or 0) / 1000, dt.timezone.utc).replace(minute=PO.scan_minute(runs, SCAN_MINUTE_UTC), second=0, microsecond=0)
     if t.timestamp() * 1000 <= (M.num(now) or 0):
         t += dt.timedelta(hours=1)
     return int(t.timestamp() * 1000)
@@ -2583,6 +2594,8 @@ def office_meta(aid):
 
 
 def office_word(a):
+    if a.get("ext"):            # an agent in its own job (the Launch radar): its state, not a step of this run
+        return a.get("word") or "own job"
     if a["st"] == "running":
         return "writing this page" if a["id"] == "reporter" else "at work"
     return "did not run" if a["st"] == "absent" else ("never finished" if a.get("open") else a["st"])
@@ -2618,12 +2631,14 @@ def office_data(D):
         a["secs"] = max(0.0, ((a["e"] or t1) - a["s"]) / 1000.0) if a["ran"] else 0.0
         a["name"], a["job"], a["tools"] = office_meta(a["id"])
     by = {a["id"]: a for a in ags}
+    ext = PO.ext_agents(D, office_meta, sys.modules[__name__])    # in their own job (the Launch radar, mb/radar_live.json): a desk, never a light, a bar or a count
+    by.update({a["id"]: a for a in ext})
     depts = []
     for key, name, col, ids in OFFICE_DEPTS + (OFFICE_BRAIN,):
-        ids = [i for i in ids if i != "spotter" or i in by]     # the launch spotter's desk only in a run it worked in (older records draw as before)
+        ids = [i for i in ids if i != "spotter" or i in by] + [a["id"] for a in ext if a["dept"] == key]     # the launch spotter's desk only in a run it worked in
         mem = [by.get(i) or dict(zip(("name", "job", "tools"), office_meta(i)), id=i, s=None, e=None, st="absent", bg=False, out="", lines=[], waits={}, blocked=[],
                                  ran=False, open=False, secs=0.0) for i in ids]
-        sts = {m["st"] for m in mem}
+        sts = {m["st"] for m in mem if not m.get("ext")}
         light = "failed" if "failed" in sts else ("fallback" if "fallback" in sts else ("running" if "running" in sts else ("done" if any(m["ran"] for m in mem) else "skipped")))
         word = "at work" if light == "running" else (light if light != "skipped" or "skipped" in sts else "did not run")
         depts.append({"key": key, "name": name, "col": col, "agents": mem, "light": light, "word": word,
@@ -2634,7 +2649,7 @@ def office_data(D):
         peak = max(peak, cur)
     slow = max([a for a in ags if a["ran"]], key=lambda a: a["secs"], default=None)
     pick = next((d["key"] for d in depts if slow and any(m is slow for m in d["agents"])), None) or next((d["key"] for d in depts if d["light"] != "skipped"), "ops")
-    return {"t0": t0, "t1": t1, "agents": ags, "depts": depts[:-1], "brain": depts[-1], "peak": peak, "pick": pick, "mode": str(O.get("mode") or "")}
+    return {"t0": t0, "t1": t1, "agents": ags, "depts": depts[:-1], "brain": depts[-1], "peak": peak, "pick": pick, "mode": str(O.get("mode") or ""), "ext": ext}
 
 
 def office_pts(*p):
@@ -2645,13 +2660,16 @@ def office_desk(x, y, a):
     """One desk: the desk top, a monitor (lit in the department colour while its agent ran, red if it failed, dark if it did not run),
     the agent in front of it, and a 'beside' tag over an agent that ran in its own process beside the others."""
     scr = a["st"] if a["st"] in ("failed", "fallback") else ""
-    out = ['<g class="desk%s" data-agent="%s">' % ("" if a["ran"] else " off", E(a["id"])),
+    ext, here = a.get("ext"), a["ran"] or a.get("here")          # an agent in its own job: "own job", its person while its job runs (the radar script updates it)
+    out = ['<g class="desk%s" data-agent="%s"%s>' % ("" if here else " off", E(a["id"]), (' data-ext="%s"' % E(a["id"])) if ext else ""),
            '<polygon class="dks" points="%s"/>' % office_pts((x - 15, y), (x, y + 7.5), (x + 15, y), (x + 15, y + 3), (x, y + 10.5), (x - 15, y + 3)),
            '<polygon class="dk" points="%s"/>' % office_pts((x - 15, y), (x, y - 7.5), (x + 15, y), (x, y + 7.5)),
            '<rect class="mon" x="%.1f" y="%.1f" width="18" height="13" rx="1.5"/><rect class="scr %s" x="%.1f" y="%.1f" width="15" height="10" rx="1"/>' % (x - 9, y - 15, scr, x - 7.5, y - 13.5)]
-    if a["ran"]:
+    if a["ran"] or ext:
         out.append('<circle class="who" cx="%.1f" cy="%.1f" r="3.2"/><ellipse class="who" cx="%.1f" cy="%.1f" rx="5.5" ry="3.2"/>' % (x, y + 11, x, y + 17))
-    if a["bg"]:
+    if ext:
+        out.append('<rect class="pill own" x="%.1f" y="%.1f" width="52" height="15" rx="7.5"/><text class="pill-t" x="%.1f" y="%.1f" text-anchor="middle">own job</text>' % (x - 26, y - 33, x, y - 22))
+    elif a["bg"]:
         out.append('<rect class="pill" x="%.1f" y="%.1f" width="46" height="15" rx="7.5"/><text class="pill-t" x="%.1f" y="%.1f" text-anchor="middle">beside</text>' % (x - 23, y - 33, x, y - 22))
     return "".join(out) + "</g>"
 
@@ -2705,7 +2723,7 @@ def office_floor(info, T, width):
     else:
         out += ['<path class="wire k-%s" style="--dc:%s" d="M%.1f %.1f L%.1f %.1f"/>' % (d["key"], d["col"], hx, hy, ax, ay) for d, _, _, _, (ax, ay), _ in places]
     for d, _, cx, cy, _, texts in places:
-        out.append('<g class="plat k-%s" style="--dc:%s" data-agents="%s">' % (d["key"], d["col"], E(" ".join(a["id"] for a in d["agents"]))))
+        out.append('<g class="plat k-%s" style="--dc:%s" data-agents="%s">' % (d["key"], d["col"], E(" ".join(a["id"] for a in d["agents"] if not a.get("ext")))))   # the live view's agents
         out.append('<polygon class="halo" points="%s"/>' % office_pts((cx, cy - hh - 7), (cx + hw + 14, cy + ext / 2), (cx, cy + hh + ext + 7), (cx - hw - 14, cy + ext / 2)))
         out.append('<polygon class="side" points="%s"/>' % office_pts((cx - hw, cy), (cx, cy + hh), (cx + hw, cy), (cx + hw, cy + ext), (cx, cy + hh + ext), (cx - hw, cy + ext)))
         out.append('<polygon class="top" points="%s"/>' % office_pts((cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy)))
@@ -2713,6 +2731,7 @@ def office_floor(info, T, width):
         for j, a in enumerate(d["agents"]):
             out.append(office_desk(cx + (j - (n - 1) / 2.0) * 2 * step, cy - 4, a))
         nb = "%d agent%s" % (n, "" if n == 1 else "s") + ((" · %d beside" % d["nbg"]) if d["nbg"] and n > 1 else (" · beside" if d["nbg"] else ""))
+        nb += (" · %d own job" % sum(1 for a in d["agents"] if a.get("ext"))) if any(a.get("ext") for a in d["agents"]) else ""      # the radar (page_office.py)
         words = {"name": '<tspan class="lt %s">●</tspan> %s' % (d["light"], E(d["name"])), "agents": E(" · ".join(a["name"] for a in d["agents"])), "count": E(nb),
                  "time": E(("%s · %s" % (fmt_secs(d["secs"], True), d["word"])) if d["secs"] else d["word"])}
         for y, k in texts:
@@ -2869,7 +2888,11 @@ def office_panel(d, info, D):
         rows_n = int(M.num(T.get("rows")) or 0)
         parts.append('<p class="note">%s</p>' % (E("The trained model and the scored history every pick is judged with: %s coin results from %d scans, %s of them went to zero within %s." % (
             fmt_int(rows_n), int(M.num(T.get("scans")) or 0), fmt_int(T.get("zeros") or 0), horizon_text())) if rows_n else "No training yet: the Brain fills once the first scans are scored."))
+        parts.append(safe("daily overview", lambda: PO.daily(D, sys.modules[__name__])))    # today's launches in one sentence and the hour bar (page_office.py)
     for a in d["agents"]:
+        if a.get("ext"):          # an agent in its own job (the Launch radar): its state and its last check, not a step of this run
+            parts.append(PO.ext_panel(a, sys.modules[__name__]))
+            continue
         who = '<div class="who"><strong>%s</strong><span class="chip %s" data-st>%s</span>%s<span class="chip" data-lv data-live-chip="%s" hidden></span></div>' % (
             E(a["name"]), OFFICE_CHIP.get(a["st"], ""), E(office_word(a)), '<span class="chip neutral">ran beside the others</span>' if a["bg"] else "", E(a["id"]))
         who += '<p class="omsg" data-lv data-live-line="%s" hidden></p>' % E(a["id"])
@@ -2909,12 +2932,12 @@ def pages_url(repo):
     return "https://%s/" % host if name.lower() == host else "https://%s/%s/" % (host, name)
 
 
-def office_live(info, repo, now=None):
+def office_live(info, repo, now=None, runs=None):
     """The live view's parts: the line under the header that names the website, a hidden box the script fills (the LIVE badge, the status
     strip and who is at work right now while a scan runs; after it when the last scan finished or stopped, or that the live view is
     paused) and the script. data-next-scan (the next scheduled start) times its rare polls between the scans."""
     url = pages_url(repo)
-    names = json.dumps({k: office_meta(k)[0] for k in OFFICE_AGENTS}, separators=(",", ":"))
+    names = json.dumps({k: office_meta(k)[0] for k in OFFICE_AGENTS if k not in PO.EXT_HOME}, separators=(",", ":"))     # the scan's agents (not the radar: its own job)
     top = ('<p class="note olink" data-lv data-live-link>Live during a scan: <a href="%s">%s</a></p>'
            '<div class="olive" data-lv data-live-src="%s" data-pages="%s" data-tz="%s" data-tzn="%s" data-run-t="%d" data-next-scan="%d" data-names="%s" hidden>'
            '<p class="olv-head" data-lv data-live-on><span class="obadge"><i></i><span data-live-badge>LIVE</span></span>'
@@ -2923,7 +2946,7 @@ def office_live(info, repo, now=None):
            '<div data-lv data-live-on><span class="olab">Right now</span><ul class="onow" data-live-now></ul></div>'
            '<p class="note" data-lv data-live-off hidden></p></div>') % (
         E(url), E(url), E("https://api.github.com/repos/%s/contents/live.json?ref=live" % repo), E(url), "Europe/Berlin" if TZ_NAME == "Berlin" else "UTC", TZ_NAME,
-        int(M.num((info or {}).get("t0")) or 0), next_scan_ms(now) if now else 0, E(names))
+        int(M.num((info or {}).get("t0")) or 0), next_scan_ms(now, runs) if now else 0, E(names))
     return top, "<script>%s</script>" % OFFICE_LIVE_JS
 
 
@@ -2934,7 +2957,7 @@ def office_section(D):
     also names the website and carries the live view, which marks the floor plan while a scan runs."""
     info = office_data(D)
     repo = live_repo()
-    live_top, live_js = office_live(info, repo, D.get("now")) if repo else ("", "")
+    live_top, live_js = office_live(info, repo, D.get("now"), D.get("runs")) if repo else ("", "")
     if not info:
         return section("Agent office", "each step of the hourly scan as an agent at work · fake money", live_top +
                        '<div class="empty">No agent log yet: the first run with the new code fills this tab with what each step of the scan did, how long it took and which services it called.</div>' + live_js)
@@ -2957,7 +2980,8 @@ def office_section(D):
     home = {m["id"]: d["name"] for d in every for m in d["agents"]}
     radios = "".join('<input type="radio" name="odept" id="od-%s"%s aria-label="%s">' % (d["key"], " checked" if d["key"] == info["pick"] else "", E(d["name"])) for d in every)
     legend = ('<div class="legend olegend"><span style="--c:var(--good-mark)">done</span><span style="--c:var(--accent)">at work</span><span style="--c:var(--warn-mark)">fallback</span><span style="--c:var(--bad-mark)">failed</span>'
-              '<span style="--c:var(--muted)">skipped</span><span class="ob">beside: ran in its own process, at the same time as the others</span></div>')
+              '<span style="--c:var(--muted)">skipped</span><span class="ob">beside: ran in its own process, at the same time as the others</span>%s</div>') % (
+        '<span class="oj">own job: runs on its own every 2½ min, not in the hourly scan</span>' if info.get("ext") else "")     # the Launch radar (page_office.py)
     floor = '<div class="chart omap"><div class="wide"><div class="ofloor">%s</div></div><div class="narrow"><div class="ofloor">%s</div></div>%s</div>' % (
         office_floor(info, T, OFFICE_W), office_floor(info, T, NARROW), legend)
     panels = '<div class="opanels">%s</div>' % "".join(office_panel(d, info, D) for d in every)
@@ -2970,7 +2994,8 @@ def office_section(D):
             fmt_secs(a["secs"]) if a["ran"] else "–", E(office_word(a) + (", beside the others" if a["bg"] else "")), E(a["out"] or "–")) for a in ags)
     timeline = '<h3>Team timeline</h3><p class="note">minutes since the run started at %s · one lane per agent, so you see who worked at the same time</p>%s%s' % (
         E(clock(info["t0"]) + " " + TZ_NAME), chart_box(office_gantt(info, WIDE), office_gantt(info, NARROW), g_leg), table)
-    body = '%s%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div>%s%s' % (live_top, strip, E(note), radios, floor, panels, timeline, live_js)
+    cards = ("<style>%s</style>" % PO.CSS if PO.CSS else "") + safe("agent cards", lambda: PO.cards(info, sys.modules[__name__]))     # the agent cards above the floor (page_office.py)
+    body = '%s%s<p class="note">%s</p>%s<div class="office">%s<div class="ogrid">%s%s</div></div>%s%s' % (live_top, strip, E(note), cards, radios, floor, panels, timeline, live_js)
     return section("Agent office", head, body)
 
 
@@ -3089,7 +3114,7 @@ def render(data, fragment=False):
         return fold("Run log", "last %d runs" % min(12, len(D["runs"])), inner)
 
     last_run = st.get("lastRun")
-    nxt = (" · next scan starts about %s" % fmt_when(next_scan_ms(now), now)) if D.get("rec") else ""
+    nxt = (" · next scan starts about %s" % fmt_when(next_scan_ms(now, D["runs"]), now)) if D.get("rec") else ""
     head = ('<header><div><div class="eyebrow">paper trading · nothing is bought for real · scans every hour</div><h1>%s</h1></div>'
             '<div class="meta">updated %s%s · %s run%s</div></header>') % (E(TITLE), E(fmt_when(last_run, now)), E(nxt), E(st.get("runs") or 0), "" if st.get("runs") == 1 else "s")
     body = [head]
@@ -3098,6 +3123,7 @@ def render(data, fragment=False):
         # three tabs: the pick (and its track record), the new launches under an hour old and the agent office; CSS-only, so the fragment works without scripts
         n_young = int(M.num((D["rec"] or {}).get("youngOf")) or len((D["rec"] or {}).get("young") or []))
         pane_pick = safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
+        pane_pick = safe("scan strip", lambda: PO.scan_strip(D, sys.modules[__name__])) + pane_pick     # the full scan: last, next, Scan now (page_office.py)
         pane_young = safe("new launches", lambda: young_section(D))
         pane_office = safe("agent office", lambda: office_section(D))
         tabs = ('<div class="tabs"><input type="radio" name="tab" id="tab-pick" checked><input type="radio" name="tab" id="tab-young"><input type="radio" name="tab" id="tab-office">'
