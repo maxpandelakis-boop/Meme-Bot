@@ -519,7 +519,7 @@ jobs:
           echo "Website: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
   peaks:
     needs: scan
-    if: needs.scan.outputs.skipped != 'true' && needs.scan.result == 'success'
+    if: needs.scan.outputs.skipped != 'true' && needs.scan.result == 'success' && vars.MEMEBOT_PEAKS != '0'   # the repository variable MEMEBOT_PEAKS=0 switches the peak category off
     runs-on: ubuntu-latest
     continue-on-error: true          # a failed or slow pricing run never turns the scan red: docs already written stay, the next scan goes on
     timeout-minutes: 12              # about 60 GeckoTerminal calls at its 10 s gap; the next scan waits for this job (the workflow-level group)

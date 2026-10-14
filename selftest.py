@@ -3672,6 +3672,8 @@ console.log(JSON.stringify(o));
     finally:
         time.sleep = nosleep
     SKIPS.extend(selftest_radar.SKIPPED)
+    import selftest_peak                        # the peak category: best price within 6 h of every paper position (peak.py)
+    selftest_peak.peak_checks(check)
     import selftest_scanside                    # the scan side of the radar and the peak category (scan.yml, bot.py, app.py)
     selftest_scanside.scanside_checks(check)
 
