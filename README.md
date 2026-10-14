@@ -295,6 +295,37 @@ Switch it off with the repository variable `MEMEBOT_EARLY` = `0` (Settings, Secr
 `MEMEBOT_EARLY=0` on a laptop. The page needs the website (it is built only when `GITHUB_REPOSITORY` is set); the first scan after an
 update has no early box yet, because the polling script comes with the page the scan before built.
 
+### Launch radar (coins under 10 minutes)
+
+A second, faster job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). Every
+150 s it rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data plus the trap checks of
+`traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet under a day old, a
+staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the page's Radar
+tab and in the app, and keeps every rating with the prices 5, 15, 30 and 60 minutes later, so its record is measurable.
+Only coins without a trap found are listed as good; when there is none, the tab says so. A push goes out only for a good
+coin. Fake money only: the radar buys nothing and the paper trader never reads it.
+
+Which trap checks count, and how much, comes from our own rug data (`research/rugstudy/`, `radar_weights.json`): the
+signals the study could not confirm stay visible on the page but carry no weight. Once enough rated coins have their 1 h
+outcome, the radar retrains its weights by itself (`model.json` on branch `radar-data`, tested walk-forward like the main
+model, the study as the starting point).
+
+Nothing to set up. It runs 7:00 to 24:00 Berlin, started by the hourly scan's watchdog and then by itself every 55 minutes.
+Switches (repository variables, Settings > Secrets and variables > Actions > Variables):
+- `MEMEBOT_RADAR=0`: no new radar run starts. To stop it at once: Actions > "Meme-Bot launch radar" > Disable workflow.
+- `MEMEBOT_RADAR_HOURS=8-22`: other active hours (Berlin).
+- `MEMEBOT_PUSH_YOUNG=1`: the scan's own "new coins" push again (off by default now; the radar's push replaces it).
+- `MEMEBOT_PEAKS=0`: no "best within 6 h" pricing job after the scan.
+The phone's "New coins" switch also covers the radar's pushes.
+
+### Best price within 6 h (hindsight)
+
+Next to the paper account's real rule (stop-loss -30%, take-profit +1000%, 6 h), the page shows two hindsight
+categories for every position since the v2 restart on 10.10.: the best minute-candle close within 6 h of the buy, and
+the price at 6 h. They are not trading rules: they show what the rule left on the table. Dead pools and glitches are
+filtered out (closes, not wicks; a liquidity floor; self-priced pools), and a cut price says why. A small job after
+each scan (`peak.py`, GeckoTerminal minute candles) prices the windows that have ended.
+
 ## Publicity
 
 Numbers alone miss what people are talking about, so every scan also reads Reddit (the newest posts of r/CryptoMoonShots,
