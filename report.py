@@ -1188,7 +1188,8 @@ function go(){
       t.textContent=on&&v?t.getAttribute('data-word')+{work:'at work now',done:'done this run',fail:'failed this run',wait:'waiting'}[v]:t._w;});
     all('[data-live-chip]').forEach(function(c){var w=word(by[c.getAttribute('data-live-chip')]);c.hidden=!on;
       c.className='chip '+({work:'neutral',done:'good',fail:'bad'}[w]||'');c.textContent={work:'at work now',done:'done this run',fail:'failed this run',wait:'waiting'}[w];});
-    all('[data-live-line]').forEach(function(p){var a=by[p.getAttribute('data-live-line')],l=last(a);p.hidden=!(on&&word(a)==='work'&&l);p.textContent=l?'Now: '+l:'';});
+    all('[data-live-line]').forEach(function(p){var a=by[p.getAttribute('data-live-line')],l=last(a),t=l?'Now: '+l:'',mx=+p.getAttribute('data-live-max')||0;p.hidden=!(on&&word(a)==='work'&&l);
+      p.textContent=mx&&t.length>mx?t.slice(0,mx-1).replace(/\s+$/,'')+'\u2026':t;});     // data-live-max: an agent card's one short line (page_office.py)
     if(on){
       var n=function(w){return ags.filter(function(a){return word(a)===w;}).length;},work=ags.filter(function(a){return word(a)==='work';});
       var strip=box.querySelector('[data-live-strip]'),list=box.querySelector('[data-live-now]');strip.textContent='';list.textContent='';
@@ -2995,7 +2996,7 @@ def office_section(D):
     timeline = '<h3>Team timeline</h3><p class="note">minutes since the run started at %s · one lane per agent, so you see who worked at the same time</p>%s%s' % (
         E(clock(info["t0"]) + " " + TZ_NAME), chart_box(office_gantt(info, WIDE), office_gantt(info, NARROW), g_leg), table)
     cards = ("<style>%s</style>" % PO.CSS if PO.CSS else "") + safe("agent cards", lambda: PO.cards(info, sys.modules[__name__]))     # the agent cards above the floor (page_office.py)
-    body = '%s%s<p class="note">%s</p>%s<div class="office">%s<div class="ogrid">%s%s</div></div>%s%s' % (live_top, strip, E(note), cards, radios, floor, panels, timeline, live_js)
+    body = '%s%s%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div>%s%s' % (live_top, strip, cards, E(note), radios, floor, panels, timeline, live_js)
     return section("Agent office", head, body)
 
 

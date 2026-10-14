@@ -31,11 +31,13 @@ HOUR_MIN_N = 30                      # an hour is named only with at least this 
 HOUR_FEW_N = 20                      # a cell with fewer is hatched
 DEAD_LIQ, RUG_X = 1_000.0, 0.10      # dead within an hour (the rug study's rule): gone, a pool under $1k, or 90% down
 TODAY_MIN_N = 10                     # today's share is given as a percentage from this many results on
+CARD_LINE = 60                       # an agent card's line: at most this many characters (the live view's "Now: ..." line too)
 HOSTS = (("dexscreener", "DexScreener"), ("rugcheck", "RugCheck"), ("pump.fun", "pump.fun"), ("pumpfun", "pump.fun"), ("geckoterminal", "GeckoTerminal"),
          ("rpc", "Solana RPC"), ("jupiter", "Jupiter"), ("launchlab", "LaunchLab"), ("github", "GitHub"), ("supabase", "Supabase"))
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
-LOOK = {"running": ("running", "on watch"), "late": ("fallback", "late"), "stopped": ("skipped", "stopped"), "off": ("skipped", "switched off"),
-        "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}
+LOOK = {"running": ("running", "on watch"), "late": ("fallback", "late"), "stopped": ("failed", "stopped"), "off": ("skipped", "switched off"),
+        "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}     # stopped is red, late amber: the Radar tab's colours
+QUIET = ("off", "hours", "none")     # states whose last check is not news: no notes, no host chips
 CHIP = {"running": "neutral", "fallback": "warn", "failed": "bad", "done": "good"}
 
 
@@ -121,20 +123,27 @@ def radar_state(doc, ref):
 def look(state, doc, hhmm):
     """The desk's light, word, line and small number for a radar state (the page script's MemebotOffice.look says the same)."""
     light, word = LOOK.get(state, LOOK["none"])
+    lead = word if state in ("late", "stopped") else ""
     if state == "running" and doc and doc.get("state") == "degraded":
-        light, word = "fallback", "on watch, some checks failing"
+        light, word, lead = "fallback", "on watch, some checks failing", "checks failing"
     c = (doc or {}).get("counts") or None
     if state == "off":
         line = "switched off on GitHub"
     elif state == "hours":
         line = ("outside its hours · next start %s" % hhmm(doc["next"])) if doc and doc.get("next") else "outside its hours"
-    elif state == "none" or not c:
-        line = "starts with the next full scan"
+    elif state == "none":
+        line = "not started yet"
+    elif not c:
+        line = (lead + " · " if lead else "") + "no counts yet"
+    elif lead and state != "running":        # late or stopped: the counts are its last check's, not news
+        line = "%s · %d seen, %d without traps" % (lead, _int(c.get("seen")), _int(c.get("good")))
     else:
-        line = "%d seen · %d without traps · %d pushed" % (_int(c.get("seen")), _int(c.get("good")), _int(c.get("pushed")))
+        line = (lead + " · " if lead else "") + "%d seen · %d without traps · %d pushed" % (_int(c.get("seen")), _int(c.get("good")), _int(c.get("pushed")))
     checked = ("checked %s" % hhmm(doc["t"])) if doc and state != "none" else "no check yet"
+    end = ((doc or {}).get("run") or {}).get("end") if isinstance((doc or {}).get("run"), dict) else None
+    until = (" · this run until %s" % hhmm(end)) if end and state in ("running", "late") else ""
     return {"light": light, "word": word, "line": line, "stat": checked if doc and state != "none" else "own job", "checked": checked,
-            "here": state in ("running", "late")}
+            "here": state in ("running", "late"), "until": until, "quiet": state in QUIET}
 
 
 def ext_agents(D, meta, R):
@@ -149,7 +158,7 @@ def ext_agents(D, meta, R):
     name, job, tools = meta(RADAR)
     return [{"id": RADAR, "ext": True, "dept": EXT_HOME[RADAR], "s": None, "e": None, "st": lk["light"], "bg": False, "out": lk["line"],
              "lines": (doc or {}).get("lines") or [], "waits": {}, "blocked": [], "ran": False, "open": False, "secs": 0.0, "here": lk["here"],
-             "name": name, "job": job, "tools": tools, "state": st, "word": lk["word"], "stat": lk["stat"], "checked": lk["checked"], "doc": doc}]
+             "name": name, "job": job, "tools": tools, "state": st, "word": lk["word"], "stat": lk["stat"], "checked": lk["checked"], "until": lk["until"], "doc": doc}]
 
 
 def host_chips(hosts):
@@ -171,19 +180,19 @@ def ext_panel(a, R):
     """The Launch radar in the Analysts panel: its job, its state now (the Radar tab's script updates it), what its last check found,
     its notes, the services it calls and its last lines."""
     doc = a.get("doc") or {}
-    run = doc.get("run") or {}
-    until = (" · this run until %s" % R.local(run["end"]).strftime("%H:%M")) if run.get("end") and a["state"] in ("running", "late") else ""
-    notes = "".join('<p class="omsg warn">%s</p>' % _e(n) for n in doc.get("notes") or [])
+    quiet = a["state"] in QUIET              # switched off, outside its hours, never ran: its last check's notes and hosts are old news
+    until = a.get("until") or ""
+    notes = "" if quiet else "".join('<p class="omsg warn">%s</p>' % _e(n) for n in doc.get("notes") or [])
     lines = "".join(R.office_line(ln) for ln in doc.get("lines") or [])
     return ('<div class="oagent oext" data-agent="radar" data-ext="radar"><div class="who"><strong>%s</strong><span class="chip">own job</span>'
             '<span class="chip %s" data-ext-chip="radar" data-ext-word="radar">%s</span></div><p class="job">%s</p>'
-            '<p class="clk"><span data-ext-checked="radar">%s</span>%s · every 2½ min</p>'
-            '<div><span class="olab">Output</span><p class="oout" data-ext-line="radar">%s</p></div>%s'
-            '<div><span class="olab">Connected tools</span><div class="chips" data-ext-hosts="radar">%s</div>%s</div>'
+            '<p class="clk"><span data-ext-checked="radar">%s</span><span data-ext-until="radar">%s</span> · every 2½ min</p>'
+            '<div><span class="olab">Output</span><p class="oout" data-ext-line="radar">%s</p></div><div data-ext-notes="radar">%s</div>'
+            '<div><span class="olab">Connected tools</span><div class="chips" data-ext-hosts="radar"%s>%s</div><p class="note" data-ext-wired="radar"%s>Wired to %s.</p></div>'
             '<div><span class="olab">Latest lines</span><ul class="olines" data-ext-lines="radar">%s</ul></div>'
-            '<p class="note"><label class="olinkb" for="tab-radar">Open the Radar tab</label></p></div>') % (
+            '<p class="note olinkp" data-po-radar><label class="olinkb" for="tab-radar">Open the Radar tab</label></p></div>') % (
         _e(a["name"]), CHIP.get(a["st"], ""), _e(a["word"]), _e(a["job"]), _e(a["checked"]), _e(until), _e(a["out"]), notes,
-        host_chips(doc.get("hosts")), "" if doc.get("hosts") else '<p class="note">Wired to %s.</p>' % _e(", ".join(a["tools"])), lines)
+        " hidden" if quiet else "", "" if quiet else host_chips(doc.get("hosts")), "" if quiet or not doc.get("hosts") else " hidden", _e(", ".join(a["tools"])), lines)
 
 
 # ---------------------------------------------------------------- the agent cards
@@ -198,16 +207,18 @@ def cards(info, R):
         if ext:
             line, stat = a["out"], a["stat"]
         else:
-            line = a["out"] or R.office_latest(a["lines"]) or R.office_word(a)
+            latest = R.office_latest(a["lines"])
+            line = a["out"] or (latest.lstrip("! ") if latest.startswith("!") else latest) or R.office_word(a)    # a warning without its mark, as the panel shows it
             stat = (R.fmt_secs(a["secs"], True) + (" · beside" if a["bg"] else "")) if a["ran"] else R.office_word(a)
         word = a["word"] if ext else R.office_word(a)
         tag = (' data-ext="%s"' % _e(a["id"])) if ext else ""
         x = (lambda k: ' data-ext-%s="%s"' % (k, _e(a["id"]))) if ext else (lambda k: "")
-        live = "" if ext else ('<span class="chip" data-lv data-live-chip="%s" hidden></span><span class="ocl" data-lv data-live-line="%s" hidden></span>' % (_e(a["id"]), _e(a["id"])))
+        live = "" if ext else ('<span class="chip" data-lv data-live-chip="%s" hidden></span><span class="ocl" data-lv data-live-line="%s" data-live-max="%d" hidden></span>' % (
+            _e(a["id"]), _e(a["id"]), CARD_LINE))
         out.append('<label class="ocard%s" for="od-%s" data-agent="%s"%s title="%s: %s"><span class="och"><span class="olt %s"%s aria-hidden="true">●</span>'
                    '<span class="ocn">%s</span></span><span class="ocl"%s>%s</span>%s<span class="ocs"%s>%s</span></label>' % (
                        " ext" if ext else "", _e(home.get(a["id"], "ops")), _e(a["id"]), tag, _e(a["name"]), _e(word), st, x("lt"), _e(a["name"]),
-                       x("line"), _e(clip(line, 60)), live, x("stat"), _e(stat)))
+                       x("line"), _e(clip(line, CARD_LINE)), live, x("stat"), _e(stat)))
     return ('<div class="ocards" data-po-tz="%s" data-po-tzn="%s" role="group" aria-label="The agents: tap one to open its department">%s</div>' % (
         "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", _e(R.TZ_NAME), "".join(out)))
 
@@ -248,9 +259,9 @@ def launches(d, now):
     """Every new launch the bot checked in the last 7 days, once per coin: {addr: {"t": launch time (ms), "dead": True/False/None}}, from
     the scored new launches (db/memeyoung, their 1 h check), the early lists (db/memeearly, their price about an hour later) and the radar's
     records (db/memeradar, their 1 h outcome). Dead = gone, a pool under $1k or 90% down within the hour, by any of them. Also the radar's
-    calls without traps: [the time each record was first good]."""
+    calls without traps, once per coin: {addr: the time it was first good}."""
     lo = now - WEEK_DAYS * DAY_MS
-    coins, good = {}, []
+    coins, good = {}, {}
 
     def see(addr, t, dead):
         if not isinstance(addr, str) or not B58.match(addr) or not t or not lo <= t <= now:
@@ -263,15 +274,10 @@ def launches(d, now):
         t0 = _num(doc.get("t")) if isinstance(doc, dict) else None
         if not t0:
             continue
-        res = (doc.get("outs") or {}).get("1") if isinstance(doc.get("outs"), dict) else None
-        got = {}
-        for o in (M.settled(res, 1.0) if isinstance(res, dict) else []):
-            got.setdefault(o.get("sym"), o)
-        for p in doc.get("picks") or []:
-            if isinstance(p, dict):
-                o = got.get(p.get("sym"))
-                see(p.get("addr"), t0 - (_num(p.get("ageMin")) or 0) * 60_000,
-                    None if o is None else bool(o.get("gone") or (_num(o.get("mult")) is not None and _num(o["mult"]) < RUG_X)))
+        picks = [p for p in doc.get("picks") or [] if isinstance(p, dict)]
+        for p, o in young_outs(picks, (doc.get("outs") or {}).get("1") if isinstance(doc.get("outs"), dict) else None):
+            see(p.get("addr"), t0 - (_num(p.get("ageMin")) or 0) * 60_000,
+                None if o is None else bool(o.get("gone") or (_num(o.get("mult")) is not None and _num(o["mult"]) < RUG_X)))
     for doc in recent_docs(d, "memeearly", lo).values():
         t0 = _num(doc.get("t")) if isinstance(doc, dict) else None
         for c in (doc.get("coins") or []) if t0 else []:
@@ -285,9 +291,25 @@ def launches(d, now):
             out = r.get("out") if isinstance(r.get("out"), dict) else {}
             see(addr, _num(r.get("pool")) or _num(r.get("first")), out.get("rug1h") if isinstance(out.get("rug1h"), bool) else None)
             g = _num(r.get("good"))
-            if g and lo <= g <= now:
-                good.append(int(g))
-    return coins, sorted(set(good)), os.path.isdir(os.path.join(d, "db", "memeradar"))
+            if g and lo <= g <= now and isinstance(addr, str) and B58.match(addr):
+                good[addr] = min(int(g), good.get(addr, int(g)))       # one call per coin; coins that turned good in one cycle share its ms
+    return coins, good, os.path.isdir(os.path.join(d, "db", "memeradar"))
+
+
+def young_outs(picks, res):
+    """The scored list's picks with their settled 1 h result (or None). memebot.py writes one result per pick that has a price, in pick
+    order, so the nth priced pick owns the nth result; a doc where that does not line up (an older shape) is matched by symbol."""
+    rows = res.get("picks") if isinstance(res, dict) and isinstance(res.get("picks"), list) else []
+    ok = {id(o) for o in (M.settled(res, 1.0) if isinstance(res, dict) else [])}
+    priced = [p for p in picks if _num(p.get("px"))]
+    if rows and len(priced) == len(rows) and all(isinstance(o, dict) and o.get("sym") == p.get("sym") for p, o in zip(priced, rows)):
+        mine = {id(p): o for p, o in zip(priced, rows) if id(o) in ok}
+        return [(p, mine.get(id(p))) for p in picks]
+    got = {}
+    for o in rows:
+        if id(o) in ok:
+            got.setdefault(o.get("sym"), o)
+    return [(p, got.get(p.get("sym"))) for p in picks]
 
 
 def wilson(k, n, z=1.96):
@@ -330,7 +352,7 @@ def day_data(d, now, R):
         hours.append({"h": h, "n": len(hk), "dead": k, "rate": (k / float(len(hk))) if hk else None, "side": side,
                       "today": sum(1 for t, _ in tod if hour(t) == h), "todayDead": sum(1 for t, x in tod if x and hour(t) == h)})
     return {"today": len(tod), "todayKnown": len(tk), "todayDead": sum(1 for x in tk if x), "n7": len(known), "dead7": sum(1 for _, x in known if x),
-            "p7": p7, "hours": hours, "radar": sum(1 for g in good if R.local(g).date() == today) if has_radar else None,
+            "p7": p7, "hours": hours, "radar": sum(1 for g in good.values() if R.local(g).date() == today) if has_radar else None,
             "nowH": R.local(now).hour, "nowM": R.local(now).minute}
 
 
@@ -360,10 +382,16 @@ def day_sentence(x):
 
 
 def _band(h, p7):
+    """A cell's colour: strong only for an hour the sentence names (it stands out in both halves of the week), light for a smaller
+    difference with at least HOUR_FEW_N results, grey otherwise (a difference over a few results is chance)."""
     if not h["n"] or p7 is None:
         return "none"
+    if h["side"]:
+        return "g2" if h["side"] == "low" else "b2"
+    if h["n"] < HOUR_FEW_N:
+        return "mid"
     dv = h["rate"] - p7
-    return "g2" if dv <= -0.15 else ("g1" if dv <= -0.05 else ("b2" if dv >= 0.15 else ("b1" if dv >= 0.05 else "mid")))
+    return "g1" if dv <= -0.05 else ("b1" if dv >= 0.05 else "mid")
 
 
 def _hour_text(h):
@@ -373,31 +401,52 @@ def _hour_text(h):
     return "%s · %s · %s" % (span, week, today)
 
 
+def day_numbers(x):
+    """The overview's three big numbers: [(value, label, small line)]."""
+    pc = lambda v: "%d%%" % round(100 * v)
+    if not x["todayKnown"]:
+        dead = ("–", "dead within 1 h", "no 1 h results yet")
+    elif x["todayKnown"] < TODAY_MIN_N:
+        dead = ("%d of %d" % (x["todayDead"], x["todayKnown"]), "dead within 1 h", "")
+    else:
+        dead = (pc(x["todayDead"] / float(x["todayKnown"])), "dead within 1 h", "")
+    if x["p7"] is not None and x["n7"] >= HOUR_FEW_N:
+        dead = dead[:2] + ("7-day: %s" % pc(x["p7"]),)
+    radar = ("–", "radar calls without traps", "no records yet") if x["radar"] is None else ("%d" % x["radar"], "radar call%s without traps" % ("" if x["radar"] == 1 else "s"), "")
+    return [("%d" % x["today"], "launch%s today" % ("" if x["today"] == 1 else "es"), ""), dead, radar]
+
+
 def daily(D, R):
-    """The daily overview for the Brain's panel: the sentences, the hour bar (tap a cell: its numbers; CSS radios, no script) and a table."""
+    """The daily overview for the Brain's panel: three big numbers, the sentences, the hour bar (tap a cell: its numbers; CSS radios, no
+    script) and a fold with the legend's details and a table."""
     x = day_data(D["dir"], D["now"], R) if D.get("dir") else None
     if not x:
         return ""
     first, second = day_sentence(x)
+    nums = "".join('<div><b>%s</b><span>%s</span>%s</div>' % (_e(v), _e(lab), ('<small>%s</small>' % _e(sub)) if sub else "") for v, lab, sub in day_numbers(x))
     radios = "".join('<input type="radio" name="ohour" id="ohb-%d"%s aria-label="%02d:00">' % (h["h"], " checked" if h["h"] == x["nowH"] else "", h["h"]) for h in x["hours"])
-    cells = "".join('<label for="ohb-%d" class="%s%s" title="%s"></label>' % (
-        h["h"], _band(h, x["p7"]), " few" if h["n"] < HOUR_FEW_N else "", _e(_hour_text(h))) for h in x["hours"])
+    cells = "".join('<label for="ohb-%d" class="%s%s%s" title="%s"></label>' % (
+        h["h"], _band(h, x["p7"]), " few" if h["n"] < HOUR_FEW_N else "", (" " + h["side"]) if h["side"] else "", _e(_hour_text(h))) for h in x["hours"])
     now_x = 100.0 * (x["nowH"] + x["nowM"] / 60.0) / 24.0
     reads = "".join('<p class="r%d">%s</p>' % (h["h"], _e(_hour_text(h))) for h in x["hours"])
     ticks = "".join('<span style="left:%.3f%%">%02d</span>' % (100.0 * k / 24, k) for k in (0, 6, 12, 18, 24))
-    legend = ('<div class="legend ohb-leg"><span style="--c:var(--hb-g2)">fewer dead than the 7-day rate</span><span style="--c:var(--hb-mid)">about the same</span>'
-              '<span style="--c:var(--hb-b2)">more</span><span class="few">hatched: under %d results</span><span class="tod">outlined: today so far</span>'
-              '<span class="nowk">▼ now</span></div>') % HOUR_FEW_N
+    legend = ('<div class="legend ohb-leg"><span style="--c:var(--hb-g2)">fewer dead</span><span style="--c:var(--hb-mid)">same</span>'
+              '<span style="--c:var(--hb-b2)">more dead</span></div>')
     rows = "".join('<tr><td>%02d:00</td><td class="n">%d</td><td class="n">%d</td><td class="n">%s</td><td class="n">%d</td></tr>' % (
         h["h"], h["n"], h["dead"], ("%d%%" % round(100 * h["rate"])) if h["n"] else "–", h["today"]) for h in x["hours"])
-    table = ('<details class="fold-lite"><summary>How it is counted · table</summary><p class="note">New launches the bot checked (scored list, early list and '
-             'radar), each coin once, by the hour it launched. Dead: gone, a pool under $1k or 90%% down within the hour. The page counts, it does not advise.</p><div class="tbl"><table><thead><tr><th>hour</th><th class="n">7 days, with a 1 h result</th>'
-             '<th class="n">dead within 1 h</th><th class="n">share</th><th class="n">checked today</th></tr></thead><tbody>%s</tbody></table></div></details>') % rows
-    return ('<div class="oday"><span class="olab">Daily overview</span><p class="odsum">%s</p><p class="note">%s</p>'
+    more = ('<div class="legend ohb-leg"><span style="--c:var(--hb-g2)">↓ fewer dead than the 7-day rate in both halves of the week (named above)</span>'
+            '<span style="--c:var(--hb-g1)">a little fewer, could be chance</span><span style="--c:var(--hb-mid)">about the same, or under %d results</span>'
+            '<span style="--c:var(--hb-b1)">a little more</span><span style="--c:var(--hb-b2)">↑ more in both halves</span><span class="few">hatched: under %d results</span>'
+            '<span class="tod">outlined: today so far</span><span class="nowk">▼ now</span></div>') % (HOUR_FEW_N, HOUR_FEW_N)
+    table = ('<details class="fold-lite"><summary>How it is counted · table</summary>%s<p class="note">New launches the bot checked (scored list, early list and '
+             'radar), each coin once, by the hour it launched (%s). Dead: gone, a pool under $1k or 90%% down within the hour. The page counts, it does not advise.</p>'
+             '<div class="tbl"><table><thead><tr><th>hour</th><th class="n">7 days</th><th class="n">dead 1 h</th><th class="n">share</th><th class="n">today</th></tr></thead>'
+             '<tbody>%s</tbody></table></div><p class="note">7 days: launches with a 1 h result in the last 7 days · today: launches checked today.</p></details>') % (more, _e(R.TZ_NAME), rows)
+    return ('<div class="oday"><span class="olab">Daily overview</span><div class="odn">%s</div><p class="odsum">%s</p><p class="note">%s</p>'
             '<div class="ohb">%s<div class="ohb-bar" role="group" aria-label="Share of new launches dead within an hour, by hour of the day (%s), last 7 days">%s'
             '<i class="ohb-day" style="width:%.3f%%" aria-hidden="true"></i><i class="ohb-now" style="left:%.3f%%" aria-hidden="true"></i></div><div class="ohb-ticks" aria-hidden="true">%s</div><div class="ohb-read">%s</div></div>%s'
             '%s</div>') % (
-        _e(first), _e(second), radios, _e(R.TZ_NAME), cells, now_x, now_x, ticks, reads, legend, table)
+        nums, _e(first), _e(second), radios, _e(R.TZ_NAME), cells, now_x, now_x, ticks, reads, legend, table)
 
 
 # ---------------------------------------------------------------- the full scan's strip on the Pick tab
@@ -413,11 +462,11 @@ def scan_strip(D, R):
     info = ("The full scan checks every source, names the pick and runs the paper account, about once an hour (about 26 minutes). "
             "The next start is estimated from the last scans. Scan now opens its page on GitHub: tap “Run workflow” there; "
             "a start while a scan runs waits until it ends. The Radar tab is the second, faster scan.")
-    return ('<style>%s</style><div class="sstrip" data-sstrip data-run-t="%d" data-po-tz="%s"><span class="sdot%s" data-ss-dot aria-hidden="true"></span>'
-            '<b>Full scan</b><span class="sst" data-ss-state>%s</span><span class="sst">next ≈ %s</span>'
-            '<a class="sbtn" data-ss-now target="_blank" rel="noopener" hidden>Scan now ↗</a>'
+    return ('<style>%s</style><div class="sstrip" data-sstrip data-run-t="%d" data-next="%d" data-po-tz="%s"><span class="sdot%s" data-ss-dot aria-hidden="true"></span>'
+            '<b>Full scan</b><span class="sst" data-ss-state>%s</span><span class="sst" data-ss-next>next ≈ %s</span>'
+            '<a class="sbtn" data-ss-now target="_blank" rel="noopener" hidden><span>Scan now ↗</span></a>'
             '<details class="sinfo"><summary aria-label="About the full scan">ⓘ</summary><p>%s</p></details></div><script>%s</script>') % (
-        STRIP_CSS, last, "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", " ok" if last else "", _e(state), _e(hm(nxt)), _e(info), JS)
+        STRIP_CSS, last, nxt, "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", " ok" if last else "", _e(state), _e(hm(nxt)), _e(info), JS)
 
 
 def hour_css():
@@ -427,16 +476,20 @@ def hour_css():
 
 STRIP_CSS = r"""
 /* the full scan's strip on the Pick tab (page_office.py) */
-.sstrip { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface);
-  font-size:var(--fs-s); color:var(--fg2); position:relative } .sstrip { border-radius:12px }
-.sstrip b { color:var(--fg); font-weight:600 } .sstrip .sst { font-variant-numeric:tabular-nums; white-space:nowrap }
+.sstrip { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:8px 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface);
+  font-size:var(--fs-s); color:var(--fg2); position:relative }
+.sstrip b { color:var(--fg); font-weight:600 } .sstrip .sst { font-variant-numeric:tabular-nums; white-space:nowrap } .sstrip .sst[hidden] { display:none }
 .sstrip .sst + .sst::before, .sstrip b + .sst::before { content:"·"; margin-right:10px; color:var(--muted) }
 .sdot { width:9px; height:9px; border-radius:50%; background:var(--muted); flex:none } .sdot.ok { background:var(--good-mark) } .sdot.run { background:var(--accent); animation:opulse 1.2s ease-in-out infinite }
 .sdot.late { background:var(--warn-mark) } .sdot.bad { background:var(--bad-mark) }
-.sbtn { margin-left:auto; color:var(--accent); font-weight:600; text-decoration:none; white-space:nowrap; padding:2px 4px; min-height:24px; display:inline-flex; align-items:center }
-.sbtn[hidden] { display:none } .sbtn:hover { text-decoration:underline }
-.sinfo > summary { list-style:none; cursor:pointer; color:var(--muted); padding:0 4px; min-width:24px; text-align:center } .sinfo > summary::-webkit-details-marker { display:none }
-.sinfo[open] { flex-basis:100% } .sinfo p { margin:4px 0 2px; font-size:var(--fs-s); color:var(--fg2) }
+/* Scan now: a quiet pill (the Radar tab's Start and Stop are pills too) inside a 44 px tap target that does not make the strip taller */
+.sbtn { margin:-8px 0 -8px auto; min-height:44px; min-width:44px; display:inline-flex; align-items:center; text-decoration:none; white-space:nowrap }
+.sbtn > span { display:inline-flex; align-items:center; min-height:30px; padding:0 12px; border-radius:999px; background:var(--chip); border:1px solid var(--line); color:var(--fg); font-weight:600 }
+.sbtn:hover > span, .sbtn:focus-visible > span { border-color:color-mix(in srgb,var(--accent) 55%,var(--line)); color:var(--accent) } .sbtn:hover { text-decoration:none }
+.sbtn[hidden] { display:none } .sbtn[hidden] + .sinfo { margin-left:auto }
+.sinfo > summary { list-style:none; cursor:pointer; color:var(--muted); min-width:44px; min-height:44px; margin:-8px -8px; display:flex; align-items:center; justify-content:center }
+.sinfo > summary::-webkit-details-marker { display:none }
+.sinfo[open] { flex-basis:100% } .sinfo[open] > summary { width:44px; margin-left:auto } .sinfo p { margin:4px 0 2px; font-size:var(--fs-s); color:var(--fg2) }
 .sstrip[data-ss="run"] { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)) }
 @media (prefers-reduced-motion: reduce) { .sdot.run { animation:none } }
 """
@@ -449,27 +502,40 @@ CSS = r"""
 .ocard.ext { border-style:dashed; border-color:color-mix(in srgb,var(--s3) 60%,var(--line)) }
 .ocard .och { display:flex; align-items:center; gap:6px; min-width:0 } .ocard .ocn { font-weight:600; font-size:var(--fs-s); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .ocard .ocl { font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere }
+.ocard .ocl[hidden] { display:none }
 .ocard .ocs { font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .ocard .chip { justify-self:start; font-size:11px; padding:1px 7px }
 .olt { font-size:11px; line-height:1; color:var(--muted) } .olt.done { color:var(--good-mark) } .olt.failed { color:var(--bad-mark) } .olt.fallback { color:var(--warn-mark) } .olt.running { color:var(--accent) }
+/* during a scan (the live view): a card at work shows its live line instead of last run's, a waiting card is faded as on the floor */
 .ocard[data-live="work"] .olt { color:var(--accent); animation:opulse 1.2s ease-in-out infinite } .ocard[data-live="done"] .olt { color:var(--good-mark) }
-.ocard[data-live="fail"] .olt { color:var(--bad-mark) } .ocard[data-live="wait"] .olt { color:var(--muted) }
-@media (min-width:700px) { .ocards { display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); overflow:visible; padding-bottom:2px } }
+.ocard[data-live="fail"] .olt { color:var(--bad-mark) } .ocard[data-live="wait"] .olt { color:var(--muted) } .ocard[data-live="wait"] { opacity:.55 }
+.ocard:has(> .ocl[data-live-line]:not([hidden])) > .ocl:not([data-live-line]) { display:none }
+@media (prefers-reduced-motion: reduce) { .ocard[data-live="work"] .olt { animation:none } }
+@media (min-width:700px) { .ocards { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); overflow:visible; padding-bottom:2px }
+  .ocard .ocn { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.25 } }
 .ofl .desk[data-ext].off .who { display:none } .olegend .oj::before { width:22px; height:12px; border-radius:6px; background:color-mix(in srgb,var(--s3) 18%,var(--surface)); border:1px solid var(--s3) } .ofl .pill.own { fill:color-mix(in srgb,var(--s3) 18%,var(--surface)); stroke:var(--s3) }
-.oext .olinkb { color:var(--accent); cursor:pointer; text-decoration:underline }
-.oday { display:grid; gap:8px; padding-top:12px; border-top:1px solid var(--line2) } .oday p { margin:0 } .oday .odsum { font-weight:600; overflow-wrap:anywhere }
+.oext .olinkb { color:var(--accent); cursor:pointer; text-decoration:underline; display:inline-flex; align-items:center; min-height:44px; margin:-12px 0 }
+.oext [hidden] { display:none }
+.oday { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding-top:12px; border-top:1px solid var(--line2) } .oday p { margin:0 } .oday > * { min-width:0 }
+.oday .odsum { color:var(--fg2); overflow-wrap:anywhere }
+.odn { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }
+.odn > div { display:grid; gap:1px; align-content:start; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface) }
+.odn b { font-size:20px; font-weight:600; line-height:1.2; letter-spacing:-.01em; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.odn span { font-size:var(--fs-xs); color:var(--fg2); line-height:1.3 } .odn small { font-size:var(--fs-xs); color:var(--muted) }
 .oday { --hb-g2:color-mix(in oklch,var(--good-mark) 78%,var(--surface)); --hb-g1:color-mix(in oklch,var(--good-mark) 38%,var(--surface));
   --hb-mid:color-mix(in srgb,var(--fg) 16%,var(--surface)); --hb-b1:color-mix(in oklch,var(--bad-mark) 38%,var(--surface)); --hb-b2:color-mix(in oklch,var(--bad-mark) 78%,var(--surface));
   --hb-none:var(--line2) }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .oday { --hb-g2:color-mix(in oklch,var(--good-mark) 90%,var(--surface)); --hb-g1:color-mix(in oklch,var(--good-mark) 55%,var(--surface));
-  --hb-mid:color-mix(in srgb,var(--fg) 20%,var(--surface)); --hb-b1:color-mix(in oklch,var(--bad-mark) 55%,var(--surface)); --hb-b2:color-mix(in oklch,var(--bad-mark) 90%,var(--surface)) } }
-:root[data-theme="dark"] .oday { --hb-g2:color-mix(in oklch,var(--good-mark) 90%,var(--surface)); --hb-g1:color-mix(in oklch,var(--good-mark) 55%,var(--surface));
-  --hb-mid:color-mix(in srgb,var(--fg) 20%,var(--surface)); --hb-b1:color-mix(in oklch,var(--bad-mark) 55%,var(--surface)); --hb-b2:color-mix(in oklch,var(--bad-mark) 90%,var(--surface)) }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .oday { --hb-g2:color-mix(in oklch,var(--good-mark) 90%,var(--surface)); --hb-g1:color-mix(in oklch,var(--good-mark) 40%,var(--surface));
+  --hb-mid:color-mix(in srgb,var(--fg) 20%,var(--surface)); --hb-b1:color-mix(in oklch,var(--bad-mark) 40%,var(--surface)); --hb-b2:color-mix(in oklch,var(--bad-mark) 90%,var(--surface)) } }
+:root[data-theme="dark"] .oday { --hb-g2:color-mix(in oklch,var(--good-mark) 90%,var(--surface)); --hb-g1:color-mix(in oklch,var(--good-mark) 40%,var(--surface));
+  --hb-mid:color-mix(in srgb,var(--fg) 20%,var(--surface)); --hb-b1:color-mix(in oklch,var(--bad-mark) 40%,var(--surface)); --hb-b2:color-mix(in oklch,var(--bad-mark) 90%,var(--surface)) }
 .ohb { display:grid; gap:4px; min-width:0 } .ohb > input { position:fixed; top:0; left:0; opacity:0; pointer-events:none }
 .ohb-bar { position:relative; display:grid; grid-template-columns:repeat(24,minmax(0,1fr)); gap:2px; padding-top:9px }
-.ohb-bar label { height:30px; border-radius:3px; background:var(--hb-none); cursor:pointer; position:relative }
+.ohb-bar label { height:44px; border-radius:3px; background:var(--hb-none); cursor:pointer; position:relative }
 .ohb-bar label.g2 { background-color:var(--hb-g2) } .ohb-bar label.g1 { background-color:var(--hb-g1) } .ohb-bar label.mid { background-color:var(--hb-mid) }
 .ohb-bar label.b1 { background-color:var(--hb-b1) } .ohb-bar label.b2 { background-color:var(--hb-b2) }
+.ohb-bar label.low::after, .ohb-bar label.high::after { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--fg) }
+.ohb-bar label.low::after { content:"↓" } .ohb-bar label.high::after { content:"↑" }
 .ohb-bar label.few, .ohb-leg .few::before { background-image:repeating-linear-gradient(135deg,transparent 0 3px,color-mix(in srgb,var(--surface) 72%,transparent) 3px 5px) }
 .ohb-day { position:absolute; left:-3px; top:6px; bottom:-3px; border:1.5px solid color-mix(in srgb,var(--fg) 55%,transparent); border-radius:5px; pointer-events:none; min-width:6px }
 .ohb-now { position:absolute; top:0; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:7px solid var(--fg); transform:translateX(-5px) }
@@ -477,17 +543,18 @@ CSS = r"""
 .ohb-ticks span { position:absolute; top:0; transform:translateX(-50%) } .ohb-ticks span:first-child { transform:none } .ohb-ticks span:last-child { transform:translateX(-100%) }
 .ohb-read p { display:none; font-size:var(--fs-s); color:var(--fg2); font-variant-numeric:tabular-nums }
 .ohb-leg .few::before { background-color:var(--hb-mid) } .ohb-leg .tod::before { background:none; box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--fg) 55%,transparent) }
-.ohb-leg .nowk::before { display:none }
+.ohb-leg .nowk::before { display:none } .oday details .ohb-leg { margin-bottom:8px } .oday th, .oday td { padding:6px 8px }
 """ + hour_css()
 
 # The page script: the Launch radar's desk, card and panel follow the Radar tab's script (window event memebot-radar, detail {doc, state,
 # via}); the full scan's strip follows the office's live script (memebot-live, detail {state, status}) and finds the repository for its
-# Scan now link. Text only through textContent; nothing is fetched. MemebotOffice.look and .scan are the decisions (node checks them).
+# Scan now link. Text only through textContent; nothing is fetched. MemebotOffice.look, .scan and .next are the decisions (node checks them).
 JS = r"""
 (function(){
 if(window.MemebotOffice)return;
 var D=document,last=null,lastScan=null;
-var LOOK={running:['running','on watch'],late:['fallback','late'],stopped:['skipped','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
+var LOOK={running:['running','on watch'],late:['fallback','late'],stopped:['failed','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
+var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad'};
 var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase']];
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function n(v){return isn(v)?Math.round(v):0;}
@@ -499,13 +566,17 @@ function cls(e,c){if(e.getAttribute('class')!==c)e.setAttribute('class',c);}
 var O=window.MemebotOffice={
   // the radar's light, word, line and small number for its state (page_office.look says the same at build time)
   look:function(st,doc,fmt){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
-    if(st==='running'&&d&&d.state==='degraded'){light='fallback';word='on watch, some checks failing';}
+    var lead=st==='late'||st==='stopped'?word:'';
+    if(st==='running'&&d&&d.state==='degraded'){light='fallback';word='on watch, some checks failing';lead='checks failing';}
     if(st==='off')line='switched off on GitHub';
     else if(st==='hours')line=d&&isn(d.next)&&d.next>0?'outside its hours · next start '+fmt(d.next):'outside its hours';
-    else if(st==='none'||!c)line='starts with the next full scan';
-    else line=n(c.seen)+' seen · '+n(c.good)+' without traps · '+n(c.pushed)+' pushed';
-    var ck=d&&isn(d.t)&&st!=='none'?'checked '+fmt(d.t):'no check yet';
-    return {light:light,word:word,line:line,stat:d&&isn(d.t)&&st!=='none'?ck:'own job',checked:ck,here:st==='running'||st==='late'};},
+    else if(st==='none')line='not started yet';
+    else if(!c)line=(lead?lead+' · ':'')+'no counts yet';
+    else if(lead&&st!=='running')line=lead+' · '+n(c.seen)+' seen, '+n(c.good)+' without traps';
+    else line=(lead?lead+' · ':'')+n(c.seen)+' seen · '+n(c.good)+' without traps · '+n(c.pushed)+' pushed';
+    var ck=d&&isn(d.t)&&st!=='none'?'checked '+fmt(d.t):'no check yet',r=d&&d.run&&typeof d.run==='object'?d.run:null;
+    var until=r&&isn(r.end)&&r.end>0&&(st==='running'||st==='late')?' · this run until '+fmt(r.end):'';
+    return {light:light,word:word,line:line,stat:d&&isn(d.t)&&st!=='none'?ck:'own job',checked:ck,here:st==='running'||st==='late',until:until,quiet:QUIET.indexOf(st)>=0};},
   // the full scan's strip for a live-view state (MemebotLive.state): null keeps the page's own words
   scan:function(st,doc,runT,fmt){var d=doc&&typeof doc==='object'?doc:null,t=d&&isn(+d.t)?+d.t:0,up=d?+(d.updated||d.end)||0:0;fmt=fmt||hhmm;
     if(!d||!(t>runT))return null;
@@ -514,32 +585,42 @@ var O=window.MemebotOffice={
     if(st==='done')return {dot:'ok',text:'finished '+fmt(up)+' · new page on its way'};
     if(st==='stopped')return {dot:'bad',text:'stopped '+fmt(up)};
     return null;},
+  // the strip's next start: "next ≈ HH:MM" until that time, then "due now (≈ HH:MM)" (the page is rebuilt only after the next scan)
+  next:function(nx,now,fmt){fmt=fmt||hhmm;if(!isn(nx)||nx<=0)return null;return now>=nx?'due now (≈ '+fmt(nx)+')':'next ≈ '+fmt(nx);},
   radar:function(det){if(det&&typeof det==='object')last=det;draw();},
   hosts:HOSTS};
 function host(k){k=String(k).toLowerCase();for(var i=0;i<HOSTS.length;i++)if(k.indexOf(HOSTS[i][0])>=0)return HOSTS[i][1];return String(k).slice(0,40);}
 function draw(){
   if(!last)return;
-  var doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,L=O.look(String(last.state||'none'),doc);
-  all('g[data-ext="radar"]').forEach(function(g){cls(g,'desk'+(L.here?'':' off'));var s=g.querySelector('.scr');if(s)cls(s,'scr'+(L.light==='fallback'?' fallback':''));});
+  var st=String(last.state||'none'),doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,L=O.look(st,doc);
+  all('g[data-ext="radar"]').forEach(function(g){cls(g,'desk'+(L.here?'':' off'));var s=g.querySelector('.scr');if(s)cls(s,'scr'+(L.light==='fallback'||L.light==='failed'?' '+L.light:''));});
   all('[data-ext-lt="radar"]').forEach(function(e){cls(e,'olt '+L.light);});
   all('[data-ext-word="radar"]').forEach(function(e){set(e,L.word);});
-  all('[data-ext-chip="radar"]').forEach(function(e){cls(e,'chip '+({running:'neutral',fallback:'warn'}[L.light]||''));});
+  all('[data-ext-chip="radar"]').forEach(function(e){cls(e,'chip '+(CHIP[L.light]||''));});
   all('[data-ext-line="radar"]').forEach(function(e){set(e,L.line);});
   all('[data-ext-stat="radar"]').forEach(function(e){set(e,L.stat);});
   all('[data-ext-checked="radar"]').forEach(function(e){set(e,L.checked);});
+  all('[data-ext-until="radar"]').forEach(function(e){set(e,L.until);});
   all('label[data-ext="radar"]').forEach(function(e){var t=e.querySelector('.ocn');e.title=(t?t.textContent:'Launch radar')+': '+L.word;});
-  if(!doc)return;
-  var hs=doc.hosts&&typeof doc.hosts==='object'?doc.hosts:null,ls=Array.isArray(doc.lines)?doc.lines.filter(function(x){return typeof x==='string';}).slice(-6):null;
-  if(hs)all('[data-ext-hosts="radar"]').forEach(function(box){box.textContent='';Object.keys(hs).slice(0,12).sort(function(a,b){return (hs[a]==='ok')-(hs[b]==='ok')||(a<b?-1:a>b?1:0);}).forEach(function(k){
+  var hs=doc&&doc.hosts&&typeof doc.hosts==='object'?doc.hosts:null,ks=hs?Object.keys(hs).slice(0,12):[];
+  // switched off, outside its hours or never started: the last check's notes and services are old news, so they go (the wiring stays)
+  all('[data-ext-hosts="radar"]').forEach(function(box){box.hidden=L.quiet||!ks.length;if(L.quiet||!hs)return;box.textContent='';
+    ks.sort(function(a,b){return (hs[a]==='ok')-(hs[b]==='ok')||(a<b?-1:a>b?1:0);}).forEach(function(k){
     var v=String(hs[k]).slice(0,20),c=D.createElement('span');c.className='chip '+(v==='ok'?'':v==='limited'||v==='slow'?'warn':'bad');c.textContent=host(k)+' · '+v;box.appendChild(c);});});
+  all('[data-ext-wired="radar"]').forEach(function(e){e.hidden=!L.quiet&&!!ks.length;});
+  var ns=!L.quiet&&doc&&Array.isArray(doc.notes)?doc.notes.filter(function(x){return typeof x==='string';}).slice(0,4):[];
+  all('[data-ext-notes="radar"]').forEach(function(box){box.textContent='';ns.forEach(function(x){var p=D.createElement('p');p.className='omsg warn';p.textContent=x.slice(0,160);box.appendChild(p);});});
+  if(!doc)return;
+  var ls=Array.isArray(doc.lines)?doc.lines.filter(function(x){return typeof x==='string';}).slice(-6):null;
   if(ls)all('[data-ext-lines="radar"]').forEach(function(ul){ul.textContent='';ls.forEach(function(x){var li=D.createElement('li'),ic=D.createElement('span'),tx=D.createElement('span'),m=D.createElement('span');
     li.className='oline';ic.className='ic';ic.textContent='›';tx.className='tx';tx.textContent=x.slice(0,200);li.appendChild(ic);li.appendChild(tx);li.appendChild(m);ul.appendChild(li);});});
 }
 function strip(){
   var box=D.querySelector('[data-sstrip]');if(!box)return;
-  var st=box.querySelector('[data-ss-state]'),dot=box.querySelector('[data-ss-dot]');if(st._t==null){st._t=st.textContent;dot._c=dot.getAttribute('class');}
+  var st=box.querySelector('[data-ss-state]'),dot=box.querySelector('[data-ss-dot]'),nx=box.querySelector('[data-ss-next]');if(st._t==null){st._t=st.textContent;dot._c=dot.getAttribute('class');}
   var s=lastScan?O.scan(String(lastScan.state||''),lastScan.status,+box.getAttribute('data-run-t')||0):null;
   set(st,s?s.text:st._t);cls(dot,s?'sdot '+s.dot:dot._c);if(s)box.setAttribute('data-ss',s.dot);else box.removeAttribute('data-ss');
+  if(nx){var t=O.next(+box.getAttribute('data-next')||0,Date.now());if(t)set(nx,t);nx.hidden=!!s;}     // while the next scan reports, the strip names it instead
 }
 function link(){
   var a=D.querySelector('[data-ss-now]');if(!a||a.getAttribute('href'))return;
@@ -548,12 +629,19 @@ function link(){
   if(r){a.href=r+'/actions/workflows/scan.yml';a.hidden=false;}
 }
 window.addEventListener('memebot-radar',function(e){O.radar(e&&e.detail);});
-// a tap on a card opens its department; on a phone (one column) the panel is far below the floor plan, so it scrolls into view
-D.addEventListener('click',function(e){var c=e.target&&e.target.closest&&e.target.closest('label.ocard');if(!c||window.innerWidth>=1080)return;
+D.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;
+  // "Open the Radar tab": the browser page checks the tab's radio (the label); the installed app switches tabs on a hash change, so its bar follows
+  if(t.closest('[data-po-radar] label')&&D.documentElement.classList.contains('app')){e.preventDefault();try{location.hash='#tab-radar';}catch(x){}return;}
+  // a tap on a card opens its department; on a phone (one column) the panel is far below the floor plan, so it scrolls into view
+  var c=t.closest('label.ocard');if(!c||window.innerWidth>=1080)return;
   var k=c.getAttribute('for'),p=k&&D.querySelector('.opanel.k-'+k.replace(/^od-/,'').replace(/[^a-z]/g,''));if(!p)return;
-  setTimeout(function(){try{p.scrollIntoView({block:'start',behavior:window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}catch(x){}},30);});
+  var to=c.hasAttribute('data-ext')&&p.querySelector('.oext')||p;     // the radar's card: its own block, not the top of the Analysts panel
+  setTimeout(function(){try{to.scrollIntoView({block:'start',behavior:window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}catch(x){}},30);});
 window.addEventListener('memebot-live',function(e){lastScan=e&&e.detail&&typeof e.detail==='object'?e.detail:null;try{strip();}catch(x){}});
-function ready(){try{link();}catch(e){}try{if(!last&&window.MemebotRadar&&MemebotRadar.last)O.radar(MemebotRadar.last);else draw();}catch(e){}try{strip();}catch(e){}}
+function ready(){try{link();}catch(e){}
+  try{if(!D.getElementById('tab-radar'))all('[data-po-radar]').forEach(function(e){e.hidden=true;});}catch(e){}     // a page without the Radar tab: no dead link
+  try{if(!last&&window.MemebotRadar&&MemebotRadar.last)O.radar(MemebotRadar.last);else draw();}catch(e){}try{strip();}catch(e){}
+  if(D.querySelector('[data-sstrip]'))setInterval(function(){try{strip();}catch(e){}},60000);}
 if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',ready);else ready();
 })();
 """
