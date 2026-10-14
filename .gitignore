@@ -25,3 +25,5 @@
 !db/memepeak/**
 !db/memeradar/
 !db/memeradar/**
+!db/memeradarpaper/
+!db/memeradarpaper/**
