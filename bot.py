@@ -1443,7 +1443,7 @@ SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" 
 # and the live script reloads it once a newer report is out; both reload when the page comes back after 5 minutes away
 SITE_SCRIPT = ('<script>(function(){var t=Date.now(),app=navigator.standalone===true||!!(window.matchMedia&&matchMedia('
                '"(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)").matches);'
-               'function go(){window.MEMEBOT_RELOADING=true;location.reload();}'   # the flag: the radar's poll stops (page_radar.py)
+               'function go(){window.MEMEBOT_RELOADING=Date.now();location.reload();}'   # the flag (when): the radar's poll stops (page_radar.py)
                'if(!app)setTimeout(go,900000);document.addEventListener("visibilitychange",function(){'
                'if(!document.hidden&&Date.now()-t>300000)go();});})();</script>')
 SITE_ICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#2a78d6"/>'

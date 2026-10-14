@@ -826,7 +826,7 @@ function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
-var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
+var R=window.MemebotRadar={CYCLE:150000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,LEAVE:30000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
   TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
@@ -1084,10 +1084,11 @@ function go(){
     if(r.status===404)return null;if(!r.ok)throw r.status||0;return r.text();}).then(function(t){if(t==null)return null;var j=JSON.parse(t);
     if(j&&typeof j.content==='string'&&j.encoding==='base64')j=decode(j.content);return j;});}
   function rawGet(){return fetchT(raw+(raw.indexOf('?')<0?'?':'&')+'m='+Math.floor(now()/60000),{cache:'no-cache'},R.TIMEOUT).then(function(r){if(r.status===404)return null;if(!r.ok)throw r.status||0;return r.json();});}
-  // the page on its way out (a reload: the site's own after a long break, report.py's after a new scan): no poll, and one cut off by it is no
-  // failure (it would hold the next poll back on the reloaded page)
-  var leaving=false;function gone(){return leaving||!!window.MEMEBOT_RELOADING;}
-  window.addEventListener('beforeunload',function(){leaving=true;});window.addEventListener('pagehide',function(){leaving=true;});
+  // the page on its way out (a reload: the site's own after a long break, report.py's after a new scan; both set MEMEBOT_RELOADING to the time):
+  // no poll, and one cut off by it is no failure (it would hold the next poll back on the reloaded page). Both marks end after LEAVE: a reload
+  // that never happened (stopped, offline) must not stop the radar for good
+  var leaving=0;function gone(){var r=+window.MEMEBOT_RELOADING||0,n=now();return leaving>0&&n-leaving<R.LEAVE||r>0&&n-r<R.LEAVE;}
+  window.addEventListener('beforeunload',function(){leaving=now();});window.addEventListener('pagehide',function(){leaving=now();});
   function poll(){
     var v=view();if(busy||gone()||document.visibilityState!=='visible'||!v)return;
     if(load())draw();
@@ -1103,18 +1104,23 @@ function go(){
       if(via==='supabase'&&src&&S.doc&&(d==null||st==='stopped')&&ghFor!==+S.doc.t){ghFor=+S.doc.t;S.back=now()+R.SB_RETRY;ghNow=true;}},function(code){if(gone())return;
       S.fails=(+S.fails||0)+1;if(via==='supabase'&&(code===540||S.fails>=2)){S.back=now()+R.SB_RETRY;S.fails=0;}})
     .then(function(){busy=false;if(gone())return;S.via=via;S.last=now();var b2=R.budget(office(),S);
-      S.next=ghNow?now()+1000:R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved,kick:kicking()});ghNow=false;save();try{draw();}catch(e){}});
+      S.next=ghNow?now()+1000:R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b2.rem,reset:b2.reset,fails:S.fails,got:S.got,moved:S.moved,kick:kicking()});ghNow=false;
+      if(via!=='supabase'&&sbUrl&&sbKey&&+S.back>now())S.next=Math.min(S.next,Math.max(+S.back,now()+1000));   // GitHub only stood in: the live store's pace again once it may be asked
+      save();try{draw();}catch(e){}});
   }
   // a tab change: the next poll comes at the new tab's pace (sooner on the New tab), never before the budget allows; New opened after a
   // break asks at once (wake)
   function retime(){if(!S.last||busy)return;var b=R.budget(office(),S);S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:S.via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved,kick:kicking()}));}
-  Array.prototype.forEach.call(document.querySelectorAll('input[name="tab"]'),function(r){r.addEventListener('change',function(){retime();wake();poll();});});
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="tab"]'),function(r){r.addEventListener('change',function(){retime();if(view()==='radar')wake();poll();});});
   window.addEventListener('storage',function(e){if(e.key===KEY&&load())try{draw();}catch(x){}});
-  // back on the page (the app opened again, the tab shown, GitHub's page closed after a Start): a poll now when the last one is SB_FRESH old on
-  // the live store, GH_MIN on GitHub (not while it fails, never below the budget's reserve); the radar of a round by hand shows at once
-  function wake(){if(document.visibilityState!=='visible')return;leaving=false;      // shown again: not leaving (iOS can send pagehide for a mere app switch)
-    if(busy||gone()||+S.fails>0)return;var sb=S.via==='supabase';
-    if((sb||!isn(S.rem)||S.rem>2*R.RESERVE)&&now()-(+S.last||0)>=(sb?R.SB_FRESH:R.GH_MIN))S.next=Math.min(S.next,now());poll();}
+  // back on the page (the app opened again, the tab shown, GitHub's page closed after a Start): on the live store a poll now when the last one
+  // is SB_FRESH old; on GitHub at GH_MIN after the last one and never before the shared budget allows (radarNext); not while polls fail. A
+  // round by hand shows at once
+  function wake(){if(document.visibilityState!=='visible')return;leaving=0;      // shown again: not leaving (iOS can send pagehide for a mere app switch)
+    if(busy||gone()||+S.fails>0)return;var b=R.budget(office(),S),via=R.radarTransport(sbUrl,sbKey,src,b.rem,b.reset,now(),S.back);
+    if(via==='supabase'){if(now()-(+S.last||0)>=R.SB_FRESH)S.next=Math.min(S.next,now());}
+    else if(S.last)S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved,kick:true}));
+    poll();}
   document.addEventListener('visibilitychange',wake);window.addEventListener('pageshow',wake);window.addEventListener('focus',wake);
   // #tab-radar, #radar, #tab-young or #new (the old Radar and New links) open the New tab once in a browser tab; the installed app reads the
   // hash itself (app.py PAGE_JS)
@@ -1123,8 +1129,10 @@ function go(){
   var act=box.querySelector('[data-r-actions]');       // Start and Stop: plain links to the radar's page on GitHub (no token, nothing is started from here)
   if(act&&repo){var wf='https://github.com/'+repo+'/actions/workflows/radar.yml',inf=el('details','rinfo'),sm=el('summary','','\u24d8');
     startA=el('a','rbtn','Start \u2197');[startA,el('a','rbtn quiet','Stop \u2197')].forEach(function(a){a.href=wf;a.target='_blank';a.rel='noopener';act.appendChild(a);});
-    // a tap on Start: the page waits for that round (the pill says so) and asks every SB_FRESH (GitHub: GH_MIN) until it comes, KICK at most
-    startA.addEventListener('click',function(){S.kick=now();S.kickT=S.doc?+S.doc.t:0;S.next=Math.min(S.next,now()+R.SB_FRESH);save();key=null;try{draw();}catch(e){}});
+    // a tap on Start: the page waits for that round (the pill says so) and asks every SB_FRESH (GitHub: GH_MIN, the budget and a failure's back-off
+    // still win: retime) until it comes, KICK at most; outside the radar's hours no round comes, the pill keeps "Radar sleeping"
+    startA.addEventListener('click',function(){if(R.radarState(S.doc,now(),S.got,S.moved)==='hours')return;
+      S.kick=now();S.kickT=S.doc?+S.doc.t:0;retime();save();key=null;try{draw();}catch(e){}});
     sm.setAttribute('aria-label','About start and stop');inf.appendChild(sm);inf.appendChild(el('p','',INFO));act.appendChild(inf);act.hidden=false;}
   load();try{draw();}catch(e){}
   setInterval(function(){poll();try{draw();}catch(e){}},1000);

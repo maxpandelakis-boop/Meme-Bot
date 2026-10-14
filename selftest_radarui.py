@@ -914,35 +914,45 @@ def browser(check, tmp, d, skips, shots=None):
             k = {"done": wait(pg, "() => document.querySelector('[data-r-pill]').getAttribute('data-st') === 'done'", 6000)}
             pill = lambda: [pg.evaluate("document.querySelector('[data-r-pill-t]').textContent"), pg.evaluate("document.querySelector('[data-r-pill]').hasAttribute('data-wait')")]
 
+            sbr = lambda: len([u for u in state["sb"] if "id=eq.radar" in u])     # the radar's row only (report.py reads its status row too)
+
             def reads(n, ms_):                         # the live-store reads since sb0, waiting up to ms_ for n of them (a slow runner gets its time)
                 for _ in range(ms_ // 100):
-                    if len(state["sb"]) - sb0 >= n:
+                    if sbr() - sb0 >= n:
                         break
                     pg.wait_for_timeout(100)
-                return len(state["sb"]) - sb0
+                return sbr() - sb0
             pg.wait_for_timeout(1200)
-            sb0 = len(state["sb"]); pg.wait_for_timeout(2000); k["idle"] = len(state["sb"]) - sb0
+            sb0 = sbr(); pg.wait_for_timeout(2000); k["idle"] = sbr() - sb0
             pg.evaluate("(function(){var a=document.querySelector('[data-r-actions] a');a.addEventListener('click',function(e){e.preventDefault();});a.click();})()")
             k["wait"] = pill()
-            sb0 = len(state["sb"]); k["fast"] = reads(3, 9000)          # 3 reads: without the tap the next one is 10 minutes away
+            sb0 = sbr(); k["fast"] = reads(3, 9000)          # 3 reads: without the tap the next one is 10 minutes away
             state["sbrow"] = lambda: [{"doc": r_new, "updated": "now"}]
             k["got"] = wait(pg, "() => !document.querySelector('[data-r-pill]').hasAttribute('data-wait')", 4000)
             k["after"] = pill()
-            sb0 = len(state["sb"]); pg.wait_for_timeout(2500); k["calm"] = len(state["sb"]) - sb0
+            sb0 = sbr(); pg.wait_for_timeout(2500); k["calm"] = sbr() - sb0
             pg.wait_for_timeout(500)
-            sb0 = len(state["sb"]); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'));document.dispatchEvent(new Event('visibilitychange'))")
-            reads(1, 4000); pg.wait_for_timeout(300); k["woke"] = len(state["sb"]) - sb0
+            sb0 = sbr(); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'));document.dispatchEvent(new Event('visibilitychange'))")
+            reads(1, 4000); pg.wait_for_timeout(300); k["woke"] = sbr() - sb0
             # a poll in flight when the page starts to leave: held, then cut off; S keeps no failure and no new last poll
             pg.wait_for_timeout(800); state["hold"] = []
-            sb0 = len(state["sb"]); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+            sb0 = sbr(); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
             reads(1, 4000); k["held"] = len(state["hold"])
-            pg.evaluate("window.MEMEBOT_RELOADING=true")
+            pg.evaluate("window.MEMEBOT_RELOADING=Date.now()")
             for r_ in state.pop("hold"):
                 r_.abort()
             pg.wait_for_timeout(400)
             k["kept"] = pg.evaluate("(function(){for(var i=0;i<localStorage.length;i++){var x=localStorage.key(i);if(x.indexOf('memebot-radar')===0){var s=JSON.parse(localStorage.getItem(x));return [s.fails,Date.now()-s.last>1000];}}return null;})()")
-            sb0 = len(state["sb"]); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))"); pg.wait_for_timeout(1500); k["gone"] = len(state["sb"]) - sb0
+            sb0 = sbr(); pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))"); pg.wait_for_timeout(1500); k["gone"] = sbr() - sb0
             k["new_t"] = pg.evaluate("new Date(%d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:document.querySelector('[data-radar]').getAttribute('data-tz')||'UTC'})" % r_new["t"])
+            ctx.close()
+            r_hours = radar_doc(ms() - 2 * MIN, "hours")
+            state["sbrow"] = lambda: [{"doc": r_hours, "updated": "then"}]
+            ctx, pg = ctx_page(html_=html_sb, hash_="#tab-young", init=("window.MEMEBOT_RADAR_T={SB_ROUND:600000,SB_DONE:600000,SB_FRESH:700,KICK:20000};",))
+            wait(pg, "() => document.querySelector('[data-r-pill]').getAttribute('data-st') === 'hours'", 6000)
+            pg.evaluate("(function(){var a=document.querySelector('[data-r-actions] a');a.addEventListener('click',function(e){e.preventDefault();});a.click();})()")
+            pg.wait_for_timeout(300)
+            k["hours"] = pill()
             out["kick"] = k
             ctx.close()
             state["sbrow"] = None
@@ -1131,6 +1141,8 @@ def browser(check, tmp, d, skips, shots=None):
           and kk.get("calm") == 0,
           "14.10 a round by hand: a tap on Start says 'Waiting for the new round' (pulsing dot) and asks the live store every SB_FRESH (%s reads, %s while idle in 2 s), "
           "the round's time shows as soon as its doc comes, then the pace is back (%s reads in 2.5 s) %s" % (kk.get("fast"), kk.get("idle"), kk.get("calm"), [kk.get("wait"), kk.get("after")]))
+    check((kk.get("hours") or [""])[0].startswith("Radar sleeping") and (kk.get("hours") or [0, 1])[1] is False,
+          "14.10 a tap on Start while the radar sleeps outside its hours keeps 'Radar sleeping' (no round can come) %s" % kk.get("hours"))
     check(kk.get("woke") == 1 and kk.get("held") == 1 and kk.get("kept") == [0, True] and kk.get("gone") == 0,
           "14.10 back on the page the radar asks at once (%s read for two events); a poll cut off by the page's reload is no failure and no new last poll %s; "
           "a page on its way out asks nothing (%s reads)" % (kk.get("woke"), kk.get("kept"), kk.get("gone")))

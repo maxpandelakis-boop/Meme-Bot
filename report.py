@@ -1235,7 +1235,7 @@ function go(){
         'The last scan finished at '+hhmm(up)+'; this page shows it. The office goes live again during the next scan.';
       var hold=false;try{hold=!!(window.MemebotApp&&typeof MemebotApp.hold==='function'&&MemebotApp.hold());}catch(e){}   // the app's Account tab or a tap at work: later
       if(st==='done'&&newer&&site&&now()-up>240000&&!hold){
-        try{if(sessionStorage.getItem('memebot-reloaded')!==String(doc.t)){sessionStorage.setItem('memebot-reloaded',String(doc.t));location.reload();}}catch(e){}
+        try{if(sessionStorage.getItem('memebot-reloaded')!==String(doc.t)){sessionStorage.setItem('memebot-reloaded',String(doc.t));window.MEMEBOT_RELOADING=Date.now();location.reload();}}catch(e){}   // the flag: the radar's poll stops (page_radar.py)
       }
     }
     tick();
