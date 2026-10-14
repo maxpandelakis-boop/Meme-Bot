@@ -228,16 +228,27 @@ def _t1_unknown(check, W, rng, wm, clean):
           and small_trap["verdict"] == "trap" and small_trap["hard"] == ["rugger_wallets"],
           "a wallet memory from 499 coins is too small (watch, 'wallet memory too small'), from 500 it counts; a small memory still "
           "raises its red flags (3 rugger holders -> trap)")
-    # nit 7: the age limit is read from radar_weights.json; without a clock the caller has checked the age (it still needs 500 coins)
+    # nit 7: the age limit is read from radar_weights.json. Robust N2: without a clock the memory's age cannot be told, so it is not
+    # checked (fail closed), even a fresh one; its red flags still count
     hs = [h["owner"] for h in clean["rc"]["topHolders"]]
     W1 = copy.deepcopy(W)
     W1["thresholds"]["wmMaxAgeH"] = 0.25
     th_old = T.walletmem_lookup(hs, mk(900), NOW, W1)
     th_ok = T.walletmem_lookup(hs, mk(900), NOW, W)
-    nc_ok, nc_small = T.walletmem_lookup(hs, mk(900)), T.walletmem_lookup(hs, mk(40))
-    check(th_old["state"] == "old" and not th_old["checked"] and th_ok["state"] == "ok" and th_ok["checked"] and nc_ok["checked"] and nc_small["state"] == "small"
-          and not nc_small["checked"], "the 3 h limit is thresholds.wmMaxAgeH (20 min old with a 15 min limit -> old); without a clock "
-          "the caller has checked the age, the 500-coin floor still holds")
+    nc_fresh, nc_old = T.walletmem_lookup(hs, mk(900)), T.walletmem_lookup(hs, dict(mk(900), t=NOW - 30 * H))
+    nc_rug = T.walletmem_lookup(hs, dict(mk(900), rug=hs[:3]))
+    nt = {k: v for k, v in mk(900).items() if k != "t"}
+    no_t = T.walletmem_lookup(hs, nt, NOW, W)
+    S_nc = T.signals_radar(dict(clean, now=None), W)
+    r_nc = T.rate(S_nc, W)
+    check(th_old["state"] == "old" and not th_old["checked"] and th_ok["state"] == "ok" and th_ok["checked"]
+          and nc_fresh["state"] == "old" and not nc_fresh["checked"] and nc_old["state"] == "old" and not nc_old["checked"]
+          and nc_rug["rugHolders"] == 3 and not nc_rug["checked"] and r_nc["verdict"] != "good" and "walletmem" in r_nc["unknown"]
+          and not r_nc["push"] and ["unk", "wallet memory unavailable"] in T.chips(r_nc, S_nc, W)
+          and no_t["state"] == "old" and not no_t["checked"],
+          "the 3 h limit is thresholds.wmMaxAgeH (20 min old with a 15 min limit -> old); without a clock a memory of any age counts "
+          "as not checked, '? wallet memory unavailable' (a 30-hour-old one was 'good' before), its red flags still count (3 rugger "
+          "holders); a memory file without its time is not checked either")
     # nit 6: n counts the checks that ran; a missing report is not one
     n_full = T.rate(base_S(), W)["n"]
     n_norc = T.rate(base_S(rcReport=False, rcDanger=None, rcWarn=None, cluster=None), W)["n"]
@@ -504,11 +515,17 @@ def _t6(check, W):
     T.xlinks_add(links, "https://x.com/someone/status/18001234567", a, NOW - H)
     T.xlinks_add(links, "https://x.com/other/status/18001234567", b, NOW - 2 * MIN)
     rt = T.x_reuse("https://twitter.com/x/status/18001234567", c, NOW, links)
+    rt_a = T.x_reuse("https://x.com/someone/status/18001234567", a, NOW - H, links)     # A is on the tweet's index itself
+    rt_1 = T.x_reuse("https://x.com/q/status/18009999999", a, NOW, {})
+    T.xlinks_add(links, "https://x.com/solo/status/18005555555", a, NOW - H)
+    rt_s = T.x_reuse("https://x.com/solo/status/18005555555", a, NOW, links)
     S = base_S(x="https://x.com/z/status/18001234567", xKind="tweet", tweet=True, xUsed=rt["used"], tweetShared=rt["shared"])
     rr = T.rate(S, W)
-    check(rt["used"] == 0 and rt["shared"] == 2 and rr["info"] == ["tweet_shared"] and ["info", "3 coins off the same tweet"] in T.chips(rr, S, W)
+    check(rt["used"] == 0 and rt["shared"] == 2 and rt_a["shared"] == 1 and rt_1["shared"] == 0 and rt_s["shared"] == 0
+          and rr["info"] == ["tweet_shared"] and ["info", "3 coins off the same tweet"] in T.chips(rr, S, W)
           and rr["verdict"] == "good" and "x_copied" not in rr["info"],
-          "a shared tweet is an info chip ('3 coins off the same tweet'), never 'X link copied'")
+          "a shared tweet is an info chip ('3 coins off the same tweet'), never 'X link copied'; a coin never counts itself on its "
+          "tweet (alone on it: %d others; on it with one other coin: %d)" % (rt_s["shared"], rt_a["shared"]))
     many = {}
     coins12 = ["%s%02dpump" % ("D" * 38, i) for i in range(12)]
     ns = []
@@ -806,9 +823,10 @@ def _extras(check, W, rng, tmp):
     r3a = T.rate(T.signals_scan(y, ins["pf"]["createdAt"], dict(wm, t=NOW - 5 * H)), W)
     ok_e = T.rate(T.signals_scan(y, pr, wm, now=NOW), W)
     check(r3["hard"] == ["instant_pool"] and S3["mintToPoolS"] == 20.0 and "walletmem" in r3["unknown"] and S3["wmState"] == "old"
-          and r3a["verdict"] == "watch" and r3a["unknown"] == ["mint_time"] and not r3a["push"] and ok_e["verdict"] == "good" and ok_e["push"],
+          and r3a["verdict"] == "watch" and r3a["unknown"] == ["mint_time", "walletmem"] and not r3a["push"] and ok_e["verdict"] == "good" and ok_e["push"],
           "signals_scan(row, pairs entry, walletmem, now=recommend t): a pool 20 s after the mint is the instant-pool trap and a 5-hour-old "
-          "memory is not checked; the same row with only the mint time stays '? mint time unknown' (never green)")
+          "memory is not checked; the same row with only the mint time and no clock stays '? mint time unknown' and refuses that "
+          "memory too (it was accepted before), never green")
     # boundaries (review nit 10)
     fl = lambda name, **kw: T.flag(name, base_S(**kw), W)
     st_ = lambda **kw: dict({"n": 10, "rise": 0.25, "green": 0.8, "pull": 0.01, "stair": True}, **kw)

@@ -299,9 +299,9 @@ def walletmem_lookup(holders, wm, now=None, W=None):
     swAvg: the mean past result per 20 of the holders that have a record (memebot's sw.avg, all holders, wallets with 2+ coins).
     rugHolders: holders, minus the common program accounts, that were top holders of a coin that went to zero (the study's
     'holders in earlier rugs'). checked: the memory is there, built from at least thresholds.wmMinCoins scored coins, not older
-    than thresholds.wmMaxAgeH at `now`, and the coin has top holders. now=None means the caller has checked the age itself (the
-    radar's wm_state and the page's load_wm do, before they call); the radar's signals_radar and the page's signals_scan pass
-    their clock. A memory that is not checked still raises its red flags (fewer red flags, never a false green).
+    than thresholds.wmMaxAgeH at `now`, and the coin has top holders. Without `now` the memory's age cannot be told, so it is not
+    checked (state old): unknown is never clean. The radar's signals_radar passes the cycle's clock, the page's signals_scan
+    recommend.json's "t". A memory that is not checked still raises its red flags (fewer red flags, never a false green).
     state: ok | old | small | empty | missing | noholders."""
     out = {"swAvg": None, "rugHolders": None, "checked": False, "state": "missing"}
     if not isinstance(wm, dict) or wm.get("v") != 1 or not isinstance(wm.get("rug"), list):
@@ -323,8 +323,8 @@ def walletmem_lookup(holders, wm, now=None, W=None):
     t, now, n = num(wm.get("t")), num(now), num(wm.get("nCoins"))
     max_age = (num(th.get("wmMaxAgeH")) or WALLET_MAX_AGE_H) * H
     min_coins = num(th.get("wmMinCoins")) or WALLET_MIN_COINS
-    if now is not None and (t is None or now - t > max_age):
-        out["state"] = "old"
+    if now is None or t is None or now - t > max_age:
+        out["state"] = "old"                         # too old, or its age cannot be told (no clock, no time in the file)
     elif not n:
         out["state"] = "empty"                       # built from no coin at all: it checks nothing
     elif n < min_coins:
@@ -469,7 +469,7 @@ def signals_scan(y, pr_mint_ms, wm, now=None, pool=None, W=None):
     x, ds.paid, vt.tweet, srcN, dev.sold, ageH), y["risk"] the RugCheck summary with its top holders. pr_mint_ms: the mint time
     from mb/pairs.json (pf.createdAt or ll.createdAt) or None, or the coin's whole mb/pairs.json entry (then its pairCreatedAt is
     the pool time too). The pool's open time is `pool`, else the pairs.json entry's, else y["pool"], else now (recommend.json "t")
-    minus the row's age. now (recommend.json "t") also dates the wallet memory (without it the caller must have checked its age).
+    minus the row's age. now (recommend.json "t") also dates the wallet memory (without it the memory counts as not checked).
     Without a mint time and a pool time (or `now` to place the pool) the row cannot be green. The page's call:
     signals_scan(row, pairs_by_addr.get(row["addr"]), walletmem, now=recommend["t"])."""
     W = W or load_weights()
