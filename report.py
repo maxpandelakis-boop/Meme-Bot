@@ -582,7 +582,7 @@ except ImportError:           # a copy of the code without page_office.py (the s
         EXT_HOME, CSS = {"radar": "analysts"}, ""
         scan_minute = staticmethod(lambda runs, default: int(default) % 60)
         ext_agents = staticmethod(lambda *a: [])
-        cards = daily = scan_strip = staticmethod(lambda *a: "")
+        cards = daily = scan_strip = balance = staticmethod(lambda *a: "")
 OFFICE_HOSTS = (("launch-mint", "LaunchLab"), ("dexscreener", "DexScreener"), ("geckoterminal", "GeckoTerminal"), ("jup.ag", "Jupiter"), ("pump.fun", "pump.fun"),
                 ("raydium", "Raydium"), ("orca.so", "Orca"), ("rugcheck", "RugCheck"), ("coingecko", "CoinGecko"), ("coinmarketcap", "CoinMarketCap"), ("reddit", "Reddit"),
                 ("warpcast", "Farcaster"), ("mastodon", "Mastodon"), ("4cdn", "4chan"), ("gmgn", "GMGN"), ("gopluslabs", "GoPlus"), ("solana.com", "Solana RPC"),
@@ -1060,6 +1060,7 @@ function go(){
   var tabs=['tab-office','tab-young'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open
   var root=document.documentElement,sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var mode=MB.transport(sbUrl,sbKey,src),SB={next:0,fails:0,busy:false,nv:null,cur:null,st:null,back:0,at:0},SBKEY='memebot-sb '+sbUrl;
+  var onSite=!!home&&location.href.indexOf(home)===0;if(onSite)all('[data-live-link]').forEach(function(e){e.hidden=true;});
   var inApp=function(){return root.classList.contains('app');};      // the installed app (app.py PAGE_JS): it polls on any of its tabs
   MB.via=function(){return mode;};MB.current=function(){return mode==='supabase'?SB.cur:S.doc;};
   // S: the newest snapshot, when the next poll is due, the failed polls in a row and GitHub's rate-limit numbers, shared by the tabs
@@ -1190,7 +1191,7 @@ function go(){
     var st=MB.state(S.doc,now(),pageT,S.fails,S.got,S.moved),on=st==='live',doc=S.doc,ags=on?doc.agents.filter(function(a){return a&&a.id;}):[],by={};
     ags.forEach(function(a){by[a.id]=a;});
     shown=st;box.hidden=st==='hide';
-    all('[data-live-link]').forEach(function(e){e.hidden=on;});
+    all('[data-live-link]').forEach(function(e){e.hidden=on||onSite;});      // on the website itself its own address is not news
     all('[data-live-on]',box).forEach(function(e){e.hidden=!on;});off.hidden=on;
     all('[data-static-strip]').forEach(function(e){e.hidden=on;});
     if(office)mark(office,on?'on':'');
@@ -2956,7 +2957,7 @@ def office_live(info, repo, now=None, runs=None):
     top = ('<p class="note olink" data-lv data-live-link>Live during a scan: <a href="%s">%s</a></p>'
            '<div class="olive" data-lv data-live-src="%s" data-pages="%s" data-tz="%s" data-tzn="%s" data-run-t="%d" data-next-scan="%d" data-names="%s" hidden>'
            '<p class="olv-head" data-lv data-live-on><span class="obadge"><i></i><span data-live-badge>LIVE</span></span>'
-           '<span class="note">the map shows the scan at work now; the panels and the timeline below are from the last finished run</span></p>'
+           '<span class="note">the cards show the scan at work now; Details shows the last finished run</span></p>'
            '<div class="ostrip" data-lv data-live-on data-live-strip></div>'
            '<div data-lv data-live-on><span class="olab">Right now</span><ul class="onow" data-live-now></ul></div>'
            '<p class="note" data-lv data-live-off hidden></p></div>') % (
@@ -2966,10 +2967,11 @@ def office_live(info, repo, now=None, runs=None):
 
 
 def office_section(D):
-    """The agent office tab: the worker steps of the last run as a team at work (db/memebot/office.json, written by bot.py each cycle):
-    a status strip, the floor plan with the Brain in the middle, one department opened beside it (CSS only: radio + label, so the
-    fragment works without scripts; the slowest agent's department opens first) and the team timeline. A page built on GitHub Actions
-    also names the website and carries the live view, which marks the floor plan while a scan runs."""
+    """The agent office tab: the worker steps of the last run as a team at work (db/memebot/office.json, written by bot.py each cycle).
+    On top the agent cards and the paper account's line (page_office.py); everything else in one Details fold, closed until opened: a
+    status strip, the floor plan with the Brain in the middle, one department opened beside it (CSS only: radio + label, so the fragment
+    works without scripts; the slowest agent's department opens first, a tap on a card picks another) and the team timeline. A page built
+    on GitHub Actions also names the website and carries the live view, which marks the cards and the floor plan while a scan runs."""
     info = office_data(D)
     repo = live_repo()
     live_top, live_js = office_live(info, repo, D.get("now"), D.get("runs")) if repo else ("", "")
@@ -2978,8 +2980,8 @@ def office_section(D):
                        '<div class="empty">No agent log yet: the first run with the new code fills this tab with what each step of the scan did, how long it took and which services it called.</div>' + live_js)
     ags, T = info["agents"], D.get("train") or {}
     run_s = (info["t1"] - info["t0"]) / 1000.0
-    head = "%d agent%s · %s from the start of the run to this page%s · fake money" % (
-        len(ags), "" if len(ags) == 1 else "s", fmt_secs(run_s), (" · up to %d at work at once" % info["peak"]) if info["peak"] > 1 else "")
+    head = "run of %s · %s · %d agent%s%s · fake money" % (
+        fmt_when(info["t0"], D["now"]), fmt_secs(run_s), len(ags), "" if len(ags) == 1 else "s", (" · up to %d at work at once" % info["peak"]) if info["peak"] > 1 else "")
     count = lambda f: sum(1 for a in ags if f(a))
     cells = [("All", len(ags), ""), ("Done", count(lambda a: a["st"] == "done"), ""), ("Ran beside", count(lambda a: a["bg"]), ""),
              ("Failed", count(lambda a: a["st"] == "failed"), "bad"), ("Skipped", count(lambda a: a["st"] == "skipped"), "")]
@@ -2989,8 +2991,8 @@ def office_section(D):
     if nfb:
         cells.insert(2, ("Fallback", nfb, ""))
     strip = '<div class="ostrip" data-lv data-static-strip>%s</div>' % "".join('<span class="%s">%s <b>%d</b></span>' % (c if k else "", E(lab), k) for lab, k, c in cells)
-    note = "The run of %s%s. Each department is one step of the scan, the Brain in the middle is the trained model and the scored history. Tap a department to see what its agents did." % (
-        fmt_when(info["t0"], D["now"]), (", " + OFFICE_MODE[info["mode"]]) if info["mode"] in OFFICE_MODE else "")
+    note = "The run of %s%s, %s from its start to this page. Each department is one step of the scan, the Brain in the middle is the trained model and the scored history. Tap a department to see what its agents did." % (
+        fmt_when(info["t0"], D["now"]), (", " + OFFICE_MODE[info["mode"]]) if info["mode"] in OFFICE_MODE else "", fmt_secs(run_s))
     every = info["depts"] + [info["brain"]]
     home = {m["id"]: d["name"] for d in every for m in d["agents"]}
     radios = "".join('<input type="radio" name="odept" id="od-%s"%s aria-label="%s">' % (d["key"], " checked" if d["key"] == info["pick"] else "", E(d["name"])) for d in every)
@@ -3009,8 +3011,14 @@ def office_section(D):
             fmt_secs(a["secs"]) if a["ran"] else "–", E(office_word(a) + (", beside the others" if a["bg"] else "")), E(a["out"] or "–")) for a in ags)
     timeline = '<h3>Team timeline</h3><p class="note">minutes since the run started at %s · one lane per agent, so you see who worked at the same time</p>%s%s' % (
         E(clock(info["t0"]) + " " + TZ_NAME), chart_box(office_gantt(info, WIDE), office_gantt(info, NARROW), g_leg), table)
-    cards = ("<style>%s</style>" % PO.CSS if PO.CSS else "") + safe("agent cards", lambda: PO.cards(info, sys.modules[__name__]))     # the agent cards above the floor (page_office.py)
-    body = '%s%s%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div>%s%s' % (live_top, strip, cards, E(note), radios, floor, panels, timeline, live_js)
+    # on top (page_office.py): the agent cards and the paper account's line; the rest of the office in one fold, closed until opened (a tap
+    # on a card opens it); without page_office.py there are no cards, so the fold stands open
+    cards = safe("agent cards", lambda: PO.cards(info, sys.modules[__name__]))
+    top = '<div class="otop">%s%s</div>' % (cards, safe("balance line", lambda: PO.balance(D, sys.modules[__name__]))) if cards else ""
+    inner = '<div class="ofold-in">%s<p class="note">%s</p><div class="office">%s<div class="ogrid">%s%s</div></div><div>%s</div></div>' % (strip, E(note), radios, floor, panels, timeline)
+    details = '<details class="fold ofold" data-po-fold%s><summary><span class="t">Details</span><span class="sum">floor plan · departments · team timeline · daily overview</span></summary>%s</details>' % (
+        "" if cards else " open", inner)
+    body = '%s%s%s%s%s' % (("<style>%s</style>" % PO.CSS) if PO.CSS else "", live_top, top, details, live_js)
     return section("Agent office", head, body)
 
 
