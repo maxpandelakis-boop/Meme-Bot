@@ -76,6 +76,8 @@ CURVE_WORDS = {"ok": "no trap found yet", "risky": "risky", "unknown": "not full
                                      # a call whose check found a trap is never Scout's news (as the curve push, it stays quiet about it)
 CURVE_HOSTS = (("pump.fun", "curve list"), ("trades", "curve trades"))   # the curve block's hosts -> the radar panel's chips (HOSTS names them)
 CURVE_HST = re.compile(r"[a-z]{1,12}")   # a curve host's state as page_radar's whitelist keeps it (fullmatch)
+HOST_FINE = ("ok", "unavailable")    # host states that are no problem: plain chips, after the problems ("unavailable": the curve trades a client
+                                     # without a paid key never gets; the watch reads pump.fun's list, its normal mode)
 CHAT_CHIPS = 3                       # a message names this many chips, then "+N more"
 TOO_FEW = 20                         # the greens' 1 h prices before the record gives shares (the New tab's Track record: MemebotRadar.TOO_FEW)
 # the chat's text from the doc: these become spaces (controls, C1 too, bidi marks, embeddings, overrides and isolates, a BOM), a superset of
@@ -289,11 +291,11 @@ def ext_agents(D, meta, R):
 
 
 def host_chips(hosts):
-    """The radar's hosts as chips (problems first): ok, limited, down."""
+    """The radar's hosts as chips (problems first): ok and unavailable plain (HOST_FINE), limited amber, down red."""
     out = []
-    for k, v in sorted((hosts or {}).items(), key=lambda kv: (kv[1] == "ok", kv[0])):
+    for k, v in sorted((hosts or {}).items(), key=lambda kv: (kv[1] in HOST_FINE, kv[0])):
         name = next((n for h, n in HOSTS if h in k.lower()), k)
-        cls = "" if v == "ok" else ("warn" if v in ("limited", "slow", "waiting") else "bad")
+        cls = "" if v in HOST_FINE else ("warn" if v in ("limited", "slow", "waiting") else "bad")
         out.append('<span class="chip %s">%s · %s</span>' % (cls, _e(name), _e(v)))
     return "".join(out)
 
@@ -1244,8 +1246,9 @@ function draw(){
   if(doc){hs={};(hs0?Object.keys(hs0).slice(0,12):[]).forEach(function(k){hs[k]=hs0[k];});var ch=curveHosts(doc.curve);Object.keys(ch).forEach(function(k){hs[k]=ch[k];});ks=Object.keys(hs);if(!ks.length&&!hs0)hs=null;}
   // switched off, outside its hours or never started: the last check's notes and services are old news, so they go (the wiring stays)
   all('[data-ext-hosts="radar"]').forEach(function(box){box.hidden=L.quiet||!ks.length;if(L.quiet||!hs)return;box.textContent='';
-    ks.sort(function(a,b){return (hs[a]==='ok')-(hs[b]==='ok')||(a<b?-1:a>b?1:0);}).forEach(function(k){
-    var v=String(hs[k]).slice(0,20),c=D.createElement('span');c.className='chip '+(v==='ok'?'':v==='limited'||v==='slow'||v==='waiting'?'warn':'bad');c.textContent=host(k)+' · '+v;box.appendChild(c);});});
+    var fine=function(v){return v==='ok'||v==='unavailable';};     // page_office.HOST_FINE: plain chips, after the problems
+    ks.sort(function(a,b){return fine(hs[a])-fine(hs[b])||(a<b?-1:a>b?1:0);}).forEach(function(k){
+    var v=String(hs[k]).slice(0,20),c=D.createElement('span');c.className='chip '+(fine(v)?'':v==='limited'||v==='slow'||v==='waiting'?'warn':'bad');c.textContent=host(k)+' · '+v;box.appendChild(c);});});
   all('[data-ext-wired="radar"]').forEach(function(e){e.hidden=!L.quiet&&!!ks.length;});
   var ns=!L.quiet&&doc&&Array.isArray(doc.notes)?doc.notes.filter(function(x){return typeof x==='string';}).slice(0,4):[];
   all('[data-ext-notes="radar"]').forEach(function(box){box.textContent='';ns.forEach(function(x){var p=D.createElement('p');p.className='omsg warn';p.textContent=x.slice(0,160);box.appendChild(p);});});

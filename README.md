@@ -332,34 +332,46 @@ is not lost: the coin stays unmarked and a later round pushes it. A coin it cann
 Curve watch (a paper test of calling coins before their pool): most of a pump.fun coin's run-up happens while it is still on its
 bonding curve (over the radar's 71 graduated coins with curve candles, the last 15 curve minutes rose a median +144%), and the radar
 only sees a coin once its pool exists. So between rounds the radar also reads pump.fun's list of coins still on the curve (highest
-market cap first, every 30 seconds) and follows the trades of the best 40 on the live feed (`curve_watch.py`). When a coin passes 60,
-75 or 90 % of its curve sold, it records a call: time, progress, market cap, price, minutes since the mint and its momentum (points
-gained in 5 minutes, purchases against sales), with a quick check made before any pool exists (the dev's launches and wallet age, top
-holders and launch snipers without the curve's own account, RugCheck without its pool risks, the wallet memory, the X link): ok,
-risky, trap or unknown. A check that only comes in after the call (within 90 seconds) is kept beside it, and the split by check counts
-that call from the price at that moment, never with what happened after the call. An hour after each call it is judged: graduated or
-not and when (an hour nobody watched, say at night, is unseen, never "did not graduate"), the price an hour later, rugged and doubled
-by the same rules as the radar's greens (rugged: gone, dead or worth 0.1x or less at one hour; doubled: 2x to 30x within the hour and
-not gone or dead at one hour), and a paper result of 3 € with the paper fees and 5 % slippage. radar.json's `curve` block shows six
-variants (60, 75 and 90 %, each with and without the momentum filter, split by the check) next to the radar's green coins of the same
-hours, so the test can show which one works best. Nothing is pushed for it until `radar_curve.json` names a variant in `curvePush` (null, the default: off); then that
-variant's calls are pushed once per coin, never with a trap found, at most 3 an hour, worded as a coin still on its curve and a paper
-test. The calls are kept on radar-data (`db/memecurve/`, 48 hours). If pump.fun's list or the trades are refused or change, the
-watch says so in the block and the rounds go on exactly as before: the watch asks with its own client, so a refusal or a rate limit
-it gets never holds up the rounds' requests, and when PumpPortal refuses the trade subscriptions twice, the live feed drops them for
-the run and keeps its graduations.
+market cap first, every 15 seconds; `curve_watch.py`). The list is the watch's normal mode: it also asks the live feed for the trades
+of the best 40, but PumpPortal sends coin trades only to paid API-key clients (the first live run had 38 subscriptions accepted and
+not one trade in 55 minutes), and the radar uses no key. So when no trade has come in 3 minutes of live trade subscriptions (time
+without a connection does not count) and they were not refused, the feed stops asking for the rest of the run, and the watch says "on"
+with "list only: PumpPortal sends coin trades only to paid clients" (its trades host: unavailable, a plain chip). A feed that does
+send trades is still used. When a coin passes 60, 75 or 90 % of its curve sold, it records a call: time, progress, market cap, price,
+minutes since the mint and its momentum (points gained in 5 minutes from the list's readings and the feed's create, purchases against
+sales when trades are known), with a quick check made before any pool exists (the dev's launches and wallet age, top holders and
+launch snipers without the curve's own account, RugCheck without its pool risks, the wallet memory, the X link): ok, risky, trap or
+unknown. A check that only comes in after the call (within 90 seconds) is kept beside it, and the split by check counts that call from
+the price at that moment, never with what happened after the call. An hour after each call it is judged: graduated or not and when (an
+hour nobody watched, say at night, is unseen, never "did not graduate"), the price an hour later and the peak within the hour (on the
+list alone both from the list's readings, the price from its first reading after the hour), rugged and doubled by the same rules as
+the radar's greens (rugged: gone, dead or worth 0.1x or less at one hour; doubled: 2x to 30x within the hour and not gone or dead at
+one hour), and a paper result of 3 € with the paper fees and 5 % slippage. radar.json's `curve` block shows six variants (60, 75 and
+90 %, each with and without the momentum filter, split by the check) next to the radar's green coins of the same hours, so the test
+can show which one works best. The momentum filter is 10 or more points in 5 minutes and more purchases than sales; without trades
+(the list only) the points alone, and each call keeps which form it had (`momBy`: list or trades). Nothing is pushed for it until
+`radar_curve.json` names a variant in `curvePush` (null, the default: off); then that variant's calls are pushed once per coin, never
+with a trap found, at most 3 an hour, worded as a coin still on its curve and a paper test. The calls are kept on radar-data
+(`db/memecurve/`, 48 hours). If pump.fun's list or the trades are refused or change, the watch says so in the block and the rounds go
+on exactly as before: the watch asks with its own client, so a refusal or a rate limit it gets never holds up the rounds' requests,
+and when PumpPortal refuses the trade subscriptions twice, the live feed drops them for the run and keeps its graduations. pump.fun's
+frontend allows about 60 requests a minute; the radar sends at most 40 in any rolling minute, counted where the requests go out for
+the rounds, the fast lanes and the watch together (one past it is not sent). The rounds' and fast lanes' coin checks stop at 34, so a
+round's 6 list pages stay free, and the watch stops at 28, so a whole round (its 6 list pages and 6 dev and holder checks) stays free;
+within that the watch's list takes up to 8 a minute and its own checks up to 8 apart from it, so neither holds the other up (a minute
+with a round and the watch: 28). The watch never asks within 8 seconds of a round, so a round never waits for it.
 
 On the page the test shows under the radar's list on the New tab as "About to graduate (paper test)" (`page_radar.py`): whether the
-watch is on and how many coins it follows, one plain sentence on what is being tested, whether a curve push can go out (while the
-switch is off it says no curve push goes out; when on, which variant), the newest calls by coin (curve %, minutes since the mint,
-market cap, the quick check's chips, and now: graduated after N minutes, still on the curve, did not graduate, dead, or not watched
-to the end when the watch stopped before the hour was over, with the hour's result once it is known; each coin opens on pump.fun), and
-the six variants beside the radar's greens of the same hours (calls, graduated, rugged and doubled within 1 hour, the paper result per
-3 €; rows with under 20 valued calls are grey, too few to tell), with the split by the quick check in a fold. With no call yet it is
-one line; without the block it is hidden. The Office desk's chat adds Scout's line for a fresh call with its quick check ("On the
-curve: SYM at 82%, 14 min after mint, quick check: no trap found yet"; a call whose check found a trap is never named), and the
-radar's panel lists the watch's two hosts (pump.fun's curve list and the trades). Fake money only: the section reports, it never
-advises.
+watch is on, how many coins it follows on the feed or that it reads the list only, one plain sentence on what is being tested, whether
+a curve push can go out (while the switch is off it says no curve push goes out; when on, which variant), the newest calls by coin
+(curve %, minutes since the mint, market cap, the quick check's chips, and now: graduated after N minutes, still on the curve, did not
+graduate, dead, or not watched to the end when the watch stopped before the hour was over, with the hour's result once it is known;
+each coin opens on pump.fun), and the six variants beside the radar's greens of the same hours (calls, graduated, rugged and doubled
+within 1 hour, the paper result per 3 €; rows with under 20 valued calls are grey, too few to tell), with the split by the quick check
+in a fold. With no call yet it is one line; without the block it is hidden. The Office desk's chat adds Scout's line for a fresh call
+with its quick check ("On the curve: SYM at 82%, 14 min after mint, quick check: no trap found yet"; a call whose check found a trap is
+never named), and the radar's panel lists the watch's two hosts (pump.fun's curve list and the trades). Fake money only: the section
+reports, it never advises.
 
 Later prices: a record keeps the prices 5, 15, 30 and 60 minutes after the coin was first seen, but only those a later round
 catches (at most half the offset late). With a round every 2 minutes all four are usually caught (the 5- and 15-minute ones

@@ -1385,7 +1385,8 @@ def curve_block(t, kind="calls"):
     """radar.json's curve block as launch_radar.curve_doc writes it (curve_watch.Book.doc's shape) at the doc's time t: kind calls (eight coins,
     ten calls: H2O called at 60, 75 and 90 % and graduated, one still on the curve, one that did not graduate, a dead one, a pushed one that
     doubled, a risky one, one without a 1 h value, a trap), empty (on, no call yet), off (rounds only, the same calls), on (the push switch on
-    for 75m), xss (a hostile symbol, chip, why and host), hostile (shapes the whitelists must drop)."""
+    for 75m), list (on, the list only: the feed sends no trades, no coin followed on it), xss (a hostile symbol, chip, why and host), hostile
+    (shapes the whitelists must drop)."""
     rng = random.Random(21)
     m = lambda: b58(rng)
     h2o = m()
@@ -1422,6 +1423,9 @@ def curve_block(t, kind="calls"):
         cv.update(state="off", why="rounds only: the watch runs in a loop's spare time", hosts={"pump.fun": "ok", "trades": "off"})
     elif kind == "on":
         cv["push"] = {"variant": "75m", "verdicts": ["ok", "unknown"], "perH": 3, "sent1h": 1}
+    elif kind == "list":
+        cv.update(why="list only: PumpPortal sends coin trades only to paid clients", follow=0, trades=0, hosts={"pump.fun": "ok", "trades": "unavailable"},
+                  recent=[dict(r, buys=None, sells=None) for r in recent])
     elif kind == "xss":
         cv["recent"] = [dict(r, sym=XSS_CURVE, chips=[["bad", XSS_CURVE]]) if i < 2 else r for i, r in enumerate(recent)]
         cv.update(state="limited", why=XSS_CURVE, hosts={"pump.fun": "<b>ok</b>", "trades": "silent"})
@@ -1464,7 +1468,7 @@ def curve_checks(check, tmp, skips, shots=None):
     print("== the curve watch's section on the New tab (About to graduate, paper test)")
     now = int(time.time() * 1000)
     t = now - 30_000
-    blocks = {k: curve_block(t, k) for k in ("calls", "empty", "off", "on", "xss", "hostile")}
+    blocks = {k: curve_block(t, k) for k in ("calls", "empty", "off", "on", "list", "xss", "hostile")}
     docs = {k: dict(radar_doc(now, "good"), curve=b) for k, b in blocks.items()}
     docs["none"] = radar_doc(now, "good")
     docs["bad block"] = dict(radar_doc(now, "good"), curve={"state": "on"})
@@ -1569,6 +1573,14 @@ def curve_checks(check, tmp, skips, shots=None):
           and P.curve_view(cl["empty"]["curve"], t) == {"state": "on", "head": "Curve watch on · 14 coins followed · 9 h watched", "one": True} and P.curve_view(None, t) is None,
           "curve view: the paper test's sentence, 'No curve push goes out while the switch is off.' (switched on: which variant, which checks, how many an hour), "
           "the footnote (rising, the shares, the skipped calls, the progress check), a watch that is off says why, a block without a call is one line")
+    vlist = P.curve_view(cl["list"]["curve"], t)
+    rising = "Rising: 10 or more points of the curve in the 5 minutes before the call, and more purchases than sales. Without the coin's trades (pump.fun's list only) the points alone count."
+    check(cl["list"]["curve"]["state"] == "on" and cl["list"]["curve"]["hosts"] == {"pump.fun": "ok", "trades": "unavailable"}
+          and vlist["head"] == "Curve watch on · list only: PumpPortal sends coin trades only to paid clients · 9 h watched" and "0 coins" not in vlist["head"]
+          and vlist["foot"].startswith(rising) and v["foot"].startswith(rising) and [c["sym"] for c in vlist["coins"] + vlist["more"]] == [c["sym"] for c in co]
+          and P.curve_view(dict(cl["list"]["curve"], recent=[], calls=0), t)["head"] == vlist["head"],
+          "curve view, the list only (the feed sends no coin trades without a paid key): the head says on and why, never '0 coins followed'; the "
+          "variant legend says in one sentence that without trades the points alone count (%r)" % vlist["head"])
     # 3. the page: under the list (after Seen but not clean, before the Track record), escaped, hidden without a block, plain words
     pane = {k: P.curve_section(cl[k]) for k in ("calls", "empty", "off", "on", "xss", "none")}
     full = P.pane({"now": now, "dir": None})
@@ -1605,7 +1617,7 @@ def curve_checks(check, tmp, skips, shots=None):
         py = [[k, cl[k]["curve"] if cl[k] else None, [P.curve_view(cl[k]["curve"] if cl[k] else None, n) for n in nows]] for k, _ in cases]
         diff = [k for (k, a, b), (_, c, d) in zip(py, js or []) if a != c or b != d]
         check(js is not None and js == py and not diff,
-              "node: MemebotRadar.cleanCurve and curveView give Python's clean_curve and curve_view for every block (calls, empty, off, on, xss, hostile, none, "
+              "node: MemebotRadar.cleanCurve and curveView give Python's clean_curve and curve_view for every block (calls, empty, off, on, list only, xss, hostile, none, "
               "one without a time, the night's kept block, lone surrogate halves) at the doc's time, an hour and three hours on (%s)" % (diff or ("same" if js else r.stderr[-300:])))
     # 5. the browser: the build's section and the script's are the same elements; 320, 390 and 1280 px, light and dark; the folds; a status moving on
     try:

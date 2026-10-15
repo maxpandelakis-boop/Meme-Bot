@@ -10,7 +10,8 @@ F1 events (parsing, frames, shapes), F2 one connection and its limits, F3 bounde
 ds_asks, F6 radar runs with the feed (selftest_radar's mock and helpers), F7 radar.yml, the probe and the imports, F8 the curve watch's
 trade subscriptions (subscribeTokenTrade / unsubscribeTokenTrade on the same socket, again after a reconnect, at most FOLLOW_MAX), the
 trades' shape check, the field names logged once per kind, the bounded trade queue; F9 Radar.idle with the fast lane; F10 a server that
-refuses the trade subscriptions (trades off, the graduations go on).
+refuses the trade subscriptions (trades off, the graduations go on); F11 a server that takes them and sends no trade (PumpPortal without a
+paid key: silent after TRADE_SILENT_S, no subscribe or unsubscribe after it, the list-only state on the radar's block).
 """
 import ast, base64, contextlib, hashlib, json, os, re, shutil, socket, struct, sys, tempfile, threading, time
 
@@ -285,6 +286,8 @@ def checks(check, sleep=None):
         with patched(RF, BACKOFF_S=(0.2, 0.2, 0.3, 0.3, 0.3), READ_TIMEOUT_S=0.2, SUB_EVERY_S=0.2):
             f8_trades(check)
             f10_refused(check)
+        with patched(RF, BACKOFF_S=(0.2, 0.2, 0.3, 0.3, 0.3), READ_TIMEOUT_S=0.2, SUB_EVERY_S=0.2, TRADE_SILENT_S=1.5, TRADE_REFUSE_S=0.25):
+            f11_silent(check, tmp)
         f9_fast_idle(check, tmp)
     finally:
         time.sleep = old_sleep
@@ -303,10 +306,12 @@ def f1_events(check):
     wait_for(lambda: st.closes, 2)
     mem = json.dumps([list(f.creates.items()), got])
     check([(e["kind"], e["mint"]) for e in got] == [("create", good[0]), ("create", good[1]), ("migrate", good[0]), ("migrate", good[3])]
-          and all(set(e) <= {"kind", "mint", "t", "creator"} and isinstance(e["t"], int) for e in got) and f.info(good[0]) == {"t": got[0]["t"], "creator": mint(900, "")}
+          and all(set(e) <= {"kind", "mint", "t", "creator", "vtok", "mcs"} and isinstance(e["t"], int) for e in got)
+          and f.info(good[0]) == {"t": got[0]["t"], "creator": mint(900, ""), "vtok": 1.04e9, "mcs": 30.1} and got[0]["vtok"] == 1.04e9 and "vtok" not in got[2]
           and f.info(good[1])["creator"] is None and f.info(good[2]) is None and not re.search(r"Dog Coin|DOGC|ipfs|Bad Mint", mem),
           "creates and graduations become events (base58 mints only: a bad mint, a mint with a newline and a creator that is no address are "
-          "dropped, a buy is ignored); info() gives the receipt time and the creator; no name, symbol or link is kept (%d events)" % len(got))
+          "dropped, a buy is ignored); info() gives the receipt time, the creator and the curve's state in the create (virtual token reserves, "
+          "market cap in SOL: the curve watch's first reading); no name, symbol or link is kept (%d events)" % len(got))
     check([s[1] for s in st.subs] == list(RF.SUBS) and all(s[2] for s in st.subs) and len({id(s[0]) for s in st.subs}) == 1 and st.conns == 1 and st.most == 1,
           "one connection, both subscriptions on it (masked frames): %s" % [s[1]["method"] for s in st.subs])
     check(stopped and stop_s < 3.0 and f.th.daemon and not f.th.is_alive() and st.closes == [1000] and f.state() == "off",
@@ -801,6 +806,149 @@ def f10_refused(check):
           "socket, also when the socket is dropped after it); at the second, trades are off and what is subscribed is dropped (%r)" % ts2["off"])
     f2.stop()
     st2.close()
+
+
+def f11_silent(check, tmp):
+    """A server that takes the trade subscriptions and sends no trade (PumpPortal: coin trades go to paid API-key clients only; the first live
+    run had 38 subscriptions accepted and not one trade in 55 minutes). TRADE_SILENT_S of live trade subscriptions with no trade message
+    at all and trades not refused, trades are silent for the run: no subscribe or unsubscribe goes out any more (also on a new socket),
+    follow() takes nothing, the graduations go on; the radar's block says on, list only. Any trade message or trades refused keep it from
+    happening (a single refusal does not), time without a socket never counts, and a trade that comes after all lifts it."""
+    import selftest_radar as SR
+    print("== live feed F11: a server that takes the trade subscriptions and sends none (silent: no more subscriptions, list only)")
+    good = [mint(120 + i) for i in range(12)]
+    conns = []
+
+    def quiet(i):
+        def go(conn):
+            acks(conn)
+            conns.append(conn)
+            conn.send(migrate(good[10 if i == 0 else 11]))
+            if i == 0:
+                wait_for(lambda: any(x[0] is conn and x[1].get("method") == "unsubscribeTokenTrade" for x in st.subs), 3)
+                wait_for(lambda: f.trade_state()["silent"], 3)
+                threading.Event().wait(0.3)
+                conn.send(migrate(good[9]))
+                conn.c.shutdown(socket.SHUT_RDWR)       # a reconnect after the silence: the new socket asks for no trade
+                return
+            conn.idle()
+        return go
+    st = Stand(quiet)
+    f = RF.LiveFeed(st.url).start()
+    took = f.follow(good[:3])
+    wait_for(lambda: any(x[1].get("method") == "subscribeTokenTrade" for x in st.subs), 3)
+    f.follow(good[1:4])                                  # one change before the silence: an unsubscribe and a subscribe
+    wait_for(lambda: f.trade_state()["silent"], 4)
+    n_at = len([x for x in st.subs if x[1].get("method", "").endswith("TokenTrade")])
+    late = f.follow(good[4:8])                           # after it: nothing is taken and nothing goes out
+    wait_for(lambda: len(conns) >= 2 and f.stats()["migrations"] >= 3, 5)
+    threading.Event().wait(0.6)
+    trade_msgs = [x for x in st.subs if x[1].get("method", "").endswith("TokenTrade")]
+    second = [x[1] for x in st.subs if len(conns) > 1 and x[0] is conns[1]]
+    ts, lines, n = f.trade_state(), f.lines(), f.stats()
+    said = [l for l in lines if "PumpPortal sends coin trades only to paid clients" in l]
+    check(took == good[:3] and ts["silent"] and late == [] and len(trade_msgs) == n_at == 3 and second == list(RF.SUBS) and n["trades"] == 0 and n["trefused"] == 0
+          and len(said) == 1 and "none refused" in said[0] and n["migrations"] >= 3 and f.state() == "ok" and not f.off and ts["shape"] is None,
+          "no trade message in %.1f s of live trade subscriptions and none refused: trades are silent for the run, said once (%r); no subscribe "
+          "or unsubscribe goes out after it (%d trade messages, all before), follow() takes nothing, a new socket asks for the new coins and "
+          "graduations only, and the graduations flow on" % (RF.TRADE_SILENT_S, said[:1], len(trade_msgs)))
+    f.stop()
+    st.close()
+    # a socket dropped (no refusal) before any trade, its reconnect TRADE_SILENT_S after the first subscription: the time without a
+    # socket never counts, the new socket asks for the coins again and the trade that comes on it is taken
+    conns2 = []
+
+    def drop_then_trade(i):
+        def go(conn):
+            acks(conn)
+            conns2.append(conn)
+            sub = lambda: next((x[1] for x in st2.subs if x[0] is conn and x[1].get("method") == "subscribeTokenTrade"), None)
+            wait_for(sub, 3)
+            if i == 0:
+                threading.Event().wait(0.6)             # past TRADE_REFUSE_S: a plain drop, not a refusal
+                conn.c.shutdown(socket.SHUT_RDWR)
+                return
+            if sub():
+                conn.send(trade_msg(sub()["keys"][0]))
+            conn.idle()
+        return go
+    with patched(RF, BACKOFF_S=(1.6, 1.6, 1.6)):
+        st2 = Stand(drop_then_trade)
+        f2 = RF.LiveFeed(st2.url).start()
+        f2.follow(good[:3])
+        wait_for(lambda: f2.stats()["trades"] >= 1 or f2.trade_state()["silent"], 8)
+        ts2, n2 = f2.trade_state(), f2.stats()
+        per = [(conns2.index(c) if c in conns2 else -1, m.get("method")) for c, m, _ in st2.subs]
+        f2.stop()
+        st2.close()
+    check(ts2["silent"] is None and ts2["shape"] is True and n2["trades"] == 1 and n2["trefused"] == 0 and n2["connects"] >= 2
+          and per.count((0, "subscribeTokenTrade")) == 1 and per.count((1, "subscribeTokenTrade")) == 1 and ts2["subbed"] == 3,
+          "a socket dropped before any trade (not a refusal) and back %.1f s later, past the %.1f s of silence: the time without a socket does "
+          "not count, the new socket subscribes the coins again and their trade comes (%d trade, not silent)" % (1.6, RF.TRADE_SILENT_S, n2["trades"]))
+    # sockets that drop a second after their subscriptions (no refusal): their live time adds up to the silence on the second one
+    conns3 = []
+
+    def short_lived(i):
+        def go(conn):
+            acks(conn)
+            conns3.append(conn)
+            if i < 2:
+                wait_for(lambda: any(x[0] is conn and x[1].get("method") == "subscribeTokenTrade" for x in st3.subs), 3)
+                threading.Event().wait(1.0)
+                conn.c.shutdown(socket.SHUT_RDWR)
+                return
+            conn.idle()
+        return go
+    st3 = Stand(short_lived)
+    f3 = RF.LiveFeed(st3.url).start()
+    f3.follow(good[:3])
+    wait_for(lambda: len(conns3) >= 3, 8)
+    threading.Event().wait(0.5)
+    ts3, n3 = f3.trade_state(), f3.stats()
+    per3 = [(conns3.index(c) if c in conns3 else -1, m.get("method")) for c, m, _ in st3.subs]
+    f3.stop()
+    st3.close()
+    check(ts3["silent"] and n3["trefused"] == 0 and (1, "subscribeTokenTrade") in per3 and (2, "subscribeTokenTrade") not in per3
+          and (2, "subscribeMigration") in per3,
+          "sockets that drop a second after their trade subscriptions (no refusal): their live time adds up, silent on the second socket "
+          "(%r); the third asks for the new coins and graduations only" % ts3["silent"])
+    # the rule on its own (no socket): any trade message, trades refused or no subscription on the open socket keep it from happening;
+    # a single refusal does not; a valid trade after it lifts it
+    t = time.time()
+    fa = RF.LiveFeed(None, lambda: 5)
+    fa.tfirst, fa.n["subs"] = t - RF.TRADE_SILENT_S - 1, 3
+    fb = RF.LiveFeed(None, lambda: 5)
+    fb.tfirst, fb.n["trefused"] = t - RF.TRADE_SILENT_S - 1, 1
+    fc = RF.LiveFeed(None, lambda: 5)
+    fc.tfirst, fc.tshape = t - RF.TRADE_SILENT_S - 1, False
+    fd = RF.LiveFeed(None, lambda: 5)
+    fd.tfirst = t - RF.TRADE_SILENT_S + 5
+    fe = RF.LiveFeed(None, lambda: 5)
+    ff = RF.LiveFeed(None, lambda: 5)
+    ff.tlive, ff.tfirst = RF.TRADE_SILENT_S - 1, t - 2      # the earlier sockets' live time and this one's add up
+    fg = RF.LiveFeed(None, lambda: 5)
+    fg.tlive = RF.TRADE_SILENT_S + 50                   # a new socket before its forced sync: no subscription on it yet
+    fh = RF.LiveFeed(None, lambda: 5)
+    fh.tfirst, fh.toff = t - RF.TRADE_SILENT_S - 1, "refused twice"
+    early = (fa.silence(t), fb.silence(t), fc.silence(t), fd.silence(t), fe.silence(t), ff.silence(t), fg.silence(t), fh.silence(t))
+    fa.want = set()
+    fa.handle(json.dumps(trade_msg(good[0])))
+    lifted = fa.trade_state()["silent"] is None and fa.follow(good[:2]) == good[:2] and any("trade came after all" in l for l in fa.lines())
+    check(early == (True, True, False, False, False, True, False, False) and lifted and "1 refused" in fb.trade_state()["silent"],
+          "the silence rule: no trade message while subscriptions were live %g s in all (one socket, or several added up): silent, also after "
+          "a single refusal; a trade message of any shape, trades refused, a shorter time or no subscription on the open socket yet: not "
+          "silent; a valid trade that still comes lifts it (follow() takes the coins again)" % RF.TRADE_SILENT_S)
+    # the radar's block from a silent feed: on, list only, the trades host unavailable, no coin followed
+    T, P, _ = SR.modules()
+    R = SR.unit_radar(T, P, tmp, "rdS11")
+    fs = RF.LiveFeed(None, lambda: 5)
+    fs.tfirst = t - RF.TRADE_SILENT_S - 1
+    fs.silence(t)
+    R.live = fs
+    R.curve_follow(R.clock.now())
+    d = R.curve_doc(R.clock.now())
+    check(d["state"] == "on" and d["why"] == "list only: PumpPortal sends coin trades only to paid clients" and d["hosts"]["trades"] == "unavailable" and d["follow"] == 0,
+          "the radar's curve block from a silent feed: state on (not limited), why %r, the trades host unavailable, no coin followed on the feed" % d["why"])
 
 
 def f9_fast_idle(check, tmp):

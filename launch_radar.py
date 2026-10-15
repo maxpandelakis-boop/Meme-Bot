@@ -37,15 +37,19 @@ one thread, a cycle 100 s at most; `round` is one cycle per start (125 s at most
      unmarked for a later cycle or lane; a coin it gives up on gets the early cycle as before. MEMEBOT_RADAR_FAST=off.
  10. in the same spare time: the CURVE WATCH (curve_watch.py, the pure logic; MEMEBOT_RADAR_CURVE=off switches it off). pump.fun's coins
      still on their bonding curve (radar_src.pf_curve: market cap first, 50 a page, every CURVE_LIST_MS) and the cycle's newest coins are
-     its candidates; the best FOLLOW_MAX are followed live (subscribeTokenTrade on the feed's one socket). A coin that crosses 60, 75 or
-     90 % of its curve is called on paper (with and without a momentum filter, split by a quick-check verdict before any pool exists:
-     dev launches, top holders without the curve's own account, RugCheck without its pool risks, the wallet memory, the dev wallet's age,
-     launch snipers, the X link). Each call is judged 60 minutes later (graduated, the pool's or the curve's price, rugged, doubled, a
-     paper result of TICKET EUR) next to the radar's greens of the same hours: db/memecurve/<UTC hour>.json on radar-data (48 h, the same
-     never-shrink guard), radar.json "curve". A curve push goes out only when radar_curve.json names a variant (curvePush, null = off).
-     Every request ends CURVE_LEAD_MS / 2 before the next round, on the watch's own client (radar_src.SideHttp: a 429 or a refusal it
-     hears never cools or gives up a host for the rounds); a failure, a changed answer or a refused trade feed leaves the radar as it is
-     (the block says what is off); the curve calls' never-shrink guard never holds the radar's own files back.
+     its candidates, the list's readings (and the feed's create) their progress and momentum. The list alone is its normal mode: the best
+     FOLLOW_MAX are asked of the feed (subscribeTokenTrade on its one socket), but PumpPortal sends coin trades only to paid clients, so
+     after radar_feed.TRADE_SILENT_S of subscriptions without one the feed stops asking and the block says "on, list only". A coin that
+     crosses 60, 75 or 90 % of its curve is called on paper (with and without a momentum filter, split by a quick-check verdict before
+     any pool exists: dev launches, top holders without the curve's own account, RugCheck without its pool risks, the wallet memory, the
+     dev wallet's age, launch snipers, the X link). Each call is judged 60 minutes later (graduated, the pool's or the curve's price,
+     rugged, doubled, a paper result of TICKET EUR) next to the radar's greens of the same hours: db/memecurve/<UTC hour>.json on
+     radar-data (48 h, the same never-shrink guard), radar.json "curve". A curve push goes out only when radar_curve.json names a variant
+     (curvePush, null = off). Every request ends CURVE_LEAD_MS / 2 before the next round, on the watch's own client (radar_src.SideHttp:
+     a 429 or a refusal it hears never cools or gives up a host for the rounds). pump.fun's frontend is counted per rolling minute for
+     the rounds, the fast lanes and the watch together (pf_minute): PF_CAP at most, the rounds' and lanes' coin checks leave a round's
+     list pages free, the watch a whole round. A failure, a changed answer or a refused trade feed leaves the radar as it is (the block
+     says what is off); the curve calls' never-shrink guard never holds the radar's own files back.
 The radar never starts another run itself: no successor, no keep-alive. Disabling the workflow stops it (a running loop sees it at its
 next cycle: state off; a disabled workflow refuses every start). A VM runs the loop with --no-github.
 
@@ -151,15 +155,23 @@ PUSH_MARGIN_S = 2.0         # s: a fast lane or a curve push ends this long befo
 PUBLISH_MIN_S = 5.0         # s: the least a radar-data push is given (publish's floor)
 CURVE_ENV = "MEMEBOT_RADAR_CURVE"   # the curve watch (curve_watch.py): on unless 'off' (a loop's spare time only)
 CURVE_CFG = os.path.join(HERE, "radar_curve.json")   # its push switch, read at the start: curvePush null (the default) sends nothing
-CURVE_LIST_MS = 30_000      # pump.fun's curve list (complete=false, market cap first, 50 a page) this often
+CURVE_LIST_MS = 15_000      # pump.fun's curve list (complete=false, market cap first, 50 a page) this often: with no trades from the feed
+                            # the list is the watch's only reading, and at 30 s the first live run saw 77 coins first past a mark (late);
+                            # it fits pump.fun's minute (pf_minute): 4 polls a minute of CURVE_PAGES pages, in the loop's spare time only
 CURVE_PAGES = 2             # pages a poll at most: the second only when half of the first had no trade for curve_watch.STALE_MS
 CURVE_LEAD_MS = 8_000       # no curve request when the grid point is closer than this: a round never waits for the watch
 CURVE_STEP_S = 5.0          # s one curve request may take
 CURVE_FOLLOW_MS = 5_000     # the coins followed live are set again this often
-CURVE_BUDGET = {"pf": (60_000, 12),          # the watch's own requests per window (ms, at most): pump.fun's frontend allows 60 a minute for
-                "rc": (3_600_000, 60),       # everything (the rounds use about 25 a cycle at most, 2 minutes apart), the list takes 2 to 4
-                "swap": (3_600_000, 60),     # of the 12; RugCheck, swap-api and the RPC stay far under what the rounds leave them
-                "rpc": (3_600_000, 40)}
+CURVE_BUDGET = {"list": (60_000, CURVE_PAGES * 60_000 // CURVE_LIST_MS),   # the watch's own requests per window (ms, at most), each
+                "pf": (60_000, 8),           # counted from when it went out: pump.fun's curve list (8: CURVE_PAGES a poll, 4 polls) and apart
+                "rc": (3_600_000, 60),       # from it the quick checks and value fetches on pump.fun (neither takes the other's: 16 a minute
+                "swap": (3_600_000, 60),     # in all, and only within the radar's minute, pf_minute); RugCheck, swap-api and the RPC stay far
+                "rpc": (3_600_000, 40)}      # under what the rounds leave them
+PF_LIMIT = 60               # pump.fun's frontend-api-v3: x-rate-limit-limit 60, reset 60 (research/probe-radar.md), one IP's rounds and watch
+PF_SHARE = 2 / 3            # ... of which the radar sends at most this share in any rolling minute: a 429 there would rest the rounds'
+PF_CAP = int(PF_LIMIT * PF_SHARE)   # pump.fun too. PF_CAP is held where the requests go out (radar_src.RadarHttp.held, both clients)
+PF_KEEP_PAGES = RS.PAGES["pf_graduated"] + RS.PAGES["pf_new"]   # of PF_CAP the rounds' and fast lanes' coin checks leave a round's list
+PF_KEEP_ROUND = PF_KEEP_PAGES + PF_DEEP_CAP                     # pages free, the curve watch a whole round (its pages and deep checks)
 CURVE_RC_TTL = 10 * 60_000  # a curve coin's RugCheck report is asked again after this while it is on the curve
 CURVE_SNIPE_MIN = 15.0      # launch trades are read only for a coin minted this recently (older ones have too many trades to reach it)
 CURVE_PUSH_WAIT_MS = 90_000 # a call may get its push this long after it (its checks may still be on the way)
@@ -459,6 +471,8 @@ class Radar:
         self.step = self.clock.step
         self.lines_log, self.extlog = [], log
         self.http = RS.RadarHttp(a.mock or None, 0.0, log=self.say)
+        self.http.clock = lambda: self.clock.now()       # pump.fun's frontend counted per rolling minute on the radar's clock (pf_room)
+        self.http.held[RS.PF_HOST] = (60_000, PF_CAP)
         self.src = RS.Sources(self.http, self.say)
         self.T = traps or import_opt("traps")
         self.P = peak or import_opt("peak")
@@ -1354,19 +1368,30 @@ class Radar:
     def curve_until(self, t_k):
         return time.time() + max(0.5, min(CURVE_STEP_S, (t_k - self.clock.now() - CURVE_LEAD_MS / 2) / 1000.0))
 
-    def curve_budget(self, kind, now, n=1):
-        """Whether the watch may send n more requests of this kind now (CURVE_BUDGET, rolling windows on the radar's clock)."""
+    def curve_budget(self, kind, n=1):
+        """Whether the watch may send n more requests of this kind now: its own CURVE_BUDGET (rolling windows on the radar's clock, read
+        now) and, on pump.fun's frontend, the radar's minute (pf_room): the watch leaves a whole round free, and its quick checks and
+        value fetches also the list's next poll."""
+        now = self.clock.now()
         win, cap = CURVE_BUDGET[kind]
         q = self.cbud.setdefault(kind, collections.deque())
         while q and now - q[0] >= win:
             q.popleft()
-        return len(q) + n <= cap
+        if len(q) + n > cap:
+            return False
+        return kind not in ("list", "pf") or self.pf_room(n, PF_KEEP_ROUND + (CURVE_PAGES if kind == "pf" else 0))
 
-    def curve_spend(self, kind, now, n0):
-        """The requests sent since the counter stood at n0 go into the kind's window."""
+    def curve_spend(self, kind, n0):
+        """The requests sent since the counter stood at n0 go into the kind's window, each at the time it went out (the client's stamps)."""
         sent = max(0, self.chttp.n - n0)
-        self.cbud.setdefault(kind, collections.deque()).extend([now] * sent)
+        if sent:
+            self.cbud.setdefault(kind, collections.deque()).extend(list(self.chttp.stamps)[-sent:])
         return sent
+
+    def pf_room(self, n, keep):
+        """Whether n more requests to pump.fun's frontend fit the radar's rolling minute with `keep` of PF_CAP left free (the rounds',
+        the fast lanes' and the watch's requests together, counted where they go out: radar_src.RadarHttp.recent)."""
+        return self.http.recent(RS.PF_HOST) + n <= PF_CAP - keep
 
     def curve_tick(self, now, t_k):
         """One tick of the curve watch in the loop's spare time (idle, about every second): pump.fun's curve list every CURVE_LIST_MS,
@@ -1396,12 +1421,12 @@ class Radar:
         self.chttp.new_window()
         got, answered = [], False
         for pg in range(CURVE_PAGES):
-            if not self.curve_budget("pf", now) or not self.curve_room(t_k):
+            if not self.curve_budget("list") or not self.curve_room(t_k):
                 break
             self.chttp.until = self.curve_until(t_k)
             n0 = self.chttp.n
             rows = self.csrc.pf_curve(pg)
-            self.curve_spend("pf", now, n0)
+            self.curve_spend("list", n0)
             if rows is None:
                 break
             answered = True
@@ -1542,7 +1567,7 @@ class Radar:
                     self.curve_verdict(a, now)
                 continue
             name, kind, cost = job
-            if not self.curve_budget(kind, now, cost):
+            if not self.curve_budget(kind, cost):
                 continue
             self.chttp.until = self.curve_until(t_k)
             n0 = self.chttp.n
@@ -1578,16 +1603,17 @@ class Radar:
             else:
                 res = self.csrc.pf_trades(a, tm, pages=3)
                 st["trades"] = res if res is not None else {"many": True, "pages": 0}
-            self.curve_spend(kind, now, n0)
+            self.curve_spend(kind, n0)
             self.curve_verdict(a, now)
             return True
         return False
 
     def curve_value_step(self, now, t_k):
-        """The calls whose value at call + 60 min is due: a coin still on the curve from the trades followed (no request), else ONE pump.fun
-        coin fetch (coins-v3: graduated after all, its curve price, or gone); a graduated coin's pool value from the radar's own later price
-        within curve_watch.POOL_SLACK_MS (the cycles' DexScreener read is the first choice: curve_pool_values). Returns True when a request
-        went out."""
+        """The calls whose value at call + 60 min is due: a coin still on the curve from the trades followed or from the list's first
+        reading at or after the hour (no request; a coin the list read up to the hour waits for its next 2 polls at most), else ONE
+        pump.fun coin fetch (coins-v3: graduated after all, its curve price, or gone); a graduated coin's pool value from the radar's own
+        later price within curve_watch.POOL_SLACK_MS (the cycles' DexScreener read is the first choice: curve_pool_values). Returns True
+        when a request went out."""
         feed_up = self.live is not None and self.live.state() == "ok"
         for a, thr, kind in self.curve.value_due(now):
             cl = self.curve.call(a, thr)
@@ -1606,13 +1632,16 @@ class Radar:
             if v is not None:
                 self.curve.set_value(a, thr, "curve", v[0], px=v[1])
                 continue
-            if not self.curve_budget("pf", now) or not self.curve_room(t_k) or not self.csrc.use("pf_coin_v3"):
+            c = self.curve.coins.get(a) or {}
+            if c.get("grad") is None and now - T_ <= 2 * CURVE_LIST_MS and T_ - (c.get("lpt") or 0) <= 2 * CURVE_LIST_MS and self.csrc.use("pf_curve"):
+                continue                         # read on the list up to the hour: its next poll gives the value, no coin fetch
+            if not self.curve_budget("pf") or not self.curve_room(t_k) or not self.csrc.use("pf_coin_v3"):
                 continue
             self.chttp.until = self.curve_until(t_k)
             n0 = self.chttp.n
             row = self.csrc.pf_coin_raw(a)
             code = self.chttp.code
-            self.curve_spend("pf", now, n0)
+            self.curve_spend("pf", n0)
             if row is None:
                 if code == 404:
                     self.curve.set_value(a, thr, "gone", now)
@@ -1764,19 +1793,22 @@ class Radar:
                 trades = "off"
             elif tsd.get("shape") is False or tsd.get("off"):
                 trades = "refused"
+            elif tsd.get("silent"):
+                trades = "unavailable"           # the feed's silence rule: no trade at all for a keyless client, the list is the normal mode
             elif tsd.get("last") and time.time() - tsd["last"] < 300:
                 trades = "ok"
             elif tsd.get("since") and time.time() - tsd["since"] > 600 and tsd.get("want", 0) >= 5:
-                trades = "silent"
+                trades = "silent"                # no trade for 5 minutes (none ever, or none lately) and the silence rule did not say so
             else:
                 trades = "waiting"
             pf_off = not self.csrc.use("pf_curve")
             state = "off" if not self.curve_live() else ("limited" if pf_off or trades in ("off", "refused", "silent") else "on")
             why = self.curve_why if not self.curve_on else "rounds only: the watch runs in a loop's spare time" if self.one_round else \
                 ("pump.fun's curve list is off (%s)" % self.csrc.off_why.get("pf_curve", "switched off") if pf_off else
-                 {"off": "no live trades (the feed is off): the list every 30 s only",
+                 {"off": "no live trades (the feed is off): the list every %d s only" % (CURVE_LIST_MS // 1000),
                   "refused": "the feed refused the trade subscriptions: the list only" if tsd and tsd.get("off") else "the feed's trades failed their check: the list only",
-                  "silent": "no trade came for the coins followed: the list only"}.get(trades, ""))
+                  "unavailable": "list only: PumpPortal sends coin trades only to paid clients",
+                  "silent": "no trade for the coins followed lately: the list only"}.get(trades, ""))
             sol = self.curve.sol()
             cand = sum(1 for c in self.curve.coins.values() if c.get("grad") is None and (c.get("p") or 0) >= self.CW.FOLLOW_MIN)
             st = {"state": state, "why": why[:160], "follow": len(self.curve.fol), "cand": cand, "trades": self.curve.n["trades"], "polls": self.curve.n["polls"],
@@ -2106,8 +2138,9 @@ class Radar:
                 self.closes[a] = (age, [c[4] for c in cands if c[4]][:15])
 
     def tier1(self, live, now):
-        """RugCheck report (cached 5 min while the coin is under 10 min), pump.fun's coin facts when no list gave a mint time, DexScreener's
-        paid profile: at most TIER1_CAP requests, coins without a report first. Returns whether a new report came."""
+        """RugCheck report (cached 5 min while the coin is under 10 min), pump.fun's coin facts when no list gave a mint time (while
+        pump.fun's minute leaves a round's list pages free: pf_room), DexScreener's paid profile: at most TIER1_CAP requests, coins without
+        a report first. Returns whether a new report came."""
         n0, got = self.http.n, False
         order = sorted(live, key=lambda r: (0 if not isinstance((self.cache["rc"].get(r["a"]) or {}).get("rep"), dict) else 1, r["age"]))
         paid_ask = []
@@ -2125,7 +2158,7 @@ class Radar:
                 elif not (isinstance(c, dict) and isinstance(c.get("rep"), dict)) and st in ("404", "429", "err"):
                     self.cache["rc"][a] = {"t": now, "st": st, "rep": None}     # an older report stays when a refresh fails
                 w["rc"] = st if st in ("ok", "404", "429", "err") else "pending"
-            if not self.mint_of(a, r) and self.pumpish(r) and not w.get("pfcoin") and self.http.n - n0 < TIER1_CAP:
+            if not self.mint_of(a, r) and self.pumpish(r) and not w.get("pfcoin") and self.http.n - n0 < TIER1_CAP and self.pf_room(1, PF_KEEP_PAGES):
                 w["pfcoin"] = 1                  # the mint time: pump.fun's list row, then Jupiter's createdAt, then coins-v3, then the RPC
                 self.src.pf_coin(a, self.cache["pf"], now)
             if self.paid_due(a, now):
@@ -2163,8 +2196,9 @@ class Radar:
         """Coins without a hard trap first, each coin's checks once (a check that misses the budget stays pending for the next cycle):
         did the creator sell (fetch.dev_check, at most DEV_RPC_CAP RPC calls), the mint time from the chain for the best coin without
         one (the last fallback, 3 pages at most), the dev wallet's age (one RPC call) and earlier launches (pump.fun coins?creator=),
-        swap-api candles from the mint, the launch trades (3 pages at most) and the top holders' entry times (pump.fun), the top 10
-        holders' age (one RPC call each) and the funding of the fresh ones (at most FUND_CAP a cycle)."""
+        swap-api candles from the mint, the launch trades (3 pages at most) and the top holders' entry times (pump.fun: PF_DEEP_CAP
+        frontend calls a cycle or lane, within pump.fun's minute: pf_room), the top 10 holders' age (one RPC call each) and the funding of
+        the fresh ones (at most FUND_CAP a cycle)."""
         coins = [(r, self.prelim(r, now)) for r in live + finish]
         coins.sort(key=lambda x: (1 if x[1] == "trap" else 0, x[0]["age"]))
         todo = [r for r, _ in coins if (self.work.get(r["a"]) or {}).get("dev") not in ("ok", "skip")]
@@ -2219,7 +2253,8 @@ class Radar:
                 w["devage"] = "ok" if creator in wallets else "pending"
             if creator and self.src.use("pf_dev_history"):
                 dc = self.cache["dev"].get(creator)
-                if (not isinstance(dc, dict) or "rows" not in dc or now - (num(dc.get("t")) or 0) > DEV_TTL) and pf_deep > 0:
+                if (not isinstance(dc, dict) or "rows" not in dc or now - (num(dc.get("t")) or 0) > DEV_TTL) and pf_deep >= 2 \
+                        and self.pf_room(2, PF_KEEP_PAGES):      # two frontend calls at most (coins?creator, then coins-v2's count)
                     n0 = self.http.n
                     res = self.src.pf_dev(creator, now)
                     pf_deep -= max(1, self.http.n - n0)
@@ -2233,7 +2268,7 @@ class Radar:
                     swap -= max(1, self.http.n - n0)
                     if tr is not None:
                         w["trades"] = tr
-                if self.src.use("pf_top_holders") and "pfholders" not in w and mint and pf_deep > 0:
+                if self.src.use("pf_top_holders") and "pfholders" not in w and mint and pf_deep > 0 and self.pf_room(1, PF_KEEP_PAGES):
                     n0 = self.http.n
                     ho = self.src.pf_holders(a, mint, skip=self.pools_of(a, r))
                     pf_deep -= max(1, self.http.n - n0)
@@ -3120,6 +3155,23 @@ def finish_from(prev, state, now, why, run_id, start, end, source, hw):
            "hosts": {}, "notes": [], "lines": []}
     doc.update(keep)
     return doc
+
+
+def pf_minute():
+    """pump.fun's frontend (frontend-api-v3, PF_LIMIT a minute per IP) as the radar shares it in any rolling minute, every request of the
+    rounds, the fast lanes and the curve watch counted when it goes out (radar_src.RadarHttp.held; one count for both clients):
+      cap      PF_CAP in all: a request past it is not sent (a round's list pages too, which the levels below leave room for)
+      checks   the level up to which the rounds' and fast lanes' coin checks go (tier 1's coins-v3, tier 2's dev launches and top holders,
+               PF_DEEP_CAP a round or lane, a dev check only with 2 left): a round's list pages (`pages`) stay free
+      watch    the level up to which the curve watch goes: a whole round (`round`: its pages and deep checks) stays free; its quick checks
+               and value fetches also leave the list's next poll (CURVE_PAGES)
+      list, own  the watch's own minute: its list (CURVE_PAGES a poll every CURVE_LIST_MS) and apart from it its checks and fetches
+      typical  a minute with a round and the watch at their caps (no fast lane)
+    -> {cap, checks, watch, pages, round, list, own, typical, limit}"""
+    pages, rnd = PF_KEEP_PAGES, PF_KEEP_ROUND
+    lst, own = CURVE_BUDGET["list"][1], CURVE_BUDGET["pf"][1]
+    return {"cap": PF_CAP, "checks": PF_CAP - pages, "watch": PF_CAP - rnd, "pages": pages, "round": rnd, "list": lst, "own": own,
+            "typical": rnd + lst + own, "limit": PF_LIMIT}
 
 
 def curve_cfg(CW=None, path=None):

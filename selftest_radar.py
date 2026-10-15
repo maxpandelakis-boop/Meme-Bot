@@ -2484,7 +2484,8 @@ def fastpush_checks(check, LR, T, P, tmp):
 
 def curve_doc_checks(check, LR, T, P, url, mock, tmp):
     """R16: radar.json's curve block (curve_watch.Book.doc) in a loop run: there in every cycle, within the doc's size, push off, no
-    curve request with the fake clock (the watch runs in a loop's spare time only); MEMEBOT_RADAR_CURVE=off says off."""
+    curve request with the fake clock (the watch runs in a loop's spare time only); MEMEBOT_RADAR_CURVE=off says off; a feed that sends no
+    trades (silent) makes it on, list only; calls stored before the momentum's form was kept come back from radar-data and count."""
     print("== launch radar R16: radar.json's curve block")
     out = {}
     for name, val in (("on", None), ("off", "off")):
@@ -2504,6 +2505,38 @@ def curve_doc_checks(check, LR, T, P, url, mock, tmp):
           % (con.get("why"), out["on"][2]))
     check(out["off"][0] == 0 and cof.get("state") == "off" and "MEMEBOT_RADAR_CURVE=off" in cof.get("why", "") and out["off"][3] == [],
           "MEMEBOT_RADAR_CURVE=off: the block says off and why, nothing asked")
+    import curve_watch as CW
+    import radar_feed as RF
+    t0 = T0 + 41 * H
+    hour = CW.utc_hour(t0 - 30 * MIN)
+    a1, a2 = addr(9301), addr(9302)
+    oc = lambda thr, t, **kw: dict({"t": t, "thr": thr, "via": "trade", "prog": thr + 1.0, "px": 1e-7, "mcs": 100.0, "sol": 150.0, "mcu": 15000, "age": 20.0,
+                                    "m5": {"pts": 14.0, "buys": 30, "sells": 9}, "mom": True, "v": "ok", "chips": [], "hi": 1.0, "out": {}, "push": None}, **kw)
+    cdoc = {"v": 1, "hour": hour, "t": CW.hour_ms(hour), "upd": t0 - 20 * MIN, "polls": 40,
+            "coins": {a1: {"mint": a1, "sym": "OLDA", "calls": {"75": oc(75, t0 - 30 * MIN)}},
+                      a2: {"mint": a2, "sym": "OLDB", "calls": {"60": oc(60, t0 - 25 * MIN, m5={"pts": None, "buys": None, "sells": None}, mom=None, via="list")}}}}
+    rem = fresh_remote(T, tmp, "cdold", t0)
+    put_branch(rem, "radar-data", {"db/memecurve/%s.json" % hour: cdoc, "radar.json": {"v": 1, "kind": "radar", "t": t0 - MIN}}, tmp)
+    R = unit_radar(T, P, tmp, "rdCDold", t0, extra=["--remote", rem])
+    R.restore()
+    fs = RF.LiveFeed(None, lambda: t0)                  # the live feed after its silence rule (no trade TRADE_SILENT_S after the first subscription)
+    fs.tfirst, fs.n["subs"] = time.time() - RF.TRADE_SILENT_S - 1, 3
+    fs.silence(time.time())
+    R.live = fs
+    R.curve_follow(R.clock.now())
+    doc = R.build_doc("running", [], [], [], R.clock.now(), R.clock.now() + 120_000, 1.0, 0)
+    landed = R.publish(doc)
+    back = json.loads(branch_files(rem, "radar-data").get("db/memecurve/%s.json" % hour) or b"{}")
+    cv = doc.get("curve") or {}
+    var = {r["id"]: r["n"] for r in cv.get("variants") or []}
+    b75 = ((back.get("coins") or {}).get(a1) or {}).get("calls", {}).get("75") or {}
+    check(R.restore_state == "ok" and landed and not R.ckept and cv.get("calls") == 2 and var.get("75m") == 1 and var.get("60") == 1 and var.get("60m") == 0
+          and sorted(back.get("coins") or {}) == sorted([a1, a2]) and b75.get("mom") is True and "momBy" not in b75
+          and cv.get("state") == "on" and cv.get("why") == "list only: PumpPortal sends coin trades only to paid clients" and cv.get("hosts", {}).get("trades") == "unavailable"
+          and cv.get("follow") == 0 and "every %d s" % (LR.CURVE_LIST_MS // 1000) in con.get("why", ""),
+          "calls stored before the momentum's form was kept come back from radar-data, count in the variants as before (75%% rising %s) and go back "
+          "whole; with the live feed silent (no trade for a client without a paid key) the block is on, %r, trades unavailable, and without "
+          "the feed it says the list every %d s" % (var.get("75m"), cv.get("why"), LR.CURVE_LIST_MS // 1000))
 
 
 def F_RPC():

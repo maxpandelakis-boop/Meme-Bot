@@ -957,6 +957,13 @@ def curve_office_checks(check, skips, tmp, utc):
           and PO.curve_hosts(dict(cv, state="weird")) == {"curve watch": "off"},
           "radar panel: the curve watch's hosts follow the radar's twelve, named 'Curve list (pump.fun)' and 'Curve trades (live feed)' (waiting is amber "
           "as limited), one 'Curve watch · off' while it is off, none without a block; a host state that is not lower-case letters is dropped (%s)" % chips)
+    lo = PO.radar_clean(radar_doc(t, hosts={"rugcheck": "limited", "dexscreener": "ok"}, curve=dict(cv, why="list only: PumpPortal sends coin trades only to paid clients",
+                                                                                              follow=0, hosts={"pump.fun": "ok", "trades": "unavailable"})))
+    lchips = PO.host_chips(lo["hosts"])
+    check(lo["hosts"]["curve trades"] == "unavailable" and 'class="chip ">Curve trades (live feed) · unavailable' in lchips
+          and lchips.index("RugCheck") < lchips.index("Curve list") and "warn\">Curve trades" not in lchips and "bad\">Curve trades" not in lchips,
+          "radar panel, the curve watch on the list only (the feed sends no coin trades without a paid key): 'Curve trades (live feed) · unavailable' "
+          "is a plain chip among the fine ones, never amber or red; a limited host still comes first")
     # the build and the script in Chromium: the panel's chips and the desk's chat from a page whose radar doc carries a fresh curve call
     try:
         from playwright.sync_api import sync_playwright
@@ -965,7 +972,8 @@ def curve_office_checks(check, skips, tmp, utc):
         return
     now = int(time.time() * 1000)
     dcv = os.path.join(tmp, "curveo")
-    mk_db(dcv, now=now, radar=chat_doc(now - MIN, curve=curve_cv(now - MIN)))
+    mk_db(dcv, now=now, radar=chat_doc(now - MIN, curve=curve_cv(now - MIN, follow=0, why="list only: PumpPortal sends coin trades only to paid clients",
+                                                                  hosts={"pump.fun": "ok", "trades": "unavailable"})))
     page_cv = build(dcv, now=now)
     exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
     errs = []
@@ -976,15 +984,19 @@ def curve_office_checks(check, skips, tmp, utc):
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
         pg.goto(PAGES)
-        built = pg.evaluate("[document.querySelector('[data-ext-hosts=\"radar\"]').textContent, Array.from(document.querySelectorAll('[data-pd-chat] li')).map(l => l.textContent)]")
+        q = ("[document.querySelector('[data-ext-hosts=\"radar\"]').textContent, Array.from(document.querySelectorAll('[data-pd-chat] li')).map(l => l.textContent), "
+             "Array.from(document.querySelectorAll('[data-ext-hosts=\"radar\"] .chip')).filter(c => /Curve trades/.test(c.textContent)).map(c => c.className)]")
+        built = pg.evaluate(q)
         pg.evaluate("document.getElementById('tab-office').click()")
         pg.wait_for_timeout(1500)
-        live = pg.evaluate("[document.querySelector('[data-ext-hosts=\"radar\"]').textContent, Array.from(document.querySelectorAll('[data-pd-chat] li')).map(l => l.textContent)]")
+        live = pg.evaluate(q)
         br.close()
-    check("Curve list (pump.fun) · ok" in live[0] and "Curve trades (live feed) · waiting" in live[0] and "Curve list (pump.fun) · ok" in built[0]
+    check("Curve list (pump.fun) · ok" in live[0] and "Curve trades (live feed) · unavailable" in live[0] and "Curve list (pump.fun) · ok" in built[0]
+          and built[2] == live[2] == ["chip "]
           and "Scout: On the curve: H2O at 82%, 14 min after mint" + OKW in live[1] and "Scout: On the curve: H2O at 82%, 14 min after mint" + OKW in built[1] and not errs,
-          "browser: the radar panel lists the curve watch's hosts and the desk's chat has Scout's curve line, in the page as built and after the script's "
-          "redraw from the radar's event (%s | %s)" % (live[0][-90:], [x for x in live[1] if "curve" in x]))
+          "browser: the radar panel lists the curve watch's hosts (the trades unavailable on the list only: a plain chip, built and redrawn) and the "
+          "desk's chat has Scout's curve line, in the page as built and after the script's redraw from the radar's event (%s | %s)"
+          % (live[0][-90:], [x for x in live[1] if "curve" in x]))
 
 
 def browser_checks(check, skips, d1, tmp):

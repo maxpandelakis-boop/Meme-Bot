@@ -10,8 +10,12 @@ pool at 10:53:32, the radar's push at 10:54:32 at 4.131e-05, 5.583e-05 a minute 
 
 What launch_radar.py feeds it (no request, no thread, no clock of its own; every time is the caller's ms):
   Book.rows(rows, now, src, info)    pump.fun list rows (the curve list sorted by market cap, the radar's newest-coins list): candidates,
-                                     their progress, facts (mint time, creator, X link, socials) and graduations (complete)
-  Book.trade(ev)                     one trade of a followed coin from the live feed (radar_feed's trade events, replayed in order)
+                                     their progress, facts (mint time, creator, X link, socials) and graduations (complete); info(mint):
+                                     the feed's create (its time, creator and curve state: a new coin's first progress reading)
+  Book.trade(ev)                     one trade of a followed coin from the live feed (radar_feed's trade events, replayed in order). The
+                                     list alone is the normal mode: PumpPortal sends coin trades only to paid API-key clients (none came
+                                     in the first live run, 15 Oct), so the book is fed by the lists and the trade path stays for a feed
+                                     that does send them
   Book.migrate(mint, t, via)         a graduation (the feed's migrate event, the list's complete flag, a coin fetch)
   Book.follow(now) / set_follow()    the coins to follow live (subscribeTokenTrade, at most FOLLOW_MAX), and which ones are followed
   Book.check_order(now)              the coins whose quick checks are due (the caller runs them and sets the verdict: set_check)
@@ -28,14 +32,16 @@ a coin first seen above a threshold is not called for it, only counted as "late"
 threshold (the first crossing): time, progress, market cap (SOL, USD when the SOL price is known), price (SOL per token), minutes since
 the mint, the momentum numbers (progress points gained and buys/sells in the last MOM_WIN_MS) and the quick-check verdict at that moment
 (a verdict that comes within LATE_MS of a call made without one is kept beside it, with the price of that moment). Variants on paper,
-side by side: each threshold with and without the momentum filter (at the crossing: MOM_PTS points or more in 5 minutes and more buys
-than sells), each split by the verdict ok / risky / trap / unknown (a late verdict's call entered at its own price).
+side by side: each threshold with and without the momentum filter (at the crossing: MOM_PTS points or more in 5 minutes, and more buys
+than sells when the coin's trades are known; from the list's readings alone, without trades, the points alone; the call keeps which in
+momBy, "trades" or "list"), each split by the verdict ok / risky / trap / unknown (a late verdict's call entered at its own price).
 Outcomes (judged 60 minutes after the call): graduated or not and how many minutes later (only when someone saw it: an hour nobody
 watched is unseen, never "did not graduate"), the price at the graduation, the value at call + 60 min (the pool's DexScreener price,
-converted at the call's SOL price, or the curve price), the peak within the hour, rugged and doubled by traps.outcome's rules as the
-greens are (judged: gone, dead or 0.1x or less at 60 minutes; 2x to 30x within the hour and not gone or dead at 60), and a paper result:
-TICKET EUR in at the call price plus SLIP (stated slippage) with the paper fees, valued at 60 minutes (gone or a dead pool 0, a dead curve
-at its curve price: it buys back). A value nobody could read is missing, never 0.
+converted at the call's SOL price, or the curve price: from the trades, the list's first reading after the hour or a coin fetch), the
+peak within the hour (the list's readings and the trades on the curve, the radar's prices of the pool), rugged and doubled by
+traps.outcome's rules as the greens are (judged: gone, dead or 0.1x or less at 60 minutes; 2x to 30x within the hour and not gone or
+dead at 60), and a paper result: TICKET EUR in at the call price plus SLIP (stated slippage) with the paper fees, valued at 60 minutes
+(gone or a dead pool 0, a dead curve at its curve price: it buys back). A value nobody could read is missing, never 0.
 Hindsight only: nothing here changes the radar's verdicts, its points, its list or its pushes. Standard library and memebot (read only).
 """
 import collections, datetime as dt, json, math, os, re, sys
@@ -64,8 +70,13 @@ THRESHOLDS = (60, 75, 90)   # % of the curve sold: a 60 % call has up to 4.6x of
 MOM_WIN_MS = 5 * MIN        # the momentum window
 MOM_PTS = 10.0              # progress points gained in it (a pace that finishes 75 -> 100 % within about 12 minutes, the records' median
                             # graduating coin's pace) ...
-                            # ... and more buys than sells in it (trades followed live; without them momentum is unknown, never yes)
+                            # ... and more buys than sells in it when the coin's trades are followed live (momBy "trades"); without them
+                            # (pump.fun's list only, the normal mode) the points alone (momBy "list"); no reading: unknown, never yes
 MOM_COVER_MS = 2 * MIN      # the least of the window the readings must cover (a coin followed for a minute has no momentum reading)
+MOM_STALE_MS = 2 * MIN      # the reading the gain counts from is at most this long before the window's start (a round's gap in the list
+                            # polls fits; a coin back on the list after a long while, or a create an hour old, gives no gain spread
+                            # over a longer time than the window)
+MOM_BY = ("list", "trades") # which momentum a call had: the points alone (no trades known) or the points and more buys than sells
 CROSS_WIN_MS = 10 * MIN     # a reading under the threshold this recent makes the next one over it a crossing
 VERDICTS = ("ok", "risky", "trap", "unknown")
 VARIANT_RE = re.compile(r"^(60|75|90)(m?)$")
@@ -396,7 +407,8 @@ class Book:
         if c is None:
             c = self.coins[mint] = {"mint": mint, "sym": "", "name": "", "creator": None, "tm": None, "x": "", "soc": None, "curve": [], "seen": now,
                                     "pts": collections.deque(maxlen=PTS_KEEP), "tr": collections.deque(), "p": None, "pt": None, "praw": None,
-                                    "px": None, "mcs": None, "ltr": None, "t0tr": None, "above": {}, "grad": None, "csold": None, "chk": None, "src": None}
+                                    "px": None, "mcs": None, "ltr": None, "t0tr": None, "above": {}, "grad": None, "csold": None, "chk": None, "src": None,
+                                    "lpt": None}
         return c
 
     def sol(self):
@@ -405,8 +417,8 @@ class Book:
 
     def rows(self, rows, now, src="list", info=None):
         """pump.fun rows: candidates with their facts and a progress reading at now (a curve's price holds between trades, so the state
-        at its last trade is its state now); a complete row graduates a coin the book knows. info(mint): the feed's create facts {t,
-        creator} for a missing mint time or creator. Returns the rows read."""
+        at its last trade is its state now; it moves the open calls' peak and value track as a trade does); a complete row graduates a
+        coin the book knows. info(mint): the feed's create facts {t, creator} for a missing mint time or creator. Returns the rows read."""
         got = 0
         for r in rows or []:
             f = row_facts(r, self.sol())
@@ -430,10 +442,12 @@ class Book:
                 if f.get(k) not in (None, ""):
                     c[k] = f[k]
             c["curve"] = list(dict.fromkeys(c["curve"] + f["curve"]))[:4]
-            if info and (not c["tm"] or not c["creator"]):
+            if info and (not c["tm"] or not c["creator"] or (c["pt"] is None and not c["pts"])):
                 fi = info(a) or {}
                 c["tm"] = c["tm"] or ms_of(fi.get("t"))
                 c["creator"] = c["creator"] or (fi.get("creator") if isinstance(fi.get("creator"), str) and B58.fullmatch(fi["creator"]) else None)
+                if c["pt"] is None and not c["pts"]:
+                    self.first_reading(c, fi, now)
             if f["ltt"]:
                 c["ltt"] = max(c.get("ltt") or 0, f["ltt"])
             if f["praw"] is None or c.get("grad") is not None:
@@ -443,6 +457,18 @@ class Book:
             self.point(c, now, clamp(f["praw"] * self.scale), (f["mcs"] or 0) / SUPPLY or None, f["mcs"], "list")
         self.n["rows"] += got
         return got
+
+    def first_reading(self, c, fi, now):
+        """A new coin's create on the feed (fi: {t, vtok, mcs}) as its first progress reading, before any list reading: for momentum only
+        (kept in its readings, never the reading under a mark that makes the next one a crossing: a coin first listed past a mark was not
+        seen crossing it)."""
+        t = ms_of(fi.get("t"))
+        raw = raw_vt(fi.get("vtok"))
+        if raw is None:
+            raw = raw_mc(fi.get("mcs"))
+        p = clamp(raw * self.scale) if raw is not None else None
+        if t and p is not None and t < now:
+            c["pts"].append((t, p))
 
     def trade(self, ev):
         """One trade of a followed coin (radar_feed's event {mint, t, side, sol, tok, vsol, vtok, mcs, who, pool}): a curve trade (pool pump or
@@ -474,23 +500,32 @@ class Book:
         px = mcs / SUPPLY if mcs and mcs > 0 else None
         c["ltr"] = (t, px, mcs, praw)
         if px:
-            for thr in THRESHOLDS:
-                k = (a, thr)
-                cl = self.call(a, thr)
-                if cl is None or cl.get("out", {}).get("x60") is not None or not num(cl.get("px")):
-                    continue
-                v = self.vtrack.setdefault(k, {})
-                if t <= cl["t"] + VALUE_MS:
-                    v["last"] = (t, px)
-                    cl["hi"] = round(max(num(cl.get("hi")) or 1.0, px / cl["px"]), 4)
-                    lt = cl.get("late")
-                    if isinstance(lt, dict) and num(lt.get("px")) and t >= lt["t"]:
-                        lt["hi"] = round(max(num(lt.get("hi")) or 1.0, px / lt["px"]), 4)
-                elif "after" not in v:
-                    v["after"] = (t, px, self.unbroken(a, v["last"][0], t))
+            self.track(a, t, px, "trade")
         if praw is None:
             return []
         return self.point(c, t, clamp(praw * self.scale), px, mcs, "trade")
+
+    def track(self, a, t, px, via):
+        """A price reading of a coin (a curve trade, or a list reading: the list alone is the normal mode) moves its open calls: within the
+        hour their peak (the call's and a late verdict's since its time) and the value track's last price; after it, a trade's first price
+        with whether every trade since the last one was seen (after), or the list's first reading at or after the hour (list: the value as a
+        coin fetch then would read it)."""
+        for thr in THRESHOLDS:
+            cl = self.call(a, thr)
+            if cl is None or cl.get("out", {}).get("x60") is not None or not num(cl.get("px")):
+                continue
+            v = self.vtrack.setdefault((a, thr), {})
+            T = cl["t"] + VALUE_MS
+            if t <= T:
+                v["last"] = (t, px)
+                cl["hi"] = round(max(num(cl.get("hi")) or 1.0, px / cl["px"]), 4)
+                lt = cl.get("late")
+                if isinstance(lt, dict) and num(lt.get("px")) and t >= lt["t"]:
+                    lt["hi"] = round(max(num(lt.get("hi")) or 1.0, px / lt["px"]), 4)
+            if via == "list" and t >= T and "list" not in v:
+                v["list"] = (int(t), px)
+            elif via == "trade" and t > T and "after" not in v:
+                v["after"] = (t, px, "last" in v and self.unbroken(a, v["last"][0], t))
 
     def point(self, c, t, p, px, mcs, via):
         """A progress reading: kept for momentum, and a crossing of a threshold (a reading under it at most CROSS_WIN_MS before) makes a call.
@@ -499,6 +534,10 @@ class Book:
         first poll's coins above a mark were past it long ago, stalled ones too). Returns the new calls."""
         if p is None or (c["pt"] is not None and t < c["pt"]):
             return []
+        if via == "list":
+            c["lpt"] = t
+            if px:
+                self.track(c["mint"], t, px, "list")     # the open calls' peak and value track (a trade's own reading moved them already)
         prev, prev_t = c["p"], c["pt"]
         c["pts"].append((t, p))
         c["p"], c["pt"], c["seen"] = p, t, max(c.get("seen") or 0, t)
@@ -519,8 +558,9 @@ class Book:
         return new
 
     def momentum(self, c, t):
-        """{pts: progress gained in the last MOM_WIN_MS (from the last reading at or before its start, or the first reading when that one
-        covers MOM_COVER_MS), buys, sells (trades in the window, when the trades followed cover MOM_COVER_MS)}; None = not known."""
+        """{pts: progress gained in the last MOM_WIN_MS (from the last reading at or before its start when that one is at most MOM_STALE_MS
+        older, else the first reading inside the window when it covers MOM_COVER_MS; the readings are the list's polls, the create's and the
+        trades'), buys, sells (trades in the window, when the trades followed cover MOM_COVER_MS)}; None = not known."""
         pts = list(c["pts"])
         base = None
         for tp, pp in pts:
@@ -528,8 +568,12 @@ class Book:
                 base = (tp, pp)
             else:
                 break
-        if base is None and pts and t - pts[0][0] >= MOM_COVER_MS:
-            base = pts[0]
+        if base is not None and base[0] < t - MOM_WIN_MS - MOM_STALE_MS:
+            base = None                          # too old: the gain since it says nothing about the last 5 minutes
+        if base is None:
+            inside = [x for x in pts if t - MOM_WIN_MS < x[0] <= t]
+            if inside and t - inside[0][0] >= MOM_COVER_MS:
+                base = inside[0]
         gain = round(c["p"] - base[1], 2) if base and c["p"] is not None else None
         buys = sells = None
         if c["t0tr"] is not None and t - c["t0tr"] >= MOM_COVER_MS:
@@ -539,12 +583,14 @@ class Book:
 
     def make_call(self, c, thr, t, p, px, mcs, via):
         m5 = self.momentum(c, t)
-        mom = None if m5["pts"] is None or m5["buys"] is None else bool(m5["pts"] >= MOM_PTS and m5["buys"] > m5["sells"])
+        by = None if m5["pts"] is None else "list" if m5["buys"] is None else "trades"
+        mom = None if by is None else bool(m5["pts"] >= MOM_PTS and (by == "list" or m5["buys"] > m5["sells"]))
         sol = self.sol()
         chk = c.get("chk") or {}
         call = {"t": int(t), "thr": thr, "via": via, "prog": round(p, 2), "px": sig(px), "mcs": fin(mcs, 2), "sol": fin(sol, 2),
                 "mcu": round(mcs * sol) if mcs and sol else None, "age": round((t - c["tm"]) / MIN, 1) if c.get("tm") and t >= c["tm"] else None,
-                "m5": m5, "mom": mom, "v": chk.get("v") or "unknown", "chips": list(chk.get("chips") or [])[:6], "hi": 1.0, "out": {}, "push": None}
+                "m5": m5, "mom": mom, "momBy": by, "v": chk.get("v") or "unknown", "chips": list(chk.get("chips") or [])[:6], "hi": 1.0, "out": {},
+                "push": None}
         d = self.hour_doc(t)
         a = c["mint"]
         h = self.call_hour.get(a)
@@ -697,15 +743,16 @@ class Book:
     def curve_value(self, mint, thr, now, followed):
         """The curve price at call + VALUE_MS from the trades followed: the price after the last trade at or before it (a curve's price
         holds between trades), when every trade from that one to the hour was seen (unbroken): a trade after the hour came while the coin
-        was followed without a break, or it is still followed so (followed: the feed is up). Else None (a coin fetch reads it) -> (t, px)."""
+        was followed without a break, or it is still followed so (followed: the feed is up). Else the list's first reading at or after the
+        hour (as a coin fetch then would read it). Else None (a coin fetch reads it) -> (t, px)."""
         cl = self.call(mint, thr)
         v = self.vtrack.get((mint, thr)) or {}
-        if cl is None or "last" not in v:
+        if cl is None:
             return None
         T = cl["t"] + VALUE_MS
-        if (v.get("after") or (0, 0, False))[2] or (followed and self.unbroken(mint, v["last"][0], T)):
+        if "last" in v and ((v.get("after") or (0, 0, False))[2] or (followed and self.unbroken(mint, v["last"][0], T))):
             return (T, v["last"][1])
-        return None
+        return v.get("list")
 
     def set_value(self, mint, thr, how, t, px=None, liq=None, sol=None, pool_pts=()):
         """A call's value at call + VALUE_MS: how "curve" (px in SOL per token), "pool" (px in USD, liq in USD, converted at the call's SOL
@@ -897,7 +944,8 @@ def call_ok(k, c):
     """A stored call (key k in its coin's calls) as the book takes it, else None: a dict with an int time and a threshold of THRESHOLDS
     under its own key. The rest is repaired, never read as 0: a number in another form becomes one or none (an outcome's is dropped),
     an outcome that is not a dict is none yet, m5 a dict, chips a list, a verdict that is none of VERDICTS unknown, a late verdict whole
-    or none. A copy: the stored doc is not changed."""
+    or none, a momentum that is no bool none, its form (momBy) one of MOM_BY or left out (a call stored before it was kept: its
+    momentum, if any, was the trades'). A copy: the stored doc is not changed."""
     if not isinstance(c, dict) or isinstance(c.get("t"), bool) or not isinstance(c.get("t"), int) or c.get("thr") not in THRESHOLDS or str(c.get("thr")) != str(k):
         return None
     c = dict(c)
@@ -913,6 +961,10 @@ def call_ok(k, c):
     if isinstance(lt, dict) and lt.get("v") in VERDICTS and isinstance(lt.get("t"), int) and not isinstance(lt.get("t"), bool) and num(lt.get("px")):
         c["late"] = dict(lt, px=num(lt["px"]), hi=num(lt.get("hi")))
     c["m5"] = c.get("m5") if isinstance(c.get("m5"), dict) else {}
+    if not isinstance(c.get("mom"), bool):
+        c["mom"] = None
+    if c.get("momBy") not in MOM_BY:
+        c.pop("momBy", None)
     c["chips"] = [x for x in c.get("chips") if isinstance(x, (list, tuple)) and len(x) >= 2][:6] if isinstance(c.get("chips"), list) else []
     if c.get("v") not in VERDICTS:
         c["v"] = "unknown"

@@ -7,7 +7,8 @@ none). A daemon thread owns ONE websocket to wss://pumpportal.fun/api/data and s
 graduations (subscribeMigration) on it. Between its cycles the loop takes the events:
   - a graduation (txType migrate): DexScreener is asked about the mint right after the coins on the radar, and the next cycle may come
     early (launch_radar.Radar.early_due);
-  - a new coin (txType create): its mint time (when the feed got it) and its creator;
+  - a new coin (txType create): its mint time (when the feed got it), its creator and the curve's state in it (virtual token reserves,
+    the market cap in SOL): the curve watch's first progress reading of the coin;
   - a trade (txType buy or sell) of a coin the curve watch follows (curve_watch.py): follow(mints) names them, the thread subscribes them
     with subscribeTokenTrade {"keys": [...]} on the SAME socket and unsubscribes a coin that drops out (unsubscribeTokenTrade); the loop
     takes the trades with take_trades() and replays them in order (progress on the curve, momentum, the creator selling).
@@ -21,10 +22,17 @@ Rules (PumpPortal asks for one connection; a client that opens many may be banne
     message of each kind are logged once (never a value), so the first live run shows what PumpPortal really sends;
   - trade subscriptions: at most FOLLOW_MAX coins, at most one subscribe and one unsubscribe message every SUB_EVERY_S, all of them again
     after a reconnect; trades of coins not followed are dropped; the trades waiting are bounded (TRADES_MAX, the oldest go first);
-  - a server that refuses them (whether PumpPortal takes keyless trade subscriptions is unprobed): a socket the server closes or drops
-    within TRADE_REFUSE_S of a subscribeTokenTrade with no trade since, or an {"errors": ...} answer within that time, counts as one
-    refusal; TRADE_REFUSALS of them turn trades off for the run, said once, and later sockets ask for the new coins and graduations only,
-    so a refused trade feed never costs the graduations their connections (MAX_CONNECTS);
+  - a server that refuses them: a socket the server closes or drops within TRADE_REFUSE_S of a subscribeTokenTrade with no trade since,
+    or an {"errors": ...} answer within that time, counts as one refusal; TRADE_REFUSALS of them turn trades off for the run, said once,
+    and later sockets ask for the new coins and graduations only, so a refused trade feed never costs the graduations their connections
+    (MAX_CONNECTS);
+  - a server that takes them and sends nothing (PumpPortal: the first live run, 15 Oct, had 38 subscriptions accepted and not one trade
+    in 55 minutes; it sends coin trades only to paid API-key clients, and this feed holds no key): no trade message at all while trade
+    subscriptions were live on open sockets for TRADE_SILENT_S in all (each socket from its own first subscribeTokenTrade: time without
+    a socket never counts), and trades not refused, makes trades silent for the run, said once: no subscribe or unsubscribe goes out any
+    more (the subscriptions sent end with the socket) and the curve watch reads pump.fun's list only, its normal mode. A refusal below
+    TRADE_REFUSALS does not hold it off. A feed that does send trades never gets there; a valid trade that still comes later lifts it
+    (the subscriptions go on as before);
   - a mint must be base58; names, symbols and links are never stored; no HTTP request per event; the queue and the creates are bounded.
 The thread never calls the radar and never logs: lines() hands its log lines to the loop. Any failure leaves the radar as it is without
 the feed (the page's host list then says limited or off). Standard library only.
@@ -54,7 +62,10 @@ TRADES_MAX = 50_000         # trades not taken yet (a cycle of 100 s with 40 hot
 NAMES_MAX = 40              # field names logged of a kind's first message
 TRADE_REFUSE_S = 10.0       # a socket that ends this soon after a subscribeTokenTrade without a trade since, or an error answer this soon ...
 TRADE_REFUSALS = 2          # ... this many times a run: trades are off for the run (the migrate feed keeps its connections)
+TRADE_SILENT_S = 180.0      # no trade message at all while trade subscriptions were live this long in all, trades not refused: trades are
+                            # silent for the run (no more trade subscriptions: PumpPortal sends coin trades to paid clients only)
 TRADE_NUMS = (("sol", "solAmount"), ("tok", "tokenAmount"), ("vsol", "vSolInBondingCurve"), ("vtok", "vTokensInBondingCurve"), ("mcs", "marketCapSol"))
+CREATE_NUMS = (("vtok", "vTokensInBondingCurve"), ("mcs", "marketCapSol"))     # the curve's state in a create (the first live run's names)
 B58 = re.compile(r"[1-9A-HJ-NP-Za-km-z]{32,48}")
 GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -250,6 +261,8 @@ class LiveFeed:
         self.sub_at, self.want_at, self.t_last = 0.0, None, None
         self.toff, self.tsub_t, self.tsock, self.terr = None, None, None, False     # trades refused (why); this socket's last trade subscription,
                                                                                     # its last trade, an error answer counted on it
+        self.tfirst, self.tlive, self.tsilent = None, 0.0, None     # this socket's first trade subscription (s); the time trade subscriptions
+                                                                    # were live on earlier sockets (s); trades silent for the run (why)
 
     def start(self):
         self.th = threading.Thread(target=self.run, name="radar-feed", daemon=True)
@@ -282,7 +295,7 @@ class LiveFeed:
         return "ok" if self.up and time.time() - self.heard < STALL_S else "limited"
 
     def take(self):
-        """The events since the last take, oldest first: {kind: create|migrate, mint, t: ms on receipt, creator: a create's}."""
+        """The events since the last take, oldest first: {kind: create|migrate, mint, t: ms on receipt, and a create's creator, vtok, mcs}."""
         with self.lock:
             out = list(self.q)
             self.q.clear()
@@ -290,10 +303,11 @@ class LiveFeed:
 
     def follow(self, mints):
         """The coins whose trades the curve watch wants (base58 mints, the first FOLLOW_MAX): the thread subscribes the new ones and
-        unsubscribes the dropped ones at its next tick. Returns the mints taken (none once the trades failed their shape check)."""
+        unsubscribes the dropped ones at its next tick. Returns the mints taken (none once the trades failed their shape check, were
+        refused or are silent)."""
         ok = [m for m in dict.fromkeys(mints or []) if isinstance(m, str) and B58.fullmatch(m)][:FOLLOW_MAX]
         with self.lock:
-            if self.tshape is False or self.toff:
+            if self.tshape is False or self.toff or self.tsilent:
                 ok = []
             if ok and not self.want:
                 self.want_at = time.time()
@@ -310,13 +324,15 @@ class LiveFeed:
 
     def trade_state(self):
         """{shape: the first trade's check (None: none came yet), off: why the server's refusals turned trades off (None: they are not),
-        want, subbed: coins asked and subscribed, since: when the first coin was asked (s), last: the last trade (s), n: trades taken in}."""
+        silent: why trades are silent for the run (None: they are not), want, subbed: coins asked and subscribed, since: when the first coin
+        was asked (s), last: the last trade (s), n: trades taken in}."""
         with self.lock:
-            return {"shape": self.tshape, "off": self.toff, "want": len(self.want), "subbed": len(self.subbed), "since": self.want_at, "last": self.t_last,
-                    "n": self.n["trades"]}
+            return {"shape": self.tshape, "off": self.toff, "silent": self.tsilent, "want": len(self.want), "subbed": len(self.subbed), "since": self.want_at,
+                    "last": self.t_last, "n": self.n["trades"]}
 
     def info(self, mint):
-        """{t, creator} of a new coin the feed saw (this run, the last 2 hours), else None."""
+        """{t, creator, vtok, mcs} of a new coin the feed saw (this run, the last 2 hours: the curve's virtual token reserves and market cap
+        in SOL in its create, numbers or None), else None."""
         with self.lock:
             v = self.creates.get(mint)
             return dict(v) if v else None
@@ -414,6 +430,9 @@ class LiveFeed:
             with self.lock:
                 self.ws = None
                 self.subbed = set()
+                if self.tfirst is not None:      # the silence rule counts the time trade subscriptions were live on this socket
+                    self.tlive += max(0.0, time.time() - self.tfirst)
+                    self.tfirst = None
             ws.close()
         return got
 
@@ -440,9 +459,10 @@ class LiveFeed:
 
     def sync(self, ws, force=False):
         """The trade subscriptions brought in line with follow() on this socket: one unsubscribeTokenTrade for the coins dropped and one
-        subscribeTokenTrade for the new ones, at most every SUB_EVERY_S (force: right after connecting). Nothing is ever sent but these."""
+        subscribeTokenTrade for the new ones, at most every SUB_EVERY_S (force: right after connecting). Nothing is ever sent but these,
+        and nothing at all once trades are silent (silence)."""
         now = time.time()
-        if not force and now - self.sub_at < SUB_EVERY_S:
+        if self.silence(now) or (not force and now - self.sub_at < SUB_EVERY_S):
             return
         with self.lock:
             want = set() if self.tshape is False or self.toff else set(self.want)
@@ -461,6 +481,28 @@ class LiveFeed:
                 self.subbed |= set(add)
                 self.n["subs"] += 1
                 self.tsub_t = time.time()
+                self.tfirst = self.tfirst or self.tsub_t
+
+    def silence(self, now):
+        """Whether trades are silent for the run: no trade message at all (none passed or failed the shape check) while trade
+        subscriptions were live for TRADE_SILENT_S in all (the earlier sockets' time and this one's since its first subscribeTokenTrade:
+        none before the forced sync of a new socket has sent its subscriptions), and trades not refused (TRADE_REFUSALS; a single one
+        does not hold it off). Said once when it starts: follow() takes nothing more and sync() sends nothing more, not even an
+        unsubscribe (a server that sends no trades is not asked again; the subscriptions end with the socket)."""
+        with self.lock:
+            if self.tsilent:
+                return True
+            if self.tfirst is None or self.tshape is not None or self.toff:
+                return False
+            live = self.tlive + now - self.tfirst
+            if live < TRADE_SILENT_S:
+                return False
+            ref = "%d refused" % self.n["trefused"] if self.n["trefused"] else "none refused"
+            self.tsilent = "no trade in %d s of trade subscriptions (%d sent, %s)" % (live, self.n["subs"], ref)
+            self.want = set()
+        self.say("%s: PumpPortal sends coin trades only to paid clients; no more trade subscriptions this run, the curve watch reads "
+                 "pump.fun's list only" % self.tsilent)
+        return True
 
     def once(self, key, s):
         if key not in self.said:
@@ -501,11 +543,12 @@ class LiveFeed:
         if kind == "create":
             cr = j.get("traderPublicKey")
             ev["creator"] = cr if isinstance(cr, str) and B58.fullmatch(cr) else None
+            ev.update((k, fnum(j.get(src))) for k, src in CREATE_NUMS)
         with self.lock:
             if kind == "create":
                 self.n["creates"] += 1
                 if mint not in self.creates:
-                    self.creates[mint] = {"t": ev["t"], "creator": ev["creator"]}
+                    self.creates[mint] = {"t": ev["t"], "creator": ev["creator"], "vtok": ev["vtok"], "mcs": ev["mcs"]}
                 while self.creates and (len(self.creates) > CREATES_MAX or ev["t"] - next(iter(self.creates.values()))["t"] > KEEP_MS):
                     self.creates.popitem(last=False)
             else:
@@ -525,6 +568,11 @@ class LiveFeed:
             first = self.tshape is None
             if first:
                 self.tshape = ok
+            lift = bool(ok and self.tshape and self.tsilent)
+            if lift:
+                self.tsilent = None          # a valid trade after all: the server sends them; follow() takes the coins again
+        if lift:
+            self.say("a trade came after all: trade subscriptions go on")
         if first and not ok:
             self.say("the first trade message has no base58 mint, SOL amount or curve state: trades are ignored this run (the curve watch reads "
                      "pump.fun's list only)")

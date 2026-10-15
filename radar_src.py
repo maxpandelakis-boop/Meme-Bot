@@ -13,7 +13,10 @@ fetch.py's client with the radar's own rules (the limits measured by the WP0 pro
     Two hosts have their own ladder (COOL_HOST): GeckoTerminal cools 15, 30, then 60 s and is asked again later in the same cycle (its
     429s are short: retry-after 0), the RPC is skipped for the rest of the cycle only (retry-after 10 s, the block lifts within seconds);
   - no answer (a timeout, a refused connection) rests that host for the rest of the cycle; three refusals in a row (401, 403, 410,
-    451) give it up for the run.
+    451) give it up for the run;
+  - a host with a rolling cap (held: launch_radar holds pump.fun's frontend at its PF_CAP a minute) gets no request past it, skipped
+    like a host that is cooling down; every request to it is counted when it goes out, by the rounds' client and the curve watch's
+    (SideHttp) together.
 Every adapter checks the fields it needs on the first answer of each run. When they are missing (the host changed its answer) the
 adapter is off for the run, said once, and every signal it feeds stays unknown, never "no". ADAPTERS holds the defaults, as the WP0
 probe set them; MEMEBOT_RADAR_ADAPTERS="swap_trades=0,ll_new=1" switches single adapters for a run.
@@ -24,7 +27,7 @@ The discovery lists go into the cycle's sandbox with fetch.py's own writers and 
 pf/new.txt, gt/new.txt, jup/recent.txt, ll/llNew.txt, lists.json), so memebot's load_side and gather tag them exactly as in the scan.
 Standard library only.
 """
-import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+import collections, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -98,6 +101,8 @@ MIN_LEFT = 0.2              # s: no request starts with less of its step left
 ANSWER_MAX = 4_000_000      # bytes of one answer read at most (the rest is not read)
 COOL = (150.0, 300.0, 600.0)  # s: a host's cool-down after a 429, growing with each one in a row
 RPC_HOST = urllib.parse.urlsplit(F.RPC).netloc
+PF_HOST = urllib.parse.urlsplit(F.PF).netloc       # frontend-api-v3.pump.fun: the lists, coins-v3, the dev's launches, the top holders
+STAMPS_KEEP = 64            # a client's last request times kept (stamps: the curve watch counts its own requests by them)
 GT_HOST = urllib.parse.urlsplit(F.GT).netloc
 GT_429_LADDER_S = (15.0, 30.0, 60.0)
 RPC_GAP_S = 1.1             # s between two RPC calls of one method (10 per method per 10 s, sliding)
@@ -157,7 +162,9 @@ class RadarHttp(F.Http):
     """fetch's counters and per-host locks with the radar's request rules (module docstring). Single-threaded use.
     code: the last request's HTTP status (None: no answer; "skip": not sent: the host is cooling down or given up, or the step's time
     is up). heard: the URLs that got a real answer this cycle (JSON, or a 404). The per-cycle budget: rpc_left (Solana RPC calls).
-    pace_mock: keep the gaps against a mock too (the selftest's pacing check)."""
+    pace_mock: keep the gaps against a mock too (the selftest's pacing check). held: {host: (window ms, at most)}, a rolling cap per host
+    (sent: the times of the requests to a held host, on clock's ms, the wall clock when it is None); stamps: this client's last request
+    times."""
     pace_mock = False
 
     def __init__(self, mock=None, pause=0.0, log=None):
@@ -165,6 +172,7 @@ class RadarHttp(F.Http):
         self.until, self.code, self.heard, self.hit429, self.asked, self.mute = None, None, set(), set(), {}, set()
         self.cool, self.level, self.said, self.seen429, self.rpc_at = {}, {}, set(), set(), {}
         self.rpc_left = None
+        self.held, self.sent, self.clock, self.stamps = {}, {}, None, collections.deque(maxlen=STAMPS_KEEP)
 
     def new_cycle(self, until, rpc_cap=None):
         self.until, self.heard, self.hit429, self.asked, self.rpc_left, self.mute, self.seen429 = until, set(), set(), {}, rpc_cap, set(), set()
@@ -188,14 +196,34 @@ class RadarHttp(F.Http):
     def gap_of(self, host):
         return GAPS.get(host, 0.0) if (not self.mock or self.pace_mock) else 0.0
 
+    def ms(self):
+        """Now in ms on the clock the request times are kept on (the radar's: launch_radar sets clock), else the wall clock."""
+        return int(self.clock()) if self.clock else int(time.time() * 1000)
+
+    def recent(self, host):
+        """The requests to a held host within its window up to now (every client that shares sent), 0 for a host that is not held."""
+        if host not in self.held:
+            return 0
+        win, now = self.held[host][0], self.ms()
+        with self.lock:
+            q = self.sent.setdefault(host, collections.deque())
+            while q and now - q[0] >= win:
+                q.popleft()
+            return len(q)
+
     def _pace(self, host):
-        """The host's minimum gap (GAPS), then the request is counted (fetch's _pace with the radar's gaps; no cool-down wait here)."""
+        """The host's minimum gap (GAPS), then the request is counted (fetch's _pace with the radar's gaps; no cool-down wait here) with
+        its time (stamps; sent for a held host)."""
         gap = self.gap_of(host)
         if gap and host in self.last_at:
             time.sleep(max(0.0, self.last_at[host] + gap - time.time()))
+        t = self.ms()
         with self.lock:
             self.n += 1
             self.last_at[host] = time.time()
+            self.stamps.append(t)
+            if host in self.held:
+                self.sent.setdefault(host, collections.deque()).append(t)
 
     def _rate429(self, host):
         """A 429: the host's cool-down ladder, and (except GeckoTerminal while its ladder lasts) no more requests this cycle."""
@@ -220,6 +248,10 @@ class RadarHttp(F.Http):
         host = urllib.parse.urlsplit(u).netloc
         self.code = "skip"
         if self.blocked(host):
+            return "skip", None
+        if host in self.held and self.recent(host) >= self.held[host][1]:
+            self._say_once("held:%s" % host, "  ! %s: %d requests in the last %d s, the most the radar sends: skipped until the window has room"
+                           % (host, self.held[host][1], self.held[host][0] // 1000))
             return "skip", None
         end = until or self.until or (time.time() + REQ_TIMEOUT)
         gap = self.gap_of(host)
@@ -337,14 +369,18 @@ class SideHttp(RadarHttp):
     """The curve watch's own client (launch_radar's loop, in the spare time between rounds): its own cool-downs, cool-down levels, dead
     hosts, refusal counters, rests (no answer), 429 marks and request count, so nothing the watch hears (a 429 on the curve list, three
     403s on a route the rounds never ask, a RugCheck 429 on a curve coin) ever cools or gives up a host for the rounds. The per-host gaps
-    are the radar's own (last_at and rpc_at are the same dicts: one pace per host for both clients), and a host the radar has cooling or
-    has given up is skipped here too: one way only. new_window() is the watch's "cycle" (a 429 or no answer rests a host for the rest
-    of it, then the cool-down ladder runs on its own clock)."""
+    are the radar's own (last_at and rpc_at are the same dicts: one pace per host for both clients), so are a held host's cap and its
+    count (held and sent: the watch's requests count against the rounds' and the other way round, on the radar's clock), and a host the
+    radar has cooling or has given up is skipped here too: one way only. new_window() is the watch's "cycle" (a 429 or no answer rests a
+    host for the rest of it, then the cool-down ladder runs on its own clock)."""
 
     def __init__(self, main, log=None):
         RadarHttp.__init__(self, main.mock or None, 0.0, log=log or main.log)
         self.main = main
-        self.last_at, self.rpc_at = main.last_at, main.rpc_at
+        self.last_at, self.rpc_at, self.held, self.sent = main.last_at, main.rpc_at, main.held, main.sent
+
+    def ms(self):
+        return self.main.ms()
 
     def blocked(self, host):
         m = self.main

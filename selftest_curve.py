@@ -13,7 +13,10 @@ JSON), C11 the push switch (off by default, on for one variant, never a trap, on
 mock (the list, the quick checks and their budgets, the values, radar-data and its guard), C13 fail-open, C14 the push's words (app.curve_words)
 and the switch end to end (nothing reaches app.notify while it is off), C15 the watch's own client (nothing it hears blocks a host for the
 rounds), C16 stored curve docs in another shape (repaired or left out, counted alike by the guard; the radar's own pushes never stop),
-C17 judging the calls (late verdicts at their own price, the greens' rules, unseen hours, the calibration both ways, unbroken trades).
+C17 judging the calls (late verdicts at their own price, the greens' rules, unseen hours, the calibration both ways, unbroken trades),
+C18 the list alone, the normal mode (momentum from the list's readings and the feed's create, its form per call, old calls, the peak and
+the value from the list's readings, the block on with "list only"), C19 pump.fun's minute (the rounds, the fast lanes and the watch counted
+together where the requests go out: a real bound, the watch's list and checks each in their own share, tier 2's dev check).
 """
 import json, math, os, re, shutil, sys, tempfile, time, urllib.parse
 
@@ -86,6 +89,8 @@ def checks(check):
         c15_hosts(check, T, P, T0, tmp)
         c16_stored(check, T, P, T0, tmp)
         c17_judging(check, T, T0)
+        c18_list_only(check, T, P, T0, tmp)
+        c19_minute(check, T, P, T0, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -458,19 +463,20 @@ def c10_storage(check, T0):
 class FeedStub:
     """The live feed's interface the curve watch uses: follow (the coins asked), take_trades, trade_state, state."""
 
-    def __init__(self, shape=True, state="ok", off=None):
-        self.asked, self.trades, self.shape, self.st, self.off = [], [], shape, state, off
+    def __init__(self, shape=True, state="ok", off=None, silent=None):
+        self.asked, self.trades, self.shape, self.st, self.off, self.silent = [], [], shape, state, off, silent
 
     def follow(self, mints):
         self.asked.append(list(mints))
-        return [] if self.shape is False else list(mints)[:40]
+        return [] if self.shape is False or self.silent else list(mints)[:40]
 
     def take_trades(self):
         out, self.trades = self.trades, []
         return out
 
     def trade_state(self):
-        return {"shape": self.shape, "off": self.off, "want": len(self.asked[-1]) if self.asked else 0, "subbed": 0, "since": time.time() - 30, "last": time.time() - 5 if self.shape else None, "n": 0}
+        return {"shape": self.shape, "off": self.off, "silent": self.silent, "want": len(self.asked[-1]) if self.asked else 0, "subbed": 0, "since": time.time() - 30,
+                "last": time.time() - 5 if self.shape else None, "n": 0}
 
     def take(self):
         return []
@@ -642,14 +648,15 @@ def c11_push(check, T, P, T0, tmp):
 class CurveMock:
     """selftest_radar's mock with coins still on their curve: pump.fun's curve list (complete=false, market cap first), coins-v3, the
     dev's launches, the top holders (the curve's own account first, entered at the mint), launch trades, RugCheck reports (a pool risk
-    that must not count on the curve). curve: dicts {a, prog, sym, creator, devN, danger, holders, snipe, gone, rc}."""
+    that must not count on the curve). curve: dicts {a, prog, sym, creator, devN, danger, holders, snipe, gone, rc}. delay: s each curve
+    list page takes."""
 
     def __init__(self, base_coins, curve):
         SR = sr()
         self.SR = SR
         self.base = SR.RadarMock(base_coins)
         self.curve = {c["a"]: c for c in curve}
-        self.bad, self.t0 = False, SR.T0
+        self.bad, self.t0, self.delay = False, SR.T0, 0.0
         base = self.base
         orig = base.route
 
@@ -669,6 +676,8 @@ class CurveMock:
         if path == "/frontend-api-v3.pump.fun/coins" and (q.get("complete") or [""])[0] == "false":
             if self.bad:
                 return 200, [{"mint": mint(999), "oops": 1}]
+            if self.delay:
+                time.sleep(self.delay)
             off = int((q.get("offset") or ["0"])[0])
             rows = sorted(self.curve.values(), key=lambda c: -c["prog"])[off:off + 50]
             return 200, [self.crow(c) for c in rows if not c.get("gone")]
@@ -745,8 +754,14 @@ def c12_wiring(check, T, P, T0, tmp):
               "a tick: pump.fun's curve list (sort=market_cap, order=DESC, complete=false, 50 a page), the candidates in the book, the 30 %%+ coins "
               "with a trade in the last 15 minutes followed best first (%s), their facts in the radar's pump.fun cache for when the pool opens"
               % [R.curve.entry(a) and R.curve.entry(a)["sym"] or a[:4] for a in fol])
-        for i in range(40):
-            R.curve_check_step(R.clock.now(), t_k)
+        per = []                                        # three minutes of quick checks: each within the watch's own pump.fun share
+        for m_ in range(3):
+            hm = len(cm.base.heads)
+            for i in range(20):
+                R.curve_check_step(R.clock.now(), t_k)
+            per.append([h for h in cm.base.heads[hm:] if h["path"].startswith("/frontend-api-v3.pump.fun/")])
+            R.clock.wait(R.clock.now() + 61_000)
+            t_k = R.clock.now() + 110_000
         heads = cm.base.heads[h0:]
         v = {c["sym"]: (R.curve.coins[c["a"]].get("chk") or {}).get("v") for c in cur}
         chips = {c["sym"]: [t for _, t in (R.curve.coins[c["a"]].get("chk") or {}).get("chips") or []] for c in cur}
@@ -763,10 +778,12 @@ def c12_wiring(check, T, P, T0, tmp):
         kinds = {"dev": [h for h in pf if "creator=" in h["q"] or "user-created-coins" in h["path"]], "holders": [h for h in heads if "/top-holders/" in h["path"]],
                  "rc": [h for h in heads if h["path"].startswith("/api.rugcheck.xyz/")], "rpc": [h for h in heads if h.get("rpc")],
                  "swap": [h for h in heads if h["path"].startswith("/swap-api.pump.fun/")]}
-        check(len(pf) <= LR.CURVE_BUDGET["pf"][1] and kinds["rc"] and kinds["rpc"] and len(kinds["swap"]) == 2
-              and all(h.get("origin") == "https://pump.fun" for h in kinds["holders"] + kinds["swap"]) and not any(c["a"] in h["path"] for c in cur[5:] for h in heads),
-              "within one minute the watch sends at most %d pump.fun frontend requests (%d: the list, dev launches, holders); RugCheck %d, RPC %d, "
-              "launch trades only for the 2 coins minted under 15 minutes ago" % (LR.CURVE_BUDGET["pf"][1], len(pf), len(kinds["rc"]), len(kinds["rpc"])))
+        check(all(len(x) <= LR.CURVE_BUDGET["pf"][1] for x in per) and len(per[0]) >= LR.CURVE_BUDGET["pf"][1] - 1 and kinds["rc"] and kinds["rpc"]
+              and len(kinds["swap"]) == 2 and all(h.get("origin") == "https://pump.fun" for h in kinds["holders"] + kinds["swap"])
+              and not any(c["a"] in h["path"] for c in cur[5:] for h in heads),
+              "the quick checks send at most %d pump.fun frontend requests a minute apart from the list (%s: dev launches, holders); RugCheck %d, "
+              "RPC %d, launch trades only for the 2 coins minted under 15 minutes ago"
+              % (LR.CURVE_BUDGET["pf"][1], [len(x) for x in per], len(kinds["rc"]), len(kinds["rpc"])))
         h1 = len(cm.base.heads)
         R.curve_at = 0
         R.curve_tick(R.clock.now(), R.clock.now() + LR.CURVE_LEAD_MS - 1000)
@@ -1284,6 +1301,307 @@ def c17_judging(check, T, T0):
           "a call's value from the trades only when every trade up to the hour was seen: a coin dropped and followed again, or a feed that "
           "reconnected meanwhile, needs a coin fetch (never the stale price before the gap); followed without a break it is the last price "
           "before the hour (%.2fx)" % (v_ok[1] / c9["px"] if v_ok else 0))
+
+
+
+def c18_list_only(check, T, P, T0, tmp):
+    """The list alone, the watch's normal mode (PumpPortal sends coin trades only to paid clients: none came in the first live run). Momentum
+    from the list's readings every CURVE_LIST_MS and the feed's create: the points alone without trades, the points and more buys than sells
+    with them, each call saying which (momBy); a create never makes a crossing and an old one no gain; calls stored before momBy load and
+    count as before; a call's peak within the hour and its value after it from the list's readings (a coin the list read up to the hour
+    waits for its next poll, no coin fetch); the block on, "list only"."""
+    import launch_radar as LR
+    print("== curve C18: the list alone (momentum, old calls, the peak and the value from the list's readings)")
+    SR = sr()
+    a, b, c_, d_ = mint(800), mint(801), mint(802), mint(803)
+    B = CW.Book()
+    for i in range(21):                                 # every 15 s for 5 minutes: a 50 -> 76 %, b 70 -> 75.4 % (no trade at all)
+        t = T0 + i * LR.CURVE_LIST_MS
+        B.rows([row(a, 50.0 + 1.3 * i, t), row(b, 70.0 + 0.27 * i, t)], t)
+    ca, cb = B.call(a, 75), B.call(b, 75)
+    check(ca and ca["mom"] is True and ca["momBy"] == "list" and ca["m5"]["buys"] is None and abs(ca["m5"]["pts"] - 26.0) < 0.01 and ca["via"] == "list"
+          and cb and cb["mom"] is False and cb["momBy"] == "list" and cb["m5"]["pts"] < CW.MOM_PTS and B.n["trades"] == 0
+          and len([x for _, x in B.calls() if CW.in_variant(x, 75, True)]) == 1,
+          "momentum from the list's readings alone (no trade): 26 points in the 5 minutes before the 75 %% call is rising by the points alone "
+          "(momBy list, %s); %.1f points is not; the 75%% rising variant counts the first only" % (ca["m5"], cb["m5"]["pts"]))
+    Bt = CW.Book()
+    for m_, side in ((c_, lambda i: "sell" if i % 3 else "buy"), (d_, lambda i: "buy")):
+        Bt.rows([row(m_, 40.0, T0)], T0)
+        for i in range(1, 37):
+            Bt.trade(trade(m_, T0 + i * 10_000, 40.0 + 35.5 * i / 36, side(i)))
+    cc, cd = Bt.call(c_, 75), Bt.call(d_, 75)
+    check(cc and cc["momBy"] == "trades" and cc["mom"] is False and cc["m5"]["pts"] >= CW.MOM_PTS and cc["m5"]["buys"] < cc["m5"]["sells"]
+          and cd and cd["momBy"] == "trades" and cd["mom"] is True,
+          "with the coin's trades known the filter stays points and more buys than sells (momBy trades): %s points on more sales is not rising, "
+          "on buys it is" % cc["m5"]["pts"])
+    # the feed's create as the first reading: momentum for a coin new on the list, never a crossing, never a gain from an hour back
+    e_, f_, g_ = mint(804), mint(805), mint(806)
+    info = {e_: {"t": T0 - 4 * MIN, "creator": mint(500, ""), "vtok": vt_of(3.0), "mcs": None},
+            f_: {"t": T0 - 4 * MIN, "creator": mint(500, ""), "vtok": None, "mcs": CW.mc_of_prog(3.0)},
+            g_: {"t": T0 - 60 * MIN, "creator": mint(500, ""), "vtok": vt_of(3.0), "mcs": None}}
+    Bc = CW.Book()
+    Bc.rows([row(e_, 55.0, T0), row(f_, 61.0, T0), row(g_, 58.0, T0)], T0, "list", info.get)
+    Bc.rows([row(e_, 61.0, T0 + 15_000), row(f_, 62.0, T0 + 15_000), row(g_, 61.0, T0 + 15_000)], T0 + 15_000, "list", info.get)
+    ce, cg = Bc.call(e_, 60), Bc.call(g_, 60)
+    check(ce and ce["mom"] is True and ce["momBy"] == "list" and abs(ce["m5"]["pts"] - 58.0) < 0.01 and list(Bc.coins[e_]["pts"])[0][0] == T0 - 4 * MIN
+          and abs(list(Bc.coins[e_]["pts"])[0][1] - 3.0) < 1e-6
+          and Bc.call(f_, 60) is None and Bc.coins[f_]["above"].get(60) == T0 and abs(list(Bc.coins[f_]["pts"])[0][1] - 3.0) < 1e-6
+          and cg and cg["mom"] is None and cg["momBy"] is None and cg["m5"]["pts"] is None,
+          "the feed's create (its virtual token reserves, else its market cap in SOL) is a new coin's first reading: 3 %% four minutes before "
+          "a 60 %% call makes %s points (rising, list); a coin first listed at 61 %% is past the mark, the create never makes a crossing; a create "
+          "an hour old gives no gain (unknown, never yes)" % ce["m5"]["pts"])
+    # calls stored before momBy (and before the list form) load and count as before; a stored form that is neither is left out
+    hour = CW.utc_hour(T0)
+    oc = lambda thr, **kw: dict({"t": T0 + MIN, "thr": thr, "via": "list", "prog": thr + 1.0, "px": 1e-7, "mcs": 100.0, "sol": 150.0, "mcu": 15000, "age": 20.0,
+                                 "m5": {"pts": 12.0, "buys": None, "sells": None}, "mom": None, "v": "ok", "chips": [], "hi": 1.0, "out": {}, "push": None}, **kw)
+    h1, h2, h3 = mint(810), mint(811), mint(812)
+    old = {"v": 1, "hour": hour, "t": CW.hour_ms(hour), "upd": T0, "polls": 4,
+           "coins": {h1: {"mint": h1, "sym": "OLD", "calls": {"60": oc(60), "75": oc(75, m5={"pts": 14.0, "buys": 30, "sells": 9}, mom=True, via="trade")}},
+                     h2: {"mint": h2, "sym": "NEW", "calls": {"60": oc(60, mom=True, momBy="list")}},
+                     h3: {"mint": h3, "sym": "ODD", "calls": {"60": dict(oc(60, mom="yes", momBy="guess"))}}}}
+    old["coins"][h1]["calls"]["60"].pop("mom")
+    Bo = CW.Book()
+    Bo.load(hour, json.loads(json.dumps(old)))
+    var = {r["id"]: r["n"] for r in Bo.variants()}
+    lo = Bo.call(h1, 60)
+    check(CW.doc_calls(old) == 4 and len(Bo.calls()) == 4 and lo is not None and "momBy" not in lo and lo["mom"] is None and Bo.call(h1, 75)["mom"] is True
+          and Bo.call(h2, 60)["momBy"] == "list" and "momBy" not in Bo.call(h3, 60) and Bo.call(h3, 60)["mom"] is None
+          and var == {"60": 3, "60m": 1, "75": 1, "75m": 1, "90": 0, "90m": 0} and len(json.dumps(Bo.doc(T0 + 2 * MIN, {}))) <= CW.DOC_MAX,
+          "calls stored before the momentum's form was kept load as before (no momBy, its trades-era momentum counted: 75%% rising 1); a "
+          "list-form call counts in its rising variant; a form or momentum in another shape is left out, never yes (%s)" % var)
+    Bn = CW.Book()
+    Bn.load(hour, json.loads(json.dumps(Bc.docs[CW.utc_hour(T0)])))
+    check(Bn.call(e_, 60) and Bn.call(e_, 60)["momBy"] == "list" and Bn.call(e_, 60)["mom"] is True and Bn.call(g_, 60)["mom"] is None,
+          "a new call's form goes to the hour doc and back (momBy list, rising)")
+    # the list's readings move a call's peak within the hour (a late verdict's too) and give its value after it: no trade at all
+    a2 = mint(830)
+    Bp = CW.Book()
+    t = T0
+    for p in (50, 52, 54, 56, 58, 61):
+        Bp.rows([row(a2, p, t)], t)
+        t += LR.CURVE_LIST_MS
+    cp = Bp.call(a2, 60)
+    Bp.set_check(a2, "ok", [["ok", "no rugger wallets"]], cp["t"] + 30_000)
+    for p in (70, 80, 88, 90, 88, 75, 66, 62):          # up to 90 % (about 2.7x the call's price), back to 62 % within the hour
+        t += 5 * MIN
+        Bp.rows([row(a2, p, t)], t)
+    T_ = cp["t"] + CW.VALUE_MS
+    hi_in, none_yet = cp["hi"], Bp.curve_value(a2, 60, T_ + 1000, False)
+    Bp.rows([row(a2, 62.5, T_ + 9_000)], T_ + 9_000)    # the list's first reading after the hour is the value ...
+    Bp.rows([row(a2, 95.0, T_ + 24_000)], T_ + 24_000)  # ... a later one moves nothing
+    v2 = Bp.curve_value(a2, 60, T_ + 25_000, False)
+    Bp.set_value(a2, 60, "curve", v2[0], px=v2[1])
+    o2, pk = cp["out"], CW.mc_of_prog(90) / CW.mc_of_prog(61)
+    check(abs(hi_in - pk) < 0.01 and none_yet is None and v2[0] == T_ + 9_000 and abs(o2["x60"] - CW.mc_of_prog(62.5) / CW.mc_of_prog(61)) < 0.01
+          and abs(o2["peak"] - pk) < 0.01 and o2["x2"] is True and o2["rug"] is False and o2["how"] == "curve" and Bp.n["trades"] == 0
+          and o2["late"]["x2"] is True and o2["late"]["peak"] > 2.0 and Bp.coins[a2]["lpt"] == T_ + 24_000,
+          "the list alone: a 60 %% call whose coin the list reads up to 90 %% and back to 62 %% within the hour peaked at %.2fx (the call's and "
+          "the late verdict's peak, doubled), its value is the list's first reading after the hour (%.2fx, no coin fetch), a later one moves "
+          "nothing" % (o2["peak"], o2["x60"]))
+    cur = [{"a": mint(820 + i), "prog": 46.0 + i, "sym": "Q%d" % i, "creator": mint(840 + i, "")} for i in range(14)]
+    cm = CurveMock(list(SR.FIX.values()), cur)
+    srv = SR.serve(cm.base)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    try:
+        R = unit(T, P, tmp, "rdL", T0, url=url)
+        cm.base.clock = R.clock.now
+        R.live = FeedStub(silent="no trade in 181 s of trade subscriptions (3 sent, none refused)")
+        R.curve_tick(R.clock.now(), R.clock.now() + 110_000)
+        d = R.curve_doc(R.clock.now())
+        check(d["state"] == "on" and d["why"] == "list only: PumpPortal sends coin trades only to paid clients" and d["hosts"] == {"pump.fun": "ok", "trades": "unavailable"}
+              and d["follow"] == 0 and d["cand"] >= 14 and R.live.asked and R.curve.fol == {},
+              "the block with a feed that sends no trades: on (the list is the normal mode), %r, trades unavailable, no coin followed on the "
+              "feed, %d candidates read from the list" % (d["why"], d["cand"]))
+        # a call's value an hour later from the list's next poll (no coin fetch); a coin the list no longer shows is fetched after 2 polls
+        a3, b3 = mint(870), mint(871)
+        t1 = R.clock.now()
+        for a_, p0 in ((a3, 58.0), (b3, 58.5)):
+            R.curve.rows([row(a_, p0, t1 - MIN)], t1 - MIN)
+            R.curve.rows([row(a_, p0 + 3.0, t1)], t1)
+        ca3, cb3 = R.curve.call(a3, 60), R.curve.call(b3, 60)
+        T3 = t1 + CW.VALUE_MS
+        R.clock.wait(T3 - 10_000)
+        R.curve.rows([row(a3, 70.0, T3 - 10_000), row(b3, 66.0, T3 - 10_000)], T3 - 10_000)     # the list read both up to the hour
+        cm.curve[a3] = {"a": a3, "prog": 72.0, "sym": "VAL", "creator": mint(1870, "")}           # its next poll lists a3; b3 is gone
+        cm.curve[b3] = {"a": b3, "prog": 66.0, "sym": "GONE", "creator": mint(1871, ""), "gone": True}
+        R.clock.wait(T3 + 1000)
+        h3 = len(cm.base.heads)
+        sent0 = R.curve_value_step(R.clock.now(), R.clock.now() + 110_000)
+        quiet = [h for h in cm.base.heads[h3:]]
+        R.curve_tick(R.clock.now(), R.clock.now() + 110_000)
+        fetch1 = [h for h in cm.base.heads[h3:] if "/coins-v3/" in h["path"]]
+        o3 = dict(ca3["out"])
+        R.clock.wait(T3 + 2 * LR.CURVE_LIST_MS + 1000)
+        R.curve_tick(R.clock.now(), R.clock.now() + 110_000)
+        fetch2 = [h["path"].rsplit("/", 1)[1] for h in cm.base.heads[h3:] if "/coins-v3/" in h["path"]]
+        check(ca3 and cb3 and sent0 is False and quiet == [] and fetch1 == [] and o3.get("how") == "curve" and o3.get("at60", 0) >= T3
+              and abs(o3["x60"] - CW.mc_of_prog(72) / CW.mc_of_prog(61)) < 0.01 and abs(o3["peak"] - o3["x60"]) < 1e-6
+              and fetch2 == [b3] and cb3["out"].get("how") == "gone",
+              "an hour after two calls the list read up to the hour: no coin fetch at once; the next poll gives one its value (%.2fx, its peak "
+              "from the list), the other, no longer listed, gets one coin fetch after two polls (%s)" % (o3.get("x60") or 0, cb3["out"].get("how")))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+class PfSrc:
+    """Tier 1 and tier 2's pump.fun calls as real requests to the mock on the radar's own client (counted where they go out, as the
+    adapters' are): a dev check is 2 frontend calls (coins?creator and coins-v2's count), the top holders 1, coins-v3 1; nothing else."""
+
+    def __init__(self, R):
+        import radar_src as RS
+        self.R, self.RS, self.calls = R, RS, []
+
+    def use(self, name):
+        return name in ("pf_dev_history", "pf_top_holders", "pf_coin_v3")
+
+    def pf_dev(self, creator, now):
+        self.calls.append("dev")
+        self.R.http.get(self.RS.PF_BY_CREATOR % creator)
+        self.R.http.get(self.RS.PF_DEV_COUNT % creator)
+        return {"count": 1, "rows": []}
+
+    def pf_holders(self, a, mint_t, skip=()):
+        self.calls.append("holders")
+        self.R.http.get(self.RS.PF_HOLDERS[0] % a)
+        return {"n": 1}
+
+    def pf_coin(self, a, meta, now=None):
+        self.calls.append("coin")
+        self.R.http.get(self.RS.PF_COIN % a)
+        return True
+
+    def rc_report(self, a):
+        return "404", None
+
+    def ds_paid(self, sb, asked):
+        return {}
+
+
+def c19_minute(check, T, P, T0, tmp):
+    """pump.fun's frontend shared per rolling minute (launch_radar.pf_minute), a real bound: every request of the rounds, the fast lanes and
+    the curve watch counted when it goes out, on both clients; PF_CAP at most (a request past it is not sent), the rounds' and lanes' coin
+    checks leave a round's list pages free (tier 2's dev check only with 2 of PF_DEEP_CAP left), the watch a whole round; the watch's
+    list and its checks each within their own share (the list every 15 s with both pages while checks wait), each request counted from
+    when it went out."""
+    import launch_radar as LR
+    import radar_src as RS
+    print("== curve C19: pump.fun's minute (the rounds, the fast lanes and the watch counted together, a real bound)")
+    SR = sr()
+    pm = LR.pf_minute()
+    check(LR.CURVE_LIST_MS == 15_000 and LR.PF_LIMIT == 60 and pm["limit"] == 60 and pm["cap"] == LR.PF_CAP == int(LR.PF_LIMIT * LR.PF_SHARE) == 40
+          and pm["pages"] == RS.PAGES["pf_graduated"] + RS.PAGES["pf_new"] == 6 and pm["round"] == pm["pages"] + LR.PF_DEEP_CAP == 12
+          and pm["checks"] == 34 and pm["watch"] == 28 and pm["list"] == LR.CURVE_PAGES * 4 == 8 and pm["own"] == LR.CURVE_BUDGET["pf"][1] == 8
+          and pm["typical"] == pm["round"] + pm["list"] + pm["own"] == 28 <= pm["watch"],
+          "pump.fun's minute: at most %d of the %d it allows, counted where the requests go out; the rounds' and fast lanes' coin checks stop "
+          "at %d (a round's %d list pages stay free), the watch at %d (a whole round of %d stays free), its list %d a minute (every %d s) "
+          "and apart from it its checks %d; a minute with a round and the watch at their caps: %d"
+          % (pm["cap"], pm["limit"], pm["checks"], pm["pages"], pm["watch"], pm["round"], pm["list"], LR.CURVE_LIST_MS // 1000, pm["own"], pm["typical"]))
+    cur = [dict({"a": mint(1000 + i), "prog": 46.0 + i * 0.4, "sym": "M%d" % i, "creator": mint(2000 + i, "")}, **({"ltt": T0 - 20 * MIN} if i % 2 else {}))
+           for i in range(60)]                          # every second coin without a trade for 20 minutes: each poll reads both pages
+    cm = CurveMock(list(SR.FIX.values()), cur)
+    srv = SR.serve(cm.base)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    is_pf = lambda h: h["path"].startswith("/frontend-api-v3.pump.fun/")
+    try:
+        R = unit(T, P, tmp, "rdM", T0, url=url)
+        cm.base.clock = R.clock.now
+        R.live = FeedStub(silent="no trade in 181 s of trade subscriptions (3 sent, none refused)")
+        start, t_k, polls, sent, first = R.clock.now(), R.clock.now() + 10 * MIN, [], [], None
+        for s_ in range(75):                            # 75 s of ticks with quick checks waiting for 30 coins
+            h1, n1, at0 = len(cm.base.heads), R.chttp.n, R.curve_at
+            cm.delay = 0.25 if s_ == 0 else 0.0         # the first poll's pages take a while: each counts from when it went out
+            R.curve_tick(R.clock.now(), t_k)
+            hs, k = cm.base.heads[h1:], R.chttp.n - n1
+            st = list(R.chttp.stamps)[-k:] if k else []
+            sent += [(t_, "complete=false" in h["q"]) for h, t_ in zip(hs, st) if is_pf(h)]
+            if R.curve_at != at0:
+                polls.append(((R.curve_at - start) // 1000, sum(1 for h in hs if "complete=false" in h["q"])))
+            if s_ == 0:
+                first = (st[:2], list(R.cbud.get("list") or []))
+            R.clock.wait(R.clock.now() + 1000)
+        roll = lambda f: max(sum(1 for u, l in sent if t_ - 60_000 < u <= t_ and f(l)) for t_, _ in sent)
+        n_list, n_chk, n_all = roll(lambda l: l), roll(lambda l: not l), roll(lambda l: True)
+        gaps = [b[0] - a[0] for a, b in zip(polls, polls[1:])]
+        check(len(st) == len(hs) and [n for _, n in polls[:4]] == [2, 2, 2, 2] and len(polls) >= 5 and all(n >= 1 for _, n in polls)
+              and max(gaps) <= LR.CURVE_LIST_MS // 1000 + 2 and n_list <= 8 and n_chk <= LR.CURVE_BUDGET["pf"][1] and n_chk >= 6 and n_all <= 16
+              and first[1] == first[0] and first[0][1] - first[0][0] >= 250,
+              "with quick checks waiting for 30 coins the list still goes every %d s with both pages (polls %s), at most %d of its pages in any "
+              "rolling minute; the checks take %d there apart from it, %d in all; each request counts from when it went out (the first poll's "
+              "pages %d ms apart)" % (LR.CURVE_LIST_MS // 1000, polls[:6], n_list, n_chk, n_all, first[0][1] - first[0][0] if len(first[0]) == 2 else -1))
+        # the radar's minute shared with the rounds: the watch stops where a whole round stays free
+        R.clock.wait(R.clock.now() + 61_000)
+        for c in cur[:27]:
+            R.src.pf_coin_raw(c["a"])                   # the rounds' and lanes' requests in the last minute
+        h2 = len(cm.base.heads)
+        R.curve_tick(R.clock.now(), R.clock.now() + 110_000)
+        for _ in range(10):
+            R.curve_check_step(R.clock.now(), R.clock.now() + 110_000)
+        w_pf = [h for h in cm.base.heads[h2:] if is_pf(h)]
+        check(R.http.recent(RS.PF_HOST) == 28 == LR.PF_CAP - LR.PF_KEEP_ROUND and len(w_pf) == 1 and "complete=false" in w_pf[0]["q"],
+              "after 27 requests of the rounds in the minute the watch sends 1 (its list's first page) and stops at %d: a round's %d list pages "
+              "and %d deep checks stay free" % (R.http.recent(RS.PF_HOST), LR.PF_KEEP_PAGES, LR.PF_DEEP_CAP))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    # tier 1 and tier 2 (a round's or a fast lane's) within the minute: a dev check only with 2 calls left, a round's list pages kept free,
+    # and PF_CAP held where the requests go out (both clients)
+    cm = CurveMock(list(SR.FIX.values()), [])
+    srv = SR.serve(cm.base)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    try:
+        R2 = unit(T, P, tmp, "rdN", T0, url=url)
+        now = R2.clock.now()
+        src = R2.src = PfSrc(R2)
+        coins = [mint(1100 + i) for i in range(6)]
+        for i, a in enumerate(coins):
+            dev = mint(1200 + i, "")
+            R2.cache["pf"][a] = {"creator": dev, "t": now - 5 * MIN}
+            if i < 5:                                   # five young coins need only their holders, the sixth (older) its dev check too
+                R2.cache["dev"][dev] = {"rows": [], "count": 0, "t": now}
+        live = [{"a": a, "pr": {}, "age": 1.0 + i} for i, a in enumerate(coins)]
+        R2.http.new_cycle(time.time() + 30)
+        h0 = len(cm.base.heads)
+        R2.tier2(os.path.join(tmp, "sbN"), live, [], now)
+        deep = [h for h in cm.base.heads[h0:] if is_pf(h)]
+        check(src.calls == ["holders"] * 6 and len(deep) == LR.PF_DEEP_CAP,
+              "tier 2 (a round or a fast lane): five coins' top holders leave 1 of its %d pump.fun calls; the sixth coin's dev check (2 calls) "
+              "waits for the next cycle and its holders take the last one (%d calls, %s)" % (LR.PF_DEEP_CAP, len(deep), src.calls))
+        R2.clock.wait(now + 61_000)
+        now = R2.clock.now()
+        R2.http.recent(RS.PF_HOST)
+        R2.http.sent[RS.PF_HOST].extend([now] * 33)      # 33 in the minute already (a round, a lane, the watch)
+        fresh = [mint(1300 + i) for i in range(3)]
+        for i, a in enumerate(fresh):
+            R2.cache["pf"][a] = {"creator": mint(1400 + i, ""), "t": now - 5 * MIN}
+        src.calls = []
+        h1 = len(cm.base.heads)
+        R2.tier2(os.path.join(tmp, "sbN"), [{"a": a, "pr": {}, "age": 1.0 + i} for i, a in enumerate(fresh)], [], now)
+        nm = mint(1310)                                 # a coin no list dated: tier 1's coins-v3 waits too
+        R2.tier1([{"a": nm, "pr": {}, "age": 1.0}], now)
+        near = [h for h in cm.base.heads[h1:] if is_pf(h)]
+        check(src.calls == ["holders"] and len(near) == 1 and R2.http.recent(RS.PF_HOST) == LR.PF_CAP - LR.PF_KEEP_PAGES and "pfcoin" not in R2.work.get(nm, {}),
+              "with 33 pump.fun requests in the minute tier 2 sends one more (a top-holders call) and stops at %d, its dev checks and tier 1's "
+              "coins-v3 wait for room (asked again later): a round's %d list pages stay free" % (R2.http.recent(RS.PF_HOST), LR.PF_KEEP_PAGES))
+        R2.http.sent[RS.PF_HOST].extend([R2.clock.now()] * (LR.PF_CAP - R2.http.recent(RS.PF_HOST)))
+        h2 = len(cm.base.heads)
+        got_main = R2.http.get(RS.F.PF + RS.PF_GRAD % 0)
+        code_main = R2.http.code
+        got_side = R2.chttp.get(RS.F.PF + RS.PF_CURVE % 0)
+        code_side = R2.chttp.code
+        R2.http.get(RS.F.PF + RS.PF_NEW % 0)
+        held = cm.base.heads[h2:]
+        said = [l for l in R2.lines_log if "the most the radar sends" in l]
+        R2.clock.wait(R2.clock.now() + 60_000)
+        room = R2.http.recent(RS.PF_HOST)
+        R2.http.get(RS.F.PF + RS.PF_GRAD % 0)
+        check(got_main is None and code_main == "skip" and got_side is None and code_side == "skip" and held == [] and len(said) == 2
+              and room == 0 and len(cm.base.heads) == h2 + 1,
+              "at %d pump.fun requests in the minute no client sends another (a round's list page, the watch's: skipped, said once per client); "
+              "a minute later they go out again" % LR.PF_CAP)
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def main():

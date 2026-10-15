@@ -303,7 +303,7 @@ CURVE_HOW = ("pool", "curve", "gone", "dead")      # how a call's 1 h value was 
 CURVE_STATES = ("on", "limited", "off")
 CURVE_HOSTS = ("pump.fun", "trades")               # the block's hosts: pump.fun's curve list, the followed coins' trades on the live feed
 CURVE_ID = re.compile(r"(60|75|90)m?")             # a variant id (curve_watch.variant_of): the mark, m for the momentum filter (fullmatch)
-CURVE_HST = re.compile(r"[a-z]{1,12}")             # a host state: ok, limited, down, unused, off, waiting, silent, refused (fullmatch)
+CURVE_HST = re.compile(r"[a-z]{1,12}")             # a host state: ok, limited, down, unused, off, waiting, silent, refused, unavailable (fullmatch)
 CURVE_CTRL = r"\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff"
 CURVE_BLANK = r"\t-\r\x1c-\x20\x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 CURVE_RECENT = 10           # calls in the block (curve_watch.RECENT_N)
@@ -522,8 +522,9 @@ def curve_view(cv, now):
     st = cv.get("state") if cv.get("state") in CURVE_STATES else "off"
     fol, hrs, calls, late = (_cint(cv.get(k)) for k in ("follow", "hours", "calls", "late"))
     head = "Curve watch " + st
-    if st == "on":
-        head += "".join(" · " + b for b in (["%d coin%s followed" % (fol, "" if fol == 1 else "s")] if fol is not None else []) + (["%d h watched" % hrs] if hrs else []))
+    if st == "on":                       # on with a why: the list only, its normal mode (no coin followed on the feed)
+        head += "".join(" · " + b for b in (["%d coin%s followed" % (fol, "" if fol == 1 else "s")] if fol else []) + ([cv["why"]] if cv.get("why") else [])
+                        + (["%d h watched" % hrs] if hrs else []))
     elif cv.get("why"):
         head += ": " + cv["why"]
     recent = cv.get("recent") if isinstance(cv.get("recent"), list) else []
@@ -572,6 +573,7 @@ def curve_view(cv, now):
     by = [_crow(_cvlabel(v["id"]), b, lambda n, k=k: [CURVE_VW[k][1]] + count(n)) for v in cv.get("variants") or [] for k, b in ((k, v["by"].get(k)) for k in CURVE_V)
           if isinstance(b, dict) and _cint(b.get("n"))]
     foot = ["Rising: %d or more points of the curve in the 5 minutes before the call, and more purchases than sales." % math.floor(mp + 0.5),
+            "Without the coin's trades (pump.fun's list only) the points alone count.",
             "Rugged, doubled and paper: of the calls with a 1 h value; graduated: of the calls an hour old whose hour was seen. Rugged: gone, dead or "
             "worth 0.1x or less at 1 h; doubled: 2x to 30x within the hour and not gone or dead at 1 h; the greens by the same rules. Quick check: as "
             "known at the call, or the first one within %d s after it (then counted from that moment's price). Grey: under %d calls with a 1 h value, "
@@ -1318,7 +1320,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
   // {state, head, one: true} without a call, else the head line, the two sentences, the coins (newest call per coin), the tables and the footnote
   curveView:function(cv,now){if(!isObj(cv))return null;
     var st=CV.states.indexOf(cv.state)>=0?cv.state:'off',fol=cint(cv.follow),hrs=cint(cv.hours),calls=cint(cv.calls),late=cint(cv.late),head='Curve watch '+st;
-    if(st==='on')head+=(fol!=null?[fol+' coin'+(fol===1?'':'s')+' followed']:[]).concat(hrs?[hrs+' h watched']:[]).map(function(b){return ' · '+b;}).join('');
+    if(st==='on')head+=(fol?[fol+' coin'+(fol===1?'':'s')+' followed']:[]).concat(cv.why?[cv.why]:[],hrs?[hrs+' h watched']:[]).map(function(b){return ' · '+b;}).join('');
     else if(cv.why)head+=': '+cv.why;
     var recent=Array.isArray(cv.recent)?cv.recent:[];
     if(!recent.length&&!calls)return {state:st,head:head,one:true};
@@ -1344,6 +1346,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     if(isObj(cv.greens))rows.push(crow('radar greens',cv.greens,function(n){return count(n).concat(['–']);},true));
     vars.forEach(function(v){CV.v.forEach(function(k){var b=isObj(v.by)?v.by[k]:null;if(isObj(b)&&cint(b.n))by.push(crow(cvlabel(v.id),b,function(n){return [CV.vw[k][1]].concat(count(n));}));});});
     var foot=['Rising: '+Math.floor(mp+0.5)+' or more points of the curve in the 5 minutes before the call, and more purchases than sales.',
+      "Without the coin's trades (pump.fun's list only) the points alone count.",
       'Rugged, doubled and paper: of the calls with a 1 h value; graduated: of the calls an hour old whose hour was seen. Rugged: gone, dead or '+
       'worth 0.1x or less at 1 h; doubled: 2x to 30x within the hour and not gone or dead at 1 h; the greens by the same rules. Quick check: as '+
       'known at the call, or the first one within '+CV.late+' s after it (then counted from that moment\'s price). Grey: under '+CV.few+' calls with a 1 h value, '+
