@@ -337,11 +337,31 @@ def office_checks(check, skips=None):
                         ("done", "sleeping until %s" % utc(NOW + 35 * MIN), "last %s" % utc(NOW - 20 * MIN), False, False), ("running", "round in progress", "last %s" % utc(NOW - 20 * MIN), False, False),
                         ("done", "sleeping", "last %s" % utc(NOW - 20 * MIN), False, False), ("skipped", "sleeping until %s" % utc(NOW + 5 * H), "last %s" % utc(NOW), True, False),
                         ("skipped", "off", "last %s" % utc(NOW), True, False), ("skipped", "not started yet", "", True, False),
-                        ("fallback", "running, some checks failing", "every 2 min · last %s · next %s" % (utc(dk_t), utc(dk_t + 120_000)), False, False),
-                        ("fallback", "last round had errors", "last %s · next %s" % (utc(NOW - 20 * MIN), utc(NOW + 35 * MIN)), False, False)],
+                        ("fallback", "rounds failing", "every 2 min · last %s · next %s" % (utc(dk_t), utc(dk_t + 120_000)), False, True),
+                        ("fallback", "last round failed", "last %s · next %s" % (utc(NOW - 20 * MIN), utc(NOW + 35 * MIN)), False, True)],
               "radar desk states: running; 'round in progress' from 10 s past the doc's next round for 3 minutes (then the radar's own rules again); late and "
               "stopped show the last round dimmed; a round between rounds 'sleeping until HH:MM'; outside its hours, off and never started hide the stations; "
-              "failing checks amber (%s)" % words)
+              "failing rounds amber and dimmed (%s)" % words)
+        # the doc the radar really writes while its cycles fail (launch_radar.degraded: finish_from drops the list and the counts)
+        import launch_radar as LR
+        deg = LR.finish_from(desk_doc(dk_t - 120_000), "degraded", dk_t, "3 cycles in a row failed", "7", dk_t - 30 * MIN, dk_t + 25 * MIN, "chain", (7, 24))
+        deg.update(next=dk_t + 120_000, notes=["3 cycles in a row failed: the list is not current"])
+        deg["run"].update(cycle=14, mode="loop")
+        deg_r = LR.finish_from(round_doc(NOW - 80 * MIN), "degraded", NOW - 20 * MIN, "the round failed: boom", "8", NOW - 21 * MIN, None, "hourly", (7, 24))
+        deg_r.update(next=NOW + 35 * MIN)
+        deg_r["run"].update(cycle=0, mode="round")
+        v_deg, v_degr = dsk("running", deg, dk_t + 60_000), dsk("done", deg_r, NOW)
+        check((v_deg["light"], v_deg["word"], v_deg["dim"], v_deg["quiet"]) == ("fallback", "rounds failing", True, False)
+              and v_deg["st"][:3] == [["src", "Sources", [["", "–"]], "no counts yet"], ["chk", "Checks", [["", "–"]], "not checked: rounds failing"],
+                                      ["vd", "Verdicts", [["good", "–"], ["warn", "–"], ["bad", "–"]], "no trap · watch · trap"]]
+              and v_deg["st"][3] == ["push", "Push", [["", "0"]], "last without traps: PEPE2, 3 min ago"]
+              and (v_degr["word"], v_degr["dim"], v_degr["st"][1][3]) == ("last round failed", True, "not checked: last round failed")
+              and not any("no coin under 10 min" in x[3] for x in v_deg["st"] + v_degr["st"]),
+              "radar desk on launch_radar's real degraded doc (no list, no counts): amber 'rounds failing' (a round: 'last round failed'), the stations "
+              "dimmed and 'not checked', never 'no coin under 10 min' (%s | %s)" % (v_deg["st"], v_degr["word"]))
+        chips = PO.host_chips({"pumpportal": "limited", "rugcheck": "ok"})
+        check("live feed · limited" in chips and "pumpportal" not in chips and dict(PO.HOSTS).get("pumpportal") == "live feed",
+              "the radar panel names the pump.fun feed 'live feed', as the desk does (%s)" % chips)
         old = desk_doc(dk_t, coins=[dict(desk_doc(dk_t)["coins"][0], push=dk_t - 34 * MIN)], hosts={"pumpportal": "limited"}, lastGood={"addr": desk_doc(dk_t)["coins"][0]["addr"], "sym": "PEPE2", "at": dk_t - 34 * MIN})
         old.pop("src")
         v_old, v_empty = dsk("running", old, dk_t + 60_000), dsk("running", radar_doc(dk_t, coins=[], others=[], counts={"seen": 0, "good": 0, "pushed": 0}, lastGood=None), dk_t + 60_000)
@@ -538,7 +558,7 @@ def office_checks(check, skips=None):
             dcases = [("running", desk_doc(dk_t), dk_t + 60_000), ("running", desk_doc(dk_t), dk_t + 131_000), ("late", desk_doc(dk_t), dk_t + 8 * MIN), ("stopped", desk_doc(dk_t), dk_t + 20 * MIN),
                       ("done", rd0, NOW), ("done", rd0, rd0["next"] + 60_000), ("done", round_doc(NOW - 20 * MIN, state="degraded"), NOW), ("hours", radar_doc(NOW, state="hours", next=NOW + 5 * H), NOW),
                       ("off", radar_doc(NOW, state="off"), NOW), ("none", None, NOW), ("running", old, dk_t + 60_000), ("running", radar_doc(dk_t, coins=[], others=[], lastGood=None), dk_t + 60_000),
-                      ("running", desk_doc(dk_t, state="degraded"), dk_t + 60_000), ("running", radar_doc(dk_t), dk_t + 30_000)]
+                      ("running", desk_doc(dk_t, state="degraded"), dk_t + 60_000), ("running", deg, dk_t + 60_000), ("done", deg_r, NOW), ("running", radar_doc(dk_t), dk_t + 30_000)]
             dpy = [PO.desk_look(s_, PO.radar_clean(doc_) if doc_ else None, n_, utc) for s_, doc_, n_ in dcases]
             dj = [[s_, PO.radar_clean(doc_) if doc_ else None, PRd.clean_doc(doc_) if doc_ else None, n_] for s_, doc_, n_ in dcases]
             jd = os.path.join(tmp, "js")
@@ -550,7 +570,7 @@ def office_checks(check, skips=None):
                         + "o.scan=[O.scan('live',d,t-60000,f),O.scan('paused',d,t-60000,f),O.scan('done',d,t-60000,f),O.scan('stopped',d,t-60000,f),O.scan('live',d,t,f),O.scan('hide',d,t-60000,f),O.scan('live',null,0,f)];\n"
                         + "o.next=[O.next(t,t-1,f),O.next(t,t,f),O.next(t,t+3600000,f),O.next(0,t,f)];\n"
                         + "var DK=%s;o.desk=DK.map(function(c){return [O.desk(c[0],c[1],c[3],f),O.desk(c[0],c[2],c[3],f)];});\n" % json.dumps(dj)
-                        + "o.events=L;O.radar({state:'off',doc:null});console.log(JSON.stringify(o));\n")
+                        + "o.events=L;o.hosts=O.hosts;O.radar({state:'off',doc:null});console.log(JSON.stringify(o));\n")
             r = subprocess.run([node, os.path.join(jd, "t.js")], capture_output=True, text=True, timeout=60)
             o = json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else {}
             same = o.get("look") == py
@@ -562,9 +582,10 @@ def office_checks(check, skips=None):
                   "words and its 'due now' once the expected start has passed (%s)" % (
                       "same" if same else "%s vs %s" % (o.get("look"), py) if o else r.stderr[-300:]))
             same_d = o.get("desk") == [[x, x] for x in dpy]
-            check(same_d and len(dpy) == 14 and dpy[-1]["meta"].startswith("every 2.5 min · "),
-                  "node: the desk on top says in the browser what the page said at build time, for every state and doc, from the page's doc and from the "
-                  "radar event's (page_radar's whitelist) (%s)" % ("same" if same_d else "%s vs %s" % (o.get("desk"), dpy) if o else r.stderr[-300:]))
+            check(same_d and len(dpy) == 16 and dpy[-1]["meta"].startswith("every 2.5 min · ") and o.get("hosts") == [list(x) for x in PO.HOSTS],
+                  "node: the desk on top says in the browser what the page said at build time, for every state and doc (launch_radar's degraded docs too), from "
+                  "the page's doc and from the radar event's (page_radar's whitelist); the script's host names are the page's (%s)" % (
+                      "same" if same_d else "%s vs %s" % (o.get("desk"), dpy) if o else r.stderr[-300:]))
 
         # ---------------------------------------------------------------- the page in Chromium: live poll, radar event, overflow
         browser_checks(check, skips, d1, tmp)

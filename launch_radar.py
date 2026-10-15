@@ -99,6 +99,7 @@ INSTANT_S = 60              # s from mint to pool: under it the pool is instant 
 MINT_SKEW_S = 120           # s: a pool up to this long "before" its mint is two clocks on one launch, so instant (thresholds.mintSkewS)
 TIME_MIN_MS = 1e12          # a time at or below this (2001) is a zero or a seconds value, never a launch time (traps.TIME_MIN_MS)
 RES_EVERY = 15 * 60_000     # results (train.json, spotter.json, positions, 30 days of records) fetched again after this
+CMP_EVERY = 3_600_000       # the winner patterns (traps.compare) compared again after this between fits: the per-coin why stays current
 FEED_EVERY = 30 * 60_000    # radar-feed (walletmem, xlinks, symmc) fetched again after this
 LIVE_ENV = "MEMEBOT_RADAR_FEED"   # the live pump.fun feed (radar_feed.url_of): radar.yml's 'pumpportal', or 'off'; a loop only
 LIVE_DEBOUNCE_MS = 20_000   # an early cycle waits this long after a graduation (DexScreener needs time to list a new pool)
@@ -424,7 +425,7 @@ class Radar:
         self.res_summary, self.train = [], (None, None)
         self.W_prior = self.T.load_weights()
         self.W = self.W_prior
-        self.win = None
+        self.win = self.cmp_try = None
         self.fails, self.notes_run, self.cycle_lines, self.work, self.closes = 0, [], [], {}, {}
         self.publishes, self.out_pk, self.one_round, self.push_failed = 0, set(), False, False
         self.mismatch_said, self.exch, self.pos, self.last_c, self.paid_at = set(), set(), None, {}, {}
@@ -1784,7 +1785,7 @@ class Radar:
         rec["sig"] = sig_of(S, self.coin_extra(a, r, S, c))
         if rec.get("first") == now and not isinstance(rec.get("sig0"), dict):
             rec["sig0"] = sig_of(S, {})          # the signals at first sight, never overwritten (the winner patterns)
-        ws = self.win_score(S)
+        ws = self.win_score(rec["sig0"]) if isinstance(rec.get("sig0"), dict) else None    # on first sight, as it was learned; none without
         rec["chk"] = self.chk(a, S, now, record_only)
         self.touch(a, now)
         zp, up = M.chances(self.train[0], self.train[1], r["f"]) if self.train[0] or self.train[1] else (None, None)
@@ -1880,7 +1881,8 @@ class Radar:
     # ---------------------------------------------------------------- radar.json
     def summary(self, now):
         """The record line (3.4) and the model's data count over results' 30 days and the local 48 hours. record.mom (momentum on
-        paper: calls, n60, the rugged and 2x shares at 1 h) and record.all (every new coin) share one label: the 60-minute price alone."""
+        paper: calls, n60, the rugged and 2x shares at 1 h) and record.all (every new coin since momentum is measured: summ) share one
+        label: the 60-minute price alone."""
         by = {r["addr"]: r for r in self.res_summary}
         for doc in self.docs.values():
             for rec in (doc.get("coins") or {}).values():
@@ -1960,10 +1962,10 @@ class Radar:
                            if num(rec.get("seenAge")) is not None and now - (num(rec.get("first")) or 0) < 3 * H)
         med = seen_ages[len(seen_ages) // 2] if seen_ages else None
         enough = (num(self.model.get("n")) or 0) >= MODEL_NEED       # under it the page says "radar data n of 300 needed" itself
-        wi = self.model.get("win") if isinstance(self.model.get("win"), dict) else {}
+        wi = self.model.get("win") if isinstance(self.model.get("win"), dict) else {}      # n: the coins it was learned on (nTrain)
         model = {"from": self.model.get("from") or "prior", "n": n_out, "need": MODEL_NEED, "auc": fin(self.model.get("auc"), 3),
                  "prior": fin(self.model.get("aucPrior"), 3), "at": self.model.get("at"), "why": str(self.model.get("why") or "")[:200] if enough else "",
-                 "win": {"from": "learned" if self.win else "none", "n": int(num(wi.get("n")) or 0), "auc": fin(wi.get("auc"), 3), "why": str(wi.get("why") or "")[:120]}}
+                 "win": {"from": "learned" if self.win else "none", "n": int(num(wi.get("nTrain")) or 0), "auc": fin(wi.get("auc"), 3), "why": str(wi.get("why") or "")[:120]}}
         doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "hourly": self.hourly_at(),
                "run": {"id": str(self.run_id)[:40], "start": self.run_start, "end": self.run_end, "cycle": k, "source": self.source, "mode": "round" if self.one_round else "loop"},
                "state": state, "why": "", "secs": secs, "model": model,
@@ -1992,20 +1994,22 @@ class Radar:
         return doc
 
     def maybe_fit(self, now):
-        """traps.fit at the first cycle of a UTC day, and when the records with an outcome pass the next hundred (4.8). True when it ran."""
+        """traps.fit at the first cycle of a UTC day, and when the records with an outcome pass the next hundred (4.8). Between fits the
+        winner patterns alone (traps.compare, milliseconds) are compared again once CMP_EVERY has passed, so the per-coin why (the last 6
+        hours) stays current. True when model.json changed (a fit, or a new compare)."""
         _, n_out, _ = self.summary(now)
         at = num(self.model.get("at"))
         due = (at is None or utc_hour(at)[:10] != utc_hour(now)[:10]) or n_out // 100 > int(num(self.model.get("nOut")) or 0) // 100
         if not due:
+            cmp = self.model.get("cmp") if isinstance(self.model.get("cmp"), dict) else {}
+            if now - max(num(cmp.get("at")) or 0, self.cmp_try or 0) >= CMP_EVERY:
+                self.cmp_try = now                   # a compare that fails is tried again an hour later, not every cycle
+                cmp = self.learn_cmp(self.fit_recs(), now)
+                if cmp:
+                    self.say("winner patterns compared again: %d coins with a why" % len(cmp.get("coins") or []))
+                    return True
             return False
-        recs = []
-        for f in glob.glob(os.path.join(self.res, "db", "memeradar", "*.json")):
-            doc = load_json(f)
-            for a, rec in ((doc or {}).get("coins") or {}).items() if isinstance(doc, dict) else []:
-                if isinstance(rec, dict):
-                    recs.append(rec)
-        local = {a: rec for doc in self.docs.values() for a, rec in (doc.get("coins") or {}).items()}
-        recs = [r for r in recs if r.get("addr") not in local] + list(local.values())
+        recs = self.fit_recs()
         try:
             W2, rep = self.T.fit(recs, self.W_prior, now)
         except Exception as e:
@@ -2020,31 +2024,47 @@ class Radar:
         self.learn_wins(recs, now)
         return True
 
-    def learn_wins(self, recs, now):
-        """traps.compare (the winner patterns: model.json "cmp", at most 40 rows and 20 coins) and traps.win_fit (the learned win order:
-        "win") on fit's records, each on its own: a failure is said and leaves the other. Hindsight: neither changes W, a verdict, the
-        points or a push."""
-        cmp, win = None, {"from": "none", "at": now, "why": ""}
+    def fit_recs(self):
+        """fit's records: every record of results' 30 days, the local 48 hours' in their place."""
+        recs = []
+        for f in glob.glob(os.path.join(self.res, "db", "memeradar", "*.json")):
+            doc = load_json(f)
+            for a, rec in ((doc or {}).get("coins") or {}).items() if isinstance(doc, dict) else []:
+                if isinstance(rec, dict):
+                    recs.append(rec)
+        local = {a: rec for doc in self.docs.values() for a, rec in (doc.get("coins") or {}).items()}
+        return [r for r in recs if r.get("addr") not in local] + list(local.values())
+
+    def learn_cmp(self, recs, now):
+        """traps.compare (the winner patterns: model.json "cmp", at most 40 rows and 20 coins) on these records; a failure is said and
+        leaves cmp None. Returns cmp."""
         try:
             cmp = clean_json(self.T.compare(recs, self.W_prior, now))
             cmp["rows"], cmp["coins"] = list(cmp.get("rows") or [])[:40], list(cmp.get("coins") or [])[:20]
         except Exception as e:
             cmp = None
             self.say("winner patterns not compared (%s)" % RS.short(e))
+        self.model["cmp"] = cmp
+        return cmp
+
+    def learn_wins(self, recs, now):
+        """traps.compare (learn_cmp) and traps.win_fit (the learned win order: "win") on fit's records, each on its own: a failure is
+        said and leaves the other. Hindsight: neither changes W, a verdict, the points or a push."""
+        cmp, win = self.learn_cmp(recs, now), {"from": "none", "at": now, "why": ""}
         try:
             win = dict(clean_json(self.T.win_fit(recs, self.W_prior, now)[1]))
         except Exception as e:
             win["why"] = "win order not fitted: %s" % RS.short(e)
             self.say(win["why"])
-        self.model["cmp"], self.model["win"] = cmp, win
+        self.model["win"] = win
         self.win = win["w"] if win.get("from") == "learned" and isinstance(win.get("w"), dict) and win["w"] else None
         vs = [r.get("verdict") for r in (cmp or {}).get("rows") or [] if isinstance(r, dict)]
         self.say("winner patterns: %d sure, %d could be chance (%s doubled vs %s rugged at first sight); win order %s%s" % (
             vs.count("pattern"), vs.count("hint"), (cmp or {}).get("w"), (cmp or {}).get("l"), win.get("from"), ("; " + str(win["why"])) if win.get("why") else ""))
 
     def win_score(self, S):
-        """traps.win_score of a rating's signals with the learned win order, None without one. It only orders coins of equal points
-        (rank); a failure switches it off for the run."""
+        """traps.win_score of a coin's first-sight signals (sig0, what the order was learned and tested on) with the learned win order,
+        None without one. It only orders coins of equal points (rank); a failure switches it off for the run."""
         if not self.win:
             return None
         try:
@@ -2066,12 +2086,13 @@ D_KEYS = ("mintToPoolS", "swAvg", "rugHolders", "buys", "m5", "socN", "lists", "
 
 
 def rank(rated, n=BEST_N):
-    """The order of 3.2 over the rated coins: good coins by (-upside, pts, -ws, -liq), then watch coins by (pts, -ws, -liq), then trap
-    coins by (pts, -ws); ws, the learned win order's score (hindsight), only breaks ties of equal points. Returns (top, coins, others):
-    the best n, the good ones among them (the main list) and every coin that is not good (the fold)."""
+    """The order of 3.2 over the rated coins: good coins by (-upside, pts, -liq, -ws), then watch coins by (pts, -ws, -liq), then trap
+    coins by (pts, -ws); ws, the learned win order's score (hindsight), only breaks ties of equal points, for good coins only after
+    liquidity (liquidity, not ws, picks which good coins are listed and pushed). Returns (top, coins, others): the best n, the good
+    ones among them (the main list) and every coin that is not good (the fold)."""
     liq = lambda x: -(x["liq"] or 0)
     ws = lambda x: -(x.get("ws") or 0)
-    order = sorted([x for x in rated if x["v"] == "good"], key=lambda x: (-x["up"], x["pts"], ws(x), liq(x))) + \
+    order = sorted([x for x in rated if x["v"] == "good"], key=lambda x: (-x["up"], x["pts"], liq(x), ws(x))) + \
         sorted([x for x in rated if x["v"] == "watch"], key=lambda x: (x["pts"], ws(x), liq(x))) + \
         sorted([x for x in rated if x["v"] == "trap"], key=lambda x: (x["pts"], ws(x)))
     top = order[:n]
@@ -2081,17 +2102,19 @@ def rank(rated, n=BEST_N):
 def pat_of(cmp, W):
     """radar.json record.pat from model.json's compare report (traps.compare; hindsight, never a verdict, points or a push): {at, since,
     hrs, w, l, need, rows: the patterns, then the hints, at most PAT_ROWS [signal, losers with it, losers known, winners with it, winners
-    known, sure (a pattern), level (bad: hard, warn: soft, ok: a good sign or plus upside, else info)], why: the newest PAT_WHY rugged
-    coins [sym, first, winners that hour, [[signal, winners with it]] at most 3]}. None without a report or on a malformed one."""
+    known, sure (a pattern), level (bad: hard, warn: soft, ok: a good sign or plus upside, else info), dir (matched by hour: 1 more often
+    in winners, -1 in losers; the pooled shares can point the other way)], why: the newest PAT_WHY rugged coins [sym, first, winners
+    that hour, [[signal, winners with it, winners known]] at most 3]}. None without a report or on a malformed one."""
     if not isinstance(cmp, dict):
         return None
     try:
         g = lambda k, s: num((W.get(k) or {}).get(s)) or 0
         lv = lambda s: "bad" if s in W["hard"] else "warn" if s in W["soft"] else "ok" if g("points", s) < 0 or g("upside", s) > 0 else "info"
         rows = [r for v in ("pattern", "hint") for r in cmp.get("rows") or [] if isinstance(r, dict) and r.get("verdict") == v][:PAT_ROWS]
+        side = lambda v: 1 if (num(v) or 0) > 0 else -1 if (num(v) or 0) < 0 else 0
         return {"at": cmp.get("at"), "since": cmp.get("since"), "hrs": cmp.get("hrs"), "w": cmp.get("w"), "l": cmp.get("l"), "need": cmp.get("need"),
-                "rows": [[str(r["signal"]), r.get("lk"), r.get("ln"), r.get("wk"), r.get("wn"), r["verdict"] == "pattern", lv(r["signal"])] for r in rows],
-                "why": [[str(c[0])[:24], c[1], c[2], [[str(x[0]), x[1]] for x in c[3][:3]]] for c in (cmp.get("coins") or [])[:PAT_WHY]]}
+                "rows": [[str(r["signal"]), r.get("lk"), r.get("ln"), r.get("wk"), r.get("wn"), r["verdict"] == "pattern", lv(r["signal"]), side(r.get("dir"))] for r in rows],
+                "why": [[str(c[0])[:24], c[1], c[2], [[str(x[0]), x[1], x[2]] for x in c[3][:3]]] for c in (cmp.get("coins") or [])[:PAT_WHY]]}
     except (TypeError, KeyError, IndexError, AttributeError):
         return None
 
@@ -2173,19 +2196,22 @@ def sig_of(S, extra):
 def summ(rec, T=None):
     """A record in the few numbers the record line and the model count need. With traps (T) also "mom" (None without momentum) and
     "all": {rug, win} by traps.outcome on the 60-minute price alone, mom's from the momentum price (peak60 is left out: only the best
-    5 and good coins get one, so both stay like for like); None without T."""
+    5 and good coins get one, so both stay like for like); None without T. "all" only for a record whose first rating has its price
+    (6 fields: the 2-minute radar that measures momentum), so the baseline covers the same period and cadence as momentum."""
     a = rec.get("addr")
     if not a:
         return None
     l60 = (rec.get("later") or {}).get("60") if isinstance(rec.get("later"), dict) else None
     out = rec.get("out") if isinstance(rec.get("out"), dict) else {}
     mom = rec.get("mom") if isinstance(rec.get("mom"), dict) else None
+    rt = rec.get("rt") if isinstance(rec.get("rt"), list) else []
+    era = bool(rt) and isinstance(rt[0], list) and len(rt[0]) >= 6
     return {"addr": a, "good": num(rec.get("good")), "goodPx": num(rec.get("goodPx")), "p60": num((l60 or {}).get("px")) if isinstance(l60, dict) else None,
             "gone": bool(isinstance(l60, dict) and l60.get("gone")), "rug": out.get("rug1h") if isinstance(out.get("rug1h"), bool) else None,
             "win": out.get("win1h") if isinstance(out.get("win1h"), bool) else None,
             "mom": hindsight(T, {"addr": a, "dex": rec.get("dex"), "px": mom.get("px"), "liq": mom.get("liq"), "mc": mom.get("mc"), "later": {"60": l60},
                                  "peak60": None, "sig": rec.get("sig")}) if mom else None,
-            "all": hindsight(T, dict(rec, peak60=None))}
+            "all": hindsight(T, dict(rec, peak60=None)) if era else None}
 
 
 def hindsight(T, rec):

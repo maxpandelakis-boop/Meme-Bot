@@ -34,7 +34,7 @@ Winner patterns (compare, win_fit, win_score) are hindsight and follow these rul
      older records without sig0 are not used.
   4. A signal is tested with 15+ winners and 15+ losers known and 5+ expected winners with and without it; else "too few".
   5. A pattern needs Benjamini-Hochberg q < 0.05 and the same direction in both halves of the hours; everything else could be chance.
-  6. The per-coin why only describes, with counts, in hours with 2+ winners.
+  6. The per-coin why only describes, with counts, in hours with 2+ winners whose flag is known.
   7. The win order is learned only when it holds on the last 2 days (walk-forward).
 """
 import copy, glob, gzip, json, math, os, random, re, sys, time
@@ -1088,7 +1088,7 @@ STUDY_MIN_LOSE = 15
 STUDY_MIN_EXP = 5           # ... and at least 5 expected winners with the flag and 5 without
 STUDY_Q = 0.05              # Benjamini-Hochberg q under which a signal (same direction in both halves) is a pattern
 WHY_HOURS = 6               # the per-coin why: rugged top or green coins of the last 6 hours ...
-WHY_MIN_WIN = 2             # ... in an hour with at least 2 winners
+WHY_MIN_WIN = 2             # ... in an hour with at least 2 winners, a flag counted with at least 2 of them known
 WIN_TEST_DAYS = 2           # the win order is chosen before the last 2 days and tested on them
 WIN_MIN_TRAIN = 150
 WIN_MIN_TEST = 30           # winners and losers each in the test days
@@ -1219,9 +1219,9 @@ def compare(records, W=None, now=None):
     only with STUDY_MIN_WIN winners and losers known and STUDY_MIN_EXP expected winners with and without the flag; then
     Benjamini-Hochberg over the tested ones. verdict: pattern (q < STUDY_Q, the same direction in both halves of the hours), hint
     (p < 0.05, could be chance), none, too few. Report: {at, since, n, w, l, hrs, noSig0, need, rows: [{signal, kind, wk, wn, lk,
-    ln, or, dir, p, q, halves, verdict}], coins: the per-coin why [sym, first, winners that hour, [[signal, winners with it]]]: the
-    rugged top or green coins of the last WHY_HOURS in hours with WHY_MIN_WIN+ winners, and their flags that at most a third of
-    that hour's winners had (by p, at most 3), newest first, at most 20}."""
+    ln, or, dir, p, q, halves, verdict}], coins: the per-coin why [sym, first, winners that hour, [[signal, winners with it, winners
+    known]]]: the rugged top or green coins of the last WHY_HOURS in hours with WHY_MIN_WIN+ winners, and their flags that at most a
+    third of that hour's winners whose flag is known had (WHY_MIN_WIN+ known; by p, at most 3), newest first, at most 20}."""
     W = W or load_weights()
     now = int(now if now is not None else time.time() * 1000)
     cands = _study_cands(W)
@@ -1238,8 +1238,9 @@ def compare(records, W=None, now=None):
         ws = wins.get(h) or []
         if y or t < now - WHY_HOURS * H or not (rec.get("top") or rec.get("good")) or len(ws) < WHY_MIN_WIN:
             continue
-        rare = sorted((pkey[k], k, sum(1 for G in ws if G[k])) for k in cands if F[k])
-        rare = [[k, n] for _, k, n in rare if 3 * n <= len(ws)][:3]
+        kn = {k: [G[k] for G in ws if G[k] is not None] for k in cands if F[k]}      # only the winners whose flag is known count
+        rare = sorted((pkey[k], k, sum(v), len(v)) for k, v in kn.items() if len(v) >= WHY_MIN_WIN)
+        rare = [[k, n, m] for _, k, n, m in rare if 3 * n <= m][:3]
         if rare:
             coins.append([str(rec.get("sym") or "?")[:24], t, len(ws), rare])
     coins.sort(key=lambda c: -c[1])

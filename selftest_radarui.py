@@ -143,8 +143,8 @@ def radar_doc(now, kind="good", rng=None):
         c["ws"] = ws
     # the momentum line and the patterns (launch_radar summary / pat_of): a long label to cut, two hints that could be chance, two rugged coins
     pat = {"at": t - H, "since": t - 72 * H, "hrs": 38, "w": 25, "l": 192, "need": 15,
-           "rows": [["creator_sold", 41, 66, 2, 14, True, "warn"], ["x", 65, 127, 17, 23, False, "ok"], ["fund_cluster", 30, 120, 2, 20, False, "info"]],
-           "why": [["SEALS", t - 130 * MIN, 3, [["creator_sold", 0], ["rc_danger", 1]]], ["RUGGY", t - 90 * MIN, 2, [["fund_cluster", 0]]]]}
+           "rows": [["creator_sold", 41, 66, 2, 14, True, "warn", -1], ["x", 65, 127, 17, 23, False, "ok", 1], ["fund_cluster", 30, 120, 2, 20, False, "info", -1]],
+           "why": [["SEALS", t - 130 * MIN, 3, [["creator_sold", 0, 3], ["rc_danger", 1, 3]]], ["RUGGY", t - 90 * MIN, 2, [["fund_cluster", 0, 2]]]]}
     recent = [{"addr": good["addr"], "sym": "PEPE2", "good": t - 4 * MIN, "later": {"5": None, "15": None, "30": None, "60": None}, "out": None},
               {"addr": b58(rng), "sym": "HIRE", "good": t - 95 * MIN, "later": {"5": 1.12, "15": 0.94, "30": 1.4, "60": 2.3}, "out": {"rug1h": False, "win1h": True, "x60": 2.3}},
               {"addr": b58(rng), "sym": "SEALS", "good": t - 130 * MIN, "later": {"5": 0.8, "15": 0.3, "30": 0.05, "60": 0.01}, "out": {"rug1h": True, "win1h": False, "x60": 0.01}},
@@ -184,7 +184,7 @@ def radar_doc(now, kind="good", rng=None):
         doc["why"] = XSS_NOTE
     elif kind == "hosts":
         doc["hosts"] = {"dexscreener": "ok", "rugcheck": "limited", "pump.fun": "ok", "geckoterminal": "unused", "rpc": "unused", "jupiter": "ok",
-                        "launchlab": "off", "pump.fun trades": "down"}
+                        "launchlab": "off", "pump.fun trades": "down", "pumpportal": "limited"}
         doc["notes"] = ["RugCheck limited: 2 coins not fully checked"]
         doc["wm"] = {"t": t - 4 * H, "nCoins": 4120}
         doc["model"] = {"from": "learned", "n": 340, "need": 300, "auc": 0.712, "prior": 0.65, "at": t - H}
@@ -193,16 +193,19 @@ def radar_doc(now, kind="good", rng=None):
 
 def pat_doc(t):
     """A radar.json with every drop of the new whitelists (record.mom / all / pat, model.win, ws): a ws of 99, '2' or 1.5; a pat row with a bad
-    name, a zero wn, more rugged with it than rugged, a 4th good row; a bad level (read as info) and sure 'true' (read as not sure); a why with 4
-    signals (cut to 3), one with bad pairs, one that is not a list, a 4th coin."""
+    name, a zero wn, more rugged with it than rugged, 7 fields (no direction), a 4th good row; a bad level (read as info), sure 'true' (read as
+    not sure) and a direction '1' or true (read as 0); a why with 4 signals (cut to 3), one with bad triples (a name with a space, a count as
+    text, no known count, more with it than known), one that is not a list, a 4th coin."""
     a = "1111111111111111111111111111111111111111pump"
-    row = lambda n, **kw: [kw.get(str(i), v) for i, v in enumerate([n, 41, 66, 2, 14, True, "warn"])]
+    row = lambda n, **kw: [kw.get(str(i), v) for i, v in enumerate([n, 41, 66, 2, 14, True, "warn", -1])]
     return {"kind": "radar", "t": t, "coins": [{"addr": a, "ws": 99}, {"addr": a, "ws": 2}, {"addr": a, "ws": "2"}, {"addr": a, "ws": 1.5}], "others": [{"addr": a, "ws": -9}],
             "model": {"win": {"from": "x", "n": 5, "auc": "0.6", "why": "w" * 200}},
             "record": {"calls": 3, "mom": {"calls": 2, "n60": "9", "rug": 0.5, "win": None}, "all": [1, 2],
                        "pat": {"at": t, "since": -1, "hrs": 3, "w": "4", "l": 20, "need": 15,
-                               "rows": [row("creator_sold"), row("a b"), row("x", **{"4": 0}), row("mc_500k", **{"6": "evil"}), row("liq_15pct", **{"5": "true"}), row("tweet"), row("x", **{"1": 70})],
-                               "why": [["PEPE", t, 3, [["a", 1], ["b", 2], ["c", 3], ["d", 4]]], ["Q", t, 3, [["a b", 1], ["e", "2"]]], ["R", t, 3, "x"], ["S", t, 3, []], ["T", t, 3, []]]}}}
+                               "rows": [row("creator_sold"), row("a b"), row("x", **{"4": 0}), row("dev_dead")[:7], row("mc_500k", **{"6": "evil", "7": "1"}),
+                                        row("liq_15pct", **{"5": "true", "7": True}), row("tweet"), row("x", **{"1": 70})],
+                               "why": [["PEPE", t, 3, [["a", 1, 3], ["b", 2, 3], ["c", 3, 3], ["d", 4, 4]]], ["Q", t, 3, [["a b", 1, 3], ["e", "2", 3], ["f", 1], ["g", 3, 2], ["h", 0, 2]]],
+                                       ["R", t, 3, "x"], ["S", t, 3, []], ["T", t, 3, []]]}}}
 
 
 def young_rows(now, rng):
@@ -446,13 +449,15 @@ def py_checks(check, tmp, T, standin):
     pc, gd = P.clean_doc(pat_doc(now)), P.clean_doc(radar_doc(now, "good"))
     check(pc and [c["ws"] for c in pc["coins"]] == [None, 2, None, None] and pc["others"][0]["ws"] == -9 and pc["model"]["win"] == {"from": "none", "n": 5, "auc": None, "why": "w" * 120}
           and pc["record"]["mom"] == {"calls": 2, "n60": None, "rug": 0.5, "win": None} and pc["record"]["all"] is None
-          and pc["record"]["pat"] == {"at": now, "since": None, "hrs": 3, "w": None, "l": 20, "need": 15, "rows": [["creator_sold", 41, 66, 2, 14, True, "warn"], ["mc_500k", 41, 66, 2, 14, True, "info"],
-                                      ["liq_15pct", 41, 66, 2, 14, False, "warn"]], "why": [["PEPE", now, 3, [["a", 1], ["b", 2], ["c", 3]]], ["Q", now, 3, []], ["S", now, 3, []]]}
+          and pc["record"]["pat"] == {"at": now, "since": None, "hrs": 3, "w": None, "l": 20, "need": 15, "rows": [["creator_sold", 41, 66, 2, 14, True, "warn", -1],
+                                      ["mc_500k", 41, 66, 2, 14, True, "info", 0], ["liq_15pct", 41, 66, 2, 14, False, "warn", 0]],
+                                      "why": [["PEPE", now, 3, [["a", 1, 3], ["b", 2, 3], ["c", 3, 3]]], ["Q", now, 3, [["h", 0, 2]]], ["S", now, 3, []]]}
           and gd["record"]["pat"]["rows"] == radar_doc(now, "good")["record"]["pat"]["rows"] and gd["record"]["all"] == {"n60": 412, "rug": 0.72, "win": 0.03} and gd["coins"][0]["ws"] == 2
           and P.clean_doc(dict(radar_doc(now, "good"), record=None))["record"] is None and P.clean_doc({"kind": "radar", "t": now})["model"]["win"] is None
           and all(P.LABELS.get(n) for n in ("x", "creator_5pct", "mc_500k", "liq_15pct")),
-          "the whitelist keeps record.mom / all / pat, model.win and ws (an integer -9 to 9) and drops the rest: a pat row with a bad name, a zero group or more "
-          "with it than in the group, a 4th row; a bad level reads info, sure only a real true; a why's 4th signal, bad pairs and a 4th coin; the 4 new labels exist")
+          "the whitelist keeps record.mom / all / pat, model.win and ws (an integer -9 to 9) and drops the rest: a pat row with a bad name, a zero group, more "
+          "with it than in the group or no direction, a 4th row; a bad level reads info, sure only a real true, a direction only -1, 0 or 1; a why's 4th "
+          "signal, bad triples (more with it than known) and a 4th coin; the 4 new labels exist")
     # U10 (page side): names like HTML tags, a RugCheck danger name and a javascript: X link are inert on the New launches tab and in the embedded doc
     d4, _ = build_db(tmp, now, radar="xss", name="db-xss")
     p4 = page_of(d4, now)
@@ -534,7 +539,7 @@ o.transport=[R.radarTransport(U,K,'gh',60,N/1000+1800,now,0),R.radarTransport(U,
   R.radarTransport('','','gh',11,N/1000+1800,now,0),R.radarTransport('','','gh',10,N/1000+1800,now,0),R.radarTransport('','','gh',3,N/1000-10,now,0),
   R.radarTransport('','','',60,0,now,0),R.radarTransport(U,'sb_secret_x','gh',60,0,now,0),R.radarTransport(U,K+'"><x','',60,0,now,0)];
 o.budget=[R.budget({rem:30,reset:9,at:5},{rem:20,reset:9,remAt:7}).rem,R.budget({rem:30,reset:9,at:8},{rem:20,reset:9,remAt:7}).rem,R.budget(null,{rem:20,reset:9,remAt:7}).rem,R.budget(null,null).rem];
-// the next poll: the doc's next cycle + 15 s, at least 150 s after the last (300 s on the Office tab); 20 s / 60 s on the live store
+// the next poll: the doc's next cycle + 15 s, at least 150 s after the last; 20 s / 60 s on the live store; the Office tab the same while a loop runs
 var d1=doc(N-30000);
 o.next=[R.radarNext({doc:d1,now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:d1,now:N,last:N,tab:'office',via:'github',got:N})-N,
   R.radarNext({doc:doc(N-1000,{next:N+400000}),now:N,last:N,tab:'radar',via:'github',got:N})-N,R.radarNext({doc:d1,now:N,last:N,tab:'radar',via:'supabase',got:N})-N,
@@ -552,6 +557,18 @@ function sim(officeOn,tab,rem0){var Hh=3600000,T=1e12,rem=rem0,reset=(T+Hh)/1000
     minRem=Math.min(minRem,rem);}
   return [calls,minRem,raw];}
 o.sim=[sim(true,'office',60),sim(false,'radar',60),sim(true,'office',25),sim(true,'radar',60)];
+// the desk on the Office tab with a loop every 2 minutes: round k's doc (t = its grid point, next 2 minutes later) lands 30 to 100 s after its time
+// (the cycle's deadline); the page polls at radarNext's pace on that tab and takes each doc as took() does. Half an hour: the seconds it read
+// anything but running, and its polls
+function officeSim(via){var T=1e12,G=120000,docs=[],held=null,got=0,moved=false,nx=T,bad=0,polls=0,reset=(T+3600000)/1000;
+  for(var k=0;k<20;k++)docs.push({at:T-G+k*G+30000+(k*37000)%70001,d:{kind:'radar',t:T-G+k*G,next:T+k*G,state:'running',run:{mode:'loop'},coins:[]}});
+  for(var now=T;now<T+1800000;now+=1000){
+    if(now>=nx){var d=null;docs.forEach(function(x){if(x.at<=now)d=x.d;});polls++;
+      if(!(held&&held.t===d.t)){moved=!!(held&&got>0&&d.t>held.t);got=now;held=d;}
+      nx=R.radarNext({doc:held,now:now,last:now,tab:'office',via:via,rem:via==='github'?60-polls:null,reset:reset,fails:0,got:got,moved:moved});}
+    if(R.radarState(held,now,got,moved)!=='running')bad++;}
+  return [bad,polls];}
+o.officeSim=[officeSim('supabase'),officeSim('github')];
 // one hour on the New tab with the hourly radar: a round 5 minutes ago, the next in 55 minutes (it lands 3 minutes after that)
 o.simRound=(function(){var T=1e12,calls=0,rN=T,d=rd(T-5*M,{next:T+55*M});for(var now=T;now<T+3600000;now+=1000){if(now>=T+58*M&&d.t<T)d=rd(now,{next:now+60*M});
   if(now>=rN){calls++;rN=R.radarNext({doc:d,now:now,last:now,tab:'radar',via:'github',got:now,moved:false});}}return calls;})();
@@ -574,9 +591,11 @@ o.ago=[R.ago(30000),R.ago(34*60000),R.ago(3*3600000)];
 o.groups=R.groups({line:[['bad','brand/celebrity name'],['warn','no socials'],['ok','RugCheck report']],hard:['brand_name','instant_pool'],soft:['no_socials'],unknown:['mint_time'],info:['dev_dead']});
 // the momentum line, the patterns and the ▲ (hindsight, paper only): the words, the too-few forms; the fixtures through R.clean (Python's clean_doc must agree)
 var mo=function(c,n){return {calls:c,n60:n,rug:0.91,win:0.04};},al={n60:412,rug:0.72,win:0.03};
-o.mom=[R.momLine(mo(47,41),al),R.momLine(mo(9,9),al),R.momLine(mo(1,null),null),R.momLine(null,al),R.momLine(mo(47,41),null)];
-o.pat=[R.patHead({w:25,l:192,need:15}),R.patHead({w:4,l:120,need:15}),R.patHead(null),R.patRow(['creator_sold',41,66,2,14,true,'warn']),R.patRow(['x',65,127,17,23,false,'ok']),
-  R.patRow(['some_new',1,2,0,3,false,'info']),R.whyLine(['PEPE',N,3,[['creator_sold',0],['rc_danger',1]]],hm),R.whyLine(['PEPE',null,null,[['x',2]]],hm),R.whyLine(['PEPE',N,3,[]],hm),hm(N)];
+o.mom=[R.momLine(mo(47,41),al),R.momLine(mo(9,9),al),R.momLine(mo(1,null),null),R.momLine(null,al),R.momLine(mo(47,41),null),R.momLine(mo(0,0),al)];
+// the last row: hours that swing (selftest_learn's case): pooled 48% of rugged vs 29% of doubled, hour by hour more often in doubled coins
+o.pat=[R.patHead({w:25,l:192,need:15}),R.patHead({w:4,l:120,need:15}),R.patHead(null),R.patRow(['creator_sold',41,66,2,14,true,'warn',-1]),R.patRow(['x',65,127,17,23,false,'ok',1]),
+  R.patRow(['some_new',1,2,0,3,false,'info',0]),R.whyLine(['PEPE',N,3,[['creator_sold',0,3],['rc_danger',1,3]]],hm),R.whyLine(['PEPE',null,null,[['x',2,null]]],hm),R.whyLine(['PEPE',N,3,[]],hm),hm(N),
+  R.patRow(['x',190,400,100,350,true,'ok',1])];
 o.ws=[R.wsOn({ws:1},{win:{from:'learned'}}),R.wsOn({ws:0},{win:{from:'learned'}}),R.wsOn({ws:2},{win:{from:'none'}}),R.wsOn({ws:2},{win:null}),R.wsOn({ws:null},{win:{from:'learned'}}),R.wsOn({ws:3},null)];
 o.parity=(global.FX||[]).map(function(d){return R.clean(d);});
 console.log(JSON.stringify(o));
@@ -612,9 +631,13 @@ def node_checks(check, tmp, skips):
           "U3 MemebotRadar.radarTransport: the live store when the page carries it (github for 2 minutes after it failed), the GitHub API while the shared budget keeps more than "
           "RESERVE, raw.githubusercontent at RESERVE until the reset, none without a source; the budget takes the newest numbers of the office poll and its own %s %s" % (o["transport"], o["budget"]))
     nx = o["next"]
-    check(nx[0] == 150000 and nx[1] == 300000 and nx[2] == 415000 and nx[3] == 20000 and nx[4] == 60000 and nx[5] == 300000 and nx[6] == 600000 and nx[7] == 900000,
-          "U3 the radar poll: GitHub at the doc's next cycle + 15 s, at least 150 s apart (300 s on the Office tab, 600 s while off), stretched by the budget (12 left: 900 s); "
-          "the live store every 20 s fresh, 60 s stale, 300 s on the Office tab %s" % nx)
+    check(nx[0] == 150000 and nx[1] == 150000 and nx[2] == 415000 and nx[3] == 20000 and nx[4] == 60000 and nx[5] == 20000 and nx[6] == 600000 and nx[7] == 900000,
+          "U3 the radar poll: GitHub at the doc's next cycle + 15 s, at least 150 s apart (600 s while off), stretched by the budget (12 left: 900 s); "
+          "the live store every 20 s fresh, 60 s stale; the Office tab (the desk) the same while a loop runs %s" % nx)
+    osim = o.get("officeSim") or [[-1, 0], [-1, 0]]
+    check(osim[0][0] == 0 and osim[1][0] == 0 and 80 <= osim[0][1] <= 95 and 10 <= osim[1][1] <= 13,
+          "U3 the desk on the Office tab with a loop every 2 minutes (each doc landing 30 to 100 s after its time): running every second of a "
+          "simulated half hour on the live store (%d polls) and on GitHub (%d polls, 24 an hour at most), never late between two polls %s" % (osim[0][1], osim[1][1], osim))
     sim = o["sim"]
     check(sim[0][0] <= 50 and sim[0][1] >= 10 and sim[1][0] <= 25 and sim[2][0] <= 15 and sim[2][1] >= 10 and sim[3][0] <= 50 and sim[3][1] >= 10,
           "U3 the shared GitHub budget: a simulated hour with the office poll during a live scan and the radar poll on the Office tab makes %d counted calls (at most 50, %d left, "
@@ -660,23 +683,26 @@ def node_checks(check, tmp, skips):
     check(o["odds"] == [[0.2, 0.3], [0.22, 0.31], None, None] and o["ago"] == ["just now", "34 min ago", "3 h ago"],
           "U3 the trained odds are read from d.upP / d.zeroP and from d.odds {up, zero} (WP3's shapes); 'just now' under a minute %s" % [o["odds"], o["ago"]])
     mo, pt = o.get("mom") or [], o.get("pat") or [""] * 10
-    check(mo == ["Rising fast, paper only: 47 calls · 91% rugged · 4% 2x at 1 h · all new coins: 72% · 3%", "Rising fast, paper only: 9 calls · too few yet (9 of 20 with a 1 h price)",
-                 "Rising fast, paper only: 1 call · too few yet (0 of 20 with a 1 h price)", "", "Rising fast, paper only: 47 calls · 91% rugged · 4% 2x at 1 h"],
-          "the momentum line says 'paper only' with the all-new-coins baseline (the same 1 h label), 'too few yet' under 20 with a 1 h price, nothing without a record %s" % mo)
+    check(mo == ["Rising fast, paper only: 47 coins · 91% rugged · 4% 2x at 1 h · all new coins: 72% rugged, 3% 2x", "Rising fast, paper only: 9 coins · too few yet (9 of 20 with a 1 h price)",
+                 "Rising fast, paper only: 1 coin · too few yet (0 of 20 with a 1 h price)", "", "Rising fast, paper only: 47 coins · 91% rugged · 4% 2x at 1 h", ""],
+          "the momentum line says 'paper only' and counts coins (never 'calls') with the labelled all-new-coins baseline (the same 1 h label), 'too few yet' "
+          "under 20 with a 1 h price, nothing without a record or while no coin rose fast %s" % mo)
     check(pt[:3] == ["Same hours, signals at first sight: 192 rugged vs 25 doubled", "Patterns: too few doubled coins yet (4 of 15)", ""]
-          and pt[3] == ["creator sold", "62%", "14%", True, "warn", "41 of 66 rugged, 2 of 14 doubled had it"]
-          and pt[4] == ["has an X link", "51%", "74%", False, "ok", "65 of 127 rugged, 17 of 23 doubled had it (could be chance)"] and pt[5][0] == "some new"
-          and pt[6] == "PEPE rugged %s · creator sold (0 of 3 doubled that hour had it), RugCheck danger (1 of 3)" % pt[9]
-          and pt[7] == "PEPE rugged · has an X link (2 of ? doubled that hour had it)" and pt[8] == "",
-          "the patterns: the head line or 'too few doubled coins yet (4 of 15)'; a row's label, the share of rugged and of doubled coins with it, the counts in its "
-          "title ('could be chance' when not sure); a rugged coin's flags with how many of its hour's doubled coins had them %s" % pt[:9])
+          and pt[3] == ["creator sold", "62%", "14%", True, "warn", "41 of 66 rugged, 2 of 14 doubled had it", "rugged"]
+          and pt[4] == ["has an X link", "51%", "74%", False, "ok", "65 of 127 rugged, 17 of 23 doubled had it (could be chance)", "doubled"] and pt[5][0] == "some new" and pt[5][6] == ""
+          and pt[6] == "PEPE, seen %s, rugged within 1 h · creator sold (0 of 3 doubled that hour had it), RugCheck danger (1 of 3)" % pt[9]
+          and pt[7] == "PEPE, rugged within 1 h · has an X link (2 of ? doubled that hour had it)" and pt[8] == ""
+          and pt[10] == ["has an X link", "less", "more", True, "ok", "190 of 400 rugged, 100 of 350 doubled had it; hour by hour it is more often in doubled coins", "doubled"],
+          "the patterns: the head line or 'too few doubled coins yet (4 of 15)'; a row's label, the share of rugged and of doubled coins with it, or 'less' and "
+          "'more' from the hour-by-hour direction when the pooled shares point the other way, the counts in its title ('could be chance' when not sure); a rugged "
+          "coin, when it was seen and that it rugged within 1 h, with how many of its hour's doubled coins whose flag is known had them %s" % (pt[:9] + pt[10:]))
     check(o.get("ws") == [True, False, False, False, False, False],
           "the ▲ shows only for a ws of 1 or more once the win order is learned %s" % o.get("ws"))
     py = [P.clean_doc(x) for x in fx]
     check(o.get("parity") == py and len(py) == 5 and py[0]["record"]["pat"]["rows"] and py[1]["model"]["win"]["from"] == "learned" and py[4]["record"]["pat"]["rows"],
           "the page's two whitelists agree: Python's clean_doc and the script's R.clean give the same doc for the good, round, empty and hosts fixtures and the one "
           "with every drop of the new keys%s" % ("" if o.get("parity") == py else " (differ: %s)" % [k for k in py[0] if (o.get("parity") or [{}])[0].get(k) != py[0][k]]))
-    words = mo + pt[:3] + [x for r in pt[3:6] for x in (r[0], r[5])] + pt[6:9]
+    words = mo + pt[:3] + [x for r in pt[3:6] + pt[10:] for x in (r[0], r[5], r[6])] + pt[6:9]
     check(not any(BANNED.search(w) or "\u2014" in w for w in words), "U7 the momentum and pattern words carry no 'safe', 'guaranteed' or advice-style 'buy', and no em dash")
 
 
@@ -705,12 +731,16 @@ RADAR_JS = """() => { const b = document.querySelector('[data-radar]'), q = s =>
     recOpen: q('[data-r-rec]').open, recHidden: q('[data-r-rec]').hidden, recNotes: Array.from(b.querySelectorAll('[data-r-recent] > p.note')).map(p => p.textContent),
     recOrder: Array.from(q('[data-r-recent]').children).map(e => e.tagName.toLowerCase() + '.' + e.className),
     pat: Array.from(b.querySelectorAll('[data-r-recent] .rpat tbody tr')).map(tr => [tr.className, tr.title].concat(Array.from(tr.children).map(td => td.textContent))),
+    patNote: (b.querySelector('[data-r-recent] .rpat + p.tnote') || {}).textContent || '',
     why: Array.from(b.querySelectorAll('[data-r-recent] .rpwhy li')).map(l => l.textContent), ws: Array.from(b.querySelectorAll('.rws')).map(s => [s.parentElement.className, s.title]) }; }"""
 # the Track record fold open at a phone's width: the patterns table inside the fold, the long label cut, a hint muted, the numbers tabular
 REC_JS = """() => { const f = document.querySelector('[data-r-rec]'), t = f.querySelector('.rpat'), rows = t ? Array.from(t.querySelectorAll('tbody tr')) : [], col = r => getComputedStyle(r.children[1]).color;
   return { hscroll: document.documentElement.scrollWidth - innerWidth, fits: !!t && t.getBoundingClientRect().right <= f.getBoundingClientRect().right + 0.5,
     cut: rows.filter(r => { const s = r.querySelector('.tc'); return s.scrollWidth > s.clientWidth + 1; }).map(r => r.querySelector('.tc').textContent),
     muted: rows.length > 1 && !rows[0].classList.contains('maybe') && rows.slice(1).every(r => r.classList.contains('maybe') && col(r) !== col(rows[0])),
+    marks: rows.map(r => { const q = r.querySelector('.rq'), c = r.children[0].getBoundingClientRect(); if (!q || !q.getClientRects().length) return '';
+      const b = q.getBoundingClientRect(); return b.width > 0 && b.left >= c.left && b.right <= c.right + 0.5 && getComputedStyle(q).visibility !== 'hidden' ? q.textContent : 'hidden'; }),
+    note: (() => { const n = f.querySelector('.rpat + p.tnote'); return n && n.getClientRects().length ? n.textContent : ''; })(),
     nums: rows.length ? [getComputedStyle(rows[0].children[1]).textAlign, getComputedStyle(rows[0].children[2]).fontVariantNumeric] : [] }; }"""
 # the tap targets under 44 px tall in a pane as the phone shows it (links, folds, buttons, labels), and the full scan's rows in view on New
 TAP_JS = r"""(sel) => { const p = document.querySelector(sel), r = e => e.getBoundingClientRect();
@@ -1202,10 +1232,10 @@ def browser(check, tmp, d, skips, shots=None):
           "U3 browser: a late or stopped doc greys its coins (the 'No trap found' chip grey too, %s) with 'as of HH:MM', no count and 0 good in the event; the header says late, "
           "stopped, off, hours (with the next start) and not started yet %s" % (st["late"]["chipCls"], {k: v["pill"] for k, v in st.items()}))
     hn = out["hosts"]["notes"]
-    check(hn[:1] == ["RugCheck limited: 2 coins not fully checked"] and any(x.startswith("wallet check unavailable") for x in hn) and "pump.fun trades: down" in hn and len(hn) == 3
-          and not any("unused" in x or "off" in x.split(":")[-1] for x in hn),
-          "S2 host notes: WP3's routine states (unused, off) make none; a down host gets a plain one, a limited one the radar already named gets none; an old wallet memory "
-          "gets the page's note %s" % hn)
+    check(hn[:1] == ["RugCheck limited: 2 coins not fully checked"] and any(x.startswith("wallet check unavailable") for x in hn) and "pump.fun trades: down" in hn
+          and "live feed: limited" in hn and len(hn) == 4 and not any("unused" in x or "off" in x.split(":")[-1] or "pumpportal" in x for x in hn),
+          "S2 host notes: WP3's routine states (unused, off) make none; a down host gets a plain one, a limited one the radar already named gets none, the pump.fun "
+          "feed is named 'live feed' as on the Office desk; an old wallet memory gets the page's note %s" % hn)
     check(out["hosts"].get("model") == "Weights: learned on 340 calls · ranking quality 0.71 (study weights 0.65, coin toss 0.50)",
           "UX N10 learned weights in plain words, no 'AUC': %r" % out["hosts"].get("model"))
     rw = out["raw"]
@@ -1294,20 +1324,23 @@ def browser(check, tmp, d, skips, shots=None):
     lk = out.get("links") or {}
     check(all(v == [True, "", 1] for v in lk.values()) and len(lk) == 3,
           "the old links #radar, #tab-young and #new open New in a browser, once (the hash is dropped), one tab radio checked %s" % lk)
-    rcf, why_re = out.get("recfold") or {}, r"^%s rugged \d\d:\d\d · %s$"
-    check(g.get("recOpen") is False and not g.get("recHidden") and g.get("recOrder") == ["p.note rrline", "p.note rrmom", "p.note", "table.rpat", "ul.rpwhy", "div.rrec-w"]
-          and g.get("recNotes", [])[1:] == ["Rising fast, paper only: 47 calls · 91% rugged · 4% 2x at 1 h · all new coins: 72% · 3%", "Same hours, signals at first sight: 192 rugged vs 25 doubled"]
+    rcf, why_re = out.get("recfold") or {}, r"^%s, seen \d\d:\d\d, rugged within 1 h · %s$"
+    check(g.get("recOpen") is False and not g.get("recHidden") and g.get("recOrder") == ["p.note rrline", "p.note rrmom", "p.note", "table.rpat", "p.tnote", "ul.rpwhy", "div.rrec-w"]
+          and g.get("recNotes", [])[1:] == ["Rising fast, paper only: 47 coins · 91% rugged · 4% 2x at 1 h · all new coins: 72% rugged, 3% 2x", "Same hours, signals at first sight: 192 rugged vs 25 doubled"]
           and g.get("pat") == [["", "41 of 66 rugged, 2 of 14 doubled had it", "!creator sold", "62%", "14%"],
-                               ["maybe", "65 of 127 rugged, 17 of 23 doubled had it (could be chance)", "✓has an X link", "51%", "74%"],
-                               ["maybe", "30 of 120 rugged, 2 of 20 doubled had it (could be chance)", "·top holders funded by one wallet", "25%", "10%"]]
+                               ["maybe", "65 of 127 rugged, 17 of 23 doubled had it (could be chance)", "✓has an X link?", "51%", "74%"],
+                               ["maybe", "30 of 120 rugged, 2 of 20 doubled had it (could be chance)", "·top holders funded by one wallet?", "25%", "10%"]]
+          and g.get("patNote") == "? could be chance"
           and len(g.get("why", [])) == 2 and re.match(why_re % ("SEALS", r"creator sold \(0 of 3 doubled that hour had it\), RugCheck danger \(1 of 3\)"), g["why"][0])
           and re.match(why_re % ("RUGGY", r"top holders funded by one wallet \(0 of 2 doubled that hour had it\)"), g["why"][1]),
           "the Track record fold (closed at first) holds, after the record line, the momentum line, the patterns' head, at most 3 signals (a hint that could be "
           "chance marked) and the rugged coins' flags, then the later prices; no new fold %s" % [g.get("recNotes", [])[1:], g.get("why")])
-    check(rcf.get("hscroll", 1) <= 0 and rcf.get("fits") and rcf.get("cut") == ["·top holders funded by one wallet"] and rcf.get("muted") and rcf.get("nums") == ["right", "tabular-nums"],
-          "the patterns at 390 px with the fold open: no sideways scroll, the table inside the fold, a long label cut with an ellipsis, a hint muted, the %% "
-          "columns right-aligned and tabular %s" % rcf)
-    check(e_.get("recNotes", [])[1:] == ["Rising fast, paper only: 9 calls · too few yet (9 of 20 with a 1 h price)", "Patterns: too few doubled coins yet (4 of 15)"]
+    check(rcf.get("hscroll", 1) <= 0 and rcf.get("fits") and rcf.get("cut") == ["·top holders funded by one wallet"] and rcf.get("muted") and rcf.get("nums") == ["right", "tabular-nums"]
+          and rcf.get("marks") == ["", "?", "?"] and rcf.get("note") == "? could be chance",
+          "the patterns at 390 px with the fold open: no sideways scroll, the table inside the fold, a long label cut with an ellipsis, a hint muted and "
+          "marked with a visible '?' beside its label (a phone shows no title) and the note '? could be chance' under the table, the %% columns "
+          "right-aligned and tabular %s" % rcf)
+    check(e_.get("recNotes", [])[1:] == ["Rising fast, paper only: 9 coins · too few yet (9 of 20 with a 1 h price)", "Patterns: too few doubled coins yet (4 of 15)"]
           and e_.get("pat") == [] and e_.get("why") == [] and e_.get("recOrder") == ["p.note rrline", "p.note rrmom", "p.note", "div.rrec-w"],
           "too few: the momentum line and the patterns' head say so, no table and no coin lines %s" % e_.get("recNotes", [])[1:])
     wt = "orders like past doubled coins (hindsight)"

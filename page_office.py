@@ -2,11 +2,12 @@
 """page_office.py: the agent office's newer parts on the page (fake money only: nothing here buys, sells or advises anything).
 
   radar desk       the Office tab opens with the Launch radar (its own job, radar.yml): one line with its light, its state in words
-                   (running, round in progress, sleeping until HH:MM, late, stopped, off) and "every 2 min · last HH:MM · next HH:MM", then
-                   four stations of its last round, 2 x 2 on a phone and in one row on a desktop: Sources (the coins its discovery lists
-                   found, the top 3 lists, the live feed's state), Checks (the coins under 10 minutes checked, the round's 2 most frequent red
-                   flags), Verdicts (no trap / watch / trap) and Push (the coin pushed this round, else the last coin without traps). Drawn
-                   from mb/radar_live.json, then kept current by the radar's script on the New tab (memebot-radar event). A tap opens New.
+                   (running, round in progress, rounds failing, sleeping until HH:MM, late, stopped, off) and "every 2 min · last HH:MM ·
+                   next HH:MM", then four stations of its last round, 2 x 2 on a phone and in one row on a desktop: Sources (the coins its
+                   discovery lists found, the top 3 lists, the live feed's state), Checks (the coins under 10 minutes checked, the round's 2
+                   most frequent red flags), Verdicts (no trap / watch / trap) and Push (the coin pushed this round, else the last coin
+                   without traps). Drawn from mb/radar_live.json, then kept current by the radar's script on the New tab (memebot-radar
+                   event). A tap opens New.
   agent cards      under the desk (the GROKBOT + JEV layout): a grid of compact cards, 2 columns on a phone and 4 on a desktop, one per
                    agent of the last run. Each card has its icon on a badge in its state colour (done, at work, fallback, failed, skipped),
                    its name, one number (how long it worked) and one line (its result, cut to one line). A tap opens the Details fold at the
@@ -48,7 +49,8 @@ DEAD_LIQ, RUG_X = 1_000.0, 0.10      # dead within an hour (the rug study's rule
 TODAY_MIN_N = 10                     # today's share is given as a percentage from this many results on
 CARD_LINE = 60                       # an agent card's line: at most this many characters (the live view's "Now: ..." line too)
 HOSTS = (("dexscreener", "DexScreener"), ("rugcheck", "RugCheck"), ("pump.fun", "pump.fun"), ("pumpfun", "pump.fun"), ("geckoterminal", "GeckoTerminal"),
-         ("rpc", "Solana RPC"), ("jupiter", "Jupiter"), ("launchlab", "LaunchLab"), ("github", "GitHub"), ("supabase", "Supabase"))
+         ("rpc", "Solana RPC"), ("jupiter", "Jupiter"), ("launchlab", "LaunchLab"), ("github", "GitHub"), ("supabase", "Supabase"),
+         ("pumpportal", "live feed"))       # the live pump.fun feed (radar_feed.py), named as the desk names it
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 LOOK = {"running": ("running", "running"), "done": ("done", "done"), "late": ("fallback", "late"), "stopped": ("failed", "stopped"), "off": ("skipped", "switched off"),
         "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}     # stopped is red, late amber: the radar's colours on the New tab
@@ -283,8 +285,9 @@ def ago(ms):
 def desk_look(st, doc, now, hhmm, labels=None):
     """The desk for a radar state (radar_state's, the New tab's MemebotRadar.radarState) at the time now (ms): its light, its state in words,
     the line after it, whether the stations are hidden (quiet: switched off, outside its hours, not started) or the last round's (dim: late,
-    stopped), and the four stations [key, name, [[class, number], ...], line]. "round in progress": the doc's next round is 10 s to 3 minutes
-    due and its doc not here yet. The script's MemebotOffice.desk says the same."""
+    stopped, failing), and the four stations [key, name, [[class, number], ...], line]. "round in progress": the doc's next round is 10 s to 3
+    minutes due and its doc not here yet. A degraded doc (rounds failing: launch_radar.degraded drops the list) checked nothing: its stations
+    are dim and say so. The script's MemebotOffice.desk says the same."""
     d, labels = doc or {}, LABELS if labels is None else labels
     t, nx = d.get("t"), d.get("next")
     if st in ("running", "done") and nx and nx + SOON_MS < now <= nx + ROUND_MS:
@@ -293,8 +296,9 @@ def desk_look(st, doc, now, hhmm, labels=None):
     light = "fallback" if err else {"running": "running", "progress": "running", "done": "done", "late": "fallback", "stopped": "failed"}.get(st, "skipped")
     sleep = ("sleeping until " + hhmm(nx)) if nx and now < nx else "sleeping"
     word = {"running": "running", "progress": "round in progress", "done": sleep, "hours": sleep, "late": "late", "stopped": "stopped", "off": "off"}.get(st, "not started yet")
+    fail = "last round failed" if is_round(doc) else "rounds failing"
     if err and st != "progress":
-        word = "running, some checks failing" if st == "running" else "last round had errors"
+        word = fail
     every = math.floor((nx - t) / 30000.0 + 0.5) / 2.0 if nx and t and nx > t and not is_round(doc) else 0     # a loop's cadence to half a minute
     meta = (["every %s min" % ("%d" % every if every == int(every) else "%.1f" % every)] if every and st in ("running", "progress", "late") else []) + (["last " + hhmm(t)] if doc and st != "none" else []) \
         + (["next " + hhmm(nx)] if nx and (st == "running" or err and st == "done") else [])
@@ -316,11 +320,11 @@ def desk_look(st, doc, now, hhmm, labels=None):
     lg = d.get("lastGood") or {}
     push = (", ".join(c["sym"] or "?" for c in pushed[:2]) + " pushed") if pushed else \
         ("last without traps: %s, %s" % (lg.get("sym") or "?", ago(now - lg["at"])) if lg.get("at") else "no push")
-    return {"light": light, "word": word, "meta": " · ".join(meta), "quiet": st in QUIET, "dim": st in ("late", "stopped"),
+    return {"light": light, "word": word, "meta": " · ".join(meta), "quiet": st in QUIET, "dim": st in ("late", "stopped") or err,
             "st": [["src", "Sources", [["", str(sum(src.values())) if src else "–"]], " · ".join(found) or "no counts yet"],
-                   ["chk", "Checks", [["", "%d" % math.floor(seen_n + 0.5) if seen_n is not None else "–"]],
-                    ("red flags: " + red) if red else ("no red flags" if cs else "no coin under 10 min")],
-                   ["vd", "Verdicts", [[c, str(sum(1 for x in cs if x["v"] == v))] for c, v in zip(("good", "warn", "bad"), VERDICTS)], "no trap · watch · trap"],
+                   ["chk", "Checks", [["", "%d" % math.floor(seen_n + 0.5) if seen_n is not None and not err else "–"]],
+                    ("not checked: " + fail) if err else ("red flags: " + red) if red else ("no red flags" if cs else "no coin under 10 min")],
+                   ["vd", "Verdicts", [[c, "–" if err else str(sum(1 for x in cs if x["v"] == v))] for c, v in zip(("good", "warn", "bad"), VERDICTS)], "no trap · watch · trap"],
                    ["push", "Push", [["", str(len(pushed))]], push]]}
 
 
@@ -809,7 +813,7 @@ var D=document,last=null,lastAt=0,lastScan=null;
 var LOOK={running:['running','running'],done:['done','done'],late:['fallback','late'],stopped:['failed','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
 var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad',done:'good'},SCAN_LEN=2700000,HOUR=3600000;
 var SOON=10000,ROUND=180000,FEED={ok:'on'},LABELS=__LABELS__;
-var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase']];
+var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase'],['pumpportal','live feed']];
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function n(v){return isn(v)?Math.round(v):0;}
 function zone(){var b=D.querySelector('[data-po-tz]');return b?b.getAttribute('data-po-tz')||'UTC':'UTC';}
@@ -834,8 +838,8 @@ var O=window.MemebotOffice={
     var err=o.state==='degraded'&&['running','progress','done'].indexOf(st)>=0,sleep=nx&&now<nx?'sleeping until '+fmt(nx):'sleeping';
     var light=err?'fallback':own({running:'running',progress:'running',done:'done',late:'fallback',stopped:'failed'},st)||'skipped';
     var word=own({running:'running',progress:'round in progress',done:sleep,hours:sleep,late:'late',stopped:'stopped',off:'off'},st)||'not started yet';
-    if(err&&st!=='progress')word=st==='running'?'running, some checks failing':'last round had errors';
     var rnd=!!d&&(d.state==='done'||!!d.run&&typeof d.run==='object'&&d.run.mode==='round'),ev=nx&&isn(t)&&nx>t&&!rnd?Math.round((nx-t)/30000)/2:0,meta=[];
+    var fail=rnd?'last round failed':'rounds failing';if(err&&st!=='progress')word=fail;      // a degraded doc checked nothing: dim stations that say so
     if(ev&&['running','progress','late'].indexOf(st)>=0)meta.push('every '+ev+' min');
     if(d&&st!=='none')meta.push('last '+fmt(t));
     if(nx&&(st==='running'||err&&st==='done'))meta.push('next '+fmt(nx));
@@ -847,10 +851,10 @@ var O=window.MemebotOffice={
     var red=Object.keys(fl).map(function(k){return [k,fl[k]];}).sort(order).slice(0,2).map(function(x){return (own(LABELS,x[0])||x[0].replace(/_/g,' '))+' '+x[1];}).join(' · ');
     var cn=o.counts&&typeof o.counts==='object'?o.counts:{},pu=arr(o.coins).filter(function(c){return isn(c.push)&&c.push>0&&isn(t)&&c.push>=t;}),lg=o.lastGood&&typeof o.lastGood==='object'?o.lastGood:{};
     var push=pu.length?pu.slice(0,2).map(function(c){return c.sym||'?';}).join(', ')+' pushed':isn(lg.at)&&lg.at>0?'last without traps: '+(lg.sym||'?')+', '+ago(now-lg.at):'no push';
-    return {light:light,word:word,meta:meta.join(' · '),quiet:QUIET.indexOf(st)>=0,dim:st==='late'||st==='stopped',
+    return {light:light,word:word,meta:meta.join(' · '),quiet:QUIET.indexOf(st)>=0,dim:st==='late'||st==='stopped'||err,
       st:[['src','Sources',[['',Object.keys(sr).length?String(sum):'–']],found.join(' · ')||'no counts yet'],
-        ['chk','Checks',[['',isn(cn.seen)?String(Math.floor(cn.seen+0.5)):'–']],red?'red flags: '+red:cs.length?'no red flags':'no coin under 10 min'],
-        ['vd','Verdicts',[['good','good'],['warn','watch'],['bad','trap']].map(function(x){return [x[0],String(cs.filter(function(c){return c.v===x[1];}).length)];}),'no trap · watch · trap'],
+        ['chk','Checks',[['',isn(cn.seen)&&!err?String(Math.floor(cn.seen+0.5)):'–']],err?'not checked: '+fail:red?'red flags: '+red:cs.length?'no red flags':'no coin under 10 min'],
+        ['vd','Verdicts',[['good','good'],['warn','watch'],['bad','trap']].map(function(x){return [x[0],err?'–':String(cs.filter(function(c){return c.v===x[1];}).length)];}),'no trap · watch · trap'],
         ['push','Push',[['',String(pu.length)]],push]]};},
   look:function(st,doc,fmt,now,scan){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
     var lead=st==='late'||st==='stopped'?word:'';

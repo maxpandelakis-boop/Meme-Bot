@@ -198,13 +198,16 @@ def _nums(v, keys):
 
 
 def _pat(p):
-    """record.pat (winners vs losers of the same hours, launch_radar.pat_of) or None: rows [name, lk, ln, wk, wn, sure, lv] with both groups
-    known (ln, wn > 0), sure only a real true, an unknown level read as info; coins [sym, t, hourW, [[name, k]]]; PAT_ROWS of each."""
+    """record.pat (winners vs losers of the same hours, launch_radar.pat_of) or None: rows [name, lk, ln, wk, wn, sure, lv, dir] with both
+    groups known (ln, wn > 0), sure only a real true, an unknown level read as info, dir (matched by hour) -1, 0 or 1, else 0; coins [sym, t,
+    hourW, [[name, k, known]]] with 0 <= k <= known; PAT_ROWS of each."""
     if not isinstance(p, dict):
         return None
-    ok = lambda x: isinstance(x, list) and len(x) == 7 and isinstance(x[0], str) and NAME.match(x[0]) and all(_num(v) is not None for v in x[1:5]) and 0 <= x[1] <= x[2] and 0 <= x[3] <= x[4] and x[2] > 0 and x[4] > 0
-    rows = [[x[0], x[1], x[2], x[3], x[4], x[5] is True, x[6] if x[6] in LEVELS else "info"] for x in (p.get("rows") if isinstance(p.get("rows"), list) else []) if ok(x)]
-    why = [[_str(w[0], 24), _ms(w[1]), _num(w[2]), [[s[0], s[1]] for s in w[3] if isinstance(s, list) and len(s) == 2 and isinstance(s[0], str) and NAME.match(s[0]) and _num(s[1]) is not None][:3]]
+    ok = lambda x: isinstance(x, list) and len(x) == 8 and isinstance(x[0], str) and NAME.match(x[0]) and all(_num(v) is not None for v in x[1:5]) and 0 <= x[1] <= x[2] and 0 <= x[3] <= x[4] and x[2] > 0 and x[4] > 0
+    rows = [[x[0], x[1], x[2], x[3], x[4], x[5] is True, x[6] if x[6] in LEVELS else "info", int(x[7]) if _num(x[7]) in (-1, 0, 1) else 0]
+            for x in (p.get("rows") if isinstance(p.get("rows"), list) else []) if ok(x)]
+    kk = lambda s: isinstance(s, list) and len(s) == 3 and isinstance(s[0], str) and NAME.match(s[0]) and _num(s[1]) is not None and _num(s[2]) is not None and 0 <= s[1] <= s[2]
+    why = [[_str(w[0], 24), _ms(w[1]), _num(w[2]), [[s[0], s[1], s[2]] for s in w[3] if kk(s)][:3]]
            for w in (p.get("why") if isinstance(p.get("why"), list) else []) if isinstance(w, list) and len(w) == 4 and isinstance(w[3], list)]
     return dict({"at": _ms(p.get("at")), "since": _ms(p.get("since")), "rows": rows[:PAT_ROWS], "why": why[:PAT_ROWS]}, **_nums(p, ("hrs", "w", "l", "need")))
 
@@ -815,7 +818,8 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 /* the Track record's momentum line and patterns (hindsight, paper only): the signal's chip takes what the two % columns leave, cut with an ellipsis */
 .rpat { width:100%; border-collapse:collapse; font-size:var(--fs-s); font-variant-numeric:tabular-nums } .rpat th, .rpat td { padding:4px 6px; border-top:1px solid var(--line2); text-align:right; white-space:nowrap }
 .rpat th { border-top:0; font-size:var(--fs-xs); font-weight:500; color:var(--muted) } .rpat td:first-child { text-align:left; max-width:0; width:100%; padding-left:0 } .rpat .tc { display:inline-block; max-width:100%; vertical-align:middle }
-.rpat .tc b { display:inline-block; margin-right:3px } .rpat tr.maybe td { color:var(--muted) } .rpat tr.maybe .tc { opacity:.7 } .rws { margin-left:4px; font-size:var(--fs-xs); color:var(--fg2); cursor:help }
+.rpat .tc b { display:inline-block; margin-right:3px } .rpat tr.maybe td { color:var(--muted) } .rpat tr.maybe .tc { opacity:.7; max-width:calc(100% - 1.2em) }
+.rpat .rq { margin-left:3px; font-weight:600; color:var(--fg2) } .rws { margin-left:4px; font-size:var(--fs-xs); color:var(--fg2); cursor:help }
 .rpwhy { margin:0; padding-left:18px; font-size:var(--fs-xs); color:var(--fg2); display:grid; gap:4px; overflow-wrap:anywhere } .rrmom { overflow-wrap:anywhere }
 .rwhy-notes { margin:0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2); display:grid; gap:4px }
 .rw-h { margin:4px 0 0; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600 }
@@ -857,13 +861,14 @@ function coin(c,full){
 function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
 function nums(v,ks){if(!v||typeof v!=='object'||Array.isArray(v))return null;var o={};ks.forEach(function(k){o[k]=num(v[k]);});return o;}
 function win(v){var o=nums(v,['n','auc']);if(o){o.from=v.from==='learned'?'learned':'none';o.why=str(v.why,120);}return o;}
-// record.pat as clean_doc's _pat keeps it: rows [name, lk, ln, wk, wn, sure, lv] with both groups known, sure only a real true; coins [sym, t, hourW, [[name, k]]]
+// record.pat as clean_doc's _pat keeps it: rows [name, lk, ln, wk, wn, sure, lv, dir] with both groups known, sure only a real true, dir -1, 0 or 1
+// (else 0); coins [sym, t, hourW, [[name, k, known]]] with 0 <= k <= known
 function pat(p){if(!p||typeof p!=='object'||Array.isArray(p))return null;var o=nums(p,['hrs','w','l','need']),nm=function(x){return typeof x==='string'&&NM.test(x);};
   o.at=ms(p.at);o.since=ms(p.since);
-  o.rows=(Array.isArray(p.rows)?p.rows:[]).filter(function(x){return Array.isArray(x)&&x.length===7&&nm(x[0])&&isn(x[1])&&isn(x[2])&&isn(x[3])&&isn(x[4])&&x[1]>=0&&x[1]<=x[2]&&x[3]>=0&&x[3]<=x[4]&&x[2]>0&&x[4]>0;})
-    .slice(0,R.PAT_ROWS).map(function(x){return [x[0],x[1],x[2],x[3],x[4],x[5]===true,LV.indexOf(x[6])>=0?x[6]:'info'];});
+  o.rows=(Array.isArray(p.rows)?p.rows:[]).filter(function(x){return Array.isArray(x)&&x.length===8&&nm(x[0])&&isn(x[1])&&isn(x[2])&&isn(x[3])&&isn(x[4])&&x[1]>=0&&x[1]<=x[2]&&x[3]>=0&&x[3]<=x[4]&&x[2]>0&&x[4]>0;})
+    .slice(0,R.PAT_ROWS).map(function(x){return [x[0],x[1],x[2],x[3],x[4],x[5]===true,LV.indexOf(x[6])>=0?x[6]:'info',[-1,0,1].indexOf(x[7])>=0?x[7]:0];});
   o.why=(Array.isArray(p.why)?p.why:[]).filter(function(w){return Array.isArray(w)&&w.length===4&&Array.isArray(w[3]);}).slice(0,R.PAT_ROWS).map(function(w){
-    return [str(w[0],24),ms(w[1]),num(w[2]),w[3].filter(function(s){return Array.isArray(s)&&s.length===2&&nm(s[0])&&isn(s[1]);}).slice(0,3).map(function(s){return [s[0],s[1]];})];});
+    return [str(w[0],24),ms(w[1]),num(w[2]),w[3].filter(function(s){return Array.isArray(s)&&s.length===3&&nm(s[0])&&isn(s[1])&&isn(s[2])&&s[1]>=0&&s[1]<=s[2];}).slice(0,3).map(function(s){return [s[0],s[1],s[2]];})];});
   return o;}
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
@@ -934,9 +939,11 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     b=mine&&isn(mine.rem)&&+mine.remAt>0?{rem:mine.rem,reset:+mine.reset||0,at:+mine.remAt}:null,x=!a?b:!b?a:b.at>=a.at?b:a;
     return x?{rem:x.rem,reset:x.reset}:{rem:null,reset:0};},
   // when the next poll is due (ms). o: doc, now, last (the last poll), tab (radar | office | app), via, rem, reset, fails, got, moved, kick (a
-  // tap on Start within KICK and no newer doc since: every SB_FRESH on the live store, every GH_MIN on GitHub, inside the budget)
+  // tap on Start within KICK and no newer doc since: every SB_FRESH on the live store, every GH_MIN on GitHub, inside the budget). The Office
+  // tab's desk follows a loop that runs (running or late) like the New tab: at 2-minute rounds its 300 s would read the radar as late between polls
   radarNext:function(o){
     var now=o.now,doc=o.doc,st=R.radarState(doc,now,o.got,o.moved),tab=o.tab||'radar',t,last=+o.last||0;
+    if(tab==='office'&&(st==='running'||st==='late')&&!R.round(doc))tab='radar';
     var srv=doc&&+doc.t>0?+doc.t+R.age(doc,now,o.got,o.moved):now,loc=function(x){return now+(x-srv);};
     // a round: the next one is due at its next (it takes about ROUND); until then a poll every IDLE at most (a Start by hand), after it every IDLE;
     // the live store: every SB_ROUND on the New tab (a round by hand shows within a minute), SB_DONE elsewhere, sooner when the next round is due
@@ -965,18 +972,21 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     if(isn(r.eur))s+=' · paper, '+(isn(r.ticket)?r.ticket:3)+' € each: '+eur(r.eur);return s;},
   recShort:function(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s');
     return r.n60>=R.TOO_FEW?s+' · '+p0(r.rug)+' rugged · '+p0(r.win)+' doubled':s+' · too few for a record yet';},
-  // the coins that rose fast (record.mom: 1.5x within 6 min or +50% in 5 min; counted, never bought or pushed) beside all new coins (record.all),
-  // both with the same 1 h label
-  momLine:function(m,a){if(!m||!isn(m.calls))return '';var s='Rising fast, paper only: '+m.calls+' call'+(m.calls===1?'':'s');
+  // the coins that rose fast (record.mom: 1.5x within 6 min or +50% in 5 min; counted, never bought or pushed) beside all new coins of the same
+  // period (record.all), both with the same 1 h label; nothing while no coin rose fast
+  momLine:function(m,a){if(!m||!isn(m.calls)||!(m.calls>0))return '';var s='Rising fast, paper only: '+m.calls+' coin'+(m.calls===1?'':'s');
     if(!(m.n60>=R.TOO_FEW))return s+' · too few yet ('+(isn(m.n60)?m.n60:0)+' of '+R.TOO_FEW+' with a 1 h price)';
-    return s+' · '+p0(m.rug)+' rugged · '+p0(m.win)+' 2x at 1 h'+(a&&isn(a.rug)&&isn(a.win)?' · all new coins: '+p0(a.rug)+' · '+p0(a.win):'');},
+    return s+' · '+p0(m.rug)+' rugged · '+p0(m.win)+' 2x at 1 h'+(a&&isn(a.rug)&&isn(a.win)?' · all new coins: '+p0(a.rug)+' rugged, '+p0(a.win)+' 2x':'');},
   // record.pat (rugged vs doubled coins of the same hours, their signals at first sight): the head line, one row [label, rugged %, 2x %, sure, level,
-  // title], one rugged coin with the flags its hour's doubled coins mostly lacked (fmt: the time as HH:MM)
+  // title, where it is more often hour by hour (dir)], one rugged coin with the flags its hour's doubled coins mostly lacked (fmt: the time as HH:MM).
+  // The % are pooled over the hours: when they point the other way than the hours one by one, the row says 'more' and 'less' from dir instead
   patHead:function(p){if(!p||!isn(p.w)||!isn(p.l))return '';
     return isn(p.need)&&p.w<p.need?'Patterns: too few doubled coins yet ('+p.w+' of '+p.need+')':'Same hours, signals at first sight: '+p.l+' rugged vs '+p.w+' doubled';},
-  patRow:function(x){return [LABELS[x[0]]||x[0].replace(/_/g,' '),p0(x[1]/x[2]),p0(x[3]/x[4]),x[5],x[6],x[1]+' of '+x[2]+' rugged, '+x[3]+' of '+x[4]+' doubled had it'+(x[5]?'':' (could be chance)')];},
+  patRow:function(x){var d=x[7],off=d&&(x[3]/x[4]-x[1]/x[2])*d<0,side=d>0?'doubled':d<0?'rugged':'';
+    return [LABELS[x[0]]||x[0].replace(/_/g,' '),off?(d<0?'more':'less'):p0(x[1]/x[2]),off?(d>0?'more':'less'):p0(x[3]/x[4]),x[5],x[6],
+      x[1]+' of '+x[2]+' rugged, '+x[3]+' of '+x[4]+' doubled had it'+(off?'; hour by hour it is more often in '+side+' coins':'')+(x[5]?'':' (could be chance)'),side];},
   whyLine:function(w,fmt){if(!w[3].length)return '';
-    return (w[0]||'?')+' rugged'+(isn(w[1])?' '+fmt(w[1]):'')+' · '+w[3].map(function(s,i){return (LABELS[s[0]]||s[0].replace(/_/g,' '))+' ('+s[1]+' of '+(isn(w[2])?w[2]:'?')+(i?')':' doubled that hour had it)');}).join(', ');},
+    return (w[0]||'?')+(isn(w[1])?', seen '+fmt(w[1]):'')+', rugged within 1 h · '+w[3].map(function(s,i){return (LABELS[s[0]]||s[0].replace(/_/g,' '))+' ('+s[1]+' of '+(isn(s[2])?s[2]:'?')+(i?')':' doubled that hour had it)');}).join(', ');},
   // the ▲ beside a coin: it orders like past doubled coins (ws, hindsight) once a win order is learned; it changes no verdict
   wsOn:function(c,m){return !!(c&&isn(c.ws)&&c.ws>=1&&m&&m.win&&m.win.from==='learned');},
   verdict:function(c){if(!c)return ['','? trap check unavailable'];
@@ -1073,13 +1083,15 @@ function go(){
         oc=o&&o.rug1h?['bad','✕','rugged']:o&&o.win1h?['good','⇈','2x']:(o||isn(x1))?(isn(x1)&&x1>=1?['','✓','alive, up']:isn(x1)?['muted','↓','alive, down']:['muted','·','alive']):r.miss60?['na','–','no 1 h price']:['muted','…','pending'];
       var td=el('td','oc '+oc[0],oc[1]);td.title=oc[2];td.appendChild(el('span','ow',' '+oc[2]));tr.appendChild(td);tb.appendChild(tr);});
     t.appendChild(tb);w.appendChild(el('p','tnote','✓ alive and up · ↓ alive but down · ✕ rugged · ⇈ 2x, 1 h after the call; multiples of the price at the call (hindsight, fake money); – no round caught that price'));return w;}
-  // the patterns (record.pat, hindsight): the head line, the signals as a chip and the share of rugged and of doubled coins that had it (a hint that
-  // could be chance muted, the counts in the title), the rugged coins with the flags their hour's doubled coins mostly lacked
-  function patBox(p){var f=document.createDocumentFragment(),h=R.patHead(p),ws=p.why.map(function(x){return R.whyLine(x,hhmm);}).filter(Boolean);if(h)f.appendChild(el('p','note',h));
+  // the patterns (record.pat, hindsight): the head line, the signals as a chip and the share of rugged and of doubled coins that had it (R.patRow; a
+  // hint that could be chance muted, with a '?' and a note under the table: a phone shows no title), the rugged coins with the flags their hour's
+  // doubled coins mostly lacked
+  function patBox(p){var f=document.createDocumentFragment(),h=R.patHead(p),ws=p.why.map(function(x){return R.whyLine(x,hhmm);}).filter(Boolean),maybe=false;if(h)f.appendChild(el('p','note',h));
     if(p.rows.length){var t=el('table','rpat'),hd=el('tr'),th=el('thead'),tb=el('tbody');['','of rugged','of doubled'].forEach(function(x){hd.appendChild(el('th','',x));});th.appendChild(hd);t.appendChild(th);
       p.rows.forEach(function(x){var r=R.patRow(x),tr=el('tr',r[3]?'':'maybe'),td=el('td'),c=el('span','tc '+r[4]),b=el('b','',IC[r[4]]);tr.title=r[5];b.setAttribute('aria-hidden','true');
-        c.appendChild(b);c.appendChild(document.createTextNode(r[0]));td.appendChild(c);tr.appendChild(td);tr.appendChild(el('td','',r[1]));tr.appendChild(el('td','',r[2]));tb.appendChild(tr);});
-      t.appendChild(tb);f.appendChild(t);}
+        c.appendChild(b);c.appendChild(document.createTextNode(r[0]));td.appendChild(c);if(!r[3]){td.appendChild(el('span','rq','?'));maybe=true;}
+        tr.appendChild(td);tr.appendChild(el('td','',r[1]));tr.appendChild(el('td','',r[2]));tb.appendChild(tr);});
+      t.appendChild(tb);f.appendChild(t);if(maybe)f.appendChild(el('p','tnote','? could be chance'));}
     if(ws.length){var ul=el('ul','rpwhy');ws.forEach(function(s){ul.appendChild(el('li','',s));});f.appendChild(ul);}
     return f;}
   function wsMark(box,c){if(R.wsOn(c,S.doc&&S.doc.model)){var s=el('span','rws','▲');s.title='orders like past doubled coins (hindsight)';s.setAttribute('aria-label',s.title);box.appendChild(s);}return box;}
@@ -1115,7 +1127,8 @@ function go(){
     var nts=d&&has?d.notes.slice():[];
     if(has&&(!isn(d.wm.t)||+d.t-d.wm.t>3*3600000)&&!nts.some(function(x){return /wallet/i.test(x);}))nts.push('wallet check unavailable: no greens until the wallet memory is back');
     // a host the radar found limited or down, when its own notes do not name it ("unused" and "off" are routine: not shown)
-    if(has)Object.keys(d.hosts).forEach(function(h){var v=d.hosts[h];if((v==='limited'||v==='down')&&!nts.some(function(x){return x.toLowerCase().indexOf(h.toLowerCase())>=0;}))nts.push(h+': '+v);});
+    if(has)Object.keys(d.hosts).forEach(function(h){var v=d.hosts[h],w=h==='pumpportal'?'live feed':h;     // the pump.fun feed by what it is
+      if((v==='limited'||v==='down')&&!nts.some(function(x){return x.toLowerCase().indexOf(w.toLowerCase())>=0;}))nts.push(w+': '+v);});
     nts.forEach(function(x){notes.appendChild(el('li','',x));});notes.hidden=!nts.length;
     var good=has?d.coins.filter(function(c){return c.v==='good';}):[],byAddr={};
     (d&&d.recent||[]).forEach(function(r){byAddr[r.addr]=r;});

@@ -1818,7 +1818,8 @@ def fast_checks(check, LR, T, P, tmp):
     check(b6 and b6 == b4, "radar_paper buys the same %d coins from 6-field ratings as from their first 4 fields" % len(b6))
 
     def rec_(n, mom_=None, l60=None, **kw):
-        r = {"addr": addr(1340 + n), "sym": "S%d" % n, "dex": "pumpswap", "first": T0 - 2 * H, "px": 1.0, "liq": 20_000.0, "mc": 50_000.0, "rt": [], "later": {}}
+        r = {"addr": addr(1340 + n), "sym": "S%d" % n, "dex": "pumpswap", "first": T0 - 2 * H, "px": 1.0, "liq": 20_000.0, "mc": 50_000.0,
+             "rt": [[T0 - 2 * H, "watch", 2.0, 0, 1.0, 0]], "later": {}}
         if mom_:
             r["mom"] = dict({"t": T0 - 2 * H + 2 * MIN, "liq": 20_000.0, "mc": 50_000.0, "by": "x"}, **mom_)
         if l60:
@@ -1828,7 +1829,8 @@ def fast_checks(check, LR, T, P, tmp):
                rec_(2, {"px": 1.0}, {"px": 2.0, "liq": 30_000.0}),            # 2x with liquidity grown like a pool's: doubled
                rec_(3, {"px": 1.5}),                                          # no 1 h price yet: a call, not in n60
                rec_(4, None, {"gone": True}),
-               rec_(5, None, {"px": 1.0, "liq": 20_000.0}, peak60={"x": 3.0}, out={"rug1h": False, "win1h": True})]   # peak60 left out: neither
+               rec_(5, None, {"px": 1.0, "liq": 20_000.0}, peak60={"x": 3.0}, out={"rug1h": False, "win1h": True}),  # peak60 left out: neither
+               rec_(6, None, {"gone": True}, first=T0 - 20 * 24 * H, rt=[[T0 - 20 * 24 * H, "watch", 2.0, 0]])]      # 4-field ratings (before the 2-minute radar): not in all
     R2.docs, R2.rec_hour, R2.res_summary = {"p": {"coins": {r["addr"]: r for r in planted}}}, {r["addr"]: "p" for r in planted}, []
     line, _, _ = R2.summary(T0)
     R2.docs, R2.res_summary = {}, [LR.summ(r, T) for r in planted]
@@ -1836,9 +1838,11 @@ def fast_checks(check, LR, T, P, tmp):
     off_ = LR.finish_from({"record": line}, "off", T0, "switched off", "t", None, None, "manual", (0, 24))
     check(line["mom"] == {"calls": 3, "n60": 2, "rug": 0.5, "win": 0.5} and line["all"] == {"n60": 4, "rug": 0.25, "win": 0.25} and line2 == line
           and {k for k in line if k not in ("mom", "all")} == {"calls", "n60", "rug", "win", "eur", "ci"} and line["calls"] == 0 and line["win"] is None
-          and LR.summ(planted[0])["mom"] is None and LR.summ(planted[0])["all"] is None and off_["record"]["mom"] == line["mom"] and off_["record"]["all"] == line["all"],
+          and LR.summ(planted[0])["mom"] is None and LR.summ(planted[0])["all"] is None and off_["record"]["mom"] == line["mom"] and off_["record"]["all"] == line["all"]
+          and LR.summ(planted[5], T)["all"] is None and LR.summ(planted[3], T)["all"] == {"rug": True, "win": False},
           "the record line's mom %s and all %s: the 60-minute price alone (from the momentum price for mom; peak60 left out of both), a "
-          "momentum call without a 1 h price counted in calls only, the same from results' records; kept in an off or hours doc" % (line["mom"], line["all"]))
+          "momentum call without a 1 h price counted in calls only, the same from results' records; kept in an off or hours doc; a rugged "
+          "record of 20 days ago with 4-field ratings (before momentum was measured) is left out of all" % (line["mom"], line["all"]))
 
 
 # the WP0 probe's hand-off (research/probe-radar.md, ADAPTERS block and its two constants), as the probe wrote it

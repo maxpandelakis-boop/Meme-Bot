@@ -151,6 +151,15 @@ def _compare(check, W):
           "an effect in the older half of the hours only (halves %s, p %s) is a hint, not a pattern" % (oh["halves"], oh["p"]))
     check(len(json.dumps(rep)) < 12_000 and len(rep["rows"]) == len(T._study_cands(W)) == 28,
           "the report is small (%d bytes, a row for each of the 28 signals)" % len(json.dumps(rep)))
+    # the winner share and the flag's frequency both swing hour by hour: pooled, the X link looks commoner in rugged coins, hour by hour it is
+    # commoner in doubled ones; record.pat carries that hour-matched direction for the page
+    import launch_radar as LR
+    alt = table([(30, 10) if h % 2 else (5, 30) for h in range(20)], {"x": [(6, 1) if h % 2 else (4, 18) for h in range(20)]}, start, "A")
+    arep = T.compare(alt, W, NOW)
+    ax, arow = by_sig(arep)["x"], next((r for r in (LR.pat_of(arep, W) or {}).get("rows") or [] if r[0] == "x"), None)
+    check(ax["verdict"] == "pattern" and ax["dir"] == 1 and arow == ["x", 190, 400, 100, 350, True, "ok", 1] and 190 / 400.0 > 100 / 350.0,
+          "hours that swing (30 doubled/10 rugged, then 5/30): a pattern with OR %s, more often in doubled coins hour by hour while the pooled "
+          "shares say 48%% of rugged vs 29%% of doubled; record.pat's row carries the direction 1 (%s)" % (ax["or"], arow))
 
 
 # ---------------------------------------------------------------- L3
@@ -165,9 +174,22 @@ def _why(check, W):
             rec("OW1pump", h0 - 6 * H, 1, S()), rec("OW2pump", h0 - 6 * H + MIN, 1, S()),
             rec("OLDTOPpump", h0 - 6 * H + 5 * MIN, 0, S("creator_sold"), top=1, sym="OLDTOP")]
     coins = T.compare(recs, W, NOW)["coins"]
-    check(coins == [["RUGTOP", h0 + 10 * MIN, 3, [["rc_danger", 1], ["creator_sold", 0]]]],
+    check(coins == [["RUGTOP", h0 + 10 * MIN, 3, [["rc_danger", 1, 3], ["creator_sold", 0, 3]]]],
           "a rugged top coin in an hour with 3 winners: its flags that at most a third of them had, with counts (%s); X link (2 of 3) is not "
           "listed; none for a coin neither top nor green, an hour with one winner or a coin over 6 h old" % coins)
+    # RugCheck still pending at first sight (rc_danger unknown): such a winner never counts as 'did not have it'
+    pend = dict(rcReport=None, rcDanger=None)
+    h1, h2, h3 = HOUR0 - 3 * H, HOUR0 - 4 * H, HOUR0 - 5 * H
+    recs = [rec("P1pump", h1 + MIN, 1, S(**pend)), rec("P2pump", h1 + 2 * MIN, 1, S(**pend)), rec("P3pump", h1 + 3 * MIN, 1, S(**pend)),
+            rec("RUGPENDpump", h1 + 10 * MIN, 0, S("rc_danger"), top=1, sym="RUGPEND"),                    # no winner known: no line
+            rec("Q1pump", h2 + MIN, 1, S("rc_danger")), rec("Q2pump", h2 + 2 * MIN, 1, S(**pend)), rec("Q3pump", h2 + 3 * MIN, 1, S(**pend)),
+            rec("RUGHALFpump", h2 + 10 * MIN, 0, S("rc_danger", "creator_sold"), top=1, sym="RUGHALF"),    # 1 known (had it): not listed
+            rec("K1pump", h3 + MIN, 1, S()), rec("K2pump", h3 + 2 * MIN, 1, S()), rec("K3pump", h3 + 3 * MIN, 1, S(**pend)),
+            rec("RUGTWOpump", h3 + 10 * MIN, 0, S("rc_danger"), top=1, sym="RUGTWO")]                       # 0 of the 2 known
+    coins = T.compare(recs, W, NOW)["coins"]
+    check(coins == [["RUGHALF", h2 + 10 * MIN, 3, [["creator_sold", 0, 3]]], ["RUGTWO", h3 + 10 * MIN, 3, [["rc_danger", 0, 2]]]],
+          "winners whose flag is unknown are left out of its count: RugCheck pending for all 3 winners gives no line, 1 known (with it) and 2 "
+          "pending is too few to list, 2 known without it and 1 pending says '0 of 2' (%s)" % coins)
 
 
 # ---------------------------------------------------------------- L4
@@ -287,6 +309,7 @@ def _radar(check, W):
             _rank(check, LR)
             _ties(check, LR, SR, P, url, tmp)
             _soft(check, LR, SR, P, tmp)
+            _refresh(check, LR, SR, P, tmp)
     finally:
         srv.shutdown()
         srv.server_close()
@@ -303,10 +326,18 @@ def _rank(check, LR):
     ids = lambda xs: [x["addr"] for x in xs]
     top, coins, others = LR.rank(pool)
     top0, coins0, others0 = LR.rank([dict(x, ws=None) for x in sorted(pool, key=lambda x: x["addr"])])
-    check(ids(coins) == ["g3", "g2", "g1"] and ids(top) == ["g3", "g2", "g1", "w3", "w2"] and ids(others) == ["w3", "w2", "w4", "w1", "t3", "t2", "t1"]
+    check(ids(coins) == ["g3", "g1", "g2"] and ids(top) == ["g3", "g1", "g2", "w3", "w2"] and ids(others) == ["w3", "w2", "w4", "w1", "t3", "t2", "t1"]
           and ids(coins0) == ["g3", "g1", "g2"] and ids(others0) == ["w3", "w1", "w4", "w2", "t3", "t1", "t2"],
-          "equal points: the higher win score first (good %s, the fold %s); fewer points always first (w3, t3 with low or high scores), "
-          "good coins always first; without scores the old order (%s, %s)" % (ids(coins), ids(others), ids(coins0), ids(others0)))
+          "equal points: the higher win score first in the fold (%s), good coins by liquidity before it (%s); fewer points always first (w3, t3 "
+          "with low or high scores), good coins always first; without scores the old order (%s, %s)" % (ids(others), ids(coins), ids(coins0), ids(others0)))
+    # 6 good coins with the same upside and points: liquidity picks the 5 listed (and so pushed), the win score never does
+    six = [mk("h%d" % i, "good", 1, 0, (6 - i) * 1e3, i - 3) for i in range(6)] + [mk("h6", "good", 1, 0, 3e3, 5)]      # h6 ties h3 on liquidity
+    random.Random(9).shuffle(six)
+    top6, coins6, _ = LR.rank(six)
+    _, coins6n, _ = LR.rank([dict(x, ws=None) for x in sorted(six, key=lambda x: x["addr"])])
+    check(ids(coins6) == ["h0", "h1", "h2", "h6", "h3"] and ids(top6) == ids(coins6) and set(ids(coins6)) == set(ids(coins6n)) and "h5" not in ids(coins6),
+          "6+ good coins tied on upside and points: the 5 listed and pushed are the 5 most liquid (%s, h5 with the best win score left out); the "
+          "win score only orders an exact liquidity tie (h6 before h3)" % ids(coins6))
 
 
 def _learn_run(check, LR, SR, P, url, tmp, by):
@@ -361,16 +392,21 @@ def _learn_run(check, LR, SR, P, url, tmp, by):
           % (len(cmp.get("rows") or []), len(cmp.get("coins") or []), sorted(pats), win.get("from"), win.get("w"), win.get("auc"), mj.get("from")))
     pat, mw = (doc.get("record") or {}).get("pat") or {}, (doc.get("model") or {}).get("win") or {}
     rows, why = pat.get("rows") or [], pat.get("why") or []
-    rows_ok = all(len(x) == 7 and NAME.match(x[0]) and x[2] > 0 and x[4] > 0 and isinstance(x[5], bool) and x[6] in LEVELS for x in rows)
-    why_ok = all(len(w) == 4 and isinstance(w[0], str) and len(w[3]) <= 3 and all(NAME.match(s) and isinstance(k, int) for s, k in w[3]) for w in why)
-    lv = {x[0]: x[6] for x in rows}
+    rows_ok = all(len(x) == 8 and NAME.match(x[0]) and x[2] > 0 and x[4] > 0 and isinstance(x[5], bool) and x[6] in LEVELS and x[7] in (-1, 1) for x in rows)
+    why_ok = all(len(w) == 4 and isinstance(w[0], str) and len(w[3]) <= 3 and all(NAME.match(s) and isinstance(k, int) and T.WHY_MIN_WIN <= m and 3 * k <= m
+                                                                                for s, k, m in w[3]) for w in why)
+    lv, dr = {x[0]: x[6] for x in rows}, {x[0]: x[7] for x in rows}
     raw = json.dumps(doc, separators=(",", ":"))
     check(1 <= len(rows) <= LR.PAT_ROWS and len(why) <= LR.PAT_WHY and rows_ok and why_ok and lv.get("x") == "ok" and lv.get("creator_sold") == "warn"
-          and pat.get("need") == 15 and pat.get("w") and pat.get("l") and len(raw) <= LR.DOC_MAX,
-          "radar.json record.pat: %d rows %s, %d why lines %s; %d bytes" % (len(rows), [x[0] + ":" + x[6] for x in rows], len(why), [w[0] for w in why], len(raw)))
-    wss = [c.get("ws") for c in (doc.get("coins") or []) + (doc.get("others") or [])]
-    check(mw.get("from") == "learned" and mw.get("n", 0) > 0 and len(mw.get("why") or "") <= 120 and wss and all(isinstance(w, int) for w in wss),
-          "radar.json model.win %s; every coin and fold row carries its win score (%s)" % (mw, wss))
+          and dr.get("x") == 1 and dr.get("creator_sold") == -1 and pat.get("need") == 15 and pat.get("w") and pat.get("l") and len(raw) <= LR.DOC_MAX,
+          "radar.json record.pat: %d rows %s with the hour-matched direction, %d why lines %s (k of the winners known); %d bytes"
+          % (len(rows), [x[0] + ":" + x[6] for x in rows], len(why), [w[0] for w in why], len(raw)))
+    wss = {c["addr"]: c.get("ws") for c in (doc.get("coins") or []) + (doc.get("others") or [])}
+    sc = lambda a: T.win_score((recs.get(a) or {}).get("sig0"), win, R.W_prior)       # the score of its first-sight signals
+    check(mw.get("from") == "learned" and mw.get("n") == win.get("nTrain") < win.get("n") and len(mw.get("why") or "") <= 120 and len(wss) > 2
+          and norc in wss and wss[norc] is None and all(isinstance(w, int) and w == sc(a) for a, w in wss.items() if a != norc),
+          "radar.json model.win %s (n: the coins it was learned on, not the test days); every coin and fold row carries the win score of its "
+          "first-sight signals, the record from before the deploy (no sig0) none (%s)" % (mw, sorted(wss.values(), key=str)))
     fd = LR.finish_from(doc, "hours", now + H, "outside the active hours", "9002", now, None, "manual", (7, 24))
     check(fd["record"].get("pat") == pat and fd["model"].get("win") == mw, "a radar.json in state hours (or off) keeps record.pat and model.win")
 
@@ -431,6 +467,31 @@ def _soft(check, LR, SR, P, tmp):
         got.append(R2.win)
     check(got == [{"x": 1}, None, None, None, None] and R2.W is R2.W_prior,
           "model.json's win order is used only when learned on this study prior (%s)" % got)
+
+
+def _refresh(check, LR, SR, P, tmp):
+    print("== learn L9: the per-coin why stays current between fits (compare again every hour)")
+    said = []
+    R = SR.unit_radar(T, P, tmp, "rdH", now=NOW, log=said.append)
+    for path, doc in _results(NOW).items():
+        fp = os.path.join(R.res, *path.split("/"))
+        os.makedirs(os.path.dirname(fp), exist_ok=True)
+        with open(fp, "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+    _, n_out, _ = R.summary(NOW)
+    old = {"at": NOW - 7 * H, "coins": [], "rows": []}             # the morning fit's compare: its 6 hours held no rugged coin yet
+    R.model = {"v": 1, "from": "prior", "at": NOW - 7 * H, "nOut": n_out, "n": n_out, "cmp": dict(old), "win": {"from": "none"}}
+    fits = [R.maybe_fit(NOW)]
+    c1 = R.model.get("cmp") or {}
+    fits.append(R.maybe_fit(NOW + 10 * MIN))
+    c2 = R.model.get("cmp") or {}
+    R.T = types.SimpleNamespace(**dict(vars(T), compare=lambda *a, **k: 1 / 0))
+    fits += [R.maybe_fit(NOW + 61 * MIN), R.maybe_fit(NOW + 63 * MIN)]
+    check(fits == [True, False, False, False] and R.model["at"] == NOW - 7 * H and c1.get("at") == NOW and c1.get("coins") and c2.get("at") == NOW
+          and R.model["cmp"] is None and sum("winner patterns not compared" in l for l in said) == 1 and LR.pat_of(c1, R.W_prior)["why"],
+          "between fits compare runs again once its report is an hour old (%d coins with a why now, none in the morning's), not before; no fit "
+          "(model.at unchanged), but model.json changed (a round publishes it); a failing compare is said once an hour, not every cycle"
+          % len(c1.get("coins") or []))
 
 
 def main():

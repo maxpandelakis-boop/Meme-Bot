@@ -312,8 +312,8 @@ The Office tab opens with the radar's desk: its state, the round's sources, chec
 
 Live feed: pump.fun graduations also come from PumpPortal's free websocket (`radar_feed.py`: one connection, no key, standard
 library only). A coin that just moved to its pool gets an extra round about 20 s later (at least 60 s after the last round, at
-most 12 extra rounds an hour). When the feed is blocked or silent the radar runs its 2-minute rounds as before; the page names
-the feed only while it is limited.
+most 12 extra rounds an hour). When the feed is blocked or silent the radar runs its 2-minute rounds as before. The Office desk
+always shows the feed's state ("live feed on", "limited" or "off"); the New tab names it only while it is limited.
 
 Later prices: a record keeps the prices 5, 15, 30 and 60 minutes after the coin was first seen, but only those a later round
 catches (at most half the offset late). With a round every 2 minutes all four are usually caught (the 5- and 15-minute ones
@@ -327,21 +327,23 @@ outcome, the radar retrains its weights by itself (`model.json` on branch `radar
 model, the study as the starting point).
 
 Momentum and patterns (hindsight, paper only), in the Track record fold: "Rising fast" counts the coins at 1.5x their
-first-sight price within 6 minutes with liquidity not lower, or +50% in 5 minutes, next to all new coins with the same 1 h
-label (so far most of them rugged); they are never bought or pushed. "Patterns" compares rugged and doubled coins (2x with real
-liquidity at 15, 30 or 60 minutes and no rug by 60) by the signals they had at first sight: at most 3 signals, and up to 3
-rugged coins with the flags their hour's doubled coins mostly lacked. Once a win order holds up, a ▲ marks the coins that look
-like past doubled coins. The rules:
+first-sight price within 6 minutes with liquidity not lower, or +50% in 5 minutes, next to all new coins since the 2-minute
+rounds with the same 1 h label (so far most of them rugged); they are never bought or pushed. "Patterns" compares rugged and
+doubled coins (2x with real liquidity at 15, 30 or 60 minutes and no rug by 60) by the signals they had at first sight: at most
+3 signals, and up to 3 rugged coins with the flags their hour's doubled coins mostly lacked. Once a win order holds up, a ▲
+marks the coins that look like past doubled coins. The rules:
 - Hindsight only: nothing here feeds the green rule, the verdicts, the trap points or a push. The win order only orders coins
-  with the same verdict and the same trap points.
+  with the same verdict and trap points (coins without traps only after liquidity), scored on their first-sight signals.
 - Same hours: winners and losers are matched by the UTC hour of first sight, and only hours with both count. Self-priced pools
   (mostly Meteora) count in neither group.
 - First sight: only the signals of the first rating are used (stored from this version on; older records are left out).
 - Enough data: a signal is tested only with 15 doubled and 15 rugged coins known and at least 5 doubled coins expected with and
   without it; below that the page says "too few".
 - A pattern needs q under 0.05 (Cochran-Mantel-Haenszel by hour, Benjamini-Hochberg over the signals) and the same direction in
-  both halves of the hours; anything else shown is marked "could be chance".
-- The coin lines only describe, with counts ("0 of 3 doubled that hour had it"), and only for hours with 2 or more doubled coins.
+  both halves of the hours; anything else shown is marked "?" (could be chance). When the shares pooled over all hours point the
+  other way than the hours one by one, the row says "more" and "less" from the hours instead.
+- The coin lines only describe, with counts ("0 of 3 doubled that hour had it", only doubled coins whose flag is known count), and
+  only for hours with 2 or more of them.
 - The win order is used only when it holds up on the last 2 days it was not fitted on (30 doubled and 30 rugged coins, AUC at
   least 0.55 with its lower bound over 0.5).
 The first patterns can show after about 2 to 4 days, a win order after about 4 to 6.
