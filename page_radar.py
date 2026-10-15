@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""page_radar.py: the launch radar on top of the New tab, the trap-check line and the "no good coin" marks of the page. Fake money only: nothing here buys,
-advises or links to a swap; green means "no trap found in N checks", never more.
+"""page_radar.py: the launch radar on the Radar tab (its tab id stays tab-young), the trap-check line and the "no good coin" marks of the page. Fake
+money only: nothing here buys, advises or links to a swap; green means "no trap found in N checks", never more.
 
 report.py calls it in a few one-line hooks; everything the page shows of the launch radar lives here:
 
-  block(D)             the radar's part of the New tab (on top of the full scan's new launches): its heading and pane(D)
-  pane(D)              the radar: a shell the script RADAR_JS fills from the copy of radar.json embedded at build time
+  block(D, mid)        the Radar tab's radar (until the switch the full scan's new launches follow it): its heading and pane(D, mid)
+  pane(D, mid)         the radar: a shell the script RADAR_JS fills from the copy of radar.json embedded at build time
                        (mb/radar_live.json, whitelisted, at most 48 KB) and then from its polls (the live store's row "radar", else the
                        GitHub contents API on the branch radar-data inside the budget the office poll keeps, else raw.githubusercontent).
                        The script has no rule logic: every chip text comes from the doc (traps.chips, computed by the radar job).
-  curve_section(doc)   under the radar's list: "About to graduate (paper test)", the curve watch's block of radar.json (clean_curve): the newest
+  curve_section(doc)   in the Radar tab's last fold "Curve test (experiment)": "About to graduate (paper test)", the curve watch's block of radar.json (clean_curve): the newest
                        calls of coins still on pump.fun's curve (one row per coin: its curve %, minutes since the mint, market cap, quick check,
                        status now) and the variant table beside the radar's greens of the same hours; built here at the doc's time, redrawn by
                        the script (curveView) as the doc ages. A paper test: no push while radar_curve.json's switch is off, and it says so.
@@ -56,6 +56,7 @@ STATES = ("running", "degraded", "ending", "off", "hours", "done")     # done: a
 BANNER = "No good coin this scan: shown for the record, marked, not a recommendation"
 LATER = ("5", "15", "30", "60")
 PAT_ROWS = 3               # record.pat: at most 3 signals and 3 coins (launch_radar.pat_of keeps the same)
+T3_MAX = 3                 # a coin's t3 (the learning trader's skip signs it has, launch_radar.t3_skips): at most this many words (SKIP_MAX is 2)
 
 # words for a signal name (radar_weights.json, the rating's lists) when the doc's line does not carry its own text (the line has at most 8)
 LABELS = {"instant_pool": "pool opened with the mint", "rugger_wallets": "holders from rugged coins", "brand_name": "brand/celebrity name",
@@ -87,8 +88,8 @@ MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar'
 INFO_TEXT = ("The radar checks the newest pools every 2 minutes on its own during its hours (7 to 24 h Berlin unless changed), from the first full "
              "scan after they begin, and pump.fun graduations from a live feed when it is up: each run lasts about an hour and starts the next. Start "
              "and Stop open its page on GitHub. Start (only when it is stopped): tap \u201cRun workflow\u201d, the first list comes in about 4 minutes. Stop: "
-             "the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Momentum and patterns: hindsight, paper only, never a push. Fake money: the radar "
-             "never buys anything.")
+             "the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Momentum and patterns: hindsight, paper only, never a push. Fake money: nothing is "
+             "bought for real; the radar's coins without traps are bought on paper only.")
 
 
 # ------------------------------------------------------------------------------------------------------------------ small helpers
@@ -194,6 +195,9 @@ def clean_coin(c, full=True):
         o["dex"], o["lp"] = _str(c.get("dex"), 24), _str(c.get("lp"), 24)
         o["d"] = _dmap(c.get("d"))
         o["found"] = [_str(x, 24) for x in (c.get("found") or []) if isinstance(x, str)][:8] if isinstance(c.get("found"), list) else []
+        pb = c.get("pb")             # bought on paper (radar_paper's rule 2): 1, else 0; only the whole numbers 0 and 1 pass
+        o["pb"] = 1 if _num(pb) == 1 else 0
+        o["t3"] = [_str(x, 60) for x in c.get("t3") if isinstance(x, str) and x.strip()][:T3_MAX] if isinstance(c.get("t3"), list) else []
     if isinstance(c.get("x"), str) and X_LINK.match(c["x"]):
         o["x"] = c["x"]
     return o
@@ -290,7 +294,7 @@ def embed_json(doc):
 
 # ------------------------------------------------------------------------------------------------------------------ the curve watch (paper test)
 # radar.json's "curve" block (launch_radar.curve_doc, curve_watch.Book.doc): pump.fun coins called on paper while they are still on their bonding
-# curve, before any pool, at 60, 75 and 90 % of it sold, each judged an hour later beside the radar's greens of the same hours. The New tab shows
+# curve, before any pool, at 60, 75 and 90 % of it sold, each judged an hour later beside the radar's greens of the same hours. The Radar tab shows
 # it under the radar's list as "About to graduate (paper test)": the newest calls by coin and the variant table. The two whitelists (clean_curve,
 # MemebotRadar.cleanCurve) and the two views (curve_view, MemebotRadar.curveView) give the same: a string with CURVE_CTRL as spaces, cut in UTF-16
 # units without a half emoji and CURVE_BLANK trimmed (the office chat's rule: page_office.CHAT_CTRL / CHAT_BLANK, here with the zero-width and
@@ -512,7 +516,7 @@ def _crow(label, s, extra, greens=False):
 
 
 def curve_view(cv, now):
-    """What the New tab shows of a curve block (clean_curve's) at the time now (ms; the script: the doc's time plus its age), the same as the
+    """What the Radar tab shows of a curve block (clean_curve's) at the time now (ms; the script: the doc's time plus its age), the same as the
     script's MemebotRadar.curveView: None without a block; {state, head, one: True} for a block without a call (one line); else the head line,
     the paper test's sentence and the push switch's, the coins of the newest calls (one per coin: its newest call, the marks it was called at,
     its status now and its hour's result; CURVE_SHOWN in view, the rest in a fold), the variant table with the greens' row, its split by the
@@ -624,7 +628,7 @@ def curve_inner(v):
 
 
 def curve_section(doc):
-    """The curve watch's section on the New tab under the radar's list (pane), from the doc's curve block at the doc's time; hidden without
+    """The curve watch's section on the Radar tab under the radar's list (pane), from the doc's curve block at the doc's time; hidden without
     one. The script redraws it from every doc it takes (data-r-curve), its statuses moving on with the doc's age."""
     cv = doc.get("curve") if isinstance(doc, dict) else None
     v = curve_view(cv, _num(doc.get("t")) or 0) if isinstance(cv, dict) else None
@@ -929,7 +933,7 @@ def pick_banner(picks):
     return '<p class="nogood %s" role="note"><b aria-hidden="true">%s</b><span>%s</span></p>' % (cls, ICON["bad"] if cls == "bad" else "!", E(BANNER))
 
 
-# ------------------------------------------------------------------------------------------------------------------ the radar on the New tab
+# ------------------------------------------------------------------------------------------------------------------ the radar on the Radar tab
 def _ev_row(e):
     """The headline row of one evidence entry of radar_weights.json ({label, rows: [{cohort, outcome, with, without, n, lift, lo, hi,
     verdict, ...}]}): the listed new launches (cohort L) and a rug outcome first, a row whose verdict holds first, then the biggest n.
@@ -988,7 +992,7 @@ def why_fold(W):
     notes = ('<ul class="rwhy-notes"><li>Green means no trap found in the checks that ran. A check that could not run (RugCheck pending, mint time or wallet memory unknown) blocks the green.</li>'
              '<li>The dev history, snipers, bundles, fresh wallets, funding clusters, copied X links, pump.fun replies and the source tweet\'s likes are measured and shown grey. They get weight only when the radar\'s own records confirm them.</li>'
              '<li>Coins still on the bonding curve are not rated here: the curve watch calls them on paper only (About to graduate), with no push while its switch is off. Later prices and the 1-hour peak are measured on the pool the radar saw.</li>'
-             '<li>Fake money: the radar never buys anything.</li></ul>')
+             '<li>Fake money: nothing is bought for real; the radar\'s coins without traps are bought on paper only.</li></ul>')
     body = ""
     if isinstance(W, dict):
         ev = W.get("evidence")
@@ -1017,12 +1021,15 @@ def why_fold(W):
             '<p class="note rmodel" data-r-model></p>%s%s</div></details>') % (body, notes)
 
 
-def pane(D):
-    """The radar on the New tab. RADAR_JS fills it from the embedded copy and the polls; without a script it says one line. The HTML is the same with and
-    without GITHUB_REPOSITORY: the script finds the repository in the office's live view box (GitHub poll, raw copy, Start and Stop links)."""
+def pane(D, mid=""):
+    """The radar on the Radar tab. RADAR_JS fills it from the embedded copy and the polls; without a script it says one line. mid (HTML: the radar's
+    paper positions, page_traders.radar_positions) sits under the cards, above the folds: Seen, Radar record, Why these checks?, Curve test. The
+    HTML is the same with and without GITHUB_REPOSITORY: the script finds the repository in the office's live view box (GitHub poll, raw copy,
+    Start and Stop links)."""
     rd = data(D)
     doc = rd["doc"]
-    attrs = ' data-tz="%s" data-tzn="%s"' % (TZ_ID, TZ_NAME)
+    tk = M.num(((D.get("traders") or {}).get("tickets") or {}).get("radar")) if isinstance(D.get("traders"), dict) else None
+    attrs = ' data-tz="%s" data-tzn="%s" data-paper="%s"' % (TZ_ID, TZ_NAME, E("Bought on paper · " + M.eur_text(tk if tk else 10.0)))
     embed = '<script type="application/json" id="radar-doc">%s</script>' % embed_json(doc) if doc else ""
     if doc:
         good = sum(1 for c in doc["coins"] if c.get("v") == "good")
@@ -1030,14 +1037,16 @@ def pane(D):
     else:
         ns = "The radar list needs JavaScript. No radar check is in this build yet."
     actions = '<div class="ractions" data-r-actions hidden></div>'
+    curve = ('<details class="rfold rcurvef"><summary><span class="t">Curve test (experiment)</span><span class="sum">coins called on paper while still on '
+             'pump.fun\'s curve, before their pool opens</span></summary><div class="rfold-in">%s<p class="note rc-none">No curve call in this radar check.</p></div></details>') % curve_section(doc)
     return ('<section class="radar" data-radar%s>%s<noscript><p class="note">%s</p></noscript>'
             '<div class="rhead"><p class="rpill" data-r-pill><i class="rdot"></i><span data-r-pill-t>Launch radar</span></p>%s</div>'
             '<div class="rstats" data-r-stats hidden></div><ul class="rnotes" data-r-notes hidden></ul>'
             '<ol class="rcards" data-r-cards></ol>'
-            '<div class="rempty" data-r-empty hidden><p class="rbig" data-r-empty-t></p><p class="rsub" data-r-empty-s></p><p class="rsub" data-r-lastgood hidden></p></div>'
-            '<details class="rfold" data-r-others hidden><summary><span class="t">Seen but not clean</span> <span class="cnt" data-r-ocnt></span></summary><ol class="rrows" data-r-olist></ol></details>'
-            '%s<details class="rfold" data-r-rec hidden><summary><span class="t">Track record</span><span class="sum" data-r-recline></span></summary><div class="rfold-in" data-r-recent></div></details>'
-            '%s</section>') % (attrs, embed, E(ns), actions, curve_section(doc), why_fold(rd["weights"]))
+            '<div class="rempty" data-r-empty hidden><p class="rbig" data-r-empty-t></p><p class="rsub" data-r-empty-s></p><p class="rsub" data-r-lastgood hidden></p></div>%s'
+            '<details class="rfold" data-r-others hidden><summary><span class="t">Seen, with traps or not fully checked</span> <span class="cnt" data-r-ocnt></span></summary><ol class="rrows" data-r-olist></ol></details>'
+            '<details class="rfold" data-r-rec hidden><summary><span class="t">Radar record</span><span class="sum" data-r-recline></span></summary><div class="rfold-in" data-r-recent></div></details>'
+            '%s%s</section>') % (attrs, embed, E(ns), actions, mid, why_fold(rd["weights"]), curve)
 
 
 def _hhmm(ms):
@@ -1050,19 +1059,19 @@ def _hhmm(ms):
 
 
 def tab_label():
-    """The radar's count on the website's New tab label: the coins without traps while the radar's list is current (RADAR_JS sets it;
-    hidden at 0); while it shows, the full scan's count beside it (data-y-tabcnt) is hidden, so the label carries one number."""
+    """The radar's count on the website's Radar tab label, its one number: the coins without traps while the radar's list is current (RADAR_JS
+    sets it; hidden at 0)."""
     return '<span class="cnt" data-r-tabcnt title="Radar: coins without traps now" hidden></span>'
 
 
-def block(D):
-    """The radar's part of the New tab, above the full scan's new launches: a heading and the pane."""
-    return ('<section class="rsec"><div class="sec-head"><h2>Launch radar <span class="h2s">pools under 10 min</span></h2></div>%s</section>' % pane(D))
+def block(D, mid=""):
+    """The Radar tab's radar (until the switch the full scan's new launches follow it): a heading and the pane, mid (the paper positions) inside."""
+    return ('<section class="rsec"><div class="sec-head"><h2>Launch radar <span class="h2s">pools under 10 min</span></h2></div>%s</section>' % pane(D, mid))
 
 
 # ------------------------------------------------------------------------------------------------------------------ styles
 CSS = r"""
-/* the launch radar (page_radar.py) on top of the New tab; the trap-check line, the verdict chip and the detail view (also on the full
+/* the launch radar (page_radar.py) on top of the Radar tab; the trap-check line, the verdict chip and the detail view (also on the full
    scan's new launches and the pick); the "no good coin" banner. Page tokens only, so light and dark both work. */
 .rsec .sec-head h2 .h2s { font-size:var(--fs-s); font-weight:400; color:var(--muted); margin-left:4px; white-space:nowrap }
 .tabbar .cnt.good { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) }
@@ -1111,7 +1120,7 @@ details.tdet > summary { color:var(--accent); font-weight:500; min-height:44px; 
 .nogood b { flex:none; width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; font-size:12px; color:#fff }
 .nogood.warn { background:color-mix(in srgb,var(--warn-mark) 15%,var(--surface)); color:var(--warn); border:1px solid color-mix(in srgb,var(--warn-mark) 45%,var(--line)) } .nogood.warn b { background:var(--warn-mark) }
 .nogood.bad { background:color-mix(in srgb,var(--bad-mark) 12%,var(--surface)); color:var(--bad); border:1px solid color-mix(in srgb,var(--bad-mark) 45%,var(--line)) } .nogood.bad b { background:var(--bad-mark) }
-/* the radar on the New tab */
+/* the radar on the Radar tab */
 .radar { display:grid; gap:14px; min-width:0 }
 .rhead { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; justify-content:space-between; position:relative }
 .rpill { margin:0; display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:6px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line);
@@ -1133,13 +1142,13 @@ details.rinfo[open] > p { position:absolute; right:0; top:calc(100% + 6px); z-in
 .rstats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:var(--surface); border:1px solid var(--line); border-radius:8px }
 .rstats > div { padding:10px 12px; display:grid; gap:2px; min-width:0 } .rstats > div + div { border-left:1px solid var(--line2) }
 .rstats b { font-size:24px; font-weight:600; line-height:1.1; font-variant-numeric:tabular-nums } .rstats span { font-size:var(--fs-xs); color:var(--muted); line-height:1.3 }
-.rstats .good b { color:var(--good) } .rstats.dim { opacity:.7 }
+.rstats .good b { color:var(--good) } .rstats.dim { border-style:dashed }   /* an old round's numbers: a dashed frame, never faded text */
 .rnotes { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px } .rnotes li { font-size:var(--fs-xs); padding:3px 10px; border-radius:999px;
   background:color-mix(in srgb,var(--warn-mark) 15%,var(--surface)); color:var(--warn); overflow-wrap:anywhere; max-width:100% }
 .rcards { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:10px }
 @media (min-width:760px) { .rcards { grid-template-columns:repeat(2,minmax(0,1fr)) } }
 .rcard { background:var(--surface); border:1px solid color-mix(in srgb,var(--good-mark) 40%,var(--line)); border-radius:10px; min-width:0; display:grid }
-.rcard.dim { opacity:.72; border-color:var(--line); border-style:dashed } .rcard.dim .chip.tv { background:var(--chip); color:var(--fg2) }
+.rcard.dim { border-color:var(--line); border-style:dashed } .rcard.dim .chip.tv { background:var(--chip); color:var(--fg2) }
 .rcard > details > summary { list-style:none; cursor:pointer; padding:12px 14px 10px; display:grid; gap:6px; min-width:0; color:var(--fg) }
 .rcard > details > summary::-webkit-details-marker { display:none }
 .rcard > details[open] > summary { border-bottom:1px solid var(--line2) } .rcard > details > .dtabs { padding:0 14px 12px }
@@ -1150,6 +1159,9 @@ details.rinfo[open] > p { position:absolute; right:0; top:calc(100% + 6px); z-in
 .rnums { display:flex; flex-wrap:wrap; gap:2px 14px; font-size:var(--fs-s); font-variant-numeric:tabular-nums } .rnums span { white-space:nowrap } .rnums i { font-style:normal; color:var(--muted); margin-right:4px }
 .rchips { display:flex; flex-wrap:wrap; gap:6px; align-items:center }
 .rmore { font-size:var(--fs-xs); color:var(--accent) } .rcard > details[open] .rmore { display:none }
+.rpaper { margin:0; font-size:var(--fs-s); font-weight:600; color:var(--fg) } .rchips .chip.t3 { white-space:normal }
+/* the curve test inside its fold: the block without its own frame; the one line when the doc has no curve block */
+.rcurvef .rcurve { border:0; padding:0; background:none } .rcurvef [data-r-curve]:not([hidden]) ~ .rc-none { display:none }
 .rfoot { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:0 14px 12px }
 .rfoot a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; padding:0 12px; border:1px solid var(--line); border-radius:999px;
   font-size:var(--fs-s); font-weight:500; color:var(--accent); background:var(--surface) } .rfoot a:hover, .rfoot a:focus-visible { text-decoration:none; border-color:var(--accent) }
@@ -1175,14 +1187,15 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 /* the Track record's momentum line and patterns (hindsight, paper only): the signal's chip takes what the two % columns leave, cut with an ellipsis */
 .rpat { width:100%; border-collapse:collapse; font-size:var(--fs-s); font-variant-numeric:tabular-nums } .rpat th, .rpat td { padding:4px 6px; border-top:1px solid var(--line2); text-align:right; white-space:nowrap }
 .rpat th { border-top:0; font-size:var(--fs-xs); font-weight:500; color:var(--muted) } .rpat td:first-child { text-align:left; max-width:0; width:100%; padding-left:0 } .rpat .tc { display:inline-block; max-width:100%; vertical-align:middle }
-.rpat .tc b { display:inline-block; margin-right:3px } .rpat tr.maybe td { color:var(--muted) } .rpat tr.maybe .tc { opacity:.7; max-width:calc(100% - 1.2em) }
+.rpat .tc b { display:inline-block; margin-right:3px } .rpat tr.maybe td { color:var(--muted) }
+.rpat tr.maybe .tc { background:none; box-shadow:inset 0 0 0 1px var(--line); color:var(--fg2); max-width:calc(100% - 1.2em) }
 .rpat .rq { margin-left:3px; font-weight:600; color:var(--fg2) } .rws { margin-left:4px; font-size:var(--fs-xs); color:var(--fg2); cursor:help }
 .rpwhy { margin:0; padding-left:18px; font-size:var(--fs-xs); color:var(--fg2); display:grid; gap:4px; overflow-wrap:anywhere } .rrmom { overflow-wrap:anywhere }
 .rwhy-notes { margin:0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2); display:grid; gap:4px }
 .rw-h { margin:4px 0 0; font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600 }
 .rwhy-list { list-style:none; margin:0; padding:0; display:grid; gap:8px } .rwhy-list li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; min-width:0 }
 .rwhy-list .rw-n { font-weight:500 } .rwhy-list .chip { font-size:var(--fs-xs) } .rwhy-list small { flex-basis:100%; color:var(--fg2); font-size:var(--fs-xs); font-variant-numeric:tabular-nums }
-.rmodel:empty { display:none } details.rfold.dim .rrows { opacity:.7 }
+.rmodel:empty { display:none }
 /* the curve watch's paper test under the radar's list (About to graduate): one card, the coins as rows (the top line a 44 px link to the coin
    on pump.fun, its status on the right), the variant table scrolling inside its own box on the narrowest phones, never the page */
 .rcurve { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:grid; gap:8px; min-width:0 }
@@ -1225,7 +1238,7 @@ JS = r"""
 (function(){
 var LV=['bad','warn','unk','ok','info'],IC={bad:'✕',warn:'!',unk:'?',ok:'✓',info:'·'};
 var B58=/^[1-9A-HJ-NP-Za-km-z]{32,48}$/,XL=/^https:\/\/(www\.)?(x|twitter)\.com\/[A-Za-z0-9_]{1,30}(\/[A-Za-z0-9_\/?=&%.-]{0,90})?$/,NM=/^[A-Za-z0-9_.]{1,32}$/,HN=/^[A-Za-z0-9.-][A-Za-z0-9. -]{0,23}$/;
-var LABELS=__LABELS__,UNK=__UNKNOWN__,SK=__SKEYS__,MEASURED=__MEASURED__,INFO=__INFO__;
+var LABELS=__LABELS__,UNK=__UNKNOWN__,SK=__SKEYS__,MEASURED=__MEASURED__,INFO=__INFO__,T3=__T3__;
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function num(v){return isn(v)?v:null;}
 function ms(v){return isn(v)&&v>=0&&v<1e14?v:null;}
@@ -1244,7 +1257,8 @@ function coin(c,full){
   ['hard','soft','unknown','info','plus'].forEach(function(k){o[k]=names(c[k]);});
   if(typeof c.pair==='string'&&B58.test(c.pair))o.pair=c.pair;
   if(full){['pool','mint','first','push'].forEach(function(k){o[k]=ms(c[k]);});['px','m5','buys','sells','up'].forEach(function(k){o[k]=num(c[k]);});
-    o.dex=str(c.dex,24);o.lp=str(c.lp,24);o.d=dmap(c.d);o.found=Array.isArray(c.found)?c.found.filter(function(x){return typeof x==='string';}).slice(0,8).map(function(x){return str(x,24);}):[];}
+    o.dex=str(c.dex,24);o.lp=str(c.lp,24);o.d=dmap(c.d);o.found=Array.isArray(c.found)?c.found.filter(function(x){return typeof x==='string';}).slice(0,8).map(function(x){return str(x,24);}):[];
+    o.pb=c.pb===1?1:0;o.t3=Array.isArray(c.t3)?c.t3.filter(function(x){return typeof x==='string'&&x.trim();}).slice(0,T3).map(function(x){return str(x,60);}):[];}
   if(typeof c.x==='string'&&XL.test(c.x))o.x=c.x;
   return o;}
 function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}
@@ -1316,7 +1330,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     o.calib=isObj(cv.calib)?cnums(cv.calib,['n','mcSol','prog','scale','expect']):null;o.greens=isObj(cv.greens)?cnums(cv.greens,['n','nS','rug','x2','eur','grad']):null;
     o.recent=lst('recent').map(function(r){return crec(r);}).filter(Boolean).slice(0,CV.recent);o.variants=lst('variants').map(function(r){return cvar(r);}).filter(Boolean).slice(0,6);
     return o;},
-  // what the New tab shows of a whitelisted curve block at the time now (page_radar.curve_view says the same at build time): null without a block,
+  // what the Radar tab shows of a whitelisted curve block at the time now (page_radar.curve_view says the same at build time): null without a block,
   // {state, head, one: true} without a call, else the head line, the two sentences, the coins (newest call per coin), the tables and the footnote
   curveView:function(cv,now){if(!isObj(cv))return null;
     var st=CV.states.indexOf(cv.state)>=0?cv.state:'off',fol=cint(cv.follow),hrs=cint(cv.hours),calls=cint(cv.calls),late=cint(cv.late),head='Curve watch '+st;
@@ -1421,13 +1435,13 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
     return x?{rem:x.rem,reset:x.reset}:{rem:null,reset:0};},
   // when the next poll is due (ms). o: doc, now, last (the last poll), tab (radar | office | app), via, rem, reset, fails, got, moved, kick (a
   // tap on Start within KICK and no newer doc since: every SB_FRESH on the live store, every GH_MIN on GitHub, inside the budget). The Office
-  // tab's desk follows a loop that runs (running or late) like the New tab: at 2-minute rounds its 300 s would read the radar as late between polls
+  // tab's desk follows a loop that runs (running or late) like the Radar tab: at 2-minute rounds its 300 s would read the radar as late between polls
   radarNext:function(o){
     var now=o.now,doc=o.doc,st=R.radarState(doc,now,o.got,o.moved),tab=o.tab||'radar',t,last=+o.last||0;
     if(tab==='office'&&(st==='running'||st==='late')&&!R.round(doc))tab='radar';
     var srv=doc&&+doc.t>0?+doc.t+R.age(doc,now,o.got,o.moved):now,loc=function(x){return now+(x-srv);};
     // a round: the next one is due at its next (it takes about ROUND); until then a poll every IDLE at most (a Start by hand), after it every IDLE;
-    // the live store: every SB_ROUND on the New tab (a round by hand shows within a minute), SB_DONE elsewhere, sooner when the next round is due
+    // the live store: every SB_ROUND on the Radar tab (a round by hand shows within a minute), SB_DONE elsewhere, sooner when the next round is due
     var due=doc&&R.round(doc)&&(st==='done'||st==='late')?loc(R.due(doc)+R.ROUND):null;
     if(o.via==='supabase')t=due!=null?now+Math.min(due>now?due-now:R.SB_DONE,tab==='radar'?R.SB_ROUND:R.SB_DONE):now+(tab==='radar'?(st==='running'?R.SB_FRESH:R.SB_STALE):tab==='app'?R.SB_APP:R.SB_OTHER);
     else{var gap=tab==='radar'?R.GH_MIN:R.GH_OFFICE;
@@ -1445,29 +1459,33 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
   odds:function(d){d=obj(d);var o=obj(d.odds),up=isn(d.upP)?d.upP:isn(o.up)?o.up:null,z=isn(d.zeroP)?d.zeroP:isn(o.zero)?o.zero:null;return up==null?null:[up,z];},
   // "just now" under a minute, else "34 min ago"
   ago:function(msAgo){return !isn(msAgo)?'?':msAgo<60000?'just now':dur(msAgo/60000)+' ago';},
-  // the record line (SPEC 3.4) in full, inside the Track record fold, and its short form on the fold's title
-  recLine:function(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s')+' without traps';
-    if(!(r.n60>=R.TOO_FEW))return s+' · too few calls for a record yet ('+(isn(r.n60)?r.n60:0)+' of '+R.TOO_FEW+' with a 1 h price)';
-    s+=' · 1 h later: '+p0(r.rug)+' rugged, '+p0(r.win)+' doubled';
-    var ci=r.ci||{};if(ci.rug&&ci.win)s+=' (95%: '+p0(ci.rug[0])+'-'+p0(ci.rug[1])+' / '+p0(ci.win[0])+'-'+p0(ci.win[1])+')';
-    if(isn(r.eur))s+=' · paper, '+(isn(r.ticket)?r.ticket:3)+' € each: '+eur(r.eur);return s;},
-  recShort:function(r){if(!r||!isn(r.calls))return '';var s=r.calls+' call'+(r.calls===1?'':'s');
-    return r.n60>=R.TOO_FEW?s+' · '+p0(r.rug)+' rugged · '+p0(r.win)+' doubled':s+' · too few for a record yet';},
+  // the record (SPEC 3.4) from one source, record.known (the counts the push and the Office chat say): in full inside the Radar record fold,
+  // with the 95% ranges of the shares, and short on the fold's title; "too few" while fewer than TOO_FEW coins have a 1 h result. Its euros
+  // are on the Traders tab
+  known:function(r){var k=r&&r.known,ok=function(x){return isn(x)&&x>=0&&Math.floor(x)===x;};
+    return k&&ok(k.n)&&ok(k.win)&&ok(k.rug)&&k.win<=k.n&&k.rug<=k.n?k:null;},
+  recLine:function(r){if(!r||!isn(r.calls))return '';var k=R.known(r);
+    if(!k||k.n<R.TOO_FEW)return r.calls+' coin'+(r.calls===1?'':'s')+' without traps · too few with a 1 h result for a record yet ('+(k?k.n:0)+' of '+R.TOO_FEW+')';
+    var s=k.n+' coins without traps with a 1 h result: '+k.win+' doubled, '+k.rug+' crashed to near zero';
+    var ci=r.ci||{};if(ci.rug&&ci.win)s+=' (95% range: '+p0(ci.win[0])+' to '+p0(ci.win[1])+' doubled, '+p0(ci.rug[0])+' to '+p0(ci.rug[1])+' crashed)';return s;},
+  recShort:function(r){if(!r||!isn(r.calls))return '';var k=R.known(r);
+    return k&&k.n>=R.TOO_FEW?k.n+' with a 1 h result · '+k.win+' doubled · '+k.rug+' crashed':r.calls+' coin'+(r.calls===1?'':'s')+' · too few for a record yet';},
   // the coins that rose fast (record.mom: 1.5x within 6 min or +50% in 5 min; counted, never bought or pushed) beside all new coins of the same
   // period (record.all), both with the same 1 h label; nothing while no coin rose fast
   momLine:function(m,a){if(!m||!isn(m.calls)||!(m.calls>0))return '';var s='Rising fast, paper only: '+m.calls+' coin'+(m.calls===1?'':'s');
     if(!(m.n60>=R.TOO_FEW))return s+' · too few yet ('+(isn(m.n60)?m.n60:0)+' of '+R.TOO_FEW+' with a 1 h price)';
-    return s+' · '+p0(m.rug)+' rugged · '+p0(m.win)+' 2x at 1 h'+(a&&isn(a.rug)&&isn(a.win)?' · all new coins: '+p0(a.rug)+' rugged, '+p0(a.win)+' 2x':'');},
-  // record.pat (rugged vs doubled coins of the same hours, their signals at first sight): the head line, one row [label, rugged %, 2x %, sure, level,
-  // title, where it is more often hour by hour (dir)], one rugged coin with the flags its hour's doubled coins mostly lacked (fmt: the time as HH:MM).
+    return s+' · '+p0(m.rug)+' crashed · '+p0(m.win)+' 2x at 1 h'+(a&&isn(a.rug)&&isn(a.win)?' · all new coins: '+p0(a.rug)+' crashed, '+p0(a.win)+' 2x':'');},
+  // record.pat (rugged vs doubled coins of the same hours, their signals at first sight; the page says crashed, as the record's first line "crashed
+  // to near zero"): the head line, one row [label, rugged %, 2x %, sure, level, title, where it is more often hour by hour (dir)], one rugged coin
+  // with the flags its hour's doubled coins mostly lacked (fmt: the time as HH:MM).
   // The % are pooled over the hours: when they point the other way than the hours one by one, the row says 'more' and 'less' from dir instead
   patHead:function(p){if(!p||!isn(p.w)||!isn(p.l))return '';
-    return isn(p.need)&&p.w<p.need?'Patterns: too few doubled coins yet ('+p.w+' of '+p.need+')':'Same hours, signals at first sight: '+p.l+' rugged vs '+p.w+' doubled';},
-  patRow:function(x){var d=x[7],off=d&&(x[3]/x[4]-x[1]/x[2])*d<0,side=d>0?'doubled':d<0?'rugged':'';
+    return isn(p.need)&&p.w<p.need?'Patterns: too few doubled coins yet ('+p.w+' of '+p.need+')':'Same hours, signals at first sight: '+p.l+' crashed vs '+p.w+' doubled';},
+  patRow:function(x){var d=x[7],off=d&&(x[3]/x[4]-x[1]/x[2])*d<0,side=d>0?'doubled':d<0?'crashed':'';
     return [LABELS[x[0]]||x[0].replace(/_/g,' '),off?(d<0?'more':'less'):p0(x[1]/x[2]),off?(d>0?'more':'less'):p0(x[3]/x[4]),x[5],x[6],
-      x[1]+' of '+x[2]+' rugged, '+x[3]+' of '+x[4]+' doubled had it'+(off?'; hour by hour it is more often in '+side+' coins':'')+(x[5]?'':' (could be chance)'),side];},
+      x[1]+' of '+x[2]+' crashed, '+x[3]+' of '+x[4]+' doubled had it'+(off?'; hour by hour it is more often in '+side+' coins':'')+(x[5]?'':' (could be chance)'),side];},
   whyLine:function(w,fmt){if(!w[3].length)return '';
-    return (w[0]||'?')+(isn(w[1])?', seen '+fmt(w[1]):'')+', rugged within 1 h · '+w[3].map(function(s,i){return (LABELS[s[0]]||s[0].replace(/_/g,' '))+' ('+s[1]+' of '+(isn(s[2])?s[2]:'?')+(i?')':' doubled that hour had it)');}).join(', ');},
+    return (w[0]||'?')+(isn(w[1])?', seen '+fmt(w[1]):'')+', crashed within 1 h · '+w[3].map(function(s,i){return (LABELS[s[0]]||s[0].replace(/_/g,' '))+' ('+s[1]+' of '+(isn(s[2])?s[2]:'?')+(i?')':' doubled that hour had it)');}).join(', ');},
   // the ▲ beside a coin: it orders like past doubled coins (ws, hindsight) once a win order is learned; it changes no verdict
   wsOn:function(c,m){return !!(c&&isn(c.ws)&&c.ws>=1&&m&&m.win&&m.win.from==='learned');},
   verdict:function(c){if(!c)return ['','? trap check unavailable'];
@@ -1489,7 +1507,7 @@ function go(){
   var tz=box.getAttribute('data-tz')||'UTC',tzn=box.getAttribute('data-tzn')||'UTC',root=document.documentElement;
   var sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var KEY='memebot-radar '+(src||sbUrl||'page'),$=function(s){return box.querySelector(s);};
-  var tR=document.getElementById('tab-young'),tO=document.getElementById('tab-office');     // the radar sits on top of the New tab
+  var tR=document.getElementById('tab-young'),tO=document.getElementById('tab-office');     // the radar sits on top of the Radar tab
   var S={doc:null,got:0,moved:false,next:0,fails:0,rem:null,reset:0,remAt:0,last:0,at:0,via:'',back:0,kick:0,kickT:0},busy=false,key=null,cards=[],startA=null,ghNow=false,ghFor=null;
   try{S.doc=R.clean(JSON.parse(document.getElementById('radar-doc').textContent));}catch(e){}
   function now(){return Date.now();}
@@ -1539,8 +1557,11 @@ function go(){
     var ag=el('span','rage',ageText(c,live,docAge));top.appendChild(ag);li._age=ag;li._c=c;sm.appendChild(top);
     var nums=el('div','rnums');[['liq',usd(c.liq)],['mc',usd(c.mc)],['5 min',pc(c.m5)]].forEach(function(x){var s=el('span');s.appendChild(el('i','',x[0]));s.appendChild(document.createTextNode(x[1]));nums.appendChild(s);});
     sm.appendChild(nums);
-    var ch=el('div','rchips'),vd=R.verdict(c);ch.appendChild(chip(vd[1],'tv'+(live?' '+vd[0]:'')));if(!live)ch.appendChild(chip('as of '+hhmm(+S.doc.t)));ch.appendChild(el('span','rmore','details ›'));sm.appendChild(ch);
-    sm.appendChild(lineEl(c.line,R.CARD));det.appendChild(sm);
+    var ch=el('div','rchips'),vd=R.verdict(c);ch.appendChild(chip(vd[1],'tv'+(live?' '+vd[0]:'')));if(!live)ch.appendChild(chip('as of '+hhmm(+S.doc.t)));
+    // the learning trader skips coins with these signs (no push for them; still rated, listed and bought on paper)
+    if(c.t3&&c.t3.length){var t3=chip('Learning trader skips: '+c.t3.join(', '),'t3');t3.title='The learning trader skips coins with this sign, so no push went out for it';ch.appendChild(t3);}
+    ch.appendChild(el('span','rmore','details ›'));sm.appendChild(ch);
+    sm.appendChild(lineEl(c.line,R.CARD));if(c.pb===1)sm.appendChild(el('p','rpaper',box.getAttribute('data-paper')||'Bought on paper'));det.appendChild(sm);
     var d=c.d||{},ov=[['price',isn(c.px)?'$'+(+c.px.toPrecision(3)):null],['pool age',ageText(c,live,docAge)],['liquidity',usd(c.liq)],['market cap',usd(c.mc)],['change in 5 min',pc(c.m5)],
       ['buys / sells',isn(c.buys)?Math.round(c.buys)+' / '+(isn(c.sells)?Math.round(c.sells):'?'):null],['first seen',isn(c.first)?hhmm(c.first):null],['found by',(c.found||[]).join(', ')||null],
       ['DEX',c.dex||null],['launchpad',c.lp||null]];
@@ -1568,7 +1589,7 @@ function go(){
   // hint that could be chance muted, with a '?' and a note under the table: a phone shows no title), the rugged coins with the flags their hour's
   // doubled coins mostly lacked
   function patBox(p){var f=document.createDocumentFragment(),h=R.patHead(p),ws=p.why.map(function(x){return R.whyLine(x,hhmm);}).filter(Boolean),maybe=false;if(h)f.appendChild(el('p','note',h));
-    if(p.rows.length){var t=el('table','rpat'),hd=el('tr'),th=el('thead'),tb=el('tbody');['','of rugged','of doubled'].forEach(function(x){hd.appendChild(el('th','',x));});th.appendChild(hd);t.appendChild(th);
+    if(p.rows.length){var t=el('table','rpat'),hd=el('tr'),th=el('thead'),tb=el('tbody');['','of crashed','of doubled'].forEach(function(x){hd.appendChild(el('th','',x));});th.appendChild(hd);t.appendChild(th);
       p.rows.forEach(function(x){var r=R.patRow(x),tr=el('tr',r[3]?'':'maybe'),td=el('td'),c=el('span','tc '+r[4]),b=el('b','',IC[r[4]]);tr.title=r[5];b.setAttribute('aria-hidden','true');
         c.appendChild(b);c.appendChild(document.createTextNode(r[0]));td.appendChild(c);if(!r[3]){td.appendChild(el('span','rq','?'));maybe=true;}
         tr.appendChild(td);tr.appendChild(el('td','',r[1]));tr.appendChild(el('td','',r[2]));tb.appendChild(tr);});
@@ -1619,9 +1640,8 @@ function go(){
     var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);if(st==='done'&&d.state==='degraded')p.setAttribute('data-err','');else p.removeAttribute('data-err');
       if(kw)p.setAttribute('data-wait','');else p.removeAttribute('data-wait');setText($('[data-r-pill-t]'),pill(st));}
     if(startA)startA.className='rbtn'+(st==='running'?' quiet':'');    // a tap while a loop runs only queues a run; between rounds Start is one more round
-    // the website's New label: the radar's green count while its list is current, else the full scan's count (one number, as the app's badge)
-    var tc=document.querySelector('[data-r-tabcnt]'),yc=document.querySelector('[data-y-tabcnt]'),g=live?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
-    if(yc)yc.hidden=!!g&&!!tc;
+    // the website's Radar label: the radar's count of coins without traps while its list is current (one number, as the app's badge)
+    var tc=document.querySelector('[data-r-tabcnt]'),g=live?R.good(d):0;if(tc){tc.hidden=!g;setText(tc,String(g));tc.className='cnt'+(g?' good':'');}
     if(k===key){cards.forEach(function(li){setText(li._age,ageText(li._c,live,docAge));});return;}
     key=k;emit(st);
     var stats=$('[data-r-stats]'),notes=$('[data-r-notes]'),list=$('[data-r-cards]'),empty=$('[data-r-empty]'),of=$('[data-r-others]'),rf=$('[data-r-rec]');
@@ -1644,7 +1664,7 @@ function go(){
       if(st==='none'){big='Radar not started yet';sub='It starts with the next full scan, or tap Start.';}
       else if(st==='off'){big='Radar is switched off';sub='Start: enable the workflow on GitHub.';}
       else if(st==='hours'){big='Radar sleeping';sub=isn(d.next)?'The next round comes with the first scan after '+hhmm(d.next)+'.':'Outside its hours.';}
-      else{big=live&&st==='running'?'No clean coin right now':'No clean coin at '+hhmm(+d.t);var s=isn(cn.seen)?cn.seen:d.others.length;
+      else{big=live&&st==='running'?'No coin without traps right now':'No coin without traps at '+hhmm(+d.t);var s=isn(cn.seen)?cn.seen:d.others.length;
         sub=(s?s+' seen under 10 min · all with traps or not fully checked':'Nothing under 10 min old seen')+(R.round(d)?' · one round an hour':'');}
       setText($('[data-r-empty-t]'),big);setText($('[data-r-empty-s]'),sub);
       var lg=$('[data-r-lastgood]'),l=d&&d.lastGood;lg.hidden=!(l&&isn(l.at));if(!lg.hidden)setText(lg,'last coin without traps: '+(l.sym||'?')+', '+R.ago(srvNow(n)-l.at));}
@@ -1699,7 +1719,7 @@ function go(){
       if(via!=='supabase'&&sbUrl&&sbKey&&+S.back>now())S.next=Math.min(S.next,Math.max(+S.back,now()+1000));   // GitHub only stood in: the live store's pace again once it may be asked
       save();try{draw();}catch(e){}});
   }
-  // a tab change: the next poll comes at the new tab's pace (sooner on the New tab), never before the budget allows; New opened after a
+  // a tab change: the next poll comes at the new tab's pace (sooner on the Radar tab), never before the budget allows; New opened after a
   // break asks at once (wake)
   function retime(){if(!S.last||busy)return;var b=R.budget(office(),S);S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:S.via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved,kick:kicking()}));}
   Array.prototype.forEach.call(document.querySelectorAll('input[name="tab"]'),function(r){r.addEventListener('change',function(){retime();if(view()==='radar')wake();poll();});});
@@ -1713,10 +1733,11 @@ function go(){
     else if(S.last)S.next=Math.min(S.next,R.radarNext({doc:S.doc,now:now(),last:S.last,tab:view()||'radar',via:via,rem:b.rem,reset:b.reset,fails:S.fails,got:S.got,moved:S.moved,kick:true}));
     poll();}
   document.addEventListener('visibilitychange',wake);window.addEventListener('pageshow',wake);window.addEventListener('focus',wake);
-  // #tab-radar, #radar, #tab-young or #new (the old Radar and New links) open the New tab once in a browser tab; the installed app reads the
-  // hash itself (app.py PAGE_JS)
-  setTimeout(function(){if(!inApp()&&tR&&/^#(tab-radar|radar|tab-young|new)$/.test(location.hash)){tR.checked=true;try{tR.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}
-    try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}if(document.activeElement===tR)tR.blur();}},0);   // the jump to the radio must not ring every tab
+  // #tab-radar, #radar, #tab-young or #new (the old Radar and New links) open the Radar tab once in a browser tab, #tab-pick, #tab-account and
+  // #tab-office their own tab; the installed app reads the hash itself (app.py PAGE_JS)
+  setTimeout(function(){var h=location.hash,m=/^#tab-(pick|account|office)$/.exec(h),tab=/^#(tab-radar|radar|tab-young|new)$/.test(h)?tR:m?document.getElementById('tab-'+m[1]):null;
+    if(!inApp()&&tab){tab.checked=true;try{tab.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}
+    try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}if(document.activeElement===tab)tab.blur();}},0);   // the jump to the radio must not ring every tab
   var act=box.querySelector('[data-r-actions]');       // Start and Stop: plain links to the radar's page on GitHub (no token, nothing is started from here)
   if(act&&repo){var wf='https://github.com/'+repo+'/actions/workflows/radar.yml',inf=el('details','rinfo'),sm=el('summary','','\u24d8');
     startA=el('a','rbtn','Start \u2197');[startA,el('a','rbtn quiet','Stop \u2197')].forEach(function(a){a.href=wf;a.target='_blank';a.rel='noopener';act.appendChild(a);});
@@ -1733,4 +1754,4 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 """.replace("__CURVE__", json.dumps({"thr": list(CURVE_THR), "v": list(CURVE_V), "vw": CURVE_VW, "how": list(CURVE_HOW), "states": list(CURVE_STATES), "hosts": list(CURVE_HOSTS),
                                     "ctrl": CURVE_CTRL, "blank": CURVE_BLANK, "recent": CURVE_RECENT, "shown": CURVE_SHOWN, "line": CURVE_LINE, "few": CURVE_FEW,
-                                    "value": CURVE_VALUE_MS, "big": CURVE_BIG, "late": CURVE_LATE_S})).replace("__INFO__", json.dumps(INFO_TEXT)).replace("__LABELS__", json.dumps(LABELS)).replace("__UNKNOWN__", json.dumps(UNKNOWN)).replace("__SKEYS__", json.dumps(SKEYS)).replace("__MEASURED__", json.dumps(MEASURED_NOTE))
+                                    "value": CURVE_VALUE_MS, "big": CURVE_BIG, "late": CURVE_LATE_S})).replace("__INFO__", json.dumps(INFO_TEXT)).replace("__LABELS__", json.dumps(LABELS)).replace("__UNKNOWN__", json.dumps(UNKNOWN)).replace("__SKEYS__", json.dumps(SKEYS)).replace("__MEASURED__", json.dumps(MEASURED_NOTE)).replace("__T3__", json.dumps(T3_MAX))

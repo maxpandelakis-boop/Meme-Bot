@@ -112,7 +112,22 @@ HOLD_COOL_H = 0.0        # no cooldown after a sale any more; failing a filter s
 PAPER_FEE_PCT, PAPER_FEE_MIN = 0.01, 0.10   # paper positions pay 1%, at least 0.10, per trade; the tip record, the big test and the
                          # training keep FEE_PCT/FEE_MIN so their history stays comparable
 PAPER_GROUPS = ("hold", "young")
+# the paper account's identity key (state.json paperRule): never edit, not even a letter; the page's words come from PAPER_LABEL
 PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"    # state.json "paperRule": a run that finds another rule there restarts the account
+PAPER_LABEL = "sells at −%d%%, at %gx (+%s%%) or after %g h" % (round(100 * HOLD_STOP), 1 + HOLD_TP, "{:,}".format(round(100 * HOLD_TP)), HOLD_MAX_H)
+SWITCH_AT = 1792108800000   # Fri 16 Oct 2026 00:00 UTC (02:00 Berlin; the radar is off then): the new-launch buys end,
+                            # the radar's 10 € paper positions start, the learning trader goes live. Never edit after it has passed.
+
+
+def switch_at():
+    """SWITCH_AT, or the selftest's MEMEBOT_SWITCH_AT (ms) when set; no workflow sets it (selftest_scanside checks)."""
+    v = os.environ.get("MEMEBOT_SWITCH_AT")
+    try:
+        return int(v) if v else SWITCH_AT
+    except ValueError:
+        return SWITCH_AT
+
+
 # hard gates (everything else is a factor the big test measures)
 GATE_MIN_LIQ = 20_000
 GATE_MC = (100_000, 50_000_000)
@@ -2337,14 +2352,16 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     if recommend and room > 0 and len(short) < SHORTLIST:      # the fallback pool needs RugCheck reports too
         short += [r for r in soft_rows(rows, held, recent) if r["a"] not in risk][:SHORTLIST - len(short)]
     more = cands[len(short):len(short) + RC_BIG] if (snap_due(d, now) or snapshot) else []
-    if recommend:                                              # the new-launches tab shows safety data too
+    young_on = recommend and now < switch_at()                 # no new launches after the switch: their RugCheck and refresh budget is free
+    if young_on:                                               # the new-launches tab shows safety data too
         seen = {r["a"] for r in short + more} | set(risk)
         more += [r for r in young_rows(rows, held, recent) if r["a"] not in seen][:YOUNG_N]
     meta = {r["a"]: {"sym": str(r["pr"].get("symbol") or "")[:16], "x": x_link(r["pr"]) or str((r["pr"].get("pf") or {}).get("twitter") or "")[:120],
                      "tg": str((r["pr"].get("pf") or {}).get("telegram") or "")[:100], "pair": str(r["pr"].get("pairAddress") or "")[:60]} for r in short + more}
     zm, um = load_train(d)[:2]
     refresh = list(dict.fromkeys([r["a"] for r in short + more] + [r["a"] for r in cands[:150]] + [r["a"] for r in soft_rows(rows, held, recent)[:30]]
-                                 + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]] + [r["a"] for r in young_rows(rows, held, recent)[:YOUNG_N]]))[:252]
+                                 + [r["a"] for r in risky_rows(rows, held, recent, zm, um, risk)[:40]]
+                                 + ([r["a"] for r in young_rows(rows, held, recent)[:YOUNG_N]] if now < switch_at() else [])))[:252]
     print(json.dumps({"shortlist": [r["a"] for r in short + more], "pick": [r["pr"].get("symbol") for r in short], "meta": meta, "refresh": refresh, "candles": candle_items(d, now),
                       "n": len(short) + len(more), "gated": sum(1 for r in rows if r["ok"]), "scanned": len(rows)}, indent=1))
 
@@ -2738,7 +2755,8 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                                         if zero_flagged else "no coin cleared even the relaxed safety floor (a report without danger flags, half the liquidity locked, no whale, enough holders)")
             if not chosen and runners:
                 reason += "; closest: " + ", ".join("%s (%s)" % (c["sym"], c.get("floor")) for c in runners[:3])
-            young_r = young_rows(rows, held, recent)[:YOUNG_N]
+            young_on = now < switch_at()        # the new launches end at the switch (no list, no buy, no memeyoung doc); the radar's greens take over
+            young_r = young_rows(rows, held, recent)[:YOUNG_N] if young_on else []
             young = []
             for r in young_r:
                 ok_r, rtxt = clean(r)
@@ -2782,7 +2800,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
             emit("memebot", "recommend", {"t": now, "rule": RULE, "scanned": len(rows), "passed": len(gated), "picks": [dict(rec(r, rtxt, r.get("ok_risky", True) if tiers.get(r["a"]) == "risky" else True), bought=bought.get(r["a"])) for r, rtxt in chosen],
                                           "pricedAt": num(fresh.get("t")) if isinstance(fresh, dict) else None, "refreshed": int(num(fresh.get("n")) or 0) if isinstance(fresh, dict) else 0,
-                                          "runnersUp": runners[:8], "young": young, "youngOf": len(young_rows(rows, held, recent)), "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
+                                          "runnersUp": runners[:8], "young": young, "youngOf": len(young_rows(rows, held, recent)) if young_on else 0, "flagged": flagged[:8], "reason": reason, "zeroLimit": zmax if zmodel else None, "trained": trained_n, "scoreBar": rec_bar, "pickBy": pick_by})
             if young:    # the new launches get the same 1 h / 24 h record, so the "do the newest coins do better" question is answered coin by coin
                 emit("memeyoung", run_id, {"t": now, "rule": RULE, "pricedAt": priced_at(d, now), "picks": [{"sym": y["sym"], "addr": y["addr"], "pair": y.get("pair"), "px": y.get("px"), "mc": y.get("mc"),
                                                                             "score": y.get("score"), "ageMin": y.get("ageMin"), "ok": y.get("ok"), "launchpad": y.get("launchpad")} for y in young]})

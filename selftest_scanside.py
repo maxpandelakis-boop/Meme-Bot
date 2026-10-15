@@ -24,8 +24,8 @@ S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar (and curve) -> young:
     notify_radar's words say fake money and never buy, safe or clean, and open the Radar tab; an infinite age, count or liquidity reads
     as unknown
 S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with their timeouts and places, C exports memeradar, job
-    peaks needs scan with timeout <= 14, the token only in its restore and push steps, the exit replay after the pricing and before the
-    push, and, run as written (with a stand-in pricing step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the radar's safety net)
+    peaks needs scan with timeout <= 17, the token only in its restore and push steps, the exit replay after the pricing and the learning
+    trader's step (TR15: traders.py run, continue-on-error, at most 3 min) after it, both before the push, and, run as written (with a stand-in pricing step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the radar's safety net)
     against a stand-in GitHub API: it starts radar.yml (source hourly) after each full scan, only when the workflow is active, inside
     the hours and no radar run is running or waiting (any status but completed), never when MEMEBOT_RADAR is 0; radar.yml (when on this
     branch): group memebot-radar, no schedule, a round every 2 minutes for 55 minutes (timeout 70), never pushes results, live or
@@ -34,7 +34,8 @@ S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with t
 S7  step B "Feed the launch radar": traps.py feed on a mock db in < 60 s writes the four files, which go to radar-feed as one orphan
     commit (force-pushed, all four or none: a feed that fails or writes three pushes nothing) at the scan's clock (a run doc dated hours
     ahead is ignored); the X-link history survives a step A that could not fetch radar-feed (step B fetches it itself, else leaves
-    radar-feed as it is); the next scan's step A imports the feed
+    radar-feed as it is); the next scan's step A imports the feed; with a learning-trader radar decision in mb/ a fifth file, t3skip.json
+TR15 no workflow file sets MEMEBOT_SWITCH_AT (only the selftest does); bot.py's SYNC_IGNORE carries db/memepath and db/memetrader
 A check group that stops with an exception is one FAIL line; the other groups still run.
 """
 import contextlib, glob, gzip, json, os, random, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse
@@ -645,13 +646,16 @@ def _peaks_job(check, scan, tmp):
     open(os.path.join(ws, "peak.py"), "w").write(STANDIN_PEAK)
     outf = os.path.join(tmp, "s6-peaks-output")
     open(outf, "w").close()
-    logs, codes, priced, grid = [], [], {}, {}
+    logs, codes, priced, grid, trd = [], [], {}, {}, {}
     for st in pk["steps"][1:]:
         if "steps.restore.outputs.ok == 'true'" in str(st.get("if")) and "ok=true" not in open(outf).read():
             continue
         if "exit_grid.py run" in st["run"]:          # the exit replay reads the real peak.py (read only); the stand-in priced the windows before
             os.remove(os.path.join(ws, "peak.py"))
             for f in ("peak.py", "memebot.py", "fetch.py", "exit_grid.py"):
+                os.symlink(os.path.join(HERE, f), os.path.join(ws, f))
+        if "traders.py run" in st["run"]:            # the learning trader reads the real modules (read only)
+            for f in ("traders.py", "radar_paper.py", "traps.py", "radar_weights.json", "page_account.py"):
                 os.symlink(os.path.join(HERE, f), os.path.join(ws, f))
         env = dict(pk.get("env") or {}, **(st.get("env") or {}))
         if "RESULTS_URL" in env:                     # the token's address, only where the workflow gives it (the restore and the push)
@@ -669,6 +673,11 @@ def _peaks_job(check, scan, tmp):
                 grid = json.loads((p.stdout.strip().splitlines() or ["{}"])[-1])
             except ValueError:
                 grid = {}
+        if "traders.py run" in st["run"]:
+            try:
+                trd = json.loads((p.stdout.strip().splitlines() or ["{}"])[-1])
+            except ValueError:
+                trd = {}
     head = git("-C", remote, "rev-parse", "-q", "--verify", "refs/heads/results", check=False).strip()
     parent = git("-C", remote, "rev-parse", "-q", "--verify", "refs/heads/results^", check=False).strip()     # none when the job added no commit
     ls = set(git("-C", remote, "ls-tree", "-r", "--name-only", "results", check=False).split())
@@ -680,27 +689,40 @@ def _peaks_job(check, scan, tmp):
     out2 = os.path.join(tmp, "s6-peaks-output2")
     open(out2, "w").close()
     p2, _ = run_script(pk["steps"][1]["run"], ws2, dict(RESULTS_URL="file://" + empty, GITHUB_OUTPUT=out2))
-    check(codes == [0, 0, 0, 0] and bool(parent) and parent == scan_head and head != scan_head
-          and {"db/memepeak/y-0.json", "db/memepeak/y-1.json", "db/memepos/y-1.json", "report.html", "db/memebot/exitgrid.json"} <= ls
-          and grid.get("ok") is True and (grid.get("young") or {}).get("verdict") == "empty"
+    check(codes == [0, 0, 0, 0, 0] and bool(parent) and parent == scan_head and head != scan_head
+          and {"db/memepeak/y-0.json", "db/memepeak/y-1.json", "db/memepos/y-1.json", "report.html", "db/memebot/exitgrid.json", "db/memebot/traders.json"} <= ls
+          and grid.get("ok") is True and (grid.get("young") or {}).get("verdict") == "empty" and trd.get("ok") is True
           and not any(x.startswith("candles/") for x in ls) and p2.returncode == 0 and "ok=true" not in open(out2).read() and not os.path.exists(os.path.join(ws2, "mb")),
           "job peaks as written: it clones the results the scan just pushed, prices (a stand-in here), replays the exits (exit_grid.py: no closed "
-          "trade here, an empty doc), and its sync adds the peak doc and the exit doc as one commit on top of the scan's (the candle files stay on "
+          "trade here, an empty doc), runs the learning trader's step (traders.py), and its sync adds the peak doc, the exit doc and the traders' summary as one commit on top of the scan's (the candle files stay on "
           "the runner); without a results branch it prices nothing and pushes nothing")
     check(priced.get("items") == 1 and priced.get("token") is False and "RESULTS_URL" not in (pk.get("env") or {})
-          and [bool((s.get("env") or {}).get("RESULTS_URL")) for s in pk["steps"]] == [False, True, False, False, True],
-          "job peaks: the token's address is only in the restore and the push step; the pricing step (GeckoTerminal only) and the exit replay "
-          "run without it")
+          and [bool((s.get("env") or {}).get("RESULTS_URL")) for s in pk["steps"]] == [False, True, False, False, False, True],
+          "job peaks: the token's address is only in the restore and the push step; the pricing step (GeckoTerminal only), the exit replay "
+          "and the learning trader run without it")
     names = [str(s.get("name") or "") for s in pk["steps"]]
     i_px = next((i for i, nm in enumerate(names) if nm.startswith("Price the closed 6-hour windows")), -1)
     i_xg = next((i for i, s in enumerate(pk["steps"]) if "exit_grid.py run --dir mb" in str(s.get("run") or "")), -1)
     i_up = next((i for i, nm in enumerate(names) if nm.startswith("Push the peak docs")), -1)
     xg = pk["steps"][i_xg] if i_xg >= 0 else {}
+    i_tr = next((i for i, s in enumerate(pk["steps"]) if str(s.get("run") or "").strip() == "python3 traders.py run --dir mb"), -1)
+    tr = pk["steps"][i_tr] if i_tr >= 0 else {}
     px_t = int((pk["steps"][i_px] if i_px >= 0 else {}).get("timeout-minutes") or 0)
     check(0 < i_px < i_xg < i_up and xg.get("continue-on-error") is True and 0 < int(xg.get("timeout-minutes") or 0) <= 2
-          and xg.get("if") == "steps.restore.outputs.ok == 'true'" and int(pk.get("timeout-minutes") or 0) >= px_t + int(xg.get("timeout-minutes") or 0) + 1,
+          and xg.get("if") == "steps.restore.outputs.ok == 'true'"
+          and int(pk.get("timeout-minutes") or 0) >= px_t + int(xg.get("timeout-minutes") or 0) + int(tr.get("timeout-minutes") or 0) + 1,
           "job peaks: the exit replay runs after the pricing and before the push, with its own short timeout, never failing the job, and the "
-          "job's timeout leaves the push its minute after both")
+          "job's timeout leaves the push its minute after all three")
+    check(i_xg < i_tr < i_up and tr.get("continue-on-error") is True and 0 < int(tr.get("timeout-minutes") or 0) <= 3
+          and tr.get("if") == "steps.restore.outputs.ok == 'true'" and "traders.py" in str(tr.get("name") or "") + str(tr.get("run")),
+          "TR15 job peaks runs the learning trader's step (traders.py run) after the exit replay and before the push, continue-on-error, %s min at most"
+          % tr.get("timeout-minutes"))
+    flows = {os.path.basename(f): open(f, encoding="utf-8").read() for f in glob.glob(os.path.join(HERE, ".github", "workflows", "*.y*ml"))}
+    sync = B.SYNC_IGNORE.splitlines()
+    check(len(flows) >= 2 and not any("MEMEBOT_SWITCH_AT" in t for t in flows.values())
+          and {"!db/memepath/", "!db/memepath/**", "!db/memetrader/", "!db/memetrader/**"} <= set(sync),
+          "TR15 no workflow sets MEMEBOT_SWITCH_AT (%s: the switch is memebot.SWITCH_AT); SYNC_IGNORE carries db/memepath and db/memetrader"
+          % ", ".join(sorted(flows)))
 
 
 def berlin_hour():
@@ -814,12 +836,13 @@ def _s6(check, scan, tmp):
     clone = next((l.strip() for l in restore_scan.splitlines() if "git clone" in l), "?")
     runs_pk = [s.get("run") or "" for s in pst]
     check(pk.get("needs") == "scan" and "needs.scan.outputs.skipped != 'true'" in str(pk.get("if")) and "needs.scan.result == 'success'" in str(pk.get("if"))
-          and pk.get("continue-on-error") is True and isinstance(pk.get("timeout-minutes"), int) and pk["timeout-minutes"] <= 14 and pk.get("permissions") == {"contents": "write"}
+          and pk.get("continue-on-error") is True and isinstance(pk.get("timeout-minutes"), int) and pk["timeout-minutes"] <= 17 and pk.get("permissions") == {"contents": "write"}
           and (pst[:1] == [{"uses": "actions/checkout@v4", "with": {"persist-credentials": False}}]) and clone in restore_pk
           and any(r.strip() == "python3 peak.py run --dir mb --deadline-s 600" for r in runs_pk) and runs_pk[-1].strip() == 'python3 bot.py sync --remote "$RESULTS_URL"'
-          and [i for i, r in enumerate(runs_pk) if "peak.py run" in r] == [len(runs_pk) - 3] and runs_pk[-2].strip() == "python3 exit_grid.py run --dir mb",
+          and [i for i, r in enumerate(runs_pk) if "peak.py run" in r] == [len(runs_pk) - 4] and runs_pk[-3].strip() == "python3 exit_grid.py run --dir mb"
+          and runs_pk[-2].strip() == "python3 traders.py run --dir mb",
           "job peaks: needs scan (not after a skipped or failed scan), continue-on-error, %s min at most, contents write only; checkout (no token kept), the scan's"
-          " results clone, peak.py run --deadline-s 600, the exit replay (exit_grid.py), then bot.py sync" % pk.get("timeout-minutes"))
+          " results clone, peak.py run --deadline-s 600, the exit replay (exit_grid.py), the learning trader (traders.py), then bot.py sync" % pk.get("timeout-minutes"))
     pushes = [(s.get("name") or s.get("uses"), l.strip()) for j in scan["jobs"].values() for s in j.get("steps") or [] for l in (s.get("run") or "").splitlines() if "git push" in l]
     check(len(pushes) == 2 and not any("radar-data" in l for _, l in pushes) and all(re.search(r"\b(bigtest|radar-feed)\b", l) for _, l in pushes),
           "no step of scan.yml pushes radar-data (the radar job is its only writer); the git pushes go to bigtest and radar-feed (%d), results via bot.py sync" % len(pushes))
@@ -1024,6 +1047,22 @@ def _s7(check, job, tmp):
     check(m1 == "ok" and p2.returncode == 0 and second != first and n2 == "1" and meta2.get("t") == clock + H and k1 <= k2 and "step A did not import" not in p2.stderr,
           "the next scan (step A's mark ok) replaces it with one new commit (force-pushed, still 1 commit) at its clock (%+d min; a run doc dated"
           " 5 h ahead of the wall clock is ignored)" % ((meta2.get("t", 0) - clock) // 60_000))
+    # the learning trader has a radar decision in mb/: t3skip.json goes along (its skip signs, for the radar's push)
+    if real:
+        dec_dir = os.path.join(mb, "db", "memetrader", "v1")
+        os.makedirs(dec_dir, exist_ok=True)
+        D_ = clock // 86_400_000 * 86_400_000
+        json.dump({"v": 1, "t3v": 1, "day": time.strftime("%Y-%m-%d", time.gmtime(D_ / 1000)), "group": "radar", "asOf": D_, "made": clock, "mode": "live",
+                   "rule": {"stop": 0.3, "target": 11.0, "hours": 6.0}, "prev": {"stop": 0.3, "target": 11.0, "hours": 6.0}, "changed": "skip-add",
+                   "skip": ["falling"], "prevSkip": [], "evidence": {"n": 90}, "why": "Skips coins with ..."},
+                  open(os.path.join(dec_dir, "%s-radar.json" % time.strftime("%Y-%m-%d", time.gmtime(D_ / 1000))), "w"))
+        p3, _ = _feed(job, ws, remote, tmp)
+        files3 = sorted(git("-C", remote, "ls-tree", "--name-only", "radar-feed", check=False).split())
+        t3 = json.loads(git("-C", remote, "show", "radar-feed:t3skip.json", check=False) or "{}")
+        shutil.rmtree(os.path.join(mb, "db", "memetrader"))
+        check(p3.returncode == 0 and files3 == sorted(FEED_FILES + ("t3skip.json",)) and t3.get("skip") == ["falling"] and t3.get("asOf") == D_
+              and t3.get("texts") == ["price down 10% or more in 5 min"],
+              "with a learning-trader radar decision in mb/ the feed carries a fifth file, t3skip.json: its skip signs and their words (%s)" % t3.get("skip"))
     # step A could not fetch radar-feed (fresh runner, no index in mb/): step B fetches the index itself, so 30 days of X links survive
     planted = {"x.com/oldacct%d" % i: [b58(rng), clock - 3 * D, 1, "account", clock - 2 * D, []] for i in range(50)}
     put_branch(remote, "radar-feed", {"walletmem.json.gz": gz({"v": 1, "t": clock, "nCoins": 1, "common": [], "sw": {}, "rug": []}),

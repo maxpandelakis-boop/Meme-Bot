@@ -799,7 +799,7 @@ def _sym(v):
 
 def notify_young(doc):
     """The "new coins" notification for the early New launches list (the doc the live record carries as "young"): how many coins it lists,
-    how old the newest one was when it was found, the first three symbols, and that it is fake money; it opens the New coins tab.
+    how old the newest one was when it was found, the first three symbols, and that it is fake money; it opens the Radar tab.
     Nothing when the list is empty."""
     if not isinstance(doc, dict):
         return {"skipped": "no list"}
@@ -945,7 +945,7 @@ def curve_words(c):
 
 def notify_curve(c):
     """The curve watch's notification (kind "curve") for one call the watch decided on (launch_radar.curve_push: radar_curve.json names
-    its variant, never a trap verdict, once per coin, its own hourly cap), in curve_words' words; it opens the New tab. The phones'
+    its variant, never a trap verdict, once per coin, its own hourly cap), in curve_words' words; it opens the Radar tab. The phones'
     "New coins" setting covers it (PREF_OF). A second lock behind the switch: nothing goes out unless the call names the variant that was
     switched on (c["variant"], a valid id), and never for a trap verdict."""
     if not isinstance(c, dict) or not (isinstance(c.get("variant"), str) and CURVE_VARIANT.fullmatch(c["variant"])):
@@ -959,7 +959,7 @@ def notify_curve(c):
 def notify_radar(coins, record=None):
     """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
     rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour), in radar_words' words
-    with this cycle's record; it opens the New tab at its top, where the radar is. The phones' "New coins" setting covers it (PREF_OF).
+    with this cycle's record; it opens the Radar tab at its top, where the radar is. The phones' "New coins" setting covers it (PREF_OF).
     Nothing for an empty list."""
     words = radar_words(coins, record)
     if words is None:
@@ -1052,7 +1052,7 @@ PAGE_CSS = r"""
 html.app .tabbar { display:none }
 html.app body { padding-bottom:calc(66px + max(10px, env(safe-area-inset-bottom))) }
 html.app .wrap { padding-top:max(16px, env(safe-area-inset-top)); padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)) }
-html.app .app-off, html.app[data-apptab="account"] .tabs, html.app [data-live-link] { display:none !important }   /* the website's address: the app is it */
+html.app .app-off, html.app [data-live-link] { display:none !important }   /* the website's address: the app is it */
 .appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
   padding:4px max(6px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
   background:color-mix(in srgb,var(--surface) 94%,transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
@@ -1066,7 +1066,7 @@ html.app .app-off, html.app[data-apptab="account"] .tabs, html.app [data-live-li
 .appbar .ab-dot { position:absolute; top:7px; left:calc(50% + 8px); width:9px; height:9px; border-radius:50%; background:var(--bad-mark); box-shadow:0 0 0 2px var(--surface) }
 .appbar .ab-cnt { position:absolute; top:3px; left:calc(50% + 6px); min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--accent); color:#fff;
   font-size:11px; line-height:18px; font-weight:600; box-shadow:0 0 0 2px var(--surface); font-variant-numeric:tabular-nums }
-.appbar .ab-cnt.good { background:var(--good-mark) }   /* the radar's coins with no trap found right now: green, the only green the radar uses */
+.appbar .ab-cnt.good { background:color-mix(in srgb,var(--good-mark) 70%,#000) }   /* the radar's coins with no trap found right now: green (dark enough for white digits, 6:1), the only green the radar uses */
 .appbar button > span:not([class]) { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 html.app header { position:relative; padding-right:56px }
 .appbell { position:absolute; top:-2px; right:0; width:44px; height:44px; border-radius:22px; border:1px solid var(--line); background:var(--surface); color:var(--fg2);
@@ -1076,9 +1076,9 @@ html.app header { position:relative; padding-right:56px }
 .appbell[data-on="1"] svg { fill:color-mix(in srgb,var(--accent) 22%,transparent) }
 .appbell i { position:absolute; top:8px; right:8px; width:9px; height:9px; border-radius:50%; background:var(--good-mark); box-shadow:0 0 0 2px var(--surface) }
 .appbell:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
-.appnotif .card { gap:14px } .appnotif [hidden] { display:none !important }
+.appnotif .card { gap:10px } .appnotif [hidden] { display:none !important }
 .nf-top { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap }
-.nf-top strong { font-size:16px; font-weight:600 }
+.nf-top .nf-btn { width:auto; flex:1 1 auto }      /* the state chip and the button share a row */
 .nf-note { margin:0; color:var(--fg2); font-size:var(--fs-s); text-wrap:pretty }
 .nf-btn { appearance:none; -webkit-appearance:none; border:0; border-radius:12px; min-height:48px; padding:0 18px; font:inherit; font-weight:600; font-size:16px;
   background:var(--accent); color:#fff; cursor:pointer; width:100% }
@@ -1094,7 +1094,9 @@ html.app header { position:relative; padding-right:56px }
 .nf-row input:checked { background:var(--good-mark) }
 .nf-row input:checked::before { transform:translateX(20px) }
 .nf-row input:disabled { opacity:.5; cursor:default }
-.nf-prefs.dim .nf-row { opacity:.55 }   /* not on yet: the switches are a choice for later, not notifications that arrive */
+details.nf-which > summary { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; min-height:44px; cursor:pointer; color:var(--accent); font-weight:500 }
+details.nf-which > summary small { color:var(--fg2); font-size:var(--fs-xs); font-weight:400 } details.nf-which[open] > summary { margin-bottom:6px }
+details.nf-which > .nf-small { margin-top:8px }
 .nf-row input:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
 .nf-small { margin:0; color:var(--muted); font-size:var(--fs-xs); text-wrap:pretty }
 .applive { margin:0; padding:12px 14px; border-radius:8px; font-size:var(--fs-s); color:var(--fg);
@@ -1106,11 +1108,11 @@ html.app header { position:relative; padding-right:56px }
 
 PAGE_JS = r"""
 (function(){
-// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, New, Office, Account) instead of the top one, a bell and a
-// notifications card on the Account tab (permission asked from the tap, the subscription saved in the live store through save_push_sub
-// with its two settings), deep links (#tab-young, #tab-radar ...) from notifications. New holds the launch radar (on top) and the full
-// scan's new launches; the old Radar tab's links open it. In a browser tab it does nothing. window.MemebotApp holds its decisions for the tests.
-var A=window.MemebotApp={TABS:['pick','young','office','account'],
+// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, Radar, Traders, Office: the website's order) instead of the top one,
+// a bell and a notifications card at the end of the Traders tab (permission asked from the tap, the subscription saved in the live store
+// through save_push_sub with its two settings), deep links (#tab-young, #tab-radar ...) from notifications. Radar (tab id young) holds the
+// launch radar; the old links (#tab-radar, #radar, #new) open it. In a browser tab it does nothing. window.MemebotApp holds its decisions for the tests.
+var A=window.MemebotApp={TABS:['pick','young','account','office'],
   // an installed web app: Safari's navigator.standalone, or the display mode of an installed app (iOS reports "display": "standalone"
   // as fullscreen, WebKit bug 264218)
   installed:function(nav,mm){try{if(nav&&nav.standalone===true)return true;
@@ -1120,27 +1122,26 @@ var A=window.MemebotApp={TABS:['pick','young','office','account'],
   // store keeps the one saved before); error: a tap that did not turn them on
   pushState:function(o){if(!o||!o.sw||!o.push||!o.notif)return 'unsupported';if(!o.store)return o.why==='url'?'badurl':'nostore';if(o.perm==='denied')return 'denied';
     if(o.sub&&(o.saved||o.perm==='granted'&&!o.error))return 'on';if(o.error)return 'error';if(!o.key)return 'nokey';return 'off';},
-  // the early list's count for the New coins tab: its coins (live.json and the merged snapshot) or the status row's brief
+  // the early list's count (the full scan's new launches, until the switch): its coins (live.json and the merged snapshot) or the status row's brief
   count:function(y){if(!y||typeof y!=='object')return null;if(Array.isArray(y.coins))return y.coins.filter(function(c){return c&&typeof c==='object';}).length;
     return typeof y.n==='number'&&y.n>=0?Math.floor(y.n):null;},
   // the early box shows a scan's early list (report.py's live script, MemebotLive.early: listed, partial, paused, limited, done, stopped)
   listed:function(early){return ['listed','partial','paused','limited','done','stopped'].indexOf(early)>=0;},
-  // the New coins tab's badge follows the early box: while it shows a scan's early list the badge is that list's count; else null and no
-  // badge at all (a badge reads as new coins: the scored list's count is not one)
+  // the early box's count: while it shows a scan's early list the count of that list; else null (after the switch never: no early list)
   badge:function(early,y){return A.listed(early)?A.count(y):null;},
   // the radar's count (page_radar.py's script, event "memebot-radar"): the coins with no trap found while its list is current (a running
   // loop, or a round within a few minutes: the event's good); none at 0, none for a late, stopped or switched-off radar
   radarBadge:function(d){if(!d||typeof d!=='object'||(d.state!=='running'&&d.state!=='done')||!d.doc||!Array.isArray(d.doc.coins))return null;
     var n=typeof d.good==='number'&&isFinite(d.good)?Math.floor(d.good):d.state==='running'?d.doc.coins.filter(function(c){return c&&typeof c==='object'&&c.v==='good';}).length:0;return n>0?n:null;},
-  // the New tab's one badge: the radar's coins without traps (green) before the early list's count; null for none
+  // the Radar tab's one badge: the radar's coins without traps (green) before the early list's count; null for none
   newBadge:function(radar,early){return radar>0?{n:radar,good:true}:early>0?{n:early,good:false}:null;},
   // the pick for the "New pick" note: the snapshot's (status, so it is there as soon as the notification) or current's, of a scan newer
   // than this page, with a symbol
   pick:function(st,cur,pageT){var c=[st&&st.pick,cur&&cur.pick];for(var i=0;i<c.length;i++){var p=c[i];
     if(p&&typeof p==='object'&&p.sym&&(+p.t||0)>(+pageT||0))return p;}return null;},
-  // the tab of a link: #tab-pick ... #tab-account; the old Radar tab's #tab-radar and #radar, and #new, open New
+  // the tab of a link: #tab-pick ... #tab-account; #tab-radar, #radar and #new open Radar (tab id young)
   tab:function(h){h=String(h||'');var m=/^#?tab-(pick|radar|young|office|account)$/.exec(h)||/^#(radar|new)$/.exec(h);return m?(m[1]==='radar'||m[1]==='new'?'young':m[1]):null;},
-  // a link to the radar (the top of New), not to the full scan's early list
+  // a link to the radar (the top of the Radar tab), not to the full scan's early list
   radarLink:function(h){return /^#?(tab-)?radar$/.test(String(h||''));},
   store:function(u,k){u=String(u||'').replace(/\/+$/,'');k=String(k||'');
     return /^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?$/.test(u)&&/^sb_publishable_[A-Za-z0-9_-]+$/.test(k)?{url:u,key:k}:null;}};
@@ -1153,17 +1154,17 @@ function el(tag,cls,text){var e=doc.createElement(tag);if(cls)e.className=cls;if
 function svg(d){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';}
 var ICON={pick:svg('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>'),
   radar:svg('<path d="M12 12l6.2-6.2"/><path d="M19.2 9.2A7.9 7.9 0 1 1 14.8 4.6"/><path d="M15.8 11.1A4 4 0 1 1 12.9 8.1"/><circle cx="12" cy="12" r="1.3"/>'),
-  young:svg('<circle cx="12" cy="12" r="8.4"/><path d="M12 8.2v7.6M8.2 12h7.6"/>'),
+  young:svg('<path d="M12 12l6.2-6.2"/><path d="M19.2 9.2A7.9 7.9 0 1 1 14.8 4.6"/><path d="M15.8 11.1A4 4 0 1 1 12.9 8.1"/><circle cx="12" cy="12" r="1.3"/>'),
   office:svg('<circle cx="9" cy="8.2" r="3.1"/><path d="M3.6 19.2c.6-3.2 2.8-5 5.4-5s4.8 1.8 5.4 5"/><circle cx="16.9" cy="9.2" r="2.4"/><path d="M15.6 14.3c2.3.2 4 1.8 4.6 4.9"/>'),
   account:svg('<path d="M4.2 8.2V7.4A2.4 2.4 0 0 1 6.6 5h10.6v3.2"/><rect x="4.2" y="8.2" width="15.6" height="10.8" rx="2.4"/><circle cx="15.9" cy="13.6" r="1.2"/>'),
   bell:svg('<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>')};
-var NAMES={pick:'Pick',young:'New coins',office:'Office',account:'Account'},SHORT={young:'New'},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
-var counts={radar:null,early:null};      // the New tab's badge: the radar's coins without traps, the early list's count
+var NAMES={pick:'Pick',young:'Radar',account:'Traders',office:'Office'},SHORT={},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
+var counts={radar:null,early:null};      // the Radar tab's badge: the radar's coins without traps, the early list's count (until the switch)
 var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,pos={},lastEarly=null,toEarly=0,jumped=false;
-// a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'radar' (a link to the radar: the top of New, no jump to the early
+// a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'radar' (a link to the radar: the top of Radar, no jump to the early
 // list), 'keep' (back where this tab was left, as iOS apps do) or nothing
 function select(t,scroll){
-  if(t==='radar')t='young';            // the Radar tab is part of New (a tab remembered from before)
+  if(t==='radar')t='young';            // the Radar tab's id is young (a tab remembered from before)
   if(A.TABS.indexOf(t)<0)t='pick';
   if(t!==cur)pos[cur]=window.scrollY||0;
   cur=t;
@@ -1178,7 +1179,7 @@ function select(t,scroll){
   if(t==='account'&&store&&!P.key&&!P.busy&&P.ready)getKey().then(render);   // the key may have come with a scan since the start
 }
 function checked(){var r=doc.querySelector('input[name="tab"]:checked');return r?A.tab(r.id):null;}
-// a deep link to New coins (a tap on the "new coins" notification): once the early box shows the scan's list (within 30 s, and only while
+// a deep link to the early list (a tap on the "new coins" notification, until the switch): once the early box shows the scan's list (within 30 s, and only while
 // the reader has not scrolled), the page scrolls to the box, so its status line and the first coins are in view, not the scored list's head
 function early(){
   if(!toEarly||cur!=='young')return;
@@ -1199,8 +1200,8 @@ function mark(t,cls,on,text){var b=btns[t];if(!b)return;var e=b.querySelector('.
   label(t);}
 // what a screen reader says for a tab: its name, the count on it, the live scan (the badge and the dot themselves are hidden from it)
 function label(t){var b=btns[t];if(!b)return;var c=b.querySelector('.ab-cnt'),d=b.querySelector('.ab-dot');
-  b.setAttribute('aria-label',NAMES[t]+(c?', '+c.textContent+(c.classList.contains('good')?' without traps now':' listed now'):'')+(d?', a scan is running now':''));}
-// the New tab's badge: the radar's count in green, else the early list's
+  b.setAttribute('aria-label',NAMES[t]+(c?', '+c.textContent+(c.classList.contains('good')?(c.textContent==='1'?' coin':' coins')+' without traps now':' listed now'):'')+(d?', a scan is running now':''));}
+// the Radar tab's badge: the radar's count in green, else the early list's (until the switch)
 function newBadge(){var k=A.newBadge(counts.radar,counts.early);mark('young','ab-cnt',!!k,k?String(k.n):null);
   var e=btns.young&&btns.young.querySelector('.ab-cnt');if(e)e.classList.toggle('good',!!(k&&k.good));label('young');}
 // ---- notifications
@@ -1254,8 +1255,8 @@ function back(){
   if(!P.key)getKey().then(render);
   else if(P.sub&&!P.saved&&perm()==='granted'){P.busy=true;render();save(false).then(function(){P.busy=false;render();});}
 }
-var TEXT={off:['Off','','Get a notification when the launch radar has a coin with no trap found, and when the pick is made.','Turn on notifications'],
-  on:['On','good','This iPhone gets the notifications switched on below.','Turn off notifications'],
+var TEXT={off:['Off','','Get a notification on this iPhone for a coin with no trap found and for each pick.','Turn on notifications'],
+  on:['On','good','This iPhone gets the notifications switched on under \u201cWhich notifications\u201d.','Turn off notifications'],
   denied:['Blocked','bad','Notifications are blocked for Meme-Bot. Allow them in Settings > Notifications > Meme-Bot, then open the app again.',''],
   unsupported:['Not supported','warn','Notifications need iOS 16.4 or newer. If Meme-Bot was added to the Home Screen from another browser, add it again from Safari and open it from there.',''],
   nostore:['Not set up','warn','The live store is not connected yet: add the three Supabase settings to the repository (see the README). The next scan builds the page with them.',''],
@@ -1263,13 +1264,16 @@ var TEXT={off:['Off','','Get a notification when the launch radar has a coin wit
   nokey:['Not ready yet','warn','The next scan prepares notifications. Open this tab again after it has run.',''],
   error:['Off','bad','','Try again']};
 function card(){
+  // the tickets as the page names them (the Traders pane carries them: report.py), so the switches say what each push stands for
+  var pa=doc.getElementById('pane-account'),TK={pick:pa&&pa.getAttribute('data-tk-pick')||'50 €',radar:pa&&pa.getAttribute('data-tk-radar')||'10 €'};
   var sec=el('section','appnotif'),head=el('div','sec-head'),c=el('div','card');
-  head.appendChild(el('h2','','Notifications'));head.appendChild(el('p','','fake money only: nothing is bought for real'));
-  var top=el('div','nf-top');ui.title=el('strong','','On this iPhone');ui.chip=el('span','chip');top.appendChild(ui.title);top.appendChild(ui.chip);
-  ui.note=el('p','nf-note');ui.btn=el('button','nf-btn');ui.btn.type='button';
+  head.appendChild(el('h2','','Notifications'));     // fake money is said at the top of the page and of the tab
+  // compact: one row with the state and the button, the note, the two switches behind "Which notifications" (the Traders tab stays short)
+  var top=el('div','nf-top');ui.chip=el('span','chip');ui.note=el('p','nf-note');ui.btn=el('button','nf-btn');ui.btn.type='button';top.appendChild(ui.chip);top.appendChild(ui.btn);
   ui.btn.addEventListener('click',function(){if(state()==='on')turnOff();else turnOn();});
+  ui.which=el('details','nf-which');var ws=el('summary','','Which notifications');ui.wsum=el('small');ws.appendChild(ui.wsum);ui.which.appendChild(ws);
   ui.prefs=el('div','nf-prefs');
-  [['young','New coins','the launch radar: a coin with no trap found'],['pick','The pick is made','at the end of each scan']].forEach(function(p){
+  [['young','Radar: coin found without traps (bought on paper for '+TK.radar+')','a push when the launch radar finds one'],['pick','The pick (bought on paper for '+TK.pick+')','at the end of each scan']].forEach(function(p){
     var row=el('label','nf-row'),sp=el('span'),inp=el('input');sp.appendChild(el('b','',p[1]));sp.appendChild(el('small','',p[2]));
     inp.type='checkbox';inp.setAttribute('role','switch');inp.checked=prefs[p[0]];inp.setAttribute('data-pref',p[0]);
     inp.addEventListener('change',function(){var was=prefs[p[0]];prefs[p[0]]=inp.checked;ls('memebot-push-prefs',JSON.stringify(prefs));
@@ -1278,7 +1282,8 @@ function card(){
     row.appendChild(sp);row.appendChild(inp);ui.prefs.appendChild(row);});
   ui.pnote=el('p','nf-small','These two apply once notifications are on.');
   ui.small=el('p','nf-small','If notifications stop arriving, turn them off and on again here. A Focus mode can hide them; allow Meme-Bot in its settings.');
-  [top,ui.note,ui.btn,ui.prefs,ui.pnote,ui.small].forEach(function(x){c.appendChild(x);});
+  [ui.prefs,ui.pnote,ui.small].forEach(function(x){ui.which.appendChild(x);});
+  [top,ui.note,ui.which].forEach(function(x){c.appendChild(x);});
   sec.appendChild(head);sec.appendChild(c);return sec;
 }
 function render(){
@@ -1288,8 +1293,9 @@ function render(){
   var retry=s==='nokey'&&!!P.quiet;     // no key because the store did not answer (not because no scan made one): a button to try again
   ui.note.textContent=s==='error'?'Could not turn notifications on: '+P.error+'.':(s==='on'||retry)&&P.quiet?(retry?P.quiet:t[2]+' '+P.quiet):s==='off'&&P.hint?P.hint:t[2];
   ui.btn.hidden=!t[3]&&!retry;ui.btn.textContent=P.busy?'One moment':retry?'Try again':t[3];ui.btn.disabled=P.busy||!P.ready&&s!=='unsupported';ui.btn.classList.toggle('quiet',s==='on');
-  ui.prefs.hidden=['on','off','error'].indexOf(s)<0;ui.prefs.classList.toggle('dim',s!=='on');ui.pnote.hidden=ui.prefs.hidden||s==='on';
+  ui.which.hidden=['on','off','error'].indexOf(s)<0;ui.pnote.hidden=s==='on';     // not on yet: the note under the switches says they are for later
   all('input',ui.prefs).forEach(function(i){i.disabled=P.busy;i.checked=prefs[i.getAttribute('data-pref')];});
+  ui.wsum.textContent=prefs.young&&prefs.pick?'radar and pick':prefs.young?'radar only':prefs.pick?'pick only':'none';
   ui.small.hidden=s!=='on';
   if(ui.bell){ui.bell.setAttribute('data-on',s==='on'?'1':'0');ui.bell.setAttribute('aria-label','Notifications: '+t[0]);var i=ui.bell.querySelector('i');
     if(s==='on'&&!i)ui.bell.appendChild(el('i'));if(s!=='on'&&i)ui.bell.removeChild(i);}
@@ -1309,7 +1315,7 @@ function startPush(){
   }).catch(function(e){P.error=P.error||why(e);}).then(function(){P.ready=true;render();});
 }
 // ---- the live news (report.py's live script sends it after every answer of either transport, and whenever the early box changes what it
-// shows): the office's live dot (the office view's own state), the New coins count, a new pick. The count on New coins is the early list's
+// shows): the office's live dot (the office view's own state), the early list's count, a new pick. The count on Radar is the early list's
 // while the early box shows it (A.badge), else there is none, so the badge never says more than the tab shows.
 function onLive(e){
   var d=e&&e.detail||{},st=d.status,c=d.current,MB=window.MemebotLive,live=false;
@@ -1335,11 +1341,12 @@ function init(){
   all('[data-app-only]').forEach(function(e){e.hidden=false;});
   var eh=doc.querySelector('.ehint');if(eh&&store)eh.textContent=eh.textContent.replace(/ Keep this tab open\.$/,' With notifications on, this iPhone tells you when they are here.');
   var sec=card();if(tabs)sec.setAttribute('data-app','account');
-  var spot=doc.querySelector('[data-app~="account"]')||doc.querySelector('.wrap > footer');if(spot)spot.parentNode.insertBefore(sec,spot);
+  // the notifications card is the last block of the Traders tab (a page without that pane: before the footer)
+  var pa=doc.getElementById('pane-account'),spot=doc.querySelector('.wrap > footer');if(pa)pa.appendChild(sec);else if(spot)spot.parentNode.insertBefore(sec,spot);
   if(hdr){ui.bell=el('button','appbell');ui.bell.type='button';ui.bell.innerHTML=ICON.bell;hdr.appendChild(ui.bell);
     ui.bell.addEventListener('click',function(){if(tabs)select('account',false);sec.scrollIntoView({block:'start'});if(ui.btn&&!ui.btn.hidden)ui.btn.focus({preventScroll:true});});}
   // a deep link (#tab-young from a notification) picks the tab; the hash is dropped again (the next link with the same hash still counts) and the
-  // page stays at the top instead of the browser's jump to the radio of that name. #tab-radar (the radar's notification) opens New at its top
+  // page stays at the top instead of the browser's jump to the radio of that name. #tab-radar (the radar's notification) opens Radar at its top
   function link(){var h=location.hash,t=A.tab(h);if(!t)return null;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}return [t,A.radarLink(h)?'radar':'top'];}
   var first=link();
   select(first?first[0]:(tabs?ss('memebot-apptab'):null)||checked()||'pick',first?first[1]:null);

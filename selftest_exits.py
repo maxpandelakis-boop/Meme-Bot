@@ -636,13 +636,15 @@ def _page(check, tmp, d):
         json.dump(beat, f)
     out = R.build(ad, os.path.join(ad, "report.html"), now=now_p)
     page = open(out, encoding="utf-8").read()
-    i_nl, i_rp, i_xg, i_fd = (page.find('data-pa="%s"' % k) for k in ("noloss", "radarpaper", "exitgrid", "feed"))
+    hm = SA._harness(R.collect(ad, now_p), now_p)       # page_account's whole block on a bare page: the page itself no longer shows it
+    i_nl, i_rp, i_xg, i_fd = (hm.find('data-pa="%s"' % k) for k in ("noloss", "radarpaper", "exitgrid", "feed"))
     src = open(os.path.join(HERE, "page_account.py"), encoding="utf-8").read()
-    check(0 < i_nl < i_rp < i_xg < i_fd and page.count('data-pa="exitgrid"') == 1 and "could not be rendered" not in page
-          and 'R.safe("exit what-if", lambda: exit_grid(D))' in src and "import page_exits as PX\n    except ImportError:" in src,
-          "X12 page_account.section shows the block after the radar account and before the activity feed, once; the hook is one line with "
-          "an import guard (without page_exits.py the account block renders as before)")
-    return page
+    check(0 < i_nl < i_rp < i_xg < i_fd and hm.count('data-pa="exitgrid"') == 1 and "could not be rendered" not in hm + page
+          and 'R.safe("exit what-if", lambda: exit_grid(D))' in src and "import page_exits as PX\n    except ImportError:" in src
+          and 'data-pa="exitgrid"' not in page and "What if the exits were different" not in page and "How the learning trader decides" in page,
+          "X12 page_account.section still shows the block after the radar account and before the activity feed, once (its hook one line with an "
+          "import guard); the page shows it no more: the learning trader on the Traders tab does its job")
+    return hm
 
 
 PROBE = r"""

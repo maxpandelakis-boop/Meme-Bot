@@ -884,8 +884,9 @@ KEEP_RADAR_DAYS = 30        # the launch radar's records (db/memeradar, imported
 
 def prune(d, now):
     """Keep the Actions cache small: old scored results and raw snapshot chunks that never got scored are deleted. The launch radar's
-    hour docs (db/memeradar) leave the results branch after KEEP_RADAR_DAYS; the peak docs (db/memepeak) and the radar account's docs
-    (db/memeradarpaper, radar_paper.py) are never deleted."""
+    hour docs (db/memeradar) leave the results branch after KEEP_RADAR_DAYS; the peak docs (db/memepeak), the radar account's docs
+    (db/memeradarpaper, radar_paper.py), the minute paths (db/memepath, peak.write_path) and the learning trader's decisions
+    (db/memetrader, traders.py) are never deleted."""
     gone = 0
     for sub, days in (("memesnapres", KEEP_RESULTS_DAYS), ("memesnap", KEEP_RAW_DAYS), ("memeyoung", KEEP_RESULTS_DAYS), ("memeearly", KEEP_EARLY_DAYS),
                       ("memeradar", KEEP_RADAR_DAYS)):
@@ -920,6 +921,12 @@ def M_DEEP_SCAN_BELOW():
     sys.path.insert(0, HERE)
     import memebot as M
     return M.DEEP_SCAN_BELOW
+
+
+def M_SWITCH_AT():
+    sys.path.insert(0, HERE)
+    import memebot as M
+    return M.switch_at()
 
 
 def chunk_addrs(g):
@@ -1002,12 +1009,16 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
             candle_job = start_bg(["fetch.py", "candles", "--items", items_file] + (["--mock", mock] if mock else []), d, agent="candles")
         # the launch spotter: the coins under an hour old for the New launches tab about five minutes into the scan (radar.py). It
         # works in its own folder beside the price desk and never changes what the trader reads; a failure costs only the early list
-        early_on = os.environ.get("MEMEBOT_EARLY", "1") != "0"
+        # the switch (memebot.switch_at) ends the new launches: from then on the spotter stays off and says when they ended
+        switch = M_SWITCH_AT()
+        early_env = os.environ.get("MEMEBOT_EARLY", "1") != "0"
+        early_on = early_env and now < switch
         if recommend and mode["pick"] and mode["scan"] == "full" and early_on:
             spot = start_bg(["radar.py", "early", "--t0", str(t0), "--horizon", horizon] + (["--mock", mock] if mock else []), d, now, "spotter",
                             on_exit=lambda job: spot_done(o, job, now))
         else:
-            early_set(now, {"v": 1, "t": now, "state": "off", "coins": [], "why": "early list switched off" if not early_on else (
+            early_set(now, {"v": 1, "t": now, "state": "off", "coins": [], "why": "early list switched off" if not early_env else (
+                "new launches ended on " + time.strftime("%b %d", time.gmtime(switch // 1000))) if not early_on else (
                 "light scan" if mode["scan"] == "light" else ("no scan this run, only prices" if mode["scan"] != "full" else "not a recommend scan"))})
     o.begin("market")
     g = run(["memebot.py", "gather"], d, now)
@@ -1248,6 +1259,10 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memeradar/**
 !db/memeradarpaper/
 !db/memeradarpaper/**
+!db/memepath/
+!db/memepath/**
+!db/memetrader/
+!db/memetrader/**
 """
 
 

@@ -56,6 +56,8 @@ CUT_WORDS = (("rug", "pool dead"), ("dead", "pool dead"), ("liq", "pool dead"), 
              ("cap", CAP_WORDS), ("jump", "not confirmed"), ("unit", "price unit mismatch"))
 FEED_WHY = {"tp": "take-profit", "stop": "stop", "time": "6 h limit", "rug": "rug", "reset": "restart", "manual": "by hand", "filters": "filters",
             "target": "half at 2x"}
+FEED_GROUP = {"hold": "pick", "young": "new launch", "radar": "radar"}     # a feed row's group tag (the Traders tab's activity)
+GAP_STOP = 0.35                     # a stop booked below -35% in the activity: "stop, price gapped to ..."
 SORTS = (("new", "Newest"), ("top", "Top %"), ("worst", "Worst %"), ("best", "Best in 6 h"))
 NL_SHOWN, NL_MAX = 50, 300          # the per-trade list without the stop-loss: rows in its first fold, rows in all (the rest in a fold inside)
 RAW_WHY = {"unconfirmed": "one candle", "dust": "dust volume", "cap": "over the cap", "jump": "jump not held", "pool dead": "pool died",
@@ -689,16 +691,26 @@ def noloss(D, A):
         E(cnt), tiles, line, fold, E(how))
 
 
+def exit_word(why, move=None):
+    """A sale's exit in a few words: stop −30% (a stop booked below −35% says "stop, price gapped to −62%"), 11x target, 6 h limit, pool gone;
+    the hold rule before the restart: half at 2x, restart, by hand, filters."""
+    move = num(move)
+    if why == "stop" and move is not None and move < -GAP_STOP:
+        return "stop, price gapped to " + pct_move(move)
+    return {"stop": "stop %s%d%%" % (MINUS, round(100 * M.HOLD_STOP)), "tp": "%gx target" % (1 + M.HOLD_TP), "time": "%g h limit" % M.HOLD_MAX_H,
+            "rug": "pool gone"}.get(why) or FEED_WHY.get(why, str(why or "sold"))
+
+
 def feed_row(f, R, cls=""):
-    grp = "new launch" if f.get("grp") == "young" else "top pick"
+    """One activity row: the time, a Bought or Sold badge (words, no arrows), the coin in bold, its group (pick, new launch, radar) and, for a
+    sale, the exit in words; on the right the ticket (bought) or the result after fees (sold, green or red)."""
+    grp = FEED_GROUP.get(f.get("grp"), "pick")
     c = (" " + cls) if cls else ""
     if f["k"] == "buy":
-        return '<li class="pa-ev b%s"><span class="tm">%s</span><i></i><span class="tx"><b class="act">BOUGHT</b> <b>%s</b> · %s</span><span class="am">%s</span></li>' % (
+        return '<li class="pa-ev b%s"><span class="tm">%s</span><span class="tx"><span class="chip act">Bought</span> <b>%s</b> · %s</span><span class="am">%s</span></li>' % (
             c, E(hhmm(f["t"])), E(f["sym"]), E(grp), E(R.fmt_eur(f["ticket"])))
-    why = FEED_WHY.get(f["why"], f["why"])
-    move = (" " + pct_move(f["move"])) if f.get("move") is not None else ""
-    return '<li class="pa-ev s %s%s"><span class="tm">%s</span><i></i><span class="tx"><b class="act">SOLD</b> <b>%s</b> · %s%s%s</span><span class="am">%s</span></li>' % (
-        tone(f["eur"]) or "flat", c, E(hhmm(f["t"])), E(f["sym"]), E(why), E(move), " · half" if f.get("half") else "", E(eur(f["eur"], True)))
+    return '<li class="pa-ev s %s%s"><span class="tm">%s</span><span class="tx"><span class="chip act">Sold</span> <b>%s</b> · %s · %s%s</span><span class="am">%s</span></li>' % (
+        tone(f["eur"]) or "flat", c, E(hhmm(f["t"])), E(f["sym"]), E(grp), E(exit_word(f["why"], f.get("move"))), " · half" if f.get("half") else "", E(eur(f["eur"], True)))
 
 
 def _feed_list(items, R, day0=None, cls=""):
@@ -973,13 +985,10 @@ details.pa-i > summary::-webkit-details-marker { display:none } details.pa-i p {
 .pa-livel { margin:0; display:flex; gap:8px; align-items:baseline; font-size:var(--fs-s); color:var(--fg2); overflow-wrap:anywhere }
 .pa-livel[hidden] { display:none } .pa-livel i { flex:none; width:8px; height:8px; border-radius:50%; background:var(--bad-mark); animation:opulse 1.6s ease-in-out infinite }
 .pa-evs { list-style:none; margin:0; padding:0 }
-.pa-ev { display:grid; grid-template-columns:44px 20px minmax(0,1fr) auto; gap:8px; align-items:baseline; padding:7px 0; border-top:1px solid var(--line2); font-size:var(--fs-m) }
+.pa-ev { display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:8px; align-items:baseline; padding:7px 0; border-top:1px solid var(--line2); font-size:var(--fs-m) }
 .pa-ev .tm { color:var(--muted); font-size:var(--fs-s); font-variant-numeric:tabular-nums }
-.pa-ev i { width:20px; height:20px; border-radius:50%; display:inline-grid; place-items:center; font-size:10px; font-style:normal; line-height:1; align-self:start; margin-top:1px;
-  background:color-mix(in srgb,var(--accent) 14%,var(--surface)); color:var(--accent) } .pa-ev.b i::before { content:"▲" } .pa-ev.s i::before { content:"▼" }
-.pa-ev.s i { background:var(--chip); color:var(--muted) } .pa-ev.good i { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) }
-.pa-ev.bad i { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
-.pa-ev .tx { min-width:0; overflow-wrap:anywhere; color:var(--fg2) } .pa-ev .tx b { color:var(--fg); font-weight:600 } .pa-ev .tx b.act { font-size:var(--fs-xs); letter-spacing:.06em; color:var(--muted) }
+.pa-ev .tx { min-width:0; overflow-wrap:anywhere; color:var(--fg2) } .pa-ev .tx b { color:var(--fg); font-weight:600 }
+.pa-ev .chip.act { font-size:var(--fs-xs); padding:1px 8px; margin-right:2px; color:var(--fg) }   /* Bought or Sold in words: no arrows, no colour (green and red are the results) */
 .pa-ev .am { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--fg2) } .pa-ev.good .am { color:var(--good) } .pa-ev.bad .am { color:var(--bad) }
 .pa-day { font-size:var(--fs-xs); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500; padding:10px 0 2px }
 .pa-day:first-child { padding-top:4px } .pa-evs > li { break-inside:avoid } .pa-day { break-after:avoid }
@@ -1038,7 +1047,7 @@ section[data-app="account"] details.hold .who { overflow-wrap:anywhere }
 @media (max-width:560px) {
   .pa-tt .bar label { padding:0 12px } .pa-tt .bar .cnt { display:none }
   .pa-hero { padding:14px } .pa-big { font-size:40px } .pa-tiles { grid-template-columns:1fr 1fr } .pa-tile .v { font-size:18px } .pa-tile .v small { font-size:12px } .pa-cat .v { font-size:28px }
-  .pa-ev { grid-template-columns:40px 20px minmax(0,1fr) auto; gap:6px; font-size:14px }
+  .pa-ev { grid-template-columns:40px minmax(0,1fr) auto; gap:6px; font-size:14px }
   .pa-tbl table, .pa-tbl tbody, .pa-tbl tr, .pa-tbl td { display:block } .pa-tbl thead { display:none }
   .pa-tbl tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"c p" "w m" "h1 h1" "h2 h2"; gap:2px 12px; padding:10px 12px; border-top:1px solid var(--line2) }
   .pa-tbl tr:first-child { border-top:0 } .pa-tbl td { border-top:0; padding:0; min-width:0 }

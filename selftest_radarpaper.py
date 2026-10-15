@@ -27,6 +27,13 @@ RA9  the page block: numbers from the docs, escaped names, the states (no round,
      an unreadable account), the fake-money note once, no em dash, its place in the account block (after "Without the stop-loss")
 RA10 Chromium at 390 and 1280 px, light and dark: no sideways scroll, tiles stacked on the phone and side by side wide, 44 px
      folds, nothing past the block's edge; screenshots
+TR3  rule 2 (from the switch): only ratings at or after it that are good, push-worthy and made while the pool was under 10 minutes old;
+     the first such rating gives the time and the price; 10 EUR; id "-g"; rule 2; a v1 doc of the coin never blocks it, a second green
+     of the coin is not bought again; no rule-1 buy for a round at or after the switch; feat from buy-time fields only (sig0, the green
+     rating's sigG when that rating, sigGt, was at or before the buy, the ratings before it: changing sig, later or push changes nothing);
+     every RADAR_FEATS name is a traps flag
+TR4  rule 2's pricing: the take-profit booked at exactly 11x, eur/pnl/eurBest on 10 EUR, v2 windows priced before the v1 backlog,
+     the minute path written; a settled v1 doc byte for byte the same after run(); the v1 accounts ("all", "green") as before
 """
 import contextlib, glob, html, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -192,6 +199,8 @@ def checks(check):
         _budget(check, tmp)
         _sync(check, tmp, d, now)
         _accounts(check, d, now)
+        _v2_buys(check)
+        _v2_pricing(check, tmp, d, now)
         page = _page(check, tmp, d, now)
         _browser(check, page)
     finally:
@@ -233,6 +242,162 @@ def _buys(check, tmp):
     mine = [x for x in buys.values() if x["addr"] == "b1"]
     check(len(mine) == 1 and mine[0]["id"] == "old-b1" and mine[0]["entryAt"] == TB and mine[0]["px"] == 2e-5 and len(buys) == 11 and "old-b1" in docs,
           "RA1 a doc is the buy: a coin with a doc keeps its round and price and is not bought a second time from the records")
+
+
+@contextlib.contextmanager
+def switch_env(ms):
+    """MEMEBOT_SWITCH_AT set to ms (memebot.switch_at) inside the block, restored after it."""
+    old = os.environ.get("MEMEBOT_SWITCH_AT")
+    os.environ["MEMEBOT_SWITCH_AT"] = str(int(ms))
+    try:
+        yield
+    finally:
+        if old is None:
+            os.environ.pop("MEMEBOT_SWITCH_AT", None)
+        else:
+            os.environ["MEMEBOT_SWITCH_AT"] = old
+
+
+def v2rec(addr, sym, first, rt, pool=None, sig0=None, sigG=None, **k):
+    """A record of the 2-minute radar (6-field ratings [time, verdict, points, push, price, upside])."""
+    r = rec(addr, sym, first, [(t, v, p) for t, v, p, *_ in rt], pool=pool, **k)
+    r["rt"] = [[t, v, p, pu, px, up] for t, v, p, pu, px, up in rt]
+    r["good"] = next((t for t, v, *_ in rt if v == "good"), None)
+    if sig0 is not None:
+        r["sig0"] = sig0
+    if sigG is not None:
+        r["sigG"] = sigG
+    return r
+
+
+SIG0 = {"socN": 0.0, "x": "", "buys": 254.0, "m5": -13.9, "ageMin": 1.8, "mc": 60939.0, "liq": 9000.0, "creatorPct": 9.6, "devN": 0.0,
+        "devDead": 0.0, "devAgeH": 0.5, "devTxs": 40.0, "mintToPoolS": 152368.0, "lists": 1.0, "tweet": False, "paid": False, "xUsed": 0.0,
+        "tweetShared": 0.0, "snip30": 0.2, "slotN": 1.0, "freshN": 2.0, "fundN": 1.0, "pumpswap": True}
+
+
+def _v2_buys(check):
+    S = TA + 30 * H                     # the switch in this fixture
+    pre = TA + 20 * H
+    recs = [v2rec("g1", "GREENONE", S - 20 * MIN, [(S - 12 * MIN, "good", 0.0, 1, 1e-5, 2), (S + 4 * MIN, "trap", 3.0, 0, 2e-5, 0),
+                                                   (S + 6 * MIN, "good", 1.0, 1, 3e-5, 3), (S + 8 * MIN, "good", 0.0, 1, 4e-5, 3)],
+                  pool=S - 3 * MIN, sig0=SIG0),
+            v2rec("n1", "NOPUSH", S + MIN, [(S + MIN, "good", 0.0, 0, 1e-5, 1)], pool=S),
+            v2rec("o1", "OLDOLD", S + 2 * MIN, [(S + 2 * MIN, "good", 0.0, 1, 5e-5, 1)], pool=S),
+            v2rec("a1", "TOOOLD", S + 2 * MIN, [(S + 12 * MIN, "good", 0.0, 1, 5e-5, 1)], pool=S),
+            v2rec("d1", "TWICE", S + 20 * MIN, [(S + 20 * MIN, "good", 2.0, 1, 6e-5, 1)], pool=S + 15 * MIN),
+            v2rec("w1", "WATCHAFTER", S + 30 * MIN, [(S + 30 * MIN, "watch", 1.0, 0, 6e-5, 0)], pool=S + 25 * MIN),
+            v2rec("p1", "PREROUND", pre, [(pre, "watch", 1.0, 0, 6e-5, 0)], pool=pre - MIN)]
+    recs.append(dict(v2rec("d1", "TWICE", S + 40 * MIN, [(S + 40 * MIN, "good", 0.0, 1, 7e-5, 1)], pool=S + 15 * MIN), first=S + 20 * MIN))
+    b = RP.buys_of(recs, have={"o1"}, switch=S)
+    v2 = {x["addr"]: x for x in b.values() if x.get("rule") == 2}
+    v1 = {x["addr"]: x for x in b.values() if x.get("rule") != 2}
+    g = v2.get("g1") or {}
+    check(sorted(v2) == ["d1", "g1", "o1"] and g.get("entryAt") == S + 6 * MIN and g.get("px") == 3e-5 and g.get("ticket") == 10.0 == RP.RADAR_TICKET
+          and g.get("id", "").endswith("-g") and g.get("rule") == 2 and g.get("pts") == 1.0 and g.get("up") == 3 and g.get("late") is True
+          and g.get("first") == S - 20 * MIN and g.get("end") == S + 6 * MIN + 6 * H and v2["d1"]["entryAt"] == S + 20 * MIN and v2["d1"]["late"] is False,
+          "TR3 rule 2 from the switch: only good, push-worthy ratings at or after it with a pool under 10 minutes (GREENONE at its first "
+          "such rating, its price and 10 EUR; not NOPUSH, not TOOOLD at 12 minutes); OLDOLD with a v1 doc still bought; TWICE (two records) "
+          "once, at its first green (%s)" % sorted(v2))
+    check(sorted(v1) == ["g1", "p1"] and v1["g1"]["entryAt"] == S - 12 * MIN and all(x["round"] < S for x in v1.values()) and "w1" not in v1,
+          "TR3 no rule-1 buy for a round at or after the switch: the rounds before it buy as before (PREROUND, GREENONE's green 12 minutes "
+          "before the switch, apart from its v2 buy), WATCHAFTER's first round after it nothing (%s)" % sorted(v1))
+    f = g.get("feat") or {}
+    check(f.get("creator_holds") is True and f.get("serial_dev") is False and f.get("falling") is True and f.get("no_socials") is True
+          and f.get("was_trap") is True and f.get("long_curve") is True and set(RP.RADAR_FEATS) | set(RP.RADAR_A1) == set(f)
+          and RP.signs(f, 1.0, True)["late"] is True and RP.signs(f, 2.0, False)["pts2"] is True and RP.signs(f, None, None)["pts2"] is None
+          and "feat:no_socials" not in RP.signs(f, 1.0, True) and "feat:bot_volume" in RP.signs(f, 1.0, True),
+          "TR3 feat at the buy: the traps flags of first sight and A1's six signs (creator 9.6%%, falling -13.9%%, no socials and no X, a trap "
+          "rating before the green one, 42 h on the curve): %s" % {k: f.get(k) for k in RP.RADAR_A1})
+    mod = [dict(r, sig={"m5": 99.0, "creatorPct": 0.0, "socN": 3.0}, later={"5": {"t": S + 11 * MIN, "px": 9e-5, "liq": 1.0}}, push=S + 7 * MIN,
+                out={"rug1h": True}, peak60={"x": 9.0}, mom={"x": 2.0}) for r in recs]
+    b2 = RP.buys_of(mod, have={"o1"}, switch=S)
+    g2 = next(x for x in b2.values() if x.get("addr") == "g1" and x.get("rule") == 2)
+    sg = dict(SIG0, m5=-2.0, creatorPct=0.0)
+    v2g = lambda **k: next(x for x in RP.buys_of([dict(recs[0], sigG=sg, **k)], switch=S).values() if x.get("rule") == 2)
+    g3 = v2g(sigGt=S - 12 * MIN)                     # its first push-worthy rating, before the switch: before the buy
+    g4, g5 = v2g(sigGt=S + 7 * MIN), v2g()           # a push-worthy rating after the buy; no time kept
+    h1 = RP.a1_of(dict(recs[0], sigG=sg, sigGt=S - 10 * MIN), S - 12 * MIN)    # a rule-1 green 2 minutes before that rating
+    check(g2["feat"] == g["feat"] and g2["pushAt"] == S + 7 * MIN and g3["feat"]["falling"] is False and g3["feat"]["creator_holds"] is False
+          and g3["feat"]["bot_volume"] == g["feat"]["bot_volume"] and g4["feat"] == g["feat"] and g5["feat"] == g["feat"]
+          and h1["falling"] is True and h1["creator_holds"] is True,
+          "TR3 feat reads buy-time fields only: sig, later, push, out, peak60 and mom changed leave it the same; the signals of the green "
+          "rating (sigG) win over first sight for A1's signs only when that rating (sigGt) was at or before the buy: one rated after it, one "
+          "without its time and a rule-1 green bought before its first push-worthy rating read sig0")
+    W = RP.traps.load_weights()
+    odd = []
+    for k in RP.RADAR_FEATS:
+        for S_ in ({}, SIG0, {"socN": None, "x": None}):
+            try:
+                v = RP.traps.flag(k, S_, W)
+            except Exception as e:
+                v = e
+            if v not in (True, False, None):
+                odd.append((k, v))
+    check(not odd and len(RP.RADAR_FEATS) == 19 and isinstance(RP.RADAR_FEATS, tuple),
+          "TR3 every RADAR_FEATS name is a traps flag: True, False or None on an empty, a full and an unknown signal set, never an error %s" % odd[:3])
+    d0 = os.path.join(tempfile.mkdtemp(prefix="memebot-rp2-"), "x")
+    write_records(d0, recs)
+    with switch_env(S):
+        buys0, _ = RP.all_buys(d0)
+        k0 = next(k for k, x in buys0.items() if x.get("addr") == "g1" and x.get("rule") == 2)
+        RP.write_doc(d0, k0, RP.doc_of(buys0[k0], S + 7 * MIN, "open"))
+        write_records(d0, recs + [v2rec("g1", "GREENONE", S + H, [(S + H, "good", 0.0, 1, 9e-5, 1)], pool=S + H - MIN)])
+        buys1, docs1 = RP.all_buys(d0)
+    mine = [x for x in buys1.values() if x["addr"] == "g1"]
+    check(len(mine) == 2 and sorted(x["rule"] for x in mine) == [1, 2] and next(x for x in mine if x["rule"] == 2)["id"] == k0
+          and docs1[k0]["rule"] == 2 and docs1[k0]["ticket"] == 10.0 and docs1[k0]["feat"] == g["feat"],
+          "TR3 a coin with a rule-2 doc is not bought again on a later green; its doc keeps rule 2, 10 EUR and the signs; its v1 buy before the switch stays apart")
+    shutil.rmtree(os.path.dirname(d0), ignore_errors=True)
+
+
+def _v2_pricing(check, tmp, d, now):
+    b = {"entryAt": TA, "end": TA + 6 * H, "px": 1e-5, "liq": 20000.0, "mc": 60000.0, "_rec": None}
+    c15 = series(TA, [1.0] * 10 + [2, 4, 8, 15, 15, 16] + [16] * 356)
+    r1, r2 = RP.price(c15, dict(b, rule=1)), RP.price(c15, dict(b, rule=2, ticket=10.0))
+    doc = RP.doc_of(dict(b, id="x-g", addr="x", round=TA, ticket=10.0, rule=2, verdict="good", green=True), TA + 7 * H, "closed", 0, "m1", r2)
+    val = lambda x: round(M.pos_value({"ticket": 10.0, "grp": "young", "paper": M.PAPER_RULE}, 1.0, x), 2)
+    check(r1["x"] == 15.0 and r2["why"] == "tp" and r2["x"] == 11.0 == RP.TP_X and doc["eur"] == val(11.0) == RP.value(11.0, 10.0)
+          and doc["pnl"] == round(val(11.0) - 10.0, 2) and doc["eurBest"] == val(16.0) and doc["ticket"] == 10.0 and doc["rule"] == 2
+          and list(doc) == list(RP.DOC_KEYS),
+          "TR4 rule 2's take-profit is booked at exactly 11x (rule 1 keeps the accepted 15x); eur %s, pnl %s and eurBest %s on 10 EUR"
+          % (doc["eur"], doc["pnl"], doc["eurBest"]))
+    d2 = os.path.join(tmp, "tr4")
+    shutil.copytree(d, d2)
+    S = now + H
+    recs = round_recs() + [v2rec("v1g", "VTWOTP", S + 10 * MIN, [(S + 10 * MIN, "good", 0.0, 1, 1e-5, 1)], pool=S + 5 * MIN, sig0=SIG0),
+                           v2rec("v2g", "VTWOFLAT", S + 20 * MIN, [(S + 20 * MIN, "good", 0.0, 1, 1e-5, 1)], pool=S + 15 * MIN)]
+    write_records(d2, recs)
+    pools = dict(pool_candles(), RPv1g=series(S + 10 * MIN, [1.0] * 10 + [2, 4, 8, 15, 15, 16] + [16] * 356),
+                 RPv2g=series(S + 20 * MIN, [1.0 + 0.001 * i for i in range(372)]))
+    now2 = S + 20 * MIN + 6 * H + 10 * MIN
+    settled = {k: v for k, v in raw_docs(d2).items() if json.loads(v)["state"] in ("closed", "void")}
+    gt = GT(pools)
+    srv, url = serve(gt)
+    try:
+        with switch_env(S):
+            buys, docs = RP.all_buys(d2)
+            its = RP.items(buys, docs, now2)
+            with quiet():
+                o = RP.run(d2, now2, mock=url, until=time.time() + 30)
+            A0 = RP.account(d, now)
+            A2 = RP.account(d2, now2)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    after = raw_docs(d2)
+    v2docs = {v["addr"]: v for v in (json.loads(x) for x in after.values()) if v.get("rule") == 2}
+    path = M.load_json(os.path.join(d2, "db", "memepath", (v2docs.get("v1g") or {}).get("id", "none") + ".json"), None)
+    check([it["rule"] for it in its][:2] == [2, 2] and its[2]["pid"] in {k for k, x in buys.items() if x.get("rule") != 2}
+          and all(after.get(k) == v for k, v in settled.items()) and len(settled) == 10
+          and v2docs.get("v1g", {}).get("why") == "tp" and v2docs["v1g"]["x"] == 11.0 and v2docs["v1g"]["eur"] == val(11.0) and v2docs["v1g"]["id"].endswith("-g")
+          and v2docs.get("v2g", {}).get("why") == "time" and isinstance(path, dict) and path.get("kind") == "radar" and path.get("grp") == "radar",
+          "TR4 run(): the v2 windows first (%s), the v1 backlog after them; every settled v1 doc byte for byte the same (no re-pricing); VTWOTP "
+          "sold at exactly 11x on 10 EUR with its minute path, VTWOFLAT at 6 h (%s)" % ([it["rule"] for it in its][:3], json.dumps(o)))
+    check(A2["all"] == A0["all"] and A2["green"] == A0["green"] and len(A2["rows"]) == len(A0["rows"]) == 11 and A2["v2"]["n"] == 2
+          and len(A2["rows2"]) == 2 and A2["v2"]["invested"] == 20.0 and all(r["ticket"] == 10.0 and r["rule"] == 2 for r in A2["rows2"])
+          and A2["rows2"][0]["entryAt"] > A2["rows2"][1]["entryAt"] and A2["rows2"][1]["feat"]["falling"] is True,
+          "TR4 account(): 'all' and 'green' over the v1 rows as before (%s), 'v2' and 'rows2' over the two 10 EUR buys (P/L %s)"
+          % (A2["all"]["pnl"], A2["v2"]["pnl"]))
 
 
 def _sales(check):
@@ -329,10 +494,11 @@ def _run(check, tmp):
     check(raw5 == raw4 and o5["closed"] == 0 and o5["void"] == 0 and len(gt.calls) - n_calls == o5["items"] == 1 and o4["why"] == "all asked"
           and all(o["buys"] == 11 for o in (o1, o2, o3, o4, o5)),
           "RA4 a second run rewrites nothing: closed and void docs stay byte for byte, only the waiting window is asked again (%d request)" % (len(gt.calls) - n_calls))
-    check(all(k.startswith(("db/memeradarpaper/", "candles/")) for k in set(new_files) - set(before)) and before == {k: v for k, v in after.items() if k in before}
-          and all(re.search(r"_rp\d+\.txt$", k) for k in new_files if k.startswith("candles/")) and not any(k.startswith(".rptmp/") and k.endswith(".json") for k in new_files),
-          "RA6 the radar account writes only db/memeradarpaper/<id>.json and candles/<pool>_rp<minute>.txt; the radar records, the paper "
-          "positions and the trader's state are byte for byte the same")
+    check(all(k.startswith(("db/memeradarpaper/", "candles/", "db/memepath/")) for k in set(new_files) - set(before)) and before == {k: v for k, v in after.items() if k in before}
+          and all(re.search(r"_rp\d+\.txt$", k) for k in new_files if k.startswith("candles/")) and not any(k.startswith((".rptmp/", ".pathtmp/")) and k.endswith(".json") for k in new_files)
+          and any(k.startswith("db/memepath/") for k in new_files),
+          "RA6 the radar account writes only db/memeradarpaper/<id>.json, candles/<pool>_rp<minute>.txt and the minute paths db/memepath/<id>.json; "
+          "the radar records, the paper positions and the trader's state are byte for byte the same")
     p = dict(RP.PAPER)
     hand = lambda x: round(max(0.0, (3.0 - 0.10) * x - max(0.01 * (3.0 - 0.10) * x, 0.10)), 2) if x > 0 else 0.0
     fees = [(a, g(a, "x"), g(a, "eur")) for a in ("a1", "a2", "a3", "a4", "b4")]
@@ -548,13 +714,16 @@ def _page(check, tmp, d, now):
         shutil.copyfile(f, dst)
     out = R.build(pd, os.path.join(pd, "report.html"), now=now)
     page = open(out, encoding="utf-8").read()
-    i_nl, i_rp, i_fd = page.find('data-pa="noloss"'), page.find('data-pa="radarpaper"'), page.find('data-pa="feed"')
-    check(0 < i_nl < i_rp < i_fd and "could not be rendered" not in page and page.count('data-pa="radarpaper"') == 1,
-          "RA9 page_account.section shows the block right under 'Without the stop-loss', before the activity feed, once")
+    hm = SA._harness(R.collect(pd, now), now)          # page_account's whole block on a bare page: the page itself no longer shows it
+    i_nl, i_rp, i_fd = hm.find('data-pa="noloss"'), hm.find('data-pa="radarpaper"'), hm.find('data-pa="feed"')
+    check(0 < i_nl < i_rp < i_fd and "could not be rendered" not in hm + page and hm.count('data-pa="radarpaper"') == 1
+          and 'data-pa="radarpaper"' not in page and "raw top" not in page and 'data-tr="radar"' in page and "Radar paper positions" in page,
+          "RA9 page_account.section still shows the block right under 'Without the stop-loss', before the activity feed, once; the page shows it no "
+          "more (with it the raw top): the Radar tab's paper positions replace it (the radar's 3 EUR test in one sentence)")
     src = open(os.path.join(HERE, "page_account.py"), encoding="utf-8").read()
     check('R.safe("radar account", lambda: radar_account(D))' in src and "except ImportError:" in src,
           "RA9 the hook: one line in page_account.section; without page_radarpaper.py the account block renders as before")
-    return page
+    return hm
 
 
 PROBE = r"""

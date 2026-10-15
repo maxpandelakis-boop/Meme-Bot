@@ -150,7 +150,10 @@ keeps a paper account, with fake money and no budget (rule v2, `PAPER_RULE`, agr
 * **the top pick** for 50 (`TOP_TICKET`, `grp: "hold"` in `db/memepos`): the first recommendation, whatever its tier
   (strong, weak, fallback or risky; a watch coin is never bought). The second recommendation stays a tip.
 * **the first 5 new launches** for 3 each (`YOUNG_TICKET`, `YOUNG_BUY_N`, `grp: "young"`): the first five coins of the
-  "New launches <1h" tab, in the order shown. A held one is skipped; no other coin takes its place.
+  "New launches <1h" tab, in the order shown. A held one is skipped; no other coin takes its place. This ends at the switch,
+  16 Oct 2026 00:00 UTC (`memebot.SWITCH_AT`, read through `memebot.switch_at()`): from then on no new launch is listed or
+  bought and the spotter stays off; the account goes on unchanged (`PAPER_RULE` is its identity key and is never edited), and
+  the launch radar's greens take the new launches' place (rule 2 of the radar account below).
 
 A coin with an open paper position (either group) is not bought again; the card and the tab say "already held". Once it is
 sold it may be bought again the next time it is named. Every position is sold, all of it, by the first of:
@@ -431,10 +434,10 @@ filtered out (closes, not wicks; a liquidity floor; self-priced pools), and a cu
 each scan (`peak.py`, GeckoTerminal minute candles) prices the windows that have ended. GeckoTerminal answers GitHub's
 servers only a few times a minute, so after each rate limit the job asks more slowly for the rest of its run (10 s apart,
 5 s more per rate limit, at most 30 s) instead of running into the limit until GeckoTerminal is given up for the run.
-The block "Without the stop-loss" also shows the raw top: the highest close of all, unfiltered, with what selling there
-would have given after fees, wherever it differs from the filtered best, and why it could not be sold there in two words
-("one candle", "dust volume", "pool died", "over the cap"). That is the "sold at the very top" number; a 303x print that
-lasted one minute is in it, marked.
+The block "Without the stop-loss" (`page_account.noloss`, no longer on the page since the three traders) also shows the raw top:
+the highest close of all, unfiltered, with what selling there would have given after fees, wherever it differs from the filtered
+best, and why it could not be sold there in two words ("one candle", "dust volume", "pool died", "over the cap"). The best-price
+trader on the Traders tab reads the same docs but leaves such prints out and counts at most 30x.
 
 ### Radar account (bought within minutes)
 
@@ -444,12 +447,19 @@ its 2-minute rounds (a coin only once; green when the radar rated it good). Ever
 more than the job after each scan can price. They
 are sold by the same rules as the paper account (stop -30%, take-profit +1000% at the confirmed close, else the close at
 6 h; a dead pool is a total loss; paper fees), replayed on the pool's GeckoTerminal minute candles with the glitch rules of
-"Best price within 6 h". The Account tab shows it right under "Without the stop-loss": two tiles, "All 5" and "Green
-only" (P/L, invested, win rate, how many sold and open), the best trade, the same coins in hindsight (best within 6 h,
-raw top) and the last 30 coins in a fold. `radar_paper.py` prices them inside the peaks job after each scan, before the
+"Best price within 6 h". The page no longer shows this block (its two tiles "All 5" and "Green only", the hindsight line, the last
+30 coins: `page_radarpaper.py` stays until its code is deleted); the Radar tab sums the 3 € test up in one sentence under the
+radar's paper positions, and it is not part of the three traders. `radar_paper.py` prices them inside the peaks job after each scan, before the
 windows of "Best price within 6 h": at most 15 windows a run, oldest first, in at most 4 of its ten minutes, and it stops
 after 3 of GeckoTerminal's rate limits so the other windows keep the rest. A result shows about an hour after its 6 hours.
 One doc per coin in `db/memeradarpaper/` on the results branch; nothing the trader reads changes.
+
+That is rule 1, history from the switch on. Rule 2 (`radar_paper.RADAR_TICKET`): from the switch every coin the radar rates good
+and push-worthy while its pool is under 10 minutes old is bought on paper for 10 €, at its first such rating (that rating's time
+and price), once; its doc (id ending `-g`, `rule: 2`) keeps the signs the coin had at that moment (`feat`) so they outlive the
+radar records, its take-profit is booked at exactly 11x, and rule-2 windows are priced before the rule-1 backlog. The radar's
+`radar.json` marks such a coin with `pb: 1`. Every window priced on minute candles also keeps its minute path
+(`db/memepath/<id>.json`, written once, never pruned) for exact replays of other exit rules.
 
 ### What if the exits were different (hindsight)
 
@@ -462,9 +472,23 @@ those show a fall only roughly, the sale price is estimated from the paper trade
 gets a worst and a best case. The current rule is replayed the same way and set against what it really made (the gap is in
 the doc). A rule counts as better only when it did better per trade in the older and in the newer half of the trades and
 overall, also with every rough sale at the stop and at the lowest price, with at least 100 trades in each half; a bootstrap
-gives the 95% range of the difference. The Account tab shows it under the radar account: per group the current rule, up to
-three rules that did better, or "No rule beat the current one in both halves" / "Too few trades yet", and the no-stop row.
+gives the 95% range of the difference. The page no longer shows this block (`page_exits.py` stays until its code is deleted):
+the learning trader on the Traders tab does its job, with its own pre-registered bars and frozen daily decisions.
 One doc, `db/memebot/exitgrid.json`; nothing the trader, the training or the big test reads changes.
+
+### Three paper traders (`traders.py`)
+
+One buy stream, three ways of selling, fake money only. The stream: the top pick (50 €), the new launches until the switch
+(3 €) and the radar's rule-2 greens (10 €). The stop-loss trader is the real paper account plus the radar's rule-2 results. The
+best-price trader sells each coin at its highest close within 6 h (looking back, not possible in reality; prints on dust volume
+or after the pool died are left out, at most 30x unless peak.py confirmed more). The learning trader starts with the stop-loss
+trader's rule and, once a day per group (pick, radar, new launches), may move one notch (stop -20/-30/-40%, target 2x/3x/11x,
+hold 6 h or 2 h) or add or drop one skip sign, only when its pre-registered bars hold on trades that finished before the
+decision (`T3_V`); every decision is a frozen file in `db/memetrader/v1/`. Its results are the stop-loss trader's plus the
+replayed difference of its rule, so it equals the stop-loss trader until it has learned something. The radar group's current
+skip signs go to the radar through radar-feed (`t3skip.json`): the radar does not push a green coin with one of them (it still
+rates, lists and buys it on paper). `traders.load()` is what the page reads; `python3 traders.py run --dir mb` is the peaks
+job's last step; `python3 traders.py summary --dir mb` prints the numbers.
 
 ## Publicity
 
@@ -628,12 +652,12 @@ history and the learned weights (the page and the recommendations survive on the
 
 ### iPhone app
 
-The website can live on the iPhone's Home Screen like an app, all on free plans: a bottom tab bar (Pick, New coins, Office,
-Account), the Agent office and the New launches list live within seconds while the hourly scan runs, and push notifications
+The website can live on the iPhone's Home Screen like an app, all on free plans: a bottom tab bar (Pick, Radar, Traders,
+Office), the Agent office and the New launches list (until the switch) live within seconds while the hourly scan runs, and push notifications
 when the new coins are listed (about five minutes into the scan) and when the pick is made. Fake money only: nothing is bought
 for real, and no notification is a trade. In a normal browser tab the page looks and works as before.
 
-The New coins tab shows the launch spotter's early list (above) at the top, in all its states, above the scored list, and its badge
+Until the switch the Radar tab shows the launch spotter's early list under the radar, in all its states, above the scored list, and its badge
 on the tab bar counts the coins of that list while the list is shown (otherwise there is no badge). The "new coins"
 notification goes out once a scan, when the first early list with coins is out: "9 new coins listed", "The newest is 4 min old.
 On the list: ... Fake money only, nothing is bought for real."; tapping it opens the New coins tab at the early list. It goes out once
@@ -708,13 +732,23 @@ Limits:
 ## The analysis page
 
 Every cycle ends by rendering `mb/report.html` (also `python3 bot.py report`); on GitHub it becomes the website. In
-recommend mode the page answers one question: which coin, why, and the numbers behind it. The card shows the coin with
-its tier and safety verdict, the trained chance of a profit and of going to zero, the score and rank, the reason in plain
-words, the safety check (RugCheck, GoPlus, creator, community), every figure behind the pick (age, liquidity, volume
-pace, buy pressure, holders, top wallets, insiders, locked liquidity, creator share and sales, authorities, sources,
-boosts, buyers vs sellers, holder growth, community counts), the sources it was seen on, the live chart and the links.
-Below it: the runners-up, the track record of every tip, the paper account (profit/loss since the restart, every open
-position on its stop-to-take-profit bar, the closed trades), and one "Details" fold with the training, the big test, all candidates, the weights and the run log. Light and dark theme, phone-friendly, times in Europe/Berlin.
+recommend mode the page has four tabs, the same on the website and in the app: Pick, Radar, Traders, Office.
+
+- **Pick** answers one question: which coin, why, and the numbers behind it. One heading by the pick's tier ("The pick for the next
+  2 hours", "Risky pick ...", "No pick this scan"); the card shows the coin with its tier and safety verdict, the market strip, the
+  paper line ("Bought on paper: 50 € at 17:21 · now +4.2%"), the safety check (RugCheck, GoPlus, creator, community) and, behind a
+  tap, the reason in plain words, every figure behind the pick (first the score and the trained odds, which are about the same for
+  every coin right now), the live chart and the links. Below it the runners-up, the hour grid and one "Details" fold with the tip
+  record, the training, the coin test, all candidates, the weights and the run log.
+- **Radar** (`page_radar.py`): the launch radar's coins without traps (a coin bought on paper says "Bought on paper · 10 €"), the
+  radar's paper positions (`page_traders.radar_positions`), and folds for the coins seen with traps, the radar record, why these
+  checks and the curve test. Until the switch (`memebot.SWITCH_AT`) the full scan's new launches follow under "New launches (until <its day>)".
+- **Traders** (`page_traders.py`, numbers from `traders.load()`): the three paper traders compared on the same finished trades (one
+  chart, one table), a card each, the activity (Bought and Sold, no arrows), and folds for the open positions, the finished trades
+  (one result per trader), how the learning trader decides (its dated log) and the trades before the restart.
+- **Office**: the radar's desk and chat, the agent cards (their lines wrap) and the Details fold.
+
+Light and dark theme, phone-friendly, times in Europe/Berlin.
 
 ## Sending the results somewhere else
 
@@ -734,6 +768,8 @@ to show the picks, the charts and the links in chat.
 | `radar.py` | the launch spotter: the early list of new launches about five minutes into each scan, and its record |
 | `launch_radar.py`, `radar_src.py`, `radar_feed.py` | the launch radar job: its 2-minute rounds, its sources, the live feed and the fast lane |
 | `curve_watch.py`, `radar_curve.json` | the curve watch (coins still on pump.fun's curve, called on paper) and its push switch (off) |
+| `radar_paper.py`, `peak.py`, `exit_grid.py` | the radar account, the best price within 6 h (and the minute paths), the exit what-if |
+| `traders.py` | the three paper traders and the learning trader's frozen daily decisions |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
 | `app.py` | the iPhone app: the live store (Supabase), push notifications, the installed app's script and `sw.js` |
 | `supabase/setup.sql` | the one-time setup of the Supabase project (tables, access rules); `supabase/test_setup.py` tests it on PostgreSQL; `supabase/push-requirements.txt` pins the push sender with hashes (`supabase/pin_push.py` makes it) |

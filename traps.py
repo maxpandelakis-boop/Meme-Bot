@@ -792,7 +792,7 @@ def _text(name, S, W):
         return "%s coins off the same tweet" % ("%d+" % XUSES_MAX if k >= XUSES_MAX else "%d" % k)
     if name == "sniped30":
         k = _n(S.get("snip30N"))
-        return "%d%% sniped in 30 s" % round(100 * (n("snip30") or 0)) + (" (%d %s)" % (k, _s(k, "wallet", "wallets")) if n("snip30N") is not None else "")
+        return "%d%% sniped in 30 s" % min(100, round(100 * (n("snip30") or 0))) + (" (%d %s)" % (k, _s(k, "wallet", "wallets")) if n("snip30N") is not None else "")
     if name == "bundle_slot":
         k = _n(S.get("slotN"))
         return "%d %s in launch block" % (k, _s(k, "wallet", "wallets")) + (" (~%d%%)" % round(100 * n("slotPct")) if n("slotPct") is not None else "")

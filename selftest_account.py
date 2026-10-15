@@ -9,6 +9,10 @@ and per trade.
 
 The memepeak docs here are a stand-in written in the frozen doc shape (SPEC 5 WP2), so the checks need no peak.py.
 
+Since the three traders (page_traders.py) the page shows only page_account's activity rows (on the Traders tab, with Bought and Sold
+badges) and its trades before the restart; its other blocks stay in the module until their code is deleted. Their checks therefore run on
+the module's own output and, in the browser, on a bare page that holds the block (harness), and the page is checked for their absence.
+
     python3 selftest_account.py            runs the checks alone (ends ALL PASS or "N checks failed")
     selftest.main: account_checks(check, SKIPS)
 """
@@ -126,8 +130,8 @@ def _cat(st, key):
 
 def _feed_rows(fd):
     """[(classes, time, BOUGHT|SOLD, symbol, amount)] of every feed row, in page order."""
-    return re.findall(r'<li class="pa-ev ([^"]*)"><span class="tm">([^<]*)</span><i></i><span class="tx"><b class="act">(BOUGHT|SOLD)</b> <b>(.*?)</b>.*?'
-                      r'<span class="am">([^<]*)</span>', fd)
+    return [(c, t, k.upper(), s, a) for c, t, k, s, a in re.findall(r'<li class="pa-ev ([^"]*)"><span class="tm">([^<]*)</span><span class="tx"><span class="chip act">(Bought|Sold)</span> <b>(.*?)</b>.*?'
+                                                                   r'<span class="am">([^<]*)</span>', fd)]
 
 
 def _tree(d):
@@ -226,8 +230,9 @@ def _checks(check, d, skips):
     worst_want = [s for s, _ in sorted(pct.items(), key=lambda kv: (kv[1][0], -kv[1][1]))]
     new_want = [p["sym"] for _, p in sorted(((pid, p) for pid, p in P.items() if M.in_account(p, T0)), key=lambda kv: -kv[1]["t"])]
     best_want = [pos[pid]["sym"] for pid in ("y-tp", "h-time", "y-stop", "y-path", "y-time", "y-rug")]
-    check(_syms(_pane(page, "top")) == top_want and _syms(_pane(page, "worst")) == worst_want and _syms(_pane(page, "new")) == new_want
-          and _syms(_pane(page, "best")) == best_want and 'id="pa-s-new" checked' in page,
+    tt = PA.trades(D, A)
+    check(_syms(_pane(tt, "top")) == top_want and _syms(_pane(tt, "worst")) == worst_want and _syms(_pane(tt, "new")) == new_want
+          and _syms(_pane(tt, "best")) == best_want and 'id="pa-s-new" checked' in tt,
           "U1 the four orders: top %% %s, worst %% from %s, newest first, best in 6 h by its multiple (the position without a price has no %%)" % (
               [s[:12] for s in top_want[:3]], worst_want[0]))
 
@@ -256,21 +261,24 @@ def _checks(check, d, skips):
           and 'style="width:%.1f%%"' % won_w in c_stop and html.escape(PA.eur(b_pnl, True)) not in c_stop and 'class="det"' in c_stop and 'class="ph"' in c_stop,
           "the stop-loss strip holds its own numbers: P/L %s, %s on %s invested, back %s, open %s, %d won · %d lost and its bar (%.1f%% won)" % (
               PA.eur(acct["pnl"], True), PA.pct1(rate), PA.eur(acct["invested"]), PA.eur(acct["back"]), PA.eur(acct["open"]), acct["won"], acct["lost"], won_w))
-    newp = _pane(page, "new")
+    newp = _pane(tt, "new")
     r_stop, r_path = _row(newp, "STOPPY"), _row(newp, "PATHY")
     cell = lambda r, k: (re.search(r'<td class="h %s">(.*?)</td>' % k, r, re.S) or re.match("", "")).group(0)
     check('<span class="chip warn" data-pa="filtered">59,257x ignored: pool dead</span>' in newp and "filtered: not confirmed by the next close" in newp
           and "<th>best in 6 h (hindsight)</th><th>at 6 h (hindsight)</th>" in newp and "at 47 min · +" in newp and " · 15-min candles" in newp and " · estimate" in newp
-          and newp.count("window open") == 4 and "not booked" in newp and "price unit mismatch" in newp and "<script>4.00x" not in page
+          and newp.count("window open") == 4 and "not booked" in newp and "price unit mismatch" in newp and "<script>4.00x" not in tt
           and "1.80x" in cell(r_stop, "h1") and "0.40x" in cell(r_stop, "h2") and "1.80x" not in cell(r_stop, "h2") and "unknown" in cell(r_path, "h2"),
           "U2 the closed rows carry best in 6 h (multiple, when, P/L) and at 6 h (STOPPY 1.80x, then 0.40x at 6 h; an estimate without it 'unknown'), "
           "the filtered chip with its first reason (59,257x ignored: pool dead), estimate, 15-min, unit, window open")
-    i_trades, i_card = page.find('data-pa="trades"'), page.find('class="card pos hold"')
-    check("Top trades · 8 closed · 2 open" in page and "Before the restart (1 trade)" in page and "bought before the paper account restarted on " in page
-          and "profit/loss since the restart on " in page and 'class="acct"' not in page and 'data-pa="header"' in page and page.count("<style>%s</style>" % PA.CSS) == 1
-          and 0 < i_trades < i_card,
-          "the hooks: the account block replaces the old strip; 'Top trades · N closed · N open' comes before the open positions; the trades before "
-          "the restart and the curve fold stay")
+    pane = (re.search(r'<div class="pane" id="pane-account"[^>]*>(.*?)</div><div class="pane" id="pane-office">', page, re.S) or re.match("", "")).group(1) or ""
+    hm = _harness(D, now)
+    i_trades, i_card = hm.find('data-pa="trades"'), hm.find('class="card pos hold"')
+    check("Top trades · 8 closed · 2 open" in hm and 0 < i_trades < i_card and 'data-pa="header"' in hm and "profit/loss since the restart on " in hm
+          and "Before the restart (1 trade)" in pane and "bought before the paper account restarted on " in pane and page.count(PA.CSS) == 1 and PA.CSS in pane
+          and 'class="pa-ev ' in pane and 'class="card pos hold"' in pane and not any(k in page for k in ('data-pa="header"', 'data-pa="trades"', 'data-pa="noloss"',
+          'data-pa="stop"', 'class="acct"', "Profit/loss over time", "Top trades ·")),
+          "the hooks: page_account's block still renders on its own (Top trades before the open positions, the header, the curve fold), and the page "
+          "shows none of it but its activity rows, the open positions and the trades before the restart, on the Traders tab (its styles once)")
     cv = PA.curve(D, A)
     ends = sorted(doc["end"] for doc in booked.values())
     tv = cv.split("<summary>Table view</summary>", 1)[-1]
@@ -318,23 +326,28 @@ def _checks(check, d, skips):
     sec_bad = PA.section(dict(D, paper=dict(D["paper"], acct2=bad)))
     check(bad.get("err") and "could not be read this time" in sec_bad and "could not be rendered" not in sec_bad,
           "a load that fails leaves a note and empty categories; the page still renders (%s)" % (bad.get("err") or "")[:60])
-    saved = sys.modules.get("page_account")
-    sys.modules["page_account"] = None            # what a missing or broken page_account.py looks like to report.py
+    saved = sys.modules.get("page_account"), sys.modules.get("page_traders")
+    sys.modules["page_account"] = sys.modules["page_traders"] = None     # what a missing or broken page_account.py (and so page_traders.py) looks like to report.py
     try:
         out_fb = R.build(d, os.path.join(d, "report-fb.html"), now=now)
         page_fb = open(out_fb, encoding="utf-8").read()
     except Exception as e:
         page_fb = "build failed: %s" % e
     finally:
-        sys.modules["page_account"] = saved
+        for k, v in zip(("page_account", "page_traders"), saved):
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
         if os.path.exists(os.path.join(d, "report-fb.html")):
             os.remove(os.path.join(d, "report-fb.html"))
-    check('class="acct"' in page_fb and re.search(r"could not be loaded this time \((?:ModuleNotFound|Import)Error\)", page_fb) and "could not be rendered" not in page_fb
-          and "Profit/loss over time" in page_fb and 'data-pa="header"' not in page_fb,
-          "without page_account.py the page still builds: the plain account strip, the open positions, the trades and the curve as before, with a note")
-    check(XSS not in page and html.escape(XSS) in page and "<b>bold</b>" not in page and XSS2 not in page and html.escape(XSS2) + " (1)" in PA.trades(D, A)
+    check('class="acct"' in page_fb and re.search(r"The three traders could not be loaded this time \((?:ModuleNotFound|Import)Error\)\. The paper account itself is unaffected\.", page_fb)
+          and "could not be rendered" not in page_fb and "Profit/loss over time" in page_fb and 'data-pa="header"' not in page_fb and 'id="pane-account"' in page_fb,
+          "without page_account.py (and so page_traders.py) the page still builds: on the Traders tab the plain account strip, the open positions, the "
+          "trades and the curve as before, with a note")
+    check(XSS[:24] not in page and html.escape(XSS[:24]) in page and "<b>bold</b>" not in page and XSS2 not in page and html.escape(XSS2) + " (1)" in PA.trades(D, A)
           and html.escape(XSS2) in fd and A["counts"]["unit"] == 1 and not any(r["pk"] and r["pk"]["state"] in PA.BOOKED for r in A["rows"] if r["id"] == "y-nan"),
-          "coin names, exit reasons (in the feed and the 'N sold: ...' line) and filter reasons are escaped; a booked doc without a finite multiple is not "
+          "coin names (the traders' activity keeps 24 characters of a symbol), exit reasons (in the feed and the 'N sold: ...' line) and filter reasons are escaped; a booked doc without a finite multiple is not "
           "booked; docs of unknown positions and broken files are skipped")
     cuts = {"pool dead: rug exit, last healthy scan 40 min after the buy": "pool dead", "pool dead: liquidity $310 at minute 12": "pool dead",
             "collapse: under 10% at minute 30, no recovery within 30 min": "pool dead", "dust: 59,257x on $3 volume": "too little volume",
@@ -359,8 +372,18 @@ def _checks(check, d, skips):
           "the balance line's 'break-even' label sits where the line does not pass: the right end when it is free, the left end when the line crosses zero "
           "at the right, none when the line runs up and down through zero all along")
 
-    _noloss_checks(check, d, D, A, P, pos, page, now)
-    _browser(check, page, skips)
+    _noloss_checks(check, d, D, A, P, pos, hm, now)
+    _browser(check, hm, skips)
+
+
+def _harness(D, now):
+    """page_account's whole block (header, categories, without the stop-loss, activity, trades in four orders, the open positions, the curve)
+    on a bare page with report.py's styles: the page itself no longer shows it (the Traders tab replaced it); the module and its checks stay
+    until its code is deleted."""
+    holds = lambda: '<details class="fold-lite pa-f opos" data-pa="open"><summary>Open positions</summary><div class="holds">%s</div></details>' % "".join(
+        R.hold_card(r, now) for r in D["open"] if r["p"].get("grp") in M.PAPER_GROUPS)
+    return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>%s</style></head>'
+            '<body><div class="wrap"><section data-app="account">%s</section></div></body></html>') % (R.CSS, PA.section(D, holds))
 
 
 def _noloss_checks(check, d, D, A, P, pos, page, now):

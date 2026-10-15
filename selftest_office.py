@@ -214,11 +214,11 @@ def office_checks(check, skips=None):
         check(card_dept.get("trainer") == "brain" and card_dept.get("dispatch") == "ops" and card_dept.get("safety") == "safety" and card_dept.get("deep") is None
               and "result &lt;b&gt;3" in page and "result <b>3" not in page and 'data-live-chip="analyst"' in cut(page, '<div class="ocards"', '</div>')
               and 'data-live-chip="radar"' not in page and lines_["candles"] == "candles result <b>3</b>"
-              and len(lines_["refresh"]) <= 60 and lines_["refresh"] == PO.clip(LONG_OUT, 60) and lines_["refresh"].endswith("…") and LONG_OUT.startswith(lines_["refresh"][:-1])
+              and PO.CARD_LINE == 160 and lines_["refresh"] == PO.clip(LONG_OUT, 160) == LONG_OUT and PO.clip("x" * 200, PO.CARD_LINE) == "x" * 159 + "…"
               and lines_["market"] == "DexScreener slow: 3 of 40 pairs retried"
-              and len(re.findall(r'data-live-line="[a-z]+" data-live-max="60"', cut(page, '<div class="ocards"', '</label></div>'))) == len(AGENTS),
-              "U6 office: each card is the label of its department, carries the live hooks (not the radar's, the live line capped at 60), its text escaped, "
-              "one line of at most 60 characters, a warning without its '! ' mark (%s)" % lines_)
+              and len(re.findall(r'data-live-line="[a-z]+" data-live-max="160"', cut(page, '<div class="ocards"', '</label></div>'))) == len(AGENTS),
+              "U6 office: each card is the label of its department, carries the live hooks (not the radar's, the live line capped at 160), its text escaped, "
+              "its whole line (up to 160 characters: it wraps, ui bug 2), a warning without its '! ' mark (%s)" % lines_)
         # the GROKBOT + JEV layout (wp8b): the cards and the paper account's line on top, no intro paragraph there, everything else of the
         # office in ONE Details fold that is closed in the HTML (the counts, the note, the floor plan, the legend, the panels with the daily
         # overview, the team timeline); the line is the paper account's P/L after every run, the number now on top
@@ -236,16 +236,16 @@ def office_checks(check, skips=None):
         pageB = build(dB)
         bal_d = re.search(r'<path class="l" d="([^"]*)"', bal)
         check(f0 > 0 and page[f0:page.find(">", f0) + 1] == '<details class="fold ofold" data-po-fold>' and page.count('<details class="fold ofold" data-po-fold') == 1
-              and '<div class="otop"><div class="ocards"' in top_ and top_.find('<div class="ocards"') < top_.find('<div class="obal') and '<p class="note"' not in top_
+              and '<div class="otop"><div class="ocards"' in top_ and '<div class="obal' not in page and '<p class="note"' not in top_
               and all(x_ in fold_ and page.find(x_) > f0 for x_ in inside) and fold_.count('<label class="ocard') == 0
               and "<summary><span class=\"t\">Details</span>" in fold_,
-              "office layout: the cards and the paper account's line on top with no intro paragraph; the counts, the note, the floor plan, the "
+              "office layout: the cards on top with no intro paragraph and no paper account line (a duplicate of the Traders tab); the counts, the note, the floor plan, the "
               "legend, the panels (the radar's desk, the daily overview) and the team timeline in ONE Details fold, closed in the HTML")
         check(bal_d and bal_d.group(1).count("L") == 2 and bal_d.group(1).startswith("M0.0 ") and "Paper account" in bal and PO._eur(DB["paper"]["acct"]["pnl"], True) in bal
-              and 'class="obal ' in pageB and pageB.find('<div class="ocards"') < pageB.find('<div class="obal') < pageB.find('<details class="fold ofold" data-po-fold') and "the line starts after two runs" in bal0
+              and 'class="obal' not in pageB and "Paper account" not in cut(pageB, '<div class="pane" id="pane-office">', "</section>") and "the line starts after two runs" in bal0
               and PO._eur(-633.14, True) == "\u2212633.14\u00a0€" and PO._eur(5, True) == "+5.00\u00a0€" and PO.balance(dict(DB, rec=None), R) == "",
-              "office balance line: the paper account's P/L after every run since the restart (3 runs: 3 points), the number now on top, under the "
-              "cards and above the fold; before two runs a short note; none outside recommend mode")
+              "office balance line: page_office.balance still draws the paper account's P/L after every run (3 runs: 3 points, the number now on top; "
+              "before two runs a short note; none outside recommend mode), and the Office tab shows it no more (the Traders tab has the account)")
         # the radar is never in a light, the timeline, the counts or "at once": the same office with no agent in its own job at all (ext_agents
         # returns nothing, not even the radar's "not started yet") has the same timeline, run line, head and lights; "at once" is also counted here
         d0 = os.path.join(tmp, "o0")
@@ -253,7 +253,7 @@ def office_checks(check, skips=None):
         page0 = build(d0)
         tl = lambda p: cut(p, "<h3>Team timeline</h3>", "</details>")
         strip_ = lambda p: cut(p, '<div class="ostrip" data-lv data-static-strip>', "</div>")
-        head = lambda p: cut(p, '<div class="sec-head"><h2>Agent office</h2>', "</div>")
+        head = lambda p: cut(p, '<div class="sec-head hasi"><h2>Agent office</h2>', "</p>")
         ext_fn = PO.ext_agents
         PO.ext_agents = lambda *a_, **k_: []
         try:
@@ -426,7 +426,7 @@ def office_checks(check, skips=None):
                                                "red flags: creator sold 3 · RugCheck danger 2 Verdicts 1 2 4 no trap · watch · trap Push 1 PEPE2 pushed" % (
                                                    R.local(dk_t).strftime("%H:%M"), R.local(dk_t + 120_000).strftime("%H:%M"))
               and '<span class="odk-g" data-pd-g>' in desk_(page_d) and '<span class="odk-g" data-pd-g hidden>' in desk_(page_h) and "sleeping until %s" % R.local(NOW + 5 * H).strftime("%H:%M") in desk_(page_h)
-              and 'title="Open the radar on the New tab (fake money only)"' in desk_(page_d)
+              and 'title="Open the radar on the Radar tab (fake money only)"' in desk_(page_d)
               and strip_tags(desk_(page0)).startswith("Launch radar not started yet ") and '<span class="odk-g" data-pd-g hidden>' in desk_(page0),
               "radar desk on the page: built from mb/radar_live.json with the same words; outside its hours 'sleeping until HH:MM' without stations; "
               "no radar.json at all: 'not started yet' (%s)" % strip_tags(desk_(page_d)))
@@ -766,7 +766,8 @@ def chat_checks(check, skips, tmp, page, page_d, page_h, page0, utc):
           and msgs(page_h) == [["desk", "Radar sleeps until %s" % hm(NOW + 5 * H)], ["record", "Greens so far: 37 calls, too few with a 1 h price yet (0 of 20)"]]
           and msgs(page) == [["scout", "Found 7 new pools under 10 minutes, none kept on the list"], ["record", "Greens so far: 37 calls, too few with a 1 h price yet (0 of 20)"]]
           and '<ol class="ochat" data-pd-chat aria-label="The radar desk\'s chat about its last round (fake money only)" hidden></ol>' in page0
-          and 'class="ochat dim"' in PO.chat_html(CHAT_GREEN, True) and ".ochat.dim .och-a { opacity:.6 }" in PO.DESK_CSS and ".ochat.dim > .och {" not in PO.DESK_CSS,
+          and 'class="ochat dim"' in PO.chat_html(CHAT_GREEN, True) and ".ochat.dim .och-a { color:var(--muted) }" in PO.DESK_CSS and ".ochat.dim > .och {" not in PO.DESK_CSS
+          and "opacity" not in cut(PO.DESK_CSS, ".ochat[hidden]", "\n"),
           "desk chat on the page: an ordered list right under the desk's label inside its box and before the office's heading, each message a badge, "
           "the speaker's name and the text (the same messages as desk_chat at the scan's time); outside the hours the one Desk line; no radar doc: "
           "an empty list, hidden (%s)" % msgs(page_d)[:2])
@@ -1031,7 +1032,7 @@ def browser_checks(check, skips, d1, tmp):
     # "Open the radar" goes to the New tab, where the radar sits on top (the Radar tab is merged into New): one radio of that id, none for Radar
     page_rt = page_plain
     check(page_rt.count('id="tab-young"') == 1 and 'id="tab-radar"' not in page_rt and page_rt.count("data-radar ") == 1,
-          "U6 the page has one New tab radio, no Radar tab, and the radar on New (%d)" % page_rt.count('id="tab-young"'))
+          "U6 the page has one radio for the Radar tab (its id is tab-young), no tab-radar radio, and the radar on it (%d)" % page_rt.count('id="tab-young"'))
     t0 = R.office_data(R.collect(d1, NOW))["t0"]
     calls, dialogs, errs = [], [], []
     long_line = "gates: 40 of 900 coins checked against the liquidity, holder and creator rules so far"
@@ -1076,7 +1077,7 @@ def browser_checks(check, skips, d1, tmp):
                 acard: q('label.ocard[data-agent="analyst"]').getAttribute('data-live'), achip: (q('label.ocard[data-agent="analyst"] [data-live-chip]')||{}).textContent,
                 aline: (q('label.ocard[data-agent="analyst"] [data-live-line]')||{}).textContent, pline: (q('.opanel [data-live-line="analyst"]')||{}).textContent,
                 astatic: cs(q('label.ocard[data-agent="analyst"] > .ocl:not([data-live-line])')).display, aliveshow: cs(q('label.ocard[data-agent="analyst"] [data-live-line]')).display,
-                wait: [q('label.ocard[data-agent="trainer"]').getAttribute('data-live'), cs(q('label.ocard[data-agent="trainer"]')).opacity],
+                wait: [q('label.ocard[data-agent="trainer"]').getAttribute('data-live'), cs(q('label.ocard[data-agent="trainer"]')).opacity, cs(q('label.ocard[data-agent="trainer"]')).borderTopStyle],
                 strip: q('[data-ss-state]').textContent, nexthid: q('[data-ss-next]').hidden,
                 fold: q('details[data-po-fold]').open, ashown: q('label.ocard[data-agent="analyst"]').getClientRects().length > 0,
                 rline: q('[data-ext-line="radar"]').textContent, rst: window.MemebotRadar && MemebotRadar.last ? String(MemebotRadar.last.state) : null, waiting: Array.from(document.querySelectorAll('[data-live-strip] span')).map(s => s.textContent) }; }""")
@@ -1085,12 +1086,12 @@ def browser_checks(check, skips, d1, tmp):
             rline_for = {None: "7 seen · 1 without traps · 0 pushed", "running": "7 seen · 1 without traps · 0 pushed",
                          "late": "late · 7 seen, 1 without traps", "stopped": "stopped · 7 seen, 1 without traps"}
             check(got["desk"] is None and got["card"] is None and got["panel"] is None and got["an"] == "work" and got["acard"] == "work" and got["achip"] == "at work now"
-                  and got["pline"] == "Now: " + long_line and 50 < len(got["aline"]) <= 60 and got["aline"].endswith("…") and ("Now: " + long_line).startswith(got["aline"][:-1])
-                  and got["astatic"] == "none" and got["aliveshow"] != "none" and got["wait"] == ["wait", "0.55"] and got["fold"] is False and got["ashown"]
+                  and got["pline"] == "Now: " + long_line and got["aline"] == "Now: " + long_line
+                  and got["astatic"] == "none" and got["aliveshow"] != "none" and got["wait"] == ["wait", "1", "dashed"] and got["fold"] is False and got["ashown"]
                   and got["rline"] == rline_for.get(got["rst"], "?") and "Waiting %d" % (len(set(R.OFFICE_AGENTS) - {"radar"}) - 2) in got["waiting"]
                   and got["strip"].startswith("running now · started ") and got["nexthid"] and link == "https://github.com/%s/actions/workflows/scan.yml" % REPO,
                   "U6 browser: the office poll marks the scan's desks and cards live but never the radar's (even when the live doc names one); a card at work "
-                  "in the grid on top (the Details fold stays closed) shows its live line (at most 60 characters) instead of last run's, a waiting card is faded; the radar's card follows the Radar tab's state when "
+                  "in the grid on top (the Details fold stays closed) shows its whole live line (up to 160 characters) instead of last run's, a waiting card is framed dashed (never faded); the radar's card follows the Radar tab's state when "
                   "that tab runs; the strip says the scan runs now and links to "
                   "the scan's page (%s, %s)" % (got, link))
             # the card at work pulses, but not for a reader who asked for less motion
@@ -1200,10 +1201,10 @@ def browser_checks(check, skips, d1, tmp):
                       document.getElementById('tab-office').click();
                       const cs = Array.from(document.querySelectorAll('.ocard')), fd = document.querySelector('details[data-po-fold]'), st = e => getComputedStyle(e);
                       const one = c => { const ls = Array.from(c.querySelectorAll(':scope > .ocl')).filter(e => st(e).display !== 'none');
-                        return ls.length === 1 && ls[0].getBoundingClientRect().height <= 1.6 * parseFloat(st(ls[0]).fontSize) && st(ls[0]).whiteSpace === 'nowrap' && st(ls[0]).textOverflow === 'ellipsis'; };
+                        return ls.length === 1 && st(ls[0]).whiteSpace !== 'nowrap' && st(ls[0]).textOverflow !== 'ellipsis' && ls[0].scrollWidth <= ls[0].clientWidth + 1; };
                       const dflt = [fd.open, over(), Math.round(fd.getBoundingClientRect().height) < 130 && !document.querySelector('.ofl').checkVisibility() ? 0 : 1, new Set(cs.map(e => Math.round(e.getBoundingClientRect().left))).size,
                         cs.filter(c => !one(c)).map(c => c.getAttribute('data-agent')), cs.length,
-                        Math.round(document.querySelector('.obal').getBoundingClientRect().top - document.querySelector('.ocards').getBoundingClientRect().bottom)];
+                        document.querySelector('.obal') ? -1 : 0];
                       document.getElementById('tab-pick').click();
                       document.querySelectorAll('#pane-pick details, #pane-office details').forEach(d => { d.open = true; });
                       const a = over(); let b = 0, folds = 0;
@@ -1229,8 +1230,8 @@ def browser_checks(check, skips, d1, tmp):
             check(all(m[13][:3] == [False, 0, 0] and m[13][4] == [] and m[13][5] == n_cards and m[13][6] >= 0 for _, _, m in sizes)
                   and all(m[13][3] == 2 for m in phone) and all(m[13][3] == 4 for m in desk),
                   "office default view at 390 and 1280 px, light and dark: the Details fold is closed (the floor plan is not drawn), no sideways scroll, the "
-                  "%d cards in 2 columns on a phone and 4 on a desktop, each with exactly one line cut to one line, the paper account's line under "
-                  "them (%s)" % (n_cards, [(w, "dark" if dk else "light", m[13]) for w, dk, m in sizes]))
+                  "%d cards in 2 columns on a phone and 4 on a desktop, each with exactly one line that wraps whole (no ellipsis), no paper account line "
+                  "under them (%s)" % (n_cards, [(w, "dark" if dk else "light", m[13]) for w, dk, m in sizes]))
             # a tap on an hour shows its numbers (CSS radios); on a phone a tap on a card opens its department and brings its panel (the radar: its block) into view
             ctx, pg = open_(page_plain)
             pg.click('label[for="tab-office"]')

@@ -25,7 +25,9 @@ one thread, a cycle 100 s at most; `round` is one cycle per start (125 s at most
      radar.json, the records of the last 48 hours, model.json and pushed.json go to the branch radar-data (one commit, force-pushed,
      never smaller than the last tree), radar.json to the app's live store (row "radar"); a push notification only for a good coin
      without a holder cluster and without anything unknown, once per coin, at most 4 an hour (its words: the checks it passed, the
-     record of earlier green coins once enough have a 1 h outcome, fake money)
+     record of earlier green coins once enough have a 1 h outcome, fake money), and not for a coin with one of the signs the learning
+     trader's latest radar decision skips (traders.py, radar-feed t3skip.json: such a coin is still rated, listed and bought on paper;
+     radar.json says so in its "t3"); radar.json's "pb" is 1 for a coin bought on paper (radar_paper's rule 2)
   9. between two cycles (a loop with the live feed only): the FAST LANE. A graduation on the feed (PumpPortal's migrate event) gets its
      coin rated in a mini-round within about 6-20 s (FAST_TRIES_MS: DexScreener asked 6, 14, 26 and 45 s after the event until its
      PumpSwap pool is listed) instead of at the next early cycle (at least 20 s after the event and 60 s after the last cycle): only the
@@ -497,6 +499,7 @@ class Radar:
         self.restore_state, self.last_counts, self.last_doc = "none", None, None
         self.res_at = self.feed_at = None
         self.wm, self.xlinks, self.symmc, self.feed_meta, self.disc = None, {}, {}, {}, {}
+        self.t3skip = {}                         # the learning trader's radar skip signs {sign: words} (radar-feed t3skip.json; none: pushes as before)
         self.res_summary, self.train = [], (None, None)
         self.W_prior = self.T.load_weights()
         self.W = self.W_prior
@@ -707,7 +710,7 @@ class Radar:
             return False
 
     def fetch_feed(self, timeout=60):
-        """radar-feed (the scan's hourly wallet memory, X links and tickers) into rd/feed."""
+        """radar-feed (the scan's hourly wallet memory, X links and tickers, and the learning trader's radar skip signs) into rd/feed."""
         self.feed_at = self.clock.now()
         if self.remote:
             try:
@@ -715,7 +718,7 @@ class Radar:
                 if self.git.exists("radar-feed") is False:
                     raise RuntimeError("no radar-feed branch yet")
                 self.git.fetch("radar-feed", "refs/radar/feed", timeout=timeout)
-                names = [p for p in self.git.paths("refs/radar/feed") if p in ("walletmem.json.gz", "xlinks.json.gz", "symmc.json.gz", "meta.json")]
+                names = [p for p in self.git.paths("refs/radar/feed") if p in ("walletmem.json.gz", "xlinks.json.gz", "symmc.json.gz", "meta.json", "t3skip.json")]
                 for p, raw in self.git.files("refs/radar/feed", names, timeout=timeout).items():
                     os.makedirs(self.feed_dir, exist_ok=True)
                     with open(os.path.join(self.feed_dir, p), "wb") as f:
@@ -730,6 +733,7 @@ class Radar:
         sm = gz("symmc.json.gz")
         self.symmc = {str(k).upper(): num(v) for k, v in ((sm.get("sym") or {}) if isinstance(sm, dict) and isinstance(sm.get("sym"), dict) else {}).items() if num(v)}
         self.feed_meta = load_json(os.path.join(self.feed_dir, "meta.json"), {}) or {}
+        self.t3skip = t3skip_of(load_json(os.path.join(self.feed_dir, "t3skip.json"), None))
 
     @staticmethod
     def read_gz(path):
@@ -2623,6 +2627,9 @@ class Radar:
         self.momentum(rec, r, now, v, record_only)
         if v == "good" and not rec.get("good") and not record_only:
             rec["good"], rec["goodPx"] = now, fin(r["basic"].get("price"))
+        if rt.get("push") and r["age"] < MAX_AGE_MIN and not record_only and not isinstance(rec.get("sigG"), dict):
+            # the signals of the first push-worthy green rating and its time: A1's signs of radar_paper's rule-2 buy (a buy before sigGt reads sig0)
+            rec["sigG"], rec["sigGt"] = sig_of(S, {}), now
         mint = self.mint_of(a, r)
         rec["mint"] = int(mint) if mint else rec.get("mint")
         rec["lp"] = rec.get("lp") or M.launchpad_of(r["pr"], (self.cache["rc"].get(a) or {}).get("rep"))[0]
@@ -2720,7 +2727,36 @@ class Radar:
         recent = {t for t in self.pushed.values() if now - t < H}
         if len(recent) >= PUSH_PER_H:
             return []
-        return [x for x in coins if x["push_ok"] and x["addr"] not in self.pushed]
+        return [x for x in coins if x["push_ok"] and x["addr"] not in self.pushed and not self.t3_skips(x["addr"])]
+
+    def t3_skips(self, a):
+        """The push follows the learning trader (A1): the signs of its latest frozen radar decision (self.t3skip, from radar-feed) that
+        this coin has, read as radar_paper's rule 2 copies them at the buy (buy-time fields only). A coin with one is still rated, listed
+        and bought on paper, only not pushed. [] without a decision, with an empty list or when anything cannot be read."""
+        if not self.t3skip:
+            return []
+        try:
+            import radar_paper as RP
+            rec = self.rec(a)
+            b = next(iter(RP.buys_v2([rec], (), 0).values()), None) if isinstance(rec, dict) else None
+            sg = RP.signs(b["feat"], b["pts"], b["late"]) if b else {}
+            return [f for f in self.t3skip if sg.get(f) is True]
+        except Exception as e:
+            self.say("the learning trader's skip check failed (%s): the push goes as before" % RS.short(e))
+            return []
+
+    def paper_bought(self, x, now):
+        """radar.json's pb: 1 when radar_paper's rule 2 has bought the coin on paper for 10 EUR (its first good, push-worthy rating with
+        the pool under 10 minutes at or after the switch, memebot.switch_at(); it stays bought when a later rating is not push-worthy),
+        else 0 (before the switch always). When the record cannot be read: the current rating's push_ok from the switch on."""
+        sw = M.switch_at()
+        try:
+            import radar_paper as RP
+            rec = self.rec(x["addr"])
+            return 1 if isinstance(rec, dict) and RP.buys_v2([rec], (), sw) else 0
+        except Exception as e:
+            self.say("the paper flag failed (%s): read from the rating" % RS.short(e))
+            return 1 if x.get("push_ok") and now >= sw else 0
 
     # ---------------------------------------------------------------- radar.json
     def summary(self, now):
@@ -2823,7 +2859,8 @@ class Radar:
                "state": state, "why": "", "secs": secs, "model": model,
                "counts": {"seen": len(rated), "good": len(coins), "pushed": sum(1 for x in rated if (self.rec(x["addr"]) or {}).get("push")), "seenAgeMed": fin(med, 1)},
                "wm": {"t": num((self.wm or {}).get("t")), "nCoins": num((self.wm or {}).get("nCoins"))},
-               "coins": [dict(x["doc"], push=(self.rec(x["addr"]) or {}).get("push")) for x in coins],
+               "coins": [coin_doc(x, (self.rec(x["addr"]) or {}).get("push"), [self.t3skip[f] for f in self.t3_skips(x["addr"])], self.paper_bought(x, now))
+                         for x in coins],
                "others": [{"addr": x["addr"], "sym": x["sym"], "age": x["doc"]["age"], "v": x["v"], "pts": x["doc"]["pts"], "line": x["doc"]["line"], "ws": x.get("ws")} for x in others[:40]],
                "lastGood": last_good, "recent": recent[:20], "record": record, "hosts": hosts, "notes": notes[:6], "lines": list(self.cycle_lines)}
         doc["src"] = dict(sorted(((k, int(v)) for k, v in self.disc.items() if num(v) is not None), key=lambda kv: (-kv[1], kv[0]))[:12])   # the round's discovery counts (the office desk's Sources)
@@ -3028,6 +3065,23 @@ def fund_cluster(funders):
             if i - j + 1 > best:
                 best, span = i - j + 1, round((ts[i] - ts[j]) / 60_000.0, 1)
     return best, span
+
+
+def coin_doc(x, push, t3, pb):
+    """A coin of radar.json "coins": its rating doc, when the phone heard of it (push), pb 1 when it is bought on paper (Radar.paper_bought:
+    radar_paper's rule 2 bought it) and, when the learning trader skips it, t3: the words of its signs."""
+    out = dict(x["doc"], push=push, pb=1 if pb else 0)
+    if t3:
+        out["t3"] = [str(w)[:80] for w in t3][:4]
+    return out
+
+
+def t3skip_of(doc):
+    """radar-feed's t3skip.json (traders.py skipfeed) -> {sign: words}; {} for anything unreadable (then nothing changes)."""
+    if not isinstance(doc, dict) or doc.get("v") != 1 or not isinstance(doc.get("skip"), list):
+        return {}
+    texts = doc.get("texts") if isinstance(doc.get("texts"), list) and len(doc["texts"]) == len(doc["skip"]) else [None] * len(doc["skip"])
+    return {f: (t if isinstance(t, str) and t else f)[:80] for f, t in list(zip(doc["skip"], texts))[:4] if isinstance(f, str) and re.match(r"^[a-z0-9_:]{1,40}$", f)}
 
 
 def sig_of(S, extra):

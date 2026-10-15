@@ -6,7 +6,7 @@
                    next HH:MM", then four stations of its last round, 2 x 2 on a phone and in one row on a desktop: Sources (the coins its
                    discovery lists found, the top 3 lists, the live feed's state), Checks (the coins under 10 minutes checked, the round's 2
                    most frequent red flags), Verdicts (no trap / watch / trap) and Push (the coin pushed this round, else the last coin
-                   without traps). Drawn from mb/radar_live.json, then kept current by the radar's script on the New tab (memebot-radar
+                   without traps). Drawn from mb/radar_live.json, then kept current by the radar's script on the Radar tab (memebot-radar
                    event). A tap opens New.
   desk's chat      right under the desk, the same round as a trading desk's group chat where the radar's bots post (desk_chat, at most
                    8 messages, words from radar.json only): Scout found a coin (where from, its pool's age, its liquidity), Checks names
@@ -26,7 +26,7 @@
   radar's panel    the Launch radar runs in its own job (radar.yml), not in the hourly scan: it also has the second desk on the Analysts
                    platform, drawn from mb/radar_live.json (the scan copies the radar's last radar.json there before it starts). It never
                    counts in a department's light, the team timeline, the counts or "at work at once"; office.json is not changed. The
-                   radar's script on the New tab (memebot-radar event) keeps its light and its line current on the page. The radar runs
+                   radar's script on the Radar tab (memebot-radar event) keeps its light and its line current on the page. The radar runs
                    one quick round after each full scan: "done" between rounds, "late" or "stopped" when the next round does not come.
   daily overview   in the Brain's panel: one plain sentence about today's new launches (how many were checked, how many were dead within
                    an hour, the radar's calls without traps) and a bar of the 24 hours of the day (Berlin): each hour's share of launches
@@ -54,7 +54,7 @@ HOUR_MIN_N = 30                      # an hour is named only with at least this 
 HOUR_FEW_N = 20                      # a cell with fewer is hatched
 DEAD_LIQ, RUG_X = 1_000.0, 0.10      # dead within an hour (the rug study's rule): gone, a pool under $1k, or 90% down
 TODAY_MIN_N = 10                     # today's share is given as a percentage from this many results on
-CARD_LINE = 60                       # an agent card's line: at most this many characters (the live view's "Now: ..." line too)
+CARD_LINE = 160                      # an agent card's line: at most this many characters (the live view's "Now: ..." line too); it wraps, never cut short
 HOSTS = (("curve list", "Curve list (pump.fun)"), ("curve trades", "Curve trades (live feed)"), ("curve watch", "Curve watch"),   # the curve watch's (curve_hosts)
          ("dexscreener", "DexScreener"), ("rugcheck", "RugCheck"), ("pump.fun", "pump.fun"), ("pumpfun", "pump.fun"), ("geckoterminal", "GeckoTerminal"),
          ("rpc", "Solana RPC"), ("jupiter", "Jupiter"), ("launchlab", "LaunchLab"), ("github", "GitHub"), ("supabase", "Supabase"),
@@ -62,7 +62,7 @@ HOSTS = (("curve list", "Curve list (pump.fun)"), ("curve trades", "Curve trades
                                                                 # and X's tweet endpoint (radar_src's host label "x tweets")
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 LOOK = {"running": ("running", "running"), "done": ("done", "done"), "late": ("fallback", "late"), "stopped": ("failed", "stopped"), "off": ("skipped", "switched off"),
-        "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}     # stopped is red, late amber: the radar's colours on the New tab
+        "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}     # stopped is red, late amber: the radar's colours on the Radar tab
 QUIET = ("off", "hours", "none")     # states whose last check is not news: no notes, no host chips
 CHIP = {"running": "neutral", "fallback": "warn", "failed": "bad", "done": "good"}
 SOON_MS, ROUND_MS = 10_000, 180_000  # the desk says "round in progress" from 10 s after the doc's next round for up to 3 minutes
@@ -79,7 +79,7 @@ CURVE_HST = re.compile(r"[a-z]{1,12}")   # a curve host's state as page_radar's 
 HOST_FINE = ("ok", "unavailable")    # host states that are no problem: plain chips, after the problems ("unavailable": the curve trades a client
                                      # without a paid key never gets; the watch reads pump.fun's list, its normal mode)
 CHAT_CHIPS = 3                       # a message names this many chips, then "+N more"
-TOO_FEW = 20                         # the greens' 1 h prices before the record gives shares (the New tab's Track record: MemebotRadar.TOO_FEW)
+TOO_FEW = 20                         # the greens' 1 h prices before the record gives shares (the Radar tab's Track record: MemebotRadar.TOO_FEW)
 # the chat's text from the doc: these become spaces (controls, C1 too, bidi marks, embeddings, overrides and isolates, a BOM), a superset of
 # both whitelists' sets (page_radar._str, MemebotRadar.clean's str), so the build and the script show the same text whichever cut it first,
 # and no symbol turns the rest of a line around; a chip of nothing but CHAT_BLANK (what Python's strip() or the script's trim() drops) says
@@ -99,7 +99,7 @@ try:
 except ImportError:                   # a copy of the code without page_radar.py: the names as words
     LABELS = {}
 try:
-    from page_radar import clean_doc  # the New tab's whitelist: the doc the radar's event carries to the desk's chat
+    from page_radar import clean_doc  # the Radar tab's whitelist: the doc the radar's event carries to the desk's chat
 except ImportError:                   # without page_radar.py there is no radar on New and no event: no chat
     clean_doc = None
 
@@ -206,7 +206,7 @@ def is_round(doc):
 
 
 def radar_state(doc, ref):
-    """running | done | late | stopped | off | hours | none at the time ref (ms), as the New tab's MemebotRadar.radarState names them: a
+    """running | done | late | stopped | off | hours | none at the time ref (ms), as the Radar tab's MemebotRadar.radarState names them: a
     round is done until its next round is due (doc next, else an hour after it) and 30 minutes more, then late for an hour, then stopped."""
     if not doc:
         return "none"
@@ -224,7 +224,7 @@ def radar_state(doc, ref):
 
 
 def next_words(doc, now, scan, hhmm):
-    """The next round after a round (the New tab's pill says the same: MemebotRadar.nextWords): "next about HH:MM" until doc next, then
+    """The next round after a round (the Radar tab's pill says the same: MemebotRadar.nextWords): "next about HH:MM" until doc next, then
     "next due since HH:MM"; without a next (a round by hand more than 3 h after the scan's last one) the next full scan starts one:
     "next after the HH:MM scan" from the scan strip's estimate (scan, ms; an hour later each time that scan should be over by now),
     else "next after the next full scan". now: ms (None: the round's own time)."""
@@ -306,7 +306,7 @@ def _e(s):
 
 
 def ext_panel(a, R):
-    """The Launch radar in the Analysts panel: its job, its state now (the radar's script on the New tab updates it), what its last check found,
+    """The Launch radar in the Analysts panel: its job, its state now (the radar's script on the Radar tab updates it), what its last check found,
     its notes, the services it calls and its last lines."""
     doc = a.get("doc") or {}
     quiet = a["state"] in QUIET              # switched off, outside its hours, never ran: its last check's notes and hosts are old news
@@ -326,13 +326,13 @@ def ext_panel(a, R):
 
 # ---------------------------------------------------------------- the radar desk on top of the Office tab
 def ago(ms):
-    """'just now' under a minute, else '34 min ago', '3 h ago', '2 days ago' (the New tab's MemebotRadar.ago)."""
+    """'just now' under a minute, else '34 min ago', '3 h ago', '2 days ago' (the Radar tab's MemebotRadar.ago)."""
     m = ms / 60000.0
     return "just now" if ms < 60_000 else ("%d min" % m if m < 60 else "%d h" % (m / 60) if m < 2880 else "%d days" % (m / 1440)) + " ago"
 
 
 def desk_look(st, doc, now, hhmm, labels=None):
-    """The desk for a radar state (radar_state's, the New tab's MemebotRadar.radarState) at the time now (ms): its light, its state in words,
+    """The desk for a radar state (radar_state's, the Radar tab's MemebotRadar.radarState) at the time now (ms): its light, its state in words,
     the line after it, whether the stations are hidden (quiet: switched off, outside its hours, not started) or the last round's (dim: late,
     stopped, failing), and the four stations [key, name, [[class, number], ...], line]. "round in progress": the doc's next round is 10 s to 3
     minutes due and its doc not here yet. A degraded doc (rounds failing: launch_radar.degraded drops the list) checked nothing: its stations
@@ -380,7 +380,7 @@ def desk_look(st, doc, now, hhmm, labels=None):
 def desk(D, R):
     """The Launch radar's desk on top of the Office tab: its state line and its four stations (desk_look), from mb/radar_live.json as the scan
     found it (its state judged at that scan's start: radar_ref); the script redraws it from the radar's event. The desk is the label of the
-    New tab's radio: a tap opens the radar (the installed app: its hash link, as "Open the radar"). Under it, outside the label (a list is
+    Radar tab's radio: a tap opens the radar (the installed app: its hash link, as "Open the radar"). Under it, outside the label (a list is
     no label's content), the desk's chat about the same round (desk_chat), from the doc the radar's event carries (page_radar's whitelist),
     dimmed while the round is old news (late, stopped; a failing radar's one line is news)."""
     doc = radar_doc(D.get("dir"))
@@ -395,7 +395,7 @@ def desk(D, R):
         chat = desk_chat(chat_doc(D.get("dir")), ref, hhmm) if doc else []      # no doc the desk counts (none, a wild time): no chat either
     except Exception:                    # the chat is an extra: a doc it cannot read leaves the desk as it is, without a chat
         chat = []
-    return ('<style>%s</style><div class="odk-box"><label class="odesk" for="tab-young" data-po-desk data-po-tz="%s" title="Open the radar on the New tab (fake money only)">'
+    return ('<style>%s</style><div class="odk-box"><label class="odesk" for="tab-young" data-po-desk data-po-tz="%s" title="Open the radar on the Radar tab (fake money only)">'
             '<span class="odk-h"><span class="odk-dot %s" data-pd-dot aria-hidden="true"></span><b>Launch radar</b><span class="odk-w" data-pd-word>%s</span>'
             '<span class="odk-m" data-pd-meta%s>%s</span></span><span class="odk-g%s" data-pd-g%s>%s</span></label>%s</div>') % (
         DESK_CSS, "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", v["light"], _e(v["word"]), "" if v["meta"] else " hidden", _e(v["meta"]),
@@ -404,7 +404,7 @@ def desk(D, R):
 
 # ---------------------------------------------------------------- the desk's chat under the radar desk
 def chat_doc(d):
-    """mb/radar_live.json through the New tab's whitelist (page_radar.clean_doc, the doc MemebotRadar.clean hands the 'memebot-radar' event),
+    """mb/radar_live.json through the Radar tab's whitelist (page_radar.clean_doc, the doc MemebotRadar.clean hands the 'memebot-radar' event),
     so the chat at build time reads what the script reads later; None without the file or page_radar.py."""
     return clean_doc(M.load_json(os.path.join(d, "radar_live.json"), None)) if d and clean_doc else None
 
@@ -461,7 +461,7 @@ def chat_record(r):
     """The Record's line from radar.json record (the greens: calls without traps, their 1 h results; hindsight). With record.known's
     counts (whole numbers it may print, n from TOO_FEW on, neither count above n: app.radar_record's rule) the counts the push says,
     "Greens so far: 3 of 26 doubled within 1 h, 6 rugged (hindsight)". Else '' while it has no calls; shares only from TOO_FEW 1 h
-    prices on, as the New tab's Track record (MemebotRadar.recLine); the calls alone when a share is missing (or is no share: outside
+    prices on, as the Radar tab's Track record (MemebotRadar.recLine); the calls alone when a share is missing (or is no share: outside
     0 to 1)."""
     if not isinstance(r, dict):
         return ""
@@ -925,7 +925,7 @@ def scan_strip(D, R):
     info = ("The full scan checks every source, names the pick and runs the paper account, about once an hour (about 26 minutes). "
             "The next start is estimated from the last scans. Scan now opens its page on GitHub: tap “Run workflow” there and come back in about ten "
             "minutes; a start while a scan runs waits until it ends. The page is rebuilt after every scan and reloads itself (the app when you come "
-            "back to it). The launch radar on the New tab runs one quick round right after each scan; each scan can be started on its own, and both "
+            "back to it). The launch radar on the Radar tab runs one quick round right after each scan; each scan can be started on its own, and both "
             "can run at the same time.")
     return ('<style>%s</style><div class="sstrip" data-sstrip data-run-t="%d" data-next="%d" data-po-tz="%s"><span class="sdot%s" data-ss-dot aria-hidden="true"></span>'
             '<b>Full scan</b><span class="sst" data-ss-state>%s</span><span class="sst" data-ss-next>next ≈ %s</span>'
@@ -970,7 +970,7 @@ DESK_CSS = r"""
 .odk-m { flex-basis:100%; padding-left:17px; color:var(--muted); font-variant-numeric:tabular-nums } .odk-m[hidden], .odk-g[hidden] { display:none }
 .odk-dot { width:9px; height:9px; border-radius:50%; background:var(--muted); flex:none } .odk-dot.running { background:var(--good-mark); animation:opulse 2s ease-in-out infinite }
 .odk-dot.done { background:var(--good-mark) } .odk-dot.fallback { background:var(--warn-mark) } .odk-dot.failed { background:var(--bad-mark) }
-.odk-g { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px } .odk-g.dim { opacity:.6 }
+.odk-g { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px } .odk-g.dim .odk-s { background:none; box-shadow:inset 0 0 0 1px var(--line) }   /* an old round: framed, never faded */
 .odk-s { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:0 6px; min-width:0; padding:6px 8px; border-radius:8px; background:color-mix(in srgb,var(--fg) 4%,transparent) }
 .odk-s .k { font-size:var(--fs-xs); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .odk-s b { font-size:15px; font-weight:600; color:var(--fg); font-variant-numeric:tabular-nums; white-space:nowrap } .odk-s b span + span::before { content:"·"; margin:0 3px; color:var(--muted); font-weight:400 }
@@ -979,13 +979,13 @@ DESK_CSS = r"""
 @media (min-width:700px) { .odk-g { grid-template-columns:repeat(4,minmax(0,1fr)) } .odk-m { flex-basis:auto; padding-left:0 } .odk-w + .odk-m::before { content:"·"; margin-right:8px } }
 @media (prefers-reduced-motion: reduce) { .odk-dot.running { animation:none } .odesk:active { transform:none } }
 /* the desk's chat right under it (page_office.desk_chat): one row a message, the speaker's badge in its station's colour (Scout blue, Checks
-   green, Skeptic red, Desk grey, Record amber), its name and the text wrapping beside it, small as the stations' lines on a phone; dimmed
-   while the round is old news (late, stopped): the badges faded, the text in muted colours (no opacity on the text: it stays readable,
+   green, Skeptic red, Desk grey, Record amber), its name and the text wrapping beside it, small as the stations' lines on a phone; muted
+   while the round is old news (late, stopped): the badges grey, the text in muted colours (no opacity anywhere: it stays readable,
    4.5:1 and more in both themes). From 1000 px two columns in reading order: the second coin's thread starts the second one
    (a column break before its Scout line, the Record's line below it); a chat of one thread is balanced over both by height */
 .odk-box { display:grid; gap:6px; min-width:0 }
 .ochat { list-style:none; margin:0; padding:2px 10px; display:grid; border:1px solid var(--line); border-radius:12px; background:var(--surface); min-width:0 }
-.ochat[hidden] { display:none } .ochat.dim .och-a { opacity:.6 } .ochat.dim .och-t { color:var(--muted) } .ochat.dim .och-t b { color:var(--fg2) }
+.ochat[hidden] { display:none } .ochat.dim .och-a { color:var(--muted) } .ochat.dim .och-t { color:var(--muted) } .ochat.dim .och-t b { color:var(--fg2) }
 .och { display:grid; grid-template-columns:18px minmax(0,1fr); gap:7px; align-items:start; padding:4px 0; min-width:0; break-inside:avoid } .och + .och { border-top:1px solid var(--line2) }
 .och-a { width:18px; height:18px; border-radius:5px; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb,currentColor 15%,transparent) }
 .och-a svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round }
@@ -1000,25 +1000,30 @@ DESK_CSS = r"""
 CSS = r"""
 .fold-lite > summary { min-height:44px; display:flex; align-items:center }   /* a 44 px tap target */
 /* the office's agent cards, the Launch radar's panel and the daily overview (page_office.py); page tokens only, light and dark */
-/* the agent cards: 2 columns on a phone, 4 from 700 px; a card is icon + number, name, one line (phone) or icon, name, number and one line */
+/* the agent cards: 2 columns on a phone, 4 from 700 px; a card is its icon, name and number in one row, then its line (it wraps, never cut) */
 .ocards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
-.ocard { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"ic . nu" "nm nm nm" "ln ln ln"; align-items:center; gap:4px 8px; min-width:0;
-  padding:9px 10px 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface); cursor:pointer; position:relative }
+.ocard { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"ic nm nu" "ln ln ln"; align-items:center; gap:3px 6px; min-width:0;
+  padding:8px 10px 7px; border:1px solid var(--line); border-radius:10px; background:var(--surface); cursor:pointer; position:relative }
 .ocard:hover { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)) } .ocard:active { transform:translateY(1px) }
 .ocard:has(> .olt.failed) { border-color:color-mix(in srgb,var(--bad-mark) 55%,var(--line)) } .ocard:has(> .olt.fallback) { border-color:color-mix(in srgb,var(--warn-mark) 55%,var(--line)) }
-.ocard .olt { grid-area:ic; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb,currentColor 15%,transparent) }
-.ocard .olt svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round } .ocard .olt b { font-size:13px; line-height:1 }
-.ocard .ocn { grid-area:nm; font-weight:600; font-size:var(--fs-s); line-height:1.25; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.ocard .ocs { grid-area:nu; justify-self:end; font-size:15px; font-weight:600; line-height:1.2; color:var(--fg); font-variant-numeric:tabular-nums; white-space:nowrap }
-.ocard .ocl { grid-area:ln; font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ocard .olt { grid-area:ic; width:22px; height:22px; border-radius:6px; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb,currentColor 15%,transparent) }
+.ocard .olt svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round } .ocard .olt b { font-size:13px; line-height:1 }
+.ocard .ocn { grid-area:nm; font-weight:600; font-size:var(--fs-s); line-height:1.25; color:var(--fg); white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:break-word }
+.ocard .ocs { grid-area:nu; justify-self:end; font-size:var(--fs-s); font-weight:600; line-height:1.2; color:var(--fg); font-variant-numeric:tabular-nums; white-space:nowrap }
+.ocard .ocl { grid-area:ln; font-size:var(--fs-xs); line-height:1.3; color:var(--fg2); white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere }
 .ocard .ocl[hidden], .ocard .chip[data-live-chip] { display:none }
 .olt.done { color:var(--good-mark) } .olt.failed { color:var(--bad-mark) } .olt.fallback { color:var(--warn-mark) } .olt.running { color:var(--accent) } .olt.skipped { color:var(--muted) }
 /* during a scan (the live view): a card at work pulses and shows its live line instead of last run's, a waiting card is faded as on the floor */
 .ocard[data-live="work"] .olt { color:var(--accent); animation:opulse 1.2s ease-in-out infinite } .ocard[data-live="done"] .olt { color:var(--good-mark) }
-.ocard[data-live="fail"] .olt { color:var(--bad-mark) } .ocard[data-live="wait"] .olt { color:var(--muted) } .ocard[data-live="wait"] { opacity:.55 }
+.ocard[data-live="fail"] .olt { color:var(--bad-mark) } .ocard[data-live="wait"] .olt { color:var(--muted) } .ocard[data-live="wait"] { border-style:dashed }
 .ocard:has(> .ocl[data-live-line]:not([hidden])) > .ocl:not([data-live-line]) { display:none }
 @media (prefers-reduced-motion: reduce) { .ocard[data-live="work"] .olt { animation:none } .ocard:active { transform:none } }
-@media (min-width:700px) { .ocards { grid-template-columns:repeat(4,minmax(0,1fr)) } .ocard { grid-template-areas:"ic nm nu" "ln ln ln"; padding:10px 12px 9px } }
+@media (min-width:700px) { .ocards { grid-template-columns:repeat(4,minmax(0,1fr)) } .ocard { padding:10px 12px 9px } }
+/* a phone: the name and the number in one row (the badge goes; a failed or fallback card keeps its coloured frame), the line wraps under them;
+   the narrowest phones one card a row, so a name never breaks inside a word */
+@media (max-width:560px) { .ocard { grid-template-areas:"nm nm nu" "ln ln ln" } .ocard .olt { display:none }
+  .ocard[data-live="work"] { border-color:var(--accent) } .ocard[data-live="fail"] { border-color:var(--bad-mark) } }
+@media (max-width:360px) { .ocards { grid-template-columns:minmax(0,1fr) } }
 /* the paper account's line under the cards */
 .obal { display:grid; gap:4px; padding:10px 12px 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface); min-width:0 }
 .obal-h { display:flex; align-items:baseline; gap:4px 10px; flex-wrap:wrap; min-width:0 } .obal-h .k { font-size:var(--fs-xs); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:500 }
@@ -1066,7 +1071,7 @@ details.ofold > .ofold-in { display:grid; gap:16px; min-width:0 } details.ofold 
 .ohb-leg .nowk::before { display:none } .oday details .ohb-leg { margin-bottom:8px } .oday th, .oday td { padding:6px 8px }
 """ + hour_css()
 
-# The page script: the Launch radar's desk on top and its floor desk and panel follow the radar's script on the New tab (window event memebot-radar,
+# The page script: the Launch radar's desk on top and its floor desk and panel follow the radar's script on the Radar tab (window event memebot-radar,
 # detail {doc, state, via, now}); the full scan's strip follows the office's live script (memebot-live, detail {state, status}) and finds the
 # repository for its Scan now link. Text only through textContent; nothing is fetched. MemebotOffice.look, .desk, .scan and .next are the
 # decisions (node checks them).
@@ -1135,7 +1140,7 @@ function coinTalk(c,t,fmt){
   return out;}
 var O=window.MemebotOffice={
   // the radar's light, word, line and small number for its state (page_office.look says the same at build time)
-  // a round's next one (page_office.next_words; MemebotRadar.nextWords on the New tab): now and scan (the strip's next start) in ms
+  // a round's next one (page_office.next_words; MemebotRadar.nextWords on the Radar tab): now and scan (the strip's next start) in ms
   nextWords:function(d,now,scan,fmt){now=isn(now)?now:+d.t;
     if(isn(d.next)&&d.next>0)return (now<d.next?'next about ':'next due since ')+fmt(d.next);
     if(isn(scan)&&scan>0){var s=scan,ref=Math.max(+d.t||0,now);while(s+SCAN_LEN<ref)s+=HOUR;return 'next after the '+fmt(s)+' scan';}
@@ -1272,7 +1277,7 @@ function link(){
 }
 window.addEventListener('memebot-radar',function(e){O.radar(e&&e.detail);});
 D.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;
-  // "Open the radar" and the desk on top: the browser page checks the New tab's radio (the label); the installed app switches tabs on a hash
+  // "Open the radar" and the desk on top: the browser page checks the Radar tab's radio (the label); the installed app switches tabs on a hash
   // change (#tab-radar opens New at its top, where the radar is), so its bar follows
   if(t.closest('[data-po-radar] label, label[data-po-desk]')&&D.documentElement.classList.contains('app')){e.preventDefault();try{location.hash='#tab-radar';}catch(x){}return;}
   // a tap on a card picks its department (the card is the radio's label), opens the Details fold and brings the panel into view (on a

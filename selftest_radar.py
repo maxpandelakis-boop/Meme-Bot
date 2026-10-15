@@ -784,11 +784,11 @@ def unit_radar(T, P, tmp, name, now=T0, extra=None, log=None, clock=None):
                                 "--no-github"] + (extra or [])), log=log or (lambda s_: None), traps=T, peak=P, clock=clock)
 
 
-def fresh_remote(T, tmp, name, now, **kw):
-    """A bare remote with only radar-feed (feed_files(T, now, **kw))."""
+def fresh_remote(T, tmp, name, now, t3=None, **kw):
+    """A bare remote with only radar-feed (feed_files(T, now, **kw); t3: its t3skip.json too, a dict or raw bytes)."""
     rem = os.path.join(tmp, name + ".git")
     git("init", "-q", "--bare", rem)
-    put_branch(rem, "radar-feed", feed_files(T, now, **kw), tmp)
+    put_branch(rem, "radar-feed", dict(feed_files(T, now, **kw), **({"t3skip.json": t3} if t3 is not None else {})), tmp)
     return rem
 
 
@@ -833,7 +833,7 @@ def checks(check, env_=None):
         # ---- R1, R2, R4 (first part), R7 (refs), R5 (no successor): a loop run of 4 cycles at T0
         print("== launch radar R1: 4 cycles on the fixtures -> radar.json and a record for every eligible coin")
         sink = Sink()
-        code, R, lines, secs = run_radar(T, P, url, remote, os.path.join(tmp, "rdA"), T0, minutes=10, notifier=sink)
+        code, R, lines, secs = run_radar(T, P, url, remote, os.path.join(tmp, "rdA"), T0, minutes=10, notifier=sink, envs={"MEMEBOT_SWITCH_AT": str(T0 - H)})
         heads_a = list(mock.heads)
         doc, recs = radar_json(remote), hour_recs(remote)
         raw = json.dumps(doc, separators=(",", ":"))
@@ -846,6 +846,14 @@ def checks(check, env_=None):
         order = [c["sym"] for c in coins]
         check(coins and all(c["v"] == "good" for c in coins) and len(coins) <= 5 and all(c["age"] < 10 for c in coins + (doc.get("others") or [])) and order == ["CLEAN", "CLUSTER"],
               "coins: only good ones, at most 5, every pool under 10 min, ordered by upside (%s); %d in the fold" % (order, len(doc.get("others") or [])))
+        pbs = {c["sym"]: c.get("pb") for c in coins}
+        cl_ = recs.get(by["CLEAN"]) or {}
+        push1 = next((e[0] for e in cl_.get("rt") or [] if e[1] == "good" and e[3] == 1), None)
+        check(pbs == {"CLEAN": 1, "CLUSTER": 0} and all(isinstance(c.get("pb"), int) for c in coins) and isinstance(cl_.get("sigG"), dict)
+              and push1 is not None and cl_.get("sigGt") == push1 and "sigG" not in (recs.get(by["CLUSTER"]) or {}) and "sigGt" not in (recs.get(by["CLUSTER"]) or {}),
+              "TR16 every radar.json coin has pb (bought on paper by radar_paper's rule 2, 0 or 1), the switch an hour before the run: CLEAN 1, "
+              "CLUSTER (good, a holder cluster) 0 %s; the record keeps the signals of its first push-worthy green rating (sigG) and that rating's "
+              "time (sigGt) only where there is one" % pbs)
         check(set(recs) == eligible and all(len(r["rt"]) == 4 for a, r in recs.items() if a != by["INSTA"]) and len(recs[by["INSTA"]]["rt"]) >= 3
               and all(r.get("found") and r.get("seenAge") is not None for r in recs.values()) and not {by[n] for n in ("OLD", "COPY", "LOWLIQ", "CURVE")} & set(recs),
               "a record for each of the %d eligible coins (none for OLD, the copy of a bigger ticker, LOWLIQ under $5k or CURVE still on its launch "
@@ -992,6 +1000,29 @@ def checks(check, env_=None):
               "x_copied for a coin without a mint time is counted from its first sighting (traps.x_reuse's reference), not from now: in the "
               "radar's own index only the coin 11 minutes older counts, not the one 5 minutes older (%s); in the scan's index a coin 7 "
               "minutes older than the first sighting is not counted (%s)" % (x_local, x_feed))
+        a_pb, tp_ = addr(750), T0 - 30 * MIN       # good and push-worthy at tp_ (pool 2 minutes old), then good but not push-worthy
+        Ru.docs["pb"] = {"coins": {a_pb: {"addr": a_pb, "sym": "PBC", "pool": tp_ - 2 * MIN, "first": tp_,
+                                          "rt": [[tp_, "good", 0.0, 1, 1e-5, 2], [tp_ + 2 * MIN, "good", 1.0, 0, 1.1e-5, 1]]}}}
+        Ru.rec_hour[a_pb] = "pb"
+        x_no, x_ok = {"addr": a_pb, "push_ok": False}, {"addr": a_pb, "push_ok": True}
+        import radar_paper as RP_pb
+        pb_ = {}
+        for k_, sw_ in (("after", tp_ - H), ("between", tp_ + MIN), ("before", T0 + H)):
+            with env(MEMEBOT_SWITCH_AT=str(sw_)):
+                pb_[k_] = (Ru.paper_bought(x_no, T0), Ru.paper_bought(x_ok, T0))
+        b2_, RP_pb.buys_v2 = RP_pb.buys_v2, lambda *a_, **k_: 1 / 0
+        try:
+            for k_, sw_ in (("err after", T0 - H), ("err before", T0 + H)):
+                with env(MEMEBOT_SWITCH_AT=str(sw_)):
+                    pb_[k_] = (Ru.paper_bought(x_no, T0), Ru.paper_bought(x_ok, T0))
+        finally:
+            RP_pb.buys_v2 = b2_
+            Ru.docs.pop("pb", None)
+            Ru.rec_hour.pop(a_pb, None)
+        check(pb_ == {"after": (1, 1), "between": (0, 0), "before": (0, 0), "err after": (0, 1), "err before": (0, 0)},
+              "TR16 pb is radar_paper's rule 2, not the current rating: a coin bought at its push-worthy rating after the switch stays 1 when "
+              "its later rating is not push-worthy; 0 when its only push-worthy rating was before the switch and before the switch at all, "
+              "although push_ok is true; when the rule cannot be read, push_ok from the switch on %s" % pb_)
         wo_ = [LR.went_out(o_) for o_ in ({"kind": "radar", "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None}, {"sent": 1, "skipped": None},
                                           {"sent": 2, "skipped": "rate guard"}, {"skipped": "no push sender"}, None, "sent")]
         gh_ = LR.urllib_host(LR.RS.GH_API)
@@ -1047,6 +1078,29 @@ def checks(check, env_=None):
               and all(", 0 pushed " in l for l in liness if re.match(r"^cycle \d+:", l)),
               "a notification that reached no phone (app.notify's answer when none is subscribed: sent 0, nothing skipped): neither radar.json nor the app's row nor the record says pushed, the cycle "
               "line says 0 pushed; the coin stays in pushed.json, so it is never sent later")
+
+        print("== launch radar A1: the push follows the learning trader's radar skip signs (radar-feed t3skip.json)")
+        import radar_paper as RP_
+        b_cl = next(iter(RP_.buys_v2([recs[by["CLEAN"]]], (), 0).values()), None)
+        sg_cl = RP_.signs(b_cl["feat"], b_cl["pts"], b_cl["late"]) if b_cl else {}
+        on = next((f for f, v in sorted(sg_cl.items()) if v is True), None)
+        off = next((f for f, v in sorted(sg_cl.items()) if v is False), None)
+        t3doc = lambda f: {"v": 1, "t3v": 1, "day": "2026-10-16", "asOf": T0 - H, "skip": [f], "texts": ["words of " + f]}
+        runs_t3 = {}
+        for name, t3 in (("on", t3doc(on)), ("off", t3doc(off)), ("bad", b"{not json"), ("none", None)):
+            rem_t = fresh_remote(T, tmp, "remote-t3" + name, T0 + MIN, t3=t3)
+            sink_t = Sink()
+            code_t, R_t, _, _ = run_radar(T, P, url, rem_t, os.path.join(tmp, "rdT3" + name), T0 + MIN, minutes=2.5, notifier=sink_t,
+                                          envs={"MEMEBOT_SWITCH_AT": str(T0 - H)})
+            d_t = radar_json(rem_t)
+            r_t = hour_recs(rem_t).get(by["CLEAN"]) or {}
+            runs_t3[name] = (code_t, any("CLEAN" in g["coins"] for g in sink_t.got), next((c for c in d_t.get("coins") or [] if c["sym"] == "CLEAN"), {}), r_t, R_t.t3skip)
+        on_, off_, bad_, none_ = (runs_t3[k] for k in ("on", "off", "bad", "none"))
+        check(on and off and all(r[0] == 0 for r in runs_t3.values()) and not on_[1] and on_[2].get("t3") == ["words of " + on] and on_[2].get("pb") == 1
+              and any(e[1] == "good" and e[3] == 1 for e in on_[3].get("rt") or []) and on_[4] == {on: "words of " + on}
+              and off_[1] and "t3" not in off_[2] and bad_[1] and bad_[4] == {} and none_[1] and none_[4] == {},
+              "A1 a green coin with a sign the learning trader skips (%s) is not pushed but still rated good, listed with its words (t3) and bought on "
+              "paper (pb 1, push-worthy rating); with a sign it lacks (%s) it is pushed; an unreadable or missing t3skip.json changes nothing" % (on, off))
 
         print("== launch radar R3: later prices, late, gone, outcome")
         check(all("5" in r["later"] for a, r in recs.items() if r["first"] <= T0 + MIN), "the price 5 minutes after first sight is in every record of the first cycle")
@@ -1458,7 +1512,22 @@ def checks(check, env_=None):
         same = []
         for f in ("memebot.py", "fetch.py", "radar.py"):
             p = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (BASE, f)], capture_output=True)
-            same.append(p.returncode == 0 and p.stdout == open(os.path.join(HERE, f), "rb").read())
+            now_b = open(os.path.join(HERE, f), "rb").read()
+            if f == "memebot.py" and p.returncode == 0 and p.stdout != now_b:
+                # the one change since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was). Every changed stretch
+                # of memebot.py names it, and nothing else in it moved
+                import difflib
+                hunks, cur = [], []
+                for ln in difflib.unified_diff(p.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
+                    if ln.startswith("@@"):
+                        cur = []
+                        hunks.append(cur)
+                    elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
+                        cur.append(ln)
+                same.append(bool(hunks) and all(any(k in "\n".join(h) for k in ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL")) for h in hunks)
+                            and not any(ln.startswith("-PAPER_RULE") for h in hunks for ln in h))
+                continue
+            same.append(p.returncode == 0 and p.stdout == now_b)
         import ast
         mods = set()
         for f in ("launch_radar.py", "radar_src.py"):
@@ -1467,10 +1536,10 @@ def checks(check, env_=None):
                     mods |= {a.name.split(".")[0] for a in node.names}
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     mods.add(node.module.split(".")[0])
-        own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak"}
+        own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak", "radar_paper"}
         std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
                                                               "sys", "tarfile", "time", "urllib", "zoneinfo"}
-        check(all(same) and mods - own <= std, "memebot.py, fetch.py and radar.py are byte for byte as at %s (%s); imports: %s" % (BASE, same, sorted(mods - own)))
+        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch (%s); imports: %s" % (BASE, same, sorted(mods - own)))
 
         print("== launch radar R9: no secret in any file, branch, row or log line")
         from selftest import Rest, serve_app, PushSink, APP_SECRET

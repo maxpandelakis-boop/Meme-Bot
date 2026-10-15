@@ -40,6 +40,9 @@ P13 the GeckoTerminal budget of a run: each 429 widens the gap between requests 
     the rest of that run; the radar account's part ends at its share of the deadline (40%, at most 240 s); a part with a share of
     the 429s stops at its last one, leaves GeckoTerminal on and its window unanswered, and the next part goes on with the same
     client and its wider gap; in a run against a mock that 429s every second request the gaps at the mock grow and stop at the cap
+TR5 the minute path (db/memepath/<id>.json, peak.write_path): written once with the documented keys, from the candle holding the entry
+    (a 100x close two minutes before the entry is never stored and changes nothing), dust kept with its volume, never rewritten, nothing
+    for 15-minute candles; peak._book writes it from the candles it priced
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -106,6 +109,7 @@ def peak_checks(check):
         _p11(check, PK, M)
         _p12(check, PK, M)
         _p13(check, PK, M, tmp)
+        _tr5(check, PK, M, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -297,8 +301,11 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
           "the radar account (no radar record here) has nothing to price (%s)" % json.dumps(o1))
     new = set(after) - set(before)
     changed = [k for k in before if k in after and before[k] != after[k]]
-    check(not changed and all(k.startswith(("db/memepeak/", "candles/")) for k in new) and all(re.search(r"_pk\d+\.txt$", k) for k in new if k.startswith("candles/")),
-          "P3 peak.py writes only db/memepeak/<pid>.json and candles/<pool>_pk<minute>.txt, and changes no file it found (%d new files)" % len(new))
+    paths = sorted(k[len("db/memepath/"):-5] for k in new if k.startswith("db/memepath/"))
+    check(not changed and all(k.startswith(("db/memepeak/", "candles/", "db/memepath/")) for k in new) and all(re.search(r"_pk\d+\.txt$", k) for k in new if k.startswith("candles/"))
+          and len(paths) == 7 and set(paths) <= set(docs1) and not any(k.startswith(".pathtmp/") for k in new),
+          "P3 peak.py writes only db/memepeak/<pid>.json, candles/<pool>_pk<minute>.txt and the minute paths db/memepath/<pid>.json (%d, one per "
+          "window priced on minute candles), and changes no file it found (%d new files)" % (len(paths), len(new)))
     g = lambda pid: docs1.get(pid) or {}
     near = lambda a, b, tol=0.01: a is not None and abs(a - b) <= tol * abs(b)
     dh, d0, d2, d3, d4 = g(H_["_id"]), g(Y0["_id"]), g(Y2["_id"]), g(Y3["_id"]), g(Y4["_id"])
@@ -499,6 +506,51 @@ def _p8(check, PK, M):
              (None, "")]
     got = [ft(doc) for doc, _ in cases]
     check(got == [want for _, want in cases], "P8 the filtered chip names the raw best close and the first rule only when a filter lowered the result (%s)" % got)
+
+
+def _tr5(check, PK, M, tmp):
+    print("== peak TR5: the minute path of a priced window (db/memepath)")
+    d = os.path.join(tmp, "tr5")
+    E = 1_791_700_040_000                                        # an entry 20 s into its minute (2026-10-11 06:27:20 UTC)
+    end = E + 6 * HOUR
+    m0 = E // MIN * MIN                                          # the candle holding the entry
+    body = series(m0, [1.0, 1.1, 0.9, 1.3] + [1.2] * 357, vol=lambda i: 3.0 if i == 2 else 2000.0)
+    spike = [[m0 - 2 * MIN, 1e-3, 1e-3, 1e-3, 1e-3, 5000.0]]     # a 100x close two minutes before the entry
+    cands = spike + body
+    r = PK.peak_of(cands, E, end, 1e-5)
+    pid = "2026-10-11T0726-y-PATHY-ADDRPA"
+    ok1 = PK.write_path(d, "pos", pid, cands, E, end, r, "young")
+    fn = os.path.join(d, "db", "memepath", pid + ".json")
+    raw1 = open(fn, "rb").read() if os.path.exists(fn) else b""
+    doc = json.loads(raw1 or b"{}")
+    ok2 = PK.write_path(d, "pos", pid, body, E, end, dict(r, cpx=2e-5), "young")
+    c = doc.get("c") or []
+    check(ok1 and tuple(doc) == PK.PATH_KEYS and doc["v"] == 1 and doc["id"] == pid and doc["kind"] == "pos" and doc["grp"] == "young" and doc["res"] == 1
+          and doc["entryAt"] == E and doc["end"] == end and doc["cpx"] == r["cpx"] == 1e-5 and doc["base"] == r["base"] and doc["dead"] is None
+          and c and c[0] == [(m0 - E) // 1000, 1.0, 2000] and c[0][0] == -20 and len(c) == 360 and max(x[1] for x in c) < 2.0
+          and c[2] == [100, 0.9, 3] and c[1] == [40, 1.1, 2000] and not ok2 and open(fn, "rb").read() == raw1,
+          "TR5 the path is written once with its keys, from the candle holding the entry (%d s before it), the 100x close two minutes earlier "
+          "absent, a dust candle kept with its $3 of volume, never rewritten (a second call with other candles changes nothing)" % -c[0][0] if c else 0)
+    check(PK.path_of(cands, E, end, r, "pos", "young", pid) == PK.path_of(body, E, end, PK.peak_of(body, E, end, 1e-5), "pos", "young", pid)
+          and r == PK.peak_of(body, E, end, 1e-5),
+          "TR5 the pre-entry spike changes neither the window's result nor its path")
+    r15 = PK.peak_of(cands, E, end, 1e-5, res=15)
+    ok15 = PK.write_path(d, "pos", "p15-only", cands, E, end, r15, "young")
+    bad = PK.write_path(d, "pos", "../escape", cands, E, end, r, "young") or PK.write_path(d, "pos", "noc", [], E, end, {"res": 1}, "young")
+    check(not ok15 and not os.path.exists(os.path.join(d, "db", "memepath", "p15-only.json")) and not bad and not glob.glob(os.path.join(d, ".pathtmp", "*")),
+          "TR5 15-minute candles write no path (not exact); an id that is no file name or a window without cpx writes nothing; no temp file stays")
+    # peak._book writes the path from the candles it priced (read once), with the position's group
+    p = {"grp": "hold", "t": E, "entryAt": E, "px": 1e-5, "liq": 50_000.0, "mc": 200_000.0, "pair": "PAIRBOOK", "ticket": 50.0, "paper": M.PAPER_RULE,
+         "sym": "BOOK", "addr": "ADDRBOOK", "_exits": []}
+    PK.write_candles(d, "PAIRBOOK", PK.pool_key(p), cands)
+    ctx = {"runs": [], "early": {}, "marks": {}, "tips": {}, "docs": {}, "pos": {"bookpid": p}, "since": E - HOUR}
+    pk = PK.book(d, ctx, "bookpid", p, {"status": "ok", "res": 1, "key": PK.pool_key(p)}, end + 10 * MIN)
+    bp = M.load_json(os.path.join(d, "db", "memepath", "bookpid.json"), None)
+    PK.write_candles(d, "PAIRB15", PK.pool_key(p), cands)
+    pk15 = PK.book(d, ctx, "book15", dict(p, pair="PAIRB15"), {"status": "ok", "res": 15, "key": PK.pool_key(p)}, end + 10 * MIN)
+    check(pk and pk["state"] == "ok" and isinstance(bp, dict) and bp["grp"] == "hold" and bp["kind"] == "pos" and bp["c"] == c and bp["cpx"] == pk["cpx"]
+          and pk15 and not os.path.exists(os.path.join(d, "db", "memepath", "book15.json")),
+          "TR5 peak._book writes the path of a window priced on minute candles (the same candles as its doc), none for 15-minute candles")
 
 
 def _jdump(path, doc):

@@ -6,7 +6,16 @@ What it does: the best 5 of the radar's first round in each UTC hour are bought 
 radar saw, at the round's time, and so is every coin the radar listed as good in any round (good among that round's best 5; the radar
 makes a round every 2 minutes, and every round's best 5 would be 25 or more buys an hour, more than the peaks job can price). A coin is bought at most once (in its first
 such round; a coin bought before is skipped, no digging deeper). Each buy is marked green when the radar rated it good in that round.
-Two accounts are summed from the same buys: "all 5" and "green only".
+Two accounts are summed from the same buys: "all 5" and "green only". That is rule 1 (v1), for radar rounds before the switch
+(memebot.switch_at()); it is history now and outside the three paper traders (traders.py).
+
+Rule 2 (v2), from the switch on: every coin the radar rates good and push-worthy while its pool is under 10 minutes old is bought on paper
+for RADAR_TICKET (10 EUR), at its first such rating (that rating's time and price), once (its own one-coin-one-buy set: a v1 buy of the
+same coin never blocks it). Its doc carries rule 2, an id ending "-g", the rating's points and upside, the first sight and whether the
+green came later ("late"), and "feat": the signs it had at the buy (feat_of: traps flags on the first-sight signals sig0 and the six
+signs of the user's rug complaint, a1_of), copied so they outlive the 30 days the radar records are kept. A v2 take-profit is booked at
+exactly 11x (as memebot books it), v2 windows are priced before the v1 backlog, and each priced v2 window also gets its minute path
+(peak.write_path, db/memepath). The learning trader reads only buy-time fields (never later, out, peak60, mom or push).
 
 Where the buys come from: the radar's hour docs db/memeradar/<UTC hour>.json (launch_radar.py; the scan's step A imports them into
 the results branch, which keeps 30 days). A record with "top" was among a round's best 5 at least once; its ratings rt
@@ -52,19 +61,21 @@ like one not asked (no try counted). With nothing to price it asks nothing and t
 
 Usage:
   python3 radar_paper.py run --dir mb [--now <ms>] [--deadline-s 150] [--mock URL]   -> one JSON line (the run's summary)
-  python3 radar_paper.py summary --dir mb [--now <ms>]                                -> the two accounts as JSON
+  python3 radar_paper.py summary --dir mb [--now <ms>]                                -> the accounts (rule 1: all 5, green; rule 2) as JSON
 """
 import argparse, json, os, re, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
-import memebot as M      # read only: paper fees (pos_value), the paper rules, load_docs, slug
-import peak as P         # read only: the candle fetch and its pacing, peak_of (the glitch rules), load_candles, dead_of
+import memebot as M      # read only: paper fees (pos_value), the paper rules, load_docs, slug, switch_at
+import peak as P         # read only: the candle fetch and its pacing, peak_of (the glitch rules), load_candles, dead_of, write_path
+import traps             # read only: flag and load_weights (the signs a v2 buy copies at the buy)
 
 RP_V = 1                    # the doc version: a closed or void doc is priced again only when this changes
 COLL = "memeradarpaper"
-TICKET = M.YOUNG_TICKET     # 3 EUR, the new-launch ticket of the paper account
+TICKET = M.YOUNG_TICKET     # 3 EUR, the new-launch ticket of the paper account (rule 1, before the switch)
+RADAR_TICKET = 10.0         # rule 2 (from the switch): 10 EUR on every coin rated good and push-worthy
 BEST_N = 5                  # launch_radar.BEST_N: a round's best 5
 MIN, H = 60_000, 3_600_000
 WINDOW_MS = int(M.HOLD_MAX_H * H)
@@ -78,19 +89,87 @@ EST_AFTER_H = P.EST_AFTER_H
 VRANK = {"good": 0, "watch": 1, "trap": 2}
 STATES = ("open", "waiting", "closed", "void")
 WHYS = ("stop", "tp", "time", "rug")
-PAPER = {"ticket": TICKET, "grp": "young", "paper": M.PAPER_RULE}    # the fee model of every buy (memebot.pos_value)
 DOC_KEYS = ("v", "id", "addr", "sym", "name", "pair", "round", "entryAt", "end", "upd", "px", "liq", "mc", "green", "verdict", "pts", "rank",
             "ticket", "state", "src", "res", "tries", "base", "why", "exitAt", "x", "eur", "pnl", "best", "bestAt", "eurBest", "rawX", "eurRaw",
-            "x6", "dead", "cut", "n")
+            "x6", "dead", "cut", "n", "rule", "first", "late", "up", "feat", "pushAt")
+# the traps flags a v2 buy copies from the record's first-sight signals (sig0), frozen with the learning trader's T3_V = 1
+RADAR_FEATS = ("no_socials", "bot_volume", "pumping_5m", "young_5m", "x_and_paid", "tweet", "lists3", "creator_5pct", "mc_500k", "liq_15pct",
+               "dev_dead", "dev_young", "x_copied", "tweet_shared", "sniped30", "bundle_slot", "fresh_holders", "fund_cluster", "staircase10")
+# the six signs of the user's rug complaint (15 Oct, the spec's A1), read at the green rating (a1_of); A1's no_socials (no socials and no
+# X link) takes the place of the traps flag of that name in "feat"
+RADAR_A1 = ("creator_holds", "serial_dev", "falling", "no_socials", "was_trap", "long_curve")
+A1_CREATOR_PCT, A1_DEV_N, A1_FALL_M5, A1_CURVE_S = 5.0, 100, -10.0, 24 * 3600
+LATE_MS = 60_000            # a green more than a minute after first sight is "late" (no traps found only after first sight)
+
+
+def paper(ticket):
+    """The fee model of a buy of this ticket (memebot.pos_value): a young paper position."""
+    return {"ticket": ticket, "grp": "young", "paper": M.PAPER_RULE}
+
+
+PAPER = paper(TICKET)       # the fee model of a rule-1 buy
 
 
 def num(v):
     return M.num(v)
 
 
-def value(x):
-    """What a TICKET buy brings back sold at x times the price paid, after both paper fees."""
-    return round(M.pos_value(PAPER, 1.0, x), 2) if x is not None else None
+def value(x, ticket=TICKET):
+    """What a buy of this ticket (3 EUR under rule 1, 10 under rule 2) brings back sold at x times the price paid, after both paper fees."""
+    return round(M.pos_value(paper(ticket), 1.0, x), 2) if x is not None else None
+
+
+def _tri(v):
+    return v if isinstance(v, bool) else None
+
+
+def a1_of(rec, t):
+    """The six signs of A1 for a buy at rating time t, {name: True | False | None (unknown)}, from buy-time fields only: the signals of
+    the green rating (sigG, which launch_radar keeps from the first push-worthy good rating on, with its time sigGt) when that rating was
+    at or before t, else those of first sight (sig0, before the buy too: a rule-1 green bought before its first push-worthy rating, a
+    record without sigGt), and the ratings before t. Never sig, later, out, peak60, mom or push.
+      creator_holds  the creator still held over 5%        serial_dev  the creator launched 100 coins or more
+      falling        DexScreener's 5-minute change at -10% or lower
+      no_socials     no socials and no X link              was_trap    a rating "trap" before the green one
+      long_curve     more than 24 h from the mint to the pool"""
+    rec = rec if isinstance(rec, dict) else {}
+    gt = num(rec.get("sigGt"))
+    s = rec.get("sigG") if isinstance(rec.get("sigG"), dict) and gt is not None and gt <= t else rec.get("sig0")
+    s = s if isinstance(s, dict) else {}
+    n = lambda k: num(s.get(k))
+    cp, dev, m5, soc, mtp, x = n("creatorPct"), n("devN"), n("m5"), n("socN"), n("mintToPoolS"), s.get("x")
+    if isinstance(x, str) and x:
+        nosoc = False                       # an X link is a social
+    elif soc is None or not isinstance(x, str):
+        nosoc = None
+    else:
+        nosoc = soc <= 0
+    rt = [e for e in (rec.get("rt") if isinstance(rec.get("rt"), list) else []) if isinstance(e, (list, tuple)) and len(e) >= 2 and num(e[0]) is not None]
+    return {"creator_holds": None if cp is None else cp > A1_CREATOR_PCT, "serial_dev": None if dev is None else dev >= A1_DEV_N,
+            "falling": None if m5 is None else m5 <= A1_FALL_M5, "no_socials": nosoc, "was_trap": any(num(e[0]) < t and e[1] == "trap" for e in rt),
+            "long_curve": None if mtp is None else mtp > A1_CURVE_S}
+
+
+def feat_of(rec, t, W=None):
+    """The signs a v2 buy at rating time t copies into its doc: {name: True | False | None} for the traps flags of RADAR_FEATS on the
+    record's first-sight signals (sig0; all None without them), then the six of A1 (a1_of)."""
+    W = W or traps.load_weights()
+    s0 = rec.get("sig0") if isinstance(rec, dict) and isinstance(rec.get("sig0"), dict) else None
+    out = {k: (_tri(traps.flag(k, s0, W)) if s0 is not None else None) for k in RADAR_FEATS}
+    out.update(a1_of(rec, t))
+    return out
+
+
+def signs(feat, pts, late):
+    """The learning trader's radar signs of one buy (traders.SKIP_FLAGS["radar"], launch_radar's push check), from what the buy stored:
+    "feat:<name>" for each traps flag of RADAR_FEATS (A1's no_socials stands under its own name), the six of A1, "pts2" (2 or more
+    warning points at the buy rating) and "late" (the green came more than a minute after first sight). None: unknown."""
+    f = feat if isinstance(feat, dict) else {}
+    out = {"feat:" + k: _tri(f.get(k)) for k in RADAR_FEATS if k not in RADAR_A1}
+    out.update({k: _tri(f.get(k)) for k in RADAR_A1})
+    out["pts2"] = None if num(pts) is None else num(pts) >= 2
+    out["late"] = _tri(late)
+    return out
 
 
 def buy_id(t, sym, addr):
@@ -145,14 +224,19 @@ def counted(t, first_of_hour):
     return first_of_hour.get(int(t // H)) == t
 
 
-def buys_of(recs, have=()):
-    """{addr: buy} for every coin among the best 5 of the first round of a UTC hour and every coin rated good among a round's best 5, in
-    its first such round, except the coins in have (they already have a doc). A buy: id, addr, sym, name, pair, round, entryAt, end, px (the radar's price when the round is its first sight), liq, mc,
-    green, verdict, pts, rank (1 to 5 in its round), ticket, and _rec (the record, for its later DexScreener points)."""
+def buys_of(recs, have=(), switch=None, have2=()):
+    """The buys of both rules. Rule 1, {addr: buy}, rounds before the switch only (switch: ms, default memebot.switch_at()): every coin
+    among the best 5 of the first round of a UTC hour and every coin rated good among a round's best 5, in its first such round, except
+    the coins in have (they already have a rule-1 doc). A buy: id, addr, sym, name, pair, round, entryAt, end, px (the radar's price when
+    the round is its first sight), liq, mc, green, verdict, pts, rank (1 to 5 in its round), ticket, rule, and _rec (the record, for its
+    later DexScreener points). Rule 2, {id: buy}, from the switch: buys_v2 (have2: the coins with a rule-2 doc)."""
+    switch = M.switch_at() if switch is None else int(switch)
     rounds, out, have, hour_first = rounds_of(recs), {}, set(have), {}
     for t in sorted(rounds):
         hour_first.setdefault(int(t // H), t)
     for t in sorted(rounds):
+        if t >= switch:
+            break                           # rule 1 ends at the switch: a round after it buys nothing here (a v1 doc of old code stays history)
         every = counted(t, hour_first)
         for rank, (_, _, _, a, v, rec) in enumerate(ranked(rounds[t])[:BEST_N], 1):
             if a in out or a in have or not (every or v == "good"):
@@ -163,7 +247,47 @@ def buys_of(recs, have=()):
                       "end": t + WINDOW_MS, "px": num(rec.get("px")) if first is not None and int(first) == t else None, "liq": num(rec.get("liq")),
                       "mc": num(rec.get("mc")), "green": v == "good", "verdict": v, "pts": next((num(e[2]) for e in rec["rt"] if isinstance(e, (list, tuple))
                                                                                                   and len(e) > 2 and num(e[0]) == t), None),
-                      "rank": rank, "ticket": TICKET, "_rec": rec}
+                      "rank": rank, "ticket": TICKET, "rule": 1, "_rec": rec}
+    out.update(buys_v2(recs, have2, switch))
+    return out
+
+
+def buys_v2(recs, have2=(), switch=None):
+    """{id: buy} of rule 2: per coin (its records grouped by address, their ratings merged in time order) the first rating at or after the
+    switch that is good, push-worthy (rt[3] == 1) and made while the pool was under 10 minutes old (an unknown pool counts), unless the
+    coin has a rule-2 doc (have2). The buy is at that rating's time and price (none: the first candle's close, as in rule 1), for
+    RADAR_TICKET, with its points and upside, the record's first sight and first-sight liquidity and market cap, late (the green more than
+    a minute after first sight), feat (feat_of, buy-time fields only) and pushAt (when the phone heard of it: information, never a sign)."""
+    switch = M.switch_at() if switch is None else int(switch)
+    have2, by = set(have2), {}
+    for rec in recs:
+        if isinstance(rec.get("rt"), list):
+            by.setdefault(rec["addr"], []).append(rec)
+    out, W = {}, None
+    for a in sorted(by):
+        if a in have2:
+            continue
+        rows = sorted(((int(num(e[0])), i, e, rec) for i, rec in enumerate(by[a]) for e in rec["rt"]
+                       if isinstance(e, (list, tuple)) and len(e) >= 2 and num(e[0])), key=lambda q: (q[0], q[1]))
+        hit = None
+        for t, _, e, rec in rows:
+            pool = num(rec.get("pool"))
+            if t >= switch and e[1] == "good" and len(e) >= 4 and int(num(e[3]) or 0) == 1 and (not pool or t - pool < AGE_MAX_MS):
+                hit = (t, e, rec)
+                break
+        if hit is None:
+            continue
+        t, e, rec = hit
+        W = W or traps.load_weights()
+        merged = dict(rec, rt=[q[2] for q in rows])           # the coin's ratings from all its records, for "was_trap"
+        first = num(rec.get("first"))
+        b = {"id": buy_id(t, rec.get("sym"), a) + "-g", "addr": a, "sym": str(rec.get("sym") or "?")[:24], "name": str(rec.get("name") or "")[:48],
+             "pair": rec.get("pair") if isinstance(rec.get("pair"), str) and rec.get("pair") else None, "round": t, "entryAt": t, "end": t + WINDOW_MS,
+             "px": num(e[4]) if len(e) > 4 else None, "liq": num(rec.get("liq")), "mc": num(rec.get("mc")), "green": True, "verdict": "good",
+             "pts": num(e[2]) if len(e) > 2 else None, "rank": None, "ticket": RADAR_TICKET, "rule": 2, "first": first,
+             "late": first is not None and t - first > LATE_MS, "up": num(e[5]) if len(e) > 5 else None, "feat": feat_of(merged, t, W),
+             "pushAt": num(rec.get("push")), "_rec": rec}
+        out[b["id"]] = b
     return out
 
 
@@ -182,8 +306,9 @@ def later_points(rec):
 
 
 # ---------------------------------------------------------------- the sale (pure)
-def exit_of(r, cands, entry_at, end, levels, res=1):
-    """The paper rules on one window, after peak.peak_of (r, state ok, with levels: the levels its filter accepted).
+def exit_of(r, cands, entry_at, end, levels, res=1, exact_tp=False):
+    """The paper rules on one window, after peak.peak_of (r, state ok, with levels: the levels its filter accepted). exact_tp (rule 2): a
+    take-profit is booked at exactly TP_X, as memebot books it (rule 1 keeps the accepted level).
     -> {"why": "stop" | "tp" | "time" | "rug", "x": the sale over the price paid (peak's base), "exitAt": ms, "note": text or ""}"""
     base = r["base"]
     dead_at = r["dead"]["at"] if isinstance(r.get("dead"), dict) else None
@@ -204,6 +329,8 @@ def exit_of(r, cands, entry_at, end, levels, res=1):
     hits = sorted([(h[0], k, h[1]) for k, h in (("stop", stop), ("tp", tp)) if h is not None])
     if hits:
         t, why, lv = hits[0]
+        if exact_tp and why == "tp":
+            lv = TP_X
         return {"why": why, "x": P.sig(lv), "exitAt": max(int(t), int(entry_at)), "note": ""}
     if dead_at is not None:
         return {"why": "rug", "x": 0.0, "exitAt": int(dead_at), "note": ""}
@@ -219,10 +346,10 @@ def price(cands, b, res=1):
     r = P.peak_of(cands, b["entryAt"], b["end"], b.get("px"), None, later_points(rec), liq0=b.get("liq"), mc0=b.get("mc"), res=res, levels=levels)
     if r["state"] == "waiting":
         return None
-    out = {"base": r.get("base"), "rawX": r.get("rawX"), "cut": list(r.get("cut") or [])[:8], "n": int(r.get("n") or 0), "res": int(res or 1)}
+    out = {"base": r.get("base"), "cpx": r.get("cpx"), "rawX": r.get("rawX"), "cut": list(r.get("cut") or [])[:8], "n": int(r.get("n") or 0), "res": int(res or 1)}
     if r["state"] == "unit":
         return dict(out, state="void", why="unit")
-    ex = exit_of(r, cands, b["entryAt"], b["end"], levels, res)
+    ex = exit_of(r, cands, b["entryAt"], b["end"], levels, res, exact_tp=(b.get("rule") == 2))
     if ex["note"]:
         out["cut"] = (out["cut"] + [ex["note"]])[:8]
     return dict(out, state="closed", why=ex["why"], x=ex["x"], exitAt=ex["exitAt"], best=r.get("x"), bestAt=r.get("at"), x6=r.get("x6"), dead=r.get("dead"))
@@ -242,19 +369,22 @@ def estimate(b):
 def doc_of(b, now, state, tries=0, src=None, r=None):
     """The doc of one buy in DOC_KEYS order; r: the result of price() or estimate()."""
     r = r or {}
+    ticket = num(b.get("ticket")) or TICKET
     x = r.get("x") if state == "closed" else None
-    eur = value(x) if x is not None else None
+    eur = value(x, ticket) if x is not None else None
     best = r.get("best") if state == "closed" else None
     raw = r.get("rawX")
     doc = {"v": RP_V, "id": b["id"], "addr": b["addr"], "sym": b.get("sym"), "name": b.get("name"), "pair": b.get("pair"), "round": b["round"],
            "entryAt": b["entryAt"], "end": b["end"], "upd": int(now), "px": b.get("px"), "liq": b.get("liq"), "mc": b.get("mc"),
-           "green": bool(b.get("green")), "verdict": b.get("verdict"), "pts": b.get("pts"), "rank": b.get("rank"), "ticket": TICKET,
+           "green": bool(b.get("green")), "verdict": b.get("verdict"), "pts": b.get("pts"), "rank": b.get("rank"), "ticket": ticket,
            "state": state, "src": src, "res": r.get("res") if src in ("m1", "m15") else None, "tries": int(tries),
            "base": r.get("base"), "why": r.get("why") if state in ("closed", "void") else None, "exitAt": r.get("exitAt") if state == "closed" else None,
-           "x": x, "eur": eur, "pnl": round(eur - TICKET, 2) if eur is not None else None, "best": best,
-           "bestAt": r.get("bestAt") if best is not None else None, "eurBest": value(best) if best is not None else None,
-           "rawX": raw, "eurRaw": value(raw) if raw is not None and state == "closed" else None, "x6": r.get("x6") if state == "closed" else None,
-           "dead": r.get("dead") if state == "closed" else None, "cut": list(r.get("cut") or [])[:8], "n": int(r.get("n") or 0)}
+           "x": x, "eur": eur, "pnl": round(eur - ticket, 2) if eur is not None else None, "best": best,
+           "bestAt": r.get("bestAt") if best is not None else None, "eurBest": value(best, ticket) if best is not None else None,
+           "rawX": raw, "eurRaw": value(raw, ticket) if raw is not None and state == "closed" else None, "x6": r.get("x6") if state == "closed" else None,
+           "dead": r.get("dead") if state == "closed" else None, "cut": list(r.get("cut") or [])[:8], "n": int(r.get("n") or 0),
+           "rule": 2 if b.get("rule") == 2 else 1, "first": b.get("first"), "late": b.get("late"), "up": b.get("up"),
+           "feat": b.get("feat") if isinstance(b.get("feat"), dict) else None, "pushAt": b.get("pushAt")}
     return {k: doc.get(k) for k in DOC_KEYS}
 
 
@@ -282,32 +412,36 @@ def write_doc(d, key, doc):
     os.replace(tmp, os.path.join(out_dir, key + ".json"))
 
 
-def all_buys(d):
+def all_buys(d, switch=None):
     """(buys {id: buy}, docs {id: doc}): the docs' buys (a doc is the buy; its record joined by address for the later prices) plus
-    the new ones from the records."""
+    the new ones from the records (buys_of; switch as there). One coin, one buy per rule: a rule-1 doc never blocks a rule-2 buy."""
     recs, docs = records(d), load_docs(d)
     by_addr = {}
     for rec in recs:
         by_addr.setdefault(rec["addr"], rec)
-    buys, have = {}, set()
+    buys, have = {}, {1: set(), 2: set()}
     for key, doc in sorted(docs.items(), key=lambda kv: (num(kv[1].get("round")), kv[0])):
-        if doc["addr"] in have:
-            continue                        # one coin, one buy: a second doc of the same coin is ignored
-        have.add(doc["addr"])
+        rule = 2 if doc.get("rule") == 2 else 1
+        if doc["addr"] in have[rule]:
+            continue                        # one coin, one buy: a second doc of the same coin (and rule) is ignored
+        have[rule].add(doc["addr"])
         t = int(num(doc["round"]))
         buys[key] = {"id": key, "addr": doc["addr"], "sym": str(doc.get("sym") or "?")[:24], "name": str(doc.get("name") or "")[:48],
                      "pair": doc.get("pair") if isinstance(doc.get("pair"), str) and doc.get("pair") else None, "round": t,
                      "entryAt": int(num(doc.get("entryAt")) or t), "end": int(num(doc.get("end")) or t + WINDOW_MS), "px": num(doc.get("px")),
                      "liq": num(doc.get("liq")), "mc": num(doc.get("mc")), "green": doc.get("green") is True, "verdict": doc.get("verdict"),
-                     "pts": num(doc.get("pts")), "rank": num(doc.get("rank")), "ticket": TICKET, "_rec": by_addr.get(doc["addr"])}
-    for b in buys_of(recs, have).values():
+                     "pts": num(doc.get("pts")), "rank": num(doc.get("rank")), "ticket": num(doc.get("ticket")) or (RADAR_TICKET if rule == 2 else TICKET),
+                     "rule": rule, "first": num(doc.get("first")), "late": doc.get("late") if isinstance(doc.get("late"), bool) else None,
+                     "up": num(doc.get("up")), "feat": doc.get("feat") if isinstance(doc.get("feat"), dict) else None, "pushAt": num(doc.get("pushAt")),
+                     "_rec": by_addr.get(doc["addr"])}
+    for b in buys_of(recs, have[1], switch, have[2]).values():
         buys[b["id"]] = b
     return buys, docs
 
 
 def items(buys, docs, now):
-    """The windows to price this run: closed windows without a settled doc and with fewer than MAX_TRIES empty answers, oldest
-    first, at most MAX_ITEMS. -> [peak.fetch item]"""
+    """The windows to price this run: closed windows without a settled doc and with fewer than MAX_TRIES empty answers, rule 2 first,
+    oldest first within a rule, at most MAX_ITEMS. -> [peak.fetch item]"""
     todo = []
     for key, b in buys.items():
         if now < b["end"] + SETTLE_MS or settled(docs.get(key)):
@@ -316,8 +450,9 @@ def items(buys, docs, now):
         tries = int(num(old.get("tries")) or 0) if isinstance(old, dict) and old.get("v") == RP_V and old.get("state") == "waiting" else 0
         if tries >= MAX_TRIES:
             continue
-        todo.append({"pid": key, "pool": b.get("pair") or "", "key": "rp%d" % (b["entryAt"] // MIN), "entryAt": b["entryAt"], "end": b["end"], "tries": tries})
-    todo.sort(key=lambda it: (it["entryAt"], it["pid"]))
+        todo.append({"pid": key, "pool": b.get("pair") or "", "key": "rp%d" % (b["entryAt"] // MIN), "entryAt": b["entryAt"], "end": b["end"], "tries": tries,
+                     "rule": 2 if b.get("rule") == 2 else 1})
+    todo.sort(key=lambda it: (0 if it["rule"] == 2 else 1, it["entryAt"], it["pid"]))     # rule 2 first, then the rule-1 backlog
     return todo[:MAX_ITEMS]
 
 
@@ -332,8 +467,14 @@ def book(d, b, info, now, old):
         return None
     if status == "ok":
         res = int(info.get("res") or 1)
-        r = price(P.load_candles(d, b.get("pair"), info["key"]), b, res)
+        cands = P.load_candles(d, b.get("pair"), info["key"])
+        r = price(cands, b, res)
         if r is not None:
+            if res == 1 and r["state"] == "closed":
+                try:                        # the minute path for exact replays (db/memepath, written once; it never fails the booking)
+                    P.write_path(d, "radar", b["id"], cands, b["entryAt"], b["end"], r)
+                except Exception as e:
+                    print("radar account: no path for %s (%s)" % (b["id"], type(e).__name__), file=sys.stderr)
             return doc_of(b, now, r["state"], tries, "m15" if res == 15 else "m1", r)
         status = "empty"
     tries = MAX_TRIES if status == "nopool" else tries + 1
@@ -417,17 +558,20 @@ def raw_cut(r):
     return raw is not None and best is not None and raw > 1.05 * best
 
 
-def account(d, now):
-    """The radar account for the page: {"rows" (newest first), "all" and "green" (stats), "rounds" (radar rounds in the records),
-    "lastRound" (ms or None), "err"}. Reads only; never raises (an error leaves empty accounts with "err")."""
+def account(d, now, switch=None):
+    """The radar account for the page: {"rows" (rule 1, newest first), "all" and "green" (stats over rule 1: the 3 EUR history),
+    "v2" (stats over rule 2: 10 EUR on the greens from the switch), "rows2" (rule 2, newest first), "rounds" (radar rounds in the
+    records), "lastRound" (ms or None), "err"}. Each row carries its ticket, rule, late, feat and pushAt. Reads only; never raises (an
+    error leaves empty accounts with "err")."""
     try:
-        return _account(d, now)
+        return _account(d, now, switch)
     except Exception as e:      # the page must never fail on this block
-        return {"rows": [], "all": stats([]), "green": stats([]), "rounds": 0, "lastRound": None, "err": "%s: %s" % (type(e).__name__, str(e)[:160])}
+        return {"rows": [], "all": stats([]), "green": stats([]), "v2": stats([]), "rows2": [], "rounds": 0, "lastRound": None,
+                "err": "%s: %s" % (type(e).__name__, str(e)[:160])}
 
 
-def _account(d, now):
-    buys, docs = all_buys(d)
+def _account(d, now, switch=None):
+    buys, docs = all_buys(d, switch)
     rows = []
     for key, b in buys.items():
         doc = docs.get(key) if isinstance(docs.get(key), dict) and docs[key].get("v") == RP_V else None
@@ -439,21 +583,26 @@ def _account(d, now):
         if st == "closed" and (eur is None or eur < 0 or doc.get("why") not in WHYS):
             st = "pricing"                  # an unreadable result is never booked
             eur = None
+        ticket = num(b.get("ticket")) or TICKET
         rows.append({"id": key, "addr": b["addr"], "sym": b["sym"], "name": b["name"], "green": bool(b.get("green")), "verdict": b.get("verdict"),
-                     "rank": b.get("rank"), "round": b["round"], "entryAt": b["entryAt"], "end": b["end"], "ticket": TICKET, "state": st,
+                     "rank": b.get("rank"), "round": b["round"], "entryAt": b["entryAt"], "end": b["end"], "ticket": ticket, "state": st,
+                     "rule": 2 if b.get("rule") == 2 else 1, "late": b.get("late"), "feat": b.get("feat"), "pushAt": b.get("pushAt"),
                      "why": doc.get("why") if doc and st in ("closed", "void") else None, "exitAt": g("exitAt") if st == "closed" else None,
-                     "x": g("x") if st == "closed" else None, "eur": eur, "pnl": round(eur - TICKET, 2) if eur is not None else None,
+                     "x": g("x") if st == "closed" else None, "eur": eur, "pnl": round(eur - ticket, 2) if eur is not None else None,
                      "best": g("best") if st == "closed" else None, "eurBest": g("eurBest") if st == "closed" else None,
                      "rawX": g("rawX") if st == "closed" else None, "eurRaw": g("eurRaw") if st == "closed" else None,
                      "src": doc.get("src") if doc else None, "cut": [str(c)[:120] for c in doc.get("cut") or [] if isinstance(c, (str, int, float))][:8]
                      if doc and isinstance(doc.get("cut"), list) else []})
     rows.sort(key=lambda r: (-r["entryAt"], r["id"]))
+    rows2 = [r for r in rows if r["rule"] == 2]
+    rows = [r for r in rows if r["rule"] != 2]
     times = {int(num(e[0])) for rec in records(d) for e in (rec.get("rt") if isinstance(rec.get("rt"), list) else [])
              if isinstance(e, (list, tuple)) and e and num(e[0])}
     live = M.load_json(os.path.join(d, "radar_live.json"), None)
     t_live = num(live.get("t")) if isinstance(live, dict) and live.get("kind") == "radar" else None
     last = max([t for t in times] + ([int(t_live)] if t_live else []), default=None)
-    return {"rows": rows, "all": stats(rows), "green": stats([r for r in rows if r["green"]]), "rounds": len(times), "lastRound": last, "err": None}
+    return {"rows": rows, "all": stats(rows), "green": stats([r for r in rows if r["green"]]), "v2": stats(rows2), "rows2": rows2, "rounds": len(times),
+            "lastRound": last, "err": None}
 
 
 def main(argv=None):
@@ -474,8 +623,8 @@ def main(argv=None):
         return 0
     acc = account(a.dir, now)
     slim = lambda st: dict(st, best=(st["best"] or {}).get("id"), worst=(st["worst"] or {}).get("id"))
-    print(json.dumps({"all": slim(acc["all"]), "green": slim(acc["green"]), "rounds": acc["rounds"], "lastRound": acc["lastRound"], "n": len(acc["rows"]),
-                      "err": acc["err"]}), flush=True)
+    print(json.dumps({"all": slim(acc["all"]), "green": slim(acc["green"]), "v2": slim(acc["v2"]), "rounds": acc["rounds"], "lastRound": acc["lastRound"],
+                      "n": len(acc["rows"]), "n2": len(acc["rows2"]), "err": acc["err"]}), flush=True)
     return 0
 
 

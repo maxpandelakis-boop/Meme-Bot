@@ -457,6 +457,64 @@ def spot_cycle(d, env=None, code=HERE, search_n=4, remote=None, frozen=False):
     return p, time.time() - t, mock
 
 
+def switch_checks(check):
+    """TR1 and TR2: the same mock recommend cycle once before the switch (MEMEBOT_SWITCH_AT a day after the fake clock: the new launches
+    listed and five bought for 3 EUR each, as before) and once after it (MEMEBOT_SWITCH_AT just before the clock: no new launch listed or
+    bought, no memeyoung doc, the spotter off saying when they ended, the top pick still bought for 50 EUR), the second on a continuing
+    account (paperRule unchanged, its paperSince, two open new launches and one open pick bought before the switch): no reset."""
+    import memebot as M
+    tmp = tempfile.mkdtemp(prefix="memebot-switch-")
+    rid = lambda t: time.strftime("%Y-%m-%dT%H%M%S", time.gmtime(t / 1000))
+    print("== TR1/TR2 the switch: the new launches end, the paper account goes on")
+    dpre, dpost, remote = os.path.join(tmp, "pre"), os.path.join(tmp, "post"), os.path.join(tmp, "live.git")
+    subprocess.run(["git", "init", "-q", "--bare", remote], check=True)
+    p1, _, _ = spot_cycle(dpre, {"MEMEBOT_SWITCH_AT": str(T0 + 24 * H)})
+    since, t_old = T0 - 3 * H, T0 - 2 * H
+    os.makedirs(os.path.join(dpost, "db", "memepos"))
+    os.makedirs(os.path.join(dpost, "db", "memebot"))
+    old = {}
+    for i, (grp, ticket) in enumerate((("young", M.YOUNG_TICKET), ("young", M.YOUNG_TICKET), ("hold", M.TOP_TICKET))):
+        addr = "SwItCh%d" % i + "1" * 38
+        pid = "%s-%s-OLD%d-%s" % (rid(t_old), "h" if grp == "hold" else "y", i, addr[:6])
+        old[pid] = {"grp": grp, "addr": addr, "sym": "OLD%d" % i, "name": "old %d" % i, "pair": "PaIr%d" % i + "2" * 40, "dex": "raydium", "t": t_old, "entryAt": t_old,
+                    "px": 0.001, "mc": 500_000, "liq": 60_000, "vol": 100_000, "score": 60, "tier": grp, "ticket": ticket, "paper": M.PAPER_RULE, "tp": M.HOLD_TP,
+                    "stop": M.HOLD_STOP, "maxH": M.HOLD_MAX_H, "rule": M.RULE}
+        json.dump(old[pid], open(os.path.join(dpost, "db", "memepos", pid + ".json"), "w"))
+    json.dump({"paperRule": M.PAPER_RULE, "paperSince": since, "lastRun": T0 - H}, open(os.path.join(dpost, "db", "memebot", "state.json"), "w"))
+    json.dump({"t": T0 - H, "px": {pid: 0.001 for pid in old}, "liq": {pid: 60_000 for pid in old}}, open(os.path.join(dpost, "db", "memebot", "marks.json"), "w"))
+    before = M.paper_account(M.positions(dpost), since)["n"]
+    p2, _, _ = spot_cycle(dpost, {"MEMEBOT_SWITCH_AT": str(T0 - 1)}, remote=remote)
+    load = lambda d_, coll: {os.path.basename(f)[:-5]: json.load(open(f, encoding="utf-8")) for f in glob.glob(os.path.join(d_, "db", coll, "*.json"))}
+    rec1, rec2 = (json.load(open(os.path.join(x, "db", "memebot", "recommend.json"))) if os.path.exists(os.path.join(x, "db", "memebot", "recommend.json")) else {}
+                  for x in (dpre, dpost))
+    pos1, pos2 = load(dpre, "memepos"), load(dpost, "memepos")
+    young1 = [p for p in pos1.values() if p.get("grp") == "young"]
+    hold1 = [p for p in pos1.values() if p.get("grp") == "hold"]
+    new2 = {k: p for k, p in pos2.items() if k not in old}
+    live = git_live(remote)
+    ended = "new launches ended on " + time.strftime("%b %d", time.gmtime((T0 - 1) // 1000))
+    check(p1.returncode == 0 and rec1.get("young") and rec1.get("youngOf", 0) >= len(rec1["young"]) and len(young1) == M.YOUNG_BUY_N
+          and all(p.get("ticket") == M.YOUNG_TICKET for p in young1) and load(dpre, "memeyoung") and len(hold1) == 1 and hold1[0].get("ticket") == M.TOP_TICKET,
+          "TR1 before the switch: %d new launches listed (of %s), %d bought for %s EUR each, a memeyoung doc, the pick bought for %s EUR"
+          % (len(rec1.get("young") or []), rec1.get("youngOf"), len(young1), M.YOUNG_TICKET, M.TOP_TICKET))
+    hold2 = [p for p in new2.values() if p.get("grp") == "hold"]
+    check(p2.returncode == 0 and rec2.get("young") == [] and rec2.get("youngOf") == 0 and not any(p.get("grp") == "young" for p in new2.values())
+          and not load(dpost, "memeyoung") and len(hold2) == 1 and hold2[0].get("ticket") == M.TOP_TICKET and rec2.get("picks") and rec2["picks"][0].get("bought") == M.TOP_TICKET
+          and (live.get("young") or {}).get("state") == "off" and (live.get("young") or {}).get("why") == ended and "radar.py" not in p2.stderr,
+          "TR1 after the switch: no new launch listed (young %s, youngOf %s) or bought, no memeyoung doc, the pick bought for %s EUR, the spotter off (%r)"
+          % (rec2.get("young"), rec2.get("youngOf"), (hold2[0] if hold2 else {}).get("ticket"), (live.get("young") or {}).get("why")))
+    ex2 = load(dpost, "memeexit")
+    st2 = json.load(open(os.path.join(dpost, "db", "memebot", "state.json")))
+    after = M.paper_account(M.positions(dpost), st2.get("paperSince"))["n"]
+    still = {pid: M.positions(dpost)[pid]["_left"] > 1e-9 for pid in old if old[pid]["grp"] == "young"}
+    whys = {e.get("why") for e in ex2.values()}
+    check(not any(e.get("why") == "reset" for e in ex2.values()) and st2.get("paperSince") == since and st2.get("paperRule") == M.PAPER_RULE
+          and M.PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h" and whys <= {"stop", "tp", "time", "rug"} and after == before + 1 and len(still) == 2,
+          "TR2 the continuing account: no reset, paperSince and paperRule unchanged, the open new launches open (%s) or sold by their rules (%s), %d -> %d positions"
+          % (still, sorted(x for x in whys if x), before, after))
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 def git_live(remote):
     r = subprocess.run(["git", "-C", remote, "show", "live:live.json"], capture_output=True, text=True, encoding="utf-8")
     try:
@@ -1780,14 +1838,14 @@ def app_browser_checks(check, sd, young):
         return
     check(got_badge and info["app"] and info["young"] and info["hidden"] is False and info["cards"] == n and info["status"].startswith("Found at") and info["above"]
           and info["dot"] and info["hscroll"] <= 0 and "With notifications on" in info["hint"] and not errs,
-          "installed app (Chromium, live store): the New coins tab shows the spotter's early list (%d cards, '%s...') above the scored list, its badge says %d, "
+          "installed app (Chromium, live store): the Radar tab shows the spotter's early list (%d cards, '%s...') above the scored list, its badge says %d, "
           "the Office tab has its live dot %s" % (info["cards"], info["status"][:24], n, ("" if not errs else errs[:2])))
     check(office[0].startswith("LIVE") and office[1] >= 3 and done_ok and after == [str(n), False, n] and calls_main["current"] == 1 and calls_main["status"] >= 2 and calls_main["github"] == 0,
           "installed app: the same snapshot feeds the office view (%r) and the early box; when the scan ends the box says so and keeps the list, the office dot goes; "
           "one poller only: %d status reads, current only per new nver (%d: not again for the end's new ver), no GitHub poll (%d)%s" % (
               office[0][:20], calls_main["status"], calls_main["current"], calls_main["github"], "" if done_ok and after == [str(n), False, n] else " %s %s %s" % (done_ok, after, office)))
-    check(aria == ["New coins, %d listed now" % n, "Office, a scan is running now"] and nobadge == [False, "New coins"] and scan_btn >= 44,
-          "installed app: the New coins badge only with a scan's early list (none while the scan has not listed yet), the tabs' badge and dot read out in words"
+    check(aria == ["Radar, %d listed now" % n, "Office, a scan is running now"] and nobadge == [False, "Radar"] and scan_btn >= 44,
+          "installed app: the Radar tab's badge only with a scan's early list (none while the scan has not listed yet), the tabs' badge and dot read out in words"
           " (%s), the full scan's strip has the one Scan now (%d px tall; the Live box with its own button is not shown)" % (aria, scan_btn))
     check(wait_ok and 0 < deep["y"] and -1 <= deep["box"] <= 40 and deep["card"] + 60 <= deep["bar"] and deep["status"].startswith("Found at") and deep["hscroll"] <= 0
           and deep["tok"].startswith("token 12 days old (Raydium LaunchLab Extras) · pumpswap-amm-v2-extended"),
@@ -2657,9 +2715,9 @@ var o={};
     import report as R_h
     check("A.hold=function(){return !!P.busy||cur==='account';}" in pj and "MemebotApp.hold()" in R_h.OFFICE_LIVE_JS and "&&!hold){" in R_h.OFFICE_LIVE_JS
           and "baseCnt" not in pj and ".live .btn { margin-left:auto; display:inline-flex; align-items:center; min-height:44px;" in R_h.CSS
-          and "aria-label',NAMES[t]+(c?', '+c.textContent+(c.classList.contains('good')?' without traps now':' listed now'):'')+(d?', a scan is running now':'')" in pj,
-          "the installed app is not reloaded under a tap: never while on Account or while the notifications card is at work (it reloads at the next answer"
-          " after); the New coins badge only with a scan's early list (or the radar's coins without traps, in green); Scan now 44 px tall; the tabs' badge and dot read out in words")
+          and "aria-label',NAMES[t]+(c?', '+c.textContent+(c.classList.contains('good')?(c.textContent==='1'?' coin':' coins')+' without traps now':' listed now'):'')+(d?', a scan is running now':'')" in pj,
+          "the installed app is not reloaded under a tap: never while on Traders (tab id account) or while the notifications card is at work (it reloads at the next answer"
+          " after); the Radar badge only with a scan's early list (or the radar's coins without traps, in green); Scan now 44 px tall; the tabs' badge and dot read out in words")
 
     # 9. supabase/setup.sql on PostgreSQL (MEMEBOT_PG=<host or socket folder>:<port>)
     pg = os.environ.get("MEMEBOT_PG")
@@ -2678,6 +2736,9 @@ var o={};
 
 
 def main():
+    # the switch (memebot.switch_at) lies 30 days after the fake clock: every existing check keeps the behaviour before it (the new
+    # launches); the checks after it pass switch= (pure functions) or an env with MEMEBOT_SWITCH_AT in the past (subprocesses)
+    os.environ.setdefault("MEMEBOT_SWITCH_AT", str(T0 + 30 * 24 * H))
     mock = Mock()
     srv = serve(mock)
     url = "http://127.0.0.1:%d" % srv.server_address[1]
@@ -3125,12 +3186,14 @@ console.log(JSON.stringify(o));
               [(p.get("sym"), p.get("grp"), p.get("ticket")) for p in hp.values()], [(y.get("sym"), y.get("bought")) for y in yrec[:7]]))
     curve_r = sorted(load_dir(rd, "memecurve").values(), key=lambda c: c["t"])
     check("How a coin is sold" in page and "the first minute candle that closes at 11 times the entry price" in page and "Failing a filter sells nothing" in page
-          and "bought for 50\u00a0€" in page and "bought for 3\u00a0€" in page and "top pick · 50\u00a0€" in page and "new launch · 3\u00a0€" in page and "profit/loss since the restart" in page
-          and "held 0 min of 6h" in page and 'class="tk st"' in page and "sells +1000%" in page and "stop −30%" in page and "paper position" in page and "1 top pick · 5 new launches" in page
+          and "Bought on paper: 50\u00a0€ at " in page and "bought for 3\u00a0€" in page and "top pick · 50\u00a0€" in page and "new launch · 3\u00a0€" in page and "Three paper traders" in page
+          and "held 0 min of 6h" in page and 'class="tk st"' in page and "sells +1000%" in page and "stop −30%" in page and M.PAPER_LABEL in page and "Open positions (6)" in page
           and "sold at the first scan after about" in page and "at the latest" not in page and "sells when a minute candle closes at" in page
           and curve_r and curve_r[-1].get("paper", {}).get("invested") == 65.0 and set(curve_r[-1]["paper"]) == {"invested", "back", "open", "pnl", "n"},
           "page: the paper account, one row per position with its group and ticket, the price bar from the stop to the take-profit, the 6-hour clock, the rule text; the curve doc carries the account")
-    check("Two recommendations" in page and "dexscreener.com/solana/" in page and 'class="embed"' in page, "page shows the recommendations with embedded charts")
+    pp = page.split('<div class="pane" id="pane-pick">', 1)[-1].split('<div class="pane" id="pane-young">', 1)[0]
+    check(("<h2>The pick for the next " in pp or "<h2>Risky pick for the next " in pp) and pp.count('<article class="card rec">') == 2 and "dexscreener.com/solana/" in page
+          and 'class="embed"' in page, "page shows the recommendations (one heading by the top pick's tier, two cards) with embedded charts")
     old_rec = rec
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", rd, "--now", str(T0 + 120000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     rec2 = json.load(open(os.path.join(rd, "db", "memebot", "recommend.json")))
@@ -3138,7 +3201,7 @@ console.log(JSON.stringify(o));
     check(r.returncode == 0 and same(rec2, old_rec), "an offline rerun with the same files keeps the recommendations (%s -> %s; %s)" % ([c["sym"] for c in old_rec.get("picks", [])], [c["sym"] for c in rec2.get("picks", [])], (r.stderr.strip().splitlines() or ["?"])[-1][:100]))
     page2r = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
     check(len(load_dir(rd, "memepos")) == 6 and rec2["picks"][0].get("bought") == "held" and [y.get("bought") for y in (rec2.get("young") or [])[:5]] == ["held"] * 5
-          and not load_dir(rd, "memeexit") and "already held since" in page2r and "already held</span>" in page2r,
+          and not load_dir(rd, "memeexit") and "Already held since" in page2r and "already held</span>" in page2r,
           "a repeat tip of a held coin (top pick or new launch) buys nothing and sells nothing (still 6 positions, %s)" % [c.get("bought") for c in rec2.get("picks", []) + (rec2.get("young") or [])[:5]])
     # the sell rules, in a copy, an hour later: the top pick's pool closes a candle at 11.5x (take-profit +1000%, booked at 11x), a new launch's
     # at 0.5x (stop, booked at 0.5x), one falls 60% in the last hour (fails the crash filter: no sale any more), two pools send no candles
@@ -3172,8 +3235,10 @@ console.log(JSON.stringify(o));
           and e4.get("why") == "stop" and near(e4.get("px"), M.num(px_x[y4["addr"]]["priceUsd"])) and abs(e4["px"] / y4["px"] - 0.6) < 1e-3 and e4.get("eur") == val(y4, e4["px"] / y4["px"]) == 1.64,
           "no candles this run: the run's own price decides, 12x is a take-profit at 11x (31.58 back for 3), 0.6x a stop at that price (%s)" % [(e.get("why"), e.get("eur")) for e in (e3, e4)])
     check(not ex_of(y1_id) and M.num(px_x[y1["addr"]].get("chgH1")) == -60 and -60 <= M.GATE_CRASH["chgH1"] and not ex_of(y2_id)
-          and "take-profit +1000%" in page_x and "stop-loss −30%" in page_x and "Top trades · 4 closed" in page_x,
-          "a coin that fails the crash filter is not sold any more; the page names each sale by the paper rules")
+          and "· 11x target</span>" in page_x and "· stop, price gapped to −50%</span>" in page_x and "· stop, price gapped to −40%</span>" in page_x
+          and "Top trades ·" not in page_x,
+          "a coin that fails the crash filter is not sold any more; the Traders tab's activity names each sale by the paper rules (11x target, a stop "
+          "booked below −35%% with its price) (%s)" % [m_.group(1) for m_ in re.finditer(r'<span class="chip act">Sold</span> <b>[^<]*</b> · ([^<]*)</span>', page_x)][:8])
     hcd = tempfile.mkdtemp(prefix="memebot-hc-")
     os.makedirs(os.path.join(hcd, "candles"))
 
@@ -3254,11 +3319,19 @@ console.log(JSON.stringify(o));
           and len(again) == 1 and Pz[again[0]].get("grp") == "hold" and Pz[again[0]].get("ticket") == 50.0 and not Pz[again[0]]["_exits"] and len(Pz[old1]["_exits"]) == 1
           and sum(1 for p in Pz.values() if p.get("grp") == "young") == 5 and (st_z.get("paper") or {}).get("invested") == 65.0 and (st_z.get("paper") or {}).get("n") == 6,
           "the restart closed the two open old positions at this run's price with the old fees (%s), and the coin of one was bought again under a new id (%s, not %s)" % (resets, again, old1))
-    check("Before the restart (5 trades)" in page_z and "Best within 6 h (hindsight): priced after the next scans." in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
-          and "48-hour limit" in page_z and "old rule · 20\u00a0€" in page_z and "old rule · 17.27\u00a0€" in page_z and "Top trades · 0 closed" in page_z and "65.00" in page_z
+    import page_traders as PT_z                 # the Traders tab: the stop-loss trader's card carries the account (the hero and Top trades are gone)
+    t1_z = re.search(r'<p class="trl">Won \d+ · lost \d+ · open now: .*?</p>', page_z)
+    # the card recomputes the account from the positions and the marks on disk when the page is built (traders.load); the cycle's later steps
+    # may move a mark after memebot wrote state.json, so the state's own total can be a cent or two off it
+    acct_z = M.paper_account(M.positions(zd), st_z.get("paperSince"), (M.load_json(os.path.join(zd, "db", "memebot", "marks.json"), {}) or {}).get("px"))["pnl"]
+    check("Before the restart (5 trades)" in page_z and "closed at the restart" in page_z and "take-profit +40%" in page_z and "failed the filters (crashed)" in page_z
+          and "48-hour limit" in page_z and "old rule · 20\u00a0€" in page_z and "old rule · 17.27\u00a0€" in page_z
           and "bought before the paper account restarted on " in page_z and "bought under the rules before" not in page_z
-          and "nothing sold yet" in page_z and "−3.1% on 65.00\u00a0€ invested" in page_z,
-          "page: the account counts from the restart, the five old trades sit behind the fold with their old rule and reasons")
+          and "Three paper traders" in page_z and "Best within 6 h" not in page_z and "Top trades ·" not in page_z
+          and t1_z and "Won 0 · lost 0 · open now: 6 positions worth " in t1_z.group(0) and ("account total " + PT_z.money(acct_z)) in t1_z.group(0)
+          and abs(acct_z - (M.num((st_z.get("paper") or {}).get("pnl")) or 0)) <= 0.10,
+          "page: the account counts from the restart (the stop-loss trader's card: 6 open, the account total of the state's paper account), the five old "
+          "trades sit behind the fold with their old rule and reasons (%s)" % (re.sub(r"<[^>]+>", "", t1_z.group(0)) if t1_z else None))
     rz2 = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", zd, "--now", str(T0 + 4 * 60000), "--recommend", "--offline"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     st_z2 = json.load(open(os.path.join(zd, "db", "memebot", "state.json")))
     check(rz2.returncode == 0 and load_dir(zd, "memeexit") == ze and len(load_dir(zd, "memepos")) == len(Pz) and st_z2.get("paperSince") == T0 + 3 * 60000
@@ -3421,7 +3494,7 @@ console.log(JSON.stringify(o));
     check(r.returncode == 0 and "training:" in r.stderr and rec4.get("zeroLimit") is not None and rec4.get("trained") == 2880 and zps and all(isinstance(v, float) for v in zps)
           and "Zero model" in (st4.get("note") or ""), "the cycle trained and the run applied the zero model (limit %s, picks' zero chance %s)" % (rec4.get("zeroLimit"), zps))
     page4 = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
-    check("Walk-forward test" in page4 and "Zero model" in page4 and "Chance of going to zero" in page4 and "Chance of a profit" in page4 and "Why the bot picked it" in page4, "page shows the training section and the odds on the card")
+    check("Test on scans the model had not seen" in page4 and "Walk-forward test" not in page4 and "Zero model" in page4 and "Chance of going to zero" in page4 and "Chance of a profit" in page4 and "Why the bot picked it" in page4, "page shows the training section and the odds on the card")
     ups = [c.get("upP") for c in rec4.get("picks", [])]
     check(ups and all(isinstance(v, float) for v in ups) and "chance of a profit" in (rec4["picks"][0].get("safety") or ""), "picks carry the trained profit chance (%s)" % ups)
     # nothing clean at all: a training doc that puts every coin over the zero limit -> the risky tier names the best odds, with its flag
@@ -3437,7 +3510,7 @@ console.log(JSON.stringify(o));
     subprocess.run([PY, os.path.join(HERE, "report.py"), "--dir", rd], capture_output=True, text=True)
     page5 = open(os.path.join(rd, "report.html"), encoding="utf-8").read()
     open(os.path.join(rd, "db", "memebot", "recommend.json"), "w", encoding="utf-8").write(prev_rec)
-    check(r.returncode == 0 and len(rec5.get("picks", [])) == 1 and rec5["picks"][0].get("tier") == "watch" and "watch only" in page5 and "No pick, one coin to watch" in page5,
+    check(r.returncode == 0 and len(rec5.get("picks", [])) == 1 and rec5["picks"][0].get("tier") == "watch" and "watch only" in page5 and "<h2>No pick this scan</h2>" in page5,
           "with every coin over the zero limit the safest-looking coin is shown as a watch coin, not a pick (%s)" % [(c["sym"], c.get("tier")) for c in rec5.get("picks", [])])
     rk_ok = {"lpLocked": 80, "top1Pct": 5, "top10Pct": 30, "insiders": 3, "holders": 900, "warn": "High holder correlation"}
     rk_bad = {"lpLocked": 80, "top1Pct": 5, "top10Pct": 30, "insiders": 3, "holders": 120}
@@ -3467,15 +3540,16 @@ console.log(JSON.stringify(o));
     st = json.load(open(os.path.join(hd, "db", "memebot", "state.json")))
     check(st.get("horizon") == "2h" and st.get("rule") == "m9-2h", "state carries the profile")
     page = open(os.path.join(hd, "report.html"), encoding="utf-8").read()
-    check("for the next 2 hours" in page and "Big test: 2 hours later" in page, "page is labelled for the 2-hour horizon")
+    check("for the next 2 hours" in page and "Coin test: 2 hours later" in page, "page is labelled for the 2-hour horizon")
     young = rec.get("young") or []
     check(young and all(0 <= M.num(y.get("ageMin")) < 60 and y.get("addr") and "upP" in y and "floor" in y and y.get("liq", 0) >= M.YOUNG_MIN_LIQ for y in young)
           and all(y["addr"] not in {c["addr"] for c in rec.get("picks", [])} for y in young) and rec.get("youngOf", 0) >= len(young),
           "new launches under an hour old are listed with odds and safety, none of them picked (%d of %d: %s)" % (len(young), rec.get("youngOf", 0), [(y.get("sym"), y.get("ageMin")) for y in young[:4]]))
-    check('id="tab-young"' in page and '<label for="tab-young" role="tab"><span>New<span class="tl-long"> launches</span></span>' in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
-          "page has the new-launches tab with the coins, their cards and the age record")
+    check('id="tab-young"' in page and '<label for="tab-young" role="tab"><span>Radar</span>' in page and "min old</span>" in page and "The record by age" in page and "new launch · not a pick" in page,
+          "page has the Radar tab with the full scan's new launches under the radar until the switch: the coins, their cards and the age record")
     rk_young = [y for y in young if isinstance(y.get("risk"), dict) and y["risk"]]
     check(rk_young, "the new launches got safety reports with the shortlist (%d of %d)" % (len(rk_young), len(young)))
+    switch_checks(check)
     r = subprocess.run([PY, os.path.join(HERE, "bot.py"), "cycle", "--dir", hd, "--mock", url, "--now", str(T0 + 3 * H), "--recommend", "--horizon", "2h"], capture_output=True, text=True, env=dict(os.environ, MEMEBOT_PAUSE="0"))
     res = glob.glob(os.path.join(hd, "db", "memesnapres", "*.json"))
     check(r.returncode == 0 and res and "Big test" in r.stdout, "the snapshot was scored 2 hours later (%d result docs)" % len(res))
@@ -3684,10 +3758,14 @@ console.log(JSON.stringify(o));
     m_profit = re.search(r'<p class="verdict (good|bad)"><strong>(Up so far|Down so far)\.</strong> (\d+) tips? priced 1 h later: (\d+) went up, (\d+) went to zero, together <strong>([^<]+)</strong>', page3)
     tot3 = sum(M.num(o["eur"]) for o in one_h3)
     check(m_profit and "Tip record" in page3 and int(m_profit.group(3)) == len(one_h3) and m_profit.group(2) == ("Up so far" if tot3 > 0 else "Down so far")
-          and m_profit.group(6).replace("\u2212", "").replace("+", "").replace("-", "") == "%.2f" % abs(tot3) and ('aria-label="Running profit of the tips"' in page3 or len({M.num(doc.get("t")) for doc in recs if M.settled((doc.get("outs") or {}).get("1"), 1.0)}) < 2),
+          and m_profit.group(6).replace("\u2212", "").replace("+", "").replace("-", "").replace("\u00a0€", "").replace(",", "") == "%.2f" % abs(tot3) and ('aria-label="Running profit of the tips"' in page3 or len({M.num(doc.get("t")) for doc in recs if M.settled((doc.get("outs") or {}).get("1"), 1.0)}) < 2),
           "the page ends with the tip record's verdict and the running-total chart (%s, %d tips, %+.2f)" % (m_profit.group(2) if m_profit else "missing", len(one_h3), tot3))
     m_chain = re.search(r"one after the other \(sold after 1 h, after fees\) would be ([\d.,]+) now after (\d+) tips", page3)
     check(m_chain and int(m_chain.group(2)) >= 1, "the page says what 20 riding every tip would be now (%s)" % (m_chain.group(0)[-40:] if m_chain else "missing"))
+    tipf3 = (re.search(r'<details class="fold-lite tipf">.*?</div></details>', page3, re.S) or re.match("", "")).group(0)
+    check(tipf3 and "<summary>Running total and table</summary>" in tipf3 and "Paper account since the restart" not in tipf3 and "\u00a0€ in each, sold" in tipf3
+          and re.search(r'data-k="together"><span class="(good|bad)">[+\u2212]?[\d,]+\.\d\d\u00a0€</span>', tipf3),
+          "the tip record's fold holds the running total and the table in euros, never the paper account's total (that is on the Traders tab, once)")
     check(not glob.glob(os.path.join(hd, "db", "memesnap", "*-1.json")) or all(os.path.basename(f)[:-5] not in {os.path.basename(x)[:-5] for x in res} for f in glob.glob(os.path.join(hd, "db", "memesnap", "*.json"))), "scored raw snapshots are removed")
     shutil.rmtree(hd, ignore_errors=True)
 
@@ -3833,10 +3911,14 @@ console.log(JSON.stringify(o));
     selftest_account.account_checks(check, SKIPS)
     import selftest_exits                       # the exit what-if test: other stops and targets replayed on the same trades (exit_grid.py, page_exits.py)
     selftest_exits.checks(check, SKIPS)
+    import selftest_traders                     # the three paper traders: T1, T2, the learning trader's frozen decisions (traders.py)
+    selftest_traders.checks(check, SKIPS)
     import selftest_radarui                     # the Radar tab, the trap-check line and the "no good coin" marks (page_radar.py)
     selftest_radarui.checks(check, {"skips": SKIPS})
     import selftest_office                      # the office's agent cards, the radar desk and the daily overview (page_office.py)
     selftest_office.office_checks(check, SKIPS)
+    import selftest_traders_ui                  # the four tabs after the three traders: the Traders tab, the pick's heading and paper line, the app's bar (page_traders.py)
+    selftest_traders_ui.checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:

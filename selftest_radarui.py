@@ -156,7 +156,7 @@ def radar_doc(now, kind="good", rng=None):
            "counts": {"seen": 7 if kind == "empty" else 8, "good": 0 if kind == "empty" else 1, "pushed": 0 if kind == "empty" else 1, "seenAgeMed": 3.1},
            "wm": {"t": t - 50 * MIN, "nCoins": 4120}, "coins": [] if kind == "empty" else [good, dict(others[2], v="watch", d={})], "others": others,
            "lastGood": {"addr": recent[1]["addr"], "sym": "HIRE", "at": t - 34 * MIN} if kind == "empty" else {"addr": good["addr"], "sym": "PEPE2", "at": t},
-           "recent": recent, "record": {"calls": 37, "rug": 0.03, "win": 0.14, "eur": -1.2, "n60": 33, "ci": {"rug": [0.0, 0.1], "win": [0.05, 0.27]},
+           "recent": recent, "record": {"calls": 37, "rug": 0.03, "win": 0.14, "eur": -1.2, "n60": 33, "ci": {"rug": [0.0, 0.1], "win": [0.05, 0.27]}, "known": {"n": 33, "rug": 1, "win": 5},
                                         "mom": {"calls": 9, "n60": 9, "rug": 0.889, "win": 0.0} if kind == "empty" else {"calls": 47, "n60": 41, "rug": 0.91, "win": 0.04},
                                         "all": {"n60": 412, "rug": 0.72, "win": 0.03}, "pat": dict(pat, w=4, rows=[], why=[]) if kind == "empty" else pat},
            "hosts": {"dexscreener": "ok", "rugcheck": "ok", "pump.fun": "ok", "geckoterminal": "ok", "rpc": "ok"},
@@ -394,16 +394,21 @@ def py_checks(check, tmp, T, standin):
     # the early box's one validated chip, in the live script
     check("pool opened with the mint','bad')" in R.OFFICE_LIVE_JS and "born-c.minted<60000" in R.OFFICE_LIVE_JS,
           "the early box marks only the validated trap: a pool opened within 60 s of the mint (born and minted, no full verdict)")
-    # U5: the banner over the pick
-    ban = {}
+    # U5: the banner over the pick (page_radar.pick_banner stays; the pick no longer calls it: one heading by the tier says it, ui bug 19)
+    ban, heads, inpage = {}, {}, []
     for tier in ("strong", "weak", "fallback", "risky", "watch"):
         D = {"rec": {"picks": [{"sym": "P", "addr": "A" * 44, "tier": tier, "relaxed": []}], "scanned": 10, "passed": 1}, "now": now, "open": [], "state": {}}
         h = R.rec_section(D, embed=False)
-        m = re.search(r'<p class="nogood (\w+)" role="note">.*?<span>(.*?)</span></p>', h)
+        m = re.search(r'<p class="nogood (\w+)" role="note">.*?<span>(.*?)</span></p>', P.pick_banner(D["rec"]["picks"]))
         ban[tier] = (m.group(1), m.group(2)) if m else None
+        heads[tier] = (re.search(r"<h2>(.*?)</h2>", h) or re.match("", "")).group(1) if re.search(r"<h2>(.*?)</h2>", h) else None
+        inpage.append("nogood" in h or P.BANNER in h)
     check(ban["strong"] is None and ban["weak"] is None and ban["fallback"] == ("warn", P.BANNER) and ban["risky"] == ("bad", P.BANNER) and ban["watch"] == ("bad", P.BANNER)
-          and "weak · best available" in R.tier_chip({"tier": "weak"}),
-          "U5 the pick banner '%s' shows amber for fallback and red for risky and watch, not for strong or weak (weak keeps its chip) %s" % (P.BANNER, ban))
+          and "weak · best available" in R.tier_chip({"tier": "weak"}) and not any(inpage)
+          and heads == {"strong": "The pick for the next %s" % R.horizon_text(), "weak": "The pick for the next %s" % R.horizon_text(),
+                        "fallback": "Risky pick for the next %s" % R.horizon_text(), "risky": "Risky pick for the next %s" % R.horizon_text(), "watch": "No pick this scan"},
+          "U5 the pick banner '%s' (page_radar.pick_banner) is amber for fallback and red for risky and watch, none for strong or weak; the pick shows it "
+          "no more: one heading by the tier instead %s %s" % (P.BANNER, ban, heads))
     # the Radar tab: the embedded doc is whitelisted, at most 48 KB, and closes no script; the tab sits second; no token in the page
     m = re.search(r'<script type="application/json" id="radar-doc">(.*?)</script>', page, re.S)
     emb = json.loads(m.group(1)) if m else {}
@@ -416,18 +421,19 @@ def py_checks(check, tmp, T, standin):
     radios = re.findall(r'<input type="radio" name="tab" id="(tab-\w+)"', page)
     check(m and emb.get("kind") == "radar" and len(m.group(1).encode()) <= P.DOC_MAX and "</" not in m.group(1) and cb and len(json.dumps(cb, separators=(",", ":")).encode()) <= P.DOC_MAX
           and len(cb["others"]) < 40 and P.clean_doc({"kind": "radar"}) is None and P.clean_doc({"kind": "live", "t": now}) is None
-          and tabs == ["tab-pick", "tab-young", "tab-office"] and radios == tabs and not re.search(r"ghp_[A-Za-z0-9]{10}|github_pat_|x-access-token:|sb_secret_|Bearer [A-Za-z0-9]", page),
-          "three tabs, Pick, New, Office, one radio each (%s); the embedded radar.json is whitelisted, %d bytes (at most %d; a big doc is trimmed to %d others) and cannot close "
+          and tabs == ["tab-pick", "tab-young", "tab-account", "tab-office"] and radios == tabs and not re.search(r"ghp_[A-Za-z0-9]{10}|github_pat_|x-access-token:|sb_secret_|Bearer [A-Za-z0-9]", page),
+          "four tabs, Pick, Radar, Traders, Office, one radio each (%s); the embedded radar.json is whitelisted, %d bytes (at most %d; a big doc is trimmed to %d others) and cannot close "
           "its script block; no token in the page" % (radios, len(m.group(1).encode()) if m else -1, P.DOC_MAX, len(cb["others"]) if cb else -1))
     ids = re.findall(r'\bid="([^"]+)"', re.sub(r"(?s)<script\b.*?</script>", "", page))
     yp = young_pane(page)
     lab = re.search(r'<label for="tab-young" role="tab">(.*?)</label>', page)
     check('id="tab-radar"' not in page and 'id="pane-radar"' not in page and len(ids) == len(set(ids)) and yp.find("data-radar") >= 0
           and yp.find("data-radar") < yp.find("under an hour old") and yp.count("data-radar ") + yp.count("data-radar>") == 1 and "Launch radar" in yp
-          and lab and "data-r-tabcnt" in lab.group(1) and re.search(r'<span class="cnt" data-y-tabcnt title="[^"]*">8</span>', lab.group(1))
-          and "#tab-radar:checked" not in page and "pane-radar" not in P.CSS + P.JS,
-          "New holds the radar: no Radar tab or pane left, no id twice (%d ids), the radar's block on top of the New pane above the full scan's new launches, "
-          "the New label carries the radar's count (hidden at 0) and the scan's 8 (hidden while the radar's shows) %r" % (len(ids), re.sub(r"<[^>]+>", "|", lab.group(1)) if lab else None))
+          and lab and "data-r-tabcnt" in lab.group(1) and "data-y-tabcnt" not in page + P.JS and re.sub(r"<[^>]+>", "", lab.group(1)) == "Radar"
+          and "#tab-radar:checked" not in page and "pane-radar" not in P.CSS + P.JS and "New launches (until " in yp,
+          "the Radar tab (id tab-young) holds the radar: no tab-radar radio or pane, no id twice (%d ids), the radar's block on top of its pane, the full scan's "
+          "new launches under it before the switch ('New launches (until ...)'); its label says Radar and carries one number, the radar's count (hidden at "
+          "0), no full-scan count %r" % (len(ids), re.sub(r"<[^>]+>", "|", lab.group(1)) if lab else None))
     rd = P.clean_doc(radar_doc(now, "round"))
     check(rd and rd["state"] == "done" and rd["run"]["mode"] == "round" and rd["hourly"] == now - 30_000 and [r["miss60"] for r in rd["recent"]] == [False] * 4 + [True]
           and P.clean_doc(dict(radar_doc(now, "round"), run={"mode": "<x>"}))["run"]["mode"] == "" and "done" in P.STATES
@@ -584,8 +590,8 @@ o.clean=[c.coins.length,c.coins[0].x===undefined,c.coins[0].line.length,Object.k
 var cr=R.clean({kind:'radar',t:N,state:'done',hourly:N-5,run:{mode:'round',end:null},recent:[{addr:'1111111111111111111111111111111111111111pump',miss60:true},{addr:'1111111111111111111111111111111111111112pump',miss60:'yes'}]});
 o.cleanRound=[cr.state,cr.run.mode,cr.hourly,cr.recent.map(function(r){return r.miss60;}),R.clean({kind:'radar',t:N,run:{mode:'x'}}).run.mode];
 o.verdict=[R.verdict({v:'good',n:9})[1],R.verdict({v:'trap',hard:['a','b']})[1],R.verdict({v:'watch',unknown:['rc_report']})[1],R.verdict({v:'watch',soft:['a','b']})[1]];
-var rec=function(n){return {calls:37,rug:0.03,win:0.14,eur:-1.2,n60:n,ci:{rug:[0,0.1],win:[0.05,0.27]}};};
-o.rec=[R.recShort(rec(19)),R.recShort(rec(20)),R.recLine(rec(19)),R.recLine(rec(20))];
+var rec=function(n,k){return {calls:37,rug:0.03,win:0.14,eur:-1.2,n60:n,ci:{rug:[0,0.1],win:[0.05,0.27]},known:k===undefined?{n:n,rug:1,win:5}:k};};
+o.rec=[R.recShort(rec(19)),R.recShort(rec(20)),R.recLine(rec(19)),R.recLine(rec(20)),R.recLine(rec(30,{n:30,rug:1,win:31})),R.recLine(rec(30,null)),R.recShort(rec(30,{n:30.5,rug:1,win:2}))];
 o.odds=[R.odds({upP:0.2,zeroP:0.3}),R.odds({odds:{up:0.22,zero:0.31,note:'x'}}),R.odds({odds:{up:'x'}}),R.odds(null)];
 o.ago=[R.ago(30000),R.ago(34*60000),R.ago(3*3600000)];
 o.groups=R.groups({line:[['bad','brand/celebrity name'],['warn','no socials'],['ok','RugCheck report']],hard:['brand_name','instant_pool'],soft:['no_socials'],unknown:['mint_time'],info:['dev_dead']});
@@ -664,10 +670,10 @@ def node_checks(check, tmp, skips):
           "U3 a round by hand: the live store every minute on New (5 min on Office); after a tap on Start every 20 s, GitHub 150 s after its last poll, the "
           "budget (12 left: 900 s) and a failure's back-off still win %s" % o.get("kick"))
     check(o["badge"] == [2, None, None, None, None, None, 2, None, None] and o["newBadge"] == [{"n": 2, "good": True}, {"n": 7, "good": False}, None, None]
-          and o["tabs"] == ["pick", "young", "office", "account"] and o["tab"] == ["young", "young", "young", "young", "young", None, None]
+          and o["tabs"] == ["pick", "young", "account", "office"] and o["tab"] == ["young", "young", "young", "young", "young", None, None]
           and o["radarLink"] == [True, True, False, False],
-          "A3 MemebotApp: TABS %s (one New tab); the old Radar links #tab-radar, #radar and #tab-young, #new open New (a radar link at its top, no jump to the early list); "
-          "the radar's count while its list is current (a round: the event's good), green before the early list's count on New's one badge %s %s" % (o["tabs"], o["badge"], o["newBadge"]))
+          "A3 MemebotApp: TABS %s (the website's order: Pick, Radar, Traders, Office); #tab-radar, #radar, #tab-young and #new open Radar (a radar link at its top, no "
+          "jump to the early list); the radar's count while its list is current (a round: the event's good), green before the early list's count on Radar's one badge %s %s" % (o["tabs"], o["badge"], o["newBadge"]))
     check(o["cleanRound"] == ["done", "round", 1e12 - 5, [True, False], ""],
           "U3 the script's whitelist keeps a round's state done, run.mode, hourly and miss60 (only a real true) %s" % o["cleanRound"])
     check(o["clean"] == [1, True, 1, "a,e", 0, "a b", "pump.fun trades,rugcheck", None, None] and o["verdict"] == ["✓ No trap found · 9 checks", "✕ 2 traps", "? not fully checked", "! 2 warnings"]
@@ -676,26 +682,30 @@ def node_checks(check, tmp, skips):
           "U3 the script's whitelist drops a bad address, a javascript: X link, unknown levels and keys (a host label with a space stays); the verdict chips and the Trap "
           "check groups (names past the line get their words) %s" % [o["clean"], o["groups"][:2]])
     rc = o["rec"]
-    check(rc[0] == "37 calls · too few for a record yet" and rc[1] == "37 calls · 3% rugged · 14% doubled" and "too few calls for a record yet (19 of 20 with a 1 h price)" in rc[2]
-          and rc[3] == "37 calls without traps · 1 h later: 3% rugged, 14% doubled (95%: 0%-10% / 5%-27%) · paper, 3 € each: −1.20\u00a0€",
-          "U3 the record line (SPEC 3.4) says 'too few calls' under 20 calls with a 1 h price and gives the rates from 20 on; the Track record fold's title is the "
-          "short form, the intervals and the paper euros sit inside %s" % rc)
+    check(rc[0] == "37 coins · too few for a record yet" and rc[1] == "20 with a 1 h result · 5 doubled · 1 crashed"
+          and rc[2] == "37 coins without traps · too few with a 1 h result for a record yet (19 of 20)"
+          and rc[3] == "20 coins without traps with a 1 h result: 5 doubled, 1 crashed to near zero (95% range: 5% to 27% doubled, 0% to 10% crashed)"
+          and rc[4] == rc[5] == "37 coins without traps · too few with a 1 h result for a record yet (0 of 20)" and rc[6] == "37 coins · too few for a record yet"
+          and "paper, " not in "".join(rc) and "€" not in "".join(rc),
+          "U3 the record line comes from one source, record.known (the counts the push and the Office chat say, ui bug 12): 'too few' under 20 coins with a 1 h "
+          "result (or counts that do not fit: a count over n, not whole), from 20 on how many doubled and crashed to near zero with the 95%% ranges in the "
+          "full line; the Radar record fold's title is the short form; no euros (they are on the Traders tab) %s" % rc)
     check(o["odds"] == [[0.2, 0.3], [0.22, 0.31], None, None] and o["ago"] == ["just now", "34 min ago", "3 h ago"],
           "U3 the trained odds are read from d.upP / d.zeroP and from d.odds {up, zero} (WP3's shapes); 'just now' under a minute %s" % [o["odds"], o["ago"]])
     mo, pt = o.get("mom") or [], o.get("pat") or [""] * 10
-    check(mo == ["Rising fast, paper only: 47 coins · 91% rugged · 4% 2x at 1 h · all new coins: 72% rugged, 3% 2x", "Rising fast, paper only: 9 coins · too few yet (9 of 20 with a 1 h price)",
-                 "Rising fast, paper only: 1 coin · too few yet (0 of 20 with a 1 h price)", "", "Rising fast, paper only: 47 coins · 91% rugged · 4% 2x at 1 h", ""],
+    check(mo == ["Rising fast, paper only: 47 coins · 91% crashed · 4% 2x at 1 h · all new coins: 72% crashed, 3% 2x", "Rising fast, paper only: 9 coins · too few yet (9 of 20 with a 1 h price)",
+                 "Rising fast, paper only: 1 coin · too few yet (0 of 20 with a 1 h price)", "", "Rising fast, paper only: 47 coins · 91% crashed · 4% 2x at 1 h", ""],
           "the momentum line says 'paper only' and counts coins (never 'calls') with the labelled all-new-coins baseline (the same 1 h label), 'too few yet' "
           "under 20 with a 1 h price, nothing without a record or while no coin rose fast %s" % mo)
-    check(pt[:3] == ["Same hours, signals at first sight: 192 rugged vs 25 doubled", "Patterns: too few doubled coins yet (4 of 15)", ""]
-          and pt[3] == ["creator sold", "62%", "14%", True, "warn", "41 of 66 rugged, 2 of 14 doubled had it", "rugged"]
-          and pt[4] == ["has an X link", "51%", "74%", False, "ok", "65 of 127 rugged, 17 of 23 doubled had it (could be chance)", "doubled"] and pt[5][0] == "some new" and pt[5][6] == ""
-          and pt[6] == "PEPE, seen %s, rugged within 1 h · creator sold (0 of 3 doubled that hour had it), RugCheck danger (1 of 3)" % pt[9]
-          and pt[7] == "PEPE, rugged within 1 h · has an X link (2 of ? doubled that hour had it)" and pt[8] == ""
-          and pt[10] == ["has an X link", "less", "more", True, "ok", "190 of 400 rugged, 100 of 350 doubled had it; hour by hour it is more often in doubled coins", "doubled"],
+    check(pt[:3] == ["Same hours, signals at first sight: 192 crashed vs 25 doubled", "Patterns: too few doubled coins yet (4 of 15)", ""]
+          and pt[3] == ["creator sold", "62%", "14%", True, "warn", "41 of 66 crashed, 2 of 14 doubled had it", "crashed"]
+          and pt[4] == ["has an X link", "51%", "74%", False, "ok", "65 of 127 crashed, 17 of 23 doubled had it (could be chance)", "doubled"] and pt[5][0] == "some new" and pt[5][6] == ""
+          and pt[6] == "PEPE, seen %s, crashed within 1 h · creator sold (0 of 3 doubled that hour had it), RugCheck danger (1 of 3)" % pt[9]
+          and pt[7] == "PEPE, crashed within 1 h · has an X link (2 of ? doubled that hour had it)" and pt[8] == ""
+          and pt[10] == ["has an X link", "less", "more", True, "ok", "190 of 400 crashed, 100 of 350 doubled had it; hour by hour it is more often in doubled coins", "doubled"],
           "the patterns: the head line or 'too few doubled coins yet (4 of 15)'; a row's label, the share of rugged and of doubled coins with it, or 'less' and "
           "'more' from the hour-by-hour direction when the pooled shares point the other way, the counts in its title ('could be chance' when not sure); a rugged "
-          "coin, when it was seen and that it rugged within 1 h, with how many of its hour's doubled coins whose flag is known had them %s" % (pt[:9] + pt[10:]))
+          "coin, when it was seen and that it crashed within 1 h, with how many of its hour's doubled coins whose flag is known had them %s" % (pt[:9] + pt[10:]))
     check(o.get("ws") == [True, False, False, False, False, False],
           "the ▲ shows only for a ws of 1 or more once the win order is learned %s" % o.get("ws"))
     py = [P.clean_doc(x) for x in fx]
@@ -1136,7 +1146,7 @@ def browser(check, tmp, d, skips, shots=None):
                         pg.locator("#pane-young .tsum").first.scroll_into_view_if_needed()
                         shot(pg, "5-new-launches-trap-lines-light-1280x900.png")
                     if tab == "tab-pick" and not dark:
-                        out.setdefault("banner", pg.evaluate("(() => { const b = document.querySelector('#pane-pick .nogood'); return b ? [b.className, b.innerText, getComputedStyle(b).backgroundColor] : null; })()"))
+                        out.setdefault("banner", pg.evaluate("(() => { const b = document.querySelector('#pane-pick .nogood'), h = document.querySelector('#pane-pick h2'); return [b ? b.className : null, h ? h.textContent : null]; })()"))
                         shot(pg, "11-pick-banner-light-%dx%d.png" % (w, h))
                 ctx.close()
             # 10. the installed app: four tabs, the radar on New from the live store (no GitHub poll), New's green badge, the deep links; the badge
@@ -1182,13 +1192,14 @@ def browser(check, tmp, d, skips, shots=None):
     check(g["tab"] and g["hash"] == "" and g["st"] == "running" and g["pill"].startswith("Radar running · checked ") and " · next " in g["pill"] and "this run until" not in g["pill"]
           and g["cards"] == 1 and g["dim"] == 0 and g["chips"][:1] == ["✓ No trap found · 9 checks"] and g["tabcnt"] == "1" and g["ocnt"] == "7" and g["others"]
           and [c[1] for c in g["lines"][0]] == ["!no socials", "✓curve 4 min before pool", "✓no rugger wallets", "+3", "+4"]
-          and g["ev"] == ["running", 1, "github"] and "8" in g["stats"] and g["rec"] == "37 calls · 3% rugged · 14% doubled" and "(95%: 0%-10% / 5%-27%) · paper, 3 € each" in g["recIn"]
+          and g["ev"] == ["running", 1, "github"] and "8" in g["stats"] and g["rec"] == "33 with a 1 h result · 5 doubled · 1 crashed"
+          and "33 coins without traps with a 1 h result: 5 doubled, 1 crashed to near zero (95% range: 5% to 27% doubled, 0% to 10% crashed)" in g["recIn"] and "€" not in g["recIn"]
           and "radar data 212 of 300 needed" in g["model"]
           and [a[:2] for a in g["act"]] == [["Start ↗", "https://github.com/some-owner/Meme-Bot/actions/workflows/radar.yml"], ["Stop ↗", "https://github.com/some-owner/Meme-Bot/actions/workflows/radar.yml"]]
           and all(a[2] >= 44 for a in g["act"]),
-          "U3 browser: #tab-radar (the old Radar tab's link) opens New with the radar's Start and Stop links to radar.yml (44 px); the GitHub poll brings the doc; only the good coin gets a card (the doc's watch "
-          "coin does not), with its chip and its line (3 chips and +3), the tab count 1, the fold count 7, the model status; the Track record fold's title is short (%r), the "
-          "intervals and the paper euros inside; the memebot-radar event says running, 1 good %s" % (g["rec"], {k: g[k] for k in ("pill", "chips", "ev")}))
+          "U3 browser: #tab-radar opens Radar with the radar's Start and Stop links to radar.yml (44 px); the GitHub poll brings the doc; only the good coin gets a card (the doc's watch "
+          "coin does not), with its chip and its line (3 chips and +3), the tab count 1, the fold count 7, the model status; the Radar record fold's title is short (%r), the "
+          "counts and their ranges inside, no euros; the memebot-radar event says running, 1 good %s" % (g["rec"], {k: g[k] for k in ("pill", "chips", "ev")}))
     rs_ = out.get("rounds") or {}
     check([a[3] for a in g["act"]] == ["rbtn quiet", "rbtn quiet"] and [a[3] for a in out["states"]["off"]["act"]][:1] == ["rbtn"] and [a[3] for a in out["states"]["stopped"]["act"]][:1] == ["rbtn"]
           and [a[3] for a in out["states"]["late"]["act"]][:1] == ["rbtn"] and [a[3] for a in (rs_.get("old") or {}).get("act", [])][:2] == ["rbtn", "rbtn quiet"],
@@ -1214,14 +1225,14 @@ def browser(check, tmp, d, skips, shots=None):
           and not any("jup.ag" in u or "swap" in u for u, _, _ in g["links"]),
           "U3 browser: the card's links are DexScreener, pump.fun and X only, in a new tab, no swap link %s" % [u[:40] for u, _, _ in g["links"]])
     orows = dict((sym.split(" ", 1)[1], (cls, sym[0])) for cls, sym in e_["orows"])
-    check(e_["cards"] == 0 and e_["listHidden"] and "No clean coin right now" in e_["empty"] and "7 seen under 10 min · all with traps or not fully checked" in e_["empty"] and "2½" not in e_["empty"]
+    check(e_["cards"] == 0 and e_["listHidden"] and "No coin without traps right now" in e_["empty"] and "7 seen under 10 min · all with traps or not fully checked" in e_["empty"] and "2½" not in e_["empty"]
           and "last coin without traps: HIRE, 34 min ago" in e_["empty"] and e_["ocnt"] == "7" and e_["tabcnt"] == "" and all(x <= 0 for x in out["empty_h"])
           and orows.get("GROKAI") == ("rrow bad", "✕") and orows.get("NORC") == ("rrow warn", "?") and orows.get("TWOWARN") == ("rrow warn", "!") and orows.get("PUMPY") == ("rrow warn", "!")
           and e_["recent"] == ["PEPE2", "CALM", "HIRE", "SEALS"],
-          "U3 browser: no good coin shows 'No clean coin right now' (the empty card list hidden), the seen line, the last good coin (HIRE, 34 min ago) and 'Seen but not clean (7)': "
-          "trap rows red with ✕, watch rows amber with ? (not checked) or ! (warnings); no tab count; the Track record lists the calls of the last 3 h only %s %s" % (orows, e_["recent"]))
-    check(g.get("ytab") is True and e_.get("ytab") is False,
-          "U3 browser: the website's New label carries one number: the radar's green 1 hides the full scan's count, with no coin without traps the scan's count is back "
+          "U3 browser: no good coin shows 'No coin without traps right now' (the empty card list hidden), the seen line, the last good coin (HIRE, 34 min ago) and 'Seen, with traps or not "
+          "fully checked (7)': trap rows red with ✕, watch rows amber with ? (not checked) or ! (warnings); no tab count; the Radar record lists the calls of the last 3 h only %s %s" % (orows, e_["recent"]))
+    check(g.get("ytab") is None and e_.get("ytab") is None and g.get("tabcnt") == "1" and e_.get("tabcnt") == "",
+          "U3 browser: the website's Radar label carries one number, the radar's count of coins without traps (1, hidden at 0); no full-scan count any more "
           "(%s / %s)" % (g.get("ytab"), e_.get("ytab")))
     st = out["states"]
     check(st["late"]["st"] == "late" and st["late"]["dim"] == 1 and any(c.startswith("as of ") for c in st["late"]["chips"]) and st["late"]["pill"].startswith("Radar late · last check")
@@ -1294,21 +1305,22 @@ def browser(check, tmp, d, skips, shots=None):
     check(y.get("rows") == 8 and y.get("red", 0) >= 1 and y.get("imgs") == 0 and all(0 < hh <= 30 for hh in y.get("lines", [])) and all(y.get("verdicts", [])),
           "U4 browser: the New launches rows each show the verdict chip and a one-row trap line (%s px tall), %d rows red-tinted (%s)" % (y.get("lines"), y.get("red", 0), (y.get("tint") or [""])[0]))
     bn = out.get("banner")
-    check(bn and "nogood warn" in bn[0] and bn[1].endswith(P_BANNER()), "U5 browser: the fallback pick shows the amber banner %s" % (bn[:2] if bn else bn))
+    check(bn == [None, "Risky pick for the next %s" % R.horizon_text()],
+          "U5 browser: the fallback pick shows no banner any more, one heading by its tier instead (ui bug 19) %s" % bn)
     hs = out["h"]
     check(all(v <= 0 for v in hs.values()) and all(a["hscroll"] <= 0 for a in out["app"].values()) and len(hs) >= 16,
           "U8 no sideways scroll on Pick, New (with the radar) and Office at 390 x 844 and 1280 x 900, light and dark, and in the installed app on all four tabs (%d views%s)" % (
               len(hs) + len(out["app"]), "" if all(v <= 0 for v in hs.values()) else " " + str({k: v for k, v in hs.items() if v > 0})))
     ap = out["app"]["390x844 light"]
-    check(ap["app"] and ap["tabs"] == ["pick", "young", "office", "account"] and ap["names"] == ["Pick", "New", "Office", "Account"] and ap["radar"]
-          and ap["apptab"] == "young" and ap["badge_ok"] and ap["aria"] == "New coins, 1 without traps now" and ap["cards"] == 1 and out.get("deep") == ["young", True] and ap["y"] == 0
+    check(ap["app"] and ap["tabs"] == ["pick", "young", "account", "office"] and ap["names"] == ["Pick", "Radar", "Traders", "Office"] and ap["radar"]
+          and ap["apptab"] == "young" and ap["badge_ok"] and ap["aria"] == "Radar, 1 coin without traps now" and ap["cards"] == 1 and out.get("deep") == ["young", True] and ap["y"] == 0
           and out["calls"]["gh"] == 0 and out["calls"]["sb"] >= 1 and all(a["over"] == 0 and a["btnW"] >= 60 for a in out["app"].values()) and not errs,
-          "A3 installed app: four tabs (Pick, New, Office, Account), #tab-radar and the radar notification's message open New at its top (the radar), New's badge says 1 in "
+          "A3 installed app: four tabs (Pick, Radar, Traders, Office), #tab-radar and the radar notification's message open Radar at its top, its badge says 1 in "
           "green (%s, read out in words), the live store's row radar feeds it and GitHub is not polled; no label cut at 320 px %s" % (
               ap.get("badgeBg"), {k: ap[k] for k in ("names", "aria")} if not errs else [errs[:2], ap, out.get("deep"), out["calls"]]))
     bg = out.get("badgeGone") or [False, "?"]
-    check(bg[0] and bg[1] == "New coins",
-          "S4 A3 the app's New badge follows the radar's news: the live store's row turns to no good coin and the badge goes (%s)" % bg)
+    check(bg[0] and bg[1] == "Radar",
+          "S4 A3 the app's Radar badge follows the radar's news: the live store's row turns to no good coin and the badge goes (%s)" % bg)
     rf, ro, rl, rt, rn_ = (rs_.get(k) or {} for k in ("fresh", "old", "late", "stopped", "nonext"))
     hm = re.compile(r"^Last round \d\d:\d\d · next about \d\d:\d\d$")
     oc = dict((x[0], x[1:]) for x in rf.get("oc", []))
@@ -1326,12 +1338,12 @@ def browser(check, tmp, d, skips, shots=None):
     lk = out.get("links") or {}
     check(all(v == [True, "", 1] for v in lk.values()) and len(lk) == 3,
           "the old links #radar, #tab-young and #new open New in a browser, once (the hash is dropped), one tab radio checked %s" % lk)
-    rcf, why_re = out.get("recfold") or {}, r"^%s, seen \d\d:\d\d, rugged within 1 h · %s$"
+    rcf, why_re = out.get("recfold") or {}, r"^%s, seen \d\d:\d\d, crashed within 1 h · %s$"
     check(g.get("recOpen") is False and not g.get("recHidden") and g.get("recOrder") == ["p.note rrline", "p.note rrmom", "p.note", "table.rpat", "p.tnote", "ul.rpwhy", "div.rrec-w"]
-          and g.get("recNotes", [])[1:] == ["Rising fast, paper only: 47 coins · 91% rugged · 4% 2x at 1 h · all new coins: 72% rugged, 3% 2x", "Same hours, signals at first sight: 192 rugged vs 25 doubled"]
-          and g.get("pat") == [["", "41 of 66 rugged, 2 of 14 doubled had it", "!creator sold", "62%", "14%"],
-                               ["maybe", "65 of 127 rugged, 17 of 23 doubled had it (could be chance)", "✓has an X link?", "51%", "74%"],
-                               ["maybe", "30 of 120 rugged, 2 of 20 doubled had it (could be chance)", "·top holders funded by one wallet?", "25%", "10%"]]
+          and g.get("recNotes", [])[1:] == ["Rising fast, paper only: 47 coins · 91% crashed · 4% 2x at 1 h · all new coins: 72% crashed, 3% 2x", "Same hours, signals at first sight: 192 crashed vs 25 doubled"]
+          and g.get("pat") == [["", "41 of 66 crashed, 2 of 14 doubled had it", "!creator sold", "62%", "14%"],
+                               ["maybe", "65 of 127 crashed, 17 of 23 doubled had it (could be chance)", "✓has an X link?", "51%", "74%"],
+                               ["maybe", "30 of 120 crashed, 2 of 20 doubled had it (could be chance)", "·top holders funded by one wallet?", "25%", "10%"]]
           and g.get("patNote") == "? could be chance"
           and len(g.get("why", [])) == 2 and re.match(why_re % ("SEALS", r"creator sold \(0 of 3 doubled that hour had it\), RugCheck danger \(1 of 3\)"), g["why"][0])
           and re.match(why_re % ("RUGGY", r"top holders funded by one wallet \(0 of 2 doubled that hour had it\)"), g["why"][1]),
@@ -1448,8 +1460,8 @@ CURVE_JS = """() => { const b = document.querySelector('[data-r-curve]'), q = s 
     syms: Array.from(b.querySelectorAll('.rc-coin')).filter(shown).map(li => li.querySelector('.rc-sym').textContent),
     status: Array.from(b.querySelectorAll('.rc-coin')).map(li => li.querySelector('.rc-s').className + '|' + li.querySelector('.rc-s').textContent),
     imgs: b.querySelectorAll('img, svg, iframe, script').length, links: Array.from(b.querySelectorAll('a')).map(a => [a.getAttribute('href'), a.target, a.rel]),
-    above: (() => { const o = document.querySelector('[data-r-others]'), k = document.querySelector('[data-r-rec]');
-      return !!(o && k && (o.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && (b.compareDocumentPosition(k) & Node.DOCUMENT_POSITION_FOLLOWING)); })(),
+    above: (() => { const o = document.querySelector('[data-r-others]'), k = document.querySelector('[data-r-rec]'), f = b.closest('details.rcurvef');
+      return !!(o && k && f && (o.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && (k.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)); })(),
     more: !!q('details.rc-more') && q('details.rc-more').open, pushCls: (q('.rc-push') || {}).className || '', ev: window.__rev || null,
     lowc: (() => { const lum = c => { let m = c.match(/[\\d.]+/g).map(Number); if (/^color\\(srgb/.test(c)) m = m.map((v, i) => i < 3 ? v * 255 : v);
         const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
@@ -1590,10 +1602,12 @@ def curve_checks(check, tmp, skips, shots=None):
     check(XSS_CURVE not in xs and "&lt;img src=c onerror=a(8)&gt;" in xs and "<b>ok</b>" not in json.dumps(cl["xss"]) and 'href="https://pump.fun/coin/' in pane["calls"]
           and pane["none"] == '<section class="rcurve" data-r-curve aria-label="About to graduate, paper test" hidden></section>'
           and pane["empty"].count("<p") == 1 and "About to graduate (paper test):</b> no call yet · Curve watch on" in pane["empty"] and 'class="rcurve one"' in pane["empty"]
-          and full.find("data-r-others") < full.find("data-r-curve") < full.find("data-r-rec") and "No curve push goes out while the switch is off." in pane["calls"]
+          and full.find("data-r-others") < full.find("data-r-rec") < full.find("data-r-curve") and '<details class="rfold rcurvef"><summary><span class="t">Curve test (experiment)</span>' in full
+          and full.find('<details class="rfold rcurvef">') < full.find("data-r-curve") and "No curve push goes out while the switch is off." in pane["calls"]
           and 'rel="noopener noreferrer"' in pane["calls"] and not CURVE_BANNED.search(words + " " + js_words) and "\u2014" not in words + P.JS + P.CSS,
           "curve section on the page: a hostile symbol, chip and why arrive escaped, a hostile host state is dropped; the coin links open pump.fun in a new tab "
-          "without the referrer; no block: hidden; no call yet: one line; it sits under the list (after Seen but not clean, before the Track record); its words "
+          "without the referrer; no block: hidden; no call yet: one line; it sits in one closed fold 'Curve test (experiment)' at the end of the Radar tab "
+          "(after Seen, with traps or not fully checked and the Radar record); its words "
           "and the script's never say buy, safe, clean or should, and no em dash")
     # 4. node: the script's whitelist and view say the same as Python's for every block above (raw and with a moving clock)
     node = shutil.which("node")
@@ -1648,6 +1662,8 @@ def curve_checks(check, tmp, skips, shots=None):
             if clock:
                 pg.clock.install(time=clock)
             pg.goto(url + "#tab-radar")
+            if js:                                      # the section sits in the closed fold "Curve test (experiment)": opened as a reader would
+                pg.evaluate("document.querySelectorAll('details.rcurvef').forEach(function(d){d.open=true;})")
             return ctx, pg
         ctx, pg = open_(390, js=False)
         out["nojs"] = pg.evaluate("document.querySelector('[data-r-curve]').innerHTML")
@@ -1707,7 +1723,7 @@ def curve_checks(check, tmp, skips, shots=None):
     js390 = out["390 False"]
     wide = [out["%d %s" % (w, dk)] for w in (320, 390, 1280) for dk in (False, True)]
     check(js390["html"] == out["nojs"] and js390["cls"] == "rcurve" and not js390["hidden"] and js390["above"] and not errs,
-          "browser: the script's section is the build's, element for element (the same innerHTML from the embedded doc), under the radar's list%s" % (
+          "browser: the script's section is the build's, element for element (the same innerHTML from the embedded doc), in the Curve test fold after the radar's other folds%s" % (
               "" if js390["html"] == out["nojs"] else " (differ at %d)" % next((i for i, (a, b) in enumerate(zip(js390["html"], out["nojs"])) if a != b), -1)))
     check(all(x["hscroll"] <= 0 and not x["small"] and x["inBox"] and x["tabFits"] for x in wide) and out["open320"]["hscroll"] <= 0 and out["open320"]["inBox"] and not out["open320"]["small"]
           and js390["syms"] == ["H2O", "TRAPPY", "STILL", "RISKY"] and out["open"]["more"] and len(out["open"]["syms"]) == 8 and all(x["imgs"] == 0 for x in wide)

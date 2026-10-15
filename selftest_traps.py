@@ -795,6 +795,9 @@ def _extras(check, W, rng, tmp):
     allt = [T._text(n, m, W) for n in W["measured"] if n != "staircase_early"]
     check(texts == want and "6 of 10 top holders fresh" in allt and "4 top holders funded by one wallet in 3 min" in allt,
           "grey measured texts: %s" % "; ".join(allt))
+    over = [T._text("sniped30", base_S(snip30=v, snip30N=40.0), W) for v in (1.05, 1.0, 3.7)]
+    check(over == ["100% sniped in 30 s (40 wallets)"] * 3 and T._text("sniped30", base_S(snip30=0.995), W).startswith("100%"),
+          "TR16 a sniped share over 100%% (snip30 1.05: the snipers' buys counted above the supply) shows 100%% at most (%s)" % over[0])
     every = [t for S_ in (full, m, base_S(), base_S(rcReport=False), base_S(wmChecked=False, wmState="missing"), base_S(buys=None, brand=None, rcDanger=None),
                           base_S(wmChecked=False, wmState="small"), base_S(wmChecked=False, wmState="noholders"), base_S(tweetShared=9.0, x="https://x.com/a/status/123456"),
                           base_S(stair={"n": 7, "rise": 0.3, "green": 0.9, "pull": 0.0}, fundN=5.0, freshN=4.0, freshOf=10.0, devAgeH=None, devTxs=3.0))

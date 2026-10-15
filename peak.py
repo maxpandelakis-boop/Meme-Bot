@@ -51,6 +51,11 @@ GeckoTerminal no longer keeps that day's minutes), the old doc's best and value 
 GeckoTerminal off for the rest of the run. Docs are written every SETTLE_EVERY windows, so a step killed at its timeout keeps them.
 Each 429 of a run widens the gap between its GeckoTerminal requests for the rest of the run (gt_extra_gap).
 
+The minute path (db/memepath/<pid>.json, write_path): every window priced here or by the radar account on one-minute candles also keeps
+its candles, exactly peak_of's window (from the candle holding the entry, never one before it; dust included, with its volume), as
+closes over cpx, once and never pruned: the learning trader (traders.py) replays other exit rules on it exactly. It costs no request
+(the candles are already in hand) and never fails a booking.
+
 The run's budget: the radar account (radar_paper.py) goes first, on its own share of the deadline (radar_until) and of the run's
 429s (RADAR_MAX_429); the windows here get the rest of the deadline, all of it when the radar account had nothing to price.
 
@@ -102,6 +107,8 @@ GT_SHARE = "its share of GeckoTerminal's 429s used"
 DOC_KEYS = ("v", "pos", "grp", "sym", "addr", "pair", "ticket", "t", "entryAt", "end", "upd", "state", "src", "res", "tries",
             "px", "cpx", "base", "x", "at", "rawX", "x6", "eur", "eur6", "lo", "loAt", "eurLo", "dead", "cut", "n")
 SRC_RANK = {"m1": 3, "m15": 2, "est": 1}   # how good a settled doc's source is: an older version's doc is never replaced by a lesser one
+PATH_V = 1                  # db/memepath/<id>.json: the minute path of one priced window (path_of)
+PATH_KEYS = ("v", "id", "kind", "grp", "entryAt", "end", "res", "cpx", "base", "dead", "c")
 
 
 def num(v):
@@ -338,6 +345,52 @@ def low_of(cands, base, entry_lv, entry_t, gap, clean):
         if lv < lo:
             lo, lo_t = lv, c[0]
     return lo, lo_t
+
+
+def path_of(cands, entry_at, end, r, kind, grp, pid):
+    """The minute path of one window priced on one-minute candles (r: peak_of's result there, or radar_paper.price's, with cpx, base,
+    dead), or None without cpx: {"v", "id", "kind": "pos" | "radar", "grp": "hold" | "young" | "radar", "entryAt", "end", "res": 1,
+    "cpx", "base", "dead": None | {"at", "why"}, "c": [[seconds after the entry, close / cpx (6 significant figures), volume in USD
+    (an integer) or None], ...]}. c is exactly peak_of's window: every candle that starts at entryAt - 60 s or later and ends by the end,
+    dust too (the replay skips it as a price); never a candle before the one holding the entry. Pure."""
+    cpx = num((r or {}).get("cpx"))
+    if not cpx or cpx <= 0:
+        return None
+    dead = r.get("dead") if isinstance(r.get("dead"), dict) and num(r["dead"].get("at")) is not None else None
+    win = [c for c in _rows(cands) if c[0] >= entry_at - MIN and c[0] + MIN <= end]
+    return {"v": PATH_V, "id": str(pid), "kind": kind, "grp": grp, "entryAt": int(entry_at), "end": int(end), "res": 1, "cpx": cpx,
+            "base": num(r.get("base")), "dead": {"at": int(num(dead["at"])), "why": str(dead.get("why") or "")} if dead else None,
+            "c": [[int((c[0] - entry_at) // 1000), sig(c[4] / cpx), int(round(c[5])) if c[5] is not None else None] for c in win]}
+
+
+def write_path(d, kind, pid, cands, entry_at, end, r, grp=None):
+    """db/memepath/<pid>.json from path_of, only when it is not there yet and only for one-minute candles (r["res"] 1; 15-minute
+    candles are not exact): whole or not at all (a temp file in .pathtmp, outside the synced folder, then a rename). It never raises (a
+    failure is logged and the booking goes on). -> True when written."""
+    try:
+        pid = str(pid)
+        if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$", pid) or ".." in pid or int(num((r or {}).get("res")) or 1) != 1:
+            return False
+        fn = os.path.join(d, "db", "memepath", pid + ".json")
+        if os.path.exists(fn):
+            return False                            # written once: a later run never changes a path
+        doc = path_of(cands, entry_at, end, r, kind, grp or ("radar" if kind == "radar" else None), pid)
+        if doc is None or not doc["c"]:
+            return False
+        tmp_dir = os.path.join(d, ".pathtmp")
+        os.makedirs(tmp_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(fn), exist_ok=True)
+        tmp = os.path.join(tmp_dir, pid + ".json")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(doc, f, separators=(",", ":"), allow_nan=False)
+        if os.path.exists(fn):
+            os.remove(tmp)
+            return False
+        os.replace(tmp, fn)
+        return True
+    except Exception as e:
+        print("peaks: no minute path for %s (%s: %s)" % (str(pid)[:60], type(e).__name__, str(e)[:120]), file=sys.stderr, flush=True)
+        return False
 
 
 def filtered_text(doc):
@@ -755,7 +808,10 @@ def _book(d, ctx, pid, p, info, now, old=None):
     if status not in ("ok", "empty", "nopool", "error") or (status == "error" and not old_w):
         return None                                        # nothing learned: the doc (if any) stays as it is
     if status == "ok":
-        r = peak_of(load_candles(d, p.get("pair"), info["key"]), entry, end, px, rug, ds, liq0=liq0, mc0=mc0, res=info.get("res") or 1)
+        cands = load_candles(d, p.get("pair"), info["key"])
+        r = peak_of(cands, entry, end, px, rug, ds, liq0=liq0, mc0=mc0, res=info.get("res") or 1)
+        if r["state"] == "ok" and r["res"] == 1:
+            write_path(d, "pos", pid, cands, entry, end, r, p.get("grp"))
         if r["state"] in ("ok", "unit"):
             return _finish(doc, p, r, src="m15" if r["res"] == 15 else "m1", tries=tries)
         status = "empty"                                   # candles, but none inside the window
