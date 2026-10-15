@@ -2,10 +2,13 @@
 
 Each 1 h / 24 h result priced from candles carries "path": [[minutes after the tip, open, high, low, close], ...] relative
 to the entry price, oldest first, with "cv": 2 (results without it were stored from newest-first candles and are skipped).
-A rule sells at its take-profit or stop level the first time a candle reaches it; when one candle reaches both, the stop is
-assumed first (conservative); a candle that opens below the stop fills at its open (a gap or a rug does not sell at the stop
-price); a take-profit fills at its level even when the candle opens above it; a trailing stop follows the highest high of the
-earlier candles. Without an exit the coin is sold at the window's end price. Fake money: 20 per pick, fees 0.5% with a 0.81 minimum.
+Only candles from the entry minute on count ("tpFrom", the minute the entry price was taken, as memebot.take_profit does): the
+path starts at the scan, about 20 minutes before the buy, and a replay that walks those earlier candles sells coins before they
+were bought (the 2026-10-15 study found most of a trailing stop's apparent gain there). Results without tpFrom are skipped.
+The rules trigger and fill the way the live paper trader does (memebot hold_check): on minute CLOSES, a stop sells at the lower of
+that close and the stop level (a crash through the level fills at the crash close, never at the level), a take-profit sells at
+its level the first minute a candle closes there; a trailing stop follows the highest CLOSE of the earlier candles (a wick is no
+price). Without an exit the coin is sold at the window's end price. Fake money: 20 per pick, fees 0.5% with a 0.81 minimum.
 
 usage: git archive origin/results db/memerec db/memeyoung | tar -x -C /tmp/res && python3 -I research/check_exits.py /tmp/res
 """
@@ -24,27 +27,29 @@ def net(m):
     return (max(0.0, g - fee(g)) if g > 0 else 0.0) - TICKET
 
 
-def replay(path, end_mult, tp=None, sl=None, trail=None):
-    """-> the multiple the rule sold at."""
+def replay(path, end_mult, tp=None, sl=None, trail=None, start_min=0.0):
+    """-> the multiple the rule sold at: candles before start_min (the entry minute) never count; triggers and fills on closes."""
     peak = 1.0
-    for _, op, hi, lo, close in path:
+    for minute, op, hi, lo, close in path:
+        if minute < start_min:
+            continue
         stop = None
         if sl is not None:
             stop = 1.0 - sl
         if trail is not None:
             t = peak * (1.0 - trail)
             stop = t if stop is None else max(stop, t)
-        if stop is not None and lo <= stop:
-            return min(stop, op)
-        if tp is not None and hi >= 1.0 + tp:
+        if stop is not None and close <= stop:
+            return min(stop, close)
+        if tp is not None and close >= 1.0 + tp:
             return 1.0 + tp
-        peak = max(peak, hi)
+        peak = max(peak, close)
     return end_mult
 
 
 RULES = [("hold to the end", {}), ("+20% / -20%", {"tp": 0.2, "sl": 0.2}), ("+30% / -15%", {"tp": 0.3, "sl": 0.15}),
          ("+50%, no stop", {"tp": 0.5}), ("+50% / -30%", {"tp": 0.5, "sl": 0.3}), ("+100% / -50%", {"tp": 1.0, "sl": 0.5}),
-         ("+20%, no stop", {"tp": 0.2}), ("trailing stop 20%", {"trail": 0.2}), ("trailing stop 30%", {"trail": 0.3}),
+         ("+20%, no stop", {"tp": 0.2}), ("-30% / +1000% (live)", {"tp": 10.0, "sl": 0.3}), ("trailing stop 20%", {"trail": 0.2}), ("trailing stop 30%", {"trail": 0.3}),
          ("+50% or trailing 25%", {"tp": 0.5, "trail": 0.25})]
 
 
@@ -59,7 +64,7 @@ def results(root):
             for key, res in ((doc.get("outs") or {}).items() if isinstance(doc.get("outs"), dict) else []):
                 for o in (res or {}).get("picks") or []:
                     if isinstance(o, dict) and isinstance(o.get("path"), list) and o["path"] and isinstance(o.get("mult"), (int, float)) and (o.get("cv") or 0) >= 2 \
-                            and all(isinstance(c, list) and len(c) == 5 for c in o["path"]):
+                            and isinstance(o.get("tpFrom"), (int, float)) and all(isinstance(c, list) and len(c) == 5 for c in o["path"]):
                         out.append((coll, key, o))
     return out
 
@@ -74,7 +79,7 @@ def main(root):
                 continue
             print("\n== %s, %s h window: %d results (%s)" % (coll, key, len(sel), "the bot's tips" if coll == "memerec" else "new launches under an hour old"))
             for name, kw in RULES:
-                e = [net(replay(o["path"], o["mult"], **kw)) for o in sel]
+                e = [net(replay(o["path"], o["mult"], start_min=o["tpFrom"], **kw)) for o in sel]
                 print("  %-24s avg %+6.2f per 20   win %5.1f%%   total %+8.2f" % (name, sum(e) / len(e), 100.0 * sum(1 for x in e if x > 0) / len(e), sum(e)))
 
 
