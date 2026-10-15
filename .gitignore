@@ -27,3 +27,7 @@
 !db/memeradar/**
 !db/memeradarpaper/
 !db/memeradarpaper/**
+!db/memepath/
+!db/memepath/**
+!db/memetrader/
+!db/memetrader/**
