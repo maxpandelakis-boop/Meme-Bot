@@ -15,8 +15,11 @@ RA3  the paper fees: eur == memebot.pos_value on a 3 EUR young paper position, b
 RA4  radar_paper run against the mock: open docs inside 6 h (no request), oldest first and at most MAX_ITEMS a run, closed and
      void docs, empty answers -> waiting -> estimate (rug when a later price found the pool gone, else void), a 5xx under 48 h
      settles nothing, a second run rewrites nothing
-RA5  the GeckoTerminal budget inside peak.py run: peak.py's own windows first, then at most 15 radar windows, oldest first, on
-     what is left of the same deadline; with no time left the radar asks nothing and peak.py's own result is unchanged
+RA5  the GeckoTerminal budget inside peak.py run: the radar account first, at most 15 windows, oldest first, then peak.py's own
+     windows on the same client; the radar part ends at its share of the deadline (40%) and the windows after it get the rest;
+     with nothing to price it asks nothing and takes no time; against a mock that 429s every third request the radar account is
+     priced first, stops at its share of the 429s (3; the window that met the last one waits) and peak.py's windows still get
+     their part until the 8th 429 gives GeckoTerminal up; a failure in the radar account never fails the run
 RA6  the trader's files are byte for byte the same; the radar account writes only db/memeradarpaper and candles/*_rp<minute>.txt
 RA7  the docs survive bot.py prune and travel with bot.py sync (and the candles do not)
 RA8  the two accounts (all 5, green only): invested, back, P/L, win rate, n, open, the best and worst trade, the hindsight sums
@@ -107,10 +110,11 @@ def pool_candles():
 
 class GT:
     """A mock GeckoTerminal: OHLCV of the pools it knows (newest first, as GT sends them), 404 for others, 500 for "500"; every request
-    is noted as (pool, aggregate); an optional delay per answer."""
+    is noted as (pool, aggregate) and its arrival time in times; an optional delay per answer; every429: a 429 on every so many
+    requests (3: the third, sixth, ...), whatever was asked."""
 
-    def __init__(self, pools, delay=0.0):
-        self.pools, self.delay, self.calls, self.lock = pools, delay, [], threading.Lock()
+    def __init__(self, pools, delay=0.0, every429=0):
+        self.pools, self.delay, self.calls, self.lock, self.times, self.every429 = pools, delay, [], threading.Lock(), [], every429
 
     def answer(self, path, query):
         m = re.search(r"/pools/([^/]+)/ohlcv/minute", path)
@@ -121,6 +125,10 @@ class GT:
         before, agg = int(q["before_timestamp"][0]), int(q["aggregate"][0])
         with self.lock:
             self.calls.append((pool, agg))
+            self.times.append(time.time())
+            n = len(self.calls)
+        if self.every429 and n % self.every429 == 0:
+            return 429, {}
         if self.delay:
             threading.Event().wait(self.delay)     # a real wait: selftest.main replaces time.sleep with a no-op
         c = self.pools.get(pool)
@@ -336,63 +344,106 @@ def _run(check, tmp):
 
 
 def _budget(check, tmp):
-    d = os.path.join(tmp, "ra5")
     T = TA - 20 * H
-    recs = [rec("c%02d" % i, "C%02d" % i, T + (i // 5) * H, [(T + (i // 5) * H, "trap", float(i % 5))]) for i in range(20)]
-    write_records(d, recs)
-    os.makedirs(os.path.join(d, "db", "memepos"), exist_ok=True)
-    for i in range(6):
-        json.dump({"grp": "young", "t": T + i * MIN, "entryAt": T + i * MIN, "px": 1e-5, "ticket": 3.0, "paper": M.PAPER_RULE, "pair": "PK%d" % i, "sym": "P%d" % i},
-                  open(os.path.join(d, "db", "memepos", "y-p%d.json" % i), "w"))
-    pools = {"PK%d" % i: series(T + i * MIN, [1.0] * 372) for i in range(6)}
-    pools.update({"RPc%02d" % i: series(T + (i // 5) * H, [1.0] * 372) for i in range(20)})
-    gt = GT(pools)
-    srv, url = serve(gt)
     now = TA
-    try:
-        with quiet():
-            o = P.run(d, now, deadline_s=60, mock=url)
-        calls = [p for p, _ in gt.calls]
-        d2 = os.path.join(tmp, "ra5b")
-        shutil.copytree(d, d2, ignore=shutil.ignore_patterns("memepeak", "memeradarpaper", "candles", ".peaktmp", ".rptmp"))
-        gt2 = GT(pools, delay=1.0)
-        srv2, url2 = serve(gt2)
+
+    def make(d, n_pos=6, radar_at=T, step=H):
+        """A db with n_pos paper positions whose windows have closed (pools PK<i>, a minute apart from T) and 20 radar buys, the 5
+        of a round from radar_at, a round every step (pools RPc<i>). -> the mock's candles of every pool."""
+        write_records(d, [rec("c%02d" % i, "C%02d" % i, radar_at + (i // 5) * step, [(radar_at + (i // 5) * step, "trap", float(i % 5))]) for i in range(20)])
+        os.makedirs(os.path.join(d, "db", "memepos"), exist_ok=True)
+        for i in range(n_pos):
+            json.dump({"grp": "young", "t": T + i * MIN, "entryAt": T + i * MIN, "px": 1e-5, "ticket": 3.0, "paper": M.PAPER_RULE, "pair": "PK%d" % i, "sym": "P%d" % i},
+                      open(os.path.join(d, "db", "memepos", "y-p%d.json" % i), "w"))
+        pools = {"PK%d" % i: series(T + i * MIN, [1.0] * 372) for i in range(n_pos)}
+        pools.update({"RPc%02d" % i: series(radar_at + (i // 5) * step, [1.0] * 372) for i in range(20)})
+        return pools
+
+    def go(d, gt, deadline, lines=None):
+        srv, url = serve(gt)
         try:
-            with quiet():
-                o2 = P.run(d2, now, deadline_s=4.5, mock=url2)
+            t = time.time()
+            if lines is None:
+                with quiet():
+                    o = P.run(d, now, deadline_s=deadline, mock=url)
+            else:
+                o = P.run(d, now, deadline_s=deadline, mock=url, log=lines.append)
+            return o, [p for p, _ in gt.calls], t
         finally:
-            srv2.shutdown()
-            srv2.server_close()
-    finally:
-        srv.shutdown()
-        srv.server_close()
+            srv.shutdown()
+            srv.server_close()
+    d = os.path.join(tmp, "ra5")
+    pools = make(d)
+    o, calls, _ = go(d, GT(pools), 60)
     pk = [c for c in calls if c.startswith("PK")]
     rp = [c for c in calls if c.startswith("RP")]
     oldest = sorted(RP.all_buys(d)[0].values(), key=lambda x: (x["entryAt"], x["id"]))[:RP.MAX_ITEMS]
-    check(o["ok"] == 6 and o["why"] == "all asked" and len(pk) == 6 and calls[:6] == pk and len(set(rp)) == RP.MAX_ITEMS == 15
-          and set(rp) == {"RP" + x["addr"] for x in oldest} and (o.get("radar") or {}).get("items") == 15 and (o["radar"]).get("closed") == 15
+    check(o["ok"] == 6 and o["why"] == "all asked" and len(pk) == 6 and RP.MAX_ITEMS == 15 and calls[:15] == rp and calls[15:] == pk
+          and rp == ["RP" + x["addr"] for x in oldest] and (o.get("radar") or {}).get("items") == 15 and (o["radar"]).get("closed") == 15
           and (o["radar"]).get("waiting") == 5 and len(M.load_docs(d, "memepeak")) == 6,
-          "RA5 inside peak.py run: its own 6 windows first, then the radar account's, at most 15 of its 20 (the oldest), on the same client and "
-          "deadline; the other 5 wait for the next run (%s)" % json.dumps(o.get("radar")))
-    calls2 = [p for p, _ in gt2.calls]
-    check(not any(c.startswith("RP") for c in calls2) and (o2.get("radar") or {}).get("why") == "deadline" and (o2.get("radar") or {}).get("closed") == 0
-          and o2["why"] == "deadline" and 1 <= len(calls2) <= 4 and (o2.get("radar") or {}).get("waiting") == 20,
-          "RA5 when peak.py's own windows use the whole deadline, the radar account asks GeckoTerminal nothing (its windows wait) and peak.py's "
-          "budget is untouched (%d requests, all peak.py's; radar %s)" % (len(calls2), json.dumps(o2.get("radar"))))
+          "RA5 inside peak.py run: the radar account first, its 15 oldest windows of 20 (oldest first), then peak.py's own 6 on the same "
+          "client and deadline; the other 5 radar windows wait for the next run (%s)" % json.dumps(o.get("radar")))
+    # its share of the deadline: 40% of 7 s is 2.8 s, and no request starts with under 2 s left (0.5 s an answer: one or two).
+    # Then all 6 of peak.py's windows: they keep the run's own deadline (requests may start until 5 s; the 6th starts by about 3.5 s).
+    # Had the radar account's 40% been taken off their deadline too (requests until 2.2 s), only about 3 would fit, so the count
+    # pins the rest of the deadline down here as well as in peak P7 and P10.
+    d2 = os.path.join(tmp, "ra5b")
+    shutil.copytree(d, d2, ignore=shutil.ignore_patterns("memepeak", "memeradarpaper", "candles", ".peaktmp", ".rptmp"))
+    o2, calls2, _ = go(d2, GT(pools, delay=0.5), 7.0)
+    r2 = o2.get("radar") or {}
+    rp2, pk2 = [c for c in calls2 if c.startswith("RP")], [c for c in calls2 if c.startswith("PK")]
+    check(r2.get("why") == "deadline" and 1 <= len(rp2) <= 2 and calls2[:len(rp2)] == rp2 and r2.get("closed") == len(rp2) and r2.get("secs", 99) <= 3.3
+          and len(pk2) == 6 and o2["ok"] == 6 and o2["secs"] <= 7.5,
+          "RA5 the radar account's part ends at its share of the deadline (40%% of 7 s: %d request%s at 0.5 s an answer, %s s), then "
+          "peak.py's windows get all the rest of it (%d of 6 priced, %s s in all)" % (len(rp2), "" if len(rp2) == 1 else "s", r2.get("secs"), o2["ok"], o2["secs"]))
+    # nothing to price: every radar buy inside its 6 hours (four hourly rounds, the first 5 hours ago)
+    d3 = os.path.join(tmp, "ra5d")
+    gt3 = GT(make(d3, radar_at=now - 5 * H))
+    o3, calls3, t3 = go(d3, gt3, 60)
+    r3 = o3.get("radar") or {}
+    first = gt3.times[0] - t3 if gt3.times else 99.0
+    check(r3.get("items") == 0 and r3.get("open") == 20 and r3.get("why") == "no window to price" and r3.get("secs", 99) <= 0.5
+          and not any(c.startswith("RP") for c in calls3) and o3["ok"] == 6 and o3["why"] == "all asked" and first <= 1.0,
+          "RA5 a radar account with nothing to price (its 20 buys inside their 6 hours: open docs) asks nothing and takes no time: "
+          "peak.py's first request %.2f s after the start, its 6 windows priced" % first)
+    # the peaks logs of 15 Oct, sped up: a 429 on every third request, 30 windows of peak.py's own behind the radar account's
+    d4 = os.path.join(tmp, "ra5e")
+    gt4 = GT(make(d4, n_pos=30), every429=3)
+    lines4, saved = [], (P.GT_429_LADDER_S, P.GT_429_STEP_S, P.GT_429_EXTRA_MAX_S)
+    try:
+        P.GT_429_LADDER_S, P.GT_429_STEP_S, P.GT_429_EXTRA_MAX_S = (0.02, 0.02, 0.02), 0.01, 0.04     # the waits scaled down (peak P13 measures them)
+        o4, calls4, _ = go(d4, gt4, 60, lines4)
+    finally:
+        P.GT_429_LADDER_S, P.GT_429_STEP_S, P.GT_429_EXTRA_MAX_S = saved
+    r4 = o4.get("radar") or {}
+    rp4, pk4 = [c for c in calls4 if c.startswith("RP")], [c for c in calls4 if c.startswith("PK")]
+    docs4 = {v["addr"]: v for v in M.load_docs(d4, RP.COLL).values()}
+    sold = sorted(a for a, v in docs4.items() if v["state"] == "closed")
+    check(P.RADAR_MAX_429 == 3 and rp4 == ["RPc00", "RPc01", "RPc02", "RPc02", "RPc03", "RPc04", "RPc04", "RPc05", "RPc06"] and calls4[:9] == rp4
+          and r4.get("why") == P.GT_SHARE and r4.get("items") == 15 and r4.get("closed") == 6 and r4.get("waiting") == 14
+          and sold == ["c%02d" % i for i in range(6)] and (docs4.get("c06") or {}).get("state") == "waiting" and (docs4.get("c06") or {}).get("tries") == 0
+          and sum(1 for l in lines4 if "this part's share is used" in l) == 1,
+          "RA5 GeckoTerminal answering 429 to every third request: the radar account goes first and prices %d windows (oldest first, a window "
+          "asked again after its 429), then stops at the third 429, its share; the window that met it waits for a later run (no try "
+          "counted) and GeckoTerminal stays on (%s)" % (len(sold), json.dumps(r4)))
+    check(len(pk4) == 15 and calls4[9:] == pk4 and o4["ok"] == 10 and o4["why"] == "GeckoTerminal rate limit" and len(M.load_docs(d4, "memepeak")) == 10
+          and sum(1 for l in lines4 if "giving up on api.geckoterminal.com for this run: rate limited 8 times" in l) == 1,
+          "RA5 then peak.py's windows still get their part: %d of 30 priced on the other 5 of the run's 8 429s, until the 8th gives "
+          "GeckoTerminal up (priced last, as before, the radar account got nothing after that: the logs of 15 Oct)" % o4["ok"])
     def boom(*a, **k):
         raise RuntimeError("radar broke")
-    d3 = os.path.join(tmp, "ra5c")
-    shutil.copytree(d, d3)
-    srv3, url3 = serve(GT(pools))
+    d5 = os.path.join(tmp, "ra5c")
+    shutil.copytree(d, d5)
+    srv5, url5 = serve(GT(pools))
     lines, orig_run = [], RP.run
     try:
         RP.run = boom
-        o3 = P.run(d3, now + H, deadline_s=20, mock=url3, log=lines.append)
+        o5 = P.run(d5, now + H, deadline_s=20, mock=url5, log=lines.append)
     finally:
         RP.run = orig_run
-        srv3.shutdown()
-        srv3.server_close()
-    check(o3.get("radar") == {"err": "RuntimeError"} and any("radar account: not priced this run (RuntimeError" in l for l in lines) and "why" in o3,
+        srv5.shutdown()
+        srv5.server_close()
+    check(o5.get("radar") == {"err": "RuntimeError"} and any("radar account: not priced this run (RuntimeError" in l for l in lines) and "why" in o5,
           "RA5 a failure in the radar account never fails peak.py run: it is logged and its summary says so")
 
 

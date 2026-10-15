@@ -5,7 +5,8 @@ never buys anything, and the paper trader never reads what it writes.
 launch_radar.py asks these sources once a cycle (one cycle per round; a VM's loop every 150 s). Every request runs on RadarHttp,
 fetch.py's client with the radar's own rules (the limits measured by the WP0 probe on GitHub's runners, research/probe-radar.md):
   - the request's timeout is what is left of the cycle's step (none starts after it), so a hanging host never holds a cycle up;
-  - minimum gaps per host (GAPS: fetch's GeckoTerminal 10 s and pump.fun 0.7 s, RugCheck 1 s, swap-api 0.2 s, advanced-api 1 s) hold,
+  - minimum gaps per host (GAPS: fetch's GeckoTerminal 10 s, pump.fun 0.7 s and X's tweet endpoint 1.5 s, RugCheck 1 s, swap-api 0.2 s,
+    advanced-api 1 s) hold,
     but never past the step's end; the Solana RPC also keeps RPC_GAP_S (1.1 s) between two calls of one method, because its real limit
     is 10 calls per method per 10 s (a sliding window per IP; fetch's 0.3 s gap is too fast for more than 10 calls in a row);
   - a 429 skips that host for the rest of the cycle, then for a cool-down of 2.5, 5, then 10 minutes (a good answer resets it); no wait.
@@ -60,6 +61,8 @@ ADAPTERS = {               # on/off defaults per adapter (names and values from 
     "rpc_funding": True,          # getTransaction(oldest signature) of fresh holders only, at most FUND_CAP a cycle: who funded them
     "rpc_mint_time": True,        # the mint's oldest signature: the last fallback for the mint time, at most 3 pages, else unknown
     "gt_candles": True,           # GeckoTerminal minute candles: staircase so far of other pools, the peak within the hour
+    "x_tweet": True,              # X's public tweet facts (fetch.viral's syndication endpoint, no key): the likes of the tweet a coin
+                                  # launched off (viral_tweet, measured only), launch_radar.TWEET_CAP a cycle; not in the probe (radar only)
 }
 NOT_HERE = {               # the probe's other ADAPTERS entries: not switches of the radar, and why
     "rc_new_tokens": "not built: RugCheck new_tokens listed 1 of 23 fresh pools, never one nobody else had; RugCheck's budget stays with the reports",
@@ -87,6 +90,7 @@ PF_WEB = {"Origin": "https://pump.fun", "Referer": "https://pump.fun/"}      # a
 GH_API = (os.environ.get("GITHUB_API_URL") or "https://api.github.com").rstrip("/")
 REQ_TIMEOUT = 10.0          # s: the most one request waits (less when the step ends sooner)
 MIN_LEFT = 0.2              # s: no request starts with less of its step left
+ANSWER_MAX = 4_000_000      # bytes of one answer read at most (the rest is not read)
 COOL = (150.0, 300.0, 600.0)  # s: a host's cool-down after a 429, growing with each one in a row
 RPC_HOST = urllib.parse.urlsplit(F.RPC).netloc
 GT_HOST = urllib.parse.urlsplit(F.GT).netloc
@@ -95,18 +99,23 @@ RPC_GAP_S = 1.1             # s between two RPC calls of one method (10 per meth
 RPC_RETRY_S = 10.0          # the RPC's retry-after
 COOL_HOST = {GT_HOST: GT_429_LADDER_S, RPC_HOST: (RPC_RETRY_S,)}
 CYCLE_SKIP = {RPC_HOST}     # hosts with their own ladder that a 429 still skips for the rest of the cycle (GeckoTerminal only cools)
-GAPS = dict(F.HOST_GAP, **{"api.rugcheck.xyz": 1.0, "swap-api.pump.fun": 0.2, "advanced-api-v2.pump.fun": 1.0})
+XTW_HOST = urllib.parse.urlsplit(F.XTW).netloc     # cdn.syndication.twimg.com: one tweet's likes by id (fetch.viral's endpoint)
+TWEET_ID = re.compile(r"[1-9][0-9]{0,24}")         # a tweet id X can be asked about: ASCII digits only (the first tweet is id 20), no
+                                                   # leading zero; traps.norm_x's isdigit() also passes other scripts' digits, which
+                                                   # urllib cannot put in a URL (the request would fail unsent and mute the host)
+GAPS = dict(F.HOST_GAP, **{"api.rugcheck.xyz": 1.0, "swap-api.pump.fun": 0.2, "advanced-api-v2.pump.fun": 1.0})   # fetch's X tweet gap: 1.5 s
 PUMP_SUPPLY = 1e9           # pump.fun's supply in tokens
 HOST_LABEL = {"api.dexscreener.com": "dexscreener", "api.rugcheck.xyz": "rugcheck", "frontend-api-v3.pump.fun": "pump.fun",
               "api.geckoterminal.com": "geckoterminal", "api.mainnet-beta.solana.com": "rpc", "lite-api.jup.ag": "jupiter",
-              "launch-mint-v1.raydium.io": "launchlab", "swap-api.pump.fun": "pump.fun trades", "advanced-api-v2.pump.fun": "pump.fun holders"}
+              "launch-mint-v1.raydium.io": "launchlab", "swap-api.pump.fun": "pump.fun trades", "advanced-api-v2.pump.fun": "pump.fun holders",
+              XTW_HOST: "x tweets"}
 ADAPTER_HOST = {"pf_graduated": ("frontend-api-v3.pump.fun",), "pf_new": ("frontend-api-v3.pump.fun",), "pf_coin_v3": ("frontend-api-v3.pump.fun",),
                 "pf_dev_history": ("frontend-api-v3.pump.fun",), "pf_top_holders": ("frontend-api-v3.pump.fun", "advanced-api-v2.pump.fun"),
                 "gt_new_pools": ("api.geckoterminal.com",), "gt_candles": ("api.geckoterminal.com",),
                 "jup_recent": ("lite-api.jup.ag",), "dev_check": ("lite-api.jup.ag",), "ds_profiles": ("api.dexscreener.com",),
                 "ds_tokens": ("api.dexscreener.com",), "ds_orders": ("api.dexscreener.com",), "ll_new": ("launch-mint-v1.raydium.io",),
                 "rc_report": ("api.rugcheck.xyz",), "rpc_dev_age": (RPC_HOST,), "rpc_holder_age": (RPC_HOST,), "rpc_funding": (RPC_HOST,),
-                "rpc_mint_time": (RPC_HOST,), "swap_trades": ("swap-api.pump.fun",), "swap_candles": ("swap-api.pump.fun",)}
+                "rpc_mint_time": (RPC_HOST,), "swap_trades": ("swap-api.pump.fun",), "swap_candles": ("swap-api.pump.fun",), "x_tweet": (XTW_HOST,)}
 
 
 def adapters_from_env(base=None):
@@ -122,6 +131,20 @@ def adapters_from_env(base=None):
 def short(e):
     """An error in a few words for the log: no URL (a remote's credentials never show), at most 80 characters."""
     return re.sub(r"\s+", " ", re.sub(r"\w+://\S+", "(address)", "%s %s" % (type(e).__name__, e)))[:80]
+
+
+def read_body(r, end):
+    """An answer's body a chunk at a time (at most ANSWER_MAX bytes), cut off at end: a host that sends its answer a few bytes at a time
+    cannot hold the step past its end (the socket timeout only bounds each wait for data). Past end: TimeoutError, as no answer."""
+    out = bytearray()
+    while len(out) < ANSWER_MAX:
+        if time.time() > end:
+            raise TimeoutError("the answer was not done by the step's end")
+        b = r.read1(min(65536, ANSWER_MAX - len(out)))
+        if not b:
+            break
+        out += b
+    return bytes(out)
 
 
 class RadarHttp(F.Http):
@@ -186,7 +209,8 @@ class RadarHttp(F.Http):
             self.limited_by[host] = self.limited_by.get(host, 0) + 1
 
     def _send(self, u, data=None, headers=None, method=None, until=None):
-        """One request: (status, body bytes); status None when no answer came, "skip" when none was sent."""
+        """One request: (status, body bytes); status None when no answer came (also an answer not done by the step's end), "skip" when
+        none was sent."""
         host = urllib.parse.urlsplit(u).netloc
         self.code = "skip"
         if self.blocked(host):
@@ -205,7 +229,7 @@ class RadarHttp(F.Http):
         try:
             req = urllib.request.Request(self.url(u), data=data, headers=hdr, method=method)
             with urllib.request.urlopen(req, timeout=min(REQ_TIMEOUT, left)) as r:
-                raw, status = r.read(4_000_000), getattr(r, "status", 200)
+                raw, status = read_body(r, end), getattr(r, "status", 200)
         except urllib.error.HTTPError as e:
             status, raw = e.code, b""
         except Exception as e:                # no answer (a timeout, a refused or reset connection): the host rests for the rest of this cycle
@@ -311,6 +335,13 @@ def ms_of(v):
     """Milliseconds from a number (s or ms) or an ISO date (memebot's parse_ms), as an int, else None."""
     x = M.parse_ms(v)
     return int(x) if x else None
+
+
+def tweet_id(tid):
+    """tid as a tweet id the syndication endpoint can be asked about (TWEET_ID), else None: a link whose id cannot be looked up is
+    unknown for good, settled without a request (launch_radar.tweet_likes never spends a lookup on it, nor retries it)."""
+    tid = str(tid or "")
+    return tid if TWEET_ID.fullmatch(tid) else None
 
 
 def amount_scale(total):
@@ -618,6 +649,31 @@ class Sources:
         out.sort(key=lambda c: c[0])
         return out
 
+    # ---------------------------------------------------------------- X (one tweet's public facts, no key)
+    def tweet(self, tid, until=None):
+        """The likes and replies of one tweet by id (fetch.viral's syndication endpoint and token): {"likes", "replies"}; {"likes": None,
+        "replies": None, "gone": True} when X says the tweet is not there or cannot be read (a 404; a 200 that is not a tweet: a deleted
+        tweet's tombstone, an unavailable or protected one's other __typename, an empty {}, the answers fetch.viral skips): unknown for
+        good, not asked again; None when it cannot be told now (no answer, a 429 or another refusal, the time is up): asked again later.
+        Never 0 for unknown. Only an answer that is a tweet goes through shape(), so one odd tweet never switches x_tweet off for the
+        run; a tweet without favorite_count (the endpoint changed) does. An id tweet_id() refuses: None and nothing sent (tweet_likes
+        settles it first). until: the latest moment the request may end (the caller keeps it short, so a slow X never holds a cycle up)."""
+        tid = tweet_id(tid)
+        if not self.use("x_tweet") or tid is None:
+            return None
+        gone = {"likes": None, "replies": None, "gone": True}
+        j = self.http.get("%s?id=%s&token=%s&lang=en" % (F.XTW, tid, F.tweet_token(tid)), until=until)
+        if j is None:
+            return gone if self.http.code == 404 else None
+        if isinstance(j, dict) and (j.get("__typename", "Tweet") != "Tweet" or not (j.get("id_str") or j.get("text") is not None)):
+            return gone
+        if not self.shape("x_tweet", isinstance(j, dict) and F.num(j.get("favorite_count")) is not None, "favorite_count"):
+            return None
+        likes, replies = F.num(j.get("favorite_count")), F.num(j.get("conversation_count"))
+        if likes < 0:
+            return gone                      # a count no tweet has: this answer will not get better, unknown for good
+        return {"likes": int(likes), "replies": int(replies) if replies is not None and replies >= 0 else None}
+
     # ---------------------------------------------------------------- Solana RPC (public node, a capped number of calls a cycle)
     def rpc(self, name, method, params):
         if not self.use(name):
@@ -715,8 +771,9 @@ def wallet_fresh(wc, now):
 
 
 def pf_facts(c, prev=None, now=None):
-    """A pump.fun coin's facts the radar keeps: mint time, creator, X / website / Telegram links, graduated, PumpSwap pool, and when a
-    list last carried it (seen)."""
+    """A pump.fun coin's facts the radar keeps: mint time, creator, X / website / Telegram links, graduated, PumpSwap pool, its replies
+    (reply_count, with repAt: when this answer gave it; 0 is a reading, a missing count leaves the last one), and when a list last carried
+    it (seen)."""
     out = dict(prev or {})
     if now:
         out["seen"] = int(now)
@@ -725,6 +782,9 @@ def pf_facts(c, prev=None, now=None):
                  ("name", c.get("name"))):
         if v:
             out[k] = str(v)[:200] if isinstance(v, str) else v
+    rep = F.num(c.get("reply_count")) if not isinstance(c.get("reply_count"), bool) else None
+    if rep is not None and rep >= 0 and now:
+        out["rep"], out["repAt"] = int(rep), int(now)
     out["done"] = bool(c.get("complete"))
     out["lp"] = "pump.fun"
     return out

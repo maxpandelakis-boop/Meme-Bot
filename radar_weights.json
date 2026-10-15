@@ -59,7 +59,9 @@
   "bundle_slot",
   "fresh_holders",
   "fund_cluster",
-  "staircase_early"
+  "staircase_early",
+  "chatty",
+  "viral_tweet"
  ],
  "infoOnly": [
   "tweet_shared"
@@ -99,7 +101,9 @@
   "freshHolders": 3,
   "fundCluster": 3,
   "fundMinutes": 15,
-  "fundExchange": 25
+  "fundExchange": 25,
+  "chattyReplies": 1,
+  "viralLikes": 1000
  },
  "brand": "\\b(google|apple|nvidia|openai|chatgpt|gpt|gemini|claude|grok|deepseek|tesla|elon|musk|trump|mrbeast|mr ?beast|nike|amazon|microsoft|meta|rockstar|gta|minecraft|disney|pixar|spacex|x ai|xai|binance|bnb|coinbase|robinhood|blackrock|starbucks|mcdonald|coca|pepsi|netflix|youtube|tiktok|samsung|amd|intel|hermes|hermès|rolex|ferrari|lamborghini|bmw|porsche|toy story|spongebob|simpsons|batman|pokemon)\\b",
  "fit": {
@@ -142,7 +146,9 @@
   "bundle_slot": "several wallets bought in the launch block",
   "fresh_holders": "top holders in brand-new wallets",
   "fund_cluster": "top holders funded by one wallet within 15 minutes",
-  "staircase_early": "staircase so far (6 to 9 minutes)"
+  "staircase_early": "staircase so far (6 to 9 minutes)",
+  "chatty": "people replied on pump.fun (1 reply or more at first sight)",
+  "viral_tweet": "launched off a tweet with 1,000+ likes"
  },
  "cohorts": {
   "L": {
@@ -2489,6 +2495,16 @@
    "label": "staircase so far (6 to 9 minutes)",
    "rows": [],
    "note": "never stored before 2026-10-13: measured by the radar from now on, weight 0 until its own records confirm it"
+  },
+  "chatty": {
+   "label": "people replied on pump.fun (1 reply or more at first sight)",
+   "rows": [],
+   "note": "never stored before 2026-10-15: measured by the radar from now on, weight 0 until its own records confirm it. In the scan's snapshots of 6-15 Oct, 12 of 17,347 coins under 1 h old had any pump.fun reply (1 to 34)"
+  },
+  "viral_tweet": {
+   "label": "launched off a tweet with 1,000+ likes",
+   "rows": [],
+   "note": "never stored before 2026-10-15: measured by the radar from now on, weight 0 until its own records confirm it. The scan read the likes of 306 source tweets of coins under 1 h old: 22 at the median, 944 at the 90th percentile, 31 with 1,000 or more"
   }
  },
  "zero": [

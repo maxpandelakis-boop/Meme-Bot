@@ -3,8 +3,9 @@
 
 Pure functions except feed(). Every weighted number comes from radar_weights.json (the rug study of 2026-10-13, frozen) or
 from a radar-model refit that passed its walk-forward guard (fit). The video signals the bot never stored before ("M"
-signals: dev history, copied X link, snipers, launch-block bundles, fresh or same-funded holders, early staircase) are
-measured and shown grey with weight 0 until fit() promotes one on the radar's own records. Unknown is never clean.
+signals: dev history, copied X link, snipers, launch-block bundles, fresh or same-funded holders, early staircase, pump.fun
+replies, a source tweet with many likes) are measured and shown grey with weight 0 until fit() promotes one on the radar's
+own records. Unknown is never clean.
 
 API (frozen, SPEC 13.10 section 5 WP1):
   load_weights(path=None, model=None) -> W        radar_weights.json; then the learned changes of model.json if they passed
@@ -57,13 +58,19 @@ WALLET_MIN_COINS = 500      # a memory built from fewer scored coins is "too sma
 MINT_SKEW_S = 120           # a pool up to this long "before" its mint is clock skew on a same-slot launch (thresholds.mintSkewS wins)
 TIME_MIN_MS = 1e12          # a time at or below this (2001) is a zero or a seconds value, never a real launch time
 FEED_DAYS = 14              # feed reads the scored snapshots of the newest 14 days (the study had 8): a flat run time as the cache grows
+CHATTY_REPLIES = 1          # pump.fun replies that make a coin "chatty" (measured only; thresholds.chattyReplies wins). Any reply at all:
+                            # in the scan's snapshots of 6-15 Oct, 12 of 17,347 coins under 1 h old had one (1 to 34), so a higher bar
+                            # would leave the radar's own records too few coins with it to ever test
+VIRAL_LIKES = 1000          # likes of the tweet a coin launched off that make it "viral_tweet" (measured only; thresholds.viralLikes wins):
+                            # the 306 source tweets the scan read for coins under 1 h old had 22 likes at the median, 944 at the 90th
+                            # percentile; 31 had 1,000 or more (the 'viral real story' launch, still enough coins to be tested)
 
 S_KEYS = ("instantPool", "mintToPoolS", "swAvg", "rugHolders", "wmChecked", "wmState",
           "brand", "buys", "rcReport", "rcDanger", "rcWarn", "cluster", "netSize",
           "creatorSold", "m5", "socN", "ageMin", "x", "xKind", "paid", "tweet", "lists",
           "stair", "mc", "liq", "creatorPct", "pumpswap",
           "devN", "devDead", "devGrad", "devAgeH", "devTxs", "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct",
-          "freshN", "freshOf", "fundN", "fundMin")
+          "freshN", "freshOf", "fundN", "fundMin", "replies", "tweetLikes")
 GOOD_SIGNS = ("x_and_paid", "tweet", "lists3")
 CHECKS = ("rc_report", "instant_pool", "rugger_wallets", "brand_name", "bot_volume", "rc_danger", "no_socials", "holder_cluster",
           "creator_sold", "pumping_5m", "staircase10")
@@ -79,6 +86,12 @@ def num(v):
 
 def blank_signals():
     return {k: None for k in S_KEYS}
+
+
+def _count(v):
+    """A count (replies, likes) as a number, or None: a negative, non-finite or yes/no value is no reading, never 0."""
+    x = num(v) if not isinstance(v, bool) else None
+    return x if x is not None and x >= 0 else None
 
 
 # ---------------------------------------------------------------- weights
@@ -516,6 +529,9 @@ def signals_scan(y, pr_mint_ms, wm, now=None, pool=None, W=None):
     S["xKind"] = (norm_x(S["x"]) or (None,))[0] if isinstance(S["x"], str) and S["x"] else None
     S["paid"] = None if g("ds.paid") is None else g("ds.paid") >= 1
     S["tweet"] = None if g("vt.tweet") is None else g("vt.tweet") >= 1
+    S["replies"] = _count(g("pf.replies"))
+    lk = _count(g("vt.likes"))                           # the scan stores log10(1 + likes)
+    S["tweetLikes"] = float(round(10 ** min(lk, 12.0) - 1)) if lk is not None else None
     S["mc"], S["liq"] = num(y.get("mc")), num(y.get("liq"))
     S["creatorPct"] = (s or {}).get("creatorPct") if (s or {}).get("creatorPct") is not None else g("rc.creator")
     S["pumpswap"] = str(y.get("dex") or "").lower() == "pumpswap"
@@ -531,7 +547,9 @@ def signals_radar(c, W=None):
       owners, else taken from rc), wm (walletmem dict), devSold, creatorPct,
       dev {"n","dead","grad","ageH","txs"}, xUsed / tweetShared (else from xlinks: an xlinks.json.gz "links" dict; the coin's
       own time for "older coins" is its mint, else its own index entry or first sight),
-      snip30, snip30N, slotN, slotPct, freshN, freshOf, fundN, fundMin, closes (minute closes or candles from pool open)."""
+      snip30, snip30N, slotN, slotPct, freshN, freshOf, fundN, fundMin, closes (minute closes or candles from pool open),
+      replies (pump.fun's reply_count from a recent list reading), tweetLikes (the likes of the tweet the X link points at; only for a
+      tweet link, None when it was not read). Both are measured only (chatty, viral_tweet): a failed reading is None, never 0."""
     W = W or load_weights()
     c = c if isinstance(c, dict) else {}
     S = blank_signals()
@@ -564,6 +582,7 @@ def signals_radar(c, W=None):
         S["xUsed"], S["tweetShared"] = r["used"], r["shared"]
     for k in ("snip30", "snip30N", "slotN", "slotPct", "freshN", "freshOf", "fundN", "fundMin"):
         S[k] = num(c.get(k))
+    S["replies"], S["tweetLikes"] = _count(c.get("replies")), _count(c.get("tweetLikes"))
     if c.get("closes"):
         st = staircase(c["closes"], n_min=W["thresholds"]["stair"]["n"], th=W["thresholds"]["stair"])
         S["stair"] = st if st["n"] >= 2 else None
@@ -659,6 +678,12 @@ def flag(name, S, W=None):
         return None if n("freshN") is None else n("freshN") >= th["freshHolders"]
     if name == "fund_cluster":
         return None if n("fundN") is None else n("fundN") >= th["fundCluster"]
+    if name == "chatty":
+        return None if n("replies") is None else n("replies") >= (num(th.get("chattyReplies")) or CHATTY_REPLIES)
+    if name == "viral_tweet":         # no tweet link at all is a plain no; a tweet whose likes were not read is unknown
+        if n("tweetLikes") is not None:
+            return n("tweetLikes") >= (num(th.get("viralLikes")) or VIRAL_LIKES)
+        return False if g("tweet") is False else None
     raise KeyError("unknown signal " + name)
 
 
@@ -779,6 +804,11 @@ def _text(name, S, W):
     if name == "staircase_early":
         st = S.get("stair") if isinstance(S.get("stair"), dict) else {}
         return "staircase so far (%d min)" % _n(st.get("n"))
+    if name == "chatty":
+        k = _n(S.get("replies"))
+        return "%d %s on pump.fun" % (k, _s(k, "reply", "replies"))
+    if name == "viral_tweet":
+        return "source tweet with {:,} likes".format(_n(S.get("tweetLikes")))
     return name.replace("_", " ")
 
 

@@ -8,6 +8,12 @@
                    most frequent red flags), Verdicts (no trap / watch / trap) and Push (the coin pushed this round, else the last coin
                    without traps). Drawn from mb/radar_live.json, then kept current by the radar's script on the New tab (memebot-radar
                    event). A tap opens New.
+  desk's chat      right under the desk, the same round as a trading desk's group chat where the radar's bots post (desk_chat, at most
+                   8 messages, words from radar.json only): Scout found a coin (where from, its pool's age, its liquidity), Checks names
+                   what it passed, Skeptic its red flags or what was not checked, the Desk its verdict and whether it went to the phone,
+                   for two coins of the round; one Desk line when the round failed, outside its hours or switched off; Record the greens'
+                   1 h results so far (hindsight: from 20 with a known outcome the counts the push says, "3 of 26 doubled within 1 h,
+                   6 rugged"). The script says the same from the radar's event (MemebotOffice.chat).
   agent cards      under the desk (the GROKBOT + JEV layout): a grid of compact cards, 2 columns on a phone and 4 on a desktop, one per
                    agent of the last run. Each card has its icon on a badge in its state colour (done, at work, fallback, failed, skipped),
                    its name, one number (how long it worked) and one line (its result, cut to one line). A tap opens the Details fold at the
@@ -50,7 +56,8 @@ TODAY_MIN_N = 10                     # today's share is given as a percentage fr
 CARD_LINE = 60                       # an agent card's line: at most this many characters (the live view's "Now: ..." line too)
 HOSTS = (("dexscreener", "DexScreener"), ("rugcheck", "RugCheck"), ("pump.fun", "pump.fun"), ("pumpfun", "pump.fun"), ("geckoterminal", "GeckoTerminal"),
          ("rpc", "Solana RPC"), ("jupiter", "Jupiter"), ("launchlab", "LaunchLab"), ("github", "GitHub"), ("supabase", "Supabase"),
-         ("pumpportal", "live feed"))       # the live pump.fun feed (radar_feed.py), named as the desk names it
+         ("pumpportal", "live feed"), ("tweets", "X tweets"))   # the live pump.fun feed (radar_feed.py), named as the desk names it,
+                                                                # and X's tweet endpoint (radar_src's host label "x tweets")
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 LOOK = {"running": ("running", "running"), "done": ("done", "done"), "late": ("fallback", "late"), "stopped": ("failed", "stopped"), "off": ("skipped", "switched off"),
         "hours": ("skipped", "outside its hours"), "none": ("skipped", "not started yet")}     # stopped is red, late amber: the radar's colours on the New tab
@@ -61,10 +68,31 @@ SRC = re.compile(r"^[a-z][A-Za-z0-9:_-]{0,23}$")     # a discovery list's name (
 NAME = re.compile(r"^[A-Za-z0-9_.]{1,32}$")
 VERDICTS = ("good", "watch", "trap")
 FEED = {"ok": "on"}                  # the live pump.fun feed (hosts.pumpportal): "live feed on", else its state (limited, off)
+CHAT_MAX = 8                         # the desk's chat: at most this many messages (two coins of the round and the record)
+CHAT_CHIPS = 3                       # a message names this many chips, then "+N more"
+TOO_FEW = 20                         # the greens' 1 h prices before the record gives shares (the New tab's Track record: MemebotRadar.TOO_FEW)
+# the chat's text from the doc: these become spaces (controls, C1 too, bidi marks, embeddings, overrides and isolates, a BOM), a superset of
+# both whitelists' sets (page_radar._str, MemebotRadar.clean's str), so the build and the script show the same text whichever cut it first,
+# and no symbol turns the rest of a line around; a chip of nothing but CHAT_BLANK (what Python's strip() or the script's trim() drops) says
+# nothing. Regex class bodies, the same in both languages (the script gets them through CH)
+CHAT_CTRL = r"\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff"
+CHAT_BLANK = r"\t-\r\x1c-\x20\x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+CHAT_BIG = 1e15                      # a number the chat prints is under this (whole numbers print alike in Python and the script up to 2**53)
+WHO = {"scout": "Scout", "checks": "Checks", "skeptic": "Skeptic", "desk": "Desk", "record": "Record"}
+# each speaker's badge: strokes in a 16 x 16 box (paths only, so the script draws the same), in its station's colour (DESK_CSS)
+AVATAR = {"scout": ["M2.5 7a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0-9 0", "M10.4 10.4 14 14"],
+          "checks": ["M8 1.8 13.5 4v4c0 3.2-2.3 5.6-5.5 6.5C4.8 13.6 2.5 11.2 2.5 8V4z", "M5.6 8.2l1.7 1.7 3.2-3.4"],
+          "skeptic": ["M8 2.2 14.2 13.3H1.8z", "M8 6.6v3.1", "M8 11.5v.2"],
+          "desk": ["M2 8a6 6 0 1 0 12 0a6 6 0 1 0-12 0", "M5.2 8a2.8 2.8 0 1 0 5.6 0a2.8 2.8 0 1 0-5.6 0", "M8 8l4.3-4.3"],
+          "record": ["M2.5 13.5h11", "M4.5 11V8", "M8 11V5", "M11.5 11V3"]}
 try:
     from page_radar import LABELS     # the words for a red flag's name (the radar's own)
 except ImportError:                   # a copy of the code without page_radar.py: the names as words
     LABELS = {}
+try:
+    from page_radar import clean_doc  # the New tab's whitelist: the doc the radar's event carries to the desk's chat
+except ImportError:                   # without page_radar.py there is no radar on New and no event: no chat
+    clean_doc = None
 
 
 def _num(v):
@@ -331,18 +359,197 @@ def desk_look(st, doc, now, hhmm, labels=None):
 def desk(D, R):
     """The Launch radar's desk on top of the Office tab: its state line and its four stations (desk_look), from mb/radar_live.json as the scan
     found it (its state judged at that scan's start: radar_ref); the script redraws it from the radar's event. The desk is the label of the
-    New tab's radio: a tap opens the radar (the installed app: its hash link, as "Open the radar")."""
+    New tab's radio: a tap opens the radar (the installed app: its hash link, as "Open the radar"). Under it, outside the label (a list is
+    no label's content), the desk's chat about the same round (desk_chat), from the doc the radar's event carries (page_radar's whitelist),
+    dimmed while the round is old news (late, stopped; a failing radar's one line is news)."""
     doc = radar_doc(D.get("dir"))
     ref = radar_ref(D, doc)
-    v = desk_look(radar_state(doc, ref), doc, ref, lambda ms: R.local(ms).strftime("%H:%M"))
+    hhmm = lambda ms: R.local(ms).strftime("%H:%M")
+    st = radar_state(doc, ref)
+    v = desk_look(st, doc, ref, hhmm)
     part = lambda c, x: '<span%s>%s</span>' % (' class="%s"' % c if c else "", _e(x))
     sts = "".join('<span class="odk-s" data-pd="%s"><span class="k">%s</span><b>%s</b><span class="l" title="%s">%s</span></span>' % (
         k, _e(name), "".join(part(c, x) for c, x in val), _e(line), _e(line)) for k, name, val, line in v["st"])
-    return ('<style>%s</style><label class="odesk" for="tab-young" data-po-desk data-po-tz="%s" title="Open the radar on the New tab (fake money only)">'
+    try:
+        chat = desk_chat(chat_doc(D.get("dir")), ref, hhmm) if doc else []      # no doc the desk counts (none, a wild time): no chat either
+    except Exception:                    # the chat is an extra: a doc it cannot read leaves the desk as it is, without a chat
+        chat = []
+    return ('<style>%s</style><div class="odk-box"><label class="odesk" for="tab-young" data-po-desk data-po-tz="%s" title="Open the radar on the New tab (fake money only)">'
             '<span class="odk-h"><span class="odk-dot %s" data-pd-dot aria-hidden="true"></span><b>Launch radar</b><span class="odk-w" data-pd-word>%s</span>'
-            '<span class="odk-m" data-pd-meta%s>%s</span></span><span class="odk-g%s" data-pd-g%s>%s</span></label>') % (
+            '<span class="odk-m" data-pd-meta%s>%s</span></span><span class="odk-g%s" data-pd-g%s>%s</span></label>%s</div>') % (
         DESK_CSS, "Europe/Berlin" if R.TZ_NAME == "Berlin" else "UTC", v["light"], _e(v["word"]), "" if v["meta"] else " hidden", _e(v["meta"]),
-        " dim" if v["dim"] else "", " hidden" if v["quiet"] else "", sts)
+        " dim" if v["dim"] else "", " hidden" if v["quiet"] else "", sts, chat_html(chat, st in ("late", "stopped")))
+
+
+# ---------------------------------------------------------------- the desk's chat under the radar desk
+def chat_doc(d):
+    """mb/radar_live.json through the New tab's whitelist (page_radar.clean_doc, the doc MemebotRadar.clean hands the 'memebot-radar' event),
+    so the chat at build time reads what the script reads later; None without the file or page_radar.py."""
+    return clean_doc(M.load_json(os.path.join(d, "radar_live.json"), None)) if d and clean_doc else None
+
+
+def _isn(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def _at(v):
+    """A time in ms between 2001 and 2100 (as _ms, but a number only: the script's typeof test), else None."""
+    return v if _isn(v) and 1e12 < v < 4.1e12 else None
+
+
+def _fin(v):
+    """A number the chat may print: finite and under CHAT_BIG either way (1e22 would read '1e+22' in the script)."""
+    return _isn(v) and abs(v) < CHAT_BIG
+
+
+_CTRL, _BLANK = re.compile("[%s]" % CHAT_CTRL), re.compile("^[{0}]+|[{0}]+\\Z".format(CHAT_BLANK))
+
+
+def _trim(s):
+    """CHAT_BLANK off both ends: every space Python's strip() or the script's trim() knows (U+0085 and U+FEFF are one of each only)."""
+    return _BLANK.sub("", s)
+
+
+def _txt(v, n):
+    """A string from the doc as the chat shows it, else '': CHAT_CTRL as spaces, cut to n UTF-16 units as the script's slice cuts them (an
+    emoji counts 2 there), a half emoji at the end dropped (also when a whitelist's cut left it there). One space for one unit keeps the
+    length: the doc from page_radar.clean_doc and the one from MemebotRadar.clean (cut in characters, in units) give the same text."""
+    if not isinstance(v, str):
+        return ""
+    u = _CTRL.sub(" ", v).encode("utf-16-le", "surrogatepass")[:2 * n]
+    return re.sub("[\ud800-\udbff]\\Z", "", u.decode("utf-16-le", "surrogatepass"))
+
+
+def _usd(v):
+    """$850, $23k, $1.2M: whole dollars, whole thousands, a tenth of a million (half up, as Math.floor(x + 0.5) rounds in the script)."""
+    d, k = math.floor(v + 0.5), math.floor(v / 1e3 + 0.5)
+    if d < 1000:
+        return "$%d" % d
+    if k < 1000:
+        return "$%dk" % k
+    m = "%.1f" % (math.floor(v / 1e5 + 0.5) / 10.0)
+    return "$%sM" % (m[:-2] if m.endswith(".0") else m)
+
+
+def _few(xs):
+    """The first CHAT_CHIPS chips and '+N more' for the rest."""
+    return " · ".join(xs[:CHAT_CHIPS]) + (" · +%d more" % (len(xs) - CHAT_CHIPS) if len(xs) > CHAT_CHIPS else "")
+
+
+def chat_record(r):
+    """The Record's line from radar.json record (the greens: calls without traps, their 1 h results; hindsight). With record.known's
+    counts (whole numbers it may print, n from TOO_FEW on, neither count above n: app.radar_record's rule) the counts the push says,
+    "Greens so far: 3 of 26 doubled within 1 h, 6 rugged (hindsight)". Else '' while it has no calls; shares only from TOO_FEW 1 h
+    prices on, as the New tab's Track record (MemebotRadar.recLine); the calls alone when a share is missing (or is no share: outside
+    0 to 1)."""
+    if not isinstance(r, dict):
+        return ""
+    k = r.get("known") if isinstance(r.get("known"), dict) else {}
+    n, win, rug = (k.get(x) for x in ("n", "win", "rug"))
+    if all(_fin(x) and x >= 0 and math.floor(x) == x for x in (n, win, rug)) and n >= TOO_FEW and win <= n and rug <= n:
+        return "Greens so far: %d of %d doubled within 1 h, %d rugged (hindsight)" % (win, n, rug)
+    if not _fin(r.get("calls")) or r["calls"] < 1:
+        return ""
+    calls, n60 = math.floor(r["calls"]), math.floor(r["n60"]) if _fin(r.get("n60")) and r["n60"] >= 0 else 0
+    share = lambda x: _isn(x) and 0 <= x <= 1
+    if n60 >= TOO_FEW and share(r.get("win")) and share(r.get("rug")):
+        pc = lambda x: "%d%%" % math.floor(100 * x + 0.5)
+        return "Greens so far: %s doubled, %s rugged within 1 h (hindsight, %d of %d call%s)" % (pc(r["win"]), pc(r["rug"]), n60, calls, "" if calls == 1 else "s")
+    return "Greens so far: %d call%s" % (calls, "" if calls == 1 else "s") + (", too few with a 1 h price yet (%d of %d)" % (n60, TOO_FEW) if n60 < TOO_FEW else "")
+
+
+def chat_coin(c, t, hhmm, labels):
+    """One coin of the round in the chat: Scout found it (where from, its pool's age, its liquidity), Checks names what it passed (no line
+    without an ok chip), Skeptic its red flags and warnings, else what was not checked, else no objection, and the Desk its verdict
+    (trap found, watch only, no trap found and whether it went to the phone). The chip texts are the radar's own (traps.chips); a coin
+    without a line (an older doc) falls back to its names in words."""
+    sym = _trim(_txt(c.get("sym"), 24)) or "?"           # a symbol of nothing but blanks, controls or direction marks is '?'
+    v = c.get("v") if c.get("v") in VERDICTS else "watch"
+    found = [x for x in c["found"] if isinstance(x, str)] if isinstance(c.get("found"), list) else []
+    lp, age, liq = _trim(_txt(c.get("lp"), 24)), c.get("age"), c.get("liq")
+    facts = (["pump.fun graduated"] if "pf:graduated" in found else ["launched on " + lp] if lp else []) \
+        + (["pool %d min old" % math.floor(age) if age >= 1 else "pool under 1 min old"] if _fin(age) and age >= 0 else []) \
+        + ([_usd(liq) + " liquidity"] if _fin(liq) and liq >= 0 else [])
+    line = [[x[0], _txt(x[1], 120)] for x in (c["line"] if isinstance(c.get("line"), list) else [])
+            if isinstance(x, list) and len(x) >= 2 and isinstance(x[1], str) and _trim(_txt(x[1], 120))]
+    names = lambda k: [x for x in (c[k] if isinstance(c.get(k), list) else []) if isinstance(x, str) and NAME.fullmatch(x)]
+    ok = [x for lv, x in line if lv == "ok"]
+    bad = [x for lv, x in line if lv in ("bad", "warn")] or [labels.get(h, h.replace("_", " ")) for h in names("hard") + names("soft")]
+    unk = [x for lv, x in line if lv == "unk"] or [h.replace("_", " ") + " unknown" for h in names("unknown")]
+    push = _at(c.get("push"))
+    out = [["scout", "Found %s" % sym + (": " + ", ".join(facts) if facts else "")]]
+    if ok:
+        out.append(["checks", "%s passed: %s" % (sym, _few(ok))])
+    out.append(["skeptic", ("Against %s: %s" % (sym, _few(bad))) if bad else ("Not checked for %s: %s" % (sym, _few(unk))) if unk else "No objection to %s" % sym])
+    say = {"trap": "trap found, not listed", "watch": "watch only"}.get(v) or ("no trap found, sent to the phone" if push and push >= t else
+                                                                             "no trap found, sent to the phone at " + hhmm(push) if push else "no trap found, listed, no push")
+    out.append(["desk", "%s: %s" % (sym, say)])
+    return out
+
+
+def desk_chat(doc, now=None, hhmm=None, labels=None):
+    """The desk's chat about the doc's round (the newest one: a loop's last cycle or the hourly round), as a trading desk's group chat where
+    the radar's bots post: [[speaker, text], ...], at most CHAT_MAX, plain words from radar.json only (no new request, no model). Two coins
+    of the round talk (chat_coin): the one pushed this round, else the first without traps, else the first listed; then the one that
+    differs most (another push, else a trap, else another verdict, else the next); the second drops its Checks line when the chat would
+    run over. An empty round: Scout says so. A round that failed, outside its hours or switched off: one Desk line instead of coins (an
+    hours doc: sleeps until its next start, then waits for the first scan, then stopped, at radar_state's times, so it says what the desk says).
+    The Record's line closes it when the record has calls. Never a buy, safe or clean: the desk reports, it does not advise; the record is
+    hindsight. hhmm: ms -> 'HH:MM' (UTC without one); now: ms (the doc's time without one). The script's MemebotOffice.chat says the same."""
+    d = doc if isinstance(doc, dict) and doc.get("kind") == "radar" and _isn(doc.get("t")) else None
+    if not d:
+        return []
+    hhmm = hhmm or (lambda ms: dt.datetime.fromtimestamp(ms / 1000.0, dt.timezone.utc).strftime("%H:%M"))
+    labels = LABELS if labels is None else labels
+    t = d["t"]
+    nx = _at(d.get("next"))
+    now = now if _isn(now) else t
+    st, run = d.get("state"), d.get("run") if isinstance(d.get("run"), dict) else {}
+    rec = chat_record(d.get("record"))
+    out = []
+    if st == "off":
+        out.append(["desk", "Radar switched off on GitHub: no rounds"])
+    elif st == "hours":     # until the hours begin; then the first full scan inside them starts it (radar_state: up to an hour, then stopped)
+        out.append(["desk", "Radar sleeps: outside its hours" if not nx else ("Radar sleeps until %s" % hhmm(nx)) if now < nx else
+                    ("Radar sleeps: the next round comes with the first scan after %s" % hhmm(nx)) if now <= nx + HOUR_MS else
+                    "Radar stopped: no round since its hours began at %s" % hhmm(nx)])
+    elif st == "degraded":
+        out.append(["desk", "Last round failed: no coin checked" if run.get("mode") == "round" else "Rounds failing: no coin checked, the list is not current"])
+    else:
+        cs, seen = [], set()
+        for c in (d["coins"] if isinstance(d.get("coins"), list) else []) + (d["others"] if isinstance(d.get("others"), list) else []):
+            if isinstance(c, dict) and isinstance(c.get("addr"), str) and c["addr"] not in seen:     # a coin in both lists talks once
+                seen.add(c["addr"])
+                cs.append(c)
+        v = lambda c: c.get("v") if c.get("v") in VERDICTS else "watch"
+        pushed = lambda c: bool(_at(c.get("push"))) and c["push"] >= t
+        first = lambda f, xs: next((c for c in xs if f(c)), None)
+        if not cs:
+            n = (d.get("counts") or {}).get("seen") if isinstance(d.get("counts"), dict) else None
+            k = math.floor(n) if _fin(n) and n >= 1 else 0
+            out.append(["scout", ("Found %d new pool%s under 10 minutes, none kept on the list" % (k, "" if k == 1 else "s")) if k else "No new pools under 10 minutes this round"])
+        else:
+            lead = first(pushed, cs) or first(lambda c: v(c) == "good", cs) or cs[0]
+            rest = [c for c in cs if c is not lead]
+            two = first(pushed, rest) or (first(lambda c: v(c) == "trap", rest) if v(lead) != "trap" else None) or first(lambda c: v(c) != v(lead), rest) or (rest[0] if rest else None)
+            out = chat_coin(lead, t, hhmm, labels)
+            more = chat_coin(two, t, hhmm, labels) if two else []
+            room = CHAT_MAX - len(out) - (1 if rec else 0)
+            out += (more if len(more) <= room else [m for m in more if m[0] != "checks"])[:max(0, room)]
+    return (out + ([["record", rec]] if rec else []))[:CHAT_MAX]
+
+
+def avatar(who):
+    return '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">%s</svg>' % "".join('<path d="%s"/>' % p for p in AVATAR.get(who, []))
+
+
+def chat_html(msgs, dim=False):
+    """The chat as an ordered list (oldest first, as a chat reads): each message a speaker's badge in its colour, its name and its text,
+    every text escaped; hidden while there is nothing to say. The script redraws it from the radar's event (data-pd-chat)."""
+    items = "".join('<li class="och k-%s"><span class="och-a">%s</span><span class="och-t"><b>%s</b><span class="sr">: </span>%s</span></li>' % (
+        who, avatar(who), _e(WHO.get(who, who)), _e(text)) for who, text in msgs if who in WHO)
+    return '<ol class="ochat%s" data-pd-chat aria-label="The radar desk\'s chat about its last round (fake money only)"%s>%s</ol>' % (
+        " dim" if dim else "", "" if items else " hidden", items)
 
 
 # ---------------------------------------------------------------- the agent cards
@@ -731,6 +938,23 @@ DESK_CSS = r"""
 .odk-s .l { grid-column:1 / -1; font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow-wrap:anywhere }
 @media (min-width:700px) { .odk-g { grid-template-columns:repeat(4,minmax(0,1fr)) } .odk-m { flex-basis:auto; padding-left:0 } .odk-w + .odk-m::before { content:"·"; margin-right:8px } }
 @media (prefers-reduced-motion: reduce) { .odk-dot.running { animation:none } .odesk:active { transform:none } }
+/* the desk's chat right under it (page_office.desk_chat): one row a message, the speaker's badge in its station's colour (Scout blue, Checks
+   green, Skeptic red, Desk grey, Record amber), its name and the text wrapping beside it, small as the stations' lines on a phone; dimmed
+   while the round is old news (late, stopped): the badges faded, the text in muted colours (no opacity on the text: it stays readable,
+   4.5:1 and more in both themes). From 1000 px two columns in reading order: the second coin's thread starts the second one
+   (a column break before its Scout line, the Record's line below it); a chat of one thread is balanced over both by height */
+.odk-box { display:grid; gap:6px; min-width:0 }
+.ochat { list-style:none; margin:0; padding:2px 10px; display:grid; border:1px solid var(--line); border-radius:12px; background:var(--surface); min-width:0 }
+.ochat[hidden] { display:none } .ochat.dim .och-a { opacity:.6 } .ochat.dim .och-t { color:var(--muted) } .ochat.dim .och-t b { color:var(--fg2) }
+.och { display:grid; grid-template-columns:18px minmax(0,1fr); gap:7px; align-items:start; padding:4px 0; min-width:0; break-inside:avoid } .och + .och { border-top:1px solid var(--line2) }
+.och-a { width:18px; height:18px; border-radius:5px; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb,currentColor 15%,transparent) }
+.och-a svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round }
+.och-t { min-width:0; padding-top:1px; font-size:var(--fs-xs); line-height:1.35; color:var(--fg2); overflow-wrap:anywhere } .och-t b { margin-right:5px; color:var(--fg); font-weight:600 }
+.och.k-scout .och-a { color:var(--s1) } .och.k-checks .och-a { color:var(--good-mark) } .och.k-skeptic .och-a { color:var(--bad-mark) }
+.och.k-desk .och-a { color:var(--fg2) } .och.k-record .och-a { color:var(--warn-mark) }
+@media (min-width:700px) { .ochat { padding:3px 12px } .och { grid-template-columns:22px minmax(0,1fr); gap:8px; padding:5px 0 } .och-a { width:22px; height:22px; border-radius:6px }
+  .och-a svg { width:14px; height:14px; stroke-width:1.6 } .och-t { padding-top:2px; font-size:var(--fs-s); line-height:1.4 } .och-t b { margin-right:6px } }
+@media (min-width:1000px) { .ochat { display:block; columns:2; column-gap:28px } .och + .och { border-top:0 } .och.k-scout ~ .och.k-scout { break-before:column } }
 """
 
 CSS = r"""
@@ -812,8 +1036,8 @@ if(window.MemebotOffice)return;
 var D=document,last=null,lastAt=0,lastScan=null;
 var LOOK={running:['running','running'],done:['done','done'],late:['fallback','late'],stopped:['failed','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
 var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad',done:'good'},SCAN_LEN=2700000,HOUR=3600000;
-var SOON=10000,ROUND=180000,FEED={ok:'on'},LABELS=__LABELS__;
-var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase'],['pumpportal','live feed']];
+var SOON=10000,ROUND=180000,FEED={ok:'on'},LABELS=__LABELS__,CH=__CHAT__,VERD=['good','watch','trap'],NM=/^[A-Za-z0-9_.]{1,32}$/,SVG='http://www.w3.org/2000/svg';
+var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase'],['pumpportal','live feed'],['tweets','X tweets']];
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function n(v){return isn(v)?Math.round(v):0;}
 function zone(){var b=D.querySelector('[data-po-tz]');return b?b.getAttribute('data-po-tz')||'UTC':'UTC';}
@@ -824,6 +1048,41 @@ function cls(e,c){if(e.getAttribute('class')!==c)e.setAttribute('class',c);}
 function own(o,k){return Object.prototype.hasOwnProperty.call(o,k)?o[k]:undefined;}
 function order(a,b){return b[1]-a[1]||(a[0]<b[0]?-1:a[0]>b[0]?1:0);}
 function ago(ms){var m=ms/60000;return ms<60000?'just now':(m<60?Math.floor(m)+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days')+' ago';}
+// the desk's chat (page_office.desk_chat and its helpers, word for word): a time 2001 to 2100, a number it may print (under CH.big), a trim
+// of CH.blank, a doc's text with CH.ctrl as spaces cut in UTF-16 units without a half emoji (also one MemebotRadar.clean's cut left), $ amounts
+// half up, the first chips and '+N more', the verdict, the record's line (record.known's counts as the push says them, else the calls and
+// shares), one coin's messages
+var CC=new RegExp('['+CH.ctrl+']','g'),TB=new RegExp('^['+CH.blank+']+|['+CH.blank+']+$','g');
+function at(v){return isn(v)&&v>1e12&&v<4.1e12?v:null;}
+function fin(v){return isn(v)&&Math.abs(v)<CH.big;}
+function trim(s){return s.replace(TB,'');}
+function txt(v,k){return typeof v!=='string'?'':v.replace(CC,' ').slice(0,k).replace(/[\uD800-\uDBFF]$/,'');}
+function usd(v){var d=Math.floor(v+0.5),k=Math.floor(v/1e3+0.5);return d<1000?'$'+d:k<1000?'$'+k+'k':'$'+(Math.floor(v/1e5+0.5)/10).toFixed(1).replace(/\.0$/,'')+'M';}
+function few(xs){return xs.slice(0,CH.chips).join(' · ')+(xs.length>CH.chips?' · +'+(xs.length-CH.chips)+' more':'');}
+function vd(c){return VERD.indexOf(c.v)>=0?c.v:'watch';}
+function isObj(v){return !!v&&typeof v==='object'&&!Array.isArray(v);}
+function recLine(r){if(!isObj(r))return '';
+  var k=isObj(r.known)?r.known:{},whole=function(x){return fin(x)&&x>=0&&Math.floor(x)===x;};
+  if(whole(k.n)&&whole(k.win)&&whole(k.rug)&&k.n>=CH.few&&k.win<=k.n&&k.rug<=k.n)return 'Greens so far: '+k.win+' of '+k.n+' doubled within 1 h, '+k.rug+' rugged (hindsight)';
+  if(!fin(r.calls)||r.calls<1)return '';
+  var calls=Math.floor(r.calls),n60=fin(r.n60)&&r.n60>=0?Math.floor(r.n60):0,cl=calls+' call'+(calls===1?'':'s'),pc=function(x){return Math.floor(100*x+0.5)+'%';};
+  var share=function(x){return isn(x)&&x>=0&&x<=1;};
+  return n60>=CH.few&&share(r.win)&&share(r.rug)?'Greens so far: '+pc(r.win)+' doubled, '+pc(r.rug)+' rugged within 1 h (hindsight, '+n60+' of '+cl+')':
+    'Greens so far: '+cl+(n60<CH.few?', too few with a 1 h price yet ('+n60+' of '+CH.few+')':'');}
+function coinTalk(c,t,fmt){
+  var sym=trim(txt(c.sym,24))||'?',v=vd(c),found=Array.isArray(c.found)?c.found.filter(function(x){return typeof x==='string';}):[],lp=trim(txt(c.lp,24)),age=c.age,liq=c.liq;
+  var facts=(found.indexOf('pf:graduated')>=0?['pump.fun graduated']:lp?['launched on '+lp]:[]).concat(fin(age)&&age>=0?[age>=1?'pool '+Math.floor(age)+' min old':'pool under 1 min old']:[])
+    .concat(fin(liq)&&liq>=0?[usd(liq)+' liquidity']:[]);
+  var line=(Array.isArray(c.line)?c.line:[]).filter(function(x){return Array.isArray(x)&&x.length>=2&&typeof x[1]==='string'&&!!trim(txt(x[1],120));}).map(function(x){return [x[0],txt(x[1],120)];});
+  var names=function(k){return (Array.isArray(c[k])?c[k]:[]).filter(function(x){return typeof x==='string'&&NM.test(x);});};
+  var lv=function(ls){return line.filter(function(x){return ls.indexOf(x[0])>=0;}).map(function(x){return x[1];});};
+  var ok=lv(['ok']),bad=lv(['bad','warn']),unk=lv(['unk']),push=at(c.push),out=[['scout','Found '+sym+(facts.length?': '+facts.join(', '):'')]];
+  if(!bad.length)bad=names('hard').concat(names('soft')).map(function(h){return own(LABELS,h)||h.replace(/_/g,' ');});
+  if(!unk.length)unk=names('unknown').map(function(h){return h.replace(/_/g,' ')+' unknown';});
+  if(ok.length)out.push(['checks',sym+' passed: '+few(ok)]);
+  out.push(['skeptic',bad.length?'Against '+sym+': '+few(bad):unk.length?'Not checked for '+sym+': '+few(unk):'No objection to '+sym]);
+  out.push(['desk',sym+': '+(own({trap:'trap found, not listed',watch:'watch only'},v)||(push&&push>=t?'no trap found, sent to the phone':push?'no trap found, sent to the phone at '+fmt(push):'no trap found, listed, no push'))]);
+  return out;}
 var O=window.MemebotOffice={
   // the radar's light, word, line and small number for its state (page_office.look says the same at build time)
   // a round's next one (page_office.next_words; MemebotRadar.nextWords on the New tab): now and scan (the strip's next start) in ms
@@ -856,6 +1115,25 @@ var O=window.MemebotOffice={
         ['chk','Checks',[['',isn(cn.seen)&&!err?String(Math.floor(cn.seen+0.5)):'–']],err?'not checked: '+fail:red?'red flags: '+red:cs.length?'no red flags':'no coin under 10 min'],
         ['vd','Verdicts',[['good','good'],['warn','watch'],['bad','trap']].map(function(x){return [x[0],err?'–':String(cs.filter(function(c){return c.v===x[1];}).length)];}),'no trap · watch · trap'],
         ['push','Push',[['',String(pu.length)]],push]]};},
+  // the desk's chat about the doc's round (page_office.desk_chat says the same at build time): [[speaker, text], ...], at most CH.max; two
+  // coins (the push of this round, else the first without traps, else the first; then another push, a trap, another verdict, the next),
+  // one Desk line for a failed round, outside its hours or switched off, and the Record's line when the record has calls
+  chat:function(doc,now,fmt){var d=isObj(doc)&&doc.kind==='radar'&&isn(doc.t)?doc:null;if(!d)return [];fmt=fmt||hhmm;
+    var t=d.t,nx=at(d.next),st=d.state,run=isObj(d.run)?d.run:{},rec=recLine(d.record),out=[];now=isn(now)?now:t;
+    if(st==='off')out.push(['desk','Radar switched off on GitHub: no rounds']);
+    else if(st==='hours')out.push(['desk',!nx?'Radar sleeps: outside its hours':now<nx?'Radar sleeps until '+fmt(nx):now<=nx+HOUR?'Radar sleeps: the next round comes with the first scan after '+fmt(nx):
+      'Radar stopped: no round since its hours began at '+fmt(nx)]);
+    else if(st==='degraded')out.push(['desk',run.mode==='round'?'Last round failed: no coin checked':'Rounds failing: no coin checked, the list is not current']);
+    else{var cs=[],by=Object.create(null),ls=function(v){return Array.isArray(v)?v:[];};
+      ls(d.coins).concat(ls(d.others)).forEach(function(c){if(isObj(c)&&typeof c.addr==='string'&&!own(by,c.addr)){by[c.addr]=1;cs.push(c);}});     // a coin in both lists talks once
+      var pushed=function(c){return !!at(c.push)&&c.push>=t;},first=function(f,xs){for(var i=0;i<xs.length;i++)if(f(xs[i]))return xs[i];return null;};
+      if(!cs.length){var sn=isObj(d.counts)?d.counts.seen:null,k=fin(sn)&&sn>=1?Math.floor(sn):0;
+        out.push(['scout',k?'Found '+k+' new pool'+(k===1?'':'s')+' under 10 minutes, none kept on the list':'No new pools under 10 minutes this round']);}
+      else{var lead=first(pushed,cs)||first(function(c){return vd(c)==='good';},cs)||cs[0],rest=cs.filter(function(c){return c!==lead;});
+        var two=first(pushed,rest)||(vd(lead)!=='trap'?first(function(c){return vd(c)==='trap';},rest):null)||first(function(c){return vd(c)!==vd(lead);},rest)||(rest.length?rest[0]:null);
+        var more=two?coinTalk(two,t,fmt):[];out=coinTalk(lead,t,fmt);var room=CH.max-out.length-(rec?1:0);
+        out=out.concat((more.length<=room?more:more.filter(function(m){return m[0]!=='checks';})).slice(0,Math.max(0,room)));}}
+    return out.concat(rec?[['record',rec]]:[]).slice(0,CH.max);},
   look:function(st,doc,fmt,now,scan){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
     var lead=st==='late'||st==='stopped'?word:'';
     var rnd=!!d&&(d.state==='done'||!!d.run&&typeof d.run==='object'&&d.run.mode==='round');
@@ -886,13 +1164,22 @@ function host(k){k=String(k).toLowerCase();for(var i=0;i<HOSTS.length;i++)if(k.i
 // the desk on top: redrawn from the radar's last event, its clock moved on by the time since (a round falls due between two events)
 function desk(){
   var box=D.querySelector('[data-po-desk]');if(!box||!last)return;
-  var doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,v=O.desk(String(last.state||'none'),doc,isn(last.now)?last.now+Date.now()-lastAt:Date.now()),key=JSON.stringify(v);
-  if(box._k===key)return;box._k=key;
+  var doc=last.doc&&typeof last.doc==='object'&&last.doc.kind==='radar'?last.doc:null,now=isn(last.now)?last.now+Date.now()-lastAt:Date.now(),st=String(last.state||'none');
+  var v=O.desk(st,doc,now),c=[];try{c=O.chat(doc,now);}catch(e){}     // the chat is an extra: a doc it cannot read leaves the desk as it is
+  var key=JSON.stringify([v,c]);if(box._k===key)return;box._k=key;
   cls(box.querySelector('[data-pd-dot]'),'odk-dot '+v.light);set(box.querySelector('[data-pd-word]'),v.word);
   var m=box.querySelector('[data-pd-meta]'),g=box.querySelector('[data-pd-g]');set(m,v.meta);m.hidden=!v.meta;g.hidden=v.quiet;cls(g,'odk-g'+(v.dim?' dim':''));g.textContent='';
   v.st.forEach(function(x){var s=D.createElement('span'),k=D.createElement('span'),b=D.createElement('b'),l=D.createElement('span');s.className='odk-s';s.setAttribute('data-pd',x[0]);
     k.className='k';k.textContent=x[1];x[2].forEach(function(p){var e=D.createElement('span');if(p[0])e.className=p[0];e.textContent=p[1];b.appendChild(e);});
     l.className='l';l.title=x[3];l.textContent=x[3];s.appendChild(k);s.appendChild(b);s.appendChild(l);g.appendChild(s);});
+  // the chat under the desk: rebuilt from the same doc, every text as text, the badges from the fixed paths of CH.av; dimmed while the round
+  // is old news (late, stopped)
+  var ch=D.querySelector('[data-pd-chat]');if(!ch)return;cls(ch,'ochat'+(st==='late'||st==='stopped'?' dim':''));ch.hidden=!c.length;ch.textContent='';
+  c.forEach(function(m){if(!own(CH.who,m[0]))return;var li=D.createElement('li'),a=D.createElement('span'),s=D.createElementNS(SVG,'svg'),tx=D.createElement('span'),b=D.createElement('b'),sr=D.createElement('span');
+    li.className='och k-'+m[0];a.className='och-a';s.setAttribute('viewBox','0 0 16 16');s.setAttribute('aria-hidden','true');s.setAttribute('focusable','false');
+    (CH.av[m[0]]||[]).forEach(function(p){var e=D.createElementNS(SVG,'path');e.setAttribute('d',p);s.appendChild(e);});a.appendChild(s);
+    tx.className='och-t';b.textContent=CH.who[m[0]];sr.className='sr';sr.textContent=': ';tx.appendChild(b);tx.appendChild(sr);tx.appendChild(D.createTextNode(m[1]));
+    li.appendChild(a);li.appendChild(tx);ch.appendChild(li);});
 }
 function draw(){
   if(!last)return;
@@ -956,4 +1243,4 @@ function ready(){try{link();}catch(e){}try{fold();}catch(e){}
   if(D.querySelector('[data-po-desk]'))setInterval(function(){try{desk();}catch(e){}},10000);}
 if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',ready);else ready();
 })();
-""".replace("__LABELS__", json.dumps(LABELS))
+""".replace("__LABELS__", json.dumps(LABELS)).replace("__CHAT__", json.dumps({"max": CHAT_MAX, "chips": CHAT_CHIPS, "few": TOO_FEW, "big": CHAT_BIG, "ctrl": CHAT_CTRL, "blank": CHAT_BLANK, "who": WHO, "av": AVATAR}))

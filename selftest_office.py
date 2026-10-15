@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """selftest_office.py: the checks of the office page parts (page_office.py, WP5c): SPEC 11 U6 (the radar desk on top of the Office tab, agent
 cards, office.json unchanged, the radar's floor desk untouched by the office poll and moved by the radar event, 8 departments, the next-scan
-estimate from memeruns), U9 (the daily overview names an hour only when it stands out), U7 and U10 for the new text, U8 for the office and
+estimate from memeruns; the desk's chat under it: its messages for each kind of round, the same in the page script, escaped), U9 (the daily overview names an hour only when it stands out), U7 and U10 for the new text, U8 for the office and
 pick tabs (320, 390 and 1280 px, light and dark). Fake money only: the fixtures are hand-made docs, nothing is fetched.
 
   python3 selftest_office.py      -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
@@ -59,6 +59,49 @@ def desk_doc(t, rng=None, **kw):
     return radar_doc(t, **dict({"next": t + 120_000, "counts": {"seen": 7, "good": 1, "pushed": 1, "seenAgeMed": 2.0}, "coins": [good, others[4]], "others": others,
                                 "src": {"gt:new": 40, "pf:graduated": 180, "jup:recent": 30, "pf:new": 30, "list:profiles": 12},
                                 "hosts": {"dexscreener": "ok", "rugcheck": "ok", "pumpportal": "ok"}, "lastGood": {"addr": good["addr"], "sym": "PEPE2", "at": t}}, **kw))
+
+
+def chat_doc(t, rng=None, **kw):
+    """radar.json of a loop's round as launch_radar.build_doc writes it, with the parts the desk's chat reads: a coin without traps pushed this
+    round (pump.fun graduated, its pool 3 min old, $12k, three passed checks), the fold's coins with their trap-check lines (traps.chips' texts:
+    two watch coins, one with warnings and one not fully checked, two traps) and the record's 1 h results."""
+    rng = rng or random.Random(11)
+    good = {"addr": b58(rng), "sym": "PEPE2", "name": "Pepe Two", "v": "good", "dex": "pumpswap", "lp": "pump.fun", "found": ["pf:graduated", "gt:new"], "age": 3.4,
+            "liq": 12_400.0, "mc": 48_000.0, "n": 9, "push": t, "hard": [], "soft": [], "unknown": [], "pool": t - 3 * MIN,
+            "line": [["ok", "curve 4 min before pool"], ["ok", "no rugger wallets"], ["ok", "RugCheck report"], ["info", "dev: 12 launches, 11 dead"]]}
+    others = [{"addr": b58(rng), "sym": "TWOWARN", "age": 7.0, "v": "watch", "hard": [], "line": [["warn", "holder cluster (insider network of 232)"], ["warn", "creator sold"], ["ok", "RugCheck report"]]},
+              {"addr": b58(rng), "sym": "NORC", "age": 2.1, "v": "watch", "hard": [], "line": [["unk", "RugCheck pending"], ["ok", "curve 3 min before pool"]]},
+              {"addr": b58(rng), "sym": "GROKAI", "age": 4.2, "v": "trap", "hard": ["brand_name", "instant_pool"],
+               "line": [["bad", "brand/celebrity name"], ["bad", "pool opened with the mint"], ["warn", "no socials"], ["info", "6 wallets in launch block (~44%)"]]},
+              {"addr": b58(rng), "sym": "RUGGY", "age": 0.6, "v": "trap", "hard": ["rugger_wallets"], "line": [["bad", "3 holders from rugged coins"]]}]
+    return radar_doc(t, **dict({"next": t + 120_000, "counts": {"seen": 5, "good": 1, "pushed": 1, "seenAgeMed": 3.1}, "coins": [good], "others": others,
+                                "src": {"pf:graduated": 180, "gt:new": 40, "jup:recent": 30}, "hosts": {"dexscreener": "ok", "rugcheck": "ok", "pumpportal": "ok"},
+                                "lastGood": {"addr": good["addr"], "sym": "PEPE2", "at": t},
+                                "record": {"calls": 37, "n60": 33, "rug": 0.03, "win": 0.14, "eur": -1.2, "ci": {"rug": [0.0, 0.1], "win": [0.05, 0.27]}}}, **kw))
+
+
+CHAT_GREEN = [["scout", "Found PEPE2: pump.fun graduated, pool 3 min old, $12k liquidity"], ["checks", "PEPE2 passed: curve 4 min before pool · no rugger wallets · RugCheck report"],
+              ["skeptic", "No objection to PEPE2"], ["desk", "PEPE2: no trap found, sent to the phone"], ["scout", "Found GROKAI: pool 4 min old"],
+              ["skeptic", "Against GROKAI: brand/celebrity name · pool opened with the mint · no socials"], ["desk", "GROKAI: trap found, not listed"],
+              ["record", "Greens so far: 14% doubled, 3% rugged within 1 h (hindsight, 33 of 37 calls)"]]
+
+
+def node_js(js, timeout=60, radar=False):
+    """Runs a script in node beside the office's page script (window and document stubbed, nothing found on the page): its JSON line, else None.
+    radar: the New tab's radar script first (window.MemebotRadar: its clean is the whitelist the radar event's doc went through on the page)."""
+    node = shutil.which("node")
+    if not node:
+        return None
+    d = tempfile.mkdtemp(prefix="memebot-office-js-")
+    try:
+        with open(os.path.join(d, "t.js"), "w", encoding="utf-8") as f:
+            f.write("global.window={addEventListener:function(){}};global.document={readyState:'complete',addEventListener:function(){},querySelector:function(){return null;},"
+                    "querySelectorAll:function(){return [];},getElementById:function(){return null;}};global.navigator={};\n"
+                    + (__import__("page_radar").JS + "\n" if radar else "") + __import__("page_office").JS + "\n" + js)
+        r = subprocess.run([node, os.path.join(d, "t.js")], capture_output=True, text=True, timeout=timeout)
+        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else {"error": r.stderr[-600:]}
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def round_doc(t, **kw):
@@ -160,7 +203,7 @@ def office_checks(check, skips=None):
         check(off_before == off_after and [c[2] for c in cards] == list(AGENTS) and not any(c[0] for c in cards) and 'data-agent="radar"' not in cut(page, '<div class="ocards"', "</div>")
               and [a["id"] for a in info["agents"]] == list(AGENTS) and [a["id"] for a in info["ext"]] == ["radar"] and "could not be rendered" not in page
               and R.OFFICE_AGENTS["radar"] == RADAR_AGENT and (info["ext"][0]["name"], info["ext"][0]["job"], tuple(info["ext"][0]["tools"])) == RADAR_AGENT
-              and pane_o.startswith('<div class="pane" id="pane-office"><style>') and pane_o.find("</style>") + 8 == pane_o.find('<label class="odesk" for="tab-young" data-po-desk')
+              and pane_o.startswith('<div class="pane" id="pane-office"><style>') and pane_o.find("</style>") + 8 == pane_o.find('<div class="odk-box"><label class="odesk" for="tab-young" data-po-desk')
               and -1 < pane_o.find('<label class="odesk"') < pane_o.find("<h2>Agent office</h2>") < pane_o.find('<div class="ocards"') < pane_o.find('<div class="office">')
               and page.count('<label class="odesk"') == 1 and "data-ext-stat" not in page and "ocard ext" not in page + PO.CSS,
               "U6 office: the Launch radar's desk is the first block of the Office tab (before its heading and the grid); one card per agent of office.json "
@@ -387,6 +430,7 @@ def office_checks(check, skips=None):
               and strip_tags(desk_(page0)).startswith("Launch radar not started yet ") and '<span class="odk-g" data-pd-g hidden>' in desk_(page0),
               "radar desk on the page: built from mb/radar_live.json with the same words; outside its hours 'sleeping until HH:MM' without stations; "
               "no radar.json at all: 'not started yet' (%s)" % strip_tags(desk_(page_d)))
+        chat_checks(check, skips, tmp, page, page_d, page_h, page0, utc)
         d3 = os.path.join(tmp, "o3")
         mk_db(d3, radar=radar_doc(NOW - 26 * MIN, lines=["cycle 9: " + XSS], notes=[XSS], hosts={XSS: "down"}, why=XSS))
         page3 = build(d3)
@@ -534,7 +578,8 @@ def office_checks(check, skips=None):
               "has no strong cell; hatched exactly where under 20 results; a table view comes with it")
 
         # ---------------------------------------------------------------- U7: honest words in the new parts
-        new_text = " ".join([cut(page, '<div class="ocards"', "</label></div>"), cut(pageB, '<div class="obal', "</svg></div></div>"), cut(page_d, '<label class="odesk"', "</label>"), cut(page, "<summary><span class=\"t\">Details", "</summary>"), cut(page, '<div class="oagent oext"', "Open the radar"), cut(page7, '<div class="oday">', "</details></div>"),
+        new_text = " ".join([cut(page, '<div class="ocards"', "</label></div>"), cut(pageB, '<div class="obal', "</svg></div></div>"), cut(page_d, '<label class="odesk"', "</label>"),
+                             cut(page_d, '<ol class="ochat"', "</ol>"), cut(page, "<summary><span class=\"t\">Details", "</summary>"), cut(page, '<div class="oagent oext"', "Open the radar"), cut(page7, '<div class="oday">', "</details></div>"),
                              sstrip(page), PO.JS, R.OFFICE_AGENTS["radar"][1]]).lower()
         words = [w for w in (r"\bsafe\b", r"\bsafely\b", "guarantee", r"\bbuy\b", "\u2014") if re.search(w, new_text)]
         check(not words and new_text.count("dead within") >= 2, "U7 the new office text never says safe, guaranteed or buy, and has no em dash (%s)" % (words or "none"))
@@ -593,6 +638,227 @@ def office_checks(check, skips=None):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def chat_checks(check, skips, tmp, page, page_d, page_h, page0, utc):
+    """The desk's chat (page_office.desk_chat, MemebotOffice.chat): its messages for each kind of round, the order and the budget, the record
+    line, the one Desk line of a failed round, outside the hours and switched off, its place on the page, escaping, the wording rule and
+    the same messages from the page script in node."""
+    import report as R
+    import page_office as PO
+    import page_radar as PRd
+    import launch_radar as LR
+    t = NOW - 26 * MIN
+    g = chat_doc(t)
+    o = {x["sym"]: x for x in g["others"]}
+    green = g["coins"][0]
+    rec = CHAT_GREEN[-1]
+    say = lambda doc_, now_=None: PO.desk_chat(doc_, t + 60_000 if now_ is None else now_, utc)
+    deg = LR.finish_from(chat_doc(t - 120_000), "degraded", t, "3 cycles in a row failed", "7", t - 30 * MIN, t + 25 * MIN, "chain", (7, 24))
+    deg.update(next=t + 120_000, notes=["3 cycles in a row failed: the list is not current"])
+    deg["run"].update(cycle=14, mode="loop")
+    deg_r = LR.finish_from(chat_doc(t - H), "degraded", t, "the round failed: boom", "8", t - MIN, None, "hourly", (7, 24))
+    deg_r.update(next=t + 55 * MIN)
+    deg_r["run"].update(cycle=0, mode="round")
+    moon = dict(o["GROKAI"], sym="MOONER", line=[["bad", "3,000+ buys already"], ["ok", "RugCheck report"]])
+    docs = {"green": g, "trap": chat_doc(t, coins=[], others=[o["GROKAI"], o["RUGGY"]], record=None),
+            "watch": chat_doc(t, coins=[], others=[o["TWOWARN"]], record={"calls": 0}), "unknown": chat_doc(t, coins=[], others=[o["NORC"]], record=None),
+            "empty": chat_doc(t, coins=[], others=[], counts={"seen": 0, "good": 0, "pushed": 0}),
+            "uncut": chat_doc(t, coins=[], others=[], counts={"seen": 5, "good": 0, "pushed": 0}, record={"calls": 5, "n60": 3, "rug": 0.0, "win": 0.34}),
+            "one pool": chat_doc(t, coins=[], others=[], counts={"seen": 1.6, "good": 0, "pushed": 0}, record=None),
+            "blanks": chat_doc(t, coins=[dict(green, found=[], lp="\u3000pump\xa0", line=[["ok", "\xa0\u3000"], ["ok", "RugCheck report"], ["unk", "\u2007"]])], others=[], record=None),
+            "hours": chat_doc(t, state="hours", next=t + 5 * H, coins=[], others=[]), "off": chat_doc(t, state="off", next=None, coins=[], others=[], record={"calls": 1, "n60": 0}),
+            "degraded": deg, "failed round": deg_r, "listed": chat_doc(t, coins=[dict(green, push=None)], others=[]),
+            "earlier": chat_doc(t, coins=[dict(green, push=t - 34 * MIN)], others=[o["NORC"]]), "twice": chat_doc(t, others=[dict(green, v="watch")]),
+            "budget": chat_doc(t, others=[moon]), "budget, no record": chat_doc(t, others=[moon], record=None),
+            "chips": chat_doc(t, coins=[], others=[dict(o["GROKAI"], line=[["bad", "a"], ["bad", "b"], ["warn", "c"], ["warn", "d"], ["warn", "e"]])], record=None),
+            "older doc": desk_doc(t)}
+    want = {"green": CHAT_GREEN,
+            "trap": [["scout", "Found GROKAI: pool 4 min old"], CHAT_GREEN[5], CHAT_GREEN[6], ["scout", "Found RUGGY: pool under 1 min old"],
+                     ["skeptic", "Against RUGGY: 3 holders from rugged coins"], ["desk", "RUGGY: trap found, not listed"]],
+            "watch": [["scout", "Found TWOWARN: pool 7 min old"], ["checks", "TWOWARN passed: RugCheck report"],
+                      ["skeptic", "Against TWOWARN: holder cluster (insider network of 232) · creator sold"], ["desk", "TWOWARN: watch only"]],
+            "unknown": [["scout", "Found NORC: pool 2 min old"], ["checks", "NORC passed: curve 3 min before pool"], ["skeptic", "Not checked for NORC: RugCheck pending"],
+                        ["desk", "NORC: watch only"]],
+            "empty": [["scout", "No new pools under 10 minutes this round"], rec],
+            "uncut": [["scout", "Found 5 new pools under 10 minutes, none kept on the list"], ["record", "Greens so far: 5 calls, too few with a 1 h price yet (3 of 20)"]],
+            "one pool": [["scout", "Found 1 new pool under 10 minutes, none kept on the list"]],
+            "blanks": [["scout", "Found PEPE2: launched on pump, pool 3 min old, $12k liquidity"], ["checks", "PEPE2 passed: RugCheck report"], CHAT_GREEN[2], CHAT_GREEN[3]],
+            "hours": [["desk", "Radar sleeps until %s" % utc(t + 5 * H)], rec], "off": [["desk", "Radar switched off on GitHub: no rounds"],
+                                                                                  ["record", "Greens so far: 1 call, too few with a 1 h price yet (0 of 20)"]],
+            "degraded": [["desk", "Rounds failing: no coin checked, the list is not current"], rec], "failed round": [["desk", "Last round failed: no coin checked"], rec],
+            "listed": CHAT_GREEN[:3] + [["desk", "PEPE2: no trap found, listed, no push"], rec],
+            "earlier": CHAT_GREEN[:3] + [["desk", "PEPE2: no trap found, sent to the phone at %s" % utc(t - 34 * MIN)], ["scout", "Found NORC: pool 2 min old"],
+                                         ["skeptic", "Not checked for NORC: RugCheck pending"], ["desk", "NORC: watch only"], rec],
+            "twice": CHAT_GREEN[:4] + [rec],
+            "budget": CHAT_GREEN[:4] + [["scout", "Found MOONER: pool 4 min old"], ["skeptic", "Against MOONER: 3,000+ buys already"], ["desk", "MOONER: trap found, not listed"], rec],
+            "budget, no record": CHAT_GREEN[:4] + [["scout", "Found MOONER: pool 4 min old"], ["checks", "MOONER passed: RugCheck report"],
+                                                   ["skeptic", "Against MOONER: 3,000+ buys already"], ["desk", "MOONER: trap found, not listed"]],
+            "chips": [["scout", "Found GROKAI: pool 4 min old"], ["skeptic", "Against GROKAI: a · b · c · +2 more"], CHAT_GREEN[6]],
+            "older doc": [["scout", "Found PEPE2"], ["skeptic", "No objection to PEPE2"], ["desk", "PEPE2: no trap found, sent to the phone"], ["scout", "Found T0"],
+                          ["skeptic", "Against T0: creator sold · RugCheck danger"], ["desk", "T0: trap found, not listed"],
+                          ["record", "Greens so far: 37 calls, too few with a 1 h price yet (0 of 20)"]]}
+    got = {k: say(v) for k, v in docs.items()}
+    got_c = {k: say(PRd.clean_doc(v)) for k, v in docs.items()}
+    bad = [k for k in want if got[k] != want[k] or got_c[k] != want[k]]
+    check(not bad and all(len(x) <= PO.CHAT_MAX == 8 for x in got.values()),
+          "desk chat: for a green pushed this round (then the round's first trap), traps only, a watch coin, one not fully checked, an empty round (1 pool: "
+          "one 'pool'), a launchpad and chips of no-break and wide spaces (trimmed: no chip), a failed "
+          "round (a loop's and a round's: launch_radar's own degraded docs), outside the hours and switched off (one Desk line), a green not pushed or pushed "
+          "earlier, a coin in both lists, more chips than 3 and an older doc without lines: the expected messages, the same from radar.json and from "
+          "page_radar's whitelist (the radar event's doc), at most 8, the second coin's Checks line dropped when it would run over (%s)" % (
+              "all as expected" if not bad else "; ".join("%s: %s" % (k, got[k] if got[k] != want[k] else got_c[k]) for k in bad)))
+    later = [say(docs["hours"], t + 6 * H)[0], say(dict(docs["hours"], next=None))[0], PO.desk_chat(None), PO.desk_chat({"kind": "other", "t": t}), PO.desk_chat(dict(g, t="soon")),
+             PO.desk_chat([g]), PO.desk_chat(chat_doc(t, record={"calls": 37, "n60": 33, "rug": 0.03}))[-1], PO.desk_chat(chat_doc(t, record={"calls": True}))[-1],
+             PO.desk_chat(chat_doc(t, record={"calls": 37, "n60": 33, "rug": 0.03, "win": 1.4}))[-1], PO.desk_chat(chat_doc(t, record={"calls": 1e22, "n60": 33}))[-1]]
+    check(later == [["desk", "Radar sleeps: the next round comes with the first scan after %s" % utc(t + 5 * H)], ["desk", "Radar sleeps: outside its hours"], [], [], [], [],
+                    ["record", "Greens so far: 37 calls"], CHAT_GREEN[6], ["record", "Greens so far: 37 calls"], CHAT_GREEN[6]],
+          "desk chat: once the hours began it waits for the first scan after their start, an hours doc without a start sleeps outside its hours; no chat "
+          "without a radar doc with a time; a record without both shares (or with one over 100%%) gives no shares, one without a number of calls (or "
+          "1e22 of them) no line (%s)" % later)
+    # the Record's line from record.known (launch_radar.summary: the green calls whose 1 h outcome is known, how many doubled and rugged): the
+    # counts the push says (app.radar_record) from TOO_FEW of them on, whole numbers only, neither above n; else the calls and shares as before
+    import app as A
+    kr = lambda k_, **kw: chat_doc(t, record=dict(g["record"], known=k_, **kw))
+    known_ok = {"known": kr({"n": 26, "rug": 6, "win": 3}), "known 20": kr({"n": 20, "rug": 0, "win": 0}), "known floats": kr({"n": 26.0, "rug": 6.0, "win": 3.0}),
+                "known all": kr({"n": 26, "rug": 26, "win": 26}), "known, no calls": kr({"n": 26, "rug": 6, "win": 3}, calls=0),
+                "known alone": chat_doc(t, record={"known": {"n": 40, "rug": 9, "win": 5}})}
+    known_odd = {"known 19": kr({"n": 19, "rug": 6, "win": 3}), "known text": kr({"n": "26", "rug": 6, "win": 3}), "known -1": kr({"n": 26, "rug": -1, "win": 3}),
+                 "known win over n": kr({"n": 26, "rug": 6, "win": 30}), "known rug over n": kr({"n": 26, "rug": 27, "win": 3}), "known half": kr({"n": 26.5, "rug": 6, "win": 3}),
+                 "known half rug": kr({"n": 26, "rug": 6.5, "win": 3}), "known inf": kr({"n": float("inf"), "rug": 6, "win": 3}), "known true": kr({"n": True, "rug": 6, "win": 3}),
+                 "known no rug": kr({"n": 26, "win": 3}), "known list": kr([26, 6, 3]), "known none": kr(None)}
+    kgot = {k: (say(d_), say(PRd.clean_doc(d_)), A.radar_record(d_["record"])) for k, d_ in list(known_ok.items()) + list(known_odd.items())}
+    as_push = lambda p_: "Greens" + p_[len("greens"):].replace(" doubled in 1 h, ", " doubled within 1 h, ") + " (hindsight)"
+    kbad = [k for k, (a_, b_, p_) in kgot.items() if a_ != b_ or a_[:-1] != CHAT_GREEN[:-1]
+            or (a_[-1] != ["record", as_push(p_)] if k in known_ok else (p_ != "" or a_[-1] != CHAT_GREEN[-1]))]
+    big = say(kr({"n": 1e22, "rug": 6, "win": 3}))[-1]
+    kd = os.path.join(tmp, "chatknown")
+    wj(os.path.join(kd, "radar_live.json"), known_ok["known"])
+    kh = PO.desk({"dir": kd, "runs": [], "now": NOW}, R)
+    check(not kbad and kgot["known"][0][-1] == ["record", "Greens so far: 3 of 26 doubled within 1 h, 6 rugged (hindsight)"] and kgot["known all"][2]
+          and kgot["known alone"][0][-1][1] == "Greens so far: 5 of 40 doubled within 1 h, 9 rugged (hindsight)" and big == CHAT_GREEN[-1]
+          and ">Greens so far: 3 of 26 doubled within 1 h, 6 rugged (hindsight)</span></li></ol>" in kh,
+          "desk chat: with record.known's counts (whole, from 20 green calls with a 1 h outcome on, none above n, also without a number of calls) the "
+          "Record says what the push says (app.radar_record: %r), on the page too; under 20, text, negative, halves, over n, infinite, true, a "
+          "missing count or no dict: the shares as before and no record in the push either; counts of 1e22 are not printed (%s)" % (
+              kgot["known"][2], "all as expected" if not kbad else "; ".join("%s: %s" % (k, kgot[k]) for k in kbad)))
+    # the hours doc through the day: the chat says what the desk says at radar_state's times (sleeping until its start, then waiting for the
+    # first full scan inside the hours for up to an hour, then stopped), never "outside its hours" once they began
+    hrs = []
+    for dn in (H, 5 * H - 1, 5 * H, 5 * H + 30 * MIN, 6 * H, 6 * H + 1, 7 * H):
+        st_ = PO.radar_state(PO.radar_clean(docs["hours"]), t + dn)
+        hrs.append((dn, st_, PO.desk_look(st_, PO.radar_clean(docs["hours"]), t + dn, utc)["word"], say(docs["hours"], t + dn)[0][1]))
+    nx_ = utc(t + 5 * H)
+    check([x[1:] for x in hrs] == [("hours", "sleeping until " + nx_, "Radar sleeps until " + nx_)] * 2
+          + [("hours", "sleeping", "Radar sleeps: the next round comes with the first scan after " + nx_)] * 3
+          + [("stopped", "stopped", "Radar stopped: no round since its hours began at " + nx_)] * 2,
+          "desk chat outside the hours: 'sleeps until HH:MM' before the start, then 'the next round comes with the first scan after HH:MM' while the "
+          "desk says sleeping (up to an hour), then 'stopped' with the desk; never 'outside its hours' once they began (%s)" % hrs)
+    # on the page: right under the desk (outside its label: a list is no label's content), inside the desk's box, before the office's heading
+    item = re.compile(r'<li class="och k-([a-z]+)"><span class="och-a"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">(?:<path d="[^"<>]*"/>)+</svg></span>'
+                      r'<span class="och-t"><b>([A-Za-z]+)</b><span class="sr">: </span>([^<]*)</span></li>')
+    chat_of = lambda p: cut(p, '<ol class="ochat', "</ol>")
+    msgs = lambda p: [[w, R.html.unescape(x)] for w, n, x in item.findall(chat_of(p)) if PO.WHO.get(w) == n]
+    hm = lambda ms: R.local(ms).strftime("%H:%M")
+    pd_doc = PRd.clean_doc(desk_doc(NOW - 26 * MIN))
+    check(msgs(page_d) == PO.desk_chat(pd_doc, NOW, hm) == want["older doc"] and len(item.findall(chat_of(page_d))) == len(want["older doc"])
+          and '</label><ol class="ochat" data-pd-chat aria-label="The radar desk\'s chat about its last round (fake money only)"><li' in page_d
+          and cut(page_d, '<div class="odk-box">', "</ol></div>").count("<ol") == 1 and page_d.find('<ol class="ochat') < page_d.find("<h2>Agent office</h2>")
+          and msgs(page_h) == [["desk", "Radar sleeps until %s" % hm(NOW + 5 * H)], ["record", "Greens so far: 37 calls, too few with a 1 h price yet (0 of 20)"]]
+          and msgs(page) == [["scout", "Found 7 new pools under 10 minutes, none kept on the list"], ["record", "Greens so far: 37 calls, too few with a 1 h price yet (0 of 20)"]]
+          and '<ol class="ochat" data-pd-chat aria-label="The radar desk\'s chat about its last round (fake money only)" hidden></ol>' in page0
+          and 'class="ochat dim"' in PO.chat_html(CHAT_GREEN, True) and ".ochat.dim .och-a { opacity:.6 }" in PO.DESK_CSS and ".ochat.dim > .och {" not in PO.DESK_CSS,
+          "desk chat on the page: an ordered list right under the desk's label inside its box and before the office's heading, each message a badge, "
+          "the speaker's name and the text (the same messages as desk_chat at the scan's time); outside the hours the one Desk line; no radar doc: "
+          "an empty list, hidden (%s)" % msgs(page_d)[:2])
+    # dimmed while the round is old news (stopped), not for a failing radar (its one line is news; its stations are dimmed: nothing checked)
+    dims = []
+    for k_, doc_ in (("stopped", chat_doc(NOW - 20 * MIN)), ("failing", chat_doc(NOW - MIN, state="degraded", coins=[], others=[])), ("running", chat_doc(NOW - MIN))):
+        dd = os.path.join(tmp, "chatdim-" + k_)
+        wj(os.path.join(dd, "radar_live.json"), doc_)
+        h_ = PO.desk({"dir": dd, "runs": [], "now": NOW}, R)
+        dims.append((re.search(r'<ol class="(ochat[^"]*)"', h_).group(1), 'class="odk-g dim"' in h_, len(item.findall(h_))))
+    check(dims == [("ochat dim", True, 8), ("ochat", True, 2), ("ochat", False, 8)],
+          "desk chat: dimmed with the stations while the round is old news (stopped), not for a failing radar's one line (%s)" % dims)
+    # escaping: a symbol, a launchpad and a chip text from the chain are text in the HTML (the script sets textContent: the browser checks)
+    xd = os.path.join(tmp, "chatxss")
+    mk_db(xd, radar=chat_doc(NOW - 26 * MIN, coins=[dict(green, sym=XSS, lp=XSS, found=[])], others=[dict(o["GROKAI"], sym=XSS[:24], line=[["bad", XSS]])]))
+    px = build(xd)
+    cx = chat_of(px)
+    check(XSS not in px and "<img" not in cx and "Found &lt;img src=x onerror=alert: launched on &lt;img src=x onerror=alert, pool 3 min old" in cx
+          and "Against &lt;img src=x onerror=alert: &lt;img src=x onerror=alert(1)&gt;" in cx and "could not be rendered" not in px,
+          "U10 desk chat: a symbol like %s, its launchpad and a chip text are escaped in the page (cut to 24 characters as the radar's whitelist cuts them)" % XSS)
+    # the wording rule: the chat reports, it never calls a coin a buy, safe or clean, and has no em dash
+    texts = " ".join(x for v in list(got.values()) + [msgs(page_d), msgs(page_h)] for _, x in v).lower()
+    js_chat = PO.JS[PO.JS.find("function at(v)"):PO.JS.find("var O=window.MemebotOffice")] + PO.JS[PO.JS.find("  chat:function"):PO.JS.find("  look:function")]
+    words = [w for w in (r"\bbuy\b", r"\bbuying\b", r"\bsafe\b", r"\bsafely\b", r"\bclean\b", "guarantee", r"\bshould\b", "\u2014")
+             if re.search(w, texts) or re.search(w, " ".join(re.findall(r"'([^'\\]*)'", js_chat)).lower())]
+    check(not words and js_chat.count("function ") >= 8 and "\u2014" not in PO.DESK_CSS + PO.JS and "hindsight" in texts,
+          "U7 desk chat: no message (nor a text of the script's chat) says buy, safe, clean, guaranteed or should, none has an em dash; the record says hindsight (%s)" % (
+              words or "none"))
+    # node: the page script says the same for the same doc (radar.json and the event's whitelisted doc), escaping aside (it sets text)
+    emoji = chat_doc(t, coins=[dict(green, sym="A" + "\U0001F438" * 20, lp=" \t", found=[], liq=1_234_567.0, age=0.4)])
+    hostile = dict(g, coins="x", others=[1, None, {"addr": 5}, {"addr": "A", "v": {}, "found": "pf:graduated", "liq": -3, "age": "7",
+                                                     "line": [["ok", " "], [["ok"], "y"], ["bad", 3], "z"], "hard": ["__proto__", "a b", "creator_sold\n", "rc_danger"]}],
+                   record={"calls": 2.7, "n60": -1}, next="x")
+    amounts = (0.4, 499.5, 999.4, 999.6, 12_449.0, 999_499.0, 999_500.0, 1_049_999.0, 1_250_000.0, 2e6, 25e6)
+    cases = [[k, d_, t + 60_000] for k, d_ in docs.items()] + [[k + " (whitelisted)", PRd.clean_doc(d_), t + 60_000] for k, d_ in docs.items()] \
+        + [["hours, later", docs["hours"], t + 6 * H], ["emoji", emoji, t], ["hostile", hostile, t], ["xss", chat_doc(t, coins=[dict(green, sym=XSS, lp=XSS)]), t], ["none", None, t]] \
+        + [["blank sym", chat_doc(t, coins=[dict(green, sym="\u202e \u3000\x85")], others=[]), t], ["padded sym", chat_doc(t, coins=[dict(green, sym="\u2066 PEPE2 ")], others=[]), t]] \
+        + [[k, d_, t] for k, d_ in list(known_ok.items()) + list(known_odd.items())] + [["known 1e22", kr({"n": 1e22, "rug": 6, "win": 3}), t]] \
+        + [["usd %s" % v_, chat_doc(t, coins=[dict(green, liq=v_)], others=[]), t] for v_ in amounts]
+    py = [[k, PO.desk_chat(d_, n_, utc)] for k, d_, n_ in cases]
+    pyd = dict((k, v) for k, v in py)
+    js = node_js("var f=function(ms){return new Date(ms).toISOString().slice(11,16);},C=%s;\nconsole.log(JSON.stringify(C.map(function(c){return [c[0],window.MemebotOffice.chat(c[1],c[2],f)];})));\n"
+                 % json.dumps(cases))
+    if js is None:
+        skips.append("the desk chat's script in node (no node)")
+        print("  SKIP the desk chat's script in node: node is not installed")
+    else:
+        diff = [(a[0], a[1], b[1]) for a, b in zip(py, js if isinstance(js, list) else []) if a != b]
+        usd = [pyd["usd %s" % v_][0][1].split(", ")[-1] for v_ in amounts]
+        check(js == py and not diff and pyd["emoji"][0][1] == "Found A" + "\U0001F438" * 11 + ": pool under 1 min old, $1.2M liquidity"
+              and pyd["blank sym"][0][1].startswith("Found ?: ") and pyd["blank sym"][-2] == ["desk", "?: no trap found, sent to the phone"]
+              and pyd["padded sym"][:4] == CHAT_GREEN[:4]
+              and pyd["hostile"] == [["scout", "Found ?"], ["skeptic", "Against ?:   proto   · RugCheck danger"], ["desk", "?: watch only"],
+                                     ["record", "Greens so far: 2 calls, too few with a 1 h price yet (0 of 20)"]]
+              and usd == ["$%s liquidity" % x for x in ("0", "500", "999", "1k", "12k", "999k", "1M", "1M", "1.3M", "2M", "25M")],
+              "node: MemebotOffice.chat gives the build's messages for every doc above (raw and whitelisted), past the hours, an emoji symbol cut in "
+              "UTF-16 units (24, no half emoji), hostile shapes, record.known's counts (and its odd shapes), a symbol with markup, a symbol of only "
+              "blanks and marks ('?', as for none) and one padded with them (trimmed), and the amounts' rounding ($999k, then $1M) (%s)" % (
+                  "same" if not diff else diff[:2] if isinstance(js, list) else js))
+    # the page's own flow: the build reads the doc through page_radar.clean_doc, the radar event's doc went through MemebotRadar.clean; the two
+    # cut in characters and in UTF-16 units and drop other blanks and controls, so the chat's own text rules (CHAT_CTRL as spaces, a cut in
+    # units without a half emoji, CHAT_BLANK trimmed, numbers under CHAT_BIG) must make both say the same: node runs both scripts
+    rc = lambda **kw: chat_doc(t, coins=[dict(green, **kw)], others=[])
+    edge = {"emoji at 24": rc(sym="A" + "\U0001F438" * 20), "half emoji": rc(sym="ABCDEFGHIJKLMNOPQRSTUVW\U0001F438"), "zwj": rc(sym="\U0001F468\u200d\U0001F469\u200d\U0001F467 FAM"),
+            "bidi": rc(sym="\u202eABC", lp="\u2066pump\u2069", found=[], line=[["bad", "x\u202ey"], ["ok", "\u200fok"]]), "c1": rc(sym="\x9bAB\x85", lp="\x85", found=[]),
+            "blank chips": rc(line=[["ok", "\ufeff"], ["ok", "\x85"], ["ok", "\xa0\u3000"], ["ok", "\x1c"], ["warn", "\u2028"], ["unk", " \t"], ["bad", "x"]]),
+            "huge": rc(age=1e22, liq=1e27), "huge liq": rc(liq=1e22), "big ok": rc(age=9.9e14, liq=9.99e14), "long chip": rc(line=[["ok", "\U0001F438" * 70]]),
+            "number sym": rc(sym=12345), "seen 1e22": chat_doc(t, coins=[], others=[], counts={"seen": 1e22}, record={"calls": 1e22}),
+            "blank sym": rc(sym="   "), "override sym": rc(sym="\u202e"), "wide sym": rc(sym="\u3000\u200f")}
+    flow = [[k, d_, n_] for k, d_, n_ in cases] + [[k, d_, t] for k, d_ in edge.items()]
+    pyf = [[k, PO.desk_chat(PRd.clean_doc(d_), n_, utc)] for k, d_, n_ in flow]
+    pyfd = dict((k, v) for k, v in pyf)
+    jsf = node_js("var f=function(ms){return new Date(ms).toISOString().slice(11,16);},C=%s;\nconsole.log(JSON.stringify(C.map(function(c){"
+                  "return [c[0],window.MemebotOffice.chat(window.MemebotRadar.clean(c[1]),c[2],f)];})));\n" % json.dumps(flow), radar=True)
+    if jsf is not None:
+        dif = [(a_[0], a_[1], b_[1]) for a_, b_ in zip(pyf, jsf if isinstance(jsf, list) else []) if a_ != b_]
+        found_ = lambda k: pyfd[k][0][1]
+        check(jsf == pyf and not dif and found_("emoji at 24") == "Found A" + "\U0001F438" * 11 + ": pump.fun graduated, pool 3 min old, $12k liquidity"
+              and found_("half emoji").startswith("Found ABCDEFGHIJKLMNOPQRSTUVW:") and found_("zwj").startswith("Found \U0001F468\u200d\U0001F469\u200d\U0001F467 FAM:")
+              and pyfd["bidi"][:3] == [["scout", "Found ABC: launched on pump, pool 3 min old, $12k liquidity"], ["checks", "ABC passed:  ok"], ["skeptic", "Against ABC: x y"]]
+              and found_("c1") == "Found AB: pool 3 min old, $12k liquidity" and [m[0] for m in pyfd["blank chips"]] == ["scout", "skeptic", "desk", "record"]
+              and all(pyfd[k][0][1].startswith("Found ?: ") and pyfd[k][-2] == ["desk", "?: no trap found, sent to the phone"] for k in ("blank sym", "override sym", "wide sym"))
+              and found_("huge") == "Found PEPE2: pump.fun graduated" and found_("huge liq") == "Found PEPE2: pump.fun graduated, pool 3 min old" and found_("big ok").endswith("pool 990000000000000 min old, $999000000M liquidity")
+              and pyfd["long chip"][1][1] == "PEPE2 passed: " + "\U0001F438" * 60 and found_("number sym").startswith("Found 12345:")
+              and pyfd["seen 1e22"] == [["scout", "No new pools under 10 minutes this round"]]
+              and not [x for _, ms_ in pyf for _, x in ms_ if PO._CTRL.search(x)],
+              "node: on the page's own flow (the build's doc through page_radar.clean_doc, the event's through MemebotRadar.clean) the chat says the same "
+              "for every doc above and for symbols cut inside an emoji, a ZWJ emoji kept whole, bidi overrides and isolates, C1 controls (as spaces: no "
+              "line turned around, the symbol trimmed), chips of only blanks either cleaner keeps (U+FEFF, U+0085, U+2028: no line), numbers of 1e22 "
+              "(not printed), a symbol that is a number and symbols of only blanks or direction marks ('?', as for no symbol); no message carries a "
+              "control or direction mark (%s)" % ("same" if not dif else dif[:2] if isinstance(jsf, list) else jsf))
+
+
 def browser_checks(check, skips, d1, tmp):
     """The office tab in Chromium, served at the website's address; the GitHub API answers a live scan whose doc also names a 'radar' agent."""
     try:
@@ -613,6 +879,15 @@ def browser_checks(check, skips, d1, tmp):
     mk_db(dk, radar=desk_doc(NOW - 26 * MIN, hosts={"pumpportal": "limited"}, others=[dict(x, hard=["holder_cluster", "rugger_wallets", "fund_cluster"])
                                                                                        for x in desk_doc(NOW)["others"]]))
     page_desk = build(dk)
+    dc = os.path.join(tmp, "chatw")
+    mk_db(dc, radar=chat_doc(NOW - 26 * MIN))
+    page_chat = build(dc)
+    # a round whose first coin has no Checks line (3 messages) and whose second has one (4): the columns would be balanced by height
+    gc = chat_doc(NOW - 26 * MIN)
+    dcol = os.path.join(tmp, "chatcols")
+    mk_db(dcol, radar=chat_doc(NOW - 26 * MIN, coins=[dict(gc["coins"][0], line=[["warn", "no socials"]])],
+                               others=[dict([x for x in gc["others"] if x["sym"] == "GROKAI"][0], sym="MOONER", line=[["bad", "3,000+ buys already"], ["ok", "RugCheck report"]])]))
+    page_cols = build(dcol)
     # "Open the radar" goes to the New tab, where the radar sits on top (the Radar tab is merged into New): one radio of that id, none for Radar
     page_rt = page_plain
     check(page_rt.count('id="tab-young"') == 1 and 'id="tab-radar"' not in page_rt and page_rt.count("data-radar ") == 1,
@@ -745,6 +1020,35 @@ def browser_checks(check, skips, d1, tmp):
                   and d_off[:3] == ["off", "last HH:MM", True] and not errs,
                   "U6 browser: the desk on top follows the radar event: running with its four stations; 'round in progress' once the next round is 10 s due "
                   "(the desk's own clock moves on); late dims the last round; switched off hides the stations (%s | %s | %s | %s)" % (d_run, d_prog[:2], d_late[:4], d_off[:3]))
+            # the chat under the desk follows the same event: the build's messages and markup for the same doc (page_office.chat_html), a symbol
+            # with markup as text, dimmed while the round is old news, one Desk line switched off or outside the hours. The event's doc goes
+            # through MemebotRadar.clean as on the page (the build's through page_radar.clean_doc); a symbol with a direction override too
+            import page_office as PO
+            import page_radar as PRd
+            hm = lambda ms: R.local(ms).strftime("%H:%M")
+            cd = chat_doc(NOW - 26 * MIN)
+            read_c = """() => { const c = document.querySelector('[data-pd-chat]');
+              return [c.className, c.hidden, c.querySelectorAll('img').length, c.innerHTML, Array.from(c.children).map(li => [li.className, li.querySelector('.och-t').textContent])]; }"""
+            send_c = "([st, d, n]) => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: st, via: 'github', doc: window.MemebotRadar.clean(d), now: n}}))"
+            parse = "h => { const t = document.createElement('template'); t.innerHTML = h; return t.content.firstChild.innerHTML; }"
+            got_c, want_c = {}, {}
+            for k_, st_, doc_ in (("green", "running", cd), ("late", "late", cd), ("failing", "running", dict(cd, state="degraded", coins=[], others=[])),
+                                  ("off", "off", dict(cd, state="off", next=None, coins=[], others=[])),
+                                  ("hours", "hours", dict(cd, state="hours", next=NOW + 3 * H, coins=[], others=[])),
+                                  ("xss", "running", chat_doc(NOW - 26 * MIN, coins=[dict(cd["coins"][0], sym=XSS)], others=[dict(cd["others"][2], sym=XSS, line=[["bad", XSS]])])),
+                                  ("bidi", "running", chat_doc(NOW - 26 * MIN, coins=[dict(cd["coins"][0], sym="\u202eEVIL" + "\U0001F438" * 12)], others=[]))):
+                pg.evaluate(send_c, [st_, doc_, doc_["t"] + 60_000])
+                got_c[k_] = pg.evaluate(read_c)
+                m_ = PO.desk_chat(PRd.clean_doc(doc_), doc_["t"] + 60_000, hm)
+                want_c[k_] = ["ochat" + (" dim" if st_ == "late" else ""), False, 0, pg.evaluate(parse, PO.chat_html(m_)), [["och k-" + w, PO.WHO[w] + ": " + x] for w, x in m_]]
+            check(got_c == want_c and [x[1] for x in got_c["green"][4]] == [PO.WHO[w] + ": " + x for w, x in CHAT_GREEN] and got_c["off"][4][0][1] == "Desk: Radar switched off on GitHub: no rounds"
+                  and got_c["hours"][4][0][1] == "Desk: Radar sleeps until %s" % hm(NOW + 3 * H) and got_c["failing"][:2] == ["ochat", False] and got_c["xss"][4][0][1].startswith("Scout: Found " + XSS[:24]) and any(XSS in x[1] for x in got_c["xss"][4])
+                  and got_c["bidi"][4][0][1].startswith("Scout: Found EVIL" + "\U0001F438" * 9 + ": ") and "\u202e" not in json.dumps(got_c["bidi"], ensure_ascii=False) and not dialogs and not errs,
+                  "U6/U10 browser: the desk's chat follows the radar event with the build's messages and the build's markup for the same doc (badge, name, "
+                  "text), dimmed when late (not for a failing radar's one line: that is news), one Desk line switched off or outside its hours; a symbol and a "
+                  "chip with markup stay text; the event's doc through MemebotRadar.clean: a symbol with a direction override and emoji cut where the "
+                  "radar's whitelist cut it inside an emoji says what the build says, without the override (%s)" % (
+                      "same" if got_c == want_c else [(k_, got_c[k_][:3] + got_c[k_][4:], want_c[k_][:3] + want_c[k_][4:]) for k_ in got_c if got_c[k_] != want_c[k_]][:2]))
             ctx.close()
             # 390 and 1280, light and dark, every fold on the Pick and Office tabs open and every department in turn: nothing wider than the screen;
             # the cards row scrolls inside itself on a phone, wraps on a desktop with whole names; the hour cells are 44 px tall
@@ -854,6 +1158,57 @@ def browser_checks(check, skips, d1, tmp):
                   and dsz[4][6] == 4 and dsz[4][3] <= 130 and dsz[0][7] != dsz[1][7] and dsz[2][7] != dsz[3][7],
                   "U8 the radar desk at 320, 390 and 1280 px, light and dark: above the office's heading, no sideways scroll, station names whole, each "
                   "station line at most 2 lines, 2 x 2 on a phone (at most 200 px tall at 390 px) and one row on a desktop, its own colours in the dark theme (%s)" % dsz)
+            # the chat under it with a full round (8 messages): no sideways scroll at 320, 390 and 1280 px, light and dark; between the desk and the
+            # office's heading; compact (small text on a phone, the two coins side by side from 1000 px); each speaker's badge in its own colour
+            csz = []
+            for w, dark in ((320, False), (320, True), (390, False), (390, True), (1280, False), (1280, True)):
+                ctx, pg = open_(page_chat, w, 844, dark)
+                pg.evaluate("document.getElementById('tab-office').click()")
+                csz.append(pg.evaluate("""() => { const c = document.querySelector('.ochat'), r = c.getBoundingClientRect(), k = document.querySelector('.odesk').getBoundingClientRect(),
+                    h = document.querySelector('#pane-office h2').getBoundingClientRect(), li = Array.from(c.querySelectorAll('.och')), col = e => getComputedStyle(e.querySelector('.och-a')).color;
+                  return [document.documentElement.scrollWidth - innerWidth, Math.round(r.right - innerWidth), c.scrollWidth - c.clientWidth, Math.round(r.height), Math.round(r.top - k.bottom),
+                    r.bottom < h.top, li.length, new Set(li.map(e => Math.round(e.getBoundingClientRect().left))).size, new Set(li.map(col)).size,
+                    li.filter(e => e.querySelector('.och-t').scrollWidth > e.querySelector('.och-t').clientWidth + 1).length, getComputedStyle(c).backgroundColor,
+                    parseFloat(getComputedStyle(c.querySelector('.och-t')).fontSize), li.map(e => Math.round(e.getBoundingClientRect().left))]; }"""))
+                ctx.close()
+            col_of = lambda ls: [sorted(set(ls)).index(x) for x in ls]
+            ccol = []
+            for w in (390, 1280):
+                ctx, pg = open_(page_cols, w, 844)
+                pg.evaluate("document.getElementById('tab-office').click()")
+                ccol.append(pg.evaluate("Array.from(document.querySelectorAll('.ochat .och')).map(e => [e.className.slice(6), Math.round(e.getBoundingClientRect().left)])"))
+                ctx.close()
+            check(all(m[0] <= 0 and m[1] <= 0 and m[2] <= 0 and 0 <= m[4] <= 10 and m[5] and m[6] == 8 and m[8] == 5 and m[9] == 0 for m in csz)
+                  and all(m[3] <= 400 and m[7] == 1 and m[11] == 12 for m in csz[:2]) and all(m[3] <= 320 and m[7] == 1 for m in csz[2:4])
+                  and all(m[3] <= 200 and m[7] == 2 and m[11] == 13 and col_of(m[12]) == [0] * 4 + [1] * 4 for m in csz[4:]) and csz[0][10] != csz[1][10] and csz[4][10] != csz[5][10]
+                  and [x[0] for x in ccol[1]] == ["scout", "skeptic", "desk", "scout", "checks", "skeptic", "desk", "record"]
+                  and col_of([x[1] for x in ccol[1]]) == [0] * 3 + [1] * 5 and col_of([x[1] for x in ccol[0]]) == [0] * 8,
+                  "U8 the desk's chat at 320, 390 and 1280 px, light and dark: 8 messages right under the desk and above the office's heading, no sideways scroll "
+                  "and no text cut, 12 px text on a phone (at most 400 px tall at 320, 320 at 390), the two coins side by side on a desktop (at most 200 px: "
+                  "the second coin's thread starts the second column, also when the first coin has 3 messages and the second 4), five badge colours, the "
+                  "page's own colours in each theme (%s; %s)" % (csz, ccol))
+            # dimmed while the round is old news (late): the text keeps WCAG AA's 4.5:1 for small text in both themes, the ancestors' opacity
+            # counted (the badges fade, the text only turns muted)
+            ratio = """() => { const c = document.querySelector('.ochat'), num = s => s.match(/[\\d.]+/g).map(Number),
+                lum = m => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); },
+                bg = e => { while (e) { const x = num(getComputedStyle(e).backgroundColor); if (x.length < 4 || x[3] > 0.5) return x; e = e.parentElement; } return [255, 255, 255]; },
+                op = e => { let o = 1; while (e) { o *= parseFloat(getComputedStyle(e).opacity); e = e.parentElement; } return o; },
+                cr = e => { const f = num(getComputedStyle(e).color), b = bg(e.parentElement), o = op(e) * (f.length > 3 ? f[3] : 1), m = [0, 1, 2].map(i => f[i] * o + b[i] * (1 - o)),
+                  x = lum(m), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); },
+                t = Array.from(c.querySelectorAll('.och-t, .och-t b'));
+              return [c.className, Math.round(Math.min(...t.map(cr)) * 100) / 100, t.length]; }"""
+            cdim = []
+            for dark in (False, True):
+                ctx, pg = open_(page_chat, 390, 844, dark)
+                pg.evaluate("document.getElementById('tab-office').click()")
+                cd_ = chat_doc(NOW - 26 * MIN)
+                pg.evaluate("([st, d, n]) => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: st, via: 'github', doc: window.MemebotRadar.clean(d), now: n}}))",
+                            ["late", cd_, cd_["t"] + 60_000])
+                cdim.append(pg.evaluate(ratio))
+                ctx.close()
+            check(all(c_[0] == "ochat dim" and c_[1] >= 4.5 and c_[2] == 16 for c_ in cdim),
+                  "U8 the desk's chat dimmed while the round is old news keeps its text readable: at least 4.5:1 in the light and the dark theme, "
+                  "opacity included (%s)" % cdim)
             br.close()
     except Exception as e:
         check(False, "office browser checks ran (%s)" % str(e)[:300])

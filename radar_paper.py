@@ -44,8 +44,11 @@ Doc states (db/memeradarpaper/<id>.json, one per buy; written whole by a rename;
 A closed or void doc is never rewritten unless RP_V changes. A failed request (5xx, timeout, 429s) never settles a window under
 EST_AFTER_H past its end; an older one counts it as a try.
 
-The budget: this runs inside the peaks job, from peak.run, on what is left of its deadline after peak.py's own windows and on its
-GeckoTerminal client (the 10 s gap, the cooldowns and a host given up stay in force), at most MAX_ITEMS windows a run, oldest first.
+The budget: this runs inside the peaks job, from peak.run, before peak.py's own windows and on its GeckoTerminal client (the 10 s
+gap and what each 429 adds to it, the cooldowns and a host given up stay in force), at most MAX_ITEMS windows a run, oldest first,
+until its share of the deadline (peak.radar_until: 40%, at most 240 s) or of the run's 429s (peak.RADAR_MAX_429: 3 of the 8 after
+which GeckoTerminal is given up) is used; then peak.py's windows get the rest. The window the last 429 met waits for a later run
+like one not asked (no try counted). With nothing to price it asks nothing and takes no time from them.
 
 Usage:
   python3 radar_paper.py run --dir mb [--now <ms>] [--deadline-s 150] [--mock URL]   -> one JSON line (the run's summary)
@@ -69,7 +72,7 @@ SETTLE_MS = P.SETTLE_MS     # a window counts once now >= end + 2 min
 STOP_X = 1.0 - M.HOLD_STOP  # 0.70
 TP_X = 1.0 + M.HOLD_TP      # 11.0
 AGE_MAX_MS = int(10 * MIN)     # launch_radar.MAX_AGE_MIN: a pool under 10 minutes is on the radar (a later rating is for the record only)
-MAX_ITEMS = 15              # windows a run asks GeckoTerminal for (oldest first), after peak.py's own
+MAX_ITEMS = 15              # windows a run asks GeckoTerminal for (oldest first), before peak.py's own
 MAX_TRIES = P.MAX_TRIES     # empty answers before a window is estimated
 EST_AFTER_H = P.EST_AFTER_H
 VRANK = {"good": 0, "watch": 1, "trap": 2}
@@ -340,9 +343,10 @@ def book(d, b, info, now, old):
     return doc_of(b, now, "waiting", tries)
 
 
-def run(d, now, http=None, mock=None, until=None, log=None, max_items=None):
+def run(d, now, http=None, mock=None, until=None, log=None, max_items=None, max_429=None):
     """The buys of the radar rounds -> open and waiting docs, then GeckoTerminal minute candles for at most MAX_ITEMS closed windows
-    (oldest first) until `until` (epoch s) -> closed or void docs. -> the summary dict."""
+    (oldest first) until `until` (epoch s) or max_429 more 429s (peak.fetch: peak.run passes RADAR_MAX_429; None, as on its own
+    command line: up to fetch.Http's limit) -> closed or void docs. -> the summary dict."""
     t0 = time.time()
     log = log or (lambda s: print(s, file=sys.stderr, flush=True))
     until = t0 + 150.0 if until is None else until
@@ -355,7 +359,7 @@ def run(d, now, http=None, mock=None, until=None, log=None, max_items=None):
             http = P.F.Http(mock, pause=0, log=log)
         log("radar account: %d bought in all, %d closed windows to price (oldest first, at most %d a run), %.0f s left" % (
             len(buys), len(its), MAX_ITEMS, max(0.0, until - time.time())))
-        fetched, why = P.fetch(http, d, its, until, {})
+        fetched, why = P.fetch(http, d, its, until, {}, max_429=max_429)
     written = set()
     for key, info in sorted(fetched.items()):
         old = docs.get(key)

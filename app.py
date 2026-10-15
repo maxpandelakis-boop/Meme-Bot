@@ -34,9 +34,9 @@ pywebpush (and cryptography, which it brings) are imported when a push or the VA
 site-packages folder, put right after the standard library: the scan workflow installs supabase/push-requirements.txt there, every
 package pinned with its sha256).
 
-Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_radar(coins),
-put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS and PAGE_JS (the installed app: bottom
-tab bar, notifications) and SW_JS (sw.js); bot.py site writes them into the website.
+Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_radar(coins,
+record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
+and PAGE_JS (the installed app: bottom tab bar, notifications) and SW_JS (sw.js); bot.py site writes them into the website.
 
   python3 app.py check     what is set up (store reachable, VAPID key, subscriptions, pywebpush), without printing any key
   python3 app.py test      sends a test notification to every saved subscription
@@ -67,6 +67,9 @@ TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit
 # that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
 PREF_OF = {"radar": "young"}        # kind -> the phone's setting that covers it: the "New coins" switch also covers the radar (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
+TITLE_MAX, BODY_MAX = 120, 300   # characters of a notification's title and body (message cuts there; the radar's words stay inside)
+RADAR_WHY_N = 2           # passed checks a radar notification names (the first ones of its trap-check line)
+RADAR_TOO_FEW = 20        # green calls with a known 1 h outcome before a radar notification says the record (the page's TOO_FEW)
 
 
 class StoreError(Exception):
@@ -548,8 +551,8 @@ def vapid_auth(endpoint):
 def message(title, body, url, tag=None):
     """The push payload: Declarative Web Push JSON (iOS 18.4+ shows it without running the service worker; sw.js shows the same
     message on older systems and other browsers). title must not be empty and navigate must be an absolute URL, or iOS drops it."""
-    t = " ".join(str(title or "").split())[:120] or "Meme-Bot"
-    b = " ".join(str(body or "").split())[:300]
+    t = " ".join(str(title or "").split())[:TITLE_MAX] or "Meme-Bot"
+    b = " ".join(str(body or "").split())[:BODY_MAX]
     n = {"title": t, "body": b, "navigate": in_scope(url), "lang": "en"}
     if tag:
         n["tag"] = str(tag)[:32]
@@ -777,9 +780,19 @@ def notify(kind, title, body, url=None):
     return out
 
 
+# what a notification never shows of a chain string: controls (C0, C1), the soft hyphen, the Arabic letter mark, zero-width and direction
+# marks, line and paragraph separators, bidi embeddings, overrides and isolates, invisible operators, the BOM (page_office.CHAT_CTRL and
+# more): a strong right-to-left mark would flip the title, a hidden one would split a word past NO_ADVICE
+PUSH_CTRL = re.compile(r"[\x00-\x1f\x7f-\x9f\xad\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]")
+
+
+def _line(v):
+    """A chain string on one line without PUSH_CTRL characters (whitespace first becomes single spaces)."""
+    return " ".join(PUSH_CTRL.sub("", " ".join(str(v).split())).split())
+
+
 def _sym(v):
-    s = re.sub(r"[\x00-\x1f\x7f\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", " ".join(str(v or "").split()))   # no bidi controls: they would flip the title
-    return s[:16] or "?"
+    return _line(v or "")[:16].strip() or "?"
 
 
 def notify_young(doc):
@@ -835,22 +848,74 @@ def _usd(v):
     return ("$%dk" % round(v / 1000)) if v >= 1000 else "$%d" % round(v)
 
 
-def notify_radar(coins):
-    """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
-    rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour). The title names the first
-    coin and its pool age ("SYM: no trap found (pool 6 min)", "+1 more" per other coin), the body the checks it passed and its liquidity
-    and ends with "fake money, nothing is bought."; it opens the New tab at its top, where the radar is. It never says buy, safe or clean. coins: the radar.json coin
-    dicts (sym, age in minutes, liq, n = checks done). The phones' "New coins" setting covers it (PREF_OF). Nothing for an empty list."""
+NO_ADVICE = re.compile(r"\b(buy|buys|buying|safe|safety|clean|guaranteed)\b", re.I)    # never in a notification's words
+
+
+def _chip_text(v):
+    """A passed check's words from the radar's trap-check line, for a notification: one line without PUSH_CTRL characters (controls,
+    bidi, zero-width and format marks), at most 40 characters; "" for anything else, and for words a notification never says (buy,
+    safe, clean), also when a hidden character split them."""
+    if not isinstance(v, str):
+        return ""
+    s = _line(v)[:40].strip()
+    return "" if NO_ADVICE.search(s) else s
+
+
+def radar_why(c):
+    """Why a radar coin got its notification, in a few words: the first RADAR_WHY_N passed checks of its trap-check line (the coin's
+    "line" [[level, text]], level "ok", in traps.chips' order: the curve before the pool, no rugger wallets, the RugCheck report),
+    "curve 4 min before pool, no rugger wallets"; "" without one."""
+    line = c.get("line") if isinstance(c, dict) and isinstance(c.get("line"), list) else []
+    ok = [_chip_text(x[1]) for x in line if isinstance(x, (list, tuple)) and len(x) >= 2 and x[0] == "ok"]
+    return ", ".join([t for t in ok if t][:RADAR_WHY_N])
+
+
+def radar_record(record):
+    """The record of earlier green coins for a radar notification, from radar.json's record.known (the green calls whose 1 h outcome
+    is known, and how many of them doubled and rugged): "greens so far: 3 of 24 doubled in 1 h, 6 rugged". Only from RADAR_TOO_FEW
+    such calls on, and only from whole counts that fit (none above n); "" otherwise: never a number the record does not hold.
+    Hindsight on paper, never advice."""
+    k = record.get("known") if isinstance(record, dict) and isinstance(record.get("known"), dict) else {}
+    n, w, r = (_finite(k.get(x)) for x in ("n", "win", "rug"))
+    if any(v is None or v < 0 or v != int(v) for v in (n, w, r)) or n < RADAR_TOO_FEW or w > n or r > n:
+        return ""
+    return "greens so far: %d of %d doubled in 1 h, %d rugged" % (w, n, r)
+
+
+def radar_words(coins, record=None):
+    """(title, body) of the launch radar's notification; None for an empty list. The title names the first coin and its pool age
+    ("SYM: no trap found (pool 6 min)", "+1 more" per other coin). The body: the checks it passed, the first of them by name
+    (radar_why), its liquidity, the record of earlier green coins (radar_record, once there are enough) and "fake money, nothing is
+    bought." at the end. Within TITLE_MAX and BODY_MAX (message's cut never takes the fake-money words: the record goes first, then
+    the names, then whatever is left is cut before them). It never says buy, safe or clean. coins: the radar.json coin dicts (sym, age
+    in minutes, liq, n = checks done, line); record: radar.json's record (or None)."""
     cs = [c for c in (coins if isinstance(coins, list) else []) if isinstance(c, dict)]
     if not cs:
-        return {"skipped": "no coins"}
+        return None
     c = cs[0]
     age, n = _finite(c.get("age")), _finite(c.get("n"))
     pool = (" (pool %s min)" % (int(age) if age >= 1 else "<1")) if age is not None and age >= 0 else ""
     more = (" +%d more" % (len(cs) - 1)) if len(cs) > 1 else ""
     checks = ("%d checks passed" % n) if n is not None and n >= 1 else "All checks passed"
-    body = "%s · liquidity %s · fake money, nothing is bought." % (checks, _usd(c.get("liq")))
-    return notify("radar", "%s: no trap found%s%s" % (_sym(c.get("sym")), pool, more), body, "#tab-radar")
+    why, rec = radar_why(c), radar_record(record)
+    tail = " · fake money, nothing is bought."
+    for w, r in ((why, rec), (why, ""), ("", "")):
+        head = " · ".join(["%s%s" % (checks, " (%s)" % w if w else ""), "liquidity %s" % _usd(c.get("liq"))] + ([r] if r else []))
+        if len(head + tail) <= BODY_MAX:
+            break
+    # the last try has no names and no record; a liquidity or a count of absurd length is cut before the tail, never the tail itself
+    return "%s: no trap found%s%s" % (_sym(c.get("sym")), pool, more), head[:BODY_MAX - len(tail)] + tail
+
+
+def notify_radar(coins, record=None):
+    """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
+    rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour), in radar_words' words
+    with this cycle's record; it opens the New tab at its top, where the radar is. The phones' "New coins" setting covers it (PREF_OF).
+    Nothing for an empty list."""
+    words = radar_words(coins, record)
+    if words is None:
+        return {"skipped": "no coins"}
+    return notify("radar", words[0], words[1], "#tab-radar")
 
 
 # ---------------------------------------------------------------------------------------------------------------- the page's key

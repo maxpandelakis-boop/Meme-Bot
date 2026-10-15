@@ -49,11 +49,15 @@ GeckoTerminal no longer keeps that day's minutes), the old doc's best and value 
 429s through the whole wait ladder) never settles a window: a window under 48 h past its end keeps its doc as it was, an older one gets a waiting doc with one more try (an estimate only after
 3). A 5xx or a timeout three times in a row, or one answer that is not GeckoTerminal's OHLCV shape (a block page), switches
 GeckoTerminal off for the rest of the run. Docs are written every SETTLE_EVERY windows, so a step killed at its timeout keeps them.
+Each 429 of a run widens the gap between its GeckoTerminal requests for the rest of the run (gt_extra_gap).
+
+The run's budget: the radar account (radar_paper.py) goes first, on its own share of the deadline (radar_until) and of the run's
+429s (RADAR_MAX_429); the windows here get the rest of the deadline, all of it when the radar account had nothing to price.
 
 Usage:
   python3 peak.py run --dir mb [--now <ms>] [--deadline-s 600] [--mock http://127.0.0.1:8765]
       -> prints one JSON line {"items","ok","m15","est","unit","waiting","radar","secs","why"}; progress goes to stderr
-         ("radar": radar_paper.py's summary; the radar account is priced on what is left of the deadline, see radar_account)
+         ("radar": radar_paper.py's summary; the radar account is priced first, on its own share, see radar_account)
 """
 import argparse, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
@@ -84,11 +88,17 @@ TP_X = 1.0 + M.HOLD_TP      # a take-profit exit is booked at exactly 11x the en
 SETTLED = ("ok", "est", "unit")
 MIN_REQ_S = 2.0             # no request is started with less time than this left before the deadline
 GT_429_LADDER_S = (15, 30, 60)   # WP0 probe: on a 429 wait 15, 30, then 60 s and ask the same window again; then it waits for a later run
+GT_429_STEP_S = 5.0         # each 429 of a run adds this to the 10 s gap between its GeckoTerminal requests (gt_extra_gap says why 5)
+GT_429_EXTRA_MAX_S = 20.0   # at most this much: 30 s apart, 2 requests a minute
+RADAR_SHARE, RADAR_MAX_S = 0.4, 240.0   # the radar account goes first, until this share of the deadline but at most this long (radar_until)
+RADAR_MAX_429 = 3           # and until this many of the run's 429s (fetch.Http gives GeckoTerminal up at the 8th): the rest is for the windows
+                            # here. Priced last, in the three peaks runs of 15 Oct the 8th 429 came before its turn: 168 buys, none priced.
 SETTLE_EVERY = 10           # the docs are written after every this many windows (a step killed at its timeout keeps them)
 MAX_ANSWER = 4_000_000      # bytes: a bigger answer is no OHLCV answer
 GT_HOST = urllib.parse.urlsplit(F.GT).netloc
 GT_GONE = "GeckoTerminal given up for this run"
 GT_SHAPE = "GeckoTerminal answered in an unknown shape"
+GT_SHARE = "its share of GeckoTerminal's 429s used"
 DOC_KEYS = ("v", "pos", "grp", "sym", "addr", "pair", "ticket", "t", "entryAt", "end", "upd", "state", "src", "res", "tries",
             "px", "cpx", "base", "x", "at", "rawX", "x6", "eur", "eur6", "lo", "loAt", "eurLo", "dead", "cut", "n")
 SRC_RANK = {"m1": 3, "m15": 2, "est": 1}   # how good a settled doc's source is: an older version's doc is never replaced by a lesser one
@@ -543,22 +553,44 @@ def _read(r, until):
             raise ValueError("answer over %d bytes" % MAX_ANSWER)
 
 
-def gt_get(http, u, until):
-    """One GeckoTerminal request on fetch.Http's pacing (10 s gap, cooldowns, circuit breaker) inside the deadline (epoch s).
+def gt_extra_gap(http, host=GT_HOST):
+    """Seconds this run adds to the gap between its requests to host: GT_429_STEP_S for each 429 so far (fetch.Http counts them in
+    limited_by), at most GT_429_EXTRA_MAX_S. fetch.py keeps its 10 s (HOST_GAP) and gives the host up at the 8th 429 of a run; the
+    gap grows only within a run (a new run, a new client, starts at 10 s again).
+
+    Why this prices more, from the peaks logs of 15 Oct: requests 10 s apart (6 a minute) met a 429 every 45 to 65 s, so the runner's
+    address got about 5 answers a minute. Each 429 cost its own request and a 15 s wait, and the 8th gave GeckoTerminal up at about
+    516 s (84 s left): about 40 answers, then none, for the radar account none at all. A sliding limit of 5 answers a minute gives
+    the same run (given up at 505 s). After one 429 the requests here go 15 s apart (4 a minute, under the 5): in that model no
+    second 429, about 41 answers over the whole 600 s, GeckoTerminal never given up, the radar account's share included. With 4 a
+    minute the old pacing was given up at about 310 s with 16 answers; this one gets about 30 after two 429s (20 s apart). A step of
+    10 s (20 s apart after one 429, 3 a minute) leaves a quarter of a 5-a-minute budget unused (about 32 answers); a step under 5 s
+    spends more of the 8 429s before it is under a lower budget."""
+    return min(GT_429_STEP_S * http.limited_by.get(host, 0), GT_429_EXTRA_MAX_S)
+
+
+def gt_get(http, u, until, stop_at=None):
+    """One GeckoTerminal request on fetch.Http's pacing (10 s gap, cooldowns, circuit breaker) and this run's extra gap after 429s
+    (gt_extra_gap) inside the deadline (epoch s).
     -> (status, json): "ok"; "empty" (404/410: the pool is unknown); "error" (this window failed: a 5xx, a timeout, another HTTP
     error, or 429s through the whole GT_429_LADDER_S); "shape" (an answer that is not JSON: a block or maintenance page);
     "limited" (429s used up for this run: fetch.Http gives the host up); "dead" (the host was given up before: three 5xx, timeouts
-    or 401/403/451 in a row, a changed shape, or the 429s); "deadline" (not enough time left for this request or its answer).
+    or 401/403/451 in a row, a changed shape, or the 429s); "deadline" (not enough time left for this request or its answer);
+    "share" (a 429 that brought the run's count to stop_at: the caller's share of the 429s is used, this window waits for a later
+    run; the host stays on for the rest of the run).
     A 5xx or a timeout counts as a hard failure of the host (three in a row and it is off for the run), as a 401/403/451 does."""
     host = urllib.parse.urlsplit(u).netloc
     ladder = tuple(GT_429_LADDER_S)
     for i in range(len(ladder) + 1):
         if host in http.dead:
             return "dead", None
-        gap = 0.0 if http.mock else F.HOST_GAP.get(host, 0.0)
+        extra = gt_extra_gap(http, host)
+        gap = (0.0 if http.mock else F.HOST_GAP.get(host, 0.0)) + extra
         wait = max(http.cooldown.get(host, 0) - time.time(), (http.last_at[host] + gap - time.time()) if host in http.last_at else 0.0, 0.0)
         if time.time() + wait + MIN_REQ_S > until:
             return "deadline", None
+        if extra and host in http.last_at:       # the gap this run's 429s widened; fetch.Http._pace then waits out a cooldown left
+            time.sleep(max(0.0, http.last_at[host] + gap - time.time()))
         http._pace(host)
         left = until - time.time()
         if left < MIN_REQ_S:
@@ -582,13 +614,23 @@ def gt_get(http, u, until):
                 pause = ladder[min(i, len(ladder) - 1)] if ladder else 0
                 with http.lock:
                     http.cooldown[host] = time.time() + pause
+                # the ladder stays as WP0's probe set it; the wait is its rung or the gap this 429 just widened, whichever is longer
+                # (both 15 s after a first 429), so a window asked again never comes sooner than the next window would
+                extra = gt_extra_gap(http, host)
+                gap = (0.0 if http.mock else F.HOST_GAP.get(host, 0.0)) + extra
+                wait = max(pause, gap)
+                apart = "; %.0f s between its requests from now on" % gap if extra else ""
+                if stop_at is not None and http.limited_by.get(host, 0) >= stop_at:
+                    http.log("  ! 429 rate limited by %s (%d this run): this part's share is used, its windows wait for a later run%s"
+                             % (host, http.limited_by.get(host, 0), apart))
+                    return "share", None
                 if i >= len(ladder):
-                    http.log("  ! 429 rate limited by %s %d times for one window: it waits for a later run, the next window waits %ds" % (host, i + 1, pause))
+                    http.log("  ! 429 rate limited by %s %d times for one window: it waits for a later run, the next window waits %ds%s" % (host, i + 1, wait, apart))
                     return "error", None
-                http.log("  ! 429 rate limited by %s, waiting %ds" % (host, pause))
-                if time.time() + pause + MIN_REQ_S > until:
+                http.log("  ! 429 rate limited by %s, waiting %ds%s" % (host, wait, apart))
+                if time.time() + wait + MIN_REQ_S > until:
                     return "deadline", None
-                time.sleep(pause)
+                time.sleep(wait)
                 continue
             if e.code in (404, 410):     # a proper answer of a working host: the run of hard failures starts again
                 with http.lock:
@@ -627,17 +669,21 @@ def load_candles(d, pool, key):
     return _rows(out)
 
 
-def fetch(http, d, items_, until, done=None):
-    """GeckoTerminal minute candles for each window, one after another on fetch.Http (10 s apart), until the deadline (epoch s):
+def fetch(http, d, items_, until, done=None, max_429=None):
+    """GeckoTerminal minute candles for each window, one after another on fetch.Http (10 s apart, more after 429s), until the deadline (epoch s):
     candles/<pool>_pk<entry minute>.txt rows ms|o|h|l|c|vol. An empty answer (or one that does not reach back to the entry) is
     asked once more as 15-minute candles. Two windows of one pool with the same entry minute share one request (done: the answers
     so far, shared between calls of one run). An answer that is not GeckoTerminal's OHLCV shape (a block page, a changed API,
     candle rows it cannot read) before any answer of the run was readable switches GeckoTerminal off for the run, logged once; that
     window gets no result (SPEC 10: the first answer of each run). After a readable answer, one such answer is a failed fetch of
     that window (one pool answered oddly; the run goes on), and the third in a row switches GeckoTerminal off.
+    max_429: the share of the run's 429s this call may meet (the radar account's, RADAR_MAX_429); at the last one it stops
+    (GT_SHARE) and leaves GeckoTerminal on for the rest of the run, the window that met it gets no result (it waits for a later
+    run as after any stop). None: as many as fetch.Http allows the run.
     -> ({pid: {"status": "ok" | "empty" | "error" | "nopool", "res", "key", "n"}}, why the loop ended)"""
     fetched, why = {}, "all asked"
     done = {} if done is None else done
+    stop_at = None if max_429 is None else http.limited_by.get(GT_HOST, 0) + max(0, int(max_429))
     for it in items_:
         pid, pool, key = it["pid"], it["pool"], it["key"]
         if not pool:
@@ -651,9 +697,9 @@ def fetch(http, d, items_, until, done=None):
             break
         info, stop = None, None
         for agg in (1, 15):
-            st, j = gt_get(http, gt_url(pool, it["end"], agg), until)
-            if st in ("deadline", "limited", "dead"):
-                stop = {"deadline": "deadline", "limited": "GeckoTerminal rate limit", "dead": GT_GONE}[st]
+            st, j = gt_get(http, gt_url(pool, it["end"], agg), until, stop_at)
+            if st in ("deadline", "limited", "dead", "share"):
+                stop = {"deadline": "deadline", "limited": "GeckoTerminal rate limit", "dead": GT_GONE, "share": GT_SHARE}[st]
                 break
             rows = ohlcv_rows(j, gt_before(it["end"]), agg) if st == "ok" else []
             if st == "shape" or (st == "ok" and rows is None):
@@ -853,16 +899,17 @@ def settle(d, now, fetched, ctx=None):
 
 
 def run(d, now, deadline_s=600.0, mock=None, log=None):
-    """items -> fetch until the deadline -> settle, the docs written after every SETTLE_EVERY windows. -> the summary dict the CLI
-    prints."""
+    """The radar account first, until radar_until and RADAR_MAX_429 of the run's 429s (radar_account), then items -> fetch until the
+    deadline -> settle, the docs written after every SETTLE_EVERY windows. One GeckoTerminal client for both parts: its gap (grown
+    by each 429, gt_extra_gap), cooldowns, 429 count and a host given up carry over. -> the summary dict the CLI prints."""
     t0 = time.time()
     log = log or (lambda s: print(s, file=sys.stderr, flush=True))
     ctx = context(d)
     its = items(d, now, ctx)
     counts, why = {"ok": 0, "m15": 0, "est": 0, "unit": 0, "waiting": 0}, "no window to price"
-    http = None
+    http = F.Http(mock, pause=0, log=log)       # no request until a part has a window to ask
+    radar = radar_account(d, now, http, mock, radar_until(t0, deadline_s), log)
     if its:
-        http = F.Http(mock, pause=0, log=log)
         log("peaks: %d windows to price (%d closed in the last %g h), deadline %ds" % (
             len(its), sum(1 for it in its if now - it["end"] <= RECENT_H * 3_600_000), RECENT_H, deadline_s))
         done, step = {}, max(1, int(SETTLE_EVERY))
@@ -875,20 +922,30 @@ def run(d, now, deadline_s=600.0, mock=None, log=None):
             if k + step < len(its):
                 log("  peaks: %d of %d windows asked, their docs written" % (k + step, len(its)))
     out = dict({"items": len(its)}, **counts)
-    out["radar"] = radar_account(d, now, http, mock, t0 + deadline_s, log)
+    out["radar"] = radar
     out.update(secs=round(time.time() - t0, 1), why=why)
     log("peaks: %d priced from minute candles, %d from 15-minute candles, %d estimated, %d not booked (unit), %d waiting; %s (%.0f s)" % (
         counts["ok"], counts["m15"], counts["est"], counts["unit"], counts["waiting"], why, out["secs"]))
     return out
 
 
+def radar_until(t0, deadline_s):
+    """The end (epoch s) of the radar account's part of a run that began at t0 with deadline_s: RADAR_SHARE of the deadline, at
+    most RADAR_MAX_S (the hourly 600 s and the backfill's longer runs: 240 s; a 60 s run: 24 s). The windows here keep t0 +
+    deadline_s, so whatever the radar account does not use is theirs."""
+    return t0 + max(0.0, min(RADAR_MAX_S, RADAR_SHARE * float(deadline_s)))
+
+
 def radar_account(d, now, http, mock, until, log):
-    """The radar account (radar_paper.py: 3 EUR on each launch-radar round's best 5, sold by the paper rules) on what is left of
-    this run's deadline, after the windows above: the same GeckoTerminal client (its 10 s gap, cooldowns and a host given up stay
-    in force), at most radar_paper.MAX_ITEMS windows. It never fails this run: an error is logged and returned as {"err"}."""
+    """The radar account (radar_paper.py: 3 EUR on each launch-radar round's best 5, sold by the paper rules) first in the run,
+    until `until` (radar_until) and at most RADAR_MAX_429 of the run's 429s, then it stops and run's own windows get the rest: the
+    same GeckoTerminal client (its gap, cooldowns and a host given up stay in force for them), at most radar_paper.MAX_ITEMS
+    windows, oldest first. With nothing to price it asks nothing and returns at once. Why first: run's windows are at most 60 a
+    run from a backlog priced oldest first anyway, while the radar account, priced last, got no request once the 8th 429 had
+    given GeckoTerminal up (the peaks logs of 15 Oct). It never fails this run: an error is logged and returned as {"err"}."""
     try:
         import radar_paper as RP
-        return RP.run(d, now, http=http, mock=mock, until=until, log=log)
+        return RP.run(d, now, http=http, mock=mock, until=until, log=log, max_429=RADAR_MAX_429)
     except Exception as e:
         log("radar account: not priced this run (%s: %s)" % (type(e).__name__, str(e)[:160]))
         return {"err": type(e).__name__}

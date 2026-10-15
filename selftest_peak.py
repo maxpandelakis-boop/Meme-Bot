@@ -36,6 +36,10 @@ P11 the low within 6 h (lo, loAt, eurLo; the max loss without the stop-loss): a 
 P12 the best within 6 h is never below the value at 6 h: a price that rises into the end (the last close has no next close to
     confirm it), a one-candle jump at the very end without support stays cut, the estimate from a time exit above the entry, an
     older version's doc whose best was below its value at 6 h (keep_better), and x >= x6 in every live case and named fixture
+P13 the GeckoTerminal budget of a run: each 429 widens the gap between requests (5 s more each, at most 20 s more) and only for
+    the rest of that run; the radar account's part ends at its share of the deadline (40%, at most 240 s); a part with a share of
+    the 429s stops at its last one, leaves GeckoTerminal on and its window unanswered, and the next part goes on with the same
+    client and its wider gap; in a run against a mock that 429s every second request the gaps at the mock grow and stop at the cap
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -101,6 +105,7 @@ def peak_checks(check):
         _p10(check, PK, M, S, tmp)
         _p11(check, PK, M)
         _p12(check, PK, M)
+        _p13(check, PK, M, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -759,7 +764,8 @@ def _p12(check, PK, M):
 class _GT:
     """A stand-in GeckoTerminal for P10. mode: "ok" (flat minute candles at the pool's price), "503", "html" (a block page), "shape"
     (JSON without ohlcv_list), "429", "hang" (answers after 3 s), "trickle" (the answer a byte every 0.2 s, cut off after 8 s). Every request is noted
-    with the number of memepeak docs on disk at that moment (watch: the run's db folder). "alt": 404 and 503 by turns. Candle rows it
+    with the number of memepeak docs on disk at that moment (watch: the run's db folder), and its arrival time in times. "alt": 404 and 503 by
+    turns; "every2": a 429 on every second request, the others as "ok". Candle rows it
     cannot read: "dicts" (rows as objects), "ms" (timestamps in ms), "iso" (timestamps as ISO text), "small" (candle numbers 0, 1, 2 for timestamps), "future" (seconds, but a day
     past the before_timestamp asked), "nullclose" (seconds, but every close null), "textclose" (seconds, but every value text
     such as "1e-05 USD"); "strnum": every value a numeric string (readable); "zero": readable rows whose
@@ -767,7 +773,7 @@ class _GT:
     as "ok", every later one without ohlcv_list."""
 
     def __init__(self, px_of):
-        self.mode, self.px_of, self.calls, self.watch, self.odd_pool = "ok", px_of, [], None, None
+        self.mode, self.px_of, self.calls, self.watch, self.odd_pool, self.times = "ok", px_of, [], None, None, []
         gt = self
 
         class H(BaseHTTPRequestHandler):
@@ -775,9 +781,12 @@ class _GT:
                 m = re.search(r"/pools/([^/]+)/ohlcv/minute\?(.*)$", self.path)
                 docs = len(glob.glob(os.path.join(gt.watch, "db", "memepeak", "*.json"))) if gt.watch else 0
                 gt.calls.append((m.group(1) if m else self.path, docs))
+                gt.times.append(time.time())
                 mode = gt.mode
                 if mode == "alt":                     # 503 and 404 by turns: a flaky host that still answers
                     mode = "503" if len(gt.calls) % 2 else "404"
+                if mode == "every2":                  # a 429 on every second request: an address over its budget now and then
+                    mode = "ok" if len(gt.calls) % 2 else "429"
                 if mode == "odd1":                    # one pool answers oddly, the others normally
                     mode = "shape" if m and m.group(1) == gt.odd_pool else "ok"
                 if mode == "okshape":                 # a readable first answer, then the shape changes
@@ -861,7 +870,7 @@ def _p10(check, PK, M, S, tmp):
     gt = _GT({p.get("pair"): M.num(p.get("px")) for p in pos.values()})
     ends = [PK.window(p)[1] for p in pos.values()]
     new, old = max(ends) + 3 * HOUR, max(ends) + 54 * HOUR     # every window under 48 h past its end, or every one over it
-    saved = (PK.GT_429_LADDER_S, PK.SETTLE_EVERY, PK.F.TIMEOUT)
+    saved = (PK.GT_429_LADDER_S, PK.SETTLE_EVERY, PK.F.TIMEOUT, PK.GT_429_STEP_S, PK.GT_429_EXTRA_MAX_S)
     runs = {}
 
     def go(name, mode, now, deadline=60.0, d=None):
@@ -877,6 +886,7 @@ def _p10(check, PK, M, S, tmp):
         return runs[name]
     try:
         PK.GT_429_LADDER_S, PK.F.TIMEOUT = (0.05, 0.05, 0.05), 1.0
+        PK.GT_429_STEP_S, PK.GT_429_EXTRA_MAX_S = 0.01, 0.03       # the gap after 429s, scaled down like the ladder (P13 checks it)
         go("503new", "503", new)
         go("503old", "503", old)
         go("alt", "alt", new)
@@ -901,7 +911,7 @@ def _p10(check, PK, M, S, tmp):
         PK.SETTLE_EVERY = 2
         go("steps", "ok", new)
     finally:
-        PK.GT_429_LADDER_S, PK.SETTLE_EVERY, PK.F.TIMEOUT = saved
+        PK.GT_429_LADDER_S, PK.SETTLE_EVERY, PK.F.TIMEOUT, PK.GT_429_STEP_S, PK.GT_429_EXTRA_MAX_S = saved
         gt.close()
     n = len(PK.items(rec, old))
     st = lambda docs: sorted((x["state"], x["tries"], x["src"]) for x in docs.values())
@@ -966,6 +976,73 @@ def _p10(check, PK, M, S, tmp):
     o, c, docs, lines, secs, _ = runs["steps"]
     check(o["why"] == "all asked" and [x[1] for x in c] == [0, 0, 2, 2, 4, 4][:n] and len(docs) == n and o["ok"] == n,
           "P10 the docs are written as the run goes (every SETTLE_EVERY windows, here 2): docs on disk at each request %s" % [x[1] for x in c])
+
+
+def _p13(check, PK, M, tmp):
+    print("== peak P13: the GeckoTerminal budget of a run (the gap after 429s, the radar account's share of the deadline and the 429s)")
+
+    class Seen:                                  # what gt_extra_gap reads of fetch.Http: the run's 429s per host
+        def __init__(self, k):
+            self.limited_by = {PK.GT_HOST: k, "api.dexscreener.com": 9}
+    gaps = [PK.F.HOST_GAP[PK.GT_HOST] + PK.gt_extra_gap(Seen(k)) for k in range(10)]
+    check(gaps == [10, 15, 20, 25, 30, 30, 30, 30, 30, 30] and PK.gt_extra_gap(Seen(0), "api.dexscreener.com") == PK.GT_429_EXTRA_MAX_S,
+          "P13 the gap between GeckoTerminal requests after 0 to 9 of the run's 429s: %s s (5 s more each, at most 30 s; another host's 429s "
+          "do not count for it)" % gaps)
+    ends = [round(PK.radar_until(1000.0, s) - 1000.0, 6) for s in (600, 3000, 60, 1, 0)]
+    check(ends == [240.0, 240.0, 24.0, 0.4, 0.0],
+          "P13 the radar account's part ends at 40%% of the deadline, at most 240 s: %s s for runs of 600, 3000, 60, 1 and 0 s" % ends)
+    rec = os.path.join(tmp, "rec")
+    if not os.path.isdir(os.path.join(rec, "db", "memepos")):
+        check(False, "P13 needs the recommend-mode db of P3")
+        return
+    pos = M.positions(rec)
+    gt = _GT({p.get("pair"): M.num(p.get("px")) for p in pos.values()})
+    new = max(PK.window(p)[1] for p in pos.values()) + 3 * HOUR
+    its = PK.items(rec, new)
+    uniq = len({(it["pool"], it["key"]) for it in its})          # the requests a run needs: two windows of one pool and minute share one
+    saved, sleep0 = (PK.GT_429_LADDER_S, PK.GT_429_STEP_S, PK.GT_429_EXTRA_MAX_S), time.sleep
+    try:
+        # scaled down (the ladder off) and waited for real: the main selftest makes time.sleep a no-op, these gaps are measured
+        PK.GT_429_LADDER_S, PK.GT_429_STEP_S, PK.GT_429_EXTRA_MAX_S = (0.0, 0.0, 0.0), 0.1, 0.15
+        time.sleep = lambda s: threading.Event().wait(max(0.0, s))
+        d = os.path.join(tmp, "p13-share")
+        shutil.copytree(rec, d)
+        gt.mode, gt.calls, gt.times, gt.watch = "429", [], [], d
+        lines = []
+        http = PK.F.Http(gt.url, pause=0, log=lines.append)
+        f1, why1 = PK.fetch(http, d, its, time.time() + 30, {}, max_429=2)
+        n1, k1, dead1 = len(gt.calls), http.limited_by.get(PK.GT_HOST, 0), PK.GT_HOST in http.dead
+        gt.mode = "ok"
+        f2, why2 = PK.fetch(http, d, its, time.time() + 30, {})
+        t_share = list(gt.times)
+        d2 = os.path.join(tmp, "p13-gap")
+        shutil.copytree(rec, d2)
+        gt.mode, gt.calls, gt.times, gt.watch = "every2", [], [], d2
+        lines2 = []
+        o = PK.run(d2, new, 60, mock=gt.url, log=lines2.append)
+        t_run = list(gt.times)
+    finally:
+        PK.GT_429_LADDER_S, PK.GT_429_STEP_S, PK.GT_429_EXTRA_MAX_S = saved
+        time.sleep = sleep0
+        gt.close()
+    shared = [l for l in lines if "this part's share is used" in l]
+    check(why1 == PK.GT_SHARE and n1 == 2 and k1 == 2 and not f1 and not dead1 and len(shared) == 1 and "(2 this run)" in shared[0]
+          and why2 == "all asked" and len(f2) == len(its) and all(v["status"] == "ok" for v in f2.values()) and len(t_share) >= 3
+          and t_share[2] - t_share[1] >= 0.15 - 0.03,
+          "P13 a part with a share of 2 of the run's 429s stops at the second (%s), its window unanswered (it waits for a later run), "
+          "GeckoTerminal still on; the next part on the same client asks every window, its first request %.2f s after the last 429 "
+          "(the gap after two 429s: 0.15 s here at the cap, 20 s for real)" % (why1, (t_share[2] - t_share[1]) if len(t_share) >= 3 else -1))
+    # call m (1-based) of the run is a 429 when m is even, so m // 2 of them came before the gap that follows it
+    iv = [(m // 2, t_run[m] - t_run[m - 1]) for m in range(1, len(t_run))]
+    want = lambda k: min(0.1 * k, 0.15)
+    short = [(k, round(v, 3)) for k, v in iv if v < want(k) - 0.03]
+    late = [v for k, v in iv if k >= 4]
+    check(o.get("why") == "all asked" and o.get("ok") == len(its) and len(t_run) == 2 * uniq - 1 and not short and late and min(late) < 0.35
+          and sum(1 for l in lines2 if "429 rate limited" in l) == uniq - 1 and any("between its requests from now on" in l for l in lines2)
+          and (o.get("radar") or {}).get("items") == 0,
+          "P13 a run against a mock that 429s every second request: each gap at the mock is at least what the 429s so far set (0.1 s "
+          "after one, 0.15 s from two on), and it stops growing at the cap (after 4 or 5 under %.2f s, 0.4 s and more without it); "
+          "every window priced, %d 429s, none given up (gaps %s)" % (0.35, uniq - 1, [(k, round(v, 2)) for k, v in iv]))
 
 
 def main():

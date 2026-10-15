@@ -4,8 +4,9 @@ launch_radar.py), fake money only.
 
   python3 selftest_learn.py      -> PASS/FAIL per check, "LEARN ALL PASS" at the end, exit code 1 on any failure
 
-selftest.py calls checks(check, env) right after selftest_traps. L1-L6 are pure (planted records, no network); L7-L9 run the radar in
-this process on selftest_radar's mock hosts, fake clock and local git remote (its helpers are only imported, never changed).
+selftest.py calls checks(check, env) right after selftest_traps. L1-L6 and L10 (pump.fun replies and tweet likes: unknown is not
+counted) are pure (planted records, no network); L7-L9 run the radar in this process on selftest_radar's mock hosts, fake clock and
+local git remote (its helpers are only imported, never changed).
 """
 import copy, json, os, random, re, shutil, sys, tempfile, time, types
 
@@ -21,7 +22,10 @@ NAME = re.compile(r"^[A-Za-z0-9_.]{1,32}$")       # page_radar's signal names
 LEVELS = ("bad", "warn", "ok", "info")
 ON = {"x": ({"x": "https://x.com/a"}, {"x": ""}), "creator_sold": ({"creatorSold": True}, {"creatorSold": False}),
       "dev_dead": ({"devN": 10.0, "devDead": 10.0}, {"devN": 1.0, "devDead": 0.0}), "sniped30": ({"snip30": 0.5}, {"snip30": 0.0}),
-      "bundle_slot": ({"slotN": 5.0}, {"slotN": 0.0}), "rc_danger": ({"rcDanger": ["Freeze authority"]}, {"rcDanger": []})}
+      "bundle_slot": ({"slotN": 5.0}, {"slotN": 0.0}), "rc_danger": ({"rcDanger": ["Freeze authority"]}, {"rcDanger": []}),
+      "chatty": ({"replies": 3.0}, {"replies": 0.0}),
+      "viral_tweet": ({"x": "https://x.com/a/status/1800123456789", "tweet": True, "tweetLikes": 4200.0},
+                      {"x": "https://x.com/a/status/1800123456789", "tweet": True, "tweetLikes": 40.0})}
 
 
 def S0(**kw):
@@ -73,6 +77,7 @@ def checks(check, env=None):
     _compare(check, W)
     _why(check, W)
     _win_fit(check, W)
+    _talk(check, W)
     _fuzz(check, W)
     _speed(check, W)
     _radar(check, W)
@@ -149,8 +154,8 @@ def _compare(check, W):
     oh = by_sig(T.compare(half, W, NOW))["x"]
     check(oh["p"] < 0.05 and oh["q"] < 0.05 and oh["halves"][0] > 1 > oh["halves"][1] and oh["verdict"] == "hint",
           "an effect in the older half of the hours only (halves %s, p %s) is a hint, not a pattern" % (oh["halves"], oh["p"]))
-    check(len(json.dumps(rep)) < 12_000 and len(rep["rows"]) == len(T._study_cands(W)) == 28,
-          "the report is small (%d bytes, a row for each of the 28 signals)" % len(json.dumps(rep)))
+    check(len(json.dumps(rep)) < 12_000 and len(rep["rows"]) == len(T._study_cands(W)) == 30,
+          "the report is small (%d bytes, a row for each of the 30 signals)" % len(json.dumps(rep)))
     # the winner share and the flag's frequency both swing hour by hour: pooled, the X link looks commoner in rugged coins, hour by hour it is
     # commoner in doubled ones; record.pat carries that hour-matched direction for the page
     import launch_radar as LR
@@ -193,9 +198,9 @@ def _why(check, W):
 
 
 # ---------------------------------------------------------------- L4
-def _plant(rng, days, per_hour, pw, px_w, px_l, start=None, late=None):
-    """Random records over `days` before NOW: winner share pw; the X link in px_w of the winners, px_l of the losers (late: these three
-    for the last 2 days)."""
+def _plant(rng, days, per_hour, pw, px_w, px_l, start=None, late=None, sig="x"):
+    """Random records over `days` before NOW: winner share pw; the X link (or another flag of ON: sig) in px_w of the winners, px_l of
+    the losers (late: these three for the last 2 days)."""
     start = start if start is not None else NOW - days * DAY
     out = []
     for h in range(days * 24):
@@ -203,7 +208,7 @@ def _plant(rng, days, per_hour, pw, px_w, px_l, start=None, late=None):
         for i in range(per_hour):
             w, a, b = late if late and t0 >= NOW - T.WIN_TEST_DAYS * DAY else (pw, px_w, px_l)
             y = 1 if rng.random() < w else 0
-            out.append(rec("P%04d%dpump" % (h, i), t0 + i * 7 * MIN, y, S0(**ON["x"][0 if rng.random() < (a if y else b) else 1])))
+            out.append(rec("P%04d%dpump" % (h, i), t0 + i * 7 * MIN, y, S0(**ON[sig][0 if rng.random() < (a if y else b) else 1])))
     return out
 
 
@@ -233,6 +238,33 @@ def _win_fit(check, W):
     check(sv is None and srep["why"].startswith("walk-forward needs 150 coins before the last 2 days (have ") and nv is None
           and nrep["why"].startswith("no pattern in ") and all(len(x["why"]) <= 120 for x in (rep, rrep, frep, srep, nrep)),
           "too few coins before the last 2 days ('%s') or no pattern there ('%s'): none; every why fits the page's 120 characters" % (srep["why"], nrep["why"]))
+
+
+# ---------------------------------------------------------------- L10
+def _talk(check, W):
+    print("== learn L10: pump.fun replies and the source tweet's likes at first sight (unknown is not counted)")
+    start = HOUR0 - 30 * H
+    tw = ON["viral_tweet"][0]["x"]
+    planted = table([(10, 20)] * 20, {"chatty": [(6, 7)] * 20}, start, "Q")
+    older = [rec("QO%03dpump" % i, start + (i % 20) * H + 40 * MIN, i % 2, {k: v for k, v in S0().items() if k not in ("replies", "tweetLikes")})
+             for i in range(40)]                              # first-sight signals from before both were measured: the keys are missing
+    unread = [rec("QT%03dpump" % i, start + (i % 20) * H + 50 * MIN, i % 2, S0(x=tw, tweet=True)) for i in range(10)]    # likes not read
+    rs = by_sig(T.compare(planted + older + unread, W, NOW))
+    ch, vt = rs["chatty"], rs["viral_tweet"]
+    check(ch["verdict"] == "pattern" and ch["dir"] == 1 and (ch["wk"], ch["wn"], ch["lk"], ch["ln"]) == (120, 200, 140, 400)
+          and (vt["wk"], vt["wn"], vt["lk"], vt["ln"]) == (0, 220, 0, 420) and vt["verdict"] == "too few" and ch["kind"] == vt["kind"] == "measured",
+          "compare: replies at first sight are compared like any measured signal (a 3x effect is a pattern, OR %s); a record without a reply "
+          "count (older, or no pump.fun coin) is not counted (200 winners known, not 225); no tweet link is a known no for viral_tweet (220), "
+          "a tweet whose likes were not read is not counted" % ch["or"])
+    recs = _plant(random.Random(4), 6, 3, 0.4, 0.75, 0.25, sig="chatty")
+    wm, rep = T.win_fit(recs, W, NOW)
+    holes = [dict(r, sig0={k: v for k, v in r["sig0"].items() if k != "replies"}) if i % 3 == 0 else r for i, r in enumerate(recs)]
+    wm2, rep2 = T.win_fit(holes, W, NOW)
+    S_on, S_unk = S0(**ON["chatty"][0]), S0()
+    check(wm is not None and wm["w"] == {"chatty": 1} and wm2 is not None and wm2["w"] == {"chatty": 1} and rep2["n"] == rep["n"]
+          and T.win_score(S_on, wm, W) == 1 and T.win_score(S_unk, wm, W) == 0 and T.rate(S_on, W) == T.rate(S0(**ON["chatty"][1]), W) | {"info": ["chatty"]},
+          "win_fit learns replies like any measured signal (+1, AUC %s), also with a third of the coins without a reply count (AUC %s); the "
+          "win score counts a coin without one as 0, and the rating is the same with and without replies (only the grey info)" % (rep["auc"], rep2["auc"]))
 
 
 # ---------------------------------------------------------------- L5

@@ -169,6 +169,16 @@ LABELS = {
     "fresh_holders": "top holders in brand-new wallets",
     "fund_cluster": "top holders funded by one wallet within 15 minutes",
     "staircase_early": "staircase so far (6 to 9 minutes)",
+    "chatty": "people replied on pump.fun (1 reply or more at first sight)",
+    "viral_tweet": "launched off a tweet with 1,000+ likes",
+}
+# measured by the radar from 2026-10-15 (pump.fun replies and the source tweet's likes at first sight): not in the study's data, so the
+# notes give the scan's own counts that set the thresholds (chattyReplies 1, viralLikes 1000)
+MEASURED_NOTES = {
+    "chatty": ("never stored before 2026-10-15: measured by the radar from now on, weight 0 until its own records confirm it. In the scan's "
+               "snapshots of 6-15 Oct, 12 of 17,347 coins under 1 h old had any pump.fun reply (1 to 34)"),
+    "viral_tweet": ("never stored before 2026-10-15: measured by the radar from now on, weight 0 until its own records confirm it. The scan read "
+                    "the likes of 306 source tweets of coins under 1 h old: 22 at the median, 944 at the 90th percentile, 31 with 1,000 or more"),
 }
 EVIDENCE = {
     "instant_pool": rows(["instantPool"]) + hard_txt("instant pool (< 60 s after mint)"),
@@ -198,6 +208,8 @@ EVIDENCE["holder_cluster"]["win"] = rows(["rcn.cluster_any"], keys=("L.win1h", "
 EVIDENCE["brand_name"]["win"] = rows(["own.brand_name"], keys=("L.win1h", "S.win2h"))
 for k in ("dev_dead", "dev_young", "x_copied", "tweet_shared", "sniped30", "bundle_slot", "fresh_holders", "fund_cluster", "staircase_early"):
     EVIDENCE[k] = {"label": LABELS[k], "rows": [], "note": "never stored before 2026-10-13: measured by the radar from now on, weight 0 until its own records confirm it"}
+for k, note in MEASURED_NOTES.items():
+    EVIDENCE[k] = {"label": LABELS[k], "rows": [], "note": note}
 EVIDENCE["dev_dead"]["related"] = rows(["rcn.creator_rugged", "jup.devMints>1"], keys=("L.rug1h", "S.rug2h"))
 EVIDENCE["x_copied"]["related"] = rows(["own.ticker_reused"], keys=("L.rug1h", "S.rug2h"))
 
@@ -262,7 +274,7 @@ W = {
                "no_socials": 1, "holder_cluster": 1, "creator_sold": 1, "pumping_5m": 1, "young_5m": 1, "x_and_paid": -1, "tweet": -1, "lists3": -1},
     "upside": {"x": 1, "tweet": 1, "holder_cluster": -1, "creator_5pct": -1, "mc_500k": -1, "liq_15pct": -1, "brand_name": -1},
     "pushBlock": ["holder_cluster"],
-    "measured": ["dev_dead", "dev_young", "x_copied", "sniped30", "bundle_slot", "fresh_holders", "fund_cluster", "staircase_early"],
+    "measured": ["dev_dead", "dev_young", "x_copied", "sniped30", "bundle_slot", "fresh_holders", "fund_cluster", "staircase_early", "chatty", "viral_tweet"],
     "infoOnly": ["tweet_shared"],
     "thresholds": {
         "instantPoolS": 60, "mintSkewS": 120, "curve2mS": 120,
@@ -273,6 +285,7 @@ W = {
         "wmMaxAgeH": 3.0, "wmMinCoins": 500,
         "devDead": {"n": 3, "share": 0.8}, "devYoungH": 24.0, "devYoungTxs": 10,
         "xGapS": 600, "sniped30": 0.3, "bundleSlot": 3, "freshHolders": 3, "fundCluster": 3, "fundMinutes": 15, "fundExchange": 25,
+        "chattyReplies": 1, "viralLikes": 1000,
     },
     "brand": brand_regex(),
     "fit": {"minRecords": 300, "boot": 2000, "seed": 20261013, "q": 0.05, "maxPoints": 2, "testDays": 2, "minTrain": 150, "minTest": 30,

@@ -61,6 +61,7 @@ LABELS = {"instant_pool": "pool opened with the mint", "rugger_wallets": "holder
           "dev_dead": "dev's earlier launches", "dev_young": "fresh dev wallet", "x_copied": "X account used by older coins",
           "tweet_shared": "coins off the same tweet", "sniped30": "sniped in the first 30 s", "bundle_slot": "wallets in the launch block",
           "fresh_holders": "fresh top holders", "fund_cluster": "top holders funded by one wallet", "staircase_early": "staircase so far",
+          "chatty": "replies on pump.fun", "viral_tweet": "source tweet with 1,000+ likes",
           "rc_report": "RugCheck report", "mint_time": "mint time", "walletmem": "wallet memory",
           "x": "has an X link", "creator_5pct": "creator holds over 5%", "mc_500k": "market cap over $500k", "liq_15pct": "liquidity under 15% of market cap"}
 UNKNOWN = {"rc_report": "RugCheck pending", "rcReport": "RugCheck pending", "no_rc_report": "RugCheck pending", "mint_time": "mint time unknown",
@@ -76,7 +77,8 @@ SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to poo
          "lists": "source lists", "stair": "staircase", "mc": "market cap", "liq": "liquidity", "creatorPct": "creator holds, %", "pumpswap": "PumpSwap pool",
          "devN": "dev's launches", "devDead": "dev's dead launches", "devGrad": "dev's graduated launches", "devAgeH": "dev wallet age, hours",
          "xUsed": "older coins with this X account", "tweetShared": "coins off the same tweet", "snip30": "supply sniped in 30 s, %", "snip30N": "sniper wallets",
-         "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder"}
+         "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder",
+         "replies": "replies on pump.fun", "tweetLikes": "likes of the source tweet"}
 MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar's own records confirm it."
 INFO_TEXT = ("The radar checks the newest pools every 2 minutes on its own during its hours (7 to 24 h Berlin unless changed), from the first full "
              "scan after they begin, and pump.fun graduations from a live feed when it is up: each run lasts about an hour and starts the next. Start "
@@ -253,7 +255,8 @@ def clean_doc(doc):
         pair = lambda v: [_num(v[0]), _num(v[1])] if isinstance(v, list) and len(v) == 2 and _num(v[0]) is not None and _num(v[1]) is not None else None
         o["record"] = {"calls": _num(rd.get("calls")), "rug": _num(rd.get("rug")), "win": _num(rd.get("win")), "eur": _num(rd.get("eur")), "n60": _num(rd.get("n60")),
                        "ticket": _num(rd.get("ticket")), "ci": {"rug": pair(ci.get("rug")), "win": pair(ci.get("win"))}}
-        o["record"].update(mom=_nums(rd.get("mom"), ("calls", "n60", "rug", "win")), all=_nums(rd.get("all"), ("n60", "rug", "win")), pat=_pat(rd.get("pat")))
+        o["record"].update(mom=_nums(rd.get("mom"), ("calls", "n60", "rug", "win")), all=_nums(rd.get("all"), ("n60", "rug", "win")), pat=_pat(rd.get("pat")),
+                           known=_nums(rd.get("known"), ("n", "rug", "win")))     # the counts the push says (app.radar_record), the desk's chat too
     else:
         o["record"] = None
     hs = doc.get("hosts") if isinstance(doc.get("hosts"), dict) else {}
@@ -629,7 +632,7 @@ def why_fold(W):
     """The "Why these checks?" fold: what decides (traps, warnings) with the study's evidence (radar_weights.json), what got weight 0 and
     why, what is only measured."""
     notes = ('<ul class="rwhy-notes"><li>Green means no trap found in the checks that ran. A check that could not run (RugCheck pending, mint time or wallet memory unknown) blocks the green.</li>'
-             '<li>The dev history, snipers, bundles, fresh wallets, funding clusters and copied X links are measured and shown grey. They get weight only when the radar\'s own records confirm them.</li>'
+             '<li>The dev history, snipers, bundles, fresh wallets, funding clusters, copied X links, pump.fun replies and the source tweet\'s likes are measured and shown grey. They get weight only when the radar\'s own records confirm them.</li>'
              '<li>Not in v1: coins still on the bonding curve. Later prices and the 1-hour peak are measured on the pool the radar saw.</li>'
              '<li>Fake money: the radar never buys anything.</li></ul>')
     body = ""
@@ -894,7 +897,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
       lines:(Array.isArray(d.lines)?d.lines:[]).filter(function(x){return typeof x==='string';}).slice(0,12).map(function(x){return str(x,200);})};
     if(rd){var ci=obj(rd.ci),pr=function(v){return Array.isArray(v)&&v.length===2&&isn(v[0])&&isn(v[1])?[v[0],v[1]]:null;};
       o.record={calls:num(rd.calls),rug:num(rd.rug),win:num(rd.win),eur:num(rd.eur),n60:num(rd.n60),ticket:num(rd.ticket),ci:{rug:pr(ci.rug),win:pr(ci.win)}};}
-    if(rd){o.record.mom=nums(rd.mom,['calls','n60','rug','win']);o.record.all=nums(rd.all,['n60','rug','win']);o.record.pat=pat(rd.pat);}
+    if(rd){o.record.mom=nums(rd.mom,['calls','n60','rug','win']);o.record.all=nums(rd.all,['n60','rug','win']);o.record.pat=pat(rd.pat);o.record.known=nums(rd.known,['n','rug','win']);}
     Object.keys(hs).slice(0,12).forEach(function(k){if(HN.test(k)&&typeof hs[k]==='string')o.hosts[k]=str(hs[k],16);});
     var sr=obj(d.src);o.src={};Object.keys(sr).slice(0,12).forEach(function(k){var v=sr[k];if(/^[a-z][A-Za-z0-9:_-]{0,23}$/.test(k)&&isn(v)&&Math.floor(v)===v&&v>=0&&v<=100000)o.src[k]=v;});
     return o;},

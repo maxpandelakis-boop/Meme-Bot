@@ -1,6 +1,7 @@
 # One-off catch-up of the hindsight category "best within 6 h" (peak.py): the hourly peaks job prices at most 60 windows a run, so
 # after a change of the doc version (PEAK_V) the whole backlog would take many hours. Started only by hand (Actions -> "Meme-Bot
-# peaks backfill" -> Run workflow); it prices as many windows as fit in the time given and pushes the docs to the results branch.
+# peaks backfill" -> Run workflow); it prices as many windows as fit in the time given (after the radar account's share, at most
+# 4 minutes, as in every peaks run) and pushes the docs to the results branch.
 # Fake money only: nothing is bought, and the trader never reads these docs. It shares the scan's concurrency group, so it never
 # writes the results branch at the same time as a scan (a scan that comes meanwhile waits for it).
 name: Meme-Bot peaks backfill

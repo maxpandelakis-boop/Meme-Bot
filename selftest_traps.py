@@ -71,6 +71,7 @@ def checks(check, env=None):
         _t6(check, W)
         _t7(check, W, tmp)
         _extras(check, W, rng, tmp)
+        _talk(check, W, rng)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -142,7 +143,8 @@ def _t1(check, W, rng):
           and empty["verdict"] == "watch" and empty["unknown"] == ["walletmem"],
           "wallet memory missing, built from no coin, or older than 3 h -> watch (no greens)")
     m = base_S(devN=12.0, devDead=11.0, devAgeH=3.0, xUsed=2.0, xKind="account", snip30=0.61, snip30N=12.0, slotN=6.0, slotPct=0.44, freshN=6.0,
-               freshOf=10.0, fundN=4.0, fundMin=3.0, tweetShared=2.0, stair={"n": 7, "rise": 0.3, "green": 0.85, "pull": 0.02, "stair": False})
+               freshOf=10.0, fundN=4.0, fundMin=3.0, tweetShared=2.0, stair={"n": 7, "rise": 0.3, "green": 0.85, "pull": 0.02, "stair": False},
+               replies=5.0, tweetLikes=2500.0)
     rm = T.rate(m, W)
     check(rm["verdict"] == "good" and rm["pts"] == 0 and rm["push"] and set(rm["info"]) == set(W["measured"]) | {"tweet_shared"},
           "measured signals (all %d set) never change verdict, points or push: they only show as info" % len(rm["info"]))
@@ -847,6 +849,78 @@ def _extras(check, W, rng, tmp):
     _fuzz(check, W)
 
 
+def _talk(check, W, rng):
+    """pump.fun replies (chatty) and the source tweet's likes (viral_tweet): measured with weight 0, read by both signal paths."""
+    print("== traps: pump.fun replies and the source tweet's likes (measured, weight 0)")
+    th = W["thresholds"]
+    new = {"chatty", "viral_tweet"}
+    check(new <= set(W["measured"]) and th["chattyReplies"] == T.CHATTY_REPLIES == 1 and th["viralLikes"] == T.VIRAL_LIKES == 1000
+          and all(W["labels"].get(m) for m in W["measured"]) and not new & (set(W["hard"]) | set(W["soft"]) | set(W["points"]) | set(W["upside"]) | set(W["pushBlock"]))
+          and {"replies", "tweetLikes"} <= set(T.S_KEYS),
+          "radar_weights.json: chatty (1 reply or more) and viral_tweet (1,000+ likes) are measured and labelled: no points, no upside, "
+          "neither hard nor soft, no push block; S carries replies and tweetLikes")
+    # the study's generator (research/rugstudy/make_weights.py) writes the same: a rerun's radar_weights.json, which replaces this one after
+    # review, keeps chatty and viral_tweet measured with their labels, notes and thresholds (every literal part of its W equals this file)
+    gsrc = open(os.path.join(HERE, "research", "rugstudy", "make_weights.py"), encoding="utf-8").read()
+    lit = {n.targets[0].id: n.value for n in ast.parse(gsrc).body if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)}
+    gen = {}
+    for k, v in zip(lit["W"].keys, lit["W"].values):
+        try:
+            gen[k.value] = ast.literal_eval(v)
+        except ValueError:
+            pass
+    g_labels, g_notes = (ast.literal_eval(lit[k]) if k in lit else {} for k in ("LABELS", "MEASURED_NOTES"))
+    g_bad = [k for k in gen if gen[k] != W.get(k)] + [k for k in g_labels if g_labels[k] != W["labels"].get(k)] + [k for k in W["labels"] if k not in g_labels]
+    check({"measured", "thresholds", "hard", "soft", "points"} <= set(gen) and not g_bad and set(g_notes) == new
+          and all(W["evidence"][k]["note"] == g_notes[k] and W["evidence"][k]["label"] == g_labels[k] for k in new),
+          "research/rugstudy/make_weights.py writes what radar_weights.json holds: its measured list (chatty and viral_tweet among them), "
+          "thresholds (chattyReplies 1, viralLikes 1000), labels and the two signals' notes, so a study rerun does not drop them (%s)" % (
+              "same" if not g_bad else "differs: %s" % g_bad))
+    fl = lambda name, **kw: T.flag(name, base_S(**kw), W)
+    tw = "https://x.com/someone/status/1800123456789"
+    got = [fl("chatty", replies=None), fl("chatty", replies=0.0), fl("chatty", replies=1.0), fl("chatty", replies=34.0),
+           fl("viral_tweet"), fl("viral_tweet", x=None, tweet=None), fl("viral_tweet", x=tw, tweet=True),
+           fl("viral_tweet", x=tw, tweet=True, tweetLikes=999.0), fl("viral_tweet", x=tw, tweet=True, tweetLikes=1000.0)]
+    W2 = dict(W, thresholds=dict(th, chattyReplies=5, viralLikes=50))
+    W0 = dict(W, thresholds={k: v for k, v in th.items() if k not in ("chattyReplies", "viralLikes")})     # a learned model.json's copy from before
+    check(got == [None, False, True, True, False, None, None, False, True]
+          and T.flag("chatty", base_S(replies=4.0), W2) is False and T.flag("viral_tweet", base_S(tweetLikes=60.0), W2) is True
+          and T.flag("chatty", base_S(replies=1.0), W0) is True and T.flag("viral_tweet", base_S(tweetLikes=999.0), W0) is False,
+          "flags: no reply count -> unknown, 0 replies no, 1 or more yes; no tweet link -> no, the X link unknown or a tweet whose likes "
+          "were not read -> unknown, 999 likes no, 1,000 yes; thresholds from radar_weights.json, the module's own without them (%s)" % got)
+    S1 = T.signals_radar(radar_coin(rng, None, x=tw, replies=3, tweetLikes=12_345), W)
+    S2 = T.signals_radar(radar_coin(rng, None, replies=-1, tweetLikes=float("nan")), W)
+    S3 = T.signals_radar(radar_coin(rng, None, replies="7", tweetLikes=True), W)
+    S4 = T.signals_radar(radar_coin(rng, None), W)
+    y = {"f": {"pf.replies": 2.0, "vt.tweet": 1.0, "vt.likes": math.log10(1 + 1500.0)}}
+    Sy, Sy0 = T.signals_scan(y, None, None, now=NOW, W=W), T.signals_scan({"f": {"vt.tweet": 0.0}}, None, None, now=NOW, W=W)
+    check(S1["replies"] == 3.0 and S1["tweetLikes"] == 12_345.0 and T.flag("viral_tweet", S1, W) and S2["replies"] is None and S2["tweetLikes"] is None
+          and S3["replies"] == 7.0 and S3["tweetLikes"] is None and S4["replies"] is None and S4["tweetLikes"] is None and T.flag("viral_tweet", S4, W) is False
+          and Sy["replies"] == 2.0 and Sy["tweetLikes"] == 1500.0 and Sy0["replies"] is None and Sy0["tweetLikes"] is None and T.flag("viral_tweet", Sy0, W) is False,
+          "signals_radar reads replies and tweetLikes (a negative, NaN or yes/no value is no reading; none given -> unknown); signals_scan "
+          "from the scan's pf.replies and vt.likes (log10(1 + likes) -> %s)" % Sy["tweetLikes"])
+    tx = [T._text("chatty", base_S(replies=1.0), W), T._text("chatty", base_S(replies=12.0), W), T._text("viral_tweet", base_S(tweetLikes=12_345.0), W)]
+    on, off = dict(replies=40.0, tweetLikes=50_000.0), dict(replies=0.0, tweetLikes=3.0)
+    S_on = base_S(**on)
+    ch0, ch1 = T.chips(T.rate(base_S(), W), base_S(), W), T.chips(T.rate(S_on, W), S_on, W)
+    check(tx == ["1 reply on pump.fun", "12 replies on pump.fun", "source tweet with 12,345 likes"] and not any(ADVICE.search(t) or "\u2014" in t for t in tx)
+          and ch1[:len(ch0)] == ch0 and ch1[len(ch0):] == [["info", "40 replies on pump.fun"], ["info", "source tweet with 50,000 likes"]],
+          "grey texts after every other chip: %s" % "; ".join(tx))
+    tweet = dict(x=tw, xKind="tweet", tweet=True)
+    cases = {"good": base_S(), "good tweet": base_S(**tweet), "a warning": base_S(socN=0.0), "two warnings": base_S(socN=0.0, m5=30.0),
+             "trap": base_S(brand=True), "RugCheck pending": base_S(rcReport=False, rcDanger=None), "holder cluster": base_S(cluster=True, netSize=99),
+             "wallet memory old": base_S(wmChecked=False, wmState="old", rugHolders=None, swAvg=None)}
+    same, info = [], []
+    strip = lambda r: {k: v for k, v in r.items() if k != "info"}
+    for name, S in cases.items():
+        rs = [T.rate(dict(S, **kw), W) for kw in ({}, on, off)]
+        same.append(strip(rs[0]) == strip(rs[1]) == strip(rs[2]))
+        info.append(set(rs[1]["info"]) - set(rs[0]["info"]) == new and rs[2]["info"] == rs[0]["info"])
+    check(all(same) and all(info) and [T.rate(S, W)["verdict"] for S in cases.values()] == ["good", "good", "good", "watch", "trap", "watch", "good", "watch"],
+          "weight 0: with 40 replies and a 50,000-like tweet, with none and 3 likes, or unknown, the verdict, points, upside, push, warnings, "
+          "traps and unknowns of %d coins (%s) are the same; only the grey info differs" % (len(cases), ", ".join(cases)))
+
+
 def _fuzz(check, W, n=400):
     """N3: type-confused inputs (numbers for lists, lists for strings, NaN, ...) never raise in the rule core."""
     rng = random.Random(1310)
@@ -860,17 +934,19 @@ def _fuzz(check, W, n=400):
         return o
     wm = {"v": 1, "t": NOW - 20 * MIN, "nCoins": 900, "common": ["1" * 44], "rug": ["2" * 44], "sw": {"3" * 44: -9.0}}
     coin = radar_coin(random.Random(3), wm)
-    coin.update(dev={"n": 3, "dead": 2, "grad": 0, "ageH": 1, "txs": 4}, closes=[1, 1.1, 1.2], snip30=0.3, slotN=2, freshN=1, fundN=1,
+    coin.update(dev={"n": 3, "dead": 2, "grad": 0, "ageH": 1, "txs": 4}, closes=[1, 1.1, 1.2], snip30=0.3, slotN=2, freshN=1, fundN=1, replies=3, tweetLikes=1200,
                 xlinks={"x.com/cleancoin": ["A" * 44, NOW - H, 2, "account", NOW, [["A" * 44, NOW - H]]]})
     y = {"sym": "NEWC", "name": "New Coin", "dex": "pumpswap", "x": "https://x.com/newc", "mc": 7e4, "liq": 2.1e4,
-         "f": {"ageH": 0.2, "buys1": 300.0, "m5": 4.0, "socN": 2.0, "x": 1.0, "ds.paid": 0.0, "vt.tweet": 0.0, "srcN": 2.0, "sw.avg": -1, "dev.sold": 0},
+         "f": {"ageH": 0.2, "buys1": 300.0, "m5": 4.0, "socN": 2.0, "x": 1.0, "ds.paid": 0.0, "vt.tweet": 0.0, "srcN": 2.0, "sw.avg": -1, "dev.sold": 0,
+               "pf.replies": 1.0, "vt.likes": 3.1},
          "risk": {"danger": ["Freeze"], "warn": ["insider network of 99 wallets"], "holders": ["4" * 44], "creatorPct": 0.5, "dev": {"devSold": True}}}
     errs = []
     for i in range(n):
         p = rng.choice((0.05, 0.15, 0.3))
         c, yy, w2 = mut(copy.deepcopy(coin), p), mut(copy.deepcopy(y), p), mut(copy.deepcopy(wm), 0.2)
         links = mut(copy.deepcopy(coin["xlinks"]), 0.3)
-        Sj = mut(base_S(devN=12.0, devDead=11.0, xUsed=2.0, xKind="account", stair={"n": 10, "rise": 0.3, "green": 0.8, "pull": 0.01}), 0.3)
+        Sj = mut(base_S(devN=12.0, devDead=11.0, xUsed=2.0, xKind="account", stair={"n": 10, "rise": 0.3, "green": 0.8, "pull": 0.01}, replies=2.0,
+                        tweetLikes=5000.0), 0.3)
         steps = (lambda: T.chips(T.rate(T.signals_radar(c, W), W), T.signals_radar(c, W), W),
                  lambda: T.chips(T.rate(T.signals_scan(yy, rng.choice([NOW - 9 * MIN, None, "x", 0, {"pf": [1]}]), w2, now=rng.choice([NOW, None]), W=W), W), {}, W),
                  lambda: T.chips(T.rate(Sj, W), Sj, W),

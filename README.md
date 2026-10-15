@@ -300,8 +300,10 @@ update has no early box yet, because the polling script comes with the page the 
 A second job beside the hourly scan (`.github/workflows/radar.yml`, `launch_radar.py`, `radar_src.py`). It makes a round
 every 2 minutes: each round rates the coins whose DEX pool is under 10 minutes old with the bot's own gates and data
 plus the trap checks of `traps.py` (dev history, copied X link, snipers in the first 30 s, same-block bundles, a dev wallet
-under a day old, a staircase chart, fresh holder wallets, insider networks, holders funded together), shows the best 5 on the
-top of the page's New tab (above the full scan's new launches) and in the app, records every rating, and sends a push only for a coin without a trap found. Fake money only:
+under a day old, a staircase chart, fresh holder wallets, insider networks, holders funded together; measured only, with no weight:
+the coin's replies on pump.fun and the likes of the tweet it launched off), shows the best 5 on the
+top of the page's New tab (above the full scan's new launches) and in the app, records every rating, and sends a push only for a coin without a trap found
+(it names the first checks the coin passed and, once 20 earlier green coins have their 1 h outcome, how many of them doubled and how many rugged). Fake money only:
 the radar buys nothing and the paper trader never reads it.
 
 When it runs: inside the active hours, all the time. One run makes a round every 2 minutes for 55 minutes, then starts the
@@ -309,6 +311,10 @@ next run itself (no cron: GitHub's timed starts come late or not at all). The ho
 run is going (so the first rounds of the day come with the first scan after 7:00, or after a run that failed), and "Run workflow"
 on the radar's Actions page starts one by hand. The page asks for the new list every minute or so; after a tap on Start it says "Waiting for the new round".
 The Office tab opens with the radar's desk: its state, the round's sources, checks, verdicts and push; a tap on it opens New.
+Under it the desk's chat tells the same round in a few short messages from the radar's own bots (Scout found a coin, Checks names
+what it passed, Skeptic its red flags, the Desk its verdict, Record the greens' 1 h results so far, in hindsight: once 20 have
+their 1 h outcome the same counts the push says, such as "3 of 26 doubled within 1 h, 6 rugged"), made from radar.json alone: no
+extra request, no AI, paper only.
 
 Live feed: pump.fun graduations also come from PumpPortal's free websocket (`radar_feed.py`: one connection, no key, standard
 library only). A coin that just moved to its pool gets an extra round about 20 s later (at least 60 s after the last round, at
@@ -365,7 +371,9 @@ Next to the paper account's real rule (stop-loss -30%, take-profit +1000%, 6 h),
 categories for every position since the v2 restart on 10.10.: the best minute-candle close within 6 h of the buy, and
 the price at 6 h. They are not trading rules: they show what the rule left on the table. Dead pools and glitches are
 filtered out (closes, not wicks; a liquidity floor; self-priced pools), and a cut price says why. A small job after
-each scan (`peak.py`, GeckoTerminal minute candles) prices the windows that have ended.
+each scan (`peak.py`, GeckoTerminal minute candles) prices the windows that have ended. GeckoTerminal answers GitHub's
+servers only a few times a minute, so after each rate limit the job asks more slowly for the rest of its run (10 s apart,
+5 s more per rate limit, at most 30 s) instead of running into the limit until GeckoTerminal is given up for the run.
 The block "Without the stop-loss" also shows the raw top: the highest close of all, unfiltered, with what selling there
 would have given after fees, wherever it differs from the filtered best, and why it could not be sold there in two words
 ("one candle", "dust volume", "pool died", "over the cap"). That is the "sold at the very top" number; a 303x print that
@@ -381,9 +389,25 @@ are sold by the same rules as the paper account (stop -30%, take-profit +1000% a
 6 h; a dead pool is a total loss; paper fees), replayed on the pool's GeckoTerminal minute candles with the glitch rules of
 "Best price within 6 h". The Account tab shows it right under "Without the stop-loss": two tiles, "All 5" and "Green
 only" (P/L, invested, win rate, how many sold and open), the best trade, the same coins in hindsight (best within 6 h,
-raw top) and the last 30 coins in a fold. `radar_paper.py` prices them inside the peaks job after each scan, on what is
-left of its ten minutes (at most 15 windows a run, oldest first), so a result shows about an hour after its 6 hours.
+raw top) and the last 30 coins in a fold. `radar_paper.py` prices them inside the peaks job after each scan, before the
+windows of "Best price within 6 h": at most 15 windows a run, oldest first, in at most 4 of its ten minutes, and it stops
+after 3 of GeckoTerminal's rate limits so the other windows keep the rest. A result shows about an hour after its 6 hours.
 One doc per coin in `db/memeradarpaper/` on the results branch; nothing the trader reads changes.
+
+### What if the exits were different (hindsight)
+
+The paper trader keeps its rule (-30% stop, 11x take-profit, 6 h). After each scan the peaks job also replays other rules on
+the same closed paper trades (`exit_grid.py`, local computation only): stops of none, 20, 30, 40, 50, 60 and 70% against
+targets of 2x, 3x, 5x, 11x and none, each with the 6-hour exit, on minute closes (never wicks) and with the paper fees. The
+prices come from what the results branch keeps: each trade's 6-hour price record (`db/memepeak`: best, lowest and last
+close, a dead pool) and, where kept, the 1-minute and 15-minute candle paths of the same coin and run in the tip record. Where
+those show a fall only roughly, the sale price is estimated from the paper trader's own stop sales, and every result also
+gets a worst and a best case. The current rule is replayed the same way and set against what it really made (the gap is in
+the doc). A rule counts as better only when it did better per trade in the older and in the newer half of the trades and
+overall, also with every rough sale at the stop and at the lowest price, with at least 100 trades in each half; a bootstrap
+gives the 95% range of the difference. The Account tab shows it under the radar account: per group the current rule, up to
+three rules that did better, or "No rule beat the current one in both halves" / "Too few trades yet", and the no-stop row.
+One doc, `db/memebot/exitgrid.json`; nothing the trader, the training or the big test reads changes.
 
 ## Publicity
 

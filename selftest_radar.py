@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """selftest_radar.py: the launch radar's checks R1-R10 (SPEC 11), R11 (the WP0 probe's findings applied: adapter defaults, routes,
-rate rules), R12 (one round per start: no successor, the later prices hourly rounds can catch) and R13 (2-minute rounds, momentum on
-paper), against a local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle; 120 s in R13), a local
+rate rules), R12 (one round per start: no successor, the later prices hourly rounds can catch), R13 (2-minute rounds, momentum on
+paper) and R14 (the push's why and record; pump.fun replies and the source tweet's likes measured at first sight, at most 2 lookups a
+cycle), against a local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle; 120 s in R13), a local
 bare git remote and a local stand-in for the app's live store. Fake money only.
 
   python3 selftest_radar.py        runs the checks on their own (PASS/FAIL per check, "RADAR ALL PASS" at the end)
@@ -362,6 +363,8 @@ class RadarMock:
         self.clock = lambda: T0 + 10 * MIN          # the radar's clock (run_radar sets it): candles end there
         self.gt429, self.rpc429, self.gt_page2_old, self.th429, self.dev_ignore, self.heads = 0, 0, False, set(), False, []
         self.gh403 = self.runs500 = 0
+        self.tweet_likes = {}                       # tweet id -> likes, "tomb" (a deleted tweet), "unavail" (a protected one), "empty" ({}),
+                                                    # "nofav" (a tweet without favorite_count) or 429; any other id: no route (404)
         MOCKS.append(self)
 
     def pair(self, c):
@@ -441,6 +444,21 @@ class RadarMock:
             c = self.coins[q["query"][0]]
             return 200, [{"id": c["a"], "symbol": c["sym"], "name": c["title"], "dev": c["creator"], "holderCount": 400, "organicScore": 50,
                           "audit": {"mintAuthorityDisabled": True, "freezeAuthorityDisabled": True, "devBalancePercentage": 1.0, "topHoldersPercentage": 20.0}}]
+        if path == "/cdn.syndication.twimg.com/tweet-result":
+            import fetch as F
+            tid = (q.get("id") or [""])[0]
+            v = self.tweet_likes.get(tid) if (q.get("token") or [""])[0] == F.tweet_token(tid or "0") else None
+            if v == 429:
+                return 429, {"errors": [{"message": "Rate limit exceeded"}]}
+            if v == "tomb":
+                return 200, {"__typename": "TweetTombstone", "tombstone": {"text": {"text": "This Post was deleted"}}}
+            if v in ("unavail", "empty", "nofav"):
+                return 200, {"unavail": {"__typename": "TweetUnavailable", "reason": "Protected"}, "empty": {},
+                             "nofav": {"__typename": "Tweet", "id_str": tid, "text": "a story"}}[v]
+            if v is None:
+                return None                         # not one of this mock's tweets: lists() answers 404 (mock_routes keeps None)
+            return 200, {"__typename": "Tweet", "id_str": tid, "favorite_count": v, "conversation_count": 7, "created_at": "2026-10-13T09:00:00.000Z",
+                         "user": {"screen_name": "someone", "followers_count": 900}, "text": "a <b>story</b> about a dog"}
         if "/ohlcv/minute" in path:
             pool = path.split("/pools/")[1].split("/")[0]
             c = by_pool.get(pool)
@@ -727,10 +745,11 @@ class Sink:
     def __init__(self):
         self.got = []
 
-    def __call__(self, coins):
+    def __call__(self, coins, record=None):
         import launch_radar as LR
-        title, body = LR.push_text(coins)
-        self.got.append({"coins": [c.get("sym") for c in coins], "title": title, "body": body})
+        title, body = LR.push_text(coins, record)
+        self.got.append({"coins": [c.get("sym") for c in coins], "title": title, "body": body,
+                         "known": (record or {}).get("known") if isinstance(record, dict) else None})
         return {"kind": "radar", "sent": 1}
 
 
@@ -1017,7 +1036,7 @@ def checks(check, env_=None):
             R_.store_row = lambda doc: (rows_s.append(json.loads(json.dumps(doc))), orig(doc))[1]
         rem_s = fresh_remote(T, tmp, "remote-skip", T0 + MIN)
         code_s, Rsk, liness, _ = run_radar(T, P, url, rem_s, os.path.join(tmp, "rdSk"), T0 + MIN, minutes=2.5, patch=keep_rows,
-                                           notifier=lambda coins: {"kind": "radar", "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None})
+                                           notifier=lambda coins, record=None: {"kind": "radar", "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None})
         ds, rsk = radar_json(rem_s), hour_recs(rem_s)
         pj_s = json.loads(branch_files(rem_s, "radar-data").get("pushed.json") or b"{}")
         said = [d_ for d_ in rows_s + [ds] if (d_.get("counts") or {}).get("pushed") or any(c.get("push") for c in d_.get("coins") or [])]
@@ -1552,6 +1571,7 @@ def checks(check, env_=None):
         round_checks(check, LR, T, P, tmp)
         fast_checks(check, LR, T, P, tmp)
         probe_checks(check, LR, T, P, url, mock, heads_a, recs, by, tmp)
+        talk_checks(check, LR, T, P, tmp, pushes, recs[by["CLEAN"]])
         if not real_push(check, T, P, url, remote, tmp):
             SKIPPED.append("R4's PushSink leg (app.notify_radar comes with WP4)")
     finally:
@@ -1837,7 +1857,8 @@ def fast_checks(check, LR, T, P, tmp):
     line2, _, _ = R2.summary(T0)
     off_ = LR.finish_from({"record": line}, "off", T0, "switched off", "t", None, None, "manual", (0, 24))
     check(line["mom"] == {"calls": 3, "n60": 2, "rug": 0.5, "win": 0.5} and line["all"] == {"n60": 4, "rug": 0.25, "win": 0.25} and line2 == line
-          and {k for k in line if k not in ("mom", "all")} == {"calls", "n60", "rug", "win", "eur", "ci"} and line["calls"] == 0 and line["win"] is None
+          and {k for k in line if k not in ("mom", "all")} == {"calls", "n60", "rug", "win", "eur", "ci", "known"} and line["calls"] == 0 and line["win"] is None
+          and line["known"] == {"n": 0, "rug": 0, "win": 0}
           and LR.summ(planted[0])["mom"] is None and LR.summ(planted[0])["all"] is None and off_["record"]["mom"] == line["mom"] and off_["record"]["all"] == line["all"]
           and LR.summ(planted[5], T)["all"] is None and LR.summ(planted[3], T)["all"] == {"rug": True, "win": False},
           "the record line's mom %s and all %s: the 60-minute price alone (from the momentum price for mom; peak60 left out of both), a "
@@ -1865,7 +1886,7 @@ def probe_checks(check, LR, T, P, url, mock, heads, recs, by, tmp):
     1.1 s per method and its 429, GeckoTerminal's 429 ladder and new-pools page 2. heads: run A's requests; recs: its records."""
     import radar_src as RS
     print("== launch radar R11: the WP0 probe's findings")
-    radar_only = {"ds_tokens", "dev_check", "gt_candles"}
+    radar_only = {"ds_tokens", "dev_check", "gt_candles", "x_tweet"}
     differ = sorted(k for k, v in PROBE_ADAPTERS.items() if not ((k in RS.ADAPTERS and RS.ADAPTERS[k] is v) or (k in RS.NOT_HERE and k not in RS.ADAPTERS)))
     extra = sorted(set(RS.ADAPTERS) - set(PROBE_ADAPTERS) - radar_only)
     check(not differ and not extra and RS.RPC_GAP_S == PROBE_RPC_GAP_S and tuple(RS.GT_429_LADDER_S) == PROBE_GT_429_LADDER_S
@@ -2010,6 +2031,234 @@ def probe_checks(check, LR, T, P, url, mock, heads, recs, by, tmp):
           "asked again there; an ignored creator filter turns the dev history off for the run, never read as no launches")
 
 
+def talk_checks(check, LR, T, P, tmp, pushes, clean):
+    """R14: the notification says why and the record (app.radar_words: the first passed checks by name, the record of earlier green coins
+    once 20 have a 1 h outcome, the fake-money words at the end, inside the push's limits; the radar hands its cycle's record over); the
+    replies on pump.fun and the likes of a coin's source tweet are measured at first sight with weight 0: at most TWEET_CAP lookups a
+    cycle, coins at first sight first, none when the step is short of time, a failed one unknown, an id X cannot be asked about or an
+    answer that is not a tweet settled unknown without taking a slot or switching the adapter off; sig0 keeps the first sight's reading
+    and is never filled in later. pushes: run A's notifications; clean: CLEAN's record from run A."""
+    import app as A
+    import radar_src as RS
+    print("== launch radar R14: the push says why and the record; pump.fun replies and the source tweet's likes measured at first sight")
+    no_words = re.compile(r"\b(buy|buys|buying|safe|safety|clean|guaranteed)\b", re.I)
+    line = [["warn", "no socials"], ["ok", "curve 4 min before pool"], ["ok", "no rugger wallets"], ["ok", "RugCheck report"], ["info", "4 replies on pump.fun"]]
+    c = {"addr": "W" * 44, "sym": "WHY", "age": 6.4, "liq": 23_400, "n": 9, "line": line}
+    rec_ok = {"calls": 31, "n60": 26, "rug": 0.231, "win": 0.115, "known": {"n": 26, "rug": 6, "win": 3}}
+    t1, b1 = LR.push_text([c], rec_ok)
+    t0, b0 = LR.push_text([c], dict(rec_ok, known={"n": 19, "rug": 6, "win": 3}))
+    odd = [{"known": {"n": "26", "rug": 6, "win": 3}}, {"known": {"n": 26, "rug": -1, "win": 3}}, {"known": {"n": 26, "rug": 6, "win": 30}},
+           {"known": {"n": 26.5, "rug": 6, "win": 3}}, {"known": {"n": float("inf"), "rug": 6, "win": 3}}, {"known": {"n": True, "rug": 6, "win": 3}},
+           {"known": {"n": 26, "rug": None, "win": 3}}, {"known": [26, 6, 3]}, {"calls": 40, "n60": 40, "rug": 0.2, "win": 0.1}, {}, None, "26"]
+    want = ("9 checks passed (curve 4 min before pool, no rugger wallets) · liquidity $23k · greens so far: 3 of 26 doubled in 1 h, 6 rugged · "
+            "fake money, nothing is bought.")
+    check(t1 == "WHY: no trap found (pool 6 min)" and b1 == want and b0 == want.replace("greens so far: 3 of 26 doubled in 1 h, 6 rugged · ", "")
+          and all(LR.push_text([c], r)[1] == b0 for r in odd) and (t1, b1) == A.radar_words([c], rec_ok) and A.radar_words([], rec_ok) is None,
+          "the push says why (the first 2 passed checks of its line) and the record: %r; under 20 green calls with a 1 h outcome, or counts "
+          "that are not whole numbers that fit (%d odd records), no record line: never a guess" % (b1, len(odd)))
+    longs = [["ok", "curve " + "9" * 80 + " min before pool"], ["ok", "x\u202e\x07\n" + "y" * 70], ["ok", "looks safe to buy"], ["ok", "RugCheck report"]]
+    cl = dict(c, sym="S\u202eY<b>M\x07" * 10, line=longs, liq=float("inf"), n=None, age=float("nan"))
+    t2, b2 = LR.push_text([cl, c, c], {"known": {"n": 10.0 ** 290, "rug": 6, "win": 3}})
+    t3, b3 = LR.push_text([cl], {"known": {"n": 10 ** 12, "rug": 10 ** 12, "win": 10 ** 12}})
+    t4, b4 = LR.push_text([dict(c, line=[["ok", "looks safe"], ["ok", 7], ["bad", "pool opened with the mint"], "ok", ["ok"]])], rec_ok)
+    pay = json.loads(A.message(t3, b3, "#tab-radar", tag="radar"))["notification"]
+    words = [t1, b1, t2, b2, t3, b3, t4, b4]
+    check(all(len(t) <= A.TITLE_MAX for t in words[::2]) and all(len(b) <= A.BODY_MAX and b.endswith("fake money, nothing is bought.") for b in words[1::2])
+          and "greens so far" not in b2 and "greens so far: 1000000000000 of 1000000000000" in b3 and pay["body"] == b3 and pay["title"] == t3
+          and not any(no_words.search(w) or re.search(r"[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069\u2014]", w) for w in words)
+          and t2 == ("SY<b>M" * 3)[:16] + ": no trap found +2 more" and b4 == "9 checks passed · liquidity $23k · " + want.split(" · ", 2)[2]
+          and "All checks passed (curve %s, x %s) · liquidity unknown · " % ("9" * 34, "y" * 38) in b2,
+          "inside the push's limits (title %d, body %d characters): a record line too long is left out, each named check cut at 40 "
+          "characters, control and bidi characters dropped, a check whose words say safe or buy never named; message() keeps the body "
+          "whole (%d bytes); every body ends 'fake money, nothing is bought.'" % (A.TITLE_MAX, A.BODY_MAX, len(A.message(t3, b3, "#tab-radar", tag="radar"))))
+    # characters a phone could read as text direction or hide inside a word: the Arabic letter mark (a strong right-to-left character),
+    # C1 controls, the BOM, zero-width and soft hyphens, which would also split 'buy' or 'safe' past the advice-word filter; and a
+    # liquidity or a check count of absurd length is cut before the fake-money words, never them
+    t5, b5 = A.radar_words([dict(c, sym="\u061cABC\ufeff\u200bD\x9b", line=[["ok", "b\u200buy now"], ["ok", "s\xadafe"], ["ok", "x\x80\x9b\x9fy\u2060"]])], None)
+    huge = [A.radar_words([dict(c, line=[], **kw)], rec_ok)[1] for kw in ({"liq": 1e300}, {"n": 1e300}, {"liq": 1e300, "n": 1e300})]
+    pay5 = [json.loads(A.message("t", b_, "#tab-radar", tag="radar"))["notification"]["body"] for b_ in huge]
+    check(t5 == "ABCD: no trap found (pool 6 min)" and b5 == "9 checks passed (xy) · liquidity $23k · fake money, nothing is bought."
+          and A._sym("\u200b \u00ad") == "?" and all(len(b_) <= A.BODY_MAX and b_.endswith(" · fake money, nothing is bought.") for b_ in huge + pay5),
+          "push words: U+061C, C1 controls, the BOM and zero-width characters are dropped from the symbol and the named checks, a check "
+          "that says buy or safe behind a zero-width space or a soft hyphen is never named (%r); a liquidity or a check count of 1e300 "
+          "is cut before 'fake money, nothing is bought.', which message() keeps (%d, %d, %d characters)" % (((t5, b5),) + tuple(len(b_) for b_ in pay5)))
+    p0 = (pushes or [{}])[0]
+    check(p0.get("known") == {"n": 0, "rug": 0, "win": 0} and "(curve 4 min before pool, no rugger wallets)" in str(p0.get("body"))
+          and "greens so far" not in str(p0.get("body")),
+          "run A: the radar hands its cycle's record to the notification (known %s: no green call with a 1 h outcome yet, so no record "
+          "line) and CLEAN's push names its first passed checks: %r" % (p0.get("known"), p0.get("body")))
+    s0 = clean.get("sig0") or {}
+    check(s0.get("replies") == 4.0 and s0.get("tweetLikes") is None and (clean.get("sig") or {}).get("replies") == 4.0,
+          "run A: CLEAN's first-sight signals carry pump.fun's reply count (4, the list's reply_count) and no tweet likes (its X link is an account)")
+
+    # ---- the tweet lookups on one Radar: the cap, first sight first, a shared tweet, the step's time, failures
+    m = RadarMock([])
+    srv = serve(m)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    try:
+        Ru = unit_radar(T, P, tmp, "rdTw", extra=["--mock", url])
+        ids = ["18000000000000%05d" % i for i in range(8)]
+        m.tweet_likes.update({ids[0]: 12_000, ids[1]: 50, ids[2]: 3_000, ids[3]: "tomb", ids[5]: 429, ids[6]: 70})
+        link = lambda i, h="someone": "https://x.com/%s/status/%s" % (h, ids[i])
+        link_to = lambda t: "https://x.com/someone/status/" + t
+        row = lambda seed, u, age: {"a": addr(seed), "pr": {"xUrl": u}, "age": age}
+        tw_heads = lambda: [h for h in m.heads if h["path"] == "/cdn.syndication.twimg.com/tweet-result"]
+        a1, a2, a3, a4, a5, a6 = (row(1500 + i, u, age) for i, (u, age) in enumerate(((link(0), 3.0), (link(1), 4.0), (link(2), 5.0), (link(0, "other"), 6.0),
+                                                                                         (link(2), 1.0), ("https://x.com/someone", 0.5))))
+        Ru.docs["2026-10-13T11"] = {"coins": {a5["a"]: {"addr": a5["a"]}}}
+        Ru.rec_hour[a5["a"]] = "2026-10-13T11"          # a5 was seen before: the coins at first sight are asked first
+        live = [a5, a6, a3, a1, a4, a2]
+        likes = lambda rs: [(Ru.work.get(r["a"]) or {}).get("likes") for r in rs]
+        Ru.http.new_cycle(time.time() + 30)
+        n1 = Ru.tweet_likes(live, T0)
+        got1, h1 = likes([a1, a2, a3, a4, a5, a6]), len(tw_heads())
+        Ru.http.new_cycle(time.time() + 30)
+        n2 = Ru.tweet_likes(live, T0 + 2 * MIN)
+        got2, h2 = likes([a1, a2, a3, a4, a5, a6]), len(tw_heads())
+        tok = all(dict(urllib.parse.parse_qsl(h["q"])).get("token") == __import__("fetch").tweet_token(dict(urllib.parse.parse_qsl(h["q"])).get("id")) for h in tw_heads())
+        check(n1 == 2 and h1 == 2 and got1 == [12_000, 50, None, 12_000, None, None] and n2 == 1 and h2 == 3 and got2 == [12_000, 50, 3_000, 12_000, 3_000, None]
+              and tok and Ru.tweets["x.com/i/status/" + ids[0]][0] == 12_000,
+              "at most %d tweet lookups a cycle (fetch.viral's endpoint and token), coins at first sight first: two coins read, one coin off the "
+              "same tweet takes that reading, the third tweet and the coin seen before wait for the next cycle, which reads it once for both; "
+              "an account link is never looked up (%s, then %s)" % (LR.TWEET_CAP, got1, got2))
+        b = [row(1600 + i, link(i + 3), 2.0 + i) for i in range(4)]      # a deleted tweet, a 404, a 429, then one that would answer
+        Ru.http.new_cycle(time.time() + LR.TWEET_LEFT_S - 1.0)
+        n_short, h_short = Ru.tweet_likes(b, T0 + 4 * MIN), len(tw_heads())
+        Ru.http.new_cycle(time.time() + 30)
+        n_fail, h_fail = Ru.tweet_likes(b[:2], T0 + 4 * MIN), len(tw_heads())
+        n_again = Ru.tweet_likes(b[:2], T0 + 6 * MIN)
+        Ru.http.new_cycle(time.time() + 30)
+        n_429 = Ru.tweet_likes(b[2:], T0 + 4 * MIN)
+        h_429 = len(tw_heads())
+        Ru.src.on["x_tweet"] = False
+        Ru.http.new_cycle(time.time() + 30)
+        n_off = Ru.tweet_likes([row(1700, link(7), 2.0)], T0 + 4 * MIN)
+        check(n_short == 0 and h_short == h2 and n_fail == 2 and h_fail == h2 + 2 and likes(b[:2]) == [None, None] and n_again == 0
+              and all("likes" in Ru.work[r["a"]] for r in b[:2]) and n_429 == 1 and h_429 == h_fail + 1 and likes(b[2:]) == [None, None]
+              and not any("likes" in (Ru.work.get(r["a"]) or {}) for r in b[2:]) and Ru.http.blocked(RS.XTW_HOST) and n_off == 0 and len(tw_heads()) == h_429
+              and RS.GAPS.get(RS.XTW_HOST) == 1.5 and RS.HOST_LABEL.get(RS.XTW_HOST) == "x tweets" and RS.ADAPTER_HOST["x_tweet"] == (RS.XTW_HOST,),
+              "a step with under %g s left asks X nothing (the cycle is never held up); a deleted tweet or a 404 leaves the likes unknown for "
+              "good (not asked again); a 429 stops the lookups for the cycle (both coins wait, unknown, asked again later); switched off "
+              "(MEMEBOT_RADAR_ADAPTERS x_tweet=0) nothing is asked; "
+              "the host keeps fetch's 1.5 s gap and is named 'x tweets'" % LR.TWEET_LEFT_S)
+
+        # odd links and odd answers on a new run (x_tweet's first answer of the run decides its shape): an id X cannot be asked about
+        # (a leading zero, over 25 digits, another script's digits, which urllib cannot put in a URL) is settled unknown with no request
+        # and no slot; a 200 that is not a tweet (protected, {}) is that tweet's answer: unknown for good, the adapter stays on
+        Ro = unit_radar(T, P, tmp, "rdTwOdd", extra=["--mock", url])
+        oid = ["18000000000002%05d" % i for i in range(4)]
+        m.tweet_likes.update({"20": 4_321, oid[0]: "unavail", oid[1]: "empty", oid[2]: 5_000})
+        odd = [row(1800 + i, "https://x.com/someone/status/" + t, 0.5 + 0.1 * i) for i, t in enumerate(("0123", "9" * 30, "\u0661" * 19))]
+        c_un, c_jack = row(1810, link_to(oid[0]), 1.0), row(1811, "https://x.com/jack/status/20", 2.0)
+        c_empty, c_ok = row(1812, link_to(oid[1]), 0.3), row(1813, link_to(oid[2]), 3.0)
+        h0 = len(tw_heads())
+        Ro.http.new_cycle(time.time() + 30)
+        n_a = Ro.tweet_likes(odd + [c_un, c_jack], T0)
+        asked_a = [dict(urllib.parse.parse_qsl(h["q"])).get("id") for h in tw_heads()[h0:]]
+        Ro.http.new_cycle(time.time() + 30)
+        n_b = Ro.tweet_likes(odd + [c_un, c_jack, c_empty, c_ok], T0 + 2 * MIN)
+        asked_b = [dict(urllib.parse.parse_qsl(h["q"])).get("id") for h in tw_heads()[h0 + len(asked_a):]]
+        lk = [(Ro.work.get(r["a"]) or {}).get("likes") for r in odd + [c_un, c_jack, c_empty, c_ok]]
+        check(n_a == 2 and asked_a == [oid[0], "20"] and n_b == 2 and asked_b == [oid[1], oid[2]] and lk == [None, None, None, None, 4_321, None, 5_000]
+              and all("likes" in Ro.work[r["a"]] for r in odd + [c_un, c_empty]) and Ro.src.use("x_tweet") and not Ro.src.off_why
+              and not Ro.http.blocked(RS.XTW_HOST) and RS.tweet_id("20") == "20" and RS.tweet_id("\u0661" * 19) is None,
+              "3 coins whose tweet ids X cannot be asked about (0123, 30 digits, Arabic-Indic digits) are settled unknown with no request and "
+              "no slot, so the cycle still reads 2 tweets, the first tweet's id 20 among them; a protected tweet's answer and an empty {} "
+              "leave that coin unknown for good and the adapter on (asked %s, then %s; likes %s)" % (asked_a, asked_b, lk))
+        Rf = unit_radar(T, P, tmp, "rdTwOff", extra=["--mock", url])
+        m.tweet_likes[oid[3]] = "nofav"
+        c_nofav, c_after = row(1820, link_to(oid[3]), 0.5), row(1821, link_to(oid[2]), 1.0)
+        h1 = len(tw_heads())
+        Rf.http.new_cycle(time.time() + 30)
+        n_off1 = Rf.tweet_likes([c_nofav, c_after], T0)
+        check(n_off1 == 1 and len(tw_heads()) == h1 + 1 and not Rf.src.use("x_tweet") and Rf.src.off_why.get("x_tweet") == "favorite_count"
+              and not any("likes" in (Rf.work.get(r["a"]) or {}) for r in (c_nofav, c_after)),
+              "a run's first answer that is a tweet without favorite_count (the endpoint changed) switches x_tweet off, and the cycle "
+              "asks nothing more: the next coin stays unknown (%d lookup)" % n_off1)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+    # ---- a host that sends its answer a byte at a time is cut off at the lookup's end (the socket timeout bounds each wait only), as
+    # no answer: the host rests for the cycle; a big answer in many chunks is read whole
+    tweet_body = b'{"__typename":"Tweet","id_str":"20","favorite_count":5,"conversation_count":1}'
+
+    class Slow(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = tweet_body + (b" " * 300_000 if "fast" in self.server.mode else b"")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            try:
+                if "fast" in self.server.mode:
+                    self.wfile.write(body)
+                for i in range(len(body) if self.server.mode == "trickle" else 0):
+                    self.wfile.write(body[i:i + 1])
+                    self.wfile.flush()
+                    time.sleep(0.1)
+            except OSError:
+                pass
+
+        def log_message(self, *a):
+            pass
+    slow = {}
+    for mode in ("trickle", "fast"):
+        sv = ThreadingHTTPServer(("127.0.0.1", 0), Slow)
+        sv.mode = mode
+        threading.Thread(target=sv.serve_forever, daemon=True).start()
+        said = []
+        try:
+            hs = RS.RadarHttp(mock="http://127.0.0.1:%d" % sv.server_address[1], log=said.append)
+            hs.new_cycle(time.time() + 60)
+            t_s = time.time()
+            got_s = RS.Sources(hs, said.append, on={"x_tweet": True}).tweet("20", until=time.time() + 1.5)
+            slow[mode] = (got_s, round(time.time() - t_s, 1), hs.code, hs.blocked(RS.XTW_HOST), said)
+        finally:
+            sv.shutdown()
+            sv.server_close()
+    check(slow["trickle"][0] is None and slow["trickle"][1] < 2.5 and slow["trickle"][2] is None and slow["trickle"][3]
+          and any("no answer" in l and "step's end" in l for l in slow["trickle"][4])
+          and slow["fast"][0] == {"likes": 5, "replies": 1} and slow["fast"][1] < 1.5 and not slow["fast"][3],
+          "a tweet lookup whose answer comes a byte every 0.1 s (8 s in all) ends at its 1.5 s budget (%.1f s): no answer, the host rests "
+          "for the cycle; an answer of 300 kB comes in whole (%s)" % (slow["trickle"][1], slow["fast"][0]))
+
+    # ---- a radar run: first sight's reading in sig0, never filled in later; weight 0 in the rating
+    TW = T0 + 9 * H
+    tid = ["18000000000001%05d" % i for i in range(3)]
+    fx = [fixture("TWA", 41, x="https://x.com/someone/status/" + tid[0], pool=TW - MIN, mint=TW - 5 * MIN),
+          fixture("TWB", 42, x="https://x.com/someone/status/" + tid[1], pool=TW - 2 * MIN, mint=TW - 6 * MIN),
+          fixture("TWC", 43, x="https://x.com/someone/status/" + tid[2], pool=TW - 3 * MIN, mint=TW - 7 * MIN),
+          fixture("TWD", 44, x="https://x.com/other/status/" + tid[0], pool=TW - 4 * MIN, mint=TW - 8 * MIN)]
+    m2 = RadarMock(fx)
+    m2.tweet_likes.update({tid[0]: 12_000, tid[1]: 50, tid[2]: 3_000})
+    srv2 = serve(m2)
+    url2 = "http://127.0.0.1:%d" % srv2.server_address[1]
+    rem = fresh_remote(T, tmp, "remote-talk", TW)
+    try:
+        code, Rw, lw, _ = run_radar(T, P, url2, rem, os.path.join(tmp, "rdTalk"), TW, minutes=5, notifier=Sink(), deadline=20.0)
+    finally:
+        srv2.shutdown()
+        srv2.server_close()
+    rr, doc = hour_recs(rem), radar_json(rem)
+    r_ = {c_["name"]: rr.get(c_["a"]) or {} for c_ in fx}
+    s0 = {k: (v.get("sig0") or {}) for k, v in r_.items()}
+    s1 = {k: (v.get("sig") or {}) for k, v in r_.items()}
+    heads = [h for h in m2.heads if h["path"] == "/cdn.syndication.twimg.com/tweet-result"]
+    cyc = len([l for l in lw if re.match(r"^cycle \d+:", l)])
+    docs = {c_["sym"]: c_ for c_ in (doc.get("coins") or []) + (doc.get("others") or [])}
+    rt = {k: [x[1:3] for x in v.get("rt") or []] for k, v in r_.items()}
+    check(code == 0 and cyc == 2 and len(heads) == 3 and [s0[k].get("tweetLikes") for k in ("TWA", "TWB", "TWC", "TWD")] == [12_000, 50, None, 12_000]
+          and s1["TWC"].get("tweetLikes") == 3_000 and all(s0[k].get("replies") == 4.0 for k in s0)
+          and rt["TWA"] == rt["TWB"] and rt["TWA"] and (doc.get("hosts") or {}).get("x tweets") == "ok"
+          and {"viral_tweet", "chatty"} <= set((docs.get("TWA") or {}).get("info") or []) and "viral_tweet" not in ((docs.get("TWB") or {}).get("info") or [])
+          and ["info", "source tweet with 12,000 likes"] in ((docs.get("TWA") or {}).get("line") or []),
+          "a radar run of 2 cycles: the first-sight signals (sig0) carry the replies (4) and the likes read at first sight (TWA 12,000, TWB 50, "
+          "TWD off TWA's tweet 12,000); TWC, past the cap at first sight, is read in the next cycle: its later signals have 3,000, its sig0 "
+          "stays unknown, never filled in; TWA's and TWB's verdicts and points are the same (%s): only the grey info differs; %d lookups, "
+          "radar.json names the host 'x tweets'" % (rt["TWA"], len(heads)))
+
+
 def F_RPC():
     import fetch as F
     return F.RPC
@@ -2080,7 +2329,9 @@ def real_push(check, T, P, url, remote, tmp):
         asrv.server_close()
     got = [json.loads(g["data"]) for g in psink.got if g["data"].startswith("{")]
     body = " ".join(str((g.get("notification") or {}).get("body")) for g in got)
-    check(code == 0 and got and "fake money" in body.lower() and not re.search(r"\bbuy\b", body, re.I), "through app.notify_radar to a local push service: %r" % body[:120])
+    check(code == 0 and got and "fake money" in body.lower() and not re.search(r"\bbuy\b", body, re.I) and "checks passed (curve " in body
+          and all(len(str((g.get("notification") or {}).get("body"))) <= 300 for g in got),
+          "through app.notify_radar to a local push service, naming the checks it passed: %r" % body[:160])
     return True
 
 

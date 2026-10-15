@@ -17,13 +17,15 @@ one thread, a cycle 100 s at most; `round` is one cycle per start (125 s at most
      the chain as the last fallback (pump.fun list, Jupiter createdAt, coins-v3, then RPC), dev wallet age and earlier launches
      (pump.fun coins?creator=), swap-api candles from the mint (staircase so far, and before the pool), launch trades and the top
      holders' entry times (pump.fun), the top 10 holders' age and the funding of the fresh ones (Solana RPC, capped, 1.1 s per method);
-     GeckoTerminal minute candles between them (other pools' staircase so far, the peak within the hour)
+     GeckoTerminal minute candles between them (other pools' staircase so far, the peak within the hour); last, while the step has time,
+     the likes of at most 2 tweets coins launched off (X, measured only: viral_tweet)
   7. traps.rate on traps.signals_radar of every eligible coin; the best 5: good coins by upside, then watch, then trap coins; only
      good coins are listed, the rest go to the fold
   8. every eligible coin is recorded with its ratings (RT_MAX) and its prices 5, 15, 30 and 60 minutes later (db/memeradar/<UTC hour>.json);
      radar.json, the records of the last 48 hours, model.json and pushed.json go to the branch radar-data (one commit, force-pushed,
      never smaller than the last tree), radar.json to the app's live store (row "radar"); a push notification only for a good coin
-     without a holder cluster and without anything unknown, once per coin, at most 4 an hour
+     without a holder cluster and without anything unknown, once per coin, at most 4 an hour (its words: the checks it passed, the
+     record of earlier green coins once enough have a 1 h outcome, fake money)
 The radar never starts another run itself: no successor, no keep-alive. Disabling the workflow stops it (a running loop sees it at its
 next cycle: state off; a disabled workflow refuses every start). A VM runs the loop with --no-github.
 
@@ -80,6 +82,11 @@ PF_DEEP_CAP = 6             # frontend-api-v3 calls a cycle for the dev's launch
 SWAP_CAP = 6                # swap-api calls a cycle (candles from the mint, launch trades: 3 pages a coin at most)
 SWAP_STAIR_N = 2            # coins a cycle whose swap-api candles are taken (staircase so far and before the pool)
 GT_SLOTS = 3                # GeckoTerminal candle calls a cycle (10 s apart; GeckoTerminal new pools pages 1-2 come first)
+TWEET_CAP = 2               # X tweet lookups a cycle (the likes behind viral_tweet, measured only); the radar-data records of 14-15 Oct
+                            # had about 4 tweet coins an hour, so at 2-minute cycles nearly every one is read at first sight
+TWEET_LEFT_S = 4.0          # s of the tier-2 step that must be left to start a tweet lookup, and the most one may take: never a delay
+TWEET_TTL = 10 * 60_000     # one tweet's likes serve every coin off that tweet this long (the coin's 10 minutes on the radar)
+REP_FRESH_MS = 10 * 60_000  # pump.fun's reply count is read from a list answer at most this old (an older one is unknown, not 0)
 RC_TTL = 300_000            # a RugCheck report is asked again after this while its coin is under 10 min
 DEV_TTL = 6 * 3_600_000     # a dev's launch history is kept this long
 LATER = (5, 15, 30, 60)     # minutes after first sight: the later prices
@@ -431,6 +438,7 @@ class Radar:
         self.mismatch_said, self.exch, self.pos, self.last_c, self.paid_at = set(), set(), None, {}, {}
         self.run_start = self.run_end = None
         self.live, self.mig, self.early, self.cyc_at = None, {}, [], None
+        self.tweets = {}            # tweet key (traps.norm_x) -> [likes, ms read]: one reading serves every coin off that tweet (TWEET_TTL)
 
     # ---------------------------------------------------------------- log
     def say(self, s):
@@ -786,11 +794,13 @@ class Radar:
         return "radar-data %s, app row %s" % ("pushed" if landed and self.remote else "kept here" if landed else "not pushed",
                                               "written" if rowed else "off" if rowed is None else "not written")
 
-    def notify(self, coins):
-        """One notification for these good coins (kind radar, app.notify_radar when app.py has it). Never raises."""
+    def notify(self, coins, record=None):
+        """One notification for these good coins (kind radar, app.notify_radar when app.py has it), with this cycle's radar.json record
+        (the counts behind its record line; app.py decides whether there are enough to say). The notifier (a stand-in for
+        app.notify_radar) takes the same (coins, record). Never raises."""
         try:
             if self.notifier:
-                return self.notifier(coins)
+                return self.notifier(coins, record)
             if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY")):
                 return {"skipped": "no live store"}
             import app as A
@@ -798,8 +808,8 @@ class Radar:
                 return {"skipped": "no live store"}
             fn = getattr(A, "notify_radar", None)
             if fn:
-                return fn(coins)
-            title, body = push_text(coins)
+                return fn(coins, record)
+            title, body = push_text(coins, record)
             return A.notify("radar", title, body, "#tab-radar")
         except Exception as e:
             self.say("notification failed (%s)" % RS.short(e))
@@ -1068,6 +1078,7 @@ class Radar:
         self.tier2(sb, live, finish, now)
         self.exch = self.exchanges()
         self.gt_slot(gt_jobs, now)
+        self.tweet_likes(live, now)              # measured only: after every other call of the step, in what is left of it
         # 7. rate, rank, records
         self.http.until = end(STEP_END["rate"])
         rated = [self.rate(r, now) for r in live]
@@ -1097,7 +1108,7 @@ class Radar:
             to_push = []
         sent = []
         if to_push:
-            out = self.notify([dict(x["doc"], push=now) for x in to_push])
+            out = self.notify([dict(x["doc"], push=now) for x in to_push], doc.get("record"))
             self.say("notification for %s: %s" % (", ".join(x["sym"] for x in to_push), json.dumps(out)[:160] if isinstance(out, dict) else out))
             if went_out(out):
                 sent = to_push                   # nothing went out (rate guard, no push sender, no phone): the coin stays marked, never "pushed" on the page
@@ -1548,6 +1559,55 @@ class Radar:
                 w["curve"] = [c[4] for c in curve_c if c[4]][-15:]
         return budget
 
+    def tweet_likes(self, live, now):
+        """The likes of the tweets coins launched off (traps' viral_tweet: measured, weight 0, never a verdict, the points, the order or
+        a push): at most TWEET_CAP lookups a cycle, after every other call of the tier-2 step, each only while TWEET_LEFT_S of the step
+        is left and cut off after TWEET_LEFT_S, so a slow or limited X never delays a cycle (it waits for the next one). Coins at first
+        sight go first (their reading is the one the record's sig0 keeps), then the youngest. A coin is read once (work "likes"); one
+        reading serves every coin off the same tweet for TWEET_TTL. A lookup that fails leaves the likes unknown, never 0 or a trap: asked
+        again next cycle after no answer or a 429, never again for a tweet X says is gone or is not a tweet (likes None). A link whose id
+        X cannot be asked about (radar_src.tweet_id: 1 to 25 ASCII digits, no leading zero) is settled unknown at once, without a
+        request: it never takes one of the cycle's TWEET_CAP slots, so a few odd links cannot keep every real tweet from being read.
+        Once the adapter is off (the run's first answer lacked favorite_count) nothing more is asked. Returns the lookups sent."""
+        if not self.src.use("x_tweet"):
+            return 0
+        self.tweets = {k: v for k, v in self.tweets.items() if now - v[1] < TWEET_TTL}
+        sent = 0
+        for r in sorted(live, key=lambda r: (self.rec(r["a"]) is not None, r["age"])):
+            nx = self.norm_x(self.x_of(r["a"], r))
+            if not nx or nx[0] != "tweet" or "likes" in (self.work.get(r["a"]) or {}):
+                continue
+            w = self.work.setdefault(r["a"], {})
+            if nx[1] in self.tweets:
+                w["likes"] = self.tweets[nx[1]][0]
+                continue
+            tid = RS.tweet_id(nx[1].rsplit("/", 1)[-1])
+            if tid is None:
+                w["likes"] = None                # unknown for good: nothing X could answer, so never asked and never a slot
+                continue
+            if not self.src.use("x_tweet"):
+                break                            # switched off by this cycle's first answer: the rest stay unknown
+            if sent >= TWEET_CAP or (self.http.until or 0) - time.time() < TWEET_LEFT_S or self.http.blocked(RS.XTW_HOST):
+                continue                         # the next cycle asks (a coin off a tweet read above still takes that reading)
+            sent += 1
+            res = self.src.tweet(tid, until=time.time() + TWEET_LEFT_S)
+            if res is not None:
+                self.tweets[nx[1]] = [res["likes"], now]
+                w["likes"] = res["likes"]
+        return sent
+
+    def x_of(self, a, r):
+        """The coin's X link: DexScreener's socials (memebot.x_link), else pump.fun's twitter field when it is an X address; "" without one."""
+        meta = self.cache["pf"].get(a) or {}
+        return M.x_link(r["pr"]) or (meta.get("x") if re.match(r"^https://(www\.)?(x|twitter)\.com/", str(meta.get("x") or "")) else "") or ""
+
+    def replies_of(self, a, now):
+        """pump.fun's reply count of the coin (traps' chatty: measured only) from a list answer at most REP_FRESH_MS old; None without
+        one (a coin off pump.fun, or one no recent list carried): unknown, never 0."""
+        meta = self.cache["pf"].get(a) or {}
+        at = num(meta.get("repAt"))
+        return num(meta.get("rep")) if at is not None and 0 <= now - at <= REP_FRESH_MS else None
+
     def pools_of(self, a, r):
         """The coin's pool accounts (DexScreener's pair, pump.fun's PumpSwap pool): holders, not buyers."""
         return {x for x in (r["pr"].get("pairAddress"), (self.cache["pf"].get(a) or {}).get("pool")) if x}
@@ -1605,7 +1665,8 @@ class Radar:
             from the pool's open). The top holders come from rc, so traps' wallet check reads the same holders as the radar's;
           - every other S key at the top level, read by the radar itself (S_KEYS: instantPool, mintToPoolS, swAvg, rugHolders,
             wmChecked, wmState, brand, rcReport, rcDanger, rcWarn, cluster, netSize, creatorSold, ageMin, xKind, tweet, stair, pumpswap,
-            devN, devDead, devGrad, devAgeH, devTxs); None = unknown. The record's sig keeps every S_KEYS value (traps.fit reads them);
+            devN, devDead, devGrad, devAgeH, devTxs, replies (replies_of), tweetLikes (tweet_likes' reading, a tweet link only));
+            None = unknown. The record's sig keeps every S_KEYS value (traps.fit reads them), sig0 those of first sight;
           - the radar's own parts: pair (memebot's merged pair), f (memebot's factors), rcStatus (ok/404/429/err/pending), pf (pump.fun
             facts), devRow (fetch.dev_check's row), top10 ([owner, pct] of the top 10 without wm.common), funders ([owner, funder, ms]
             of fresh holders), devWallet, devTx (= devTxs), holdersN, stairCurve (the staircase of the curve's last closes before the
@@ -1652,12 +1713,14 @@ class Radar:
         c["m5"] = num(pr.get("chgM5"))
         c["socN"] = num(pr.get("socials"))
         c["ageMin"] = (now - pool) / 60_000.0 if pool else None
-        x = M.x_link(pr) or (meta.get("x") if re.match(r"^https://(www\.)?(x|twitter)\.com/", str(meta.get("x") or "")) else "") or ""
+        x = self.x_of(a, r)
         c["x"] = x
         nx = self.norm_x(x)
         c["xKind"] = nx[0] if nx else None
         c["paid"] = self.cache["paid"].get(a)
         c["tweet"] = (c["xKind"] == "tweet") if x else False
+        c["replies"] = self.replies_of(a, now)
+        c["tweetLikes"] = num(w.get("likes")) if c["xKind"] == "tweet" else None
         c["lists"] = num(f.get("srcN"))
         cl = self.closes.get(a)
         c["closes"] = list(cl[1]) if cl and cl[1] else None
@@ -1882,7 +1945,8 @@ class Radar:
     def summary(self, now):
         """The record line (3.4) and the model's data count over results' 30 days and the local 48 hours. record.mom (momentum on
         paper: calls, n60, the rugged and 2x shares at 1 h) and record.all (every new coin since momentum is measured: summ) share one
-        label: the 60-minute price alone."""
+        label: the 60-minute price alone. record.known: the green calls whose 1 h outcome is known (n) and how many of them rugged and
+        doubled, the counts behind rug and win (the push's record line says them; a coin can be both: a peak, then a rug)."""
         by = {r["addr"]: r for r in self.res_summary}
         for doc in self.docs.values():
             for rec in (doc.get("coins") or {}).values():
@@ -1893,11 +1957,13 @@ class Radar:
         n60 = [s for s in calls if s["p60"] is not None or s["gone"]]
         rug = [s for s in calls if s["rug"] is not None]
         win = [s for s in calls if s["win"] is not None]
+        out1h = [s for s in calls if s["rug"] is not None and s["win"] is not None]
         p = {"ticket": TICKET, "grp": "young", "paper": M.PAPER_RULE}
         eur = sum(M.pos_value(p, 1.0, 0.0 if s["gone"] else (s["p60"] / s["goodPx"])) - TICKET for s in n60 if s["gone"] or (s["goodPx"] and s["p60"]))
         rec = {"calls": len(calls), "n60": len(n60), "rug": round(sum(1 for s in rug if s["rug"]) / len(rug), 3) if rug else None,
                "win": round(sum(1 for s in win if s["win"]) / len(win), 3) if win else None, "eur": round(eur, 2) if n60 else None,
-               "ci": {"rug": wilson(sum(1 for s in rug if s["rug"]), len(rug)), "win": wilson(sum(1 for s in win if s["win"]), len(win))}}
+               "ci": {"rug": wilson(sum(1 for s in rug if s["rug"]), len(rug)), "win": wilson(sum(1 for s in win if s["win"]), len(win))},
+               "known": {"n": len(out1h), "rug": sum(1 for s in out1h if s["rug"]), "win": sum(1 for s in out1h if s["win"])}}
         moms = [s["mom"] for s in by.values() if s.get("mom")]
         known = lambda xs: [x for x in xs if x["rug"] is not None]
         share = lambda xs, k: round(sum(1 for x in xs if x[k]) / len(xs), 3) if xs else None
@@ -2079,10 +2145,10 @@ class Radar:
 S_KEYS = ("instantPool", "mintToPoolS", "swAvg", "rugHolders", "wmChecked", "brand", "buys", "rcReport", "rcDanger", "rcWarn", "cluster", "netSize",
           "creatorSold", "m5", "socN", "ageMin", "x", "xKind", "paid", "tweet", "lists", "stair", "mc", "liq", "creatorPct", "pumpswap",
           "devN", "devDead", "devGrad", "devAgeH", "devTxs", "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "freshOf",
-          "fundN", "fundMin", "wmState")
+          "fundN", "fundMin", "wmState", "replies", "tweetLikes")
 D_KEYS = ("mintToPoolS", "swAvg", "rugHolders", "buys", "m5", "socN", "lists", "mc", "liq", "creatorPct", "netSize", "devN", "devDead", "devGrad", "devAgeH",
           "devTxs", "freshOf", "fundMin",
-          "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "fundN")
+          "xUsed", "tweetShared", "snip30", "snip30N", "slotN", "slotPct", "freshN", "fundN", "replies", "tweetLikes")
 
 
 def rank(rated, n=BEST_N):
@@ -2231,9 +2297,18 @@ def went_out(out):
     return isinstance(out, dict) and not out.get("skipped") and (num(out.get("sent")) or 0) > 0
 
 
-def push_text(coins):
-    """The notification's words (3.6): title "SYM: no trap found (pool 6 min)", "+1 more" for a second coin; body checks, liquidity and
-    that it is fake money. Never "buy", "safe" or "clean"."""
+def push_text(coins, record=None):
+    """The notification's words (3.6): title "SYM: no trap found (pool 6 min)", "+1 more" for a second coin; body checks (with the first
+    passed ones by name), liquidity, the record of earlier green coins once enough have a 1 h outcome, and that it is fake money. The
+    words are app.radar_words' (one wording for the phone and the tests); only an app.py without it gets the short words below. Never
+    "buy", "safe" or "clean"."""
+    try:
+        import app as A
+        words = A.radar_words(coins, record)
+        if words is not None:
+            return words
+    except (ImportError, AttributeError):
+        pass
     c = coins[0]
     age = num(c.get("age"))
     title = "%s: no trap found%s%s" % (re.sub(r"[\x00-\x1f\x7f]", "", str(c.get("sym") or "?"))[:16],

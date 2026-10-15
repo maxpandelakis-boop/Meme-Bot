@@ -3825,6 +3825,8 @@ console.log(JSON.stringify(o));
     app_tests(check, mock, url)
     import selftest_account                     # the paper account block (page_account.py)
     selftest_account.account_checks(check, SKIPS)
+    import selftest_exits                       # the exit what-if test: other stops and targets replayed on the same trades (exit_grid.py, page_exits.py)
+    selftest_exits.checks(check, SKIPS)
     import selftest_radarui                     # the Radar tab, the trap-check line and the "no good coin" marks (page_radar.py)
     selftest_radarui.checks(check, {"skips": SKIPS})
     import selftest_office                      # the office's agent cards, the radar desk and the daily overview (page_office.py)

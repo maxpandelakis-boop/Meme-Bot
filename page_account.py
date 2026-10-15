@@ -27,7 +27,8 @@ section(D, bought=None) -> HTML
     Everything is static HTML and CSS; the only script shows the trader's latest line while a scan runs, and only when the page
     already holds the live doc (report.py's live poll fires the "memebot-live" event; this module starts no poll of its own).
     Right under the block "Without the stop-loss" comes the radar account (page_radarpaper.section: 3 EUR on each launch-radar
-    round's best 5, sold by the same rules; radar_paper.py), when page_radarpaper.py is there.
+    round's best 5, sold by the same rules; radar_paper.py), when page_radarpaper.py is there, and after it the exit what-if block
+    (page_exits.section: other stops and targets replayed on the same trades, hindsight; exit_grid.py), when page_exits.py is there.
     On a phone (820 px or less) the category strips keep only the big P/L, its rate and the "same trades" line in view (the
     figures sit in their ⓘ fold) and the feed shows the newest 6 rows (the rest open the fold); CSS only, both are in the page.
 
@@ -888,6 +889,16 @@ def radar_account(D):
     return RPP.section(D)
 
 
+def exit_grid(D):
+    """The exit what-if block (page_exits.py: other stops and targets replayed on the same trades, hindsight), or nothing when that
+    module is not there."""
+    try:
+        import page_exits as PX
+    except ImportError:
+        return ""
+    return PX.section(D)
+
+
 def section(D, bought=None):
     """The whole account block (see the module doc); every part renders on its own, a broken part shows a notice. The top trades
     (one line while folded) come before the open positions, which can fill several phone screens."""
@@ -895,7 +906,7 @@ def section(D, bought=None):
     A = _acct(D)
     parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)),
              R.safe("without the stop-loss", lambda: noloss(D, A)), R.safe("radar account", lambda: radar_account(D)),
-             R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
+             R.safe("exit what-if", lambda: exit_grid(D)), R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
     if bought:
         parts.append(R.safe("open positions", bought))
     parts += [R.safe("closed trades", lambda: old_trades(D)), R.safe("account curve", lambda: curve(D, A))]
