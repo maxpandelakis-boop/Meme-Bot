@@ -62,10 +62,12 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
     "pick": (3600, "high", 300),
     "test": (600, "normal", 20),
     "radar": (600, "high", 60),     # the launch radar's coin without a trap found: stale within minutes (its pool is under 10 minutes old)
+    "curve": (300, "high", 60),     # the curve watch's call of a coin still on pump.fun's curve (off unless radar_curve.json switches it on):
+                                    # stale within minutes, its own rate guard so it never holds up a green coin's push
 }
-TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit"}   # the push Topic header per kind: Apple refuses a topic
-# that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
-PREF_OF = {"radar": "young"}        # kind -> the phone's setting that covers it: the "New coins" switch also covers the radar (no SQL change)
+TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal"}   # the push Topic header per kind:
+# Apple refuses a topic that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
+PREF_OF = {"radar": "young", "curve": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
 TITLE_MAX, BODY_MAX = 120, 300   # characters of a notification's title and body (message cuts there; the radar's words stay inside)
 RADAR_WHY_N = 2           # passed checks a radar notification names (the first ones of its trap-check line)
@@ -905,6 +907,53 @@ def radar_words(coins, record=None):
             break
     # the last try has no names and no record; a liquidity or a count of absurd length is cut before the tail, never the tail itself
     return "%s: no trap found%s%s" % (_sym(c.get("sym")), pool, more), head[:BODY_MAX - len(tail)] + tail
+
+
+CURVE_VARIANT = re.compile(r"(60|75|90)m?")   # the variant radar_curve.json switched on (launch_radar.curve_push names it in every curve push)
+CURVE_TAIL = " · paper test, fake money, nothing is bought."
+
+
+def curve_words(c):
+    """(title, body) of a curve watch notification (a coin still on pump.fun's bonding curve, no pool yet; a paper test), with radar_words'
+    cleaning and limits: the title names the coin and how much of its curve is sold ("SYM: 76% of its curve sold, no pool yet"), the body
+    that it is still on the curve, its market cap, the minutes since the mint, the momentum (only when it held: points of the curve in 5
+    min), the quick check in a few words (the first passed checks, the first warning, or that checks are pending) and CURVE_TAIL. A number
+    out of its range reads as unknown (never a 300-digit age); the optional parts go first when the body would run over BODY_MAX, then the
+    rest is cut before the tail, never the tail itself. None without a coin dict, and for a trap verdict (never pushed). It never says
+    buy, safe or clean: chip words that would are left out (_chip_text), also when a hidden character split them."""
+    if not isinstance(c, dict) or c.get("v") == "trap":
+        return None
+    prog, mcu, age, pts = (_finite(c.get(k)) for k in ("prog", "mcu", "age", "pts"))
+    sym = _sym(c.get("sym"))
+    title = ("%s: %d%% of its curve sold, no pool yet" % (sym, int(prog + 0.5))) if prog is not None and 0 <= prog <= 100 else "%s: still on its curve, no pool yet" % sym
+    chip = lambda lv: [t for t in (_chip_text(x[1]) for x in (c.get("chips") if isinstance(c.get("chips"), list) else []) if isinstance(x, (list, tuple)) and len(x) >= 2 and x[0] in lv) if t]
+    v = c.get("v")
+    base = ["still on the pump.fun curve", "market cap %s" % (_usd(mcu) if mcu is not None and mcu < 1e12 else "unknown")]
+    if age is not None and 0 <= age < 100_000:
+        base.append("%d min since the mint" % int(age))
+    mom = ["curve +%d points in 5 min" % int(pts)] if c.get("mom") is True and pts is not None and 0 <= pts <= 100 else []
+    ok, warn = chip(("ok",)), chip(("warn", "info"))
+    check = (("checks passed: " + ", ".join(ok[:RADAR_WHY_N])) if ok else "no trap found so far") if v == "ok" else \
+        ("warning: " + (warn[0] if warn else "a red flag")) if v == "risky" else "some checks still pending"
+    short = {"ok": "no trap found so far", "risky": "a warning"}.get(v, "some checks still pending")
+    for parts in (base + mom + [check], base + mom + [short], base + [short]):
+        head = " · ".join(parts)
+        if len(head + CURVE_TAIL) <= BODY_MAX:
+            break
+    return title[:TITLE_MAX], head[:BODY_MAX - len(CURVE_TAIL)] + CURVE_TAIL
+
+
+def notify_curve(c):
+    """The curve watch's notification (kind "curve") for one call the watch decided on (launch_radar.curve_push: radar_curve.json names
+    its variant, never a trap verdict, once per coin, its own hourly cap), in curve_words' words; it opens the New tab. The phones'
+    "New coins" setting covers it (PREF_OF). A second lock behind the switch: nothing goes out unless the call names the variant that was
+    switched on (c["variant"], a valid id), and never for a trap verdict."""
+    if not isinstance(c, dict) or not (isinstance(c.get("variant"), str) and CURVE_VARIANT.fullmatch(c["variant"])):
+        return {"skipped": "curve push switched off"}
+    words = curve_words(c)
+    if words is None:
+        return {"skipped": "trap verdict" if c.get("v") == "trap" else "no coin"}
+    return notify("curve", words[0], words[1], "#tab-radar")
 
 
 def notify_radar(coins, record=None):

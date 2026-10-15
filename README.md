@@ -321,6 +321,46 @@ library only). A coin that just moved to its pool gets an extra round about 20 s
 most 12 extra rounds an hour). When the feed is blocked or silent the radar runs its 2-minute rounds as before. The Office desk
 always shows the feed's state ("live feed on", "limited" or "off"); the New tab names it only while it is limited.
 
+Fast lane: a graduation on the live feed no longer waits for that extra round. About 6 seconds after it the radar asks DexScreener
+about that one coin (again at 14, 26 and 45 seconds while its pool is not listed yet) and rates it at once with RugCheck, the mint
+time and whatever other checks fit in 18 seconds. The record keeps how many seconds after the graduation the coin was first seen
+(`feed.lag`) and that the fast lane did it (`feed.via`); the list and a push (the same rules: green only, once per coin, 4 an hour)
+follow right away. At most 30 graduations an hour, never within 25 seconds of a round, and it always ends before the round: a push
+that would not fit in the time left is left to the round. A push the app holds back because another one went out under a minute ago
+is not lost: the coin stays unmarked and a later round pushes it. A coin it cannot rate gets the extra round as before.
+
+Curve watch (a paper test of calling coins before their pool): most of a pump.fun coin's run-up happens while it is still on its
+bonding curve (over the radar's 71 graduated coins with curve candles, the last 15 curve minutes rose a median +144%), and the radar
+only sees a coin once its pool exists. So between rounds the radar also reads pump.fun's list of coins still on the curve (highest
+market cap first, every 30 seconds) and follows the trades of the best 40 on the live feed (`curve_watch.py`). When a coin passes 60,
+75 or 90 % of its curve sold, it records a call: time, progress, market cap, price, minutes since the mint and its momentum (points
+gained in 5 minutes, purchases against sales), with a quick check made before any pool exists (the dev's launches and wallet age, top
+holders and launch snipers without the curve's own account, RugCheck without its pool risks, the wallet memory, the X link): ok,
+risky, trap or unknown. A check that only comes in after the call (within 90 seconds) is kept beside it, and the split by check counts
+that call from the price at that moment, never with what happened after the call. An hour after each call it is judged: graduated or
+not and when (an hour nobody watched, say at night, is unseen, never "did not graduate"), the price an hour later, rugged and doubled
+by the same rules as the radar's greens (rugged: gone, dead or worth 0.1x or less at one hour; doubled: 2x to 30x within the hour and
+not gone or dead at one hour), and a paper result of 3 € with the paper fees and 5 % slippage. radar.json's `curve` block shows six
+variants (60, 75 and 90 %, each with and without the momentum filter, split by the check) next to the radar's green coins of the same
+hours, so the test can show which one works best. Nothing is pushed for it until `radar_curve.json` names a variant in `curvePush` (null, the default: off); then that
+variant's calls are pushed once per coin, never with a trap found, at most 3 an hour, worded as a coin still on its curve and a paper
+test. The calls are kept on radar-data (`db/memecurve/`, 48 hours). If pump.fun's list or the trades are refused or change, the
+watch says so in the block and the rounds go on exactly as before: the watch asks with its own client, so a refusal or a rate limit
+it gets never holds up the rounds' requests, and when PumpPortal refuses the trade subscriptions twice, the live feed drops them for
+the run and keeps its graduations.
+
+On the page the test shows under the radar's list on the New tab as "About to graduate (paper test)" (`page_radar.py`): whether the
+watch is on and how many coins it follows, one plain sentence on what is being tested, whether a curve push can go out (while the
+switch is off it says no curve push goes out; when on, which variant), the newest calls by coin (curve %, minutes since the mint,
+market cap, the quick check's chips, and now: graduated after N minutes, still on the curve, did not graduate, dead, or not watched
+to the end when the watch stopped before the hour was over, with the hour's result once it is known; each coin opens on pump.fun), and
+the six variants beside the radar's greens of the same hours (calls, graduated, rugged and doubled within 1 hour, the paper result per
+3 €; rows with under 20 valued calls are grey, too few to tell), with the split by the quick check in a fold. With no call yet it is
+one line; without the block it is hidden. The Office desk's chat adds Scout's line for a fresh call with its quick check ("On the
+curve: SYM at 82%, 14 min after mint, quick check: no trap found yet"; a call whose check found a trap is never named), and the
+radar's panel lists the watch's two hosts (pump.fun's curve list and the trades). Fake money only: the section reports, it never
+advises.
+
 Later prices: a record keeps the prices 5, 15, 30 and 60 minutes after the coin was first seen, but only those a later round
 catches (at most half the offset late). With a round every 2 minutes all four are usually caught (the 5- and 15-minute ones
 at the round after, about 6 and 16 minutes); a field no round caught
@@ -361,6 +401,11 @@ Switches (repository variables, Settings > Secrets and variables > Actions > Var
   skipped). The quick stop: Actions > "Meme-Bot launch radar" > Disable workflow (it ends at the next round).
 - `MEMEBOT_RADAR_HOURS=8-22`: other active hours (Berlin).
 - `MEMEBOT_RADAR_FEED=off`: no live feed (the 2-minute rounds go on); `pumpportal` (the default) switches it on.
+- `MEMEBOT_RADAR_FAST=off`: no fast lane (a graduation gets the extra round as before).
+- `MEMEBOT_RADAR_CURVE=off`: no curve watch (its calls of the last 48 hours stay on radar-data).
+- `radar_curve.json` (a file, read when a radar run starts): `curvePush` null sends no curve push (the default); a variant such as
+  `"75m"` (75 % with momentum) switches them on for that variant, `pushVerdicts` the checks allowed (`ok` by default, never a trap),
+  `pushPerH` at most per hour.
 - `MEMEBOT_PUSH_YOUNG=1`: the scan's own "new coins" push again (off by default now; the radar's push replaces it).
 - `MEMEBOT_PEAKS=0`: no "best within 6 h" pricing job after the scan.
 The phone's "New coins" switch also covers the radar's pushes.
@@ -675,6 +720,8 @@ to show the picks, the charts and the links in chat.
 | `fetch.py` | the sources: every API → the plain-text files the analyst reads |
 | `memebot.py` | the analyst: gates, factors, learned weights, picks, exits, big test |
 | `radar.py` | the launch spotter: the early list of new launches about five minutes into each scan, and its record |
+| `launch_radar.py`, `radar_src.py`, `radar_feed.py` | the launch radar job: its 2-minute rounds, its sources, the live feed and the fast lane |
+| `curve_watch.py`, `radar_curve.json` | the curve watch (coins still on pump.fun's curve, called on paper) and its push switch (off) |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
 | `app.py` | the iPhone app: the live store (Supabase), push notifications, the installed app's script and `sw.js` |
 | `supabase/setup.sql` | the one-time setup of the Supabase project (tables, access rules); `supabase/test_setup.py` tests it on PostgreSQL; `supabase/push-requirements.txt` pins the push sender with hashes (`supabase/pin_push.py` makes it) |

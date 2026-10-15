@@ -9,6 +9,10 @@ report.py calls it in a few one-line hooks; everything the page shows of the lau
                        (mb/radar_live.json, whitelisted, at most 48 KB) and then from its polls (the live store's row "radar", else the
                        GitHub contents API on the branch radar-data inside the budget the office poll keeps, else raw.githubusercontent).
                        The script has no rule logic: every chip text comes from the doc (traps.chips, computed by the radar job).
+  curve_section(doc)   under the radar's list: "About to graduate (paper test)", the curve watch's block of radar.json (clean_curve): the newest
+                       calls of coins still on pump.fun's curve (one row per coin: its curve %, minutes since the mint, market cap, quick check,
+                       status now) and the variant table beside the radar's greens of the same hours; built here at the doc's time, redrawn by
+                       the script (curveView) as the doc ages. A paper test: no push while radar_curve.json's switch is off, and it says so.
   young(D)             {address: rating} for the New launches rows: traps.rate(traps.signals_scan(row, mint, walletmem, now, pool)) at
                        page build, from recommend.json's young rows (now: the scan's time "t"), the mint and pool times in mb/pairs.json
                        (traps.pair_times: pf / ll createdAt, pairCreatedAt) and mb/walletmem.json.gz. Without pairs.json or the wallet
@@ -265,17 +269,365 @@ def clean_doc(doc):
     o["lines"] = [_str(x, 200) for x in (doc.get("lines") or []) if isinstance(x, str)][:12] if isinstance(doc.get("lines"), list) else []
     sr = doc.get("src") if isinstance(doc.get("src"), dict) else {}      # the round's discovery counts (the office desk's Sources)
     o["src"] = {k: int(v) for k, v in list(sr.items())[:12] if isinstance(k, str) and SRC.match(k) and _num(v) is not None and v == int(v) and 0 <= v <= 100_000}
+    try:                                 # the curve watch's paper test (About to graduate); a block it cannot read is left out, never the doc
+        o["curve"] = clean_curve(doc.get("curve"))
+    except Exception:
+        o["curve"] = None
     size = lambda: len(json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     while size() > DOC_MAX and o["others"]:
         o["others"].pop()
     while size() > DOC_MAX and o["recent"]:
         o["recent"].pop()
+    while size() > DOC_MAX and o["curve"] and o["curve"]["recent"]:
+        o["curve"]["recent"].pop()
     return o if size() <= DOC_MAX else None
 
 
 def embed_json(doc):
     """JSON for a <script type="application/json"> block: nothing in it can close the block or open a comment."""
     return json.dumps(doc, separators=(",", ":"), ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the curve watch (paper test)
+# radar.json's "curve" block (launch_radar.curve_doc, curve_watch.Book.doc): pump.fun coins called on paper while they are still on their bonding
+# curve, before any pool, at 60, 75 and 90 % of it sold, each judged an hour later beside the radar's greens of the same hours. The New tab shows
+# it under the radar's list as "About to graduate (paper test)": the newest calls by coin and the variant table. The two whitelists (clean_curve,
+# MemebotRadar.cleanCurve) and the two views (curve_view, MemebotRadar.curveView) give the same: a string with CURVE_CTRL as spaces, cut in UTF-16
+# units without a half emoji and CURVE_BLANK trimmed (the office chat's rule: page_office.CHAT_CTRL / CHAT_BLANK, here with the zero-width and
+# word-joiner marks too), numbers printed with whole-number arithmetic only (no rounding mode of either language decides a digit). Hindsight on
+# paper: the section never calls a coin a buy, it reports what each call did an hour later.
+CURVE_THR = (60, 75, 90)    # the marks of the curve sold (curve_watch.THRESHOLDS)
+CURVE_V = ("ok", "risky", "trap", "unknown")       # the quick check's verdicts before any pool (curve_watch.VERDICTS), in the table's order
+CURVE_VW = {"ok": ("ok", "no trap found yet"), "risky": ("warn", "risky"), "trap": ("bad", "trap"), "unknown": ("unk", "not fully checked")}   # level, words
+CURVE_HOW = ("pool", "curve", "gone", "dead")      # how a call's 1 h value was read (curve_watch.Book.set_value)
+CURVE_STATES = ("on", "limited", "off")
+CURVE_HOSTS = ("pump.fun", "trades")               # the block's hosts: pump.fun's curve list, the followed coins' trades on the live feed
+CURVE_ID = re.compile(r"(60|75|90)m?")             # a variant id (curve_watch.variant_of): the mark, m for the momentum filter (fullmatch)
+CURVE_HST = re.compile(r"[a-z]{1,12}")             # a host state: ok, limited, down, unused, off, waiting, silent, refused (fullmatch)
+CURVE_CTRL = r"\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff"
+CURVE_BLANK = r"\t-\r\x1c-\x20\x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+CURVE_RECENT = 10           # calls in the block (curve_watch.RECENT_N)
+CURVE_SHOWN = 4             # coins in view before the "N more coins" fold
+CURVE_LINE = 4              # chips on a coin's one-row line (its verdict and up to 3 of its call's chips; a phone shows PHONE_SHOWN and "+N")
+CURVE_FEW = 20              # calls with a 1 h value before a row's shares tell anything (the Track record's TOO_FEW): fewer are grey
+CURVE_VALUE_MS = 3_600_000  # a call is judged at call + 60 min (curve_watch.VALUE_MS): a coin the watch saw on its curve that long "did not
+                            # graduate"; one whose hour the watch did not see to the end (the block's own time is earlier) says so
+CURVE_LATE_S = 90           # s a quick check may come after a call made without one and still count for it (curve_watch.LATE_MS)
+CURVE_BIG = 1e9             # a number the section prints is under this, else it is unknown
+_CC, _CB = re.compile("[%s]" % CURVE_CTRL), re.compile("^[{0}]+|[{0}]+\\Z".format(CURVE_BLANK))
+_CS = re.compile("[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff]")     # a surrogate pair (kept) or a lone half (a space: it has no character)
+
+
+def _cstr(v, n):
+    """A chain string of the curve block as both whitelists keep it: CURVE_CTRL and a lone surrogate half (a JSON escape a backend cut in
+    two: it cannot be encoded, and would cost the whole doc) as spaces, cut to n UTF-16 units (the script's slice) without a half emoji at
+    the end, CURVE_BLANK off both ends; '' for anything but a string."""
+    if not isinstance(v, str):
+        return ""
+    u = _CS.sub(lambda m: m.group(0) if len(m.group(0)) == 2 else " ", _CC.sub(" ", v)).encode("utf-16-le", "surrogatepass")[:2 * n]
+    return _CB.sub("", re.sub("[\ud800-\udbff]\\Z", "", u.decode("utf-16-le", "surrogatepass")))
+
+
+def _cchips(v):
+    """A call's chips ([[level, text]], traps.chips' words for the quick check) as the page keeps them: a known level, a text, at most 3."""
+    out = []
+    for x in v if isinstance(v, list) else []:
+        if isinstance(x, list) and len(x) >= 2 and x[0] in LEVELS and isinstance(x[1], str):
+            s = _cstr(x[1], 60)
+            if s:
+                out.append([x[0], s])
+    return out[:3]
+
+
+def _crec(r):
+    """One call of the block's recent list, or None without a base58 mint, a mark of 60, 75 or 90 and a time."""
+    if not isinstance(r, dict) or not isinstance(r.get("mint"), str) or not B58.fullmatch(r["mint"]) or r.get("thr") not in CURVE_THR or _ms(r.get("t")) is None:
+        return None
+    o = r.get("out") if isinstance(r.get("out"), dict) else {}
+    b = lambda d, k: d[k] if isinstance(d.get(k), bool) else None
+    return dict({"mint": r["mint"], "sym": _cstr(r.get("sym"), 24), "thr": r["thr"], "t": _ms(r["t"])}, **{k: _num(r.get(k)) for k in ("prog", "mcu", "mcs", "age", "pts", "buys", "sells")},
+                mom=b(r, "mom"), v=r["v"] if r.get("v") in CURVE_V else "unknown", chips=_cchips(r.get("chips")), push=_ms(r.get("push")),
+                out={"grad": _ms(o.get("grad")), "gradMin": _num(o.get("gradMin")), "x60": _num(o.get("x60")), "peak": _num(o.get("peak")), "rug": b(o, "rug"),
+                     "x2": b(o, "x2"), "eur": _num(o.get("eur")), "how": o["how"] if o.get("how") in CURVE_HOW else "", "miss": o.get("miss") is True,
+                     "done": o.get("done") is True})
+
+
+def _cvar(r):
+    """One row of the variant table (its id decides the mark and the momentum filter), with its split by the quick check, or None."""
+    if not isinstance(r, dict) or not isinstance(r.get("id"), str) or not CURVE_ID.fullmatch(r["id"]):
+        return None
+    by = r.get("by") if isinstance(r.get("by"), dict) else {}
+    return dict({"id": r["id"], "thr": int(r["id"][:2]), "mom": r["id"].endswith("m")}, **{k: _num(r.get(k)) for k in ("n", "nS", "rug", "x2", "eur", "grad", "gradMin", "miss", "unseen")},
+                by={v: {k: _num(by[v].get(k)) for k in ("n", "nS", "rug", "x2", "eur")} for v in CURVE_V if isinstance(by.get(v), dict)})
+
+
+def clean_curve(cv):
+    """radar.json's "curve" block as the page may show it, or None without a time: the watch's state and why, its counts, its two hosts, the
+    push switch (a variant id or None), the calibration, the greens of the same hours, the newest CURVE_RECENT calls and the six variants."""
+    if not isinstance(cv, dict) or _ms(cv.get("t")) is None:
+        return None
+    nums = lambda d, ks: {k: _num(d.get(k)) for k in ks}
+    hs = cv.get("hosts") if isinstance(cv.get("hosts"), dict) else {}
+    ps = cv.get("push") if isinstance(cv.get("push"), dict) else {}
+    lst = lambda k: cv[k] if isinstance(cv.get(k), list) else []
+    o = dict({"v": _num(cv.get("v")), "t": _ms(cv["t"]), "state": cv["state"] if cv.get("state") in CURVE_STATES else "off", "why": _cstr(cv.get("why"), 160),
+              "since": _ms(cv.get("since"))}, **nums(cv, ("hours", "ticket", "slip", "momPts", "calls", "late", "follow", "cand", "trades", "polls", "sol")))
+    o["thresholds"] = [x for x in lst("thresholds") if x in CURVE_THR][:3]
+    o["hosts"] = {k: hs[k] for k in CURVE_HOSTS if isinstance(hs.get(k), str) and CURVE_HST.fullmatch(hs[k])}
+    o["push"] = {"variant": ps["variant"] if isinstance(ps.get("variant"), str) and CURVE_ID.fullmatch(ps["variant"]) else None,
+                 "verdicts": [x for x in (ps["verdicts"] if isinstance(ps.get("verdicts"), list) else []) if x in ("ok", "risky", "unknown")][:3],
+                 "perH": _num(ps.get("perH")), "sent1h": _num(ps.get("sent1h"))}
+    o["calib"] = nums(cv["calib"], ("n", "mcSol", "prog", "scale", "expect")) if isinstance(cv.get("calib"), dict) else None
+    o["greens"] = nums(cv["greens"], ("n", "nS", "rug", "x2", "eur", "grad")) if isinstance(cv.get("greens"), dict) else None
+    o["recent"] = [x for x in (_crec(r) for r in lst("recent")) if x][:CURVE_RECENT]
+    o["variants"] = [x for x in (_cvar(r) for r in lst("variants")) if x][:6]
+    return o
+
+
+def _cint(v):
+    """A count the section prints (0 to CURVE_BIG, whole), else None."""
+    v = _num(v)
+    return int(math.floor(v)) if v is not None and 0 <= v < CURVE_BIG else None
+
+
+def _cpct(v):
+    """A share 0..1 as a whole percent, half up ('40%'), else '–'."""
+    v = _num(v)
+    return "%d%%" % math.floor(100 * v + 0.5) if v is not None and 0 <= v <= 1 else "–"
+
+
+def _cmoney(v, sign=True, unit=True):
+    """Euros in cents, half up: '+0.42 €', '−1.20 €' (a sign only when it is not 0.00), or without one '3 €' / '2.50 €'; without the unit
+    (a table's cells, its head names it) '+0.42'; '–' unknown."""
+    v = _num(v)
+    if v is None or abs(v) >= CURVE_BIG:
+        return "–"
+    c = int(math.floor(abs(v) * 100 + 0.5))
+    return (("−" if v < 0 else "+") if sign and c else "") + ("%d" % (c // 100) if not sign and c % 100 == 0 else "%d.%02d" % (c // 100, c % 100)) + ("\u00a0€" if unit else "")
+
+
+def _cx(v):
+    """A multiple of the call price: '0.42x', '2.30x', '14x'; '–' unknown."""
+    v = _num(v)
+    if v is None or not 0 <= v < CURVE_BIG:
+        return "–"
+    if v >= 10:
+        return "%dx" % math.floor(v + 0.5)
+    c = int(math.floor(v * 100 + 0.5))
+    return "%d.%02dx" % (c // 100, c % 100)
+
+
+def _cusd(v):
+    """A market cap in dollars: $850, $58k, $1.2M (half up, in whole units); '' unknown."""
+    v = _num(v)
+    if v is None or not 0 <= v < 1e12:
+        return ""
+    d, k = math.floor(v + 0.5), math.floor(v / 1e3 + 0.5)
+    if d < 1000:
+        return "$%d" % d
+    if k < 1000:
+        return "$%dk" % k
+    m = int(math.floor(v / 1e5 + 0.5))
+    return "$%d.%dM" % (m // 10, m % 10) if m % 10 else "$%dM" % (m // 10)
+
+
+def _cage(a):
+    """Minutes from the mint to the call: '14 min after mint', '1 h 12 min after mint', 'under 1 min after mint', 'mint time unknown'."""
+    a = _num(a)
+    if a is None or not 0 <= a < CURVE_BIG:
+        return "mint time unknown"
+    m = int(math.floor(a))
+    if m < 1:
+        return "under 1 min after mint"
+    if m < 60:
+        return "%d min after mint" % m
+    if m < 2880:
+        return ("%d h %d min" % (m // 60, m % 60) if m % 60 else "%d h" % (m // 60)) + " after mint"
+    return "%d days after mint" % (m // 1440)
+
+
+def _cand(xs):
+    """'60', '60 and 75', '60, 75 and 90'."""
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1] if xs else ""
+
+
+def _cvlabel(vid):
+    """A variant's name: '75%', or '75% rising' with the momentum filter."""
+    return vid[:2] + "%" + (" rising" if vid.endswith("m") else "")
+
+
+def _cstatus(o, t, now, seen=None):
+    """Where a called coin stands now, by what the watch saw (seen: the block's own time, its last word): graduated (after N min, or when is
+    not known), dead (the curve sold back, or no coin and no pair), did not graduate (valued on its curve at the hour, or the watch saw the
+    hour pass), not watched to the end (no value, or the hour ended after the block's time: the radar stopped, say at night) or still on
+    the curve; [class, words]."""
+    if o["grad"] is not None:
+        gm = o["gradMin"]
+        if gm is None or not 0 <= gm < CURVE_BIG:
+            return ["grad", "graduated"]
+        m = int(math.floor(gm + 0.5))
+        return ["grad", "graduated within a minute" if m < 1 else "graduated after %d min" % m]
+    if o.get("done"):
+        return ["grad", "graduated"]
+    if o["how"] in ("dead", "gone"):
+        return ["bad", "dead"]
+    if o["x60"] is not None:
+        return ["muted", "did not graduate"]
+    seen = now if seen is None else min(now, seen)
+    if not o["miss"] and seen - t >= CURVE_VALUE_MS:
+        return ["muted", "did not graduate"]
+    if o["miss"] or now - t >= CURVE_VALUE_MS:
+        return ["muted", "not watched to the end"]
+    return ["live", "still on the curve"]
+
+
+def _cresult(o):
+    """The call's hour on paper, once known: rugged, doubled, the multiple at 1 h, or no value; None while it is pending."""
+    if o["rug"] is True:
+        return ["bad", "doubled, then rugged in 1 h" if o["x2"] is True else "rugged in 1 h"]
+    if o["x2"] is True:
+        return ["good", "doubled in 1 h"]
+    if o["x60"] is not None:
+        return ["", "1 h: " + _cx(o["x60"])]
+    if o["miss"]:
+        return ["muted", "no 1 h value"]
+    return None
+
+
+def _crow(label, s, extra, greens=False):
+    """One row of a table: label, then the cells of extra (graduated, or the quick check), calls first in the main table; title in words."""
+    n, ns = _cint(s.get("n")), _cint(s.get("nS"))
+    few = ns is None or ns < CURVE_FEW
+    bits = (["%d %s%s" % (n, "coin" if greens else "call", "" if n == 1 else "s")] if n is not None else []) + (["%d with a 1 h value" % ns] if ns is not None else [])
+    gm, miss, uns = _num(s.get("gradMin")), _cint(s.get("miss")), _cint(s.get("unseen"))
+    if gm is not None and 0 <= gm < CURVE_BIG:
+        bits.append("graduated a median %d min after the call" % math.floor(gm + 0.5))
+    if miss:
+        bits.append("%d without a 1 h value" % miss)
+    if uns:
+        bits.append("%d whose hour nobody saw (not in graduated)" % uns)
+    cells = [label] + extra(n) + [_cpct(s.get("rug")), _cpct(s.get("x2")), _cmoney(s.get("eur"), True, False)]
+    return {"cls": " ".join(x for x in ("rc-g" if greens else "", "few" if few else "") if x), "cells": cells,
+            "title": ("the radar's green coins first rated in the same hours, judged 1 h later by the same rules: " if greens else "") + ", ".join(bits)}
+
+
+def curve_view(cv, now):
+    """What the New tab shows of a curve block (clean_curve's) at the time now (ms; the script: the doc's time plus its age), the same as the
+    script's MemebotRadar.curveView: None without a block; {state, head, one: True} for a block without a call (one line); else the head line,
+    the paper test's sentence and the push switch's, the coins of the newest calls (one per coin: its newest call, the marks it was called at,
+    its status now and its hour's result; CURVE_SHOWN in view, the rest in a fold), the variant table with the greens' row, its split by the
+    quick check and the footnote. Every text is plain (the page escapes it, the script sets it as text)."""
+    if not isinstance(cv, dict):
+        return None
+    st = cv.get("state") if cv.get("state") in CURVE_STATES else "off"
+    fol, hrs, calls, late = (_cint(cv.get(k)) for k in ("follow", "hours", "calls", "late"))
+    head = "Curve watch " + st
+    if st == "on":
+        head += "".join(" · " + b for b in (["%d coin%s followed" % (fol, "" if fol == 1 else "s")] if fol is not None else []) + (["%d h watched" % hrs] if hrs else []))
+    elif cv.get("why"):
+        head += ": " + cv["why"]
+    recent = cv.get("recent") if isinstance(cv.get("recent"), list) else []
+    if not recent and not calls:
+        return {"state": st, "head": head, "one": True}
+    tk, sl, mp = _num(cv.get("ticket")), _num(cv.get("slip")), _num(cv.get("momPts"))
+    tks = _cmoney(tk if tk is not None and 0 < tk < 1e6 else 3.0, False)
+    sl = sl if sl is not None and 0 <= sl < 1 else 0.05
+    mp = mp if mp is not None and 0 < mp <= 100 else 10.0
+    thr = ["%d" % x for x in (cv.get("thresholds") or CURVE_THR)]
+    note = ("Paper test: the radar calls pump.fun coins still on their bonding curve, before the pool opens, at %s%% of the curve sold, to find out "
+            "whether an earlier call helps. Each call is judged 1 h later with %s on paper and %d%% slippage, beside the radar's greens of the same hours."
+            % (_cand(thr), tks, math.floor(100 * sl + 0.5)))
+    ps = cv.get("push") if isinstance(cv.get("push"), dict) else {}
+    var = ps.get("variant") if isinstance(ps.get("variant"), str) and CURVE_ID.fullmatch(ps["variant"]) else None
+    if var:
+        vs, ph = [CURVE_VW[v][1] for v in ps.get("verdicts") or [] if v in CURVE_VW], _cint(ps.get("perH"))
+        push = "Curve pushes are on for the %s calls%s%s." % (_cvlabel(var), " (quick check: %s)" % " or ".join(vs) if vs else "", ", at most %d an hour" % ph if ph is not None else "")
+    else:
+        push = "No curve push goes out while the switch is off."
+    groups = []
+    for r in recent:
+        g = next((x for x in groups if x["r"]["mint"] == r["mint"]), None)
+        if g is None:
+            groups.append({"r": r, "thr": [r["thr"]]})
+            continue
+        if r["thr"] not in g["thr"]:
+            g["thr"].append(r["thr"])
+        if r["t"] > g["r"]["t"]:
+            g["r"] = r
+    groups.sort(key=lambda g: -g["r"]["t"])
+    coins = []
+    for g in groups:
+        r, o = g["r"], g["r"]["out"]
+        p, s = _num(r.get("prog")), _num(r.get("mcs"))
+        mc = _cusd(r.get("mcu")) or ("%d SOL" % math.floor(s + 0.5) if s is not None and 0 <= s < CURVE_BIG else "unknown")
+        vw = CURVE_VW.get(r["v"]) or CURVE_VW["unknown"]
+        nums = [_cage(r.get("age")), "market cap " + mc, "called at %s%%" % _cand(["%d" % x for x in sorted(g["thr"])])] + (["sent to the phone"] if r.get("push") else [])
+        coins.append({"mint": r["mint"], "sym": r.get("sym") or "?", "prog": "%d%%" % math.floor(p + 0.5) if p is not None and 0 <= p <= 100 else "?",
+                      "nums": " · ".join(nums), "line": [[vw[0], vw[1]]] + [[x[0], x[1]] for x in r.get("chips") or []], "st": _cstatus(o, r["t"], now, _ms(cv.get("t"))),
+                      "res": _cresult(o)})
+    count = lambda n: ["%d" % n if n is not None else "–"]
+    rows = [_crow(_cvlabel(v["id"]), v, lambda n, v=v: count(n) + [_cpct(v.get("grad"))]) for v in cv.get("variants") or []]
+    if isinstance(cv.get("greens"), dict):
+        rows.append(_crow("radar greens", cv["greens"], lambda n: count(n) + ["–"], True))
+    by = [_crow(_cvlabel(v["id"]), b, lambda n, k=k: [CURVE_VW[k][1]] + count(n)) for v in cv.get("variants") or [] for k, b in ((k, v["by"].get(k)) for k in CURVE_V)
+          if isinstance(b, dict) and _cint(b.get("n"))]
+    foot = ["Rising: %d or more points of the curve in the 5 minutes before the call, and more purchases than sales." % math.floor(mp + 0.5),
+            "Rugged, doubled and paper: of the calls with a 1 h value; graduated: of the calls an hour old whose hour was seen. Rugged: gone, dead or "
+            "worth 0.1x or less at 1 h; doubled: 2x to 30x within the hour and not gone or dead at 1 h; the greens by the same rules. Quick check: as "
+            "known at the call, or the first one within %d s after it (then counted from that moment's price). Grey: under %d calls with a 1 h value, "
+            "too few to tell." % (CURVE_LATE_S, CURVE_FEW)]
+    if late:
+        foot.append("%d time%s a trading coin was first seen already past a mark, so no call was made." % (late, "" if late == 1 else "s"))
+    cb = cv.get("calib") if isinstance(cv.get("calib"), dict) else {}
+    cn, cp = _cint(cb.get("n")), _num(cb.get("prog"))
+    if cn and cp is not None and 0 <= cp < 1000:
+        foot.append("Progress check: at the last trade before %d graduation%s the curve read %d%% sold (about 100%% is right)." % (cn, "" if cn == 1 else "s", math.floor(cp + 0.5)))
+    return {"state": st, "head": head, "one": False, "note": note, "push": push, "pushOn": bool(var), "coins": coins[:CURVE_SHOWN], "more": coins[CURVE_SHOWN:],
+            "ticket": tks, "rows": rows, "by": by, "foot": " ".join(foot)}
+
+
+def _ctable(head, rows):
+    th = "".join("<th>%s</th>" % E(x) for x in head)
+    trs = "".join('<tr%s title="%s">%s</tr>' % (' class="%s"' % r["cls"] if r["cls"] else "", E(r["title"]), "".join("<td>%s</td>" % E(x) for x in r["cells"])) for r in rows)
+    return '<div class="rrec-w"><table class="rc-tab"><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>' % (th, trs)
+
+
+def _ccoin(c):
+    st, res = c["st"], c["res"]
+    return ('<li class="rc-coin"><a class="rc-top" href="https://pump.fun/coin/%s" target="_blank" rel="noopener noreferrer"><span class="rc-sym">%s</span>'
+            '<span class="rc-p">%s</span><span class="rc-s%s">%s</span></a><p class="rc-n">%s</p>%s%s</li>') % (
+        E(c["mint"]), E(c["sym"]), E(c["prog"]), " " + st[0] if st[0] else "", E(st[1]), E(c["nums"]), line_html(c["line"], CURVE_LINE),
+        '<p class="rc-r%s">%s</p>' % (" " + res[0] if res[0] else "", E(res[1])) if res else "")
+
+
+def curve_inner(v):
+    """The section's content for a view (curve_view's); the script builds the same elements (MemebotRadar's curve redraw)."""
+    st = '<p class="rc-st" data-st="%s"><i class="rdot"></i><span>%s</span></p>' % (E(v["state"]), E(v["head"]))
+    if v["one"]:
+        return '<p class="rc-one"><b>About to graduate (paper test):</b> no call yet · %s</p>' % E(v["head"])
+    h = '<div class="rc-h"><h3>About to graduate <small>(paper test)</small></h3>%s</div><p class="rc-note">%s</p><p class="rc-push%s">%s</p>' % (
+        st, E(v["note"]), " on" if v["pushOn"] else "", E(v["push"]))
+    if v["coins"]:
+        h += '<ol class="rc-list">%s</ol>' % "".join(_ccoin(c) for c in v["coins"])
+    if v["more"]:
+        h += '<details class="rc-more" data-cf="more"><summary>%d more coin%s</summary><ol class="rc-list">%s</ol></details>' % (
+            len(v["more"]), "" if len(v["more"]) == 1 else "s", "".join(_ccoin(c) for c in v["more"]))
+    if v["rows"]:
+        h += _ctable(["", "calls", "graduated", "rugged in 1 h", "doubled in 1 h", "paper per " + v["ticket"]], v["rows"])
+    h += '<p class="tnote">%s</p>' % E(v["foot"])
+    if v["by"]:
+        h += '<details class="rc-by" data-cf="by"><summary>Split by the quick check</summary>%s</details>' % _ctable(
+            ["", "quick check", "calls", "rugged in 1 h", "doubled in 1 h", "paper per " + v["ticket"]], v["by"])
+    return h
+
+
+def curve_section(doc):
+    """The curve watch's section on the New tab under the radar's list (pane), from the doc's curve block at the doc's time; hidden without
+    one. The script redraws it from every doc it takes (data-r-curve), its statuses moving on with the doc's age."""
+    cv = doc.get("curve") if isinstance(doc, dict) else None
+    v = curve_view(cv, _num(doc.get("t")) or 0) if isinstance(cv, dict) else None
+    return '<section class="rcurve%s" data-r-curve aria-label="About to graduate, paper test"%s>%s</section>' % (
+        " one" if v and v["one"] else "", "" if v else " hidden", curve_inner(v) if v else "")
 
 
 # ------------------------------------------------------------------------------------------------------------------ data
@@ -633,7 +985,7 @@ def why_fold(W):
     why, what is only measured."""
     notes = ('<ul class="rwhy-notes"><li>Green means no trap found in the checks that ran. A check that could not run (RugCheck pending, mint time or wallet memory unknown) blocks the green.</li>'
              '<li>The dev history, snipers, bundles, fresh wallets, funding clusters, copied X links, pump.fun replies and the source tweet\'s likes are measured and shown grey. They get weight only when the radar\'s own records confirm them.</li>'
-             '<li>Not in v1: coins still on the bonding curve. Later prices and the 1-hour peak are measured on the pool the radar saw.</li>'
+             '<li>Coins still on the bonding curve are not rated here: the curve watch calls them on paper only (About to graduate), with no push while its switch is off. Later prices and the 1-hour peak are measured on the pool the radar saw.</li>'
              '<li>Fake money: the radar never buys anything.</li></ul>')
     body = ""
     if isinstance(W, dict):
@@ -682,8 +1034,8 @@ def pane(D):
             '<ol class="rcards" data-r-cards></ol>'
             '<div class="rempty" data-r-empty hidden><p class="rbig" data-r-empty-t></p><p class="rsub" data-r-empty-s></p><p class="rsub" data-r-lastgood hidden></p></div>'
             '<details class="rfold" data-r-others hidden><summary><span class="t">Seen but not clean</span> <span class="cnt" data-r-ocnt></span></summary><ol class="rrows" data-r-olist></ol></details>'
-            '<details class="rfold" data-r-rec hidden><summary><span class="t">Track record</span><span class="sum" data-r-recline></span></summary><div class="rfold-in" data-r-recent></div></details>'
-            '%s</section>') % (attrs, embed, E(ns), actions, why_fold(rd["weights"]))
+            '%s<details class="rfold" data-r-rec hidden><summary><span class="t">Track record</span><span class="sum" data-r-recline></span></summary><div class="rfold-in" data-r-recent></div></details>'
+            '%s</section>') % (attrs, embed, E(ns), actions, curve_section(doc), why_fold(rd["weights"]))
 
 
 def _hhmm(ms):
@@ -829,6 +1181,38 @@ details.rfold > summary .cnt { font-size:var(--fs-xs); background:var(--chip); c
 .rwhy-list { list-style:none; margin:0; padding:0; display:grid; gap:8px } .rwhy-list li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; min-width:0 }
 .rwhy-list .rw-n { font-weight:500 } .rwhy-list .chip { font-size:var(--fs-xs) } .rwhy-list small { flex-basis:100%; color:var(--fg2); font-size:var(--fs-xs); font-variant-numeric:tabular-nums }
 .rmodel:empty { display:none } details.rfold.dim .rrows { opacity:.7 }
+/* the curve watch's paper test under the radar's list (About to graduate): one card, the coins as rows (the top line a 44 px link to the coin
+   on pump.fun, its status on the right), the variant table scrolling inside its own box on the narrowest phones, never the page */
+.rcurve { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:grid; gap:8px; min-width:0 }
+.rcurve h3 { margin:0; font-size:var(--fs-m); font-weight:600 } .rcurve h3 small { font-size:var(--fs-s); font-weight:400; color:var(--muted) }
+.rc-h { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 12px; justify-content:space-between; min-width:0 }
+.rc-st { margin:0; display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--fg2); min-width:0 } .rc-st span { overflow-wrap:anywhere }
+.rc-st .rdot { width:8px; height:8px } .rc-st[data-st="on"] .rdot { background:var(--good-mark) } .rc-st[data-st="limited"] .rdot { background:var(--warn-mark) }
+.rc-note { margin:0; font-size:var(--fs-s); color:var(--fg2); text-wrap:pretty } .rc-push { margin:0; font-size:var(--fs-s); font-weight:500; color:var(--fg) }
+.rc-push.on { color:var(--warn) }
+.rc-list { list-style:none; margin:0; padding:0; display:grid; min-width:0 } .rc-coin { display:grid; gap:2px; padding:0 0 8px; min-width:0 }
+.rc-coin + .rc-coin { border-top:1px solid var(--line2) }
+.rc-top { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; min-height:44px; color:var(--fg); min-width:0 } .rc-top:hover, .rc-top:focus-visible { text-decoration:none }
+.rc-top:hover .rc-sym, .rc-top:focus-visible .rc-sym { color:var(--accent) }
+.rc-sym { font-weight:600; flex:0 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.rc-p { font-weight:600; color:var(--accent); font-variant-numeric:tabular-nums }
+.rc-s { margin-left:auto; font-size:var(--fs-xs); white-space:nowrap; padding:2px 8px; border-radius:999px; background:var(--chip); color:var(--fg2) }
+.rc-s.grad { color:var(--good); background:color-mix(in srgb,var(--good-mark) 13%,var(--surface)) } .rc-s.bad { color:var(--bad); background:color-mix(in srgb,var(--bad-mark) 9%,var(--surface)) }
+.rc-s.live { color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,var(--surface)) } .rc-s.muted { color:var(--muted) }
+.rc-n { margin:0; font-size:var(--fs-xs); color:var(--fg2); font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
+.rc-r { margin:0; font-size:var(--fs-xs); font-weight:500; color:var(--fg2) } .rc-r.bad { color:var(--bad) } .rc-r.good { color:var(--good) } .rc-r.muted { color:var(--muted); font-weight:400 }
+details.rc-more > summary, details.rc-by > summary { cursor:pointer; min-height:44px; display:flex; align-items:center; color:var(--accent); font-size:var(--fs-s); font-weight:500 }
+details.rc-more > .rc-list { border-top:1px solid var(--line2) }
+.rc-tab { width:100%; border-collapse:collapse; font-size:var(--fs-s); font-variant-numeric:tabular-nums }
+.rc-tab th, .rc-tab td { padding:5px 6px; border-top:1px solid var(--line2); text-align:right }
+.rc-tab th { border-top:0; font-size:var(--fs-xs); font-weight:500; color:var(--muted); vertical-align:bottom; line-height:1.25; text-transform:none; letter-spacing:0; white-space:normal }
+.rc-tab td { white-space:nowrap; vertical-align:baseline } .rc-tab th:first-child, .rc-tab td:first-child { text-align:left; white-space:normal; padding-left:0; font-weight:500 }
+.rc-by .rc-tab th:nth-child(2), .rc-by .rc-tab td:nth-child(2) { text-align:left; white-space:normal } .rc-tab tr.few td { color:var(--muted) } .rc-tab tr.few td:first-child { font-weight:400 } .rc-tab tr.rc-g td { border-top:2px solid var(--line) }
+@media (min-width:760px) { .rc-list { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:28px } .rc-coin + .rc-coin { border-top:0 }
+  .rc-list > .rc-coin:nth-child(n+3) { border-top:1px solid var(--line2) } .rc-tab { max-width:720px } }
+.rcurve.one { padding:10px 14px } .rc-one { margin:0; font-size:var(--fs-s); color:var(--fg2); overflow-wrap:anywhere } .rc-one b { color:var(--fg); font-weight:600 }
+@media (max-width:420px) { .rcurve { padding:10px 12px } .rc-tab, .rc-tab th { font-size:11px } .rc-tab th, .rc-tab td { padding:4px 2px }
+  .rc-tab th:first-child, .rc-tab td:first-child { padding-left:0 } }
 @media (max-width:560px) { .rstats > div { padding:8px 8px } .rstats b { font-size:20px }
   .rhead { gap:8px } .rpill { width:100% } .rrec th, .rrec td { padding:6px 3px } .rrec .ow { display:none } .rrec td:nth-child(2) { max-width:7ch } .rpat th, .rpat td { padding:4px 3px } }
 @media (prefers-reduced-motion: reduce) { .rpill[data-st="running"] .rdot, .rpill[data-wait] .rdot { animation:none } details.rfold > summary::before { transition:none } }
@@ -876,8 +1260,98 @@ function pat(p){if(!p||typeof p!=='object'||Array.isArray(p))return null;var o=n
 function dur(m){return !isn(m)?'?':m<60?Math.max(0,Math.floor(m))+' min':m<2880?Math.floor(m/60)+' h':Math.floor(m/1440)+' days';}
 function p0(v){return isn(v)?Math.round(100*v)+'%':'?';}
 function eur(v){return (v<0?'−':v>0?'+':'')+Math.abs(v).toFixed(2)+' €';}
+// the curve watch's block (page_radar.clean_curve and curve_view, word for word): the strings' rule (CV.ctrl as spaces, a cut in UTF-16 units
+// without a half emoji, CV.blank trimmed), the whitelist's parts, and the view's numbers in whole-number arithmetic (no toFixed rounding)
+var CV=__CURVE__,CCC=new RegExp('['+CV.ctrl+']','g'),CTB=new RegExp('^['+CV.blank+']+|['+CV.blank+']+$','g'),CID=/^(60|75|90)m?$/;
+function cstr(v,n){return typeof v!=='string'?'':v.replace(CCC,' ').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g,function(m){return m.length===2?m:' ';})
+  .slice(0,n).replace(/[\uD800-\uDBFF]$/,'').replace(CTB,'');}
+function cnums(d,ks){var o={};ks.forEach(function(k){o[k]=num(d[k]);});return o;}
+function isObj(v){return !!v&&typeof v==='object'&&!Array.isArray(v);}
+function cbool(d,k){return typeof d[k]==='boolean'?d[k]:null;}
+function cchips(v){var out=[];(Array.isArray(v)?v:[]).forEach(function(x){if(Array.isArray(x)&&x.length>=2&&LV.indexOf(x[0])>=0&&typeof x[1]==='string'){var s=cstr(x[1],60);if(s)out.push([x[0],s]);}});return out.slice(0,3);}
+function crec(r){if(!isObj(r)||typeof r.mint!=='string'||!B58.test(r.mint)||CV.thr.indexOf(r.thr)<0||ms(r.t)==null)return null;
+  var o=obj(r.out),x={mint:r.mint,sym:cstr(r.sym,24),thr:r.thr,t:ms(r.t)};['prog','mcu','mcs','age','pts','buys','sells'].forEach(function(k){x[k]=num(r[k]);});
+  x.mom=cbool(r,'mom');x.v=CV.v.indexOf(r.v)>=0?r.v:'unknown';x.chips=cchips(r.chips);x.push=ms(r.push);
+  x.out={grad:ms(o.grad),gradMin:num(o.gradMin),x60:num(o.x60),peak:num(o.peak),rug:cbool(o,'rug'),x2:cbool(o,'x2'),eur:num(o.eur),how:CV.how.indexOf(o.how)>=0?o.how:'',miss:o.miss===true,
+    done:o.done===true};
+  return x;}
+function cvar(r){if(!isObj(r)||typeof r.id!=='string'||!CID.test(r.id))return null;
+  var by=obj(r.by),x={id:r.id,thr:parseInt(r.id.slice(0,2),10),mom:/m$/.test(r.id)};['n','nS','rug','x2','eur','grad','gradMin','miss','unseen'].forEach(function(k){x[k]=num(r[k]);});
+  x.by={};CV.v.forEach(function(v){if(isObj(by[v]))x.by[v]=cnums(by[v],['n','nS','rug','x2','eur']);});return x;}
+function cint(v){return isn(v)&&v>=0&&v<CV.big?Math.floor(v):null;}
+function cpct(v){return isn(v)&&v>=0&&v<=1?Math.floor(100*v+0.5)+'%':'–';}
+function cmoney(v,sign,bare){if(!isn(v)||Math.abs(v)>=CV.big)return '–';var c=Math.floor(Math.abs(v)*100+0.5),w=Math.floor(c/100),f=c%100;
+  return (sign&&c?(v<0?'−':'+'):'')+(!sign&&f===0?String(w):w+'.'+(f<10?'0':'')+f)+(bare?'':'\u00a0€');}
+function cx(v){if(!isn(v)||!(v>=0&&v<CV.big))return '–';if(v>=10)return Math.floor(v+0.5)+'x';var c=Math.floor(v*100+0.5),f=c%100;return Math.floor(c/100)+'.'+(f<10?'0':'')+f+'x';}
+function cusd(v){if(!isn(v)||!(v>=0&&v<1e12))return '';var d=Math.floor(v+0.5),k=Math.floor(v/1e3+0.5),m;if(d<1000)return '$'+d;if(k<1000)return '$'+k+'k';
+  m=Math.floor(v/1e5+0.5);return '$'+Math.floor(m/10)+(m%10?'.'+(m%10):'')+'M';}
+function cage(a){if(!isn(a)||!(a>=0&&a<CV.big))return 'mint time unknown';var m=Math.floor(a);if(m<1)return 'under 1 min after mint';if(m<60)return m+' min after mint';
+  if(m<2880)return (m%60?Math.floor(m/60)+' h '+(m%60)+' min':Math.floor(m/60)+' h')+' after mint';return Math.floor(m/1440)+' days after mint';}
+function cand(xs){return xs.length===1?xs[0]:xs.length?xs.slice(0,-1).join(', ')+' and '+xs[xs.length-1]:'';}
+function cvlabel(id){return id.slice(0,2)+'%'+(/m$/.test(id)?' rising':'');}
+function cstatus(o,t,now,seen){if(o.grad!=null){var gm=o.gradMin;if(gm==null||!(gm>=0&&gm<CV.big))return ['grad','graduated'];var m=Math.floor(gm+0.5);return ['grad',m<1?'graduated within a minute':'graduated after '+m+' min'];}
+  if(o.done)return ['grad','graduated'];if(o.how==='dead'||o.how==='gone')return ['bad','dead'];if(o.x60!=null)return ['muted','did not graduate'];
+  seen=seen==null?now:Math.min(now,seen);if(!o.miss&&seen-t>=CV.value)return ['muted','did not graduate'];
+  if(o.miss||now-t>=CV.value)return ['muted','not watched to the end'];return ['live','still on the curve'];}
+function cresult(o){if(o.rug===true)return ['bad',o.x2===true?'doubled, then rugged in 1 h':'rugged in 1 h'];if(o.x2===true)return ['good','doubled in 1 h'];
+  if(o.x60!=null)return ['','1 h: '+cx(o.x60)];if(o.miss)return ['muted','no 1 h value'];return null;}
+function crow(label,s,extra,greens){var n=cint(s.n),ns=cint(s.nS),few=ns==null||ns<CV.few,bits=[],gm=num(s.gradMin),miss=cint(s.miss),uns=cint(s.unseen);
+  if(n!=null)bits.push(n+(greens?' coin':' call')+(n===1?'':'s'));if(ns!=null)bits.push(ns+' with a 1 h value');
+  if(gm!=null&&gm>=0&&gm<CV.big)bits.push('graduated a median '+Math.floor(gm+0.5)+' min after the call');if(miss)bits.push(miss+' without a 1 h value');
+  if(uns)bits.push(uns+' whose hour nobody saw (not in graduated)');
+  return {cls:[greens?'rc-g':'',few?'few':''].filter(Boolean).join(' '),cells:[label].concat(extra(n),[cpct(s.rug),cpct(s.x2),cmoney(s.eur,true,true)]),
+    title:(greens?"the radar's green coins first rated in the same hours, judged 1 h later by the same rules: ":'')+bits.join(', ')};}
 var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000,HOUR:3600000,DONE_GRACE:1800000,FRESH:900000,ROUND:180000,SB_DONE:300000,SB_ROUND:60000,KICK:480000,LEAVE:30000,RESERVE:10,GH_MIN:150000,GH_OFFICE:300000,IDLE:600000,SB_FRESH:20000,SB_STALE:60000,SB_OTHER:300000,SB_APP:150000,
   TIMEOUT:20000,SB_TIMEOUT:8000,SB_RETRY:120000,LAG:120000,SHOWN:4,CARD:3,PHONE:2,LONG:28,RECENT:10800000,TOO_FEW:20,SCAN_LEN:2700000,PAT_ROWS:3,
+  // radar.json's curve block as the page may show it, or null (page_radar.clean_curve: the same keys, the same cuts)
+  cleanCurve:function(cv){if(!isObj(cv)||ms(cv.t)==null)return null;
+    var hs=obj(cv.hosts),ps=obj(cv.push),lst=function(k){return Array.isArray(cv[k])?cv[k]:[];},o={v:num(cv.v),t:ms(cv.t),state:CV.states.indexOf(cv.state)>=0?cv.state:'off',why:cstr(cv.why,160),since:ms(cv.since)};
+    ['hours','ticket','slip','momPts','calls','late','follow','cand','trades','polls','sol'].forEach(function(k){o[k]=num(cv[k]);});
+    o.thresholds=lst('thresholds').filter(function(x){return CV.thr.indexOf(x)>=0;}).slice(0,3);
+    o.hosts={};CV.hosts.forEach(function(k){if(typeof hs[k]==='string'&&/^[a-z]{1,12}$/.test(hs[k]))o.hosts[k]=hs[k];});
+    o.push={variant:typeof ps.variant==='string'&&CID.test(ps.variant)?ps.variant:null,verdicts:(Array.isArray(ps.verdicts)?ps.verdicts:[]).filter(function(x){return ['ok','risky','unknown'].indexOf(x)>=0;}).slice(0,3),
+      perH:num(ps.perH),sent1h:num(ps.sent1h)};
+    o.calib=isObj(cv.calib)?cnums(cv.calib,['n','mcSol','prog','scale','expect']):null;o.greens=isObj(cv.greens)?cnums(cv.greens,['n','nS','rug','x2','eur','grad']):null;
+    o.recent=lst('recent').map(function(r){return crec(r);}).filter(Boolean).slice(0,CV.recent);o.variants=lst('variants').map(function(r){return cvar(r);}).filter(Boolean).slice(0,6);
+    return o;},
+  // what the New tab shows of a whitelisted curve block at the time now (page_radar.curve_view says the same at build time): null without a block,
+  // {state, head, one: true} without a call, else the head line, the two sentences, the coins (newest call per coin), the tables and the footnote
+  curveView:function(cv,now){if(!isObj(cv))return null;
+    var st=CV.states.indexOf(cv.state)>=0?cv.state:'off',fol=cint(cv.follow),hrs=cint(cv.hours),calls=cint(cv.calls),late=cint(cv.late),head='Curve watch '+st;
+    if(st==='on')head+=(fol!=null?[fol+' coin'+(fol===1?'':'s')+' followed']:[]).concat(hrs?[hrs+' h watched']:[]).map(function(b){return ' · '+b;}).join('');
+    else if(cv.why)head+=': '+cv.why;
+    var recent=Array.isArray(cv.recent)?cv.recent:[];
+    if(!recent.length&&!calls)return {state:st,head:head,one:true};
+    var tk=num(cv.ticket),sl=num(cv.slip),mp=num(cv.momPts),tks=cmoney(tk!=null&&tk>0&&tk<1e6?tk:3,false);
+    sl=sl!=null&&sl>=0&&sl<1?sl:0.05;mp=mp!=null&&mp>0&&mp<=100?mp:10;
+    var thr=(Array.isArray(cv.thresholds)&&cv.thresholds.length?cv.thresholds:CV.thr).map(function(x){return String(x);});
+    var note='Paper test: the radar calls pump.fun coins still on their bonding curve, before the pool opens, at '+cand(thr)+'% of the curve sold, to find out '+
+      'whether an earlier call helps. Each call is judged 1 h later with '+tks+' on paper and '+Math.floor(100*sl+0.5)+"% slippage, beside the radar's greens of the same hours.";
+    var ps=obj(cv.push),vr=typeof ps.variant==='string'&&CID.test(ps.variant)?ps.variant:null,push;
+    if(vr){var vs=(Array.isArray(ps.verdicts)?ps.verdicts:[]).filter(function(v){return CV.v.indexOf(v)>=0;}).map(function(v){return CV.vw[v][1];}),ph=cint(ps.perH);
+      push='Curve pushes are on for the '+cvlabel(vr)+' calls'+(vs.length?' (quick check: '+vs.join(' or ')+')':'')+(ph!=null?', at most '+ph+' an hour':'')+'.';}
+    else push='No curve push goes out while the switch is off.';
+    var groups=[];
+    recent.forEach(function(r){var g=null;for(var i=0;i<groups.length;i++)if(groups[i].r.mint===r.mint){g=groups[i];break;}
+      if(!g){groups.push({r:r,thr:[r.thr]});return;}if(g.thr.indexOf(r.thr)<0)g.thr.push(r.thr);if(r.t>g.r.t)g.r=r;});
+    groups.sort(function(a,b){return b.r.t-a.r.t;});
+    var coins=groups.map(function(g){var r=g.r,o=r.out,p=num(r.prog),s=num(r.mcs),mc=cusd(r.mcu)||(s!=null&&s>=0&&s<CV.big?Math.floor(s+0.5)+' SOL':'unknown'),vw=CV.vw[r.v]||CV.vw.unknown;
+      var nums=[cage(r.age),'market cap '+mc,'called at '+cand(g.thr.slice().sort(function(a,b){return a-b;}).map(function(x){return String(x);}))+'%'].concat(r.push?['sent to the phone']:[]);
+      return {mint:r.mint,sym:r.sym||'?',prog:p!=null&&p>=0&&p<=100?Math.floor(p+0.5)+'%':'?',nums:nums.join(' · '),
+        line:[[vw[0],vw[1]]].concat((r.chips||[]).map(function(x){return [x[0],x[1]];})),st:cstatus(o,r.t,now,ms(cv.t)),res:cresult(o)};});
+    var count=function(n){return [n!=null?String(n):'–'];},vars=Array.isArray(cv.variants)?cv.variants:[],by=[];
+    var rows=vars.map(function(v){return crow(cvlabel(v.id),v,function(n){return count(n).concat([cpct(v.grad)]);});});
+    if(isObj(cv.greens))rows.push(crow('radar greens',cv.greens,function(n){return count(n).concat(['–']);},true));
+    vars.forEach(function(v){CV.v.forEach(function(k){var b=isObj(v.by)?v.by[k]:null;if(isObj(b)&&cint(b.n))by.push(crow(cvlabel(v.id),b,function(n){return [CV.vw[k][1]].concat(count(n));}));});});
+    var foot=['Rising: '+Math.floor(mp+0.5)+' or more points of the curve in the 5 minutes before the call, and more purchases than sales.',
+      'Rugged, doubled and paper: of the calls with a 1 h value; graduated: of the calls an hour old whose hour was seen. Rugged: gone, dead or '+
+      'worth 0.1x or less at 1 h; doubled: 2x to 30x within the hour and not gone or dead at 1 h; the greens by the same rules. Quick check: as '+
+      'known at the call, or the first one within '+CV.late+' s after it (then counted from that moment\'s price). Grey: under '+CV.few+' calls with a 1 h value, '+
+      'too few to tell.'];
+    if(late)foot.push(late+' time'+(late===1?'':'s')+' a trading coin was first seen already past a mark, so no call was made.');
+    var cb=obj(cv.calib),cn=cint(cb.n),cp=num(cb.prog);
+    if(cn&&cp!=null&&cp>=0&&cp<1000)foot.push('Progress check: at the last trade before '+cn+' graduation'+(cn===1?'':'s')+' the curve read '+Math.floor(cp+0.5)+'% sold (about 100% is right).');
+    return {state:st,head:head,one:false,note:note,push:push,pushOn:!!vr,coins:coins.slice(0,CV.shown),more:coins.slice(CV.shown),ticket:tks,rows:rows,by:by,foot:foot.join(' ')};},
   // radar.json as the page may show it, or null (SPEC Appendix A: every key whitelisted, numbers finite, strings cut, addresses base58)
   clean:function(d){
     if(!d||typeof d!=='object'||d.kind!=='radar'||ms(d.t)==null)return null;
@@ -899,6 +1373,7 @@ var R=window.MemebotRadar={CYCLE:150000,CYCLE_MAX:600000,GRACE:60000,LATE:900000
       o.record={calls:num(rd.calls),rug:num(rd.rug),win:num(rd.win),eur:num(rd.eur),n60:num(rd.n60),ticket:num(rd.ticket),ci:{rug:pr(ci.rug),win:pr(ci.win)}};}
     if(rd){o.record.mom=nums(rd.mom,['calls','n60','rug','win']);o.record.all=nums(rd.all,['n60','rug','win']);o.record.pat=pat(rd.pat);o.record.known=nums(rd.known,['n','rug','win']);}
     Object.keys(hs).slice(0,12).forEach(function(k){if(HN.test(k)&&typeof hs[k]==='string')o.hosts[k]=str(hs[k],16);});
+    o.curve=R.cleanCurve(d.curve);     // the curve watch's paper test (About to graduate)
     var sr=obj(d.src);o.src={};Object.keys(sr).slice(0,12).forEach(function(k){var v=sr[k];if(/^[a-z][A-Za-z0-9:_-]{0,23}$/.test(k)&&isn(v)&&Math.floor(v)===v&&v>=0&&v<=100000)o.src[k]=v;});
     return o;},
   // how old the doc is (ms), from its own t: the local time since it was first seen (got), plus the delay it was seen with once a newer
@@ -1111,8 +1586,33 @@ function go(){
     else if(st==='hours')t='Radar sleeping'+(isn(d.next)?' · next start '+hhmm(d.next):'');
     else t='Radar not started yet';
     if(S.via==='raw'&&d)t+=' · slower copy, as of '+hhmm(+d.t);return t;}
+  // the curve watch's section under the list (page_radar.curve_inner builds the same elements): redrawn when its view changes (a new doc, or a
+  // status moving on with the doc's age), its folds kept open across a redraw
+  var cvKey=null;
+  function ctable(head,rows){var w=el('div','rrec-w'),t=el('table','rc-tab'),th=el('thead'),hr=el('tr'),tb=el('tbody');
+    head.forEach(function(h){hr.appendChild(el('th','',h));});th.appendChild(hr);t.appendChild(th);
+    rows.forEach(function(r){var tr=el('tr',r.cls);tr.title=r.title;r.cells.forEach(function(c){tr.appendChild(el('td','',c));});tb.appendChild(tr);});t.appendChild(tb);w.appendChild(t);return w;}
+  function ccoin(c){var li=el('li','rc-coin'),a=el('a','rc-top');a.href='https://pump.fun/coin/'+c.mint;a.target='_blank';a.rel='noopener noreferrer';
+    a.appendChild(el('span','rc-sym',c.sym));a.appendChild(el('span','rc-p',c.prog));a.appendChild(el('span','rc-s'+(c.st[0]?' '+c.st[0]:''),c.st[1]));li.appendChild(a);
+    li.appendChild(el('p','rc-n',c.nums));li.appendChild(lineEl(c.line,CV.line));if(c.res)li.appendChild(el('p','rc-r'+(c.res[0]?' '+c.res[0]:''),c.res[1]));return li;}
+  function curveDraw(n){var box=$('[data-r-curve]');if(!box)return;
+    var d=S.doc,v=d&&d.curve?R.curveView(d.curve,srvNow(n)):null,k=JSON.stringify(v);if(k===cvKey)return;cvKey=k;
+    var open={};Array.prototype.forEach.call(box.querySelectorAll('details[data-cf]'),function(x){open[x.getAttribute('data-cf')]=x.open;});
+    box.className='rcurve'+(v&&v.one?' one':'');box.hidden=!v;box.textContent='';if(!v)return;
+    if(v.one){var p1=el('p','rc-one');p1.appendChild(el('b','','About to graduate (paper test):'));p1.appendChild(document.createTextNode(' no call yet · '+v.head));box.appendChild(p1);return;}
+    var hd=el('div','rc-h'),h3=el('h3','','About to graduate '),st=el('p','rc-st');h3.appendChild(el('small','','(paper test)'));st.setAttribute('data-st',v.state);
+    st.appendChild(el('i','rdot'));st.appendChild(el('span','',v.head));hd.appendChild(h3);hd.appendChild(st);box.appendChild(hd);
+    box.appendChild(el('p','rc-note',v.note));box.appendChild(el('p','rc-push'+(v.pushOn?' on':''),v.push));
+    if(v.coins.length){var ol=el('ol','rc-list');v.coins.forEach(function(c){ol.appendChild(ccoin(c));});box.appendChild(ol);}
+    if(v.more.length){var dm=el('details','rc-more'),ol2=el('ol','rc-list');dm.setAttribute('data-cf','more');dm.appendChild(el('summary','',v.more.length+' more coin'+(v.more.length===1?'':'s')));
+      v.more.forEach(function(c){ol2.appendChild(ccoin(c));});dm.appendChild(ol2);if(open.more)dm.open=true;box.appendChild(dm);}
+    if(v.rows.length)box.appendChild(ctable(['','calls','graduated','rugged in 1 h','doubled in 1 h','paper per '+v.ticket],v.rows));
+    box.appendChild(el('p','tnote',v.foot));
+    if(v.by.length){var db=el('details','rc-by');db.setAttribute('data-cf','by');db.appendChild(el('summary','','Split by the quick check'));
+      db.appendChild(ctable(['','quick check','calls','rugged in 1 h','doubled in 1 h','paper per '+v.ticket],v.by));if(open.by)db.open=true;box.appendChild(db);}}
   function draw(){
     var n=now(),st=R.radarState(S.doc,n,S.got,S.moved),d=S.doc,docAge=d?R.age(d,n,S.got,S.moved):0,live=fresh(st,n),kw=kicking(),k=[d?d.t:0,st,live,S.via,nextW(st,n),kw].join('|');   // the next words too: the office follows once its time has passed
+    try{curveDraw(n);}catch(e){}     // the curve section on its own key: a status that moves on with the doc's age redraws it alone
     var p=$('[data-r-pill]');if(p){p.setAttribute('data-st',st);if(st==='done'&&d.state==='degraded')p.setAttribute('data-err','');else p.removeAttribute('data-err');
       if(kw)p.setAttribute('data-wait','');else p.removeAttribute('data-wait');setText($('[data-r-pill-t]'),pill(st));}
     if(startA)startA.className='rbtn'+(st==='running'?' quiet':'');    // a tap while a loop runs only queues a run; between rounds Start is one more round
@@ -1228,4 +1728,6 @@ function go(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
 })();
-""".replace("__INFO__", json.dumps(INFO_TEXT)).replace("__LABELS__", json.dumps(LABELS)).replace("__UNKNOWN__", json.dumps(UNKNOWN)).replace("__SKEYS__", json.dumps(SKEYS)).replace("__MEASURED__", json.dumps(MEASURED_NOTE))
+""".replace("__CURVE__", json.dumps({"thr": list(CURVE_THR), "v": list(CURVE_V), "vw": CURVE_VW, "how": list(CURVE_HOW), "states": list(CURVE_STATES), "hosts": list(CURVE_HOSTS),
+                                    "ctrl": CURVE_CTRL, "blank": CURVE_BLANK, "recent": CURVE_RECENT, "shown": CURVE_SHOWN, "line": CURVE_LINE, "few": CURVE_FEW,
+                                    "value": CURVE_VALUE_MS, "big": CURVE_BIG, "late": CURVE_LATE_S})).replace("__INFO__", json.dumps(INFO_TEXT)).replace("__LABELS__", json.dumps(LABELS)).replace("__UNKNOWN__", json.dumps(UNKNOWN)).replace("__SKEYS__", json.dumps(SKEYS)).replace("__MEASURED__", json.dumps(MEASURED_NOTE))

@@ -7,7 +7,10 @@ here reaches out.
   checks(check, sleep=None)        the same from selftest.py's main (sleep: a real time.sleep while these checks run)
 
 F1 events (parsing, frames, shapes), F2 one connection and its limits, F3 bounded memory, F4 Radar.idle and the loop's grid, F5
-ds_asks, F6 radar runs with the feed (selftest_radar's mock and helpers), F7 radar.yml, the probe and the imports.
+ds_asks, F6 radar runs with the feed (selftest_radar's mock and helpers), F7 radar.yml, the probe and the imports, F8 the curve watch's
+trade subscriptions (subscribeTokenTrade / unsubscribeTokenTrade on the same socket, again after a reconnect, at most FOLLOW_MAX), the
+trades' shape check, the field names logged once per kind, the bounded trade queue; F9 Radar.idle with the fast lane; F10 a server that
+refuses the trade subscriptions (trades off, the graduations go on).
 """
 import ast, base64, contextlib, hashlib, json, os, re, shutil, socket, struct, sys, tempfile, threading, time
 
@@ -40,6 +43,13 @@ def create(m, name="Dog Coin", creator=None, **kw):
 
 def migrate(m, **kw):
     return dict({"signature": "4" * 88, "mint": m, "txType": "migrate", "pool": "pump-amm"}, **kw)
+
+
+def trade_msg(m, side="buy", **kw):
+    """A trade message as PumpPortal documents it (its names unverified until the first live run logs them)."""
+    return dict({"signature": "3" * 88, "mint": m, "traderPublicKey": mint(950, ""), "txType": side, "tokenAmount": 1.2e6, "solAmount": 0.4,
+                 "newTokenBalance": 1.2e6, "bondingCurveKey": mint(951, ""), "vTokensInBondingCurve": 4.8e8, "vSolInBondingCurve": 67.0,
+                 "marketCapSol": 139.6, "pool": "pump"}, **kw)
 
 
 def raw(tmp, rd, k):
@@ -272,6 +282,10 @@ def checks(check, sleep=None):
         f5_asks(check, tmp)
         f6_runs(check, tmp)
         f7_static(check)
+        with patched(RF, BACKOFF_S=(0.2, 0.2, 0.3, 0.3, 0.3), READ_TIMEOUT_S=0.2, SUB_EVERY_S=0.2):
+            f8_trades(check)
+            f10_refused(check)
+        f9_fast_idle(check, tmp)
     finally:
         time.sleep = old_sleep
         shutil.rmtree(tmp, ignore_errors=True)
@@ -466,6 +480,7 @@ def f4_idle(check, tmp):
         R.clock = StubClock(start, fake)
         R.live = StubFeed(evs, R.clock)
         R.cyc_at, R.early = cyc_at, list(early)
+        R.fast_on = R.curve_on = False           # the early cycle on its own (the fast lane and the curve watch: F8)
         return R.idle(t_k), R
     with patched(LR, LIVE_DEBOUNCE_MS=500, LIVE_MIN_GAP_MS=1000, LIVE_LEAD_MS=2000):
         t_a, R_a = idle([(B + 300, "migrate", m1)], B, B, B + 6000)
@@ -492,6 +507,7 @@ def f4_idle(check, tmp):
 
         R = SR.unit_radar(T, P, tmp, "rdL", extra=["--minutes", "1"])
         R.clock, R.step, R.hours = StubClock(B), 6000, (0, 24)
+        R.fast_on = R.curve_on = False
         cycles = []
         R.start = R.save_cache = lambda: None
         R.cycle = lambda k, t_k, last: cycles.append((k, t_k, R.cyc_at)) or "ok"
@@ -615,10 +631,13 @@ def f7_static(check):
             mods |= {a.name.split(".")[0] for a in n.names}
         elif isinstance(n, ast.ImportFrom):
             mods.add((n.module or "").split(".")[0])
+    methods = set(re.findall(r'"method":\s*"(\w+)"', src))
     check(mods <= STDLIB and [s["method"] for s in RF.SUBS] == ["subscribeNewToken", "subscribeMigration"]
-          and not re.search(r"subscribeTokenTrade|subscribeAccountTrade|api/trade|trade-local|sendTransaction|privateKey|api-key", src),
-          "radar_feed.py imports only the standard library (%s) and subscribes to new coins and graduations only: no trade, no key, "
-          "nothing signed or sent" % ", ".join(sorted(mods)))
+          and methods == {"subscribeNewToken", "subscribeMigration", "subscribeTokenTrade", "unsubscribeTokenTrade"}
+          and not re.search(r"subscribeAccountTrade|api/trade|trade-local|sendTransaction|privateKey|api-key|apiKey|secret", src),
+          "radar_feed.py imports only the standard library (%s); it subscribes to new coins and graduations, and to the trades of the coins "
+          "the curve watch follows (subscribeTokenTrade / unsubscribeTokenTrade, data only): no account feed, no trade API, no key, "
+          "nothing signed or sent (%s)" % (", ".join(sorted(mods)), ", ".join(sorted(methods))))
     tree = ast.parse(open(os.path.join(HERE, "launch_radar.py"), encoding="utf-8").read())
     where = [fn.name for fn in ast.walk(tree) if isinstance(fn, ast.FunctionDef) for n in ast.walk(fn)
              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "live_start"]
@@ -635,6 +654,205 @@ def f7_static(check):
           and doc["kinds"]["create"]["lagS"] is None and not any(g in text for g in good + [mint(900, ""), mint(901, "")]) and out[-1].startswith("PROBE_FEED {"),
           "the probe prints the state, the counts, the field names and the lag per kind (%s s for graduations), never an address"
           % doc["kinds"]["migrate"]["lagS"])
+
+
+def f8_trades(check):
+    print("== live feed F8: the curve watch's trade subscriptions on the same socket, the trades' shape check")
+    good = [mint(40 + i) for i in range(45)]
+    conns = []
+
+    def go(conn):
+        acks(conn)
+        conns.append(conn)
+        conn.idle()
+    st = Stand(every(go))
+    f = RF.LiveFeed(st.url).start()
+    wait_for(lambda: conns and len(st.subs) >= 2, 3)
+    took = f.follow([good[0], good[1], "0OIl" * 11, good[0], None])
+    wait_for(lambda: any(x[1].get("method") == "subscribeTokenTrade" for x in st.subs), 3)
+    conns[0].send(create(good[5]))
+    for m in (trade_msg(good[0]), trade_msg(good[44]), trade_msg(good[1], "sell", pool="pump-amm", traderPublicKey="nope"), {"txType": "buy", "mint": good[0], "solAmount": "x"}):
+        conns[0].send(m)
+    wait_for(lambda: f.stats()["trades"] >= 2 and f.stats()["tbad"] >= 1, 3)
+    got = f.take_trades()
+    lines = f.lines()
+    subs1 = [x[1] for x in st.subs if x[1].get("method", "").endswith("TokenTrade")]
+    check(took == [good[0], good[1]] and subs1 == [{"method": "subscribeTokenTrade", "keys": sorted(good[:2])}] and all(x[2] for x in st.subs) and st.conns == 1
+          and [(e["mint"], e["side"]) for e in got] == [(good[0], "buy"), (good[1], "sell")]
+          and got[0] == {"mint": good[0], "t": got[0]["t"], "side": "buy", "sol": 0.4, "tok": 1.2e6, "vsol": 67.0, "vtok": 4.8e8, "mcs": 139.6, "who": mint(950, ""), "pool": "pump"}
+          and got[1]["who"] is None and got[1]["pool"] == "pump-amm" and f.stats()["tbad"] == 1 and f.trade_state()["shape"] is True,
+          "follow(): one subscribeTokenTrade with the base58 mints on the SAME socket (masked, no second connection); the trades of a followed coin "
+          "come out with their numbers, the trader (base58 or none) and the pool; a coin not followed and a trade without a SOL amount are dropped")
+    named = [l for l in lines if l.startswith("first ")]
+    check(sorted(l.split(" message")[0] for l in named) == ["first buy", "first create", "first sell"] and any("fields bondingCurveKey, marketCapSol, mint" in l for l in named)
+          and not any(m in l for l in lines for m in good + [mint(950, ""), mint(951, "")]) and not any(re.search(r"\b(139\.6|67\.0|0\.4)\b", l) for l in named),
+          "the field NAMES of the first message of each kind are logged once, never a value or an address: %s" % named[0][:120])
+    f.follow([good[1], good[2]])
+    wait_for(lambda: any(x[1].get("method") == "unsubscribeTokenTrade" for x in st.subs), 3)
+    f.follow(good)
+    wait_for(lambda: f.trade_state()["subbed"] == RF.FOLLOW_MAX, 3)
+    subs2 = [x[1] for x in st.subs if x[1].get("method", "").endswith("TokenTrade")][1:]
+    now_sub = set(good[:2])
+    for x in subs2:
+        now_sub = (now_sub | set(x["keys"])) if x["method"] == "subscribeTokenTrade" else (now_sub - set(x["keys"]))
+    check(subs2[:2] == [{"method": "unsubscribeTokenTrade", "keys": [good[0]]}, {"method": "subscribeTokenTrade", "keys": [good[2]]}]
+          and f.trade_state()["subbed"] == RF.FOLLOW_MAX == 40 and now_sub == set(good[:40]) and len(subs2) == 3,
+          "a coin that drops out is unsubscribed (unsubscribeTokenTrade with its mint only), a new one subscribed; 45 coins asked: the first %d "
+          "only" % RF.FOLLOW_MAX)
+    n_sub = len(st.subs)
+    conns[0].c.shutdown(socket.SHUT_RDWR)
+    wait_for(lambda: len(conns) >= 2 and len([x for x in st.subs[n_sub:] if x[1].get("method") == "subscribeTokenTrade"]) >= 1, 5)
+    again = [x for x in st.subs[n_sub:] if x[0] is (conns[1] if len(conns) > 1 else None)]
+    check(len(conns) == 2 and st.most == 1 and [x[1]["method"] for x in again][:3] == ["subscribeNewToken", "subscribeMigration", "subscribeTokenTrade"]
+          and len(again[2][1]["keys"]) == 40,
+          "after a reconnect (one socket at a time) the new socket gets both feeds and every followed coin again in one subscribeTokenTrade")
+    f.stop()
+    st.close()
+
+    bad_first = [trade_msg(good[0], vTokensInBondingCurve=None, marketCapSol=None), trade_msg(good[0])]
+    conns2 = []
+
+    def go2(conn):
+        acks(conn)
+        conns2.append(conn)
+        wait_for(lambda: any(x[0] is conn and x[1].get("method") == "subscribeTokenTrade" for x in st2.subs), 3)
+        for m in bad_first:
+            conn.send(m)
+        conn.idle()
+    st2 = Stand(every(go2))
+    f2 = RF.LiveFeed(st2.url).start()
+    f2.follow(good[:3])
+    wait_for(lambda: any(x[1].get("method") == "unsubscribeTokenTrade" for x in st2.subs), 4)
+    lines2 = f2.lines()
+    check(f2.take_trades() == [] and f2.trade_state()["shape"] is False and f2.follow(good[:3]) == [] and f2.state() in ("ok", "limited")
+          and sum("trades are ignored" in l for l in lines2) == 1 and f2.stats()["tbad"] == 2
+          and [x[1] for x in st2.subs if x[1].get("method") == "unsubscribeTokenTrade"] == [{"method": "unsubscribeTokenTrade", "keys": sorted(good[:3])}],
+          "the first trade without the curve's state (no virtual token reserves, no market cap in SOL): trades are ignored for the run, said "
+          "once, every trade subscription dropped, follow() takes nothing more; graduations and new coins go on (state %s)" % f2.state())
+    f2.stop()
+    st2.close()
+    with patched(RF, TRADES_MAX=100):
+        f3 = RF.LiveFeed(None, lambda: 5)
+        f3.want = {good[0]}
+        for i in range(150):
+            f3.handle(json.dumps(trade_msg(good[0], solAmount=float(i))))
+        q, n3 = list(f3.trades), f3.stats()
+    check(len(q) == 100 and q[0]["sol"] == 50.0 and n3["trades"] == 150 and n3["tdropped"] == 50 and f3.th is None,
+          "the trades waiting are bounded (TRADES_MAX): the oldest go first and are counted (%d dropped)" % n3["tdropped"])
+
+
+def f10_refused(check):
+    """A server that refuses the trade subscriptions (whether PumpPortal takes them keyless is unprobed): it drops the socket right after a
+    subscribeTokenTrade, or answers it with an error. Two of these turn trades off for the run; later sockets ask for the new coins and the
+    graduations only, so the migrate feed keeps its connections (MAX_CONNECTS) and flows on."""
+    print("== live feed F10: a server that refuses the trade subscriptions (the graduations go on)")
+    good = [mint(80 + i) for i in range(12)]
+    conns = []
+
+    def drop_after_sub(i):
+        def go(conn):
+            acks(conn)
+            conns.append(conn)
+            if i >= 2:
+                conn.send(migrate(good[9]))
+                return conn.idle()
+            wait_for(lambda: any(x[0] is conn and x[1].get("method") == "subscribeTokenTrade" for x in st.subs), 3)
+            conn.send(migrate(good[i]))
+            threading.Event().wait(0.05)
+            conn.c.shutdown(socket.SHUT_RDWR)        # no close frame, as a server-side drop
+        return go
+    st = Stand(drop_after_sub)
+    f = RF.LiveFeed(st.url).start()
+    f.follow(good[1:4])
+    wait_for(lambda: len(conns) >= 3 and f.stats()["migrations"] >= 3, 8)
+    threading.Event().wait(0.6)                      # a few of the thread's ticks: nothing more is asked on the third socket
+    evs, lines, ts = f.take(), f.lines(), f.trade_state()
+    third = [x[1] for x in st.subs if len(conns) > 2 and x[0] is conns[2]]
+    check(ts["off"] and f.stats()["trefused"] == 2 and st.conns == 3 and not f.off and f.state() == "ok" and f.follow(good[1:4]) == []
+          and third == list(RF.SUBS) and sorted(e["mint"] for e in evs if e["kind"] == "migrate") == sorted([good[0], good[1], good[9]])
+          and sum("trades are off for this run" in l for l in lines) == 1,
+          "the socket dropped right after a subscribeTokenTrade twice: trades are off for the run (said once), the third socket asks for the "
+          "new coins and graduations only and the graduations flow on it (%d connections of %d, the feed not given up)" % (st.conns, RF.MAX_CONNECTS))
+    f.stop()
+    st.close()
+    conns2 = []
+
+    def errors_or_trades(i):
+        def go(conn):
+            acks(conn)
+            conns2.append(conn)
+            wait_for(lambda: any(x[0] is conn and x[1].get("method") == "subscribeTokenTrade" for x in st2.subs), 3)
+            conn.send(trade_msg(good[1]) if i == 0 else {"errors": "Invalid message"})
+            if i < 2:
+                threading.Event().wait(0.05)
+                conn.c.shutdown(socket.SHUT_RDWR)
+            else:
+                conn.idle()
+        return go
+    st2 = Stand(errors_or_trades)
+    f2 = RF.LiveFeed(st2.url).start()
+    f2.follow(good[1:4])
+    wait_for(lambda: len(conns2) >= 3 and any(x[0] is conns2[2] and x[1].get("method") == "unsubscribeTokenTrade" for x in st2.subs), 8)
+    ts2 = f2.trade_state()
+    uns = [x[1] for x in st2.subs if len(conns2) > 2 and x[0] is conns2[2] and x[1].get("method") == "unsubscribeTokenTrade"]
+    check(f2.stats()["trefused"] == 2 and ts2["off"] == "an error answered a trade subscription" and st2.conns == 3 and not f2.off
+          and uns == [{"method": "unsubscribeTokenTrade", "keys": sorted(good[1:4])}] and ts2["n"] == 1,
+          "a socket that carried a trade before it was dropped is no refusal; an error answer right after a subscribeTokenTrade is one (once a "
+          "socket, also when the socket is dropped after it); at the second, trades are off and what is subscribed is dropped (%r)" % ts2["off"])
+    f2.stop()
+    st2.close()
+
+
+def f9_fast_idle(check, tmp):
+    import launch_radar as LR
+    import selftest_radar as SR
+    print("== live feed F9: Radar.idle with the fast lane (a stub wall clock; the fast lane itself is selftest_radar R15)")
+    T, P, _ = SR.modules()
+    B = SR.T0
+    m1, m2 = mint(61), mint(62)
+
+    def idle(evs, start, t_k, cyc_at=None, pre=None):
+        R = SR.unit_radar(T, P, tmp, "rdJ")
+        R.clock = StubClock(start)
+        R.live = StubFeed(evs, R.clock)
+        R.cyc_at, R.curve_on = cyc_at if cyc_at is not None else start, False
+        ran = []
+
+        def fake_fast(now, t_k_):
+            ran.append((now, t_k_, sorted(R.fastq)))
+            for a in list(R.fastq):
+                R.fastq[a]["n"] += 1
+                if R.fastq[a]["n"] >= len(LR.FAST_TRIES_MS) or (pre and a in pre):
+                    R.fastq.pop(a)
+                    if pre and a in pre:
+                        R.docs.setdefault("h", {"coins": {}})["coins"][a] = {"addr": a}
+                        R.rec_hour[a] = "h"
+            R.fast_last = now
+        R.fast = fake_fast
+        return R.idle(t_k), R, ran
+    t_a, R_a, ran_a = idle([(B + 300, "migrate", m1)], B, B + 120_000, pre={m1})
+    t_b, R_b, ran_b = idle([(B + 300, "migrate", m2)], B, B + 120_000)
+    check(t_a == B + 120_000 and [r[0] - B for r in ran_a] == [7_000] and R_a.early == []
+          and [r[0] - B for r in ran_b] == [7_000, 15_000, 27_000, 46_000] and t_b == B + 60_000 and R_b.early == [B + 60_000],
+          "a graduation on the feed: the fast lane runs at the first wake 6 s after it (%.1f s) and rates the coin, so no early cycle follows; "
+          "a coin whose pool is never listed is tried at 6, 14, 26 and 45 s, then the early cycle takes it as before (at %d s)"
+          % ((ran_a[0][0] - B - 300) / 1000.0, (t_b - B) // 1000))
+    t_c, R_c, ran_c = idle([(B + 300, "migrate", m1)], B, B + 25_000)
+    with patched(LR, FAST_PER_H=0):
+        t_d, R_d, ran_d = idle([(B + 300, "migrate", m1)], B, B + 120_000)
+    R_e = SR.unit_radar(T, P, tmp, "rdJe")
+    R_e.fast_on = False
+    R_e.live = StubFeed([(B, "migrate", m1)], StubClock(B + 1000))
+    R_e.live_take(B + 1000)
+    check(ran_c == [] and t_c == B + 25_000 and ran_d == [] and R_d.fastq == {} and len(R_d.early) == 1 and R_e.fastq == {} and R_e.mig == {m1: B},
+          "no fast lane when the next round is closer than %d s (the round rates it), none once %d ran this hour (the early cycle does it, "
+          "as before), none switched off (MEMEBOT_RADAR_FAST=off)" % (LR.FAST_LEAD_MS // 1000, LR.FAST_PER_H))
+    with patched(LR, FAST_PER_H=1):
+        t_f, R_f, ran_f = idle([(B + 300, "migrate", m2), (B + 400, "migrate", m1)], B, B + 120_000)
+    check([r[0] - B for r in ran_f] == [7_000, 15_000, 27_000, 46_000] and all(r[2] == [m2] for r in ran_f) and t_f == B + 60_000
+          and R_f.early == [B + 60_000] and len(R_f.fast_at) == 1,
+          "FAST_PER_H counts graduations, not tries: with room for one, the first graduation gets all 4 of its tries (its pool never lists) and "
+          "the second one is never queued, so the early cycle takes it as soon as it may (%d s), not after the first one's tries" % ((t_f - B) // 1000))
 
 
 def main():

@@ -26,6 +26,26 @@ one thread, a cycle 100 s at most; `round` is one cycle per start (125 s at most
      never smaller than the last tree), radar.json to the app's live store (row "radar"); a push notification only for a good coin
      without a holder cluster and without anything unknown, once per coin, at most 4 an hour (its words: the checks it passed, the
      record of earlier green coins once enough have a 1 h outcome, fake money)
+  9. between two cycles (a loop with the live feed only): the FAST LANE. A graduation on the feed (PumpPortal's migrate event) gets its
+     coin rated in a mini-round within about 6-20 s (FAST_TRIES_MS: DexScreener asked 6, 14, 26 and 45 s after the event until its
+     PumpSwap pool is listed) instead of at the next early cycle (at least 20 s after the event and 60 s after the last cycle): only the
+     steps that coin needs (DexScreener for its mint, RugCheck and the mint time, what is left of tier 2 within FAST_DEADLINE_S, the
+     rating), its record's feed.lag (s from the graduation to first sight) and feed.via "fast", radar.json (the last cycle's list with
+     the coin rated in it) to radar-data and the app's row, and a push under the cycle's rules (once per coin, PUSH_PER_H). Its own cap
+     FAST_PER_H graduations an hour; never within FAST_LEAD_MS of a round, and all of it, the notification included, ends PUSH_MARGIN_S
+     before the round (a push whose budget no longer fits is left to the round); a notification app's rate guard skips leaves the coin
+     unmarked for a later cycle or lane; a coin it gives up on gets the early cycle as before. MEMEBOT_RADAR_FAST=off.
+ 10. in the same spare time: the CURVE WATCH (curve_watch.py, the pure logic; MEMEBOT_RADAR_CURVE=off switches it off). pump.fun's coins
+     still on their bonding curve (radar_src.pf_curve: market cap first, 50 a page, every CURVE_LIST_MS) and the cycle's newest coins are
+     its candidates; the best FOLLOW_MAX are followed live (subscribeTokenTrade on the feed's one socket). A coin that crosses 60, 75 or
+     90 % of its curve is called on paper (with and without a momentum filter, split by a quick-check verdict before any pool exists:
+     dev launches, top holders without the curve's own account, RugCheck without its pool risks, the wallet memory, the dev wallet's age,
+     launch snipers, the X link). Each call is judged 60 minutes later (graduated, the pool's or the curve's price, rugged, doubled, a
+     paper result of TICKET EUR) next to the radar's greens of the same hours: db/memecurve/<UTC hour>.json on radar-data (48 h, the same
+     never-shrink guard), radar.json "curve". A curve push goes out only when radar_curve.json names a variant (curvePush, null = off).
+     Every request ends CURVE_LEAD_MS / 2 before the next round, on the watch's own client (radar_src.SideHttp: a 429 or a refusal it
+     hears never cools or gives up a host for the rounds); a failure, a changed answer or a refused trade feed leaves the radar as it is
+     (the block says what is off); the curve calls' never-shrink guard never holds the radar's own files back.
 The radar never starts another run itself: no successor, no keep-alive. Disabling the workflow stops it (a running loop sees it at its
 next cycle: state off; a disabled workflow refuses every start). A VM runs the loop with --no-github.
 
@@ -49,7 +69,7 @@ Secrets come only from the environment: GITHUB_TOKEN (the API), RADAR_URL (the g
 ever printed or written, and git runs without them (child_env). When radar-data exists but cannot be read, nothing is pushed there and
 no notification goes out until a later cycle reads it.
 """
-import argparse, datetime as dt, glob, gzip, importlib, io, json, math, os, re, shutil, subprocess, sys, tarfile, time
+import argparse, collections, datetime as dt, glob, gzip, importlib, io, json, math, os, re, shutil, subprocess, sys, tarfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -114,6 +134,40 @@ LIVE_MIN_GAP_MS = 60_000    # at least this between two cycle starts
 LIVE_LEAD_MS = 30_000       # no early cycle when the grid point is closer than this
 LIVE_EARLY_PER_H = 12       # early cycles at most in a rolling hour
 LIVE_FRESH_MS = 3 * 60_000  # the feed's graduations this recent are asked of DexScreener right after the coins on the radar
+FAST_ENV = "MEMEBOT_RADAR_FAST"     # the fast lane after a graduation on the live feed: on unless 'off' (a loop with the feed only)
+FAST_TRIES_MS = (6_000, 14_000, 26_000, 45_000)   # DexScreener is asked this long after a graduation (a new PumpSwap pool lists within
+                            # seconds); after the fourth try without a pool the early cycle or the next round takes the coin, as before
+FAST_DEADLINE_S = 18.0      # s a fast lane may take (DexScreener, RugCheck, the rating, radar-data, the app's row, a push)
+FAST_LEAD_MS = 25_000       # no fast lane when the grid point is closer than this: it never runs into a round (the round rates the coin)
+FAST_GAP_MS = 8_000         # at least this between two fast lanes
+FAST_PER_H = 30             # graduations the fast lane takes at most in a rolling hour, counted once when queued (each: up to 4 DexScreener
+                            # tries, a RugCheck report, one radar-data push), so with about 20-40 graduations an hour most get one and the
+                            # rate limits hold; one it has no room for gets the early cycle at once
+FAST_RPC_CAP = 4            # Solana RPC calls a fast lane (did the creator sell, one coin)
+FAST_MAX = 10               # graduations one fast lane asks DexScreener about (one request)
+PUSH_MARGIN_S = 2.0         # s: a fast lane or a curve push ends this long before the next round at the latest, its notification included:
+                            # one goes out only when app's whole budget for it (app_budget: the subscriptions' read and the sends) still
+                            # fits, else the coin stays unmarked and the round pushes it
+PUBLISH_MIN_S = 5.0         # s: the least a radar-data push is given (publish's floor)
+CURVE_ENV = "MEMEBOT_RADAR_CURVE"   # the curve watch (curve_watch.py): on unless 'off' (a loop's spare time only)
+CURVE_CFG = os.path.join(HERE, "radar_curve.json")   # its push switch, read at the start: curvePush null (the default) sends nothing
+CURVE_LIST_MS = 30_000      # pump.fun's curve list (complete=false, market cap first, 50 a page) this often
+CURVE_PAGES = 2             # pages a poll at most: the second only when half of the first had no trade for curve_watch.STALE_MS
+CURVE_LEAD_MS = 8_000       # no curve request when the grid point is closer than this: a round never waits for the watch
+CURVE_STEP_S = 5.0          # s one curve request may take
+CURVE_FOLLOW_MS = 5_000     # the coins followed live are set again this often
+CURVE_BUDGET = {"pf": (60_000, 12),          # the watch's own requests per window (ms, at most): pump.fun's frontend allows 60 a minute for
+                "rc": (3_600_000, 60),       # everything (the rounds use about 25 a cycle at most, 2 minutes apart), the list takes 2 to 4
+                "swap": (3_600_000, 60),     # of the 12; RugCheck, swap-api and the RPC stay far under what the rounds leave them
+                "rpc": (3_600_000, 40)}
+CURVE_RC_TTL = 10 * 60_000  # a curve coin's RugCheck report is asked again after this while it is on the curve
+CURVE_SNIPE_MIN = 15.0      # launch trades are read only for a coin minted this recently (older ones have too many trades to reach it)
+CURVE_PUSH_WAIT_MS = 90_000 # a call may get its push this long after it (its checks may still be on the way)
+CURVE_PUSH_PER_H = 3        # curve notifications per rolling hour when switched on (radar_curve.json pushPerH wins, 0 to 10)
+RATE_GUARD_S = 60.0         # s: app.notify's least gap between two notifications of one kind (KINDS' radar and curve; app_gap reads it): a
+                            # notification its rate guard skipped leaves the coin unmarked, and none is tried before the gap is over
+CURVE_PUSHED_MS = 7 * 86_400_000   # curvepushed.json keeps a coin this long
+CURVE_FAILS = 5             # curve ticks failing in a row before the watch is off for the run (the radar goes on as without it)
 DOC_MAX = 48_000            # bytes: radar.json; over it the fold (others) is cut first, then recent
 FAIL_DEGRADED, FAIL_EXIT = 3, 10
 ROUND_EVERY = 3_600_000     # the hourly scan starts one round at the end of each full scan: about an hour apart
@@ -439,6 +493,23 @@ class Radar:
         self.run_start = self.run_end = None
         self.live, self.mig, self.early, self.cyc_at = None, {}, [], None
         self.tweets = {}            # tweet key (traps.norm_x) -> [likes, ms read]: one reading serves every coin off that tweet (TWEET_TTL)
+        self.fastq, self.fast_at, self.fast_last, self.last_rated, self.last_k = {}, [], 0, [], 0
+        self.push_hold = self.cpush_hold = 0.0     # wall time before which no radar / curve notification is tried (app's rate guard said so)
+        self.fast_on = (os.environ.get(FAST_ENV) or "on").strip().lower() not in ("off", "0")
+        self.CW = import_opt("curve_watch")
+        self.curve = self.CW.Book() if self.CW is not None else None     # its hour docs are kept even while the watch is off
+        self.curve_on = self.curve is not None and (os.environ.get(CURVE_ENV) or "on").strip().lower() not in ("off", "0")
+        self.curve_why = "" if self.curve_on else ("switched off (%s=off)" % CURVE_ENV if self.curve is not None else "curve_watch.py is missing")
+        self.ccfg = curve_cfg(self.CW)
+        # the watch's own client (radar_src.SideHttp: its own cool-downs, dead hosts and counters, the radar's per-host gaps; a host the
+        # radar has cooling or given up is skipped by the watch too, never the other way round) and its own adapter switches: a curve
+        # answer that is refused, rate limited or in another shape stops the watch's requests only, never one of the rounds'
+        self.chttp = RS.SideHttp(self.http, log=self.say)
+        self.csrc = RS.Sources(self.chttp, lambda s_: self.say("curve watch:" + s_), dict(self.src.on))
+        self.cpushed, self.cchk, self.crc, self.cbud, self.cnotifier = {}, {}, {}, {}, None
+        self.curve_at = self.curve_fol_at = 0
+        self.feed_up, self.feed_conns = False, None     # the live feed as the curve watch last saw it (its gaps: curve_take)
+        self.curve_fails, self.last_ccounts, self.tree_ccounts, self.tree_cfiles, self.ckept = 0, None, {}, {}, False
 
     # ---------------------------------------------------------------- log
     def say(self, s):
@@ -500,6 +571,7 @@ class Radar:
         and its weights are put in use at once (apply_model), at the run's start as at a later cycle's restore."""
         now = self.clock.now()
         docs, model = {}, None
+        self.tree_ccounts, self.tree_cfiles = {}, {}
         for path, raw in files.items():
             name = os.path.basename(path)
             try:
@@ -509,10 +581,20 @@ class Radar:
             if path.startswith("db/memeradar/") and HOUR_RE.match(name) and isinstance(doc, dict) and isinstance(doc.get("coins"), dict):
                 if hour_ms(name[:-5]) >= now - KEEP_MS:
                     docs[name[:-5]] = doc
+            elif path.startswith("db/memecurve/") and HOUR_RE.match(name) and isinstance(doc, dict) and isinstance(doc.get("coins"), dict):
+                if self.curve is not None and hour_ms(name[:-5]) >= now - KEEP_MS:      # the curve watch's calls (kept while it is off too)
+                    self.curve.load(name[:-5], doc)
+                    self.tree_ccounts[name[:-5]] = self.CW.doc_calls(doc)       # counted by load's own rules (a call it cannot read is none)
+                    self.tree_cfiles[path] = raw if isinstance(raw, bytes) else str(raw).encode("utf-8")
             elif path == "pushed.json" and isinstance(doc, dict):
                 for a, t in doc.items():
                     if num(t) and now - t < PUSHED_MS:
                         self.pushed[a] = max(int(t), self.pushed.get(a, 0))
+            elif path == "curvepushed.json" and isinstance(doc, dict):
+                self.tree_cfiles[path] = raw if isinstance(raw, bytes) else str(raw).encode("utf-8")
+                for a, t in doc.items():
+                    if num(t) and now - t < CURVE_PUSHED_MS:
+                        self.cpushed[a] = max(int(t), self.cpushed.get(a, 0))
             elif path == "model.json" and isinstance(doc, dict):
                 model = doc
             elif path == "radar.json" and isinstance(doc, dict):
@@ -552,6 +634,7 @@ class Radar:
                     self.restore_from_results()
                     self.restore_state = "ok"
                     self.last_counts = hour_counts(self.docs, 0)
+                    self.last_ccounts = self.curve.counts(0) if self.curve is not None else None
                     self.say("radar-data does not exist yet: fresh start (%d records from the results copy)" % sum(len(d["coins"]) for d in self.docs.values()))
                     return
                 if ex is None:
@@ -560,6 +643,7 @@ class Radar:
                 files = self.git.files("refs/radar/data", [p for p in self.git.paths("refs/radar/data") if p.endswith(".json")])
                 restored = self.load_tree(files)
                 self.last_counts = hour_counts(restored, 0)
+                self.last_ccounts = dict(self.tree_ccounts)
                 if self.restore_state == "failed":
                     self.say("radar-data restored at last: the local records are merged in, pushes and notifications resume")
                 self.restore_state = "ok"
@@ -737,13 +821,26 @@ class Radar:
                 os.remove(os.path.join(dd, fn))
         write_json(os.path.join(self.out, "pushed.json"), {a: t for a, t in self.pushed.items() if now - t < PUSHED_MS})
         write_json(os.path.join(self.out, "model.json"), self.model or {"v": 1, "from": "prior", "n": 0, "need": MODEL_NEED})
+        if self.curve is not None:               # the curve watch's calls (db/memecurve, 48 hours) and its pushed coins
+            self.curve.prune(now)
+            cd = os.path.join(self.out, "db", "memecurve")
+            os.makedirs(cd, exist_ok=True)
+            keep_c = set()
+            for hour, doc in self.curve.docs.items():
+                keep_c.add(hour + ".json")
+                write_json(os.path.join(cd, hour + ".json"), doc)
+            for fn in os.listdir(cd):
+                if fn not in keep_c:
+                    os.remove(os.path.join(cd, fn))
+            write_json(os.path.join(self.out, "curvepushed.json"), {a: t for a, t in self.cpushed.items() if now - t < CURVE_PUSHED_MS})
 
     def publish(self, doc):
         """radar.json and the records to radar-data (one commit, force): only when the restore worked and the never-shrink guard passes.
-        True when it landed."""
+        True when it landed. The curve calls' own guard never holds the radar's files back: when it fails, the commit carries the last
+        tree's curve files unchanged (ckept: the curve's own marks did not land)."""
         write_json(os.path.join(self.out, "radar.json"), doc)
         self.write_docs()
-        self.push_failed = False
+        self.push_failed, self.ckept = False, False
         if not self.remote:
             return True
         if self.restore_state != "ok":
@@ -760,11 +857,42 @@ class Radar:
                  "model.json": os.path.join(self.out, "model.json")}
         for hour in self.docs:
             files["db/memeradar/%s.json" % hour] = os.path.join(self.out, "db", "memeradar", hour + ".json")
+        cfiles, c_kept = {}, False
+        if self.curve is not None:               # the curve calls have the same guard, counted on their own; it never holds the radar's own
+            ok_c, c_new, c_old = guard_ok(self.curve.counts(now - GUARD_MS), self.last_ccounts, now - GUARD_MS)     # files back: when it
+            if ok_c:                                                                                                # fails, the last tree's
+                cfiles["curvepushed.json"] = os.path.join(self.out, "curvepushed.json")                              # curve files go again,
+                for hour in self.curve.docs:                                                                        # byte for byte
+                    cfiles["db/memecurve/%s.json" % hour] = os.path.join(self.out, "db", "memecurve", hour + ".json")
+            else:
+                c_kept = self.ckept = True
+                self.note("never-shrink guard: the curve calls not pushed (%d, the last tree had %d): radar-data keeps the last tree's" % (c_new, c_old))
+                self.say("never-shrink guard: %d curve calls in the last 47 h, the last tree had %d: the last tree's curve files are kept, the radar's "
+                         "own go as usual" % (c_new, c_old))
+                kd = os.path.join(self.out, "curve-kept")
+                shutil.rmtree(kd, ignore_errors=True)
+                for path, raw in self.tree_cfiles.items():
+                    if safe_path(path):
+                        fp = os.path.join(kd, *path.split("/"))
+                        os.makedirs(os.path.dirname(fp), exist_ok=True)
+                        with open(fp, "wb") as f:
+                            f.write(raw)
+                        cfiles[path] = fp
+        files.update(cfiles)
         try:
             left = max(5.0, (self.http.until or time.time() + 30) - time.time() + 10)
             self.git.push_tree(files, "radar-data", "launch radar %s (fake money)" % dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
                                timeout=left)
             self.last_counts = hour_counts(self.docs, 0)
+            if self.curve is not None and not c_kept:
+                self.last_ccounts = self.curve.counts(0)
+                self.tree_cfiles = {}
+                for path, fp in cfiles.items():  # the curve files this tree holds (kept byte for byte when the guard fails later)
+                    try:
+                        with open(fp, "rb") as f:
+                            self.tree_cfiles[path] = f.read()
+                    except OSError:
+                        pass
             self.publishes += 1
             return True
         except Exception as e:
@@ -973,7 +1101,9 @@ class Radar:
             self.say("live feed: not stopped cleanly (%s)" % RS.short(e))
 
     def live_take(self, now):
-        """The feed's graduations into self.mig (mint -> ms, the first one kept; 2 hours, at most 5000) and its log lines into the log."""
+        """The feed's graduations into self.mig (mint -> ms, the first one kept; 2 hours, at most 5000), the fast lane's queue (a coin no
+        cycle rated yet, while the fast lane has room this hour) and the curve watch's book; its trades into the book; its log lines into
+        the log."""
         if self.live is None:
             return
         try:
@@ -981,11 +1111,17 @@ class Radar:
                 self.say("live feed: " + s)
             evs = [e for e in self.live.take() if e.get("kind") == "migrate"]
             for e in evs:
+                if e["mint"] not in self.mig and self.fast_room(now) and self.rec(e["mint"]) is None:
+                    self.fastq.setdefault(e["mint"], {"t": int(e["t"]), "n": 0})
+                    self.fast_at = [t for t in self.fast_at if now - t < H] + [now]     # FAST_PER_H counts graduations, not tries
                 self.mig.setdefault(e["mint"], int(e["t"]))
+                if self.curve is not None:
+                    self.curve.migrate(e["mint"], int(e["t"]), "feed")
             if evs:
                 self.mig = dict(sorted(((a, t) for a, t in self.mig.items() if now - t < 2 * H), key=lambda kv: kv[1])[-5000:])
         except Exception as e:
             self.say("live feed: events not taken (%s)" % RS.short(e))
+        self.curve_take()
 
     def live_fresh(self, now):
         """The feed's graduations of the last LIVE_FRESH_MS, newest first, at most 30 (one DexScreener request)."""
@@ -1000,16 +1136,20 @@ class Radar:
 
     def early_due(self, now, t_k):
         """Whether a cycle starts now instead of at the grid point t_k: a graduation from the feed that no cycle asked about yet (it came
-        after the last cycle's start), its first one at least LIVE_DEBOUNCE_MS old, the last cycle started LIVE_MIN_GAP_MS ago or more,
-        the grid point LIVE_LEAD_MS away or more, and fewer than LIVE_EARLY_PER_H early cycles in the last hour."""
-        new = [t for t in self.mig.values() if self.cyc_at is None or t > self.cyc_at]
+        after the last cycle's start) and that the fast lane neither has waiting nor rated already, its first one at least LIVE_DEBOUNCE_MS
+        old, the last cycle started LIVE_MIN_GAP_MS ago or more, the grid point LIVE_LEAD_MS away or more, and fewer than LIVE_EARLY_PER_H
+        early cycles in the last hour. With the fast lane on, an early cycle comes only for a graduation it gave up on (no pool listed
+        after its tries) or had no room for."""
+        new = [t for a, t in self.mig.items() if (self.cyc_at is None or t > self.cyc_at) and a not in self.fastq and self.rec(a) is None]
         return bool(new) and now - min(new) >= LIVE_DEBOUNCE_MS and (self.cyc_at is None or now - self.cyc_at >= LIVE_MIN_GAP_MS) \
             and t_k - now >= LIVE_LEAD_MS and sum(1 for t in self.early if now - t < H) < LIVE_EARLY_PER_H
 
     def idle(self, t_k):
-        """Waits for the grid point t_k and returns it. With the live feed it wakes every second or sooner to take the events, and
-        returns now instead when an early cycle is due. Without the feed or with the fake clock: the clock's wait (then the events)."""
-        if self.live is None or self.clock.fake:
+        """Waits for the grid point t_k and returns it. With the live feed or the curve watch it wakes every second or sooner: it takes the
+        events, runs a fast lane when one is due (a graduation's coin rated within seconds, never into the round), returns now instead when
+        an early cycle is due, and gives the curve watch one tick. Without either, or with the fake clock: the clock's wait (then the
+        events)."""
+        if (self.live is None and not self.curve_live()) or self.clock.fake:
             self.clock.wait(t_k)
             self.live_take(self.clock.now())
             return t_k
@@ -1018,11 +1158,636 @@ class Radar:
             self.live_take(now)
             if now >= t_k:
                 return t_k
+            if self.fast_due(now, t_k):
+                self.fast(now, t_k)
+                continue
             if self.early_due(now, t_k):
                 self.early = [t for t in self.early if now - t < H] + [now]
                 self.say("early cycle: a pump.fun graduation on the live feed (%d s before the grid point)" % ((t_k - now) // 1000))
                 return now
-            self.clock.wait(min(t_k, now + 1000))
+            self.curve_tick(now, t_k)
+            self.clock.wait(min(t_k, self.clock.now() + 1000))
+
+    # ---------------------------------------------------------------- the fast lane (a graduation on the live feed rated within seconds)
+    def fast_room(self, now):
+        """Whether the fast lane may take another graduation this hour (FAST_PER_H, its switch, the live feed). One it has no room for is
+        never queued: the early cycle takes it at once, as without the fast lane."""
+        return self.fast_on and self.live is not None and sum(1 for t in self.fast_at if now - t < H) < FAST_PER_H
+
+    def fast_due(self, now, t_k):
+        """Whether a fast lane starts now: a graduation in its queue whose next try has come (FAST_TRIES_MS after the event), the grid point
+        FAST_LEAD_MS away or more, FAST_GAP_MS since the last one (a queued graduation was counted against FAST_PER_H when it was queued:
+        all its tries are its own). A graduation past its last try leaves the queue (the early cycle or the next round takes it, as without
+        the fast lane)."""
+        if not self.fastq:
+            return False
+        for a in [a for a, q in self.fastq.items() if q["n"] >= len(FAST_TRIES_MS) or now - q["t"] > FAST_TRIES_MS[-1] + 15_000 or self.rec(a) is not None]:
+            self.fastq.pop(a, None)
+        if not self.fastq or not (self.fast_on and self.live is not None) or t_k - now < FAST_LEAD_MS or now - self.fast_last < FAST_GAP_MS:
+            return False
+        return any(now >= q["t"] + FAST_TRIES_MS[q["n"]] for q in self.fastq.values())
+
+    def fast(self, now, t_k):
+        """The fast lane: a mini-round for the graduations whose try has come, only the steps that coin needs, inside FAST_DEADLINE_S and
+        never into the next round (the loop's one thread runs it between cycles): DexScreener for their mints (one request; a coin whose
+        PumpSwap pool is not listed yet is asked again at its next try), memebot's scan on a sandbox of these pairs alone, the radar's own
+        eligibility, RugCheck and the mint time (tier 1), what is left of tier 2 within the time, the rating and its record (feed.lag: the
+        seconds from the graduation to this first sight, feed.via "fast"), then radar.json (the last cycle's list with these coins rated in
+        it) to radar-data and the app's row, and a push for a coin rated good under the same rules as a cycle's (once per coin, PUSH_PER_H).
+        Its own cap FAST_PER_H. Everything ends PUSH_MARGIN_S before the round, the notification included (deliver's t_end: a push whose
+        whole budget no longer fits is left to the round). Never raises: a failure leaves the coin to the next cycle."""
+        T0 = time.time()
+        end = T0 + max(5.0, min(FAST_DEADLINE_S, (t_k - now) / 1000.0 - 6.0))
+        t_end = T0 + (t_k - now) / 1000.0 - PUSH_MARGIN_S
+        step = lambda f: T0 + (end - T0) * f
+        self.fast_last = now
+        due = [a for a, q in sorted(self.fastq.items(), key=lambda kv: kv[1]["t"]) if now >= q["t"] + FAST_TRIES_MS[q["n"]]][:FAST_MAX]
+        for a in due:
+            self.fastq[a]["n"] += 1
+        try:
+            sb = os.path.join(self.d, "sb", "fast")
+            shutil.rmtree(sb, ignore_errors=True)
+            os.makedirs(sb, exist_ok=True)
+            self.http.new_cycle(end, FAST_RPC_CAP)
+            self.http.until = step(0.3)
+            answered, _ = self.src.ds_tokens(sb, due, 1, prefix="fast")
+            self.write_rc_rows(sb)
+            rows, pairs = self.run_scan(sb, now)
+            self.pool_cache(pairs, answered, now)
+            live, _ = self.eligible(rows, now)
+            live = [r for r in live if r["a"] in due and self.rec(r["a"]) is None]
+            got = {r["a"] for r in live}
+            for a in due:
+                if a in got or self.fastq[a]["n"] >= len(FAST_TRIES_MS):
+                    self.fastq.pop(a, None)
+            if not live:
+                self.say("fast lane: %d graduation%s asked, no pool listed yet (or none under the radar's rules)" % (len(due), "" if len(due) == 1 else "s"))
+                return
+            self.http.until = step(0.55)
+            if self.tier1(live, now):
+                self.write_rc_rows(sb)
+                rows, pairs = self.run_scan(sb, now)
+                live2, _ = self.eligible(rows, now)
+                live = [r for r in live2 if r["a"] in got] or live
+            self.http.until = step(0.75)
+            self.exch = self.exchanges()
+            self.tier2(sb, live, [], now)
+            self.http.until = step(0.8)
+            fresh = [self.rate(r, now) for r in live]
+            for x in fresh:
+                rec = self.rec(x["addr"])
+                if rec is not None and isinstance(rec.get("feed"), dict):
+                    rec["feed"]["via"] = "fast"
+            mine = {x["addr"] for x in fresh}
+            rated = [x for x in self.last_rated if x["addr"] not in mine] + fresh
+            top, coins, others = rank(rated)
+            self.http.until = min(step(1.0), t_end - 10.0)     # radar-data's push ends PUSH_MARGIN_S before the round at the latest
+            to_push = self.to_push([x for x in coins if x["addr"] in mine], now)
+            secs = num((self.last_doc or {}).get("secs")) or 0.0
+            lag = ", ".join("%s rated %d s" % (x["sym"], round((now - self.mig.get(x["addr"], now)) / 1000.0)) for x in fresh)
+            line = lambda n: "fast lane: %s after the graduation (%s), %d pushed" % (lag, ", ".join(x["v"] for x in fresh), n)
+            mk = lambda: self.build_doc("running", coins, others, rated, now, t_k, secs, self.last_k, hosts_from=self.last_doc)
+            doc, landed, rowed, sent = self.deliver(to_push, mk, line, now, t_end)
+            self.last_rated = rated
+            self.say(line(len(sent)) + " (%.1f s); %s" % (time.time() - T0, self.saved(landed, rowed)))
+        except Exception as e:
+            self.say("fast lane failed (%s): the next cycle rates the coin" % RS.short(e))
+
+    def deliver(self, to_push, mk_doc, line, now, t_end=None):
+        """A list's radar.json to radar-data and the app's row, and one notification for to_push (a cycle's or the fast lane's), in the
+        order 3.6 asks: pushed.json holds the coins before anything is sent (a restart never sends one twice), no notification when the
+        mark could not be saved, the record and radar.json say pushed only once it went out (then radar-data again). app's rate guard
+        (a notification of this kind under RATE_GUARD_S ago, say a fast lane's right after a cycle's): the coins are unmarked again, and
+        none is tried before the gap is over, so a later cycle or fast lane pushes them while their pool is under 10 minutes. t_end (a
+        fast lane's, wall time): everything ends by it, the next round never waits: the app's row first, then the notification only when
+        app's whole budget for it still fits (else the coins stay unmarked for the round), then radar-data and the row again only while
+        they still end before it (else the round's radar.json says pushed). line(n): the cycle line with n pushed. Returns (doc, landed,
+        rowed, sent)."""
+        if to_push and time.time() < self.push_hold:
+            to_push = []                         # app's rate guard answered the last one: these wait unmarked for a later cycle or fast lane
+        for x in to_push:
+            self.pushed[x["addr"]] = now
+        self.cycle_lines = (self.cycle_lines + [line(0)])[-6:]
+        doc = mk_doc()
+        landed = self.publish(doc)
+        if to_push and not landed and self.remote:
+            for x in to_push:                    # the mark could not be saved: no notification now, the next cycle tries again
+                self.pushed.pop(x["addr"], None)
+            to_push = []
+        rowed = None
+        if t_end is not None:
+            call_s, send_s = app_budget()
+            rowed = self.store_row(doc) if time.time() + call_s <= t_end else False
+            if to_push and time.time() + call_s + send_s > t_end:
+                for x in to_push:                # the notification's budget would run into the round: the round pushes these (never marked twice)
+                    self.pushed.pop(x["addr"], None)
+                self.say("notification for %s left to the round: %.0f s to it, a notification may take %.0f s"
+                         % (", ".join(x["sym"] for x in to_push), max(0.0, t_end - time.time()), call_s + send_s))
+                to_push = []
+        sent = []
+        if to_push:
+            out = self.notify([dict(x["doc"], push=now) for x in to_push], doc.get("record"))
+            self.say("notification for %s: %s" % (", ".join(x["sym"] for x in to_push), json.dumps(out)[:160] if isinstance(out, dict) else out))
+            if went_out(out):
+                sent = to_push                   # nothing went out (no push sender, no phone): the coin stays marked, never "pushed" on the page
+            elif isinstance(out, dict) and out.get("skipped") == "rate guard":
+                for x in to_push:                # app's gap since the last radar notification: unmarked (the next publish says so), tried again
+                    self.pushed.pop(x["addr"], None)     # once the gap is over while the pool is under 10 minutes
+                self.push_hold = time.time() + app_gap("radar")
+            for x in sent:
+                rec = self.rec(x["addr"])
+                if rec is not None:
+                    rec["push"] = now
+        if sent:                                 # radar.json and the records say pushed right after the notification (3.6); a fast lane's
+            self.cycle_lines[-1] = line(len(sent))   # only when that still ends before the round (else the round's radar.json says it)
+            if t_end is None or time.time() + PUBLISH_MIN_S <= t_end:
+                if t_end is not None:
+                    self.http.until = t_end - 10.0
+                doc = mk_doc()
+                landed = self.publish(doc)
+                if t_end is not None and time.time() + app_budget()[0] <= t_end:
+                    rowed = self.store_row(doc)
+        if t_end is None:
+            rowed = self.store_row(doc)
+        self.last_doc = doc
+        return doc, landed, rowed, sent
+
+    # ---------------------------------------------------------------- the curve watch (curve_watch.py: coins still on pump.fun's curve)
+    def curve_live(self):
+        return self.curve is not None and self.curve_on and not self.one_round
+
+    def curve_take(self):
+        """The feed's trades replayed into the book in order (new calls, progress, momentum, the creator selling), and its gaps: a socket
+        that dropped or a new one (curve_watch.Book.feed_gap: a call's value then comes from a coin fetch, never from a price before trades
+        that were missed). Never raises."""
+        if self.live is None or self.curve is None or not hasattr(self.live, "take_trades"):
+            return
+        try:
+            now = self.clock.now()
+            up = self.live.state() == "ok"
+            st = self.live.stats() if hasattr(self.live, "stats") else {}
+            conns = st.get("connects") if isinstance(st, dict) and isinstance(st.get("connects"), int) else None
+            if (self.feed_up and not up) or (conns is not None and self.feed_conns is not None and conns > self.feed_conns):
+                self.curve.feed_gap(now)
+            self.feed_up, self.feed_conns = up, conns if conns is not None else self.feed_conns
+            for ev in self.live.take_trades():
+                self.curve.trade(ev)
+        except Exception as e:
+            self.curve_fail(e)
+
+    def curve_fail(self, e):
+        self.curve_fails += 1
+        self.say("curve watch: a step failed (%s), %d in a row" % (RS.short(e), self.curve_fails))
+        if self.curve_fails >= CURVE_FAILS and self.curve_on:
+            self.curve_on = False
+            self.curve_why = "failed %d times in a row (%s)" % (self.curve_fails, RS.short(e))
+            self.say("curve watch: off for this run; the radar goes on as without it")
+            try:
+                if self.live is not None and hasattr(self.live, "follow"):
+                    self.live.follow([])
+            except Exception:
+                pass
+
+    def curve_room(self, t_k):
+        return t_k - self.clock.now() >= CURVE_LEAD_MS
+
+    def curve_until(self, t_k):
+        return time.time() + max(0.5, min(CURVE_STEP_S, (t_k - self.clock.now() - CURVE_LEAD_MS / 2) / 1000.0))
+
+    def curve_budget(self, kind, now, n=1):
+        """Whether the watch may send n more requests of this kind now (CURVE_BUDGET, rolling windows on the radar's clock)."""
+        win, cap = CURVE_BUDGET[kind]
+        q = self.cbud.setdefault(kind, collections.deque())
+        while q and now - q[0] >= win:
+            q.popleft()
+        return len(q) + n <= cap
+
+    def curve_spend(self, kind, now, n0):
+        """The requests sent since the counter stood at n0 go into the kind's window."""
+        sent = max(0, self.chttp.n - n0)
+        self.cbud.setdefault(kind, collections.deque()).extend([now] * sent)
+        return sent
+
+    def curve_tick(self, now, t_k):
+        """One tick of the curve watch in the loop's spare time (idle, about every second): pump.fun's curve list every CURVE_LIST_MS,
+        the coins followed live, then ONE request at most for a call's value or a coin's quick checks, then the push gate. Every request
+        ends CURVE_LEAD_MS / 2 before the grid point at the latest, so a round never waits. Never raises; CURVE_FAILS failures in a row
+        switch the watch off for the run."""
+        if not self.curve_live():
+            return
+        try:
+            if now - self.curve_at >= CURVE_LIST_MS and self.curve_room(t_k):
+                self.curve_poll(now, t_k)
+            if now - self.curve_fol_at >= CURVE_FOLLOW_MS:
+                self.curve_follow(now)
+            if self.curve_room(t_k) and not self.curve_value_step(now, t_k):
+                self.curve_check_step(now, t_k)
+            self.curve_push(now, t_k)
+            self.curve_fails = 0
+        except Exception as e:
+            self.curve_fail(e)
+
+    def curve_poll(self, now, t_k):
+        """pump.fun's coins still on their curve, highest market cap first (radar_src.pf_curve, one page; a second only when half of the
+        first had no trade for curve_watch.STALE_MS), into the book (candidates, progress, graduations) and the radar's pump.fun facts
+        (mint time, creator, X link: the radar knows them when the coin's pool opens). Each poll opens the watch's client's next window
+        (a 429 or no answer rested a host for the rest of the last one; cool-downs and given-up hosts run on, the watch's own)."""
+        self.curve_at = now
+        self.chttp.new_window()
+        got, answered = [], False
+        for pg in range(CURVE_PAGES):
+            if not self.curve_budget("pf", now) or not self.curve_room(t_k):
+                break
+            self.chttp.until = self.curve_until(t_k)
+            n0 = self.chttp.n
+            rows = self.csrc.pf_curve(pg)
+            self.curve_spend("pf", now, n0)
+            if rows is None:
+                break
+            answered = True
+            got += rows
+            stale = sum(1 for r in rows if (RS.ms_of(r.get("last_trade_timestamp")) or now) < now - self.CW.STALE_MS)
+            if len(rows) < 50 or stale * 2 < len(rows):
+                break
+        if not answered:
+            return
+        self.curve.polled(now)
+        self.curve.rows(got, now, "list", self.live_meta)
+        for r in got:
+            a = F.addr_of(r.get("mint"))
+            if a and not r.get("complete"):
+                self.cache["pf"][a] = RS.pf_facts(r, self.cache["pf"].get(a), now)
+
+    def curve_follow(self, now):
+        """The book's best candidates to the feed (subscribeTokenTrade on its one socket); the book notes which ones are followed."""
+        self.curve_fol_at = now
+        got = []
+        if self.live is not None and hasattr(self.live, "follow"):
+            got = self.live.follow(self.curve.follow(now))
+        self.curve.set_follow(got, now)
+
+    def curve_rows_sb(self, sb, now):
+        """The cycle's pump.fun lists (newest coins, graduated coins) into the book: candidates that rise fast while they are young, and
+        graduations by the list's complete flag. No request."""
+        if self.curve is None:
+            return
+        try:
+            pf, _ = M.load_side(sb, "pf", M.PF_COLS)
+            rows = [{"mint": a, "symbol": r.get("symbol"), "name": r.get("name"), "market_cap": r.get("mc"), "usd_market_cap": r.get("usdMc"),
+                     "complete": bool(r.get("complete")), "created_timestamp": r.get("createdAt"), "twitter": r.get("twitter"), "website": r.get("website"),
+                     "telegram": r.get("telegram"), "creator": (self.cache["pf"].get(a) or {}).get("creator")} for a, r in pf.items()]
+            if self.curve_live():
+                self.curve.rows(rows, now, "new", self.live_meta)
+            else:                                # off: only the graduations of coins the book knows
+                self.curve.rows([r for r in rows if r["complete"]], now, "new")
+        except Exception as e:
+            self.curve_fail(e)
+
+    def curve_S(self, a, c, now):
+        """A curve coin's signals in traps' keys, from what the watch and the radar's caches know (the radar's own readings where they
+        apply): brand (radar_weights' list), the RugCheck report (danger risks about a pool are left out: none exists yet), the wallet
+        memory on its top holders, the dev's launches and wallet age, the X link and its reuse, launch snipers and bundles (swap-api trades,
+        pump.fun top holders without the curve's own account), links count, the creator selling on the curve (seen in the trades)."""
+        T = self.T
+        S = T.blank_signals()
+        brand = self.W.get("brand") if isinstance(self.W, dict) else None
+        try:
+            rx = re.compile(brand, re.I) if isinstance(brand, str) and brand else None
+        except re.error:
+            rx = None
+        S["brand"] = bool(rx.search("%s %s" % (c.get("sym") or "", c.get("name") or ""))) if rx and (c.get("sym") or c.get("name")) else None
+        rc = self.crc.get(a) or {}
+        rep = rc.get("rep") if isinstance(rc.get("rep"), dict) else None
+        S["rcReport"] = True if rep is not None else (False if rc.get("st") == "404" else None)
+        lvl = lambda x: str((x or {}).get("level") or "").lower()
+        if rep is not None:
+            risks = [x for x in rep.get("risks") or [] if isinstance(x, dict) and not self.CW.RC_POOL_RISK.search(str(x.get("name") or ""))]
+            S["rcDanger"] = [str(x.get("name"))[:60] for x in risks if lvl(x) == "danger"]
+            S["rcWarn"] = [str(x.get("name"))[:60] for x in risks if lvl(x) == "warn"]
+            net = num(rep.get("graphInsidersDetected"))
+            S["netSize"] = RS.net_size(rep)
+            S["cluster"] = bool(net and net > 50) or any("holder correlation" in n.lower() for n in S["rcWarn"] + S["rcDanger"])
+        S["wmState"] = self.wm_state(now)
+        if S["wmState"] == "ok" and rep is not None:
+            wl = T.walletmem_lookup([h.get("owner") for h in rep.get("topHolders") or [] if isinstance(h, dict) and h.get("owner")], self.wm, now) or {}
+            S["swAvg"], S["rugHolders"], S["wmChecked"] = wl.get("swAvg"), wl.get("rugHolders"), bool(wl.get("checked"))
+        else:
+            S["wmChecked"] = False
+        creator = c.get("creator") or (self.cache["pf"].get(a) or {}).get("creator")
+        dh = self.cache["dev"].get(creator) if creator else None
+        rows = [x for x in (dh or {}).get("rows") or [] if isinstance(x, list) and len(x) >= 3 and x[0] != a] if isinstance(dh, dict) and "rows" in dh else None
+        if rows is not None:
+            cnt = num(dh.get("count"))
+            S["devN"] = max(len(rows), int(cnt) - 1) if cnt is not None else len(rows)
+            S["devDead"], S["devGrad"] = sum(1 for x in rows if x[2]), sum(1 for x in rows if x[1])
+        wa = self.cache["wallets"].get(creator) if creator else None
+        if wa:
+            fresh_dev = RS.wallet_fresh(wa, now)
+            S["devAgeH"] = round((now - wa["first"]) / H, 2) if wa.get("first") and not (wa.get("full") and fresh_dev is None) else None
+            S["devTxs"] = wa.get("n") if not wa.get("full") else 1000
+        x = c.get("x") or ""
+        nx = self.norm_x(x)
+        S["x"], S["xKind"], S["tweet"] = x, nx[0] if nx else None, (nx[0] == "tweet") if nx else False
+        S["xUsed"], S["tweetShared"] = self.x_reuse(a, x, nx, c.get("tm") or now) if nx else (0, 0)
+        st = self.cchk.get(a) or {}
+        tr = st.get("trades") if isinstance(st.get("trades"), dict) and not st["trades"].get("many") else {}
+        ho = st.get("holders") if isinstance(st.get("holders"), dict) else {}
+        pick = lambda k1, k2: num(tr.get(k1)) if tr.get(k1) is not None else num(ho.get(k2))
+        S["snip30"], S["snip30N"] = pick("snip30", "snip30"), pick("snip30N", "snip30N")
+        S["slotN"], S["slotPct"] = pick("slotN", "bundN"), pick("slotPct", "bundPct")
+        S["socN"] = num(c.get("soc"))
+        S["creatorSold"] = True if c.get("csold") else None
+        sol = self.curve.sol()
+        S["mc"] = c["mcs"] * sol if c.get("mcs") and sol else None
+        return S
+
+    def curve_verdict(self, a, now):
+        c = self.curve.coins.get(a)
+        if c is None:
+            return
+        v, chips = self.CW.verdict(self.T, self.curve_S(a, c, now), self.W)
+        self.curve.set_check(a, v, chips, now)
+
+    def curve_check_step(self, now, t_k):
+        """ONE quick-check request for the best coin that needs one (called coins first, then curve_watch.CHECK_AT % and more), in this
+        order: the dev's launches (pump.fun), the top holders' entry times and bundlers (pump.fun, the curve's own account left out),
+        the RugCheck report (again after CURVE_RC_TTL), the dev wallet's age (one RPC call), the launch trades (swap-api, only for a coin
+        minted under CURVE_SNIPE_MIN ago); then the coin's verdict again. Each kind within its CURVE_BUDGET; a check that gets no answer is
+        tried once more. Returns True when a request went out."""
+        order = self.curve.check_order(now)
+        for a in [a for a in list(self.cchk) + list(self.crc) if a not in self.curve.coins]:
+            self.cchk.pop(a, None)
+            self.crc.pop(a, None)
+        for a in order[:30]:
+            c = self.curve.coins[a]
+            st = self.cchk.setdefault(a, {})
+            creator = c.get("creator") or (self.cache["pf"].get(a) or {}).get("creator")
+            tm = c.get("tm")
+            job = None
+            dc = self.cache["dev"].get(creator) if creator else None
+            if creator and self.csrc.use("pf_dev_history") and not (isinstance(dc, dict) and "rows" in dc and now - (num(dc.get("t")) or 0) <= DEV_TTL) \
+                    and st.get("devTries", 0) < 2:
+                job = ("dev", "pf", 2)
+            elif tm and self.csrc.use("pf_top_holders") and "holders" not in st and st.get("hoTries", 0) < 2:
+                job = ("holders", "pf", 1)
+            elif self.csrc.use("rc_report") and now - (num((self.crc.get(a) or {}).get("t")) or 0) > CURVE_RC_TTL and st.get("rcTries", 0) < 4:
+                job = ("rc", "rc", 1)
+            elif creator and self.csrc.use("rpc_dev_age") and creator not in self.cache["wallets"] and st.get("ageTries", 0) < 2:
+                job = ("devage", "rpc", 1)
+            elif tm and self.csrc.use("swap_trades") and "trades" not in st and now - tm < CURVE_SNIPE_MIN * 60_000:
+                job = ("trades", "swap", 3)
+            if job is None:
+                if c.get("chk") is None or bool(c.get("csold")) != bool(st.get("cs")):     # no verdict yet, or the creator sold since
+                    st["cs"] = bool(c.get("csold"))
+                    self.curve_verdict(a, now)
+                continue
+            name, kind, cost = job
+            if not self.curve_budget(kind, now, cost):
+                continue
+            self.chttp.until = self.curve_until(t_k)
+            n0 = self.chttp.n
+            if name == "dev":
+                st["devTries"] = st.get("devTries", 0) + 1
+                res = self.csrc.pf_dev(creator, now)
+                if res is not None:
+                    self.cache["dev"][creator] = dict(res, t=now)
+            elif name == "holders":
+                st["hoTries"] = st.get("hoTries", 0) + 1
+                p = c.get("p") or 0.0
+                share = self.CW.curve_left(p) / self.CW.SUPPLY
+                drop = lambda h, scale: abs((num(h.get("amount")) or 0.0) / scale - share) <= 0.03     # the curve's own account
+                res = self.csrc.pf_holders(a, tm, skip=set(c.get("curve") or ()), drop=drop)
+                if res is not None:
+                    st["holders"] = res
+            elif name == "rc":
+                st["rcTries"] = st.get("rcTries", 0) + 1
+                rs, rep = self.csrc.rc_report(a)
+                if rs == "ok":
+                    self.crc[a] = {"t": now, "st": "ok", "rep": rep}
+                elif rs in ("404", "429", "err") and not isinstance((self.crc.get(a) or {}).get("rep"), dict):
+                    self.crc[a] = {"t": now, "st": rs, "rep": None}
+            elif name == "devage":
+                st["ageTries"] = st.get("ageTries", 0) + 1
+                left, self.chttp.rpc_left = self.chttp.rpc_left, 1
+                try:
+                    res = self.csrc.wallet_age(creator, "rpc_dev_age")
+                finally:
+                    self.chttp.rpc_left = left
+                if res is not None:
+                    self.cache["wallets"][creator] = dict(res, used=now)
+            else:
+                res = self.csrc.pf_trades(a, tm, pages=3)
+                st["trades"] = res if res is not None else {"many": True, "pages": 0}
+            self.curve_spend(kind, now, n0)
+            self.curve_verdict(a, now)
+            return True
+        return False
+
+    def curve_value_step(self, now, t_k):
+        """The calls whose value at call + 60 min is due: a coin still on the curve from the trades followed (no request), else ONE pump.fun
+        coin fetch (coins-v3: graduated after all, its curve price, or gone); a graduated coin's pool value from the radar's own later price
+        within curve_watch.POOL_SLACK_MS (the cycles' DexScreener read is the first choice: curve_pool_values). Returns True when a request
+        went out."""
+        feed_up = self.live is not None and self.live.state() == "ok"
+        for a, thr, kind in self.curve.value_due(now):
+            cl = self.curve.call(a, thr)
+            if cl is None:
+                continue
+            T_ = cl["t"] + self.CW.VALUE_MS
+            rec = self.rec(a)
+            if rec is not None:
+                self.curve.link_pool(a, rec)
+            if kind == "pool":
+                pt = self.curve_rec_value(rec, T_)
+                if pt is not None:
+                    self.curve.set_value(a, thr, "gone" if pt[1] is None else "pool", pt[0], px=pt[1], liq=pt[2], sol=self.curve.sol(), pool_pts=self.curve_pool_pts(rec, T_))
+                continue
+            v = self.curve.curve_value(a, thr, now, feed_up)
+            if v is not None:
+                self.curve.set_value(a, thr, "curve", v[0], px=v[1])
+                continue
+            if not self.curve_budget("pf", now) or not self.curve_room(t_k) or not self.csrc.use("pf_coin_v3"):
+                continue
+            self.chttp.until = self.curve_until(t_k)
+            n0 = self.chttp.n
+            row = self.csrc.pf_coin_raw(a)
+            code = self.chttp.code
+            self.curve_spend("pf", now, n0)
+            if row is None:
+                if code == 404:
+                    self.curve.set_value(a, thr, "gone", now)
+                return True
+            f = self.CW.row_facts(row, self.curve.sol())
+            if f is None:
+                return True
+            if f["done"]:
+                gt = num((rec or {}).get("pool"))                   # the radar's record knows when the pool opened
+                if gt:
+                    self.curve.migrate(a, int(gt), "coin")
+                else:                                               # graduated, when is not known: no time is made up (graduated)
+                    self.curve.graduated(a, now)
+                if not gt or gt > T_:
+                    self.curve.set_miss(a, thr, "graduated after the hour, no curve price at it" if gt else "graduated, when is not known")
+            elif f["mcs"]:
+                self.curve.set_value(a, thr, "curve", now, px=f["mcs"] / self.CW.SUPPLY)
+            return True
+        return False
+
+    @staticmethod
+    def curve_rec_value(rec, T_):
+        """The radar's own later price of the pool nearest to T_ within curve_watch's POOL_SLACK_MS: (t, USD or None when gone, liquidity)."""
+        if not isinstance(rec, dict):
+            return None
+        best = None
+        for o in (rec.get("later") or {}).values() if isinstance(rec.get("later"), dict) else ():
+            t = num((o or {}).get("t")) if isinstance(o, dict) else None
+            if t is None or abs(t - T_) > 5 * 60_000:
+                continue
+            pt = (int(t), None, None) if o.get("gone") else (int(t), num(o.get("px")), num(o.get("liq")))
+            if pt[1] is None and not o.get("gone"):
+                continue
+            if best is None or abs(t - T_) < abs(best[0] - T_):
+                best = pt
+        return best
+
+    @staticmethod
+    def curve_pool_pts(rec, T_):
+        """The radar's pool prices up to T_ (first sight, the later prices, the peak within the hour): [(t, USD)], for a call's peak."""
+        if not isinstance(rec, dict):
+            return []
+        out = [(num(rec.get("first")), num(rec.get("px")))]
+        for o in (rec.get("later") or {}).values() if isinstance(rec.get("later"), dict) else ():
+            if isinstance(o, dict) and num(o.get("px")):
+                out.append((num(o.get("t")), num(o.get("px"))))
+        pk = rec.get("peak60") if isinstance(rec.get("peak60"), dict) else {}
+        if num(pk.get("x")) and num(rec.get("px")):
+            out.append((num(pk.get("at")), num(rec["px"]) * num(pk["x"])))
+        return [(t, p) for t, p in out if t is not None and p and t <= T_]
+
+    def curve_pool_asks(self, now):
+        """Graduated calls whose value at call + 60 min is due: DexScreener is asked about them in the cycle (at most 30, one request).
+        Never raises (it runs inside the cycle: a stored call in another shape costs the watch a step, never the cycle)."""
+        if self.curve is None:
+            return []
+        try:
+            return [a for a, _, kind in self.curve.value_due(now) if kind == "pool"][:30]
+        except Exception as e:
+            self.curve_fail(e)
+            return []
+
+    def curve_pool_values(self, pairs, answered, now):
+        """The cycle's DexScreener answers for the due graduated calls: the pool's price and liquidity at call + 60 min (a cycle at or
+        after it), gone when DexScreener answered without a pair; the radar's own record of the pool linked in."""
+        if self.curve is None:
+            return
+        try:
+            for a, thr, kind in self.curve.value_due(now):
+                if kind != "pool":
+                    continue
+                cl = self.curve.call(a, thr)
+                rec = self.rec(a)
+                if rec is not None:
+                    self.curve.link_pool(a, rec)
+                T_ = cl["t"] + self.CW.VALUE_MS
+                p = pairs.get(a)
+                px = num((p or {}).get("priceUsd"))
+                if p and px and px > 0 and not RD.standin(p):
+                    self.curve.set_value(a, thr, "pool", now, px=px, liq=fin(p.get("liquidityUsd"), 2), sol=self.curve.sol(), pool_pts=self.curve_pool_pts(rec, T_))
+                elif a in answered and p is None:
+                    self.curve.set_value(a, thr, "gone", now)
+        except Exception as e:
+            self.curve_fail(e)
+
+    def curve_push(self, now, t_k):
+        """A notification for a curve call, only when radar_curve.json names a variant in curvePush (null, the default: nothing is sent):
+        a call of that variant made within CURVE_PUSH_WAIT_MS, the coin still on the curve, its verdict now one of pushVerdicts (never
+        trap), once per coin (curvepushed.json holds it before anything is sent, so a restart never sends it twice), at most pushPerH an
+        hour, through app.notify_curve (the push pipeline of the greens: its own kind and rate guard, the phone's "New coins" switch).
+        Never into a round: radar-data's push and the notification's whole budget (app_budget) end PUSH_MARGIN_S before it, else the call
+        waits for a later tick within its CURVE_PUSH_WAIT_MS. app's rate guard: the mark is taken back, nothing is tried before its gap is
+        over."""
+        var = self.CW.variant_of(self.ccfg.get("curvePush")) if self.CW is not None else None
+        if var is None or not isinstance(self.last_doc, dict) or time.time() < self.cpush_hold:
+            return
+        if not (self.cnotifier or (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SECRET_KEY"))) or self.restore_state != "ok":
+            return
+        call_s, send_s = app_budget()
+        t_end = time.time() + (t_k - self.clock.now()) / 1000.0 - PUSH_MARGIN_S
+        if sum(1 for t in self.cpushed.values() if now - t < H) >= self.ccfg["pushPerH"] or t_end - time.time() < PUBLISH_MIN_S + call_s + send_s:
+            return                               # radar-data's push and the notification need the time: never into a round
+        cands = self.curve.push_cands(now, var, self.ccfg["pushVerdicts"], self.cpushed, CURVE_PUSH_WAIT_MS)
+        if not cands:
+            return
+        a, cl, v = cands[0]
+        self.cpushed[a] = now
+        self.http.until = t_end - call_s - send_s - 10.0     # radar-data's push leaves the notification its whole budget before the round
+        doc = dict(self.last_doc, curve=self.curve_doc(now))
+        if (not self.publish(doc) or self.ckept) and self.remote:
+            self.cpushed.pop(a, None)            # the mark could not be saved: nothing is sent now, the next tick tries again
+            return
+        if time.time() + call_s + send_s > t_end:
+            self.cpushed.pop(a, None)            # the push to radar-data took the notification's time: a later tick (the next publish unmarks it)
+            return
+        e = self.curve.entry(a) or {}
+        c = {"addr": a, "sym": e.get("sym"), "thr": cl["thr"], "prog": cl.get("prog"), "mcu": cl.get("mcu"), "age": cl.get("age"), "mom": cl.get("mom"),
+             "pts": (cl.get("m5") or {}).get("pts"), "v": v, "chips": cl.get("chips") or [], "variant": self.ccfg.get("curvePush")}
+        out = self.notify_curve(c)
+        self.say("curve notification for %s (%d%% sold, verdict %s): %s" % (c["sym"], cl.get("prog") or 0, v, json.dumps(out)[:160] if isinstance(out, dict) else out))
+        if went_out(out):
+            cl["push"] = now
+        elif isinstance(out, dict) and out.get("skipped") == "rate guard":
+            self.cpushed.pop(a, None)            # app's gap since the last curve notification: tried again once it is over (within the wait)
+            self.cpush_hold = time.time() + app_gap("curve")
+
+    def notify_curve(self, c):
+        """One curve notification (app.notify_curve; a stand-in for tests: self.cnotifier). Never raises."""
+        try:
+            if self.cnotifier:
+                return self.cnotifier(c)
+            import app as A
+            if not A.enabled():
+                return {"skipped": "no live store"}
+            fn = getattr(A, "notify_curve", None)
+            return fn(c) if fn else {"skipped": "no curve notification in app.py"}
+        except Exception as e:
+            self.say("curve notification failed (%s)" % RS.short(e))
+            return {"skipped": "error"}
+
+    def curve_doc(self, now):
+        """radar.json's "curve" block (curve_watch.Book.doc): the watch's state and hosts, the calls, the variant table next to the
+        radar's greens of the same hours, the calibration and the push switch. None without curve_watch.py."""
+        if self.curve is None:
+            return None
+        try:
+            tsd = self.live.trade_state() if self.live is not None and hasattr(self.live, "trade_state") else None
+            if tsd is None:
+                trades = "off"
+            elif tsd.get("shape") is False or tsd.get("off"):
+                trades = "refused"
+            elif tsd.get("last") and time.time() - tsd["last"] < 300:
+                trades = "ok"
+            elif tsd.get("since") and time.time() - tsd["since"] > 600 and tsd.get("want", 0) >= 5:
+                trades = "silent"
+            else:
+                trades = "waiting"
+            pf_off = not self.csrc.use("pf_curve")
+            state = "off" if not self.curve_live() else ("limited" if pf_off or trades in ("off", "refused", "silent") else "on")
+            why = self.curve_why if not self.curve_on else "rounds only: the watch runs in a loop's spare time" if self.one_round else \
+                ("pump.fun's curve list is off (%s)" % self.csrc.off_why.get("pf_curve", "switched off") if pf_off else
+                 {"off": "no live trades (the feed is off): the list every 30 s only",
+                  "refused": "the feed refused the trade subscriptions: the list only" if tsd and tsd.get("off") else "the feed's trades failed their check: the list only",
+                  "silent": "no trade came for the coins followed: the list only"}.get(trades, ""))
+            sol = self.curve.sol()
+            cand = sum(1 for c in self.curve.coins.values() if c.get("grad") is None and (c.get("p") or 0) >= self.CW.FOLLOW_MIN)
+            st = {"state": state, "why": why[:160], "follow": len(self.curve.fol), "cand": cand, "trades": self.curve.n["trades"], "polls": self.curve.n["polls"],
+                  "sol": fin(sol, 2), "hosts": {"pump.fun": "off" if pf_off else self.chttp.state("frontend-api-v3.pump.fun"), "trades": trades},
+                  "push": {"variant": self.ccfg.get("curvePush"), "verdicts": list(self.ccfg["pushVerdicts"]), "perH": self.ccfg["pushPerH"],
+                           "sent1h": sum(1 for t in self.cpushed.values() if now - t < H)}}
+            recs = [rec for d in self.docs.values() for rec in (d.get("coins") or {}).values()]
+            return self.curve.doc(now, st, self.CW.greens_stats(recs, self.curve.active_hours()))
+        except Exception as e:
+            self.say("curve block not built (%s)" % RS.short(e))
+            return {"v": 1, "t": now, "state": "off", "why": "the block failed: %s" % RS.short(e)}
 
     # ---------------------------------------------------------------- one cycle
     def cycle(self, k, t_k, last):
@@ -1050,6 +1815,7 @@ class Radar:
         self.http.until = end(STEP_END["discover"])
         self.last_c = {}
         n_disc = self.disc = self.src.discover(sb, self.cache["pf"], now, self.cache["jup"])
+        self.curve_rows_sb(sb, now)              # the newest coins' market caps and the graduated list into the curve watch (no request)
         self.index_x(now)
         # 3. DexScreener
         self.http.until = end(STEP_END["ds"])
@@ -1061,6 +1827,7 @@ class Radar:
         rows, pairs = self.run_scan(sb, now)
         self.pool_cache(pairs, answered, now)
         self.later_prices(pairs, answered, now)
+        self.curve_pool_values(pairs, answered, now)
         live, finish = self.eligible(rows, now)
         self.http.until = end(STEP_END["tier1"])
         gt_jobs = self.gt_jobs(live, now)
@@ -1089,41 +1856,18 @@ class Radar:
             rec = self.rec(x["addr"])
             if rec is not None:
                 rec["top"] = 1
+        self.last_rated, self.last_k = rated, k   # the fast lane's list until the next cycle
         self.outcomes(now)
         # 8. pushes, radar.json, radar-data, the app's row
         self.http.until = end(STEP_END["push"])
-        to_push = self.to_push(coins, now)
-        for x in to_push:                        # pushed.json (radar-data) holds the coin before anything is sent, so a restart never sends it
-            self.pushed[x["addr"]] = now         # twice; the record and radar.json say "pushed" only once the notification went out
-        secs = round(time.time() - T0, 1)
+        to_push = self.to_push(coins, now)       # pushed.json (radar-data) holds the coin before anything is sent, so a restart never sends it
+        secs = round(time.time() - T0, 1)        # twice; the record and radar.json say "pushed" only once the notification went out (deliver)
         state = "done" if self.one_round else "ending" if last else "running"      # done: a round is over, its list stays until the next one
         nxt = self.next_round(now) if self.one_round else t_k + self.step
         line = lambda n: "cycle %d: %d seen, %d without traps, %d pushed (%d s)" % (k, len(rated), len(coins), n, round(secs))
-        self.cycle_lines = (self.cycle_lines + [line(0)])[-6:]
-        doc = self.build_doc(state, coins, others, rated, now, nxt, secs, k)
-        landed = self.publish(doc)
-        if to_push and not landed and self.remote:
-            for x in to_push:                    # the mark could not be saved: no notification now, the next cycle tries again
-                self.pushed.pop(x["addr"], None)
-            to_push = []
-        sent = []
-        if to_push:
-            out = self.notify([dict(x["doc"], push=now) for x in to_push], doc.get("record"))
-            self.say("notification for %s: %s" % (", ".join(x["sym"] for x in to_push), json.dumps(out)[:160] if isinstance(out, dict) else out))
-            if went_out(out):
-                sent = to_push                   # nothing went out (rate guard, no push sender, no phone): the coin stays marked, never "pushed" on the page
-            for x in sent:
-                rec = self.rec(x["addr"])
-                if rec is not None:
-                    rec["push"] = now
-        if sent:                                 # radar.json and the records say pushed right after the notification (3.6)
-            self.cycle_lines[-1] = line(len(sent))
-            doc = self.build_doc(state, coins, others, rated, now, nxt, secs, k)
-            landed = self.publish(doc)
-        rowed = self.store_row(doc)
+        doc, landed, rowed, sent = self.deliver(to_push, lambda: self.build_doc(state, coins, others, rated, now, nxt, secs, k), line, now)
         self.say(line(len(sent)) + "; %d DexScreener requests, discovery %s; %s" % (nreq, ", ".join("%s %d" % kv for kv in sorted(n_disc.items())),
                                                                                    self.saved(landed, rowed)))
-        self.last_doc = doc
         # 9. caches, the model, the periodic reads
         for a in [a for a in list(self.work) + list(self.closes) if now - (num((self.rec(a) or {}).get("pool")) or 0) > 20 * 60_000]:
             self.work.pop(a, None)
@@ -1180,6 +1924,8 @@ class Radar:
                 if now - (num(rec.get("pool")) or 0) < FINISH_MIN * 60_000:
                     add(a)
         for a in self.live_fresh(now):          # the live feed's graduations of the last 3 minutes: no recheck wait (a new pool lists late)
+            add(a)
+        for a in self.curve_pool_asks(now):     # the curve watch's graduated calls whose value at call + 60 min is due
             add(a)
         pf, ptags = M.load_side(sb, "pf", M.PF_COLS)
         gt, _ = M.load_side(sb, "gt", M.GT_COLS)
@@ -1973,7 +2719,8 @@ class Radar:
         n_out = sum(1 for s in by.values() if s["rug"] is not None)
         return rec, n_out, by
 
-    def build_doc(self, state, coins, others, rated, now, nxt, secs, k):
+    def build_doc(self, state, coins, others, rated, now, nxt, secs, k, hosts_from=None):
+        """radar.json. hosts_from: a fast lane's doc keeps the last cycle's state of every host the fast lane did not ask."""
         record, n_out, _ = self.summary(now)
         record["pat"] = pat_of(self.model.get("cmp"), self.W_prior)
         hosts = {}
@@ -1987,6 +2734,10 @@ class Radar:
                     hosts[label] = st
         if self.live is not None:
             hosts["pumpportal"] = self.live.state()
+        if isinstance(hosts_from, dict) and isinstance(hosts_from.get("hosts"), dict):
+            for label, st in hosts.items():
+                if st == "unused" and isinstance(hosts_from["hosts"].get(label), str):
+                    hosts[label] = hosts_from["hosts"][label]
         notes = list(self.notes_run)
         rc_host = "api.rugcheck.xyz"
         miss = sum(1 for x in rated if (self.cache["rc"].get(x["addr"]) or {}).get("st") != "ok")
@@ -2043,6 +2794,9 @@ class Radar:
         doc["src"] = dict(sorted(((k, int(v)) for k, v in self.disc.items() if num(v) is not None), key=lambda kv: (-kv[1], kv[0]))[:12])   # the round's discovery counts (the office desk's Sources)
         for o, x in zip(doc["others"], others):     # the fold's red flags too: the office desk counts the round's most frequent ones
             o["hard"] = x["doc"]["hard"]
+        cv = self.curve_doc(now)                    # the curve watch's paper test (at most curve_watch.DOC_MAX bytes)
+        if cv is not None:
+            doc["curve"] = cv
         return fit_size(doc)
 
     def finish_doc(self, state, now, why, after=None):
@@ -2291,6 +3045,25 @@ def hindsight(T, rec):
     return {k: o.get(k + "1h") if isinstance(o.get(k + "1h"), bool) else None for k in ("rug", "win")}
 
 
+def app_budget():
+    """(s one call to the app's live store takes at most, s one notification's sends take at most): app.CALL_TOTAL and app.NOTIFY_BUDGET,
+    8 and 15 without app.py. A notification may take both (the subscriptions are read, then sent to), the app's row one call."""
+    try:
+        import app as A
+        return float(A.CALL_TOTAL), float(A.NOTIFY_BUDGET)
+    except Exception:
+        return 8.0, 15.0
+
+
+def app_gap(kind):
+    """s app.notify's rate guard keeps between two notifications of kind (app.KINDS[kind][2]), RATE_GUARD_S without app.py."""
+    try:
+        import app as A
+        return float(A.KINDS[kind][2])
+    except Exception:
+        return RATE_GUARD_S
+
+
 def went_out(out):
     """True when a notification reached at least one phone: app.notify's answer says sent >= 1 and nothing skipped (rate guard, no push
     sender, no live store). sent 0 (no phone subscribed, every send failed) is not "pushed" anywhere."""
@@ -2336,7 +3109,9 @@ def fit_size(doc):
 
 
 def finish_from(prev, state, now, why, run_id, start, end, source, hw):
-    keep = {k: prev.get(k) for k in ("model", "lastGood", "recent", "record", "wm", "hourly") if prev.get(k) is not None}
+    keep = {k: prev.get(k) for k in ("model", "lastGood", "recent", "record", "wm", "hourly", "curve") if prev.get(k) is not None}
+    if isinstance(keep.get("curve"), dict):          # the curve test's table stays readable while the radar is off; the watch itself is not
+        keep["curve"] = dict(keep["curve"], state="off", why="the radar is %s" % state)
     nxt = next_start(now, hw) if state == "hours" else None
     doc = {"v": 1, "kind": "radar", "t": now, "next": nxt, "run": {"id": str(run_id)[:40], "start": start, "end": end, "cycle": None, "source": source},
            "state": state, "why": why, "secs": 0.0, "model": {"from": "prior", "n": 0, "need": MODEL_NEED, "auc": None, "prior": None, "at": None, "why": ""},
@@ -2345,6 +3120,20 @@ def finish_from(prev, state, now, why, run_id, start, end, source, hw):
            "hosts": {}, "notes": [], "lines": []}
     doc.update(keep)
     return doc
+
+
+def curve_cfg(CW=None, path=None):
+    """radar_curve.json, the curve watch's push switch (read at the start): curvePush a variant id ("75m": 75 % of the curve with
+    momentum, see curve_watch.variant_of) or null (the default: nothing is sent), pushVerdicts the verdicts a push may have (ok, risky,
+    unknown; trap never), pushPerH 0 to 10. Anything missing or malformed is the default: off."""
+    raw = load_json(path or CURVE_CFG, {})
+    raw = raw if isinstance(raw, dict) else {}
+    var = raw.get("curvePush")
+    vv = CW.variant_of(var) if isinstance(var, str) and CW is not None else None
+    ok_var = CW.variant_id(*vv) if vv else None     # the normalised id (" 75m" -> "75m"): the doc, the page and app.notify_curve see the same
+    vs = [v for v in (raw.get("pushVerdicts") if isinstance(raw.get("pushVerdicts"), list) else ["ok"]) if v in ("ok", "risky", "unknown")] or ["ok"]
+    n = num(raw.get("pushPerH"))
+    return {"curvePush": ok_var, "pushVerdicts": list(dict.fromkeys(vs)), "pushPerH": int(n) if n is not None and 0 <= n <= 10 else CURVE_PUSH_PER_H}
 
 
 # ---------------------------------------------------------------- the hours gate (radar.yml's first step)

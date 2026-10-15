@@ -63,6 +63,9 @@ ADAPTERS = {               # on/off defaults per adapter (names and values from 
     "gt_candles": True,           # GeckoTerminal minute candles: staircase so far of other pools, the peak within the hour
     "x_tweet": True,              # X's public tweet facts (fetch.viral's syndication endpoint, no key): the likes of the tweet a coin
                                   # launched off (viral_tweet, measured only), launch_radar.TWEET_CAP a cycle; not in the probe (radar only)
+    # the curve watch (curve_watch.py, a loop's spare time only)
+    "pf_curve": True,             # pump.fun coins still on their curve, market cap first (complete=false, 50 a page): the watch's candidates;
+                                  # the same frontend-api-v3 list route as pf_graduated / pf_new, not in the probe (radar only)
 }
 NOT_HERE = {               # the probe's other ADAPTERS entries: not switches of the radar, and why
     "rc_new_tokens": "not built: RugCheck new_tokens listed 1 of 23 fresh pools, never one nobody else had; RugCheck's budget stays with the reports",
@@ -78,6 +81,8 @@ PAGES = {"pf_graduated": 4, "pf_new": 2, "gt_new_pools": 2}
 FRESH_MS = 10 * 60_000      # GeckoTerminal's page 2 is asked only when page 1's oldest pool is younger than this (else none there is fresh)
 PF_GRAD = "/coins?offset=%d&limit=50&sort=last_trade_timestamp&order=DESC&includeNsfw=false&complete=true"
 PF_NEW = "/coins?offset=%d&limit=50&sort=created_timestamp&order=DESC&includeNsfw=false"
+PF_CURVE = "/coins?offset=%d&limit=50&sort=market_cap&order=DESC&includeNsfw=false&complete=false"
+CURVE_FIELDS = ("virtual_token_reserves", "real_token_reserves", "market_cap", "usd_market_cap")   # a curve row's progress comes from one of them
 PF_COIN = F.PF + "/coins-v3/%s"
 PF_BY_CREATOR = F.PF + "/coins?offset=0&limit=50&sort=created_timestamp&order=DESC&includeNsfw=false&creator=%s"
 PF_DEV_COUNT = F.PF + "/coins-v2/user-created-coins/%s?offset=0&limit=50"
@@ -110,6 +115,7 @@ HOST_LABEL = {"api.dexscreener.com": "dexscreener", "api.rugcheck.xyz": "rugchec
               "launch-mint-v1.raydium.io": "launchlab", "swap-api.pump.fun": "pump.fun trades", "advanced-api-v2.pump.fun": "pump.fun holders",
               XTW_HOST: "x tweets"}
 ADAPTER_HOST = {"pf_graduated": ("frontend-api-v3.pump.fun",), "pf_new": ("frontend-api-v3.pump.fun",), "pf_coin_v3": ("frontend-api-v3.pump.fun",),
+                "pf_curve": ("frontend-api-v3.pump.fun",),
                 "pf_dev_history": ("frontend-api-v3.pump.fun",), "pf_top_holders": ("frontend-api-v3.pump.fun", "advanced-api-v2.pump.fun"),
                 "gt_new_pools": ("api.geckoterminal.com",), "gt_candles": ("api.geckoterminal.com",),
                 "jup_recent": ("lite-api.jup.ag",), "dev_check": ("lite-api.jup.ag",), "ds_profiles": ("api.dexscreener.com",),
@@ -327,6 +333,27 @@ class RadarHttp(F.Http):
             return status, None
 
 
+class SideHttp(RadarHttp):
+    """The curve watch's own client (launch_radar's loop, in the spare time between rounds): its own cool-downs, cool-down levels, dead
+    hosts, refusal counters, rests (no answer), 429 marks and request count, so nothing the watch hears (a 429 on the curve list, three
+    403s on a route the rounds never ask, a RugCheck 429 on a curve coin) ever cools or gives up a host for the rounds. The per-host gaps
+    are the radar's own (last_at and rpc_at are the same dicts: one pace per host for both clients), and a host the radar has cooling or
+    has given up is skipped here too: one way only. new_window() is the watch's "cycle" (a 429 or no answer rests a host for the rest
+    of it, then the cool-down ladder runs on its own clock)."""
+
+    def __init__(self, main, log=None):
+        RadarHttp.__init__(self, main.mock or None, 0.0, log=log or main.log)
+        self.main = main
+        self.last_at, self.rpc_at = main.last_at, main.rpc_at
+
+    def blocked(self, host):
+        m = self.main
+        return RadarHttp.blocked(self, host) or host in m.dead or m.cool.get(host, 0.0) > time.time()
+
+    def new_window(self):
+        self.heard, self.hit429, self.mute, self.seen429 = set(), set(), set(), set()
+
+
 def fmt_s(s):
     return ("%.1f min" % (s / 60.0)) if s >= 60 else ("%d s" % round(s))
 
@@ -526,6 +553,30 @@ class Sources:
         meta[mint] = pf_facts(c, meta.get(mint), now)
         return True
 
+    def pf_coin_raw(self, mint):
+        """pump.fun coins-v3/{mint} as pump.fun sends it (the curve watch reads complete, the market cap and the reserves), or None (no
+        answer, a 404: http.code says which). Shape-checked as pf_coin."""
+        if not self.use("pf_coin_v3"):
+            return None
+        c = self.http.get(PF_COIN % mint)
+        if c is None or not self.shape("pf_coin_v3", isinstance(c, dict) and "mint" in c and "created_timestamp" in c, "mint and created_timestamp"):
+            return None
+        return c
+
+    def pf_curve(self, page=0):
+        """pump.fun's coins still on their bonding curve, highest market cap first (PF_CURVE, one page of 50): the rows as pump.fun sends
+        them (curve_watch.row_facts reads them), or None (no answer, the adapter off). The first answer of the run must be a list of coins
+        with a mint and one of CURVE_FIELDS; a list that ignores complete=false is no harm (a complete row is a graduation there)."""
+        if not self.use("pf_curve"):
+            return None
+        data = self.http.get(F.PF + PF_CURVE % (page * 50))
+        if data is None:
+            return None
+        ok = isinstance(data, list) and (not data or (isinstance(data[0], dict) and "mint" in data[0] and any(k in data[0] for k in CURVE_FIELDS)))
+        if not self.shape("pf_curve", ok, "list of coins with mint and a market cap or curve reserves"):
+            return None
+        return [c for c in data if isinstance(c, dict)]
+
     def pf_dev(self, creator, now):
         """The dev's pump.fun launches: coins?creator=<dev> (the 50 newest, a strict filter) and, when 50 came back, coins-v2's total
         count. -> {"count": all launches or None, "rows": [[mint, graduated 0/1, dead 0/1], ...]} (dead: never graduated, under $10k
@@ -556,11 +607,13 @@ class Sources:
                 count = int(F.num(j["count"]))
         return {"count": count, "rows": rows[:50]}
 
-    def pf_holders(self, mint, t_mint, skip=()):
+    def pf_holders(self, mint, t_mint, skip=(), drop=None):
         """pump.fun's top 50 holders (frontend-api-v3, advanced-api-v2 when the first gives no answer): the share and count of holders
         that entered within 30 s of the mint (enteredAt; needs the mint time), and isBundler as info (a count only when some are
         flagged: an unflagged list is never "no bundlers"). isSniper / isDev / fundingSource only when pf_holder_flags is on.
-        -> {"snip30", "snip30N", "bundN", "bundPct", "n", "flagSnipN"} or None. skip: addresses that are pools, not buyers."""
+        -> {"snip30", "snip30N", "bundN", "bundPct", "n", "flagSnipN"} or None. skip: addresses that are pools, not buyers; drop(holder,
+        scale): True for a holder that is no buyer by its amount (the curve watch: a coin's own curve account, which pump.fun lists as a
+        holder entered at the mint)."""
         if not self.use("pf_top_holders"):
             return None
         data = None
@@ -576,6 +629,8 @@ class Sources:
         hs = [x for x in top if isinstance(x, dict) and F.addr_of(x.get("address")) and x.get("address") not in skip]
         amt = lambda x: F.num(x.get("amount")) or 0.0
         scale = amount_scale(sum(amt(x) for x in top if isinstance(x, dict)))
+        if drop is not None:
+            hs = [x for x in hs if not drop(x, scale)]
         out = {"n": len(hs), "snip30": None, "snip30N": None, "bundN": None, "bundPct": None, "flagSnipN": None}
         timed = [x for x in hs if ms_of(x.get("enteredAt"))]
         if t_mint and hs and len(timed) >= 0.8 * len(hs):

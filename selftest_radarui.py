@@ -1270,8 +1270,10 @@ def browser(check, tmp, d, skips, shots=None):
           "nit 2 the Overview shows the trained odds from d.odds (WP3's committed shape), as info only: %r" % out.get("overview", "")[-140:])
     why = out.get("why") or ""
     check("pool opened with the mint" in why and "rugged within 1 h: 60% with it, 13% without" in why and "Weight 0" in why and "biggest wallet over 20%" in why and "?:" not in why
-          and "Not in v1: coins still on the bonding curve" in why and "radar data 212 of 300 needed" in why,
-          "S1 the 'Why these checks?' fold shows each check with its study evidence in words, the weight-0 list by label, the model status and what v1 leaves out (%r)" % why[:120])
+          and "Coins still on the bonding curve are not rated here: the curve watch calls them on paper only (About to graduate), with no push while its switch is off" in why
+          and "radar data 212 of 300 needed" in why,
+          "S1 the 'Why these checks?' fold shows each check with its study evidence in words, the weight-0 list by label, the model status and that coins "
+          "still on their curve are only called on paper (%r)" % why[:120])
     ea = out.get("early") or {}
     inst = lambda k: [c for c in ea.get(k, []) if "pool opened with the mint" in c[1]]
     check(len(ea) == 3 and len(inst("INSTANT")) == 1 and "bad" in inst("INSTANT")[0][0] and not inst("CURVED") and not inst("NOMINT")
@@ -1374,6 +1376,346 @@ def src_checks(check, tmp, skips):
     check(js == py, "the script's whitelist keeps the same src as Python's (%s)" % (js if js is not None else r.stderr[-300:]))
 
 
+# ---------------------------------------------------------------------------------------------- the curve watch's section (About to graduate)
+XSS_CURVE = "<img src=c onerror=a(8)>"      # 24 characters: kept whole by the whitelist, so it must arrive escaped
+CURVE_BANNED = re.compile(r"\bsafe\b|\bguaranteed\b|\bbuy\b|\bbuying\b|\bclean\b|\bshould\b", re.I)
+
+
+def curve_block(t, kind="calls"):
+    """radar.json's curve block as launch_radar.curve_doc writes it (curve_watch.Book.doc's shape) at the doc's time t: kind calls (eight coins,
+    ten calls: H2O called at 60, 75 and 90 % and graduated, one still on the curve, one that did not graduate, a dead one, a pushed one that
+    doubled, a risky one, one without a 1 h value, a trap), empty (on, no call yet), off (rounds only, the same calls), on (the push switch on
+    for 75m), xss (a hostile symbol, chip, why and host), hostile (shapes the whitelists must drop)."""
+    rng = random.Random(21)
+    m = lambda: b58(rng)
+    h2o = m()
+    ok_chips = [["ok", "no rugger wallets"], ["ok", "RugCheck report"], ["info", "dev: 3 launches, 1 dead"]]
+    call = lambda a, sym, thr, ago, prog, mcu, age, v="unknown", chips=(), out=None, push=None, mom=None, pts=None: {
+        "mint": a, "sym": sym, "thr": thr, "t": t - ago, "prog": prog, "mcu": mcu, "mcs": round(mcu / 150.0, 2) if mcu else None, "age": age, "mom": mom, "pts": pts,
+        "buys": 40, "sells": 12, "v": v, "chips": [list(c) for c in chips], "push": push, "out": out or {}}
+    recent = [call(h2o, "H2O", 90, 4 * MIN, 90.3, 112_000, 69.8, "ok", ok_chips, {"grad": t - 2 * MIN, "gradMin": 2.0}, mom=True, pts=14.2),
+              call(m(), "TRAPPY", 60, 5 * MIN, 60.4, 24_000, 6.1, "trap", [["bad", "3 holders from rugged coins"], ["warn", "no socials"]]),
+              call(m(), "STILL", 60, 8 * MIN, 61.0, 31_000, 14.2, "unknown", [["unk", "RugCheck pending"]]),
+              call(h2o, "H2O", 75, 12 * MIN, 76.2, 58_250, 61.5, "ok", ok_chips, {"grad": t - 2 * MIN, "gradMin": 10.0}, mom=True, pts=11.0),
+              call(h2o, "H2O", 60, 20 * MIN, 60.8, 31_400, 53.0, "unknown", (), {"grad": t - 2 * MIN, "gradMin": 18.0}),
+              call(m(), "RISKY", 75, 30 * MIN, 75.9, 61_000, 22.4, "risky", [["warn", "creator sold"], ["info", "61% sniped in 30 s (12 wallets)"]]),
+              call(m(), "DEADC", 60, 65 * MIN, 60.2, 25_500, 0.4, "unknown", (), {"x60": 0.03, "at60": t - 5 * MIN, "how": "dead", "peak": 1.1, "rug": True, "x2": False, "eur": -2.91}),
+              call(m(), "NOGRAD", 75, 70 * MIN, 75.5, 59_999, 140.0, "ok", ok_chips[:2], {"x60": 0.4231, "how": "curve", "peak": 1.3, "rug": False, "x2": False, "eur": -1.79}),
+              call(m(), "MOONY", 90, 75 * MIN, 90.1, 1_254_000, 3000.0, "ok", ok_chips, {"grad": t - 73 * MIN, "gradMin": 2.0, "x60": 3.1, "how": "pool", "peak": 4.2, "rug": False,
+                                                                                       "x2": True, "eur": 6.125}, push=t - 74 * MIN, mom=True, pts=21.0),
+              call(m(), "MISSV", 60, 90 * MIN, 60.0, None, None, "unknown", (), {"miss": True, "why": "graduated after the hour, no curve price at it"})]
+    stats = lambda n, ns, rug, x2, eur, **kw: dict({"n": n, "nS": ns, "rug": rug, "x2": x2, "eur": eur}, **kw)
+    variants = [dict(stats(18, 12, 0.333, 0.083, -0.95, grad=0.25, gradMin=14.0, miss=1), id="60", thr=60, mom=False, by={"unknown": stats(10, 6, 0.5, 0.0, -1.2), "ok": stats(8, 6, 0.167, 0.167, -0.7)}),
+                dict(stats(5, 3, 0.0, 0.333, 0.4, grad=0.4, gradMin=9.0, miss=0), id="60m", thr=60, mom=True, by={"ok": stats(5, 3, 0.0, 0.333, 0.4)}),
+                dict(stats(31, 24, 0.25, 0.333, 0.42, grad=0.5, gradMin=6.0, miss=1), id="75", thr=75, mom=False,
+                     by={"ok": stats(12, 9, 0.111, 0.444, 1.1), "risky": stats(8, 7, 0.571, 0.143, -1.6), "trap": stats(3, 2, 1.0, 0.0, -3.0), "unknown": stats(8, 6, 0.0, 0.5, 0.9)}),
+                dict(stats(9, 6, 0.167, 0.5, 1.35, grad=0.667, gradMin=4.0, miss=0), id="75m", thr=75, mom=True, by={"ok": stats(9, 6, 0.167, 0.5, 1.35)}),
+                dict(stats(4, 2, 0.0, 0.5, 0.125, grad=1.0, gradMin=2.0, miss=0), id="90", thr=90, mom=False, by={"ok": stats(4, 2, 0.0, 0.5, 0.125)}),
+                dict(stats(0, 0, None, None, None, grad=None, gradMin=None, miss=0), id="90m", thr=90, mom=True, by={})]
+    cv = {"v": 1, "t": t, "since": t - 9 * H, "hours": 9, "ticket": 3.0, "slip": 0.05, "thresholds": [60, 75, 90], "momPts": 10.0, "calls": 67, "late": 4,
+          "recent": recent, "variants": variants, "greens": {"n": 26, "nS": 21, "rug": 0.19, "x2": 0.143, "eur": -0.31, "grad": None},
+          "calib": {"n": 7, "mcSol": 405.2, "prog": 98.6, "scale": 1.0, "expect": 410.9}, "state": "on", "why": "", "follow": 14, "cand": 52, "trades": 18_400,
+          "polls": 1060, "sol": 150.0, "hosts": {"pump.fun": "ok", "trades": "ok"}, "push": {"variant": None, "verdicts": ["ok"], "perH": 3, "sent1h": 0}}
+    if kind == "empty":
+        cv.update(calls=0, late=0, recent=[], variants=[dict(v, n=0, nS=0, by={}) for v in variants], greens={"n": 0, "nS": 0, "rug": None, "x2": None, "eur": None, "grad": None})
+    elif kind == "off":
+        cv.update(state="off", why="rounds only: the watch runs in a loop's spare time", hosts={"pump.fun": "ok", "trades": "off"})
+    elif kind == "on":
+        cv["push"] = {"variant": "75m", "verdicts": ["ok", "unknown"], "perH": 3, "sent1h": 1}
+    elif kind == "xss":
+        cv["recent"] = [dict(r, sym=XSS_CURVE, chips=[["bad", XSS_CURVE]]) if i < 2 else r for i, r in enumerate(recent)]
+        cv.update(state="limited", why=XSS_CURVE, hosts={"pump.fun": "<b>ok</b>", "trades": "silent"})
+    elif kind == "hostile":
+        cv["recent"] = [dict(recent[0], mint="0x<b>NOTBASE58"), dict(recent[1], thr=80), dict(recent[2], t="soon"), dict(recent[3], v="great", chips=[["evil", "x"], ["ok", 5], "z", ["warn", "\u200b"]]),
+                        dict(recent[4], sym="A\u202eB\u0000C" + "\U0001F438" * 12, mom="yes", out={"grad": "x", "rug": "true", "how": "moon", "miss": 1}), [1], None] + recent[5:]
+        cv["variants"] = [dict(variants[0], id="80x"), dict(variants[1], id="60m\n"), dict(variants[2], by={"ok": [1], "great": variants[2]["by"]["ok"], "risky": None})] + variants[3:]
+        cv.update(state="weird", thresholds=[60, "75", True, 80, 90.0], hosts={"pump.fun": "OK", "trades": "limited", "x": "ok"}, push={"variant": "75x", "verdicts": ["trap", "ok", ["ok"]], "perH": "3"},
+                  calib=[1], greens="x", why=["no"], since=-5)
+    return cv
+
+
+CURVE_JS = """() => { const b = document.querySelector('[data-r-curve]'), q = s => b.querySelector(s), vis = e => !!(e && e.getClientRects().length), r = e => e.getBoundingClientRect();
+  const shown = e => { if (!vis(e) || getComputedStyle(e).visibility === 'hidden') return false;
+    for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === 'DETAILS' && !p.open && !(e.tagName === 'SUMMARY' && e.parentElement === p)) return false; return true; };
+  const tab = q('.rc-tab'), wrap = tab && tab.parentElement;
+  return { hidden: b.hidden, cls: b.className, html: b.innerHTML, text: b.innerText, hscroll: document.documentElement.scrollWidth - innerWidth,
+    small: Array.from(b.querySelectorAll('a[href], summary')).filter(shown).filter(e => r(e).height < 43.5).map(e => e.textContent.slice(0, 30) + ' ' + Math.round(r(e).height)),
+    inBox: !!wrap && r(wrap).right <= r(b).right + 0.5 && r(wrap).left >= r(b).left - 0.5, tabFits: !!tab && tab.scrollWidth <= wrap.clientWidth + 1,
+    syms: Array.from(b.querySelectorAll('.rc-coin')).filter(shown).map(li => li.querySelector('.rc-sym').textContent),
+    status: Array.from(b.querySelectorAll('.rc-coin')).map(li => li.querySelector('.rc-s').className + '|' + li.querySelector('.rc-s').textContent),
+    imgs: b.querySelectorAll('img, svg, iframe, script').length, links: Array.from(b.querySelectorAll('a')).map(a => [a.getAttribute('href'), a.target, a.rel]),
+    above: (() => { const o = document.querySelector('[data-r-others]'), k = document.querySelector('[data-r-rec]');
+      return !!(o && k && (o.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && (b.compareDocumentPosition(k) & Node.DOCUMENT_POSITION_FOLLOWING)); })(),
+    more: !!q('details.rc-more') && q('details.rc-more').open, pushCls: (q('.rc-push') || {}).className || '', ev: window.__rev || null,
+    lowc: (() => { const lum = c => { let m = c.match(/[\\d.]+/g).map(Number); if (/^color\\(srgb/.test(c)) m = m.map((v, i) => i < 3 ? v * 255 : v);
+        const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
+      const bgOf = e => { for (let p = e; p; p = p.parentElement) { const c = getComputedStyle(p).backgroundColor; if (c && !/rgba\\(0, 0, 0, 0\\)|transparent/.test(c)) return c; } return 'rgb(255,255,255)'; };
+      return Array.from(b.querySelectorAll('[class^="rc-"], [class*=" rc-"]')).filter(shown).filter(e => Array.from(e.childNodes).some(n => n.nodeType === 3 && n.textContent.trim()))
+        .map(e => { const a = lum(getComputedStyle(e).color), c = lum(bgOf(e)); return [e.className, Math.round(100 * (Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05)) / 100]; })
+        .filter(x => x[1] < 4.5); })() }; }"""
+
+
+def curve_checks(check, tmp, skips, shots=None):
+    """The curve watch's section on the New tab ("About to graduate (paper test)"): both whitelists keep the block (and drop what they must), the
+    build's and the script's views and elements are the same, the texts, escaping and wording, its place under the list, and the phone and
+    desktop layouts in light and dark (screenshots into shots/curve when asked)."""
+    import page_radar as P
+    import curve_watch as CW
+    print("== the curve watch's section on the New tab (About to graduate, paper test)")
+    now = int(time.time() * 1000)
+    t = now - 30_000
+    blocks = {k: curve_block(t, k) for k in ("calls", "empty", "off", "on", "xss", "hostile")}
+    docs = {k: dict(radar_doc(now, "good"), curve=b) for k, b in blocks.items()}
+    docs["none"] = radar_doc(now, "good")
+    docs["bad block"] = dict(radar_doc(now, "good"), curve={"state": "on"})
+    import launch_radar as LR                   # the night: the loop's last doc kept by finish_from, a call 2 minutes before the watch stopped
+    blk = dict(blocks["calls"], recent=[dict(blocks["calls"]["recent"][2], t=t - 2 * MIN, out={})] + blocks["calls"]["recent"][3:])
+    docs["hours"] = LR.finish_from(dict(radar_doc(now, "good"), curve=blk), "hours", now, "outside the radar's hours", "t", None, None, "manual", (7, 24))
+    docs["lone half"] = dict(radar_doc(now, "good"), curve=dict(blocks["calls"], recent=[dict(blocks["calls"]["recent"][0], sym="A\udc00B\ud83d",
+                                                                                              chips=[["ok", "x\udc00y"]])] + blocks["calls"]["recent"][1:]))
+    cl = {k: P.clean_doc(d) for k, d in docs.items()}
+    cv = cl["calls"]["curve"]
+    # 1. the whitelist keeps the block whole (every key of curve_watch's shape) and drops what it must
+    raw = blocks["calls"]
+    ok9 = ("grad", "gradMin", "x60", "peak", "rug", "x2", "eur", "how", "miss")
+    keep = all(set(r) <= set(c) and all(c[k] == r[k] for k in r if k != "out") and all(c["out"][k] == x for k, x in r["out"].items() if k in ok9)
+               for r, c in zip(raw["recent"], cv["recent"]))
+    check(cv and len(cv["recent"]) == 10 and keep and [v["id"] for v in cv["variants"]] == ["60", "60m", "75", "75m", "90", "90m"] and cv["variants"][2]["by"]["risky"]["eur"] == -1.6
+          and cv["greens"]["n"] == 26 and cv["calib"]["prog"] == 98.6 and cv["hosts"] == {"pump.fun": "ok", "trades": "ok"} and cv["push"]["variant"] is None
+          and cl["none"]["curve"] is None and cl["bad block"]["curve"] is None,
+          "curve whitelist: clean_doc keeps radar.json's curve block with every call (10), its outcome fields, the six variants with their split by the quick check, "
+          "the greens, the calibration, the hosts and the push switch; no block or one without a time is None")
+    h = cl["hostile"]["curve"]
+    hr = {r["sym"]: r for r in h["recent"]}
+    check([r["sym"] for r in h["recent"]] == ["H2O", "A B C" + "\U0001F438" * 9, "RISKY", "DEADC", "NOGRAD", "MOONY", "MISSV"] and h["recent"][0]["v"] == "unknown"
+          and h["recent"][0]["chips"] == [] and hr["H2O"]["thr"] == 75 and [v["id"] for v in h["variants"]] == ["75", "75m", "90", "90m"] and h["variants"][0]["by"] == {}
+          and h["state"] == "off" and h["thresholds"] == [60, 90.0] and h["hosts"] == {"trades": "limited"} and h["push"] == {"variant": None, "verdicts": ["ok"], "perH": None, "sent1h": None}
+          and h["calib"] is None and h["greens"] is None and h["why"] == "" and h["since"] is None and "NOTBASE58" not in json.dumps(h),
+          "curve whitelist drops a mint that is not base58, a mark of 80, a call without a time, an unknown verdict (read as not fully checked) and bad chips, "
+          "a variant id 80x or with a newline, a split row that is no row, an unknown state (off), thresholds not 60/75/90, a host state that is not lower-case "
+          "letters, a push variant 75x and a trap verdict in the push list, a calib or greens that is no object (%s)" % [r["sym"] for r in h["recent"]])
+    weird = P.clean_curve(dict(raw, recent=[dict(raw["recent"][0], sym="A\u202eB\u0000C" + "\U0001F438" * 12, mom="yes", out={"grad": "x", "rug": "true", "how": "moon", "miss": 1})]))
+    w0 = weird["recent"][0]
+    check(w0["sym"] == "A B C" + "\U0001F438" * 9 and w0["mom"] is None and w0["out"] == {"grad": None, "gradMin": None, "x60": None, "peak": None, "rug": None, "x2": None, "eur": None, "how": "",
+                                                                                      "miss": False, "done": False},
+          "curve whitelist: a symbol's direction marks and controls become spaces, the cut is in UTF-16 units without a half emoji (24: %r); a momentum, rug, "
+          "graduation or 'how' of the wrong type is unknown, a miss only a real true" % w0["sym"])
+    # the real book's block (curve_watch.Book.doc with the radar's state) keeps every key through the whitelist
+    B = CW.Book()
+    a1, a2 = b58(random.Random(31)), b58(random.Random(32))
+    rowc = lambda a, p, at: {"mint": a, "symbol": "BOOK", "virtual_token_reserves": (CW.VT0 - CW.SELL * p / 100.0) * 1e6, "complete": False, "created_timestamp": t - 40 * MIN,
+                             "last_trade_timestamp": at, "usd_market_cap": 1.0, "market_cap": 1.0 / 150}
+    B.rows([rowc(a1, 58, t - 20 * MIN), rowc(a2, 72, t - 20 * MIN)], t - 20 * MIN)
+    B.polled(t - 20 * MIN)
+    B.rows([rowc(a1, 61, t - 19 * MIN), rowc(a2, 77, t - 19 * MIN)], t - 19 * MIN)
+    B.migrate(a2, t - 10 * MIN, "feed")
+    bd = B.doc(t, {"state": "on", "why": "", "follow": 2, "hosts": {"pump.fun": "ok", "trades": "waiting"}, "push": {"variant": None, "verdicts": ["ok"], "perH": 3, "sent1h": 0}},
+               CW.greens_stats([], B.active_hours()))
+    bc = P.clean_curve(json.loads(json.dumps(bd)))
+    lost = [k for k in bd if k not in bc] + [k for r in bd["recent"] for k in r if k not in bc["recent"][0]] + [k for v in bd["variants"] for k in v if k not in bc["variants"][0]]
+    check(bc and not lost and len(bc["recent"]) == len(bd["recent"]) == 2 and len(bc["variants"]) == 6 and bc["recent"][1]["out"]["grad"] == t - 10 * MIN,
+          "curve whitelist on curve_watch.Book.doc's own block: no key lost (%s), its calls and the graduation kept" % (lost or "none"))
+    hv = [P.curve_view(cl["hours"]["curve"], n) for n in (t, t + 61 * MIN, t + 7 * H)]
+    lh = (cl["lone half"] or {}).get("curve") or {}
+    check(cl["hours"]["curve"]["state"] == "off" and cl["hours"]["curve"]["t"] == t and hv[0]["head"] == "Curve watch off: the radar is hours"
+          and [h_["coins"][0]["st"] for h_ in hv] == [["live", "still on the curve"], ["muted", "not watched to the end"], ["muted", "not watched to the end"]]
+          and cl["lone half"] is not None and lh["recent"][0]["sym"] == "A B" and lh["recent"][0]["chips"][0] == ["ok", "x y"] and len(json.dumps(cl["lone half"])) > 0,
+          "curve view at night (the loop's last doc kept by finish_from, the watch off, a call 2 minutes before it stopped): still on the curve at the "
+          "block's time, then 'not watched to the end' an hour and 7 hours on, never 'did not graduate'; a symbol or chip with a lone surrogate half "
+          "(a JSON escape cut in two) keeps the doc, the half a space")
+    # 2. the view: head, sentences, coins (newest call per coin), statuses, results, tables, footnote
+    v = P.curve_view(cv, t)
+    co = v["coins"] + v["more"]
+    check(v["head"] == "Curve watch on · 14 coins followed · 9 h watched" and [c["sym"] for c in co] == ["H2O", "TRAPPY", "STILL", "RISKY", "DEADC", "NOGRAD", "MOONY", "MISSV"]
+          and len(v["coins"]) == P.CURVE_SHOWN and co[0]["prog"] == "90%" and co[0]["nums"] == "1 h 9 min after mint · market cap $112k · called at 60, 75 and 90%"
+          and co[0]["line"][0] == ["ok", "no trap found yet"] and co[0]["line"][1:] == [["ok", "no rugger wallets"], ["ok", "RugCheck report"], ["info", "dev: 3 launches, 1 dead"]]
+          and co[1]["line"][0] == ["bad", "trap"] and co[2]["line"][0] == ["unk", "not fully checked"] and co[3]["line"][0] == ["warn", "risky"]
+          and [c["st"] for c in co] == [["grad", "graduated after 2 min"], ["live", "still on the curve"], ["live", "still on the curve"], ["live", "still on the curve"],
+                                        ["bad", "dead"], ["muted", "did not graduate"], ["grad", "graduated after 2 min"], ["muted", "not watched to the end"]]
+          and [c["res"] for c in co] == [None, None, None, None, ["bad", "rugged in 1 h"], ["", "1 h: 0.42x"], ["good", "doubled in 1 h"], ["muted", "no 1 h value"]]
+          and co[4]["nums"] == "under 1 min after mint · market cap $26k · called at 60%" and co[5]["nums"].startswith("2 h 20 min after mint · market cap $60k")
+          and co[6]["nums"] == "2 days after mint · market cap $1.3M · called at 90% · sent to the phone" and co[7]["nums"] == "mint time unknown · market cap unknown · called at 60%",
+          "curve view: the head line, one row per coin by its newest call (H2O called at 60, 75 and 90%%, its newest numbers), its quick check first on its line, "
+          "the status now (graduated after N min, still on the curve, dead, did not graduate when valued on its curve, not watched to the end without a "
+          "value) and the hour's result (rugged, the multiple, doubled, no value) %s" % [c["st"][1] for c in co])
+    vt = P.curve_view(cv, t + 61 * MIN)
+    cv_later = dict(cv, t=t + 61 * MIN)
+    vl = P.curve_view(cv_later, t + 61 * MIN)
+    done_cv = dict(cv, recent=[dict(cv["recent"][2], out=dict(cv["recent"][2]["out"], done=True))])
+    check([c["st"][1] for c in vt["coins"]][:3] == ["graduated after 2 min", "not watched to the end", "not watched to the end"]
+          and [c["st"][1] for c in vl["coins"]][:3] == ["graduated after 2 min", "did not graduate", "did not graduate"]
+          and P.curve_view(done_cv, t + 2 * H)["coins"][0]["st"] == ["grad", "graduated"],
+          "curve view: an hour after a call by the viewer's clock, with the block's own time before it (the watch's last word), the coin was 'not watched "
+          "to the end' (never 'did not graduate' for an hour nobody saw); a block whose own time is past the hour says did not graduate; a graduation "
+          "found only later says graduated, without minutes")
+    rows = {r["cells"][0]: r for r in v["rows"]}
+    check(list(rows) == ["60%", "60% rising", "75%", "75% rising", "90%", "90% rising", "radar greens"]
+          and rows["75%"]["cells"] == ["75%", "31", "50%", "25%", "33%", "+0.42"] and rows["75%"]["cls"] == "" and rows["60%"]["cls"] == "few"
+          and rows["90%"]["cells"][-1] == "+0.13" and rows["60%"]["cells"][-1] == "−0.95" and rows["90% rising"]["cells"] == ["90% rising", "0", "–", "–", "–", "–"]
+          and rows["radar greens"]["cells"] == ["radar greens", "26", "–", "19%", "14%", "−0.31"] and rows["radar greens"]["cls"] == "rc-g"
+          and rows["75%"]["title"] == "31 calls, 24 with a 1 h value, graduated a median 6 min after the call, 1 without a 1 h value"
+          and [r["cells"][:3] for r in v["by"]][:3] == [["60%", "no trap found yet", "8"], ["60%", "not fully checked", "10"], ["60% rising", "no trap found yet", "5"]]
+          and len(v["by"]) == 9 and v["ticket"] == "3\u00a0€",
+          "curve table: a row per variant (calls, graduated, rugged and doubled in 1 h, paper per 3 €, half up in whole cents: 0.125 is +0.13 € in both languages), grey under 20 "
+          "valued calls, the radar's greens of the same hours last, and the split by the quick check (only verdicts with calls) %s" % rows["75%"]["cells"])
+    check(v["note"] == ("Paper test: the radar calls pump.fun coins still on their bonding curve, before the pool opens, at 60, 75 and 90% of the curve sold, to find out "
+                        "whether an earlier call helps. Each call is judged 1 h later with 3\u00a0€ on paper and 5% slippage, beside the radar's greens of the same hours.")
+          and v["push"] == "No curve push goes out while the switch is off." and not v["pushOn"]
+          and P.curve_view(cl["on"]["curve"], t)["push"] == "Curve pushes are on for the 75% rising calls (quick check: no trap found yet or not fully checked), at most 3 an hour."
+          and "4 times a trading coin was first seen already past a mark, so no call was made." in v["foot"] and "at the last trade before 7 graduations the curve read 99% sold" in v["foot"]
+          and "Rugged: gone, dead or worth 0.1x or less at 1 h; doubled: 2x to 30x within the hour and not gone or dead at 1 h; the greens by the same rules." in v["foot"]
+          and "the first one within 90 s after it (then counted from that moment's price)" in v["foot"] and "of the calls an hour old whose hour was seen" in v["foot"]
+          and P.curve_view(cl["off"]["curve"], t)["head"] == "Curve watch off: rounds only: the watch runs in a loop's spare time"
+          and P.curve_view(cl["empty"]["curve"], t) == {"state": "on", "head": "Curve watch on · 14 coins followed · 9 h watched", "one": True} and P.curve_view(None, t) is None,
+          "curve view: the paper test's sentence, 'No curve push goes out while the switch is off.' (switched on: which variant, which checks, how many an hour), "
+          "the footnote (rising, the shares, the skipped calls, the progress check), a watch that is off says why, a block without a call is one line")
+    # 3. the page: under the list (after Seen but not clean, before the Track record), escaped, hidden without a block, plain words
+    pane = {k: P.curve_section(cl[k]) for k in ("calls", "empty", "off", "on", "xss", "none")}
+    full = P.pane({"now": now, "dir": None})
+    xs = pane["xss"]
+    words = " ".join(visible_text(pane[k]) for k in pane) + " ".join(json.dumps(P.curve_view(cl[k]["curve"], t)) for k in ("calls", "on", "off", "xss"))
+    js_words = " ".join(re.findall(r"'([^'\\]{6,})'", P.JS[P.JS.find("var CV="):P.JS.find("var R=window.MemebotRadar")] + P.JS[P.JS.find("  cleanCurve:"):P.JS.find("  clean:function")]))
+    check(XSS_CURVE not in xs and "&lt;img src=c onerror=a(8)&gt;" in xs and "<b>ok</b>" not in json.dumps(cl["xss"]) and 'href="https://pump.fun/coin/' in pane["calls"]
+          and pane["none"] == '<section class="rcurve" data-r-curve aria-label="About to graduate, paper test" hidden></section>'
+          and pane["empty"].count("<p") == 1 and "About to graduate (paper test):</b> no call yet · Curve watch on" in pane["empty"] and 'class="rcurve one"' in pane["empty"]
+          and full.find("data-r-others") < full.find("data-r-curve") < full.find("data-r-rec") and "No curve push goes out while the switch is off." in pane["calls"]
+          and 'rel="noopener noreferrer"' in pane["calls"] and not CURVE_BANNED.search(words + " " + js_words) and "\u2014" not in words + P.JS + P.CSS,
+          "curve section on the page: a hostile symbol, chip and why arrive escaped, a hostile host state is dropped; the coin links open pump.fun in a new tab "
+          "without the referrer; no block: hidden; no call yet: one line; it sits under the list (after Seen but not clean, before the Track record); its words "
+          "and the script's never say buy, safe, clean or should, and no em dash")
+    # 4. node: the script's whitelist and view say the same as Python's for every block above (raw and with a moving clock)
+    node = shutil.which("node")
+    if not node:
+        skips.append("the curve section's node checks (no node)")
+        print("  SKIP the curve section's node checks: node is not installed")
+    else:
+        cases = [[k, d] for k, d in docs.items()]
+        nows = [t, t + 61 * MIN, t + 3 * H]
+        jd = os.path.join(tmp, "js-curve")
+        os.makedirs(jd, exist_ok=True)
+        with open(os.path.join(jd, "c.js"), "w", encoding="utf-8") as f:
+            f.write("global.window={};global.document={readyState:'complete',querySelector:function(){return null;},getElementById:function(){return null;}};global.navigator={};\n"
+                    + P.JS + "\nvar R=window.MemebotRadar,C=%s,N=%s;\nconsole.log(JSON.stringify(C.map(function(c){var d=R.clean(c[1]);return [c[0],d&&d.curve,N.map(function(n){return R.curveView(d&&d.curve,n);})];})));\n"
+                    % (json.dumps(cases), json.dumps(nows)))
+        r = subprocess.run([node, os.path.join(jd, "c.js")], capture_output=True, text=True)
+        try:
+            js = json.loads(r.stdout)
+        except ValueError:
+            js = None
+        py = [[k, cl[k]["curve"] if cl[k] else None, [P.curve_view(cl[k]["curve"] if cl[k] else None, n) for n in nows]] for k, _ in cases]
+        diff = [k for (k, a, b), (_, c, d) in zip(py, js or []) if a != c or b != d]
+        check(js is not None and js == py and not diff,
+              "node: MemebotRadar.cleanCurve and curveView give Python's clean_curve and curve_view for every block (calls, empty, off, on, xss, hostile, none, "
+              "one without a time, the night's kept block, lone surrogate halves) at the doc's time, an hour and three hours on (%s)" % (diff or ("same" if js else r.stderr[-300:])))
+    # 5. the browser: the build's section and the script's are the same elements; 320, 390 and 1280 px, light and dark; the folds; a status moving on
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        skips.append("the curve section's browser checks (no Playwright)")
+        print("  SKIP the curve section's browser checks: Playwright is not installed")
+        return
+    exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
+    d, _ = build_db(tmp, now, name="db-curve")
+    lv = json.load(open(os.path.join(d, "radar_live.json")))
+    lv["curve"] = curve_block(lv["t"], "calls")
+    json.dump(lv, open(os.path.join(d, "radar_live.json"), "w"))
+    page_html = page_of(d, now, repo=None)                  # no repository: no poll, the script draws the embedded doc only
+    url = "https://some-owner.github.io/Meme-Bot/"
+    out, errs = {}, []
+    sd = shots                                              # the screenshots: curve-*.png beside the radar's own
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(**({"executable_path": exe} if exe else {}))
+
+        def open_(w, dark=False, js=True, clock=None):
+            ctx = br.new_context(viewport={"width": w, "height": 900}, color_scheme="dark" if dark else "light", java_script_enabled=js, service_workers="block")
+            ctx.add_init_script("window.addEventListener('memebot-radar', e => { window.__rev = [e.detail.state, e.detail.good, e.detail.via]; });")
+            ctx.route("**/*", lambda route: route.fulfill(status=200, body=page_html, headers={"Content-Type": "text/html; charset=utf-8"}) if route.request.url.split("#")[0] == url
+                      else route.abort())
+            pg = ctx.new_page()
+            pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
+            if clock:
+                pg.clock.install(time=clock)
+            pg.goto(url + "#tab-radar")
+            return ctx, pg
+        ctx, pg = open_(390, js=False)
+        out["nojs"] = pg.evaluate("document.querySelector('[data-r-curve]').innerHTML")
+        ctx.close()
+        for w, dark in ((320, False), (320, True), (390, False), (390, True), (1280, False), (1280, True)):
+            ctx, pg = open_(w, dark)
+            pg.wait_for_function("() => (window.__rev || [])[0] === 'running'", timeout=8000)
+            pg.wait_for_timeout(300)
+            info = pg.evaluate(CURVE_JS)
+            out["%d %s" % (w, dark)] = info
+            if sd:
+                os.makedirs(sd, exist_ok=True)
+                pg.locator("[data-r-curve]").screenshot(path=os.path.join(sd, "curve-%s-%d.png" % ("dark" if dark else "light", w)))
+            if w == 390 and not dark:
+                if sd:                                      # the section in its place on the New tab: under the radar's list, above the Track record
+                    pg.locator("[data-radar]").screenshot(path=os.path.join(sd, "curve-in-radar-pane-light-390.png"))
+                pg.click("details.rc-more > summary")
+                pg.click("details.rc-by > summary")
+                pg.wait_for_timeout(200)
+                out["open"] = pg.evaluate(CURVE_JS)
+                if sd:
+                    pg.locator("[data-r-curve]").screenshot(path=os.path.join(sd, "curve-folds-open-light-390.png"))
+            if w == 320 and not dark:
+                pg.click("details.rc-more > summary")
+                pg.click("details.rc-by > summary")
+                pg.wait_for_timeout(200)
+                out["open320"] = pg.evaluate(CURVE_JS)
+            ctx.close()
+        # the statuses move on with the doc's age (a fake clock an hour on): the section redraws, the open fold stays open
+        ctx, pg = open_(390, clock=(lv["t"] + 20_000) / 1000.0)    # Playwright takes seconds
+        pg.clock.run_for(3000)                    # the page's timers on the fake clock: its first draws
+        pg.wait_for_timeout(300)
+        pg.click("details.rc-more > summary")
+        before = pg.evaluate(CURVE_JS)
+        pg.clock.fast_forward(61 * 60_000)
+        pg.clock.run_for(2000)
+        pg.wait_for_timeout(300)
+        after = pg.evaluate(CURVE_JS)
+        ctx.close()
+        # the other kinds through the script: off, switched on, a hostile symbol, an empty block, no block
+        for kind in ("off", "on", "xss", "empty", "none"):
+            lv2 = dict(lv)
+            if kind == "none":
+                lv2.pop("curve", None)
+            else:
+                lv2["curve"] = curve_block(lv["t"], kind)
+            json.dump(lv2, open(os.path.join(d, "radar_live.json"), "w"))
+            page_html = page_of(d, now, repo=None)
+            ctx, pg = open_(390)
+            pg.wait_for_function("() => (window.__rev || [])[0] === 'running'", timeout=8000)
+            pg.wait_for_timeout(200)
+            out[kind] = pg.evaluate(CURVE_JS)
+            if sd and kind in ("off", "on", "empty") and not out[kind]["hidden"]:
+                pg.locator("[data-r-curve]").screenshot(path=os.path.join(sd, "curve-%s-light-390.png" % kind))
+            ctx.close()
+        br.close()
+    js390 = out["390 False"]
+    wide = [out["%d %s" % (w, dk)] for w in (320, 390, 1280) for dk in (False, True)]
+    check(js390["html"] == out["nojs"] and js390["cls"] == "rcurve" and not js390["hidden"] and js390["above"] and not errs,
+          "browser: the script's section is the build's, element for element (the same innerHTML from the embedded doc), under the radar's list%s" % (
+              "" if js390["html"] == out["nojs"] else " (differ at %d)" % next((i for i, (a, b) in enumerate(zip(js390["html"], out["nojs"])) if a != b), -1)))
+    check(all(x["hscroll"] <= 0 and not x["small"] and x["inBox"] and x["tabFits"] for x in wide) and out["open320"]["hscroll"] <= 0 and out["open320"]["inBox"] and not out["open320"]["small"]
+          and js390["syms"] == ["H2O", "TRAPPY", "STILL", "RISKY"] and out["open"]["more"] and len(out["open"]["syms"]) == 8 and all(x["imgs"] == 0 for x in wide)
+          and all(a == [h, "_blank", "noopener noreferrer"] for a, h in zip(js390["links"], ["https://pump.fun/coin/" + c["mint"] for c in (P.curve_view(P.clean_curve(lv["curve"]), lv["t"])["coins"] + P.curve_view(P.clean_curve(lv["curve"]), lv["t"])["more"])])),
+          "browser: at 320, 390 and 1280 px, light and dark, no sideways page scroll, the variant table fits its box (no scroll inside it either), every link "
+          "and fold a 44 px tap target, four coins in view and four more in the fold, each coin a pump.fun link in a new tab; no image or script inside (%s)" % (
+              [(x["small"], x["tabFits"]) for x in wide if x["small"] or not x["tabFits"]] or "ok"))
+    check(all(not x["lowc"] for x in wide + [out["open"], out["open320"]]) and any("rc-s bad" in x["html"] for x in (out["open"],)),
+          "browser: every text of the section's own (the status pills with 'dead' among them, the folds open) has a contrast of 4.5:1 or more, light and "
+          "dark (%s)" % ([x["lowc"] for x in wide + [out["open"], out["open320"]] if x["lowc"]] or "all pass"))
+    check(before["more"] and after["more"] and before["status"][2] == "rc-s live|still on the curve" and after["status"][2] == "rc-s muted|not watched to the end",
+          "browser: an hour after a call the script redraws the section by the doc's age, and with no newer doc it says the watch did not see the hour end "
+          "(still on the curve -> not watched to the end, never 'did not graduate'); an open fold stays open (%s -> %s)" % (before["status"][2], after["status"][2]))
+    check(out["none"]["hidden"] and out["empty"]["cls"] == "rcurve one" and out["empty"]["text"].startswith("About to graduate (paper test): no call yet · Curve watch on")
+          and "Curve watch off: rounds only" in out["off"]["text"] and out["on"]["pushCls"] == "rc-push on" and "Curve pushes are on for the 75% rising calls" in out["on"]["text"]
+          and XSS_CURVE in out["xss"]["text"] and out["xss"]["imgs"] == 0 and "Curve watch limited: " + XSS_CURVE in out["xss"]["text"],
+          "browser: no block hides the section, an empty one is one line, off says why, a switched-on push names its variant (amber), a hostile symbol and why "
+          "show as text and add no element")
+
+
 def P_BANNER():
     import page_radar as P
     return P.BANNER
@@ -1390,6 +1732,7 @@ def checks(check, env=None):
         d, page = py_checks(check, tmp, T, standin)
         node_checks(check, tmp, skips)
         src_checks(check, tmp, skips)
+        curve_checks(check, tmp, skips, env.get("shots"))
         browser(check, tmp, d, skips, env.get("shots"))
     finally:
         if standin:

@@ -20,7 +20,7 @@ S3  bot.py SYNC_IGNORE carries memepeak and memeradar; prune removes memeradar d
     import mark)
 S4  young_published sends nothing by default (MEMEBOT_PUSH_YOUNG unset or not "1"); with MEMEBOT_PUSH_YOUNG=1 it sends as before, once
     per cycle; scan.yml passes the repository variable with the default 0
-S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar -> young: a phone with "New coins" off gets no radar push; the rate guard;
+S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar (and curve) -> young: a phone with "New coins" off gets no radar push; the rate guard;
     notify_radar's words say fake money and never buy, safe or clean, and open the Radar tab; an infinite age, count or liquidity reads
     as unknown
 S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with their timeouts and places, C exports memeradar, job
@@ -518,8 +518,10 @@ def _s5(check, tmp):
     finally:
         A.notify = saved
     words = [t + " " + b for _, t, b, _ in texts[:4]]
-    check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young"} and all(A.KINDS.get(k) == v for k, v in (("young", (1800, "normal", 300)), ("pick", (3600, "high", 300)))),
-          "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar to the phone's young switch; young and pick unchanged")
+    check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young", "curve": "young"} and A.KINDS.get("curve") == (300, "high", 60)
+          and all(A.KINDS.get(k) == v for k, v in (("young", (1800, "normal", 300)), ("pick", (3600, "high", 300)))),
+          "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar (and the curve watch's own kind, off by default) to the "
+          "phone's young switch; young and pick unchanged")
     check(len(texts) == 7 and texts[0][1:] == ("HIRE: no trap found (pool 6 min)", "9 checks passed · liquidity $23k · fake money, nothing is bought.", "#tab-radar")
           and texts[1][1] == "HIRE: no trap found (pool 6 min) +1 more" and texts[2][1] == "X<b>Y: no trap found (pool <1 min)"
           and texts[2][2] == "All checks passed · liquidity $1.2M · fake money, nothing is bought." and texts[3][1] == "?: no trap found"

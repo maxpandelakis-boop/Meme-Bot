@@ -1,0 +1,7 @@
+{
+  "v": 1,
+  "note": "The curve watch's push switch, read by launch_radar.py when a radar run starts. Paper test only: fake money, nothing is bought. curvePush null sends nothing (the default until the test supports a variant). A variant id switches it on for that variant's calls: 60, 75 or 90 (percent of the pump.fun curve sold), with m for the momentum filter (75m: 75 percent with 10 or more points gained in 5 minutes and more purchases than sales on the curve). pushVerdicts: the quick-check verdicts a call may have to be pushed (ok, risky, unknown; a trap verdict is never pushed). pushPerH: curve notifications per hour at most (0 to 10). Each coin is pushed once at most.",
+  "curvePush": null,
+  "pushVerdicts": ["ok"],
+  "pushPerH": 3
+}

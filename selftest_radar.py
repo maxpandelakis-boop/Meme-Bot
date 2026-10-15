@@ -3,7 +3,9 @@
 rate rules), R12 (one round per start: no successor, the later prices hourly rounds can catch), R13 (2-minute rounds, momentum on
 paper) and R14 (the push's why and record; pump.fun replies and the source tweet's likes measured at first sight, at most 2 lookups a
 cycle), against a local mock of every host it asks, a fake clock (cadence 1 s, 150 s of clock time a cycle; 120 s in R13), a local
-bare git remote and a local stand-in for the app's live store. Fake money only.
+bare git remote and a local stand-in for the app's live store; R15 (the fast lane after a graduation on the live feed: the coin rated
+within seconds, its lag in the record, one push, only the requests it needs), R16 (radar.json's curve block) and R17 (the fast lane's
+push against app's rate guard and the next round). Fake money only.
 
   python3 selftest_radar.py        runs the checks on their own (PASS/FAIL per check, "RADAR ALL PASS" at the end)
   checks(check, env=None)          the same from selftest.py's main (check(ok, what) as there)
@@ -1572,6 +1574,9 @@ def checks(check, env_=None):
         fast_checks(check, LR, T, P, tmp)
         probe_checks(check, LR, T, P, url, mock, heads_a, recs, by, tmp)
         talk_checks(check, LR, T, P, tmp, pushes, recs[by["CLEAN"]])
+        fastlane_checks(check, LR, T, P, tmp)
+        fastpush_checks(check, LR, T, P, tmp)
+        curve_doc_checks(check, LR, T, P, url, mock, tmp)
         if not real_push(check, T, P, url, remote, tmp):
             SKIPPED.append("R4's PushSink leg (app.notify_radar comes with WP4)")
     finally:
@@ -1886,7 +1891,7 @@ def probe_checks(check, LR, T, P, url, mock, heads, recs, by, tmp):
     1.1 s per method and its 429, GeckoTerminal's 429 ladder and new-pools page 2. heads: run A's requests; recs: its records."""
     import radar_src as RS
     print("== launch radar R11: the WP0 probe's findings")
-    radar_only = {"ds_tokens", "dev_check", "gt_candles", "x_tweet"}
+    radar_only = {"ds_tokens", "dev_check", "gt_candles", "x_tweet", "pf_curve"}        # pf_curve: the curve watch's list (selftest_curve)
     differ = sorted(k for k, v in PROBE_ADAPTERS.items() if not ((k in RS.ADAPTERS and RS.ADAPTERS[k] is v) or (k in RS.NOT_HERE and k not in RS.ADAPTERS)))
     extra = sorted(set(RS.ADAPTERS) - set(PROBE_ADAPTERS) - radar_only)
     check(not differ and not extra and RS.RPC_GAP_S == PROBE_RPC_GAP_S and tuple(RS.GT_429_LADDER_S) == PROBE_GT_429_LADDER_S
@@ -2257,6 +2262,248 @@ def talk_checks(check, LR, T, P, tmp, pushes, clean):
           "TWD off TWA's tweet 12,000); TWC, past the cap at first sight, is read in the next cycle: its later signals have 3,000, its sig0 "
           "stays unknown, never filled in; TWA's and TWB's verdicts and points are the same (%s): only the grey info differs; %d lookups, "
           "radar.json names the host 'x tweets'" % (rt["TWA"], len(heads)))
+
+
+class FeedOne:
+    """The live feed's interface for R15: one graduation (handed over once), the creates' facts of the coins it names, state ok."""
+
+    def __init__(self, evs, info):
+        self.evs, self.inf = list(evs), dict(info)
+
+    def take(self):
+        out, self.evs = self.evs, []
+        return out
+
+    def take_trades(self):
+        return []
+
+    def info(self, m):
+        return self.inf.get(m)
+
+    def lines(self):
+        return []
+
+    def state(self):
+        return "ok"
+
+    def stats(self):
+        return {}
+
+    def follow(self, mints):
+        return []
+
+    def trade_state(self):
+        return {"shape": None, "want": 0, "subbed": 0, "since": None, "last": None, "n": 0}
+
+    def stop(self, timeout=3.0):
+        return True
+
+
+def fastlane_checks(check, LR, T, P, tmp):
+    """R15: the fast lane. A graduation on the live feed gets its coin rated within seconds by a mini-round (DexScreener for that mint,
+    RugCheck, the rating, radar-data, the push) between two cycles instead of at the next early cycle: its tries while the pool is not
+    listed, the record's feed lag and via, one push and never a second, only the requests that coin needs, the last cycle's hosts kept."""
+    print("== launch radar R15: the fast lane after a graduation on the live feed")
+    now0 = T0 + 30 * H
+    g = now0 + 40_000
+    fast = fixture("FASTGR", 41, pf=False, v3=False, gt=False, jup=False, pool=g, mint=g - 25 * MIN)
+    mock = RadarMock(list(FIX.values()) + [fast])
+    srv = serve(mock)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    rem = fresh_remote(T, tmp, "fl", now0)
+    rd = os.path.join(tmp, "rdFL")
+    sink, lines = Sink(), []
+    argv = ["loop", "--dir", rd, "--minutes", "10", "--cadence", "1", "--clock", "fake", "--now", str(now0), "--deadline", "8", "--cache", rd + "-cache",
+            "--source", "manual", "--mock", url, "--remote", rem]
+    e = dict(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9015", GITHUB_REF_NAME="main", MEMEBOT_RADAR_HOURS="0-24", RADAR_URL=None,
+             SUPABASE_URL=None, SUPABASE_SECRET_KEY=None, MEMEBOT_RADAR_ADAPTERS=None, MEMEBOT_RADAR_FAST=None, MEMEBOT_RADAR_CURVE=None)
+    try:
+        with env(**e), memebot_rules():
+            R = LR.Radar(LR.args_of(argv), log=lines.append, notifier=sink, traps=T, peak=P)
+            mock.clock = R.clock.now
+            R.start()
+            R.live = FeedOne([{"kind": "migrate", "mint": fast["a"], "t": g}], {fast["a"]: {"t": fast["mint"], "creator": fast["creator"]}})
+            R.cycle(0, R.clock.now(), False)
+            hosts0 = dict((R.last_doc or {}).get("hosts") or {})
+            mock.gone.add(fast["a"])
+            R.clock.wait(g)
+            R.live_take(R.clock.now())
+            queued = {a_: dict(q_) for a_, q_ in R.fastq.items()}
+            early0 = R.early_due(R.clock.now() + LR.LIVE_DEBOUNCE_MS, R.clock.now() + 100_000)
+            R.clock.wait(g + 5_000)
+            not_yet = R.fast_due(R.clock.now(), R.clock.now() + 100_000)
+            R.clock.wait(g + LR.FAST_TRIES_MS[0])
+            n0 = len(mock.heads)
+            R.fast(R.clock.now(), R.clock.now() + 100_000)
+            try1 = (dict(R.fastq.get(fast["a"]) or {}), R.rec(fast["a"]), sum(1 for h in mock.heads[n0:] if "/tokens/v1/" in h["path"]))
+            mock.gone.discard(fast["a"])
+            R.clock.wait(g + LR.FAST_TRIES_MS[1])
+            t2 = R.clock.now()
+            due2 = R.fast_due(t2, t2 + 100_000)
+            n1 = len(mock.heads)
+            w0 = time.time()
+            R.fast(t2, t2 + 100_000)
+            took = time.time() - w0
+            heads2 = mock.heads[n1:]
+            rec = json.loads(json.dumps(R.rec(fast["a"]) or {}))
+            doc = radar_json(rem)
+            pj = json.loads(branch_files(rem, "radar-data").get("pushed.json") or b"{}")
+            early1 = R.early_due(R.clock.now() + LR.LIVE_DEBOUNCE_MS, R.clock.now() + 100_000)
+            R.clock.wait(now0 + 120_000)
+            R.cycle(1, R.clock.now(), False)
+            rec2 = R.rec(fast["a"]) or {}
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    fd = rec.get("feed") or {}
+    coin = next((c for c in doc.get("coins") or [] if c.get("addr") == fast["a"]), {})
+    check(queued == {fast["a"]: {"t": g, "n": 0}} and not early0 and not not_yet and try1[0] == {"t": g, "n": 1} and try1[1] is None and try1[2] == 1 and due2
+          and any("fast lane: 1 graduation asked, no pool listed yet" in l for l in lines),
+          "a graduation on the feed goes into the fast lane's queue (no early cycle meanwhile); 6 s after it DexScreener is asked once, the pool "
+          "is not listed yet: the coin stays queued for its next try at 14 s")
+    check(rec.get("first") == t2 and fd.get("mig") == g and fd.get("via") == "fast" and 13.5 <= (fd.get("lag") or 0) <= 16.0 and (rec.get("rt") or [[0, ""]])[0][1] == "good"
+          and coin.get("v") == "good" and coin.get("push") == t2 and [x["coins"] for x in sink.got] == [["FASTGR"]] and pj.get(fast["a"]) == t2
+          and any(l.startswith("fast lane: FASTGR") for l in doc.get("lines") or []) and took < LR.FAST_DEADLINE_S,
+          "at the second try the coin is rated %.1f s after its graduation (feed.lag, via fast; the early round took up to 60 s): good, on radar.json's "
+          "list and pushed once (pushed.json), its line on the desk; the mini-round took %.1f s" % (fd.get("lag") or -1, took))
+    ds = [h for h in heads2 if "/tokens/v1/" in h["path"]]
+    other = sorted({h["path"].split("/")[1] for h in heads2})
+    check(len(ds) == 1 and fast["a"] in ds[0]["path"] and not any("geckoterminal" in h["path"] or "/recent" in h["path"] for h in heads2)
+          and not any(h["path"] == "/frontend-api-v3.pump.fun/coins" and "creator=" not in h["q"] for h in heads2)
+          and sum(1 for h in heads2 if h["path"].startswith("/api.rugcheck.xyz/")) == 1
+          and all(doc["hosts"].get(k) == v for k, v in hosts0.items() if v != "unused" and k in ("geckoterminal", "jupiter")),
+          "only the steps that coin needs: one DexScreener request for its mint, one RugCheck report, its own tier-2 checks, no discovery list "
+          "and no GeckoTerminal (%s); the hosts it did not ask keep the last cycle's state" % ", ".join(other))
+    check(not early1 and len(rec2.get("rt") or []) == 2 and [x["coins"] for x in sink.got] == [["FASTGR"]] and rec2.get("push") == t2,
+          "no early cycle for a graduation the fast lane rated; the next round rates the coin again and never pushes it a second time")
+
+
+def fastpush_checks(check, LR, T, P, tmp):
+    """R17: the fast lane's push against app's rate guard and the round. Two greens rated by two fast lanes 8 s apart go through the real
+    app.notify_radar (only its transport stubbed: one phone, every send ok): the second one meets app's 60 s gap, is unmarked and pushed
+    by a later cycle (never lost); a lane that starts FAST_LEAD_MS before the round leaves its green's push to the round, so it ends before
+    it whatever the notification would take."""
+    import app as A
+    print("== launch radar R17: the fast lane's push against app's rate guard and the next round")
+    now0 = T0 + 32 * H
+    g1, g2 = now0 + 40_000, now0 + 48_000
+    f1 = fixture("FASTA", 44, pf=False, v3=False, gt=False, jup=False, pool=g1, mint=g1 - 25 * MIN)
+    f2 = fixture("FASTB", 45, pf=False, v3=False, gt=False, jup=False, pool=g2, mint=g2 - 25 * MIN)
+    f3 = fixture("FASTC", 46, pf=False, v3=False, gt=False, jup=False, pool=g2, mint=g2 - 25 * MIN)
+    mock = RadarMock(list(FIX.values()) + [f1, f2, f3])
+    srv = serve(mock)
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    sent, outs, lines = [], [], []
+    stubs = {"enabled": lambda: True, "_webpush": lambda: object(), "vapid": lambda: ("k", "k"), "_sub_ok": lambda s_: True, "keys_ok": lambda s_: True,
+             "call": lambda *a_, **k_: [{"endpoint": "https://push.example/1", "sub": {"endpoint": "https://push.example/1", "keys": {}}, "prefs": {}, "fails": 0}],
+             "_send": lambda wp, sub, data, ttl, urg, topic, until=None: (sent.append(data), ("ok", 201, ""))[1], "_settle": lambda *a_, **k_: None}
+    orig = {k: getattr(A, k) for k in stubs}
+
+    def notifier(coins, record=None):
+        out = A.notify_radar(coins, record)
+        outs.append(([c.get("sym") for c in coins], out))
+        return out
+
+    def radar(name, rid):
+        rem = fresh_remote(T, tmp, name, now0)
+        rd = os.path.join(tmp, "rd" + name)
+        argv = ["loop", "--dir", rd, "--minutes", "10", "--cadence", "1", "--clock", "fake", "--now", str(now0), "--deadline", "8", "--cache", rd + "-cache",
+                "--source", "manual", "--mock", url, "--remote", rem]
+        R = LR.Radar(LR.args_of(argv), log=lines.append, notifier=notifier, traps=T, peak=P)
+        mock.clock = R.clock.now
+        R.start()
+        return R
+    e = dict(GITHUB_REPOSITORY=REPO, GITHUB_TOKEN=GH_TOKEN, GITHUB_RUN_ID="9017", GITHUB_REF_NAME="main", MEMEBOT_RADAR_HOURS="0-24", RADAR_URL=None,
+             SUPABASE_URL=None, SUPABASE_SECRET_KEY=None, MEMEBOT_RADAR_ADAPTERS=None, MEMEBOT_RADAR_FAST=None, MEMEBOT_RADAR_CURVE=None)
+    try:
+        for k, v in stubs.items():
+            setattr(A, k, v)
+        A._last_push.pop("radar", None)
+        with env(**e), memebot_rules():
+            R = radar("fpRG", "9017")
+            R.live = FeedOne([{"kind": "migrate", "mint": f1["a"], "t": g1}, {"kind": "migrate", "mint": f2["a"], "t": g2}],
+                             {f1["a"]: {"t": f1["mint"], "creator": f1["creator"]}, f2["a"]: {"t": f2["mint"], "creator": f2["creator"]}})
+            R.cycle(0, R.clock.now(), False)
+            del outs[:]
+            R.clock.wait(g2)
+            R.live_take(R.clock.now())
+            R.clock.wait(g1 + LR.FAST_TRIES_MS[0])
+            mock.gone.add(f2["a"])                          # FASTB's pool is not listed yet at the first lane
+            R.fast(R.clock.now(), R.clock.now() + 100_000)
+            mock.gone.discard(f2["a"])
+            R.clock.wait(R.clock.now() + LR.FAST_GAP_MS)
+            R.fast(R.clock.now(), R.clock.now() + 100_000)
+            lanes = [(s_, (o_ or {}).get("sent"), (o_ or {}).get("skipped")) for s_, o_ in outs]
+            marked = (f1["a"] in R.pushed, f2["a"] in R.pushed, R.push_hold > time.time())
+            del outs[:]
+            R.clock.wait(R.clock.now() + 2 * MIN)
+            R.cycle(1, R.clock.now(), False)                  # still inside app's gap: no notification is tried, nothing is marked
+            held = (list(outs), f2["a"] in R.pushed)
+            A._last_push["radar"] = time.time() - 61.0        # app's 60 s are over (no wall-clock wait in the test)
+            R.push_hold = 0.0
+            R.clock.wait(R.clock.now() + 2 * MIN)
+            R.cycle(2, R.clock.now(), False)
+            later = [(s_, (o_ or {}).get("sent")) for s_, o_ in outs]
+            pushB = (R.rec(f2["a"]) or {}).get("push")
+        check(lanes == [(["FASTA"], 1, None), (["FASTB"], 0, "rate guard")] and marked == (True, False, True) and held == ([], False)
+              and later == [(["FASTB"], 1)] and pushB and f2["a"] in R.pushed,
+              "a second green 8 s after the first one's push meets app's 60 s rate guard: it is unmarked (not lost as pushed), no notification is "
+              "tried while the gap lasts, and the first cycle after it pushes the coin (%s, then %s)" % (lanes, later))
+        A._last_push.pop("radar", None)
+        del outs[:], lines[:]
+        with env(**e), memebot_rules():
+            Rc = radar("fpLead", "9018")
+            Rc.live = FeedOne([{"kind": "migrate", "mint": f3["a"], "t": g2}], {f3["a"]: {"t": f3["mint"], "creator": f3["creator"]}})
+            Rc.cycle(0, Rc.clock.now(), False)
+            del outs[:]
+            Rc.clock.wait(g2)
+            Rc.live_take(Rc.clock.now())
+            Rc.clock.wait(g2 + LR.FAST_TRIES_MS[0])
+            t_k = Rc.clock.now() + LR.FAST_LEAD_MS
+            due = Rc.fast_due(Rc.clock.now(), t_k)
+            w0 = time.time()
+            Rc.fast(Rc.clock.now(), t_k)
+            took = time.time() - w0
+            lead = (list(outs), f3["a"] in Rc.pushed, ((Rc.rec(f3["a"]) or {}).get("rt") or [[0, ""]])[0][1])
+            Rc.clock.wait(t_k)
+            t_rnd = Rc.clock.now()
+            Rc.cycle(1, t_rnd, False)
+            rnd = [(s_, (o_ or {}).get("sent")) for s_, o_ in outs]
+        call_s, send_s = LR.app_budget()
+        check(due and lead == ([], False, "good") and took < LR.FAST_LEAD_MS / 1000.0 - LR.PUSH_MARGIN_S and any("left to the round" in l for l in lines)
+              and rnd == [(["FASTC"], 1)] and (Rc.rec(f3["a"]) or {}).get("push") == t_rnd,
+              "a fast lane %d s before the round rates its green coin but leaves the push to the round (a notification may take %.0f s): it ends "
+              "after %.1f s, before the round, and the round pushes the coin" % (LR.FAST_LEAD_MS // 1000, call_s + send_s, took))
+    finally:
+        for k, v in orig.items():
+            setattr(A, k, v)
+        A._last_push.pop("radar", None)
+        srv.shutdown()
+        srv.server_close()
+
+
+def curve_doc_checks(check, LR, T, P, url, mock, tmp):
+    """R16: radar.json's curve block (curve_watch.Book.doc) in a loop run: there in every cycle, within the doc's size, push off, no
+    curve request with the fake clock (the watch runs in a loop's spare time only); MEMEBOT_RADAR_CURVE=off says off."""
+    print("== launch radar R16: radar.json's curve block")
+    out = {}
+    for name, val in (("on", None), ("off", "off")):
+        rem = fresh_remote(T, tmp, "cd" + name, T0 + 40 * H)
+        n0 = len(mock.heads)
+        code, R, _, _ = run_radar(T, P, url, rem, os.path.join(tmp, "rdCD" + name), T0 + 40 * H, minutes=2.5, notifier=Sink(),
+                                  envs={"MEMEBOT_RADAR_CURVE": val, "MEMEBOT_RADAR_FEED": None})
+        d = radar_json(rem)
+        out[name] = (code, d.get("curve") or {}, len(json.dumps(d, separators=(",", ":"))), [h for h in mock.heads[n0:] if "complete=false" in h["q"]],
+                     sorted(p for p in branch_files(rem, "radar-data") if "curve" in p))
+    con, cof = out["on"][1], out["off"][1]
+    check(out["on"][0] == 0 and con.get("state") == "limited" and "feed is off" in con.get("why", "") and [r["id"] for r in con.get("variants") or []] == ["60", "60m", "75", "75m", "90", "90m"]
+          and (con.get("push") or {}).get("variant") is None and con.get("hosts", {}).get("trades") == "off" and out["on"][2] <= LR.DOC_MAX and out["on"][3] == []
+          and con.get("calib", {}).get("expect") == 410.9 and (con.get("greens") or {}).get("n") == 0 and out["on"][4] == ["curvepushed.json"],
+          "every cycle's radar.json has the curve block: state limited without the live feed (%r), the six variants, push off, the "
+          "calibration's expected 410.9 SOL, the greens; no curve request on the fake clock (the watch uses a loop's spare time); %d bytes"
+          % (con.get("why"), out["on"][2]))
+    check(out["off"][0] == 0 and cof.get("state") == "off" and "MEMEBOT_RADAR_CURVE=off" in cof.get("why", "") and out["off"][3] == [],
+          "MEMEBOT_RADAR_CURVE=off: the block says off and why, nothing asked")
 
 
 def F_RPC():

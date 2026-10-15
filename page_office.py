@@ -11,7 +11,8 @@
   desk's chat      right under the desk, the same round as a trading desk's group chat where the radar's bots post (desk_chat, at most
                    8 messages, words from radar.json only): Scout found a coin (where from, its pool's age, its liquidity), Checks names
                    what it passed, Skeptic its red flags or what was not checked, the Desk its verdict and whether it went to the phone,
-                   for two coins of the round; one Desk line when the round failed, outside its hours or switched off; Record the greens'
+                   for two coins of the round; one Desk line when the round failed, outside its hours or switched off; Scout again for a
+                   fresh call of the curve watch ("On the curve: SYM at 82%, 14 min after mint", a paper test); Record the greens'
                    1 h results so far (hindsight: from 20 with a known outcome the counts the push says, "3 of 26 doubled within 1 h,
                    6 rugged"). The script says the same from the radar's event (MemebotOffice.chat).
   agent cards      under the desk (the GROKBOT + JEV layout): a grid of compact cards, 2 columns on a phone and 4 on a desktop, one per
@@ -54,7 +55,8 @@ HOUR_FEW_N = 20                      # a cell with fewer is hatched
 DEAD_LIQ, RUG_X = 1_000.0, 0.10      # dead within an hour (the rug study's rule): gone, a pool under $1k, or 90% down
 TODAY_MIN_N = 10                     # today's share is given as a percentage from this many results on
 CARD_LINE = 60                       # an agent card's line: at most this many characters (the live view's "Now: ..." line too)
-HOSTS = (("dexscreener", "DexScreener"), ("rugcheck", "RugCheck"), ("pump.fun", "pump.fun"), ("pumpfun", "pump.fun"), ("geckoterminal", "GeckoTerminal"),
+HOSTS = (("curve list", "Curve list (pump.fun)"), ("curve trades", "Curve trades (live feed)"), ("curve watch", "Curve watch"),   # the curve watch's (curve_hosts)
+         ("dexscreener", "DexScreener"), ("rugcheck", "RugCheck"), ("pump.fun", "pump.fun"), ("pumpfun", "pump.fun"), ("geckoterminal", "GeckoTerminal"),
          ("rpc", "Solana RPC"), ("jupiter", "Jupiter"), ("launchlab", "LaunchLab"), ("github", "GitHub"), ("supabase", "Supabase"),
          ("pumpportal", "live feed"), ("tweets", "X tweets"))   # the live pump.fun feed (radar_feed.py), named as the desk names it,
                                                                 # and X's tweet endpoint (radar_src's host label "x tweets")
@@ -68,7 +70,12 @@ SRC = re.compile(r"^[a-z][A-Za-z0-9:_-]{0,23}$")     # a discovery list's name (
 NAME = re.compile(r"^[A-Za-z0-9_.]{1,32}$")
 VERDICTS = ("good", "watch", "trap")
 FEED = {"ok": "on"}                  # the live pump.fun feed (hosts.pumpportal): "live feed on", else its state (limited, off)
-CHAT_MAX = 8                         # the desk's chat: at most this many messages (two coins of the round and the record)
+CHAT_MAX = 8                         # the desk's chat: at most this many messages (two coins of the round, a curve call and the record)
+CURVE_FRESH_MS = 10 * 60_000         # a curve watch call this recent (by the doc's clock) is news in the chat: Scout names it
+CURVE_WORDS = {"ok": "no trap found yet", "risky": "risky", "unknown": "not fully checked"}   # its quick check in words (page_radar.CURVE_VW's);
+                                     # a call whose check found a trap is never Scout's news (as the curve push, it stays quiet about it)
+CURVE_HOSTS = (("pump.fun", "curve list"), ("trades", "curve trades"))   # the curve block's hosts -> the radar panel's chips (HOSTS names them)
+CURVE_HST = re.compile(r"[a-z]{1,12}")   # a curve host's state as page_radar's whitelist keeps it (fullmatch)
 CHAT_CHIPS = 3                       # a message names this many chips, then "+N more"
 TOO_FEW = 20                         # the greens' 1 h prices before the record gives shares (the New tab's Track record: MemebotRadar.TOO_FEW)
 # the chat's text from the doc: these become spaces (controls, C1 too, bidi marks, embeddings, overrides and isolates, a BOM), a superset of
@@ -160,12 +167,24 @@ def radar_clean(doc):
     return {"t": int(_ms(doc["t"])), "next": _ms(doc.get("next")), "state": _str(doc.get("state"), 20), "why": _str(doc.get("why"), 160),
             "run": {"start": _ms(run.get("start")), "end": _ms(run.get("end")), "cycle": _num(run.get("cycle")), "mode": run.get("mode") if run.get("mode") in ("round", "loop") else ""},
             "counts": {k: _num(c.get(k)) for k in ("seen", "good", "pushed", "seenAgeMed")} if isinstance(doc.get("counts"), dict) else None,
-            "hosts": {_str(k, 40): _str(v, 20) for k, v in list(hosts.items())[:12] if isinstance(k, str) and isinstance(v, str)},
+            "hosts": dict({_str(k, 40): _str(v, 20) for k, v in list(hosts.items())[:12] if isinstance(k, str) and isinstance(v, str)}, **curve_hosts(doc.get("curve"))),
             "notes": [_str(x, 160) for x in (doc.get("notes") or [])[:4] if isinstance(x, str)] if isinstance(doc.get("notes"), list) else [],
             "lines": [_str(x, 200) for x in (doc.get("lines") or [])[-6:] if isinstance(x, str)] if isinstance(doc.get("lines"), list) else [],
             "src": {k: int(v) for k, v in list(src.items())[:12] if isinstance(k, str) and SRC.match(k) and whole(v)},
             "coins": desk_coins(doc.get("coins"), 5), "others": desk_coins(doc.get("others"), 40),
             "lastGood": {"sym": _str(lg.get("sym"), 24), "at": _ms(lg.get("at"))} if lg else None}
+
+
+def curve_hosts(cv):
+    """The curve watch's hosts for the radar panel's chips (after the radar's own twelve): "curve list" (pump.fun's list of coins on their curve)
+    and "curve trades" (the followed coins' trades on the live feed) with their states, one "curve watch" off while the watch is off; {}
+    without a curve block. The script's draw says the same from the event's doc (MemebotRadar.cleanCurve kept the same)."""
+    if not isinstance(cv, dict):
+        return {}
+    if (cv.get("state") if cv.get("state") in ("on", "limited", "off") else "off") == "off":
+        return {"curve watch": "off"}
+    hs = cv.get("hosts") if isinstance(cv.get("hosts"), dict) else {}
+    return {label: hs[k] for k, label in CURVE_HOSTS if isinstance(hs.get(k), str) and CURVE_HST.fullmatch(hs[k])}
 
 
 def desk_coins(v, n):
@@ -274,7 +293,7 @@ def host_chips(hosts):
     out = []
     for k, v in sorted((hosts or {}).items(), key=lambda kv: (kv[1] == "ok", kv[0])):
         name = next((n for h, n in HOSTS if h in k.lower()), k)
-        cls = "" if v == "ok" else ("warn" if v in ("limited", "slow") else "bad")
+        cls = "" if v == "ok" else ("warn" if v in ("limited", "slow", "waiting") else "bad")
         out.append('<span class="chip %s">%s · %s</span>' % (cls, _e(name), _e(v)))
     return "".join(out)
 
@@ -458,6 +477,24 @@ def chat_record(r):
     return "Greens so far: %d call%s" % (calls, "" if calls == 1 else "s") + (", too few with a 1 h price yet (%d of %d)" % (n60, TOO_FEW) if n60 < TOO_FEW else "")
 
 
+def chat_curve(cv, now):
+    """Scout's line about the curve watch's newest call while it is fresh (at most CURVE_FRESH_MS before now, by the doc's clock), its quick
+    check in words: "On the curve: SYM at 82%, 14 min after mint, quick check: no trap found yet" (the curve sold and the minutes since the
+    mint at the call); a call whose check found a trap is never named (the newest other one is); '' without one. A coin still on its curve,
+    called on paper only: the words report it, they never advise (MemebotOffice.chat says the same)."""
+    rs = cv.get("recent") if isinstance(cv, dict) and isinstance(cv.get("recent"), list) else []
+    best = None
+    for r in rs:
+        if isinstance(r, dict) and _at(r.get("t")) and r.get("v") != "trap" and (best is None or r["t"] > best["t"]):
+            best = r
+    if best is None or not 0 <= now - best["t"] <= CURVE_FRESH_MS:
+        return ""
+    sym, p, a = _trim(_txt(best.get("sym"), 24)) or "?", best.get("prog"), best.get("age")
+    return "On the curve: %s" % sym + (" at %d%%" % math.floor(p + 0.5) if _fin(p) and 0 <= p <= 100 else "") + (
+        (", under 1 min after mint" if a < 1 else ", %d min after mint" % math.floor(a)) if _fin(a) and a >= 0 else "") + \
+        ", quick check: " + CURVE_WORDS.get(best.get("v"), CURVE_WORDS["unknown"])
+
+
 def chat_coin(c, t, hhmm, labels):
     """One coin of the round in the chat: Scout found it (where from, its pool's age, its liquidity), Checks names what it passed (no line
     without an ok chip), Skeptic its red flags and warnings, else what was not checked, else no objection, and the Desk its verdict
@@ -506,6 +543,7 @@ def desk_chat(doc, now=None, hhmm=None, labels=None):
     now = now if _isn(now) else t
     st, run = d.get("state"), d.get("run") if isinstance(d.get("run"), dict) else {}
     rec = chat_record(d.get("record"))
+    cur = chat_curve(d.get("curve"), now)        # a fresh curve call (the curve watch's paper test): Scout names it before the record
     out = []
     if st == "off":
         out.append(["desk", "Radar switched off on GitHub: no rounds"])
@@ -534,9 +572,9 @@ def desk_chat(doc, now=None, hhmm=None, labels=None):
             two = first(pushed, rest) or (first(lambda c: v(c) == "trap", rest) if v(lead) != "trap" else None) or first(lambda c: v(c) != v(lead), rest) or (rest[0] if rest else None)
             out = chat_coin(lead, t, hhmm, labels)
             more = chat_coin(two, t, hhmm, labels) if two else []
-            room = CHAT_MAX - len(out) - (1 if rec else 0)
+            room = CHAT_MAX - len(out) - (1 if rec else 0) - (1 if cur else 0)
             out += (more if len(more) <= room else [m for m in more if m[0] != "checks"])[:max(0, room)]
-    return (out + ([["record", rec]] if rec else []))[:CHAT_MAX]
+    return (out + ([["scout", cur]] if cur else []) + ([["record", rec]] if rec else []))[:CHAT_MAX]
 
 
 def avatar(who):
@@ -1037,7 +1075,7 @@ var D=document,last=null,lastAt=0,lastScan=null;
 var LOOK={running:['running','running'],done:['done','done'],late:['fallback','late'],stopped:['failed','stopped'],off:['skipped','switched off'],hours:['skipped','outside its hours'],none:['skipped','not started yet']};
 var QUIET=['off','hours','none'],CHIP={running:'neutral',fallback:'warn',failed:'bad',done:'good'},SCAN_LEN=2700000,HOUR=3600000;
 var SOON=10000,ROUND=180000,FEED={ok:'on'},LABELS=__LABELS__,CH=__CHAT__,VERD=['good','watch','trap'],NM=/^[A-Za-z0-9_.]{1,32}$/,SVG='http://www.w3.org/2000/svg';
-var HOSTS=[['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase'],['pumpportal','live feed'],['tweets','X tweets']];
+var HOSTS=[['curve list','Curve list (pump.fun)'],['curve trades','Curve trades (live feed)'],['curve watch','Curve watch'],['dexscreener','DexScreener'],['rugcheck','RugCheck'],['pump.fun','pump.fun'],['pumpfun','pump.fun'],['geckoterminal','GeckoTerminal'],['rpc','Solana RPC'],['jupiter','Jupiter'],['launchlab','LaunchLab'],['github','GitHub'],['supabase','Supabase'],['pumpportal','live feed'],['tweets','X tweets']];
 function isn(v){return typeof v==='number'&&isFinite(v);}
 function n(v){return isn(v)?Math.round(v):0;}
 function zone(){var b=D.querySelector('[data-po-tz]');return b?b.getAttribute('data-po-tz')||'UTC':'UTC';}
@@ -1069,6 +1107,16 @@ function recLine(r){if(!isObj(r))return '';
   var share=function(x){return isn(x)&&x>=0&&x<=1;};
   return n60>=CH.few&&share(r.win)&&share(r.rug)?'Greens so far: '+pc(r.win)+' doubled, '+pc(r.rug)+' rugged within 1 h (hindsight, '+n60+' of '+cl+')':
     'Greens so far: '+cl+(n60<CH.few?', too few with a 1 h price yet ('+n60+' of '+CH.few+')':'');}
+// Scout's line about the curve watch's newest call while it is fresh (page_office.chat_curve): its symbol, the curve sold, minutes since the mint,
+// its quick check in words; a call whose check found a trap is never named
+function curveTalk(cv,now){var rs=isObj(cv)&&Array.isArray(cv.recent)?cv.recent:[],best=null;
+  rs.forEach(function(r){if(isObj(r)&&at(r.t)&&r.v!=='trap'&&(best===null||r.t>best.t))best=r;});
+  if(best===null||!(now-best.t>=0&&now-best.t<=CH.fresh))return '';var p=best.prog,a=best.age;
+  return 'On the curve: '+(trim(txt(best.sym,24))||'?')+(fin(p)&&p>=0&&p<=100?' at '+Math.floor(p+0.5)+'%':'')+(fin(a)&&a>=0?(a<1?', under 1 min after mint':', '+Math.floor(a)+' min after mint'):'')+
+    ', quick check: '+(Object.prototype.hasOwnProperty.call(CH.cw,best.v)?CH.cw[best.v]:CH.cw.unknown);}
+// the curve watch's hosts for the radar panel's chips (page_office.curve_hosts): its list and its trades, one 'curve watch' off while it is off
+function curveHosts(cv){if(!isObj(cv))return {};if(['on','limited','off'].indexOf(cv.state)<0||cv.state==='off')return {'curve watch':'off'};
+  var hs=isObj(cv.hosts)?cv.hosts:{},o={};[['pump.fun','curve list'],['trades','curve trades']].forEach(function(x){var v=own(hs,x[0]);if(typeof v==='string'&&/^[a-z]{1,12}$/.test(v))o[x[1]]=v;});return o;}
 function coinTalk(c,t,fmt){
   var sym=trim(txt(c.sym,24))||'?',v=vd(c),found=Array.isArray(c.found)?c.found.filter(function(x){return typeof x==='string';}):[],lp=trim(txt(c.lp,24)),age=c.age,liq=c.liq;
   var facts=(found.indexOf('pf:graduated')>=0?['pump.fun graduated']:lp?['launched on '+lp]:[]).concat(fin(age)&&age>=0?[age>=1?'pool '+Math.floor(age)+' min old':'pool under 1 min old']:[])
@@ -1119,7 +1167,7 @@ var O=window.MemebotOffice={
   // coins (the push of this round, else the first without traps, else the first; then another push, a trap, another verdict, the next),
   // one Desk line for a failed round, outside its hours or switched off, and the Record's line when the record has calls
   chat:function(doc,now,fmt){var d=isObj(doc)&&doc.kind==='radar'&&isn(doc.t)?doc:null;if(!d)return [];fmt=fmt||hhmm;
-    var t=d.t,nx=at(d.next),st=d.state,run=isObj(d.run)?d.run:{},rec=recLine(d.record),out=[];now=isn(now)?now:t;
+    var t=d.t,nx=at(d.next),st=d.state,run=isObj(d.run)?d.run:{},rec=recLine(d.record),out=[];now=isn(now)?now:t;var cur=curveTalk(d.curve,now);
     if(st==='off')out.push(['desk','Radar switched off on GitHub: no rounds']);
     else if(st==='hours')out.push(['desk',!nx?'Radar sleeps: outside its hours':now<nx?'Radar sleeps until '+fmt(nx):now<=nx+HOUR?'Radar sleeps: the next round comes with the first scan after '+fmt(nx):
       'Radar stopped: no round since its hours began at '+fmt(nx)]);
@@ -1131,9 +1179,9 @@ var O=window.MemebotOffice={
         out.push(['scout',k?'Found '+k+' new pool'+(k===1?'':'s')+' under 10 minutes, none kept on the list':'No new pools under 10 minutes this round']);}
       else{var lead=first(pushed,cs)||first(function(c){return vd(c)==='good';},cs)||cs[0],rest=cs.filter(function(c){return c!==lead;});
         var two=first(pushed,rest)||(vd(lead)!=='trap'?first(function(c){return vd(c)==='trap';},rest):null)||first(function(c){return vd(c)!==vd(lead);},rest)||(rest.length?rest[0]:null);
-        var more=two?coinTalk(two,t,fmt):[];out=coinTalk(lead,t,fmt);var room=CH.max-out.length-(rec?1:0);
+        var more=two?coinTalk(two,t,fmt):[];out=coinTalk(lead,t,fmt);var room=CH.max-out.length-(rec?1:0)-(cur?1:0);
         out=out.concat((more.length<=room?more:more.filter(function(m){return m[0]!=='checks';})).slice(0,Math.max(0,room)));}}
-    return out.concat(rec?[['record',rec]]:[]).slice(0,CH.max);},
+    return out.concat(cur?[['scout',cur]]:[],rec?[['record',rec]]:[]).slice(0,CH.max);},
   look:function(st,doc,fmt,now,scan){var d=doc&&typeof doc==='object'?doc:null,L=LOOK[st]||LOOK.none,light=L[0],word=L[1],c=d&&d.counts&&typeof d.counts==='object'?d.counts:null,line;fmt=fmt||hhmm;
     var lead=st==='late'||st==='stopped'?word:'';
     var rnd=!!d&&(d.state==='done'||!!d.run&&typeof d.run==='object'&&d.run.mode==='round');
@@ -1192,11 +1240,12 @@ function draw(){
   all('[data-ext-line="radar"]').forEach(function(e){set(e,L.line);});
   all('[data-ext-checked="radar"]').forEach(function(e){set(e,L.checked);});
   all('[data-ext-until="radar"]').forEach(function(e){set(e,L.until);});
-  var hs=doc&&doc.hosts&&typeof doc.hosts==='object'?doc.hosts:null,ks=hs?Object.keys(hs).slice(0,12):[];
+  var hs0=doc&&doc.hosts&&typeof doc.hosts==='object'?doc.hosts:null,hs=null,ks=[];
+  if(doc){hs={};(hs0?Object.keys(hs0).slice(0,12):[]).forEach(function(k){hs[k]=hs0[k];});var ch=curveHosts(doc.curve);Object.keys(ch).forEach(function(k){hs[k]=ch[k];});ks=Object.keys(hs);if(!ks.length&&!hs0)hs=null;}
   // switched off, outside its hours or never started: the last check's notes and services are old news, so they go (the wiring stays)
   all('[data-ext-hosts="radar"]').forEach(function(box){box.hidden=L.quiet||!ks.length;if(L.quiet||!hs)return;box.textContent='';
     ks.sort(function(a,b){return (hs[a]==='ok')-(hs[b]==='ok')||(a<b?-1:a>b?1:0);}).forEach(function(k){
-    var v=String(hs[k]).slice(0,20),c=D.createElement('span');c.className='chip '+(v==='ok'?'':v==='limited'||v==='slow'?'warn':'bad');c.textContent=host(k)+' · '+v;box.appendChild(c);});});
+    var v=String(hs[k]).slice(0,20),c=D.createElement('span');c.className='chip '+(v==='ok'?'':v==='limited'||v==='slow'||v==='waiting'?'warn':'bad');c.textContent=host(k)+' · '+v;box.appendChild(c);});});
   all('[data-ext-wired="radar"]').forEach(function(e){e.hidden=!L.quiet&&!!ks.length;});
   var ns=!L.quiet&&doc&&Array.isArray(doc.notes)?doc.notes.filter(function(x){return typeof x==='string';}).slice(0,4):[];
   all('[data-ext-notes="radar"]').forEach(function(box){box.textContent='';ns.forEach(function(x){var p=D.createElement('p');p.className='omsg warn';p.textContent=x.slice(0,160);box.appendChild(p);});});
@@ -1243,4 +1292,4 @@ function ready(){try{link();}catch(e){}try{fold();}catch(e){}
   if(D.querySelector('[data-po-desk]'))setInterval(function(){try{desk();}catch(e){}},10000);}
 if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',ready);else ready();
 })();
-""".replace("__LABELS__", json.dumps(LABELS)).replace("__CHAT__", json.dumps({"max": CHAT_MAX, "chips": CHAT_CHIPS, "few": TOO_FEW, "big": CHAT_BIG, "ctrl": CHAT_CTRL, "blank": CHAT_BLANK, "who": WHO, "av": AVATAR}))
+""".replace("__LABELS__", json.dumps(LABELS)).replace("__CHAT__", json.dumps({"max": CHAT_MAX, "chips": CHAT_CHIPS, "few": TOO_FEW, "big": CHAT_BIG, "fresh": CURVE_FRESH_MS, "cw": CURVE_WORDS, "ctrl": CHAT_CTRL, "blank": CHAT_BLANK, "who": WHO, "av": AVATAR}))

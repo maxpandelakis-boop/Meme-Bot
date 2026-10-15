@@ -9,7 +9,7 @@ pick tabs (320, 390 and 1280 px, light and dark). Fake money only: the fixtures 
 
 node and Playwright follow selftest.py's rules: a missing one is a skipped group, named on the last line.
 """
-import datetime as dt, glob, json, os, random, re, shutil, subprocess, sys, tempfile
+import datetime as dt, glob, json, os, random, re, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -431,6 +431,7 @@ def office_checks(check, skips=None):
               "radar desk on the page: built from mb/radar_live.json with the same words; outside its hours 'sleeping until HH:MM' without stations; "
               "no radar.json at all: 'not started yet' (%s)" % strip_tags(desk_(page_d)))
         chat_checks(check, skips, tmp, page, page_d, page_h, page0, utc)
+        curve_office_checks(check, skips, tmp, utc)
         d3 = os.path.join(tmp, "o3")
         mk_db(d3, radar=radar_doc(NOW - 26 * MIN, lines=["cycle 9: " + XSS], notes=[XSS], hosts={XSS: "down"}, why=XSS))
         page3 = build(d3)
@@ -857,6 +858,133 @@ def chat_checks(check, skips, tmp, page, page_d, page_h, page0, utc):
               "line turned around, the symbol trimmed), chips of only blanks either cleaner keeps (U+FEFF, U+0085, U+2028: no line), numbers of 1e22 "
               "(not printed), a symbol that is a number and symbols of only blanks or direction marks ('?', as for no symbol); no message carries a "
               "control or direction mark (%s)" % ("same" if not dif else dif[:2] if isinstance(jsf, list) else jsf))
+
+
+OKW = ", quick check: no trap found yet"     # the curve line's words for a call whose quick check found no trap (page_office.CURVE_WORDS)
+
+
+def curve_cv(t, rng=None, **kw):
+    """radar.json's curve block (launch_radar.curve_doc) with what the office reads: the watch's state and its two hosts, and the newest calls (H2O
+    at 82 % of its curve, 3 minutes before t, 14.6 minutes after its mint; an older call 9 minutes before t)."""
+    rng = rng or random.Random(17)
+    cv = {"v": 1, "t": t, "state": "on", "why": "", "follow": 12, "calls": 2, "hosts": {"pump.fun": "ok", "trades": "waiting"},
+          "push": {"variant": None, "verdicts": ["ok"], "perH": 3, "sent1h": 0}, "variants": [], "greens": None,
+          "recent": [{"mint": b58(rng), "sym": "H2O", "thr": 75, "t": t - 3 * MIN, "prog": 82.4, "age": 14.6, "mcu": 58_250, "v": "ok", "chips": [], "out": {}},
+                     {"mint": b58(rng), "sym": "OLDER", "thr": 60, "t": t - 9 * MIN, "prog": 61.0, "age": 30.0, "v": "unknown", "chips": [], "out": {}}]}
+    cv.update(kw)
+    return cv
+
+
+def curve_office_checks(check, skips, tmp, utc):
+    """The curve watch on the Office tab: Scout's line in the desk's chat for a fresh curve call (the same in the page script, escaped, within
+    the chat's budget) and the curve watch's hosts in the radar panel's list (the build and the script)."""
+    import page_office as PO
+    import page_radar as PRd
+    print("== the curve watch on the Office tab (desk chat line, hosts)")
+    t = NOW - 26 * MIN
+    g = chat_doc(t)
+    cv = curve_cv(t)
+    say = lambda doc_, now_=None: PO.desk_chat(doc_, t + 60_000 if now_ is None else now_, utc)
+    line = ["scout", "On the curve: H2O at 82%%, 14 min after mint%s" % OKW]
+    rec = CHAT_GREEN[-1]
+    got = {"green": say(dict(g, curve=cv)), "empty": say(chat_doc(t, coins=[], others=[], counts={"seen": 0, "good": 0, "pushed": 0}, curve=cv)),
+           "off": say(chat_doc(t, state="off", next=None, coins=[], others=[], record=None, curve=dict(cv, state="off"))),
+           "stale": say(dict(g, curve=cv), t + 8 * MIN), "ahead": say(dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], t=t + 5 * MIN)]))),
+           "none": say(g), "no calls": say(dict(g, curve=dict(cv, recent=[]))),
+           "odd": say(dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym=" \u202e\u3000", prog=120, age=-1)]))),
+           "h2o": say(dict(g, coins=[], others=[], curve=dict(cv, recent=[dict(cv["recent"][0], prog=99.6, age=72.9)])), t),
+           "fast": say(dict(g, coins=[], others=[], curve=dict(cv, recent=[dict(cv["recent"][0], age=0.4)])), t),
+           "hostile": say(dict(g, curve=dict(cv, recent=["x", [1], None, {"t": "soon", "sym": "A"}, {"sym": "B", "t": t - MIN, "prog": "80"}]))),
+           "shapes": say(dict(g, curve="x")) + say(dict(g, curve={"recent": "x"})),
+           "trap": say(dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym="TRAPPY", v="trap", chips=[["bad", "3 holders from rugged coins"]], t=t - MIN),
+                                                      cv["recent"][0]]))),
+           "trap only": say(dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym="TRAPPY", v="trap")]))),
+           "risky": say(dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], v="risky")]))), "unknown": say(dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], v="odd")])))}
+    check(got["green"] == CHAT_GREEN[:6] + [line, rec] and len(got["green"]) == PO.CHAT_MAX and got["empty"] == [["scout", "No new pools under 10 minutes this round"], line, rec]
+          and got["off"] == [["desk", "Radar switched off on GitHub: no rounds"], line]
+          and got["stale"] == got["none"] == got["no calls"] == CHAT_GREEN and got["ahead"] == CHAT_GREEN
+          and got["odd"][-2] == ["scout", "On the curve: ?" + OKW] and got["h2o"][-2] == ["scout", "On the curve: H2O at 100%, 72 min after mint" + OKW]
+          and got["fast"][-2] == ["scout", "On the curve: H2O at 82%, under 1 min after mint" + OKW]
+          and got["hostile"][-2] == ["scout", "On the curve: B, quick check: not fully checked"] and got["shapes"] == CHAT_GREEN + CHAT_GREEN
+          and got["trap"][-2] == line and not any("TRAPPY" in x for _, x in got["trap"] + got["trap only"]) and got["trap only"] == CHAT_GREEN
+          and got["risky"][-2] == ["scout", "On the curve: H2O at 82%, 14 min after mint, quick check: risky"]
+          and got["unknown"][-2] == ["scout", "On the curve: H2O at 82%, 14 min after mint, quick check: not fully checked"]
+          and PO.CURVE_WORDS == {k: PRd.CURVE_VW[k][1] for k in ("ok", "risky", "unknown")},
+          "desk chat: Scout names a fresh curve call with its quick check ('On the curve: H2O at 82%%, 14 min after mint, quick check: no trap "
+          "found yet') before the record, the newest one, within the chat's 8 (the second coin gives way); a call whose check found a trap is never "
+          "named (the newer TRAPPY gives way to H2O; alone, no line); none once it is over 10 minutes old, from the future or without one; a blank "
+          "symbol is '?', a curve share past 100%% or an age below 0 is left out; odd shapes are skipped (%s)" % got["green"][-2:])
+    page_c = PO.chat_html(got["green"][:6] + [["scout", "On the curve: %s at 82%%, 14 min after mint%s" % (XSS, OKW)]])
+    words = " ".join(x for k in got for _, x in got[k])
+    check(XSS not in page_c and "On the curve: &lt;img src=x onerror=alert(1)&gt; at 82%" in page_c and not re.search(r"\b(buy|safe|clean|guaranteed|should)\b", words, re.I)
+          and "\u2014" not in words, "desk chat: the curve line is escaped on the page and never says buy, safe, clean or should; no em dash")
+    # node: MemebotOffice.chat says the same, from the raw doc and from the radar event's (MemebotRadar.clean keeps the curve block)
+    cases = [[k, d_, n_] for k, d_, n_ in (
+        ["green", dict(g, curve=cv), t + 60_000], ["empty", chat_doc(t, coins=[], others=[], curve=cv), t], ["stale", dict(g, curve=cv), t + 8 * MIN],
+        ["ahead", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], t=t + 5 * MIN)])), t], ["off", chat_doc(t, state="off", next=None, curve=dict(cv, state="off")), t],
+        ["xss", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym=XSS)])), t], ["emoji", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym="A" + "\U0001F438" * 20)])), t],
+        ["bidi", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym="\u202eAB\u2066", prog=74.5, age=1e22)])), t],
+        ["odd", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym=" \u202e\u3000", prog=120, age=-1)])), t], ["h2o", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], prog=99.6, age=72.9)])), t],
+        ["hostile", dict(g, curve=dict(cv, recent=["x", [1], None, {"t": "soon", "sym": "A"}, {"sym": "B", "t": t - MIN, "prog": "80"}])), t], ["shape", dict(g, curve="x"), t],
+        ["trap", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym="TRAPPY", v="trap", t=t - MIN), cv["recent"][0]])), t],
+        ["trap only", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], sym="TRAPPY", v="trap")])), t], ["risky", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], v="risky")])), t],
+        ["proto", dict(g, curve=dict(cv, recent=[dict(cv["recent"][0], v="__proto__")])), t])]
+    raw_py = [[k, PO.desk_chat(d_, n_, utc)] for k, d_, n_ in cases]
+    cl_py = [[k, PO.desk_chat(PRd.clean_doc(d_), n_, utc)] for k, d_, n_ in cases]
+    js = node_js("var f=function(ms){return new Date(ms).toISOString().slice(11,16);},C=%s;\nconsole.log(JSON.stringify([C.map(function(c){return [c[0],window.MemebotOffice.chat(c[1],c[2],f)];}),"
+                 "C.map(function(c){return [c[0],window.MemebotOffice.chat(window.MemebotRadar.clean(c[1]),c[2],f)];})]));\n" % json.dumps(cases), radar=True)
+    if js is None:
+        skips.append("the curve chat line in node (no node)")
+        print("  SKIP the curve chat line in node: node is not installed")
+    else:
+        same = isinstance(js, list) and js[0] == raw_py and js[1] == cl_py
+        cld = dict((k, v) for k, v in cl_py)
+        check(same and cld["xss"][-2] == ["scout", "On the curve: %s at 82%%, 14 min after mint%s" % (XSS[:24], OKW)] and cld["bidi"][-2] == ["scout", "On the curve: AB at 75%" + OKW]
+              and not any("TRAPPY" in x for k in ("trap", "trap only") for _, x in cld[k]) and cld["proto"][-2][1].endswith("quick check: not fully checked")
+              and cld["emoji"][-2][1].startswith("On the curve: A" + "\U0001F438" * 11 + " at 82%"),
+              "node: MemebotOffice.chat gives the build's curve line for every doc above, raw and through both whitelists (a symbol cut in UTF-16 units, "
+              "direction marks as spaces and trimmed, an age of 1e22 left out) (%s)" % ("same" if same else js if not isinstance(js, list) else
+                                                                                    [(a, b) for a, b in zip(js[1], cl_py) if a != b][:2]))
+    # the radar panel's host list: the radar's own, then the curve watch's list and trades (one 'curve watch off' while it is off)
+    rc = PO.radar_clean(radar_doc(t, curve=cv))
+    many = {"h%d" % i: "ok" for i in range(14)}
+    rm = PO.radar_clean(radar_doc(t, hosts=many, curve=cv))
+    chips = PO.host_chips(rc["hosts"])
+    check(rc["hosts"]["curve list"] == "ok" and rc["hosts"]["curve trades"] == "waiting" and 'class="chip warn">Curve trades (live feed) · waiting' in chips
+          and 'class="chip ">Curve list (pump.fun) · ok' in chips and len(rm["hosts"]) == 14 and list(rm["hosts"])[-2:] == ["curve list", "curve trades"]
+          and PO.radar_clean(radar_doc(t, curve=dict(cv, state="off")))["hosts"].get("curve watch") == "off" and "curve list" not in PO.radar_clean(radar_doc(t, curve=dict(cv, state="off")))["hosts"]
+          and not any(k.startswith("curve") for k in PO.radar_clean(radar_doc(t))["hosts"]) and PO.curve_hosts(dict(cv, hosts={"pump.fun": "<b>", "trades": "OK", "x": "ok"})) == {}
+          and PO.curve_hosts(dict(cv, state="weird")) == {"curve watch": "off"},
+          "radar panel: the curve watch's hosts follow the radar's twelve, named 'Curve list (pump.fun)' and 'Curve trades (live feed)' (waiting is amber "
+          "as limited), one 'Curve watch · off' while it is off, none without a block; a host state that is not lower-case letters is dropped (%s)" % chips)
+    # the build and the script in Chromium: the panel's chips and the desk's chat from a page whose radar doc carries a fresh curve call
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        skips.append("the curve office browser check (no Playwright)")
+        return
+    now = int(time.time() * 1000)
+    dcv = os.path.join(tmp, "curveo")
+    mk_db(dcv, now=now, radar=chat_doc(now - MIN, curve=curve_cv(now - MIN)))
+    page_cv = build(dcv, now=now)
+    exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
+    errs = []
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(**({"executable_path": exe} if exe else {}))
+        ctx = br.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+        ctx.route("**/*", lambda r: r.fulfill(status=200, body=page_cv, headers={"Content-Type": "text/html; charset=utf-8"}) if r.request.url.split("#")[0] == PAGES else r.abort())
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
+        pg.goto(PAGES)
+        built = pg.evaluate("[document.querySelector('[data-ext-hosts=\"radar\"]').textContent, Array.from(document.querySelectorAll('[data-pd-chat] li')).map(l => l.textContent)]")
+        pg.evaluate("document.getElementById('tab-office').click()")
+        pg.wait_for_timeout(1500)
+        live = pg.evaluate("[document.querySelector('[data-ext-hosts=\"radar\"]').textContent, Array.from(document.querySelectorAll('[data-pd-chat] li')).map(l => l.textContent)]")
+        br.close()
+    check("Curve list (pump.fun) · ok" in live[0] and "Curve trades (live feed) · waiting" in live[0] and "Curve list (pump.fun) · ok" in built[0]
+          and "Scout: On the curve: H2O at 82%, 14 min after mint" + OKW in live[1] and "Scout: On the curve: H2O at 82%, 14 min after mint" + OKW in built[1] and not errs,
+          "browser: the radar panel lists the curve watch's hosts and the desk's chat has Scout's curve line, in the page as built and after the script's "
+          "redraw from the radar's event (%s | %s)" % (live[0][-90:], [x for x in live[1] if "curve" in x]))
 
 
 def browser_checks(check, skips, d1, tmp):
