@@ -1973,7 +1973,9 @@ def app_tests(check, mock, url):
         f.write("raise ImportError('pywebpush is not installed (test)')\n")
     real = importlib.util.find_spec("pywebpush") is not None and importlib.util.find_spec("http_ece") is not None
     has_crypto = importlib.util.find_spec("cryptography") is not None
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    # MEMEBOT_SWITCH_AT stays (main sets it 30 days after the fake clock): without it these subprocesses would use the real switch,
+    # which is in the past from Oct 16, and their pages would lose the new launches these checks are about
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_SWITCH_AT"}
     base.update(PYTHONUTF8="1", MEMEBOT_PAUSE="0")
     env_app = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=APP_SECRET, MEMEBOT_PUSH_YOUNG="1")   # the scan's "new coins" push is off unless
     # MEMEBOT_PUSH_YOUNG=1 (selftest_scanside S4 checks the default); these checks test it switched on, exactly as before

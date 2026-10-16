@@ -444,10 +444,10 @@ def _noloss_checks(check, d, D, A, P, pos, page, now):
                  ("collapse: under 10% at minute 93, no recovery within 30 min", "", 2.68, 2.16): "one candle",
                  ("", "", 1.9, 1.85): "", ("", "", None, 1.2): ""}
     got_raw = {k: PA.raw_reason({"cut": [c for c in k[:2] if c], "rawX": k[2], "x": k[3]}) for k in raw_cases}
-    check(got_raw == raw_cases and "raw top 59,257x %s · pool died" % html.escape(PA.eur(eraw("y-rug") - 3.0, True)) in r_dog
+    check(got_raw == raw_cases and "raw top 59,257x %s · dust volume" % html.escape(PA.eur(eraw("y-rug") - 3.0, True)) in r_dog
           and "raw top 1.90x %s · one candle" % html.escape(PA.eur(eraw("y-stop") - 3.0, True)) in r_sto and "raw top" not in r_moon
           and r_dog.find("data-nl-raw") > r_dog.find('<td class="hi">') and r_dog.find("data-nl-raw") < r_dog.find('<td class="lo">'),
-          "U12 the raw peak beside the filtered best: per trade under its max profit (DOGGO's 59,257x print would have been %s, the pool died; "
+          "U12 the raw peak beside the filtered best: per trade under its max profit (DOGGO's 59,257x print would have been %s, its cut 'dust 59257.00x' names it: dust volume; "
           "STOPPY's 1.90x top one candle), none where they agree (MOON); the reason in two words from peak.py's cut: the rule that names the raw "
           "multiple (one candle, dust volume), else over the cap, jump not held, pool died (ZPAD's 303x on the results branch: one candle)" % PA.eur(eraw("y-rug") - 3.0, True))
     rows_nl = re.findall(r'<tr><td class="c"><strong>(.*?)</strong>.*?</tr>', nl, re.S)

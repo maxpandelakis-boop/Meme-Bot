@@ -282,8 +282,9 @@ def _checks(check, tmp, skips):
     e_pre = pre_y
     e_post = PT.radar_positions(dict(D, traders=dict(L, trades=[t for t in L["trades"] if t["group"] != "radar"])))
     want_pre = "From %s, %s, every coin the radar finds without traps is bought on paper for 10\u00a0€." % (PA.mday(now + 2 * H), PA.hhmm(now + 2 * H))
-    check(html.escape(want_pre, quote=False) in e_pre and "No radar paper position yet. The radar runs 07:00 to 24:00." in e_post,
-          "UI3 the radar's paper positions when there is none: before the switch '%s', after it 'No radar paper position yet. The radar runs 07:00 to 24:00.'" % want_pre)
+    check(html.escape(want_pre, quote=False) in e_pre and "No radar paper position yet." in e_post and "07:00" not in e_post,
+          "UI3 the radar's paper positions when there is none: before the switch '%s', after it 'No radar paper position yet.' (the radar runs around the "
+          "clock: no hours named)" % want_pre)
 
     # the radar's paper positions: newest first, ten in view, a state or a result with its exit word, four address characters where symbols repeat
     rows_r = re.findall(r'<li class="trp"><span class="tm">.*?</span><span class="cn"><b>([^<]*)</b>(.*?)</span><span class="st">(.*?)</span></li>', rpos)
@@ -302,10 +303,13 @@ def _checks(check, tmp, skips):
     want_b = "Sold at the best price within 6 h instead, looking back (not possible in reality): %s on the same %d%s." % (
         PA.eur(v1["t2"], True), v1["priced"], "".join(" · " + p for p in PT.t2_notes(v1) if p))
     nob = PT.radar_positions(dict(D, traders=dict(L, radarV1=dict(v1, t2=None))))
-    fake = PT.radar_positions(dict(D, traders=dict(L, radarV1=dict(v1, t2=-1.5, est=1, capped=2, leftOut=3))))
+    fake = PT.radar_positions(dict(D, traders=dict(L, radarV1=dict(v1, n=v1["priced"] + 5, t2=-1.5, est=1, capped=2, leftOut=3))))
+    one = PT.radar_positions(dict(D, traders=dict(L, radarV1=dict(v1, t2=0.0, est=0, capped=1, leftOut=1))))
     check(v1["t2"] is not None and want_b in text(rpos) and "best price within 6 h" not in text(nob) and "that test is not part of the three traders." in text(nob)
+          and "(%d coins, " % (v1["priced"] + 5) in text(fake)
           and "−1.50 € on the same %d · 1 estimated (the real best is at least this) · 2 price spikes counted at 30x at most · 3 spikes left out "
-              "(no volume or pool already dead)." % v1["priced"] in text(fake) and "—" not in text(fake),
+              "(no volume or pool already dead)." % v1["priced"] in text(fake) and "—" not in text(fake)
+          and "on the same %d · 1 price spike counted at 30x at most · 1 spike left out (no volume or pool already dead)." % v1["priced"] in text(one),
           "the Radar tab: the radar's old test also sold at the best price within 6 h ('%s'); without a priced one no such line" % want_b)
 
     # UI10: the traders failed: a note, the activity (the paper account's own) and the open positions; no page error

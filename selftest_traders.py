@@ -35,6 +35,7 @@ import peak as P
 import exit_grid as EG
 import radar_paper as RP
 import traders as T
+import page_account as PA
 
 MIN, H, DAY = 60_000, 3_600_000, 86_400_000
 PX = 1e-5
@@ -361,13 +362,23 @@ def _tr6_tr7_tr8(check, tmp):
     row = lambda best, raw, cut, src="m1", st="closed", eur=1.0: {"state": st, "eur": eur, "ticket": 3.0, "best": best, "rawX": raw, "src": src, "cut": cut}
     junk = [row(1.17, 17436.4, ["pool dead: liquidity $0.03 at minute 15", "dust: 17,436x on $19 volume (2 candles)"]),
             row(2.19, 28021.3, ["pool dead: liquidity $0 at minute 30", "unconfirmed: 28,021x held for one candle only"]),
-            row(1.5, None, [], src="est"), row(2.0, 2.0, []), row(9.0, 9.0, [], st="open", eur=None)]
+            row(1.5, None, [], src="est"), row(2.0, 2.0, []), row(9.0, 9.0, [], st="open", eur=None),
+            row(None, None, [], st="void", eur=None), row(None, None, [], st="pricing", eur=None), row(4.0, 4.0, [], st="closed", eur=None)]
     got = T.radar_v1_best(junk)
     want = sum(M.pos_value(RP.paper(3.0), 1.0, m) - 3.0 for m in (1.17, 30.0, 1.5, 2.0))
     check(got == {"t2": round(want, 2), "est": 1, "capped": 1, "leftOut": 1} and got["t2"] < 100 and T.radar_v1_best([]) == {"t2": None, "est": 0, "capped": 0, "leftOut": 0}
           and T.radar_v1_best([row(2.0, 2.0, [], st="open", eur=None)])["t2"] is None,
           "TR7b junk prints never count: SARWAND's 17,436x on $19 left out at its 1.17x, a one-candle 28,021x at 30x at most, an estimate at its "
-          "best, an open row not counted, none priced -> None: %s" % got)
+          "best; open, void, still pricing and unreadable rows not counted; none priced -> None: %s" % got)
+    # the raw top named by its cut text although the two round apart (CAPE: rawX 14722.5 stored to 6 digits, its text '14,723x'); a raw top
+    # at the entry price under a dead pool is no spike (LUMINOUS: best 0.06x, raw 1.0x): its best counts, not as left out
+    cape = {"best": 1.98527, "rawX": 14722.5, "src": "m1", "cut": ["pool dead: liquidity $0.14 at minute 66", "unconfirmed: 14,723x held for one candle only"]}
+    lum = {"best": 0.0602, "rawX": 1.0, "src": "m1", "cut": ["pool dead: liquidity $3 at minute 0.7", "collapse: under 10% at minute 1, no recovery within 30 min"]}
+    near = [PA.names_mult(c, v) for c, v in (("dust: 450x on $0.00 volume", 449.551), ("unconfirmed: 6.00x held", 6.004), ("unconfirmed: 6.00x held", 6.02),
+                                               ("dust: 35.2x on $3", 35.249), ("dust: 35.2x on $3", 35.3), ("unconfirmed: 14,723x held", 14721.9))]
+    check(bm(cape, radar=True) == (30.0, "capped") and bm(lum, radar=True) == (0.0602, "") and near == [True, True, False, True, False, False],
+          "TR7b a cut names the raw top within its own rounding (CAPE's 14,723x is its rawX 14722.5: capped at 30x like YOYO, not left out), "
+          "nothing further off (%s); a raw top at the entry price is no spike left out: %s" % (near, bm(lum, radar=True)))
     # TR8: kept decisions everywhere -> T3 == T1 exactly
     for g in T.GROUPS:
         for D in T.days(g, now, switch, fx["since"]):

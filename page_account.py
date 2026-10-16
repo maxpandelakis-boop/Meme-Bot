@@ -186,9 +186,15 @@ def cut_reason(cut):
     return ""
 
 
-def peak_mult(v):
-    """A multiple as peak.py writes it in its cut texts ("59,257x", "35.2x", "4.00x"), to find the raw top's own rule."""
-    return "{:,.0f}x".format(v) if v >= 100 else ("%.1fx" % v if v >= 10 else "%.2fx" % v)
+def names_mult(c, v):
+    """Whether a cut text names the multiple v ("unconfirmed: 14,723x held ..." names 14722.5): peak.py writes the text from the
+    unrounded multiple (mult_text) and stores rawX to 6 digits, so the two can round differently; the text matches within half of its
+    last digit (and the 6-digit rounding)."""
+    for m in re.finditer(r"(\d[\d,]*)(?:\.(\d+))?x", str(c)):
+        t = float(m.group(1).replace(",", "") + ("." + m.group(2) if m.group(2) else ""))
+        if abs(t - v) <= 0.5 * 10 ** -len(m.group(2) or "") + 1e-5 * abs(v):
+            return True
+    return False
 
 
 def raw_reason(pk):
@@ -202,9 +208,8 @@ def raw_reason(pk):
     cut = [str(c) for c in (pk.get("cut") or [])]
     rule = lambda c: next((k for k in RAW_WHY if c.strip().lower().startswith(k)), None)     # "dust: 59,257x on $3 volume" -> dust
     rules = [rule(c) for c in cut]
-    name = peak_mult(raw)
     for c, k in zip(cut, rules):
-        if k in ("dust", "unconfirmed") and name in c:
+        if k in ("dust", "unconfirmed") and names_mult(c, raw):
             return RAW_WHY[k]
     if raw > 1.5 * x:
         for k in ("cap", "jump", "pool dead", "rug", "collapse", "unit"):
