@@ -611,7 +611,10 @@ from the Actions cache. More is not better: of those, roughly
   with links on the run's own page (`bot.py summary`);
 - the training runs beside the fetching; the trader waits for it until 36 minutes after the cycle began (`MEMEBOT_TRAIN_WAIT_S`,
   in seconds), then stops it and the runs read the last training, so the scan ends inside the job's 55-minute limit (the Agent
-  office shows the trainer amber with why);
+  office shows the trainer amber with the date of the training the runs read; each profile's newest training is also kept as
+  `db/memebot/train-<rule>.json`, so a 24h run between 2h runs does not leave the 2h runs on the defaults);
+- the scan step has its own limit (48 minutes) and the big-test snapshots are saved to the Actions cache right after it, also
+  when it failed or ran out of time, so a scan that does not finish loses only its own report, never the snapshots;
 - the **Run workflow** button takes two inputs: the profile (`2h` or `24h`) and `rescan` (force a full scan with a fresh snapshot);
 - runs queue behind each other (one running, one waiting): a second press while one waits replaces the waiting one.
 

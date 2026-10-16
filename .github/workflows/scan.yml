@@ -57,7 +57,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 55              # a full scan took 32 to 41 minutes on 2026-10-10 (the training and the candles ran after the fetching then)
+    timeout-minutes: 55              # a full scan took 32 to 49 minutes on 2026-10-16; bot.py stops the training 36 min into the cycle (TRAIN_WAIT_S)
     outputs:
       skipped: ${{ steps.recent.outputs.skip }}
     env:
@@ -333,7 +333,7 @@ jobs:
           PY
       - name: Keep the big-test snapshots between runs
         if: steps.recent.outputs.skip != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4     # saved right after the scan step below, also when that step failed or ran out of time
         with:
           path: |
             mb/db/memesnap
@@ -382,7 +382,17 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}  # empty without the secrets: nothing of it runs
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}            # sent only in the apikey header to SUPABASE_URL, never printed
           MEMEBOT_PUSH_YOUNG: ${{ vars.MEMEBOT_PUSH_YOUNG || '0' }}          # the "new coins" push of the early list: off unless the variable is 1 (the radar pushes coins without a trap found)
+        timeout-minutes: 48          # inside the job's 55 with the steps before it (a minute, five at most) and the snapshots' save after it
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
+      - name: Save the big-test snapshots (also after a scan that failed or ran out of time, so its new snapshots are not lost)
+        if: always() && steps.recent.outputs.skip != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            mb/db/memesnap
+            mb/db/memesnapres
+          key: memebot-snaps-${{ github.run_id }}
       - name: Export the big-test results to the bigtest branch for offline research (once a day at the 06 UTC scan, or when asked)
         if: steps.recent.outputs.skip != 'true'
         continue-on-error: true

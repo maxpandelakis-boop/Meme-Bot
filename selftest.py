@@ -1076,37 +1076,63 @@ def spotter_checks(check):
           and "soft=True, limit=CHECK_LIMIT_S)" in bsrc and B.CHECK_LIMIT_S <= 30,
           "a radar.py check that hangs is killed at its time limit (%.1f s for 2 s; %d s in the cycle) and the cycle goes on" % (el_, B.CHECK_LIMIT_S))
     # the training beside the scan has a deadline (TRAIN_WAIT_S after the cycle began): past it the trainer is stopped and the runs read the
-    # last train.json, so the scan ends inside its job's limit; a training that fails is redone in the foreground only while time is left
+    # last train.json (this profile's own one, train-<rule>.json, when train.json is another profile's), so the scan ends inside its job's
+    # limit; a training that fails is redone in the foreground only while a minute is left. None of it is a failed agent: the live view's
+    # MB.state counts any failed agent but the spotter as a stopped scan
+    import memebot as M_
+    rule2 = (M_.PROFILES.get("2h") or {}).get("RULE") or M_.RULE
     code3 = os.path.join(tmp, "code3")
     shutil.copytree(code, code3)
     with open(os.path.join(code3, "memebot.py"), "w", encoding="utf-8") as f:
-        f.write("import os as _o, sys as _s, time as _t\nif __name__ == '__main__' and _s.argv[1:2] == ['train'] and _o.environ.get('STUB_TRAIN'):\n"
-                "    _d = _s.argv[_s.argv.index('--dir') + 1]\n    open(_o.path.join(_d, 'train.calls'), 'a').write('bg\\n' if '--out' in _s.argv else 'fg\\n')\n"
+        f.write("import os as _o, sys as _s, time as _t, json as _j\nif __name__ == '__main__' and _s.argv[1:2] == ['train'] and _o.environ.get('STUB_TRAIN'):\n"
+                "    _d, _m = _s.argv[_s.argv.index('--dir') + 1], _o.environ['STUB_TRAIN']\n"
+                "    open(_o.path.join(_d, 'train.calls'), 'a').write('bg\\n' if '--out' in _s.argv else 'fg\\n')\n"
                 "    open(_o.path.join(_d, 'train.pid'), 'w').write(str(_o.getpid()))\n"
-                "    if _o.environ['STUB_TRAIN'] == 'sleep':\n        _t.sleep(600)\n    print('{\"stub\": \"train fails\"}'); _s.exit(2)\n" + msrc)
-    marker = {"t": T0 - H, "rule": "seeded", "rows": 0, "scans": 0, "note": "the last training (seeded)"}
+                "    if _m == 'sleep':\n"          # a whole new doc written, then still at work (as cmd_train between its write and its summary)
+                "        _j.dump({'t': 1, 'rule': 'stub', 'note': 'never swapped in'}, open(_s.argv[_s.argv.index('--out') + 1], 'w')); _t.sleep(600)\n"
+                "    if _m == 'failslow':\n        _t.sleep(2)\n"
+                "    print('{\"stub\": \"train fails\"}'); _s.exit(2)\n" + msrc)
+    marker = {"t": T0 - H, "rule": rule2, "rows": 0, "scans": 0, "note": "the last training (seeded)"}
+    other = {"t": T0 - 2 * H, "rule": "m9", "rows": 0, "scans": 0, "note": "the 24h profile's training"}
     tw = {}
-    for name_, env_ in (("slow", {"STUB_TRAIN": "sleep", "MEMEBOT_TRAIN_WAIT_S": "1"}), ("fail", {"STUB_TRAIN": "fail"}), ("late", {"STUB_TRAIN": "fail", "MEMEBOT_TRAIN_WAIT_S": "1"})):
+    for name_, env_, seed in (("slow", {"STUB_TRAIN": "sleep", "MEMEBOT_TRAIN_WAIT_S": "1"}, {"train.json": marker}),
+                              ("fail", {"STUB_TRAIN": "fail"}, {"train.json": other, "train-%s.json" % rule2: marker}),
+                              ("late", {"STUB_TRAIN": "failslow", "MEMEBOT_TRAIN_WAIT_S": "61"}, {"train.json": marker})):
         dt_ = os.path.join(tmp, "train-" + name_)
         os.makedirs(os.path.join(dt_, "db", "memebot"))
-        with open(os.path.join(dt_, "db", "memebot", "train.json"), "w", encoding="utf-8") as f:
-            json.dump(marker, f)
+        for fn_, doc_ in seed.items():
+            with open(os.path.join(dt_, "db", "memebot", fn_), "w", encoding="utf-8") as f:
+                json.dump(doc_, f)
         pt_, st_, _ = spot_cycle(dt_, env_, code=code3)
-        ot_ = {a["id"]: a for a in json.load(open(os.path.join(dt_, "db", "memebot", "office.json"), encoding="utf-8"))["agents"]}
+        ag_ = json.load(open(os.path.join(dt_, "db", "memebot", "office.json"), encoding="utf-8"))["agents"]
+        ot_ = {a["id"]: a for a in ag_}
+        tr_ = ot_.get("trader") or {}
+        prev_ = max([a["end"] for a in ag_ if not a.get("bg") and a["id"] != "trader" and a.get("end") and a["end"] <= (tr_.get("start") or 0)] or [0])
         pid_t = int(open(os.path.join(dt_, "train.pid")).read()) if os.path.exists(os.path.join(dt_, "train.pid")) else 0
-        tw[name_] = (pt_.returncode, st_, ot_.get("trainer") or {}, (ot_.get("trader") or {}).get("status"), pid_t and gone(pid_t),
-                     json.load(open(os.path.join(dt_, "db", "memebot", "train.json"), encoding="utf-8")) == marker,
-                     open(os.path.join(dt_, "train.calls")).read().split() if os.path.exists(os.path.join(dt_, "train.calls")) else [], pt_.stderr)
-    (rs, ss, ts, trs, gs, ms_, cs, es), (rf, sf_, tf, trf, gf, mf, cf, ef), (rl_, sl_, tl, trl, gl, ml, cl, el2) = tw["slow"], tw["fail"], tw["late"]
-    check(rs == 0 and ss < 120 and gs and ms_ and cs == ["bg"] and trs == "done" and ts.get("status") == "fallback"
-          and ts.get("out") == "still running 0 min after the scan began: stopped, the runs read the last training"
-          and "memebot.py train stopped: still running" in es and "memebot.py train failed" not in es and B.TRAIN_WAIT_S == 36 * 60 and B.TRAIN_WAIT_S < 55 * 60 - 10 * 60,
-          "a training still at work at its deadline is stopped there: the process is gone, the last train.json stays, the trader runs and the cycle ends"
-          " (%.0f s; %d min in the scan job)" % (ss, B.TRAIN_WAIT_S / 60))
-    check(rf == 0 and mf and cf == ["bg", "fg"] and trf == "done" and tf.get("status") == "failed" and "and again after it" in (tf.get("out") or "")
-          and rl_ == 0 and ml and cl == ["bg"] and trl == "done" and tl.get("status") == "failed" and "no time left" in (tl.get("out") or ""),
-          "a training that fails beside the scan is redone in the foreground while time is left (%s) and not past the deadline (%s); a second failure"
-          " leaves the last train.json and the cycle goes on" % (cf, cl))
+        tw[name_] = {"rc": pt_.returncode, "secs": st_, "tr": ot_.get("trainer") or {}, "trader": tr_.get("status"), "gap": (tr_.get("start") or 0) - prev_,
+                     "gone": bool(pid_t) and gone(pid_t), "kept": json.load(open(os.path.join(dt_, "db", "memebot", "train.json"), encoding="utf-8")) == marker,
+                     "calls": open(os.path.join(dt_, "train.calls")).read().split() if os.path.exists(os.path.join(dt_, "train.calls")) else [], "err": pt_.stderr,
+                     "live": (ot_.get("reporter") or {}).get("status") == "done" and not [a["id"] for a in ag_ if a.get("status") == "failed" and a["id"] != "spotter"]}
+    ws, wf_, wl = tw["slow"], tw["fail"], tw["late"]
+    when_ = time.strftime("%d %b %H:%M UTC", time.gmtime((T0 - H) / 1000))
+    bsrc = open(os.path.join(HERE, "bot.py"), encoding="utf-8").read()
+    check(ws["rc"] == 0 and ws["secs"] < 120 and ws["gone"] and ws["kept"] and ws["calls"] == ["bg"] and ws["trader"] == "done" and ws["tr"].get("status") == "fallback"
+          and ws["tr"].get("out") == "still running 0 min after the scan began: stopped, the runs read the training of " + when_ and 0 <= ws["gap"] < 600
+          and "memebot.py train stopped: still running" in ws["err"] and "memebot.py train failed" not in ws["err"]
+          and 'float(os.environ.get("MEMEBOT_TRAIN_WAIT_S") or 36 * 60)' in bsrc and "deadline = t0 / 1000.0 + TRAIN_WAIT_S" in bsrc,
+          "a training still at work at its deadline (36 min after the cycle began) is stopped as soon as the trader step comes (%d ms after the step before it):"
+          " the process is gone, the whole doc it wrote is not swapped in, the last train.json stays, the trader runs and the cycle ends (%.0f s)" % (ws["gap"], ws["secs"]))
+    check(wf_["rc"] == 0 and wf_["kept"] and wf_["calls"] == ["bg", "fg"] and wf_["trader"] == "done" and wf_["tr"].get("status") == "fallback"
+          and wf_["tr"].get("out") == "failed beside the scan and again after it, the runs read the training of " + when_
+          and wl["rc"] == 0 and wl["kept"] and wl["calls"] == ["bg"] and wl["trader"] == "done" and wl["tr"].get("status") == "fallback"
+          and wl["tr"].get("out") == "failed beside the scan, no time left to train again, the runs read the training of " + when_,
+          "a training that fails beside the scan is redone in the foreground while a minute is left (%s) and not with less (%s, 61 s deadline); a second failure"
+          " leaves the last training and the cycle goes on; a train.json of another profile gives way to this profile's own last one" % (wf_["calls"], wl["calls"]))
+    check(all(w["live"] for w in tw.values()) and ws["tr"].get("status") == wf_["tr"].get("status") == wl["tr"].get("status") == "fallback",
+          "a training that did not finish is amber, never failed: the live view (MB.state: reporter done, no failed agent but the spotter) reads each of these scans as done")
+    own_a = os.path.join(da, "db", "memebot", "train-%s.json" % rule2)
+    check(os.path.exists(own_a) and open(own_a, "rb").read() == open(os.path.join(da, "db", "memebot", "train.json"), "rb").read(),
+          "a training that finished is also kept as this profile's own copy (train-%s.json), byte for byte" % rule2)
     tmpd = os.path.join(tmp, "ed")
     os.makedirs(tmpd)
     pe = os.path.join(tmpd, "young_early.json")

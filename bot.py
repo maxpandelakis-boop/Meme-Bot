@@ -208,6 +208,44 @@ CHECK_LIMIT_S = 30          # radar.py check runs after the trader, on the scan'
 # the last train.json. The scan job's limit is 55 min: about 2 before the cycle, 8 for the run after the training, 1 after the cycle
 # (on 2026-10-16 the training took 23 to 27 min and was already the last thing the trader waited for)
 TRAIN_WAIT_S = float(os.environ.get("MEMEBOT_TRAIN_WAIT_S") or 36 * 60)
+
+
+def last_training(d, rule):
+    """After a cycle whose training did not finish: which training the runs read, in words for the office. When train.json is another
+    profile's (a 24h run between 2h runs), this profile's own last one (train-<rule>.json, kept at each swap) goes back in its place,
+    so the runs do not fall back to the defaults while the trainings keep being stopped."""
+    path = os.path.join(d, "db", "memebot", "train.json")
+    doc = load_doc(path)
+    own = os.path.join(d, "db", "memebot", "train-%s.json" % re.sub(r"[^A-Za-z0-9_.-]+", "-", str(rule)))
+    if rule and str(doc.get("rule") or "") != str(rule) and os.path.exists(own):
+        shutil.copyfile(own, path + ".tmp")
+        os.replace(path + ".tmp", path)
+        doc = load_doc(path)
+    if not doc.get("t"):
+        return "no training yet: the runs read the defaults"
+    when = dt.datetime.fromtimestamp(doc["t"] / 1000, dt.timezone.utc).strftime("%d %b %H:%M UTC")
+    return ("the runs read the training of %s" % when) + ("" if not rule or str(doc.get("rule") or "") == str(rule) else " (another profile's: the runs read the defaults)")
+
+
+def keep_own(d, rule):
+    """This profile's newest training, kept beside train.json (train-<rule>.json) for last_training."""
+    try:
+        if rule and str(load_doc(os.path.join(d, "db", "memebot", "train.json")).get("rule") or "") == str(rule):
+            own = os.path.join(d, "db", "memebot", "train-%s.json" % re.sub(r"[^A-Za-z0-9_.-]+", "-", str(rule)))
+            shutil.copyfile(os.path.join(d, "db", "memebot", "train.json"), own + ".tmp")
+            os.replace(own + ".tmp", own)
+    except OSError as e:
+        log("training copy not kept: %s" % e)
+
+
+def load_doc(path):
+    """A JSON object from path, or {} (missing, broken or not an object)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+        return doc if isinstance(doc, dict) else {}
+    except (OSError, ValueError):
+        return {}
 EARLY_STATES = ("listed", "empty", "small", "failed", "off")
 B58_RE = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 X_RE = re.compile(r"^https://(www\.)?(x|twitter)\.com/[A-Za-z0-9_]{1,30}(/status/\d{1,25})?/?$")
@@ -1101,27 +1139,32 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
         try:
             train_job["p"].wait(max(0.0, deadline - time.time()))
         except subprocess.TimeoutExpired:      # still at work at the deadline: stopped, the scan must end inside its job's limit
-            stop_bg(train_job, "still running %.0f min after the scan began: stopped, the runs read the last training" % (TRAIN_WAIT_S / 60))
+            stop_bg(train_job, "still running %.0f min after the scan began" % (TRAIN_WAIT_S / 60))
         t = finish_bg(train_job)
         train_said = lambda: ("%s coin results from %d scans%s%s" % (commas(t["rows"]), t["scans"], " · zero model" if t.get("zeroModel") else "", " · tuned limits" if t.get("tunedWhy") else "")
                               if t["rows"] else "no scored snapshots yet: nothing to learn from")
         left = deadline - time.time()
+        # a training that did not finish is amber (fallback), never failed: the scan goes on with the last training, and a failed agent
+        # would make the live view say the scan stopped (report.py MB.state)
         if t is not None and os.path.exists(train_out):
             os.replace(train_out, os.path.join(d, "db", "memebot", "train.json"))
+            keep_own(d, o.rule)
             log("training: %s (beside the scan, %.0f s)" % (t["note"], train_job["secs"]), "trainer")
             o.done("trainer", train_said, end=train_job["end"])
-        elif train_job.get("killed"):
-            o.done("trainer", train_job["killed"], "fallback", end=train_job["end"])
-        elif left < 60:
-            log("training: failed beside the scan and no time is left to train again: the runs read the last training", "trainer")
-            o.done("trainer", "failed beside the scan, no time left to train again: the runs read the last training", "failed", end=train_job["end"])
+        elif train_job.get("killed") or left < 60:
+            why = "still running %.0f min after the scan began: stopped" % (TRAIN_WAIT_S / 60) if train_job.get("killed") else "failed beside the scan, no time left to train again"
+            why += ", " + last_training(d, o.rule)
+            log("training: " + why, "trainer")
+            o.done("trainer", why, "fallback", end=train_job["end"])
         else:                  # it failed beside the scan: train now, as before, until the same deadline
             o.begin("trainer")
             t = run(["memebot.py", "train", "--horizon", horizon], d, now, soft=True, limit=int(left))
             if t is None:
-                log("training: failed again in the foreground: the runs read the last training", "trainer")
-                o.done("trainer", "failed beside the scan and again after it: the runs read the last training", "failed")
+                why = "failed beside the scan and again after it, " + last_training(d, o.rule)
+                log("training: " + why, "trainer")
+                o.done("trainer", why, "fallback")
             else:
+                keep_own(d, o.rule)
                 log("training: " + t["note"])
                 o.done("trainer", train_said, "fallback")
     if spot:
@@ -1444,7 +1487,7 @@ def summary(d):
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), {}) or {}
     if isinstance(train, dict) and train.get("note"):
         out.append("")
-        out.append("Training: " + md(train["note"]))
+        out.append("Training: " + md(train["note"]) + (" (trained %s)" % stamp(train["t"]) if isinstance(train.get("t"), (int, float)) else ""))
         for why in train.get("tunedWhy") or []:
             out.append("- " + md(why))
     pos = [(pid, p) for pid, p in M.positions(d).items() if p["_left"] > 1e-9]

@@ -47,8 +47,11 @@ H, D = 3_600_000, 86_400_000
 FAKE_TOKEN = "ghs_FAKEtokenFORtheSCANSIDEtest0123456789"     # must never show in any output
 SCAN_YML = os.path.join(HERE, ".github", "workflows", "scan.yml")
 RADAR_YML = os.path.join(HERE, ".github", "workflows", "radar.yml")
-CACHE_STEP = {"name": "Keep the big-test snapshots between runs", "if": "steps.recent.outputs.skip != 'true'", "uses": "actions/cache@v4",
+CACHE_STEP = {"name": "Keep the big-test snapshots between runs", "if": "steps.recent.outputs.skip != 'true'", "uses": "actions/cache/restore@v4",
               "with": {"path": "mb/db/memesnap\nmb/db/memesnapres\n", "key": "memebot-snaps-${{ github.run_id }}", "restore-keys": "memebot-snaps-"}}
+SAVE_STEP = {"name": "Save the big-test snapshots (also after a scan that failed or ran out of time, so its new snapshots are not lost)",
+             "if": "always() && steps.recent.outputs.skip != 'true'", "continue-on-error": True, "uses": "actions/cache/save@v4",
+             "with": {"path": "mb/db/memesnap\nmb/db/memesnapres\n", "key": "memebot-snaps-${{ github.run_id }}"}}
 BASE_STEPS = ["Safety net only - skip when this hour's scan was started", "actions/checkout@v4", "Restore the bot's state from the results branch",
               "Keep the big-test snapshots between runs", "Install the push sender for the iPhone app", "Scan and recommend",
               "Export the big-test results to the bigtest branch", "Push the page and the small docs to the results branch", "Show the picks on this run's page",
@@ -815,14 +818,21 @@ def _s6(check, scan, tmp):
     print("== scan side S6: scan.yml and radar.yml, parsed as YAML; step D (one radar round) against a stand-in GitHub API")
     job = scan["jobs"]["scan"]
     cache = step(job, "Keep the big-test snapshots between runs")
-    check(cache == CACHE_STEP, "the cache step is unchanged: the same paths, key and restore-keys, so the old caches stay restorable (I9)")
+    check(cache == CACHE_STEP, "the cache step restores with the same paths, key and restore-keys, so the old caches stay restorable (I9)")
+    i_scan = step_index(job, "Scan and recommend")
+    sc_t = (step(job, "Scan and recommend") or {}).get("timeout-minutes")
+    soft_t = sum(int(st_.get("timeout-minutes") or 0) for st_ in job["steps"][:i_scan] if st_.get("continue-on-error"))
+    check(i_scan >= 0 and job["steps"][i_scan + 1] == SAVE_STEP and sc_t == 48 and soft_t + sc_t + 1 <= job.get("timeout-minutes", 0),
+          "the snapshots are saved right after the scan step, also when it failed or ran out of time (always, continue-on-error, the same paths and key);"
+          " the scan step's own limit (%s min) plus the soft steps before it at their limits (%d min) and a minute for the save fit the job's %s min"
+          % (sc_t, soft_t, job.get("timeout-minutes")))
     names = [s.get("name") or s.get("uses") or "" for s in job["steps"]]
     pos = [step_index(job, n) for n in BASE_STEPS]
     a, b, d_ = (step_index(job, n) for n in ("Import the launch radar's records", "Feed the launch radar", "Start the launch radar"))
     sa, sb, sd = (job["steps"][i] if i >= 0 else {} for i in (a, b, d_))
     check(scan.get("concurrency") == {"group": "memebot-scan", "cancel-in-progress": False} and scan.get("permissions") == {"contents": "write", "actions": "write"}
-          and all(x >= 0 for x in pos) and pos == sorted(pos) and len(names) == len(BASE_STEPS) + 3 and job.get("timeout-minutes") == 55,
-          "every step of the scan job from before is still there, in its order, plus three new ones; the workflow-level group and permissions are unchanged")
+          and all(x >= 0 for x in pos) and pos == sorted(pos) and len(names) == len(BASE_STEPS) + 4 and job.get("timeout-minutes") == 55,
+          "every step of the scan job from before is still there, in its order, plus four new ones (the radar's three, the snapshots' save); the workflow-level group and permissions are unchanged")
     check(pos[2] < a < pos[3] and b == pos[7] + 1 and d_ == 1 and pos[0] == 0
           and sa.get("continue-on-error") is True and sa.get("timeout-minutes") == 1 and sa.get("if") == "steps.recent.outputs.skip != 'true'"
           and sb.get("continue-on-error") is True and sb.get("timeout-minutes") == 3 and sb.get("if") == "steps.recent.outputs.skip != 'true'"
