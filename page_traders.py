@@ -98,6 +98,15 @@ def group_word(g, sw, now):
     return WORD[g]
 
 
+def t2_notes(x):
+    """How a best-price sum was counted, as short phrases ("" for a count of 0): estimated lows, spikes capped at memebot.CANDLE_MAX_X,
+    spikes left out. x: T2's stats or the radar's old test (radarV1), both with est, capped and leftOut."""
+    n = lambda k: int(num(x.get(k)) or 0)
+    return ["%d estimated (the real best is at least this)" % n("est") if n("est") else "",
+            ("%d price spike%s counted at %gx at most" % (n("capped"), "" if n("capped") == 1 else "s", M.CANDLE_MAX_X)) if n("capped") else "",
+            ("%d spike%s left out (no volume or pool already dead)" % (n("leftOut"), "" if n("leftOut") == 1 else "s")) if n("leftOut") else ""]
+
+
 # ---------------------------------------------------------------- the Radar tab: the radar's paper positions
 def radar_positions(D):
     """The radar's rule-2 buys (10 € on every coin found without traps, from the switch), newest first: time, coin (with the first four
@@ -139,6 +148,9 @@ def radar_positions(D):
     if num(v1.get("n")):
         foot = ('<p class="note trp-foot">Before %s the radar tested %s on the best 5 coins of each hour (%d coins, %s on %d priced); that test is not part of '
                 'the three traders.</p>') % (E(PA.mday(sw)), E(ticket(M.YOUNG_TICKET)), int(num(v1["n"])), E(PA.eur(v1.get("pnl"), True)), int(num(v1.get("priced")) or 0))
+        if num(v1.get("t2")) is not None and num(v1.get("priced")):      # the same coins sold the Best-price trader's way (its card's notes)
+            foot += ('<p class="note trp-foot">Sold at the best price within 6 h instead, looking back (not possible in reality): %s on the same %d%s.</p>'
+                     % (E(PA.eur(v1["t2"], True)), int(num(v1["priced"])), E("".join(" · " + p for p in t2_notes(v1) if p))))
     return ('<section class="trpos" data-tr="radar"><div class="sec-head"><h3>Radar paper positions</h3><p>every coin found without traps is bought on paper for %s</p></div>'
             '%s%s</section>') % (E(ticket(tk)), body, foot)
 
@@ -238,10 +250,8 @@ def cards(T, now):
     if num(rd.get("noprice")):
         l1.append('<p class="trl">%d radar position%s without price data, not counted (if all were total losses: %s)</p>' % (
             int(num(rd["noprice"])), "" if num(rd["noprice"]) == 1 else "s", E(PA.eur(rd.get("worst"), True))))
-    parts = ["%d estimated (the real best is at least this)" % num(t2["est"]) if num(t2.get("est")) else "",
-             ("%d price spike%s counted at %gx at most" % (num(t2["capped"]), "" if num(t2["capped"]) == 1 else "s", M.CANDLE_MAX_X)) if num(t2.get("capped")) else "",
-             ("%d spike%s left out (no volume or pool already dead)" % (num(t2["leftOut"]), "" if num(t2["leftOut"]) == 1 else "s")) if num(t2.get("leftOut")) else ""]
-    l2 = ['<p class="trl">Without its single best trade: %s · typical trade %s</p>' % (money(t2.get("noBest")), money(t2.get("median")))]
+    parts = t2_notes(t2)
+    l2 =['<p class="trl">Without its single best trade: %s · typical trade %s</p>' % (money(t2.get("noBest")), money(t2.get("median")))]
     # behind its ⓘ: how the best price is counted, and why on a few coins it is below what the stop-loss trader really got
     fin = [t for t in T.get("trades") or [] if isinstance(t, dict) and t.get("state") == "finished" and num(t.get("t1")) is not None and num(t.get("t2")) is not None]
     below = sum(1 for t in fin if t["t2"] < t["t1"])

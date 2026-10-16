@@ -350,6 +350,24 @@ def _tr6_tr7_tr8(check, tmp):
           and L["t2"]["leftOut"] == whys["left out"] and whys["left out"] >= 2 and whys["est"] >= 2,
           "TR7 every finished trade's T2 is memebot.pos_value on its multiple (the paper fees); sum %s, median %s, without the best %s, "
           "%d estimated, %d capped, %d left out" % (L["same"]["t2"], L["t2"]["median"], L["t2"]["noBest"], whys["est"], whys["capped"], whys["left out"]))
+    # TR7b: the radar's old 3 EUR test (rule 1) sold the T2 way: from its own docs, the same rows its stop-loss line counts
+    v1 = [x for x in docs.values() if x.get("rule") != 2 and x["state"] == "closed"]
+    want1 = sum(M.pos_value(RP.paper(RP.TICKET), 1.0, bm(x, radar=True)[0]) - RP.TICKET for x in v1)
+    acc = RP.account(d, now, switch)
+    check(len(v1) == L["radarV1"]["priced"] == acc["all"]["n"] >= 2 and L["radarV1"]["t2"] == round(want1, 2) and L["radarV1"]["n"] == len(acc["rows"])
+          and L["radarV1"]["pnl"] == acc["all"]["pnl"],
+          "TR7b the radar's old test at the best price: %s on its %d priced docs (T2's multiple and fees; its stop-loss line %s on the same)"
+          % (L["radarV1"]["t2"], len(v1), L["radarV1"]["pnl"]))
+    row = lambda best, raw, cut, src="m1", st="closed", eur=1.0: {"state": st, "eur": eur, "ticket": 3.0, "best": best, "rawX": raw, "src": src, "cut": cut}
+    junk = [row(1.17, 17436.4, ["pool dead: liquidity $0.03 at minute 15", "dust: 17,436x on $19 volume (2 candles)"]),
+            row(2.19, 28021.3, ["pool dead: liquidity $0 at minute 30", "unconfirmed: 28,021x held for one candle only"]),
+            row(1.5, None, [], src="est"), row(2.0, 2.0, []), row(9.0, 9.0, [], st="open", eur=None)]
+    got = T.radar_v1_best(junk)
+    want = sum(M.pos_value(RP.paper(3.0), 1.0, m) - 3.0 for m in (1.17, 30.0, 1.5, 2.0))
+    check(got == {"t2": round(want, 2), "est": 1, "capped": 1, "leftOut": 1} and got["t2"] < 100 and T.radar_v1_best([]) == {"t2": None, "est": 0, "capped": 0, "leftOut": 0}
+          and T.radar_v1_best([row(2.0, 2.0, [], st="open", eur=None)])["t2"] is None,
+          "TR7b junk prints never count: SARWAND's 17,436x on $19 left out at its 1.17x, a one-candle 28,021x at 30x at most, an estimate at its "
+          "best, an open row not counted, none priced -> None: %s" % got)
     # TR8: kept decisions everywhere -> T3 == T1 exactly
     for g in T.GROUPS:
         for D in T.days(g, now, switch, fx["since"]):

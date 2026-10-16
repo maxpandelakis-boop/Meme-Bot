@@ -297,6 +297,16 @@ def _checks(check, tmp, skips):
           and "(%d coins, %s on %d priced); that test is not part of the three traders." % (L["radarV1"]["n"], PA.eur(L["radarV1"]["pnl"], True), L["radarV1"]["priced"]) in text(rpos),
           "the Radar tab's paper positions: newest first (%s), a state (running until, waiting for a price, no price data) or the result with its exit "
           "word, four address characters when symbols repeat, the radar's old test in one sentence" % [r[0] for r in rows_r])
+    # the radar's old test sold at the best price (the Best-price trader's way and notes), never the raw top; none priced: no such line
+    v1 = L["radarV1"]
+    want_b = "Sold at the best price within 6 h instead, looking back (not possible in reality): %s on the same %d%s." % (
+        PA.eur(v1["t2"], True), v1["priced"], "".join(" · " + p for p in PT.t2_notes(v1) if p))
+    nob = PT.radar_positions(dict(D, traders=dict(L, radarV1=dict(v1, t2=None))))
+    fake = PT.radar_positions(dict(D, traders=dict(L, radarV1=dict(v1, t2=-1.5, est=1, capped=2, leftOut=3))))
+    check(v1["t2"] is not None and want_b in text(rpos) and "best price within 6 h" not in text(nob) and "that test is not part of the three traders." in text(nob)
+          and "−1.50 € on the same %d · 1 estimated (the real best is at least this) · 2 price spikes counted at 30x at most · 3 spikes left out "
+              "(no volume or pool already dead)." % v1["priced"] in text(fake) and "—" not in text(fake),
+          "the Radar tab: the radar's old test also sold at the best price within 6 h ('%s'); without a priced one no such line" % want_b)
 
     # UI10: the traders failed: a note, the activity (the paper account's own) and the open positions; no page error
     Df = dict(D, traders={"err": "X"})

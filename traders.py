@@ -281,6 +281,21 @@ def best_mult(doc, radar=False):
     return max(x, raw), ""
 
 
+def radar_v1_best(rows):
+    """The radar's old 3 EUR test (rule 1; radar_paper.account's "rows") sold the T2 way, looking back: each priced row (state closed with
+    a readable eur, the ones its "all" stats count) at best_mult's multiple after both fees, summed, and the T2 counts (est, capped,
+    left out). {"t2": None while none is priced, "est", "capped", "leftOut"}."""
+    sold = [r for r in rows if r.get("state") == "closed" and num(r.get("eur")) is not None]
+    tot, why = 0.0, {"est": 0, "capped": 0, "left out": 0}
+    for r in sold:
+        ticket = num(r.get("ticket")) or RP.TICKET
+        m, w = best_mult(r, radar=True)
+        tot += M.pos_value(RP.paper(ticket), 1.0, m) - ticket
+        if w in why:
+            why[w] += 1
+    return {"t2": round(tot, 2) if sold else None, "est": why["est"], "capped": why["capped"], "leftOut": why["left out"]}
+
+
 def paper_flags(p, recs):
     """The skip signs of a paper position, from what it carried when it was bought (and its tip's odds in memerec)."""
     f = p.get("f") if isinstance(p.get("f"), dict) else {}
@@ -718,8 +733,8 @@ def _empty(now, err=None):
                    "skipped": {"n": 0, "t1": 0.0}, "vsT1": {"diff": 0.0, "ci": [0.0, 0.0], "n": 0, "range": [0.0, 0.0]},
                    "live": {"diff": 0.0, "ci": [0.0, 0.0], "n": 0}, "notReplayable": 0},
             "counts": {"running": 0, "selling": 0, "waiting": 0, "noprice": 0, "finished": 0},
-            "series": {"t1": [], "t2": [], "t3": []}, "trades": [], "feed": [], "feedN": 0, "decisions": [], "radarV1": {"n": 0, "priced": 0, "pnl": 0.0},
-            "radarHist": 0}
+            "series": {"t1": [], "t2": [], "t3": []}, "trades": [], "feed": [], "feedN": 0, "decisions": [],
+            "radarV1": {"n": 0, "priced": 0, "pnl": 0.0, "t2": None, "est": 0, "capped": 0, "leftOut": 0}, "radarHist": 0}
 
 
 def load(d, now, switch=None):
@@ -845,7 +860,7 @@ def _load(d, now, switch=None):
                         for g in GROUPS for x in decs[g]]
     out["decisions"].sort(key=lambda x: (x["day"] or "", GROUPS.index(x["group"])), reverse=True)
     A = RP.account(d, now, switch)
-    out["radarV1"] = {"n": len(A["rows"]), "priced": A["all"]["n"], "pnl": A["all"]["pnl"]}
+    out["radarV1"] = dict({"n": len(A["rows"]), "priced": A["all"]["n"], "pnl": A["all"]["pnl"]}, **radar_v1_best(A["rows"]))
     out["radarHist"] = len(w["hist"])
     return out
 
