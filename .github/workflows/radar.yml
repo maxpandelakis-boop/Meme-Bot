@@ -1,4 +1,4 @@
-# The launch radar: its own job beside the hourly scan (scan.yml). A round every 2 minutes, 7 to 24 h Berlin: each round rates the coins
+# The launch radar: its own job beside the hourly scan (scan.yml). A round every 2 minutes, around the clock: each round rates the coins
 # whose DEX pool is under 10 minutes old (launch_radar.py loop; the sources in radar_src.py), keeps the best 5 for the page's New tab,
 # records every rating with the later prices the next rounds catch, and sends a push notification only for a coin without a trap found.
 # Fake money only: nothing is bought anywhere, and the paper trader never reads what this job writes.

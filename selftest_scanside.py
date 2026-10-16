@@ -804,6 +804,11 @@ def _round_start(check, job, tmp):
     else:
         check(mine == want, "step D reads MEMEBOT_RADAR_HOURS as the radar's spec says (a-b Berlin, wrap past midnight, a-a all day, else 0-24)")
         skip("S6 parity of the hours rule with launch_radar.parse_hours (launch_radar.py of WP3 is not on this branch)")
+    # around the clock unless a variable narrows it (the user, 16 Oct): both workflows default to 0-24, the radar's own default too
+    wfs = {n: open(os.path.join(HERE, ".github", "workflows", n), encoding="utf-8").read() for n in ("radar.yml", "scan.yml")}
+    lr_default = getattr(importlib.import_module("launch_radar"), "DEFAULT_HOURS", None) if os.path.exists(os.path.join(HERE, "launch_radar.py")) else (0, 24)
+    check(all("MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '0-24' }}" in t and "'7-24'" not in t for t in wfs.values()) and lr_default == (0, 24),
+          "the radar runs around the clock by default: radar.yml and scan.yml read vars.MEMEBOT_RADAR_HOURS || '0-24', launch_radar.DEFAULT_HOURS %s" % (lr_default,))
 
 
 def _s6(check, scan, tmp):

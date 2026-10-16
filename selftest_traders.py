@@ -371,14 +371,18 @@ def _tr6_tr7_tr8(check, tmp):
           "TR7b junk prints never count: SARWAND's 17,436x on $19 left out at its 1.17x, a one-candle 28,021x at 30x at most, an estimate at its "
           "best; open, void, still pricing and unreadable rows not counted; none priced -> None: %s" % got)
     # the raw top named by its cut text although the two round apart (CAPE: rawX 14722.5 stored to 6 digits, its text '14,723x'); a raw top
-    # at the entry price under a dead pool is no spike (LUMINOUS: best 0.06x, raw 1.0x): its best counts, not as left out
+    # at the entry price before the pool died is that minute's close (LUMINOUS: best 0.06x, raw 1.0x): counted at 1.0x, no spike left out; an
+    # unconfirmed cut naming another multiple (3.00x) does not explain a raw 150.5x after the pool died: left out at the best
     cape = {"best": 1.98527, "rawX": 14722.5, "src": "m1", "cut": ["pool dead: liquidity $0.14 at minute 66", "unconfirmed: 14,723x held for one candle only"]}
     lum = {"best": 0.0602, "rawX": 1.0, "src": "m1", "cut": ["pool dead: liquidity $3 at minute 0.7", "collapse: under 10% at minute 1, no recovery within 30 min"]}
+    late = {"best": 1.45, "rawX": 150.5, "src": "m1", "cut": ["pool dead: liquidity $2 at minute 24", "unconfirmed: 3.00x held for one candle only"]}
     near = [PA.names_mult(c, v) for c, v in (("dust: 450x on $0.00 volume", 449.551), ("unconfirmed: 6.00x held", 6.004), ("unconfirmed: 6.00x held", 6.02),
                                                ("dust: 35.2x on $3", 35.249), ("dust: 35.2x on $3", 35.3), ("unconfirmed: 14,723x held", 14721.9))]
-    check(bm(cape, radar=True) == (30.0, "capped") and bm(lum, radar=True) == (0.0602, "") and near == [True, True, False, True, False, False],
+    check(bm(cape, radar=True) == (30.0, "capped") and bm(lum, radar=True) == (1.0, "") and bm(late, radar=True) == (1.45, "left out")
+          and bm(dict(lum, cut=["dust: 1.00x on $2 volume"]), radar=True) == (0.0602, "") and near == [True, True, False, True, False, False],
           "TR7b a cut names the raw top within its own rounding (CAPE's 14,723x is its rawX 14722.5: capped at 30x like YOYO, not left out), "
-          "nothing further off (%s); a raw top at the entry price is no spike left out: %s" % (near, bm(lum, radar=True)))
+          "nothing further off (%s); the entry minute's close before the pool died counts (%s), a dust print there does not; a cut naming another "
+          "multiple leaves a raw 150.5x after the pool died out" % (near, bm(lum, radar=True)))
     # TR8: kept decisions everywhere -> T3 == T1 exactly
     for g in T.GROUPS:
         for D in T.days(g, now, switch, fx["since"]):

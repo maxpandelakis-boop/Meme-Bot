@@ -274,7 +274,9 @@ def best_mult(doc, radar=False):
     if est:
         return x, "est"                      # a lower bound
     w = raw_reason({"x": x, "rawX": raw, "cut": doc.get("cut")})
-    if raw is None or w in ("dust volume", "pool died"):     # a spike left out; a raw top at the entry price (<= 1.05x) is no spike
+    if raw and w == "pool died" and raw <= 1.05:            # the entry minute's own close before the pool died: a close like any other
+        return max(x, raw), ""
+    if raw is None or w in ("dust volume", "pool died"):     # a spike left out (dust, or after the pool died)
         return x, ("left out" if raw and raw > 1.05 * x and raw > 1.05 else "")
     if raw > M.CANDLE_MAX_X:                 # over 30x only what the filter confirmed (FLOYD: 93.4x, not its raw 102.5x)
         return (M.CANDLE_MAX_X, "capped") if x < M.CANDLE_MAX_X else (x, "")

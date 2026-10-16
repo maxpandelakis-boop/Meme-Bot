@@ -442,6 +442,8 @@ def _noloss_checks(check, d, D, A, P, pos, page, now):
                  ("jump: 1 level over 3x the previous close without support", "", 12.0, 2.0): "jump not held",
                  ("collapse: under 10% at minute 30, no recovery within 30 min", "", 9.0, 1.2): "pool died",
                  ("collapse: under 10% at minute 93, no recovery within 30 min", "", 2.68, 2.16): "one candle",
+                 ("pool dead: liquidity $2 at minute 24", "unconfirmed: 3.00x held for one candle only", 150.5, 1.45): "pool died",
+                 ("unconfirmed: 14,723x held for one candle only", "", 14722.5, 1.98527): "one candle",
                  ("", "", 1.9, 1.85): "", ("", "", None, 1.2): ""}
     got_raw = {k: PA.raw_reason({"cut": [c for c in k[:2] if c], "rawX": k[2], "x": k[3]}) for k in raw_cases}
     check(got_raw == raw_cases and "raw top 59,257x %s · dust volume" % html.escape(PA.eur(eraw("y-rug") - 3.0, True)) in r_dog

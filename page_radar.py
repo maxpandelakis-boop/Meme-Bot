@@ -85,8 +85,8 @@ SKEYS = {"instantPool": "pool opened with the mint", "mintToPoolS": "mint to poo
          "slotN": "wallets in the launch block", "slotPct": "launch block share, %", "freshN": "fresh top holders", "fundN": "top holders with one funder",
          "replies": "replies on pump.fun", "tweetLikes": "likes of the source tweet"}
 MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar's own records confirm it."
-INFO_TEXT = ("The radar checks the newest pools every 2 minutes on its own during its hours (7 to 24 h Berlin unless changed), from the first full "
-             "scan after they begin, and pump.fun graduations from a live feed when it is up: each run lasts about an hour and starts the next. Start "
+INFO_TEXT = ("The radar checks the newest pools every 2 minutes on its own, around the clock, and pump.fun graduations from a live feed when it is "
+             "up: each run lasts about an hour and starts the next, and the hourly scan starts one when none is going. Start "
              "and Stop open its page on GitHub. Start (only when it is stopped): tap \u201cRun workflow\u201d, the first list comes in about 4 minutes. Stop: "
              "the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Momentum and patterns: hindsight, paper only, never a push. Fake money: nothing is "
              "bought for real; the radar's coins without traps are bought on paper only.")

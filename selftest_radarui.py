@@ -503,6 +503,8 @@ def py_checks(check, tmp, T, standin):
     check(not bad and "\u2014" not in P.JS + P.CSS + json.dumps(P.LABELS) + visible_text(page) and "a coin with no trap found" in A.PAGE_JS and "finds a coin with no trap," not in A.PAGE_JS,
           "U7 the radar's words carry no 'safe', 'guaranteed' or advice-style 'buy', and no em dash; the app's notification card says 'a coin with no trap found' (%d texts read)%s" % (
               len(words), (" " + str(bad[:3])) if bad else ""))
+    check("around the clock" in P.INFO_TEXT and not re.search(r"7 to 24|07:00|24:00|first full scan after", P.INFO_TEXT),
+          "U7 the Start/Stop info says the radar runs around the clock (no 7 to 24 h, no start with the first scan after its hours)")
     return d, page
 
 
@@ -1770,6 +1772,9 @@ def checks(check, env=None):
 
 
 def main():
+    # alone as in selftest.main: the switch a month after the clock, so the new-launch checks see the page before it (the real switch,
+    # 16 Oct 00:00 UTC, has passed; selftest.main sets the same)
+    os.environ.setdefault("MEMEBOT_SWITCH_AT", str(int(time.time() * 1000) + 30 * 86_400_000))
     fails, skips = [], []
 
     def check(ok, what):
