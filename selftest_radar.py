@@ -1514,8 +1514,9 @@ def checks(check, env_=None):
             p = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (BASE, f)], capture_output=True)
             now_b = open(os.path.join(HERE, f), "rb").read()
             if f == "memebot.py" and p.returncode == 0 and p.stdout != now_b:
-                # the one change since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was). Every changed stretch
-                # of memebot.py names it, and nothing else in it moved
+                # the two changes since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was) and the big test read
+                # lazily (DocDir, 16 Oct, the user's go: only how memesnap and memesnapres are loaded). Every changed stretch of
+                # memebot.py names one of them, and nothing else in it moved
                 import difflib
                 hunks, cur = [], []
                 for ln in difflib.unified_diff(p.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
@@ -1524,7 +1525,8 @@ def checks(check, env_=None):
                         hunks.append(cur)
                     elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
                         cur.append(ln)
-                same.append(bool(hunks) and all(any(k in "\n".join(h) for k in ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL")) for h in hunks)
+                same.append(bool(hunks) and all(any(k in "\n".join(h) for k in ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL", "DocDir", "LAZY_COLLS",
+                                                                                   "memesnapres", "collections.abc")) for h in hunks)
                             and not any(ln.startswith("-PAPER_RULE") for h in hunks for ln in h))
                 continue
             same.append(p.returncode == 0 and p.stdout == now_b)
@@ -1539,7 +1541,7 @@ def checks(check, env_=None):
         own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak", "radar_paper"}
         std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
                                                               "sys", "tarfile", "time", "urllib", "zoneinfo"}
-        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch (%s); imports: %s" % (BASE, same, sorted(mods - own)))
+        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch and the lazy big test (%s); imports: %s" % (BASE, same, sorted(mods - own)))
 
         print("== launch radar R9: no secret in any file, branch, row or log line")
         from selftest import Rest, serve_app, PushSink, APP_SECRET

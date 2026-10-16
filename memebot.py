@@ -83,7 +83,7 @@ fields is skipped, "null" means unknown):
   tb/<addr>.txt  GMGN top buyers of one coin (file named by the coin address), 4 fields: wallet|status|tags ; separated|maker tags.
   wallets.json   GMGN wallet leaderboard: rows [wallet, pnl, winrate, tags ; separated] or dicts {wallet_address, pnl_7d|pnl_30d, winrate_*, tags}.
 """
-import argparse, glob, json, math, os, random, re, sys, time, datetime as dt
+import argparse, collections.abc, glob, itertools, json, math, os, random, re, sys, time, datetime as dt
 
 RULE = "m9"
 BUDGET = 40.0            # the whole fake bankroll; bot positions are paid out of it and sales flow back into it
@@ -287,7 +287,45 @@ def load_json(path, default):
         return default
 
 
+LAZY_COLLS = ("memesnap", "memesnapres")   # the big test: tens of thousands of snapshot files, about 9 GB held whole on 16 Oct (16 GB runner)
+
+
+class DocDir(collections.abc.Mapping):
+    """load_docs for the big test's collections (LAZY_COLLS): the same {doc id: doc} of the files that hold a JSON object, in the same
+    order, but each file read when it is asked for and not kept, so a loop over items() or values() holds one snapshot at a time.
+    Read-only; every pass reads the files again (a dict() or list() of it would hold them all again)."""
+
+    def __init__(self, d, coll):
+        self.folder = os.path.join(d, "db", coll)
+
+    def items(self):
+        for p in glob.glob(os.path.join(self.folder, "*.json")):
+            doc = load_json(p, None)
+            if isinstance(doc, dict):
+                yield os.path.splitext(os.path.basename(p))[0], doc
+
+    def values(self):
+        return (doc for _, doc in self.items())
+
+    def __iter__(self):
+        return (k for k, _ in self.items())
+
+    def __len__(self):
+        return sum(1 for _ in self.items())
+
+    def __getitem__(self, k):
+        doc = load_json(os.path.join(self.folder, str(k) + ".json"), None)
+        if not isinstance(doc, dict):
+            raise KeyError(k)
+        return doc
+
+    def __contains__(self, k):
+        return isinstance(load_json(os.path.join(self.folder, str(k) + ".json"), None), dict)
+
+
 def load_docs(d, coll):
+    if coll in LAZY_COLLS:
+        return DocDir(d, coll)
     out = {}
     for p in glob.glob(os.path.join(d, "db", coll, "*.json")):
         doc = load_json(p, None)
@@ -2879,8 +2917,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         scored_n += len(res)
     if scored_n:
         # new results -> re-learn and save the weights the next runs will use
-        all_res = dict(load_docs(d, "memesnapres")); all_res.update(emitted.get("memesnapres", {}))
-        rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for doc in all_res.values() if usable_result(doc) for c in (doc.get("coins") or [])
+        em = emitted.get("memesnapres", {})       # this run's chunks; the stored ones one file at a time (DocDir), never all at once
+        all_res = itertools.chain(((sid, doc) for sid, doc in load_docs(d, "memesnapres").items() if sid not in em), em.items())
+        rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for _, doc in all_res if usable_result(doc) for c in (doc.get("coins") or [])
                   if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c))]
         learned, n_l, detail = learn(rows_l)
         emit("memeweights", run_id, {"t": now, "rule": RULE, "n": n_l, "lambda": round(clamp(n_l / float(LEARN_FULL_N)), 3), "learned": learned,
