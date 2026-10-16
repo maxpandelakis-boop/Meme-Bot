@@ -158,6 +158,37 @@ def _checks(check, tmp, skips):
         D = R.collect(d, now)
     acc, yp, pp, op = pane(page, "account"), pane(page, "young"), pane(page, "pick"), pane(page, "office")
 
+    # the page never holds the big test whole (about 9 GB on 16 Oct shut the scan's runner down): memesnap and memesnapres are read one
+    # file at a time, memebot.load_docs is never asked for them, and the numbers are the same as reading them all
+    bt = os.path.join(tmp, "bt")
+    shutil.copytree(d, bt)
+    for coll, docs in (("memesnapres", {"2026-10-16T0100-1": {"t0": now - 3 * H, "t": now - H, "rule": M.RULE, "coins": [
+                            {"a": "C1", "eur": 4.0, "pass": True, "rank": 1}, {"a": "C2", "eur": -20.0, "gone": True}, {"a": "C3"}]},
+                        "2026-10-16T0100-2": {"t0": now - 3 * H, "t": now - H, "rule": M.RULE, "coins": [{"a": "C4", "eur": -1.5, "rank": 12}]},
+                        "2026-10-16T0200-1": {"t0": now - 2 * H, "t": now, "rule": M.RULE, "coins": [{"a": "C1", "eur": 70.0, "pass": True}]}}),
+                       ("memesnap", {"2026-10-16T0300-1": {"t": now - H, "n": 50, "coins": [{"a": "S1", "rank": 1}]},
+                                     "2026-10-16T0400-1": {"t": now, "n": 40, "coins": [{"a": "S2", "rank": 2}, {"a": "S3"}]},
+                                     "2026-10-16T0400-2": {"t": now, "n": 30, "coins": [{"a": "S4", "rank": 1}]}})):
+        os.makedirs(os.path.join(bt, "db", coll), exist_ok=True)
+        for k, v in docs.items():
+            with open(os.path.join(bt, "db", coll, k + ".json"), "w", encoding="utf-8") as f:
+                json.dump(v, f)
+    asked, orig = [], M.load_docs
+    M.load_docs = lambda dd, coll: (asked.append(coll), orig(dd, coll))[1]
+    try:
+        with ST.switch_env(SWITCH):
+            Db = R.collect(bt, now)
+    finally:
+        M.load_docs = orig
+    with ST.switch_env(SWITCH):
+        wb = M.blended_weights(bt)
+    g = {b["key"]: b for b in Db["big"]}
+    check("memesnap" not in asked and "memesnapres" not in asked and Db["seen_coins"] == 4 and [c["a"] for c in Db["cands"]] == ["S4", "S2"]
+          and Db["scan_n"] == 70 and g["2026-10-16T0100"]["n"] == 3 and g["2026-10-16T0100"]["passAvg"] == 4.0 and g["2026-10-16T0200"]["passAvg"] == M.EUR_CLIP[1]
+          and (Db["weights"], Db["winfo"]["n"]) == (sorted(wb[0].items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16], wb[1]["n"]),
+          "the page reads the big test one file at a time (load_docs never asked for memesnap or memesnapres): its groups, 4 coins seen, the "
+          "newest scan's candidates (S4, S2) and its 70 coins, the weights as memebot.blended_weights")
+
     # UI1: four radios in order, the labels, the Traders content once and inside its pane, no account block outside the panes
     radios = re.findall(r'<input type="radio" name="tab" id="(tab-\w+)"', page)
     labels = [re.sub(r"<[^>]+>", "", x).strip() for x in re.findall(r'<label for="tab-\w+" role="tab">(.*?)</label>', page)]

@@ -294,14 +294,47 @@ def domain(vals, pad=0.08):
 
 
 # ---------------------------------------------------------------- data
+def iter_docs(d, coll):
+    """(doc id, doc) of a collection, one file at a time in name order (memebot.load_docs holds them all: the big test's tens of
+    thousands of snapshot files must never sit in memory together). A file that is no JSON object is skipped, as there."""
+    folder = os.path.join(d, "db", coll)
+    for fn in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if fn.endswith(".json"):
+            doc = M.load_json(os.path.join(folder, fn), None)
+            if isinstance(doc, dict):
+                yield fn[:-5], doc
+
+
+class LazyDocs:
+    """memebot.load_docs' answer for one collection, read lazily: values() and items() go through the files one at a time (iter_docs)."""
+
+    def __init__(self, d, coll):
+        self.d, self.coll = d, coll
+
+    def items(self):
+        return iter_docs(self.d, self.coll)
+
+    def values(self):
+        return (doc for _, doc in iter_docs(self.d, self.coll))
+
+
+def blended_weights_lean(d):
+    """memebot.blended_weights(d), the same numbers, with the big test's results read one file at a time: its result_rows keeps only
+    the factors and results it learns from, not every snapshot whole (about 9 GB on 16 Oct; traps.feed swaps load_docs the same way)."""
+    orig = M.load_docs
+    M.load_docs = lambda dd, coll: LazyDocs(dd, coll) if coll == "memesnapres" else orig(dd, coll)
+    try:
+        return M.blended_weights(d)
+    finally:
+        M.load_docs = orig
+
+
 def collect(d, now):
     pos = M.positions(d)
     state = M.load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
     marks = M.load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}
     curve = sorted(M.load_docs(d, "memecurve").values(), key=lambda c: M.num(c.get("t")) or 0)
     runs = sorted(M.load_docs(d, "memeruns").values(), key=lambda r: -(M.num(r.get("t")) or 0))
-    snaps = M.load_docs(d, "memesnap")
-    res = M.load_docs(d, "memesnapres")
     cash = M.bankroll(pos)
     px, liq_now, cpx = marks.get("px") or {}, marks.get("liq") or {}, marks.get("cpx") or {}
     since = M.num(state.get("paperSince"))
@@ -358,11 +391,10 @@ def collect(d, now):
     except Exception as e:           # a missing or broken traders.py costs only those blocks: they say so, the rest of the page is unaffected
         traders = {"err": "%s: %s" % (type(e).__name__, str(e)[:120])}
 
-    # big test: chunks of the same snapshot run -> one group
-    groups = {}
-    for sid, r in res.items():
-        if not isinstance(r, dict):
-            continue
+    # big test: chunks of the same snapshot run -> one group. The result docs are read one at a time and dropped (iter_docs): all of
+    # them at once took about 9 GB on 16 Oct and the scan's runner was shut down while the page was built
+    groups, seen_coins = {}, set()
+    for sid, r in iter_docs(d, "memesnapres"):
         key = str(sid).rsplit("-", 1)[0]
         g = groups.setdefault(key, {"t0": M.num(r.get("t0")), "t": M.num(r.get("t")), "n": 0, "pass": [], "top": [], "fail": [], "up": 0, "gone": 0})
         for c in r.get("coins") or []:
@@ -377,25 +409,27 @@ def collect(d, now):
                 g["top"].append(eur)
             g["up"] += 1 if eur > 0 else 0
             g["gone"] += 1 if c.get("gone") else 0
+        seen_coins.update(str(c.get("a")) for c in r.get("coins") or [] if isinstance(c, dict))
     avg = lambda xs: (sum(xs) / len(xs)) if xs else None
     big = []
     for key, g in sorted(groups.items(), key=lambda kv: kv[1]["t0"] or 0):
         big.append({"key": key, "t0": g["t0"], "t": g["t"], "n": g["n"], "passN": len(g["pass"]), "passAvg": avg(g["pass"]), "topN": len(g["top"]),
                     "topAvg": avg(g["top"]), "failN": len(g["fail"]), "failAvg": avg(g["fail"]), "up": g["up"], "gone": g["gone"]})
-    seen_coins = {str(c.get("a")) for r in res.values() if isinstance(r, dict) for c in (r.get("coins") or []) if isinstance(c, dict)}
 
-    # the last full scan: its top candidates and the run that made it
-    last_t = max([M.num(s.get("t")) or 0 for s in snaps.values() if isinstance(s, dict)] or [0])
-    cands = []
-    if last_t:
-        for s in snaps.values():
-            if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t:
-                cands += [c for c in (s.get("coins") or []) if isinstance(c, dict) and M.num(c.get("rank"))]
-        cands.sort(key=lambda c: M.num(c["rank"]))
+    # the last full scan: its top candidates and the run that made it (the raw snapshots one at a time, the newest scan's kept)
+    last_t, cands, scan_n = 0, [], 0
+    for _, s in iter_docs(d, "memesnap"):
+        t = M.num(s.get("t")) or 0
+        if t > last_t:
+            last_t, cands, scan_n = t, [], 0
+        if t and t == last_t:
+            cands += [c for c in (s.get("coins") or []) if isinstance(c, dict) and M.num(c.get("rank"))]
+            scan_n += M.num(s.get("n")) or 0
+    cands.sort(key=lambda c: M.num(c["rank"]))
     scan_run = next((r for r in runs if isinstance(r, dict) and M.num(r.get("t")) == last_t), None) if last_t else None
     held_addrs = {r["p"].get("addr") for r in open_rows}
     ever_addrs = {r["p"].get("addr") for r in rows}
-    w, winfo = M.blended_weights(d)
+    w, winfo = blended_weights_lean(d)
     weights = sorted(w.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16]
     rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), None)
     track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
@@ -404,7 +438,7 @@ def collect(d, now):
     office = M.load_json(os.path.join(d, "db", "memebot", "office.json"), None)
     return {"dir": d, "now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state, "paper": paper,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
-            "scan_n": sum(M.num(s.get("n")) or 0 for s in snaps.values() if isinstance(s, dict) and (M.num(s.get("t")) or 0) == last_t),
+            "scan_n": scan_n,
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed,
             "traders": traders}
 
