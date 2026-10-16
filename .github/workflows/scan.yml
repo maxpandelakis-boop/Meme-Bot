@@ -98,13 +98,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RADAR_REF: ${{ github.ref_name }}
-          MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
+          MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '0-24' }}
         run: |
           # The radar makes a round every 2 minutes; each run lasts 55 minutes and starts the next itself. This step, first in the scan (so
           # the radar is going within minutes of the first scan after the hours begin), is the safety net: it starts radar.yml (source
           # hourly) when no radar run is going, only when that workflow is active (Disable workflow
           # on the Actions page is the stop switch, and a disabled workflow refuses every start), the Berlin time is inside
-          # MEMEBOT_RADAR_HOURS ("7-24" unless the variable says otherwise; "22-6" wraps past midnight) and no radar run is running or
+          # MEMEBOT_RADAR_HOURS ("0-24", around the clock, unless the variable says otherwise; "22-6" wraps past midnight) and no radar run is running or
           # waiting: any status but completed counts (queued, waiting, pending, requested, in progress). Three GitHub API calls at most;
           # the token is sent only to GitHub's API.
           python3 - <<'PY'
@@ -112,13 +112,13 @@ jobs:
           wf = "%s/repos/%s/actions/workflows/radar.yml" % (os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/"), os.environ["GITHUB_REPOSITORY"])
           say = lambda s: print("radar round: " + s, flush=True)
 
-          def hours(s):               # the radar's own rule (launch_radar.parse_hours): "a-b" Berlin hours, "a-a" all day, else 7-24
+          def hours(s):               # the radar's own rule (launch_radar.parse_hours): "a-b" Berlin hours, "a-a" all day, else 0-24
               m = re.fullmatch(r"\s*(\d{1,2})\s*-\s*(\d{1,2})\s*", str(s or ""))
               if not m:
-                  return 7, 24
+                  return 0, 24
               a, b = int(m.group(1)), int(m.group(2))
               if not (0 <= a <= 23 and 1 <= b <= 24) or a == b:
-                  return (0, 24) if a == b and 0 <= a <= 24 else (7, 24)
+                  return 0, 24
               return a, b
 
           def berlin():

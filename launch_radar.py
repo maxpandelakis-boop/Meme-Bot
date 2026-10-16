@@ -4,7 +4,7 @@ phone, it never buys anything, and the paper trader never reads what it writes.
 
 A loop every 2 minutes (radar.yml runs `loop --cadence 120 --deadline 100` for 55 minutes, then its last step starts the next run),
 one thread, a cycle 100 s at most; `round` is one cycle per start (125 s at most). Each cycle:
-  1. kill switch (the radar workflow's state on GitHub) and the active hours (MEMEBOT_RADAR_HOURS, default 7-24 Berlin)
+  1. kill switch (the radar workflow's state on GitHub) and the active hours (MEMEBOT_RADAR_HOURS, default 0-24 Berlin: around the clock)
   2. discovery (radar_src, the WP0 probe's set): pump.fun graduated (pages 1-4) and newest coins (pages 1-2), GeckoTerminal new
      pools (pages 1-2), Jupiter recent, DexScreener profiles (LaunchLab newest only when switched on), into the cycle's sandbox
      rd/sb/<k> with fetch.py's writers
@@ -85,6 +85,7 @@ import fetch as F
 import radar as RD
 import radar_src as RS
 
+DEFAULT_HOURS = (0, 24)     # the active hours (Berlin) without MEMEBOT_RADAR_HOURS: around the clock, night pushes included (the user, 16 Oct)
 CYCLE_S = 150               # s between cycles (the grid); radar.json "next" is the next grid point
 DEADLINE_S = 125            # s: a cycle's hard deadline at 150 s cadence (scaled with --cadence); the step ends below are fractions of it
 STEP_END = {"discover": 25, "ds": 35, "tier1": 60, "tier2": 95, "rate": 105, "push": 120}
@@ -266,13 +267,14 @@ def berlin(ms):
 
 
 def parse_hours(s):
-    """MEMEBOT_RADAR_HOURS "a-b" (Berlin hours, b up to 24; "22-6" wraps past midnight) -> (a, b); anything else -> (7, 24)."""
+    """MEMEBOT_RADAR_HOURS "a-b" (Berlin hours, b up to 24; "22-6" wraps past midnight; "a-a" all day) -> (a, b); anything else
+    (unset too) -> DEFAULT_HOURS, around the clock."""
     m = re.fullmatch(r"\s*(\d{1,2})\s*-\s*(\d{1,2})\s*", str(s or ""))
     if not m:
-        return 7, 24
+        return DEFAULT_HOURS
     a, b = int(m.group(1)), int(m.group(2))
     if not (0 <= a <= 23 and 1 <= b <= 24) or a == b:
-        return (0, 24) if a == b and 0 <= a <= 24 else (7, 24)
+        return (0, 24) if a == b and 0 <= a <= 24 else DEFAULT_HOURS
     return a, b
 
 
@@ -481,7 +483,7 @@ class Radar:
         if self.T is None:
             raise RuntimeError("traps.py is missing: the radar cannot rate coins")
         self.notifier = notifier
-        self.hours = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS") or "7-24")
+        self.hours = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS"))
         self.repo = os.environ.get("GITHUB_REPOSITORY") or ""
         self.token = os.environ.get("GITHUB_TOKEN") or ""
         self.github = not a.no_github and bool(self.repo and self.token)
@@ -3273,7 +3275,7 @@ def cmd_hours(a, log=None):
     line, the model and the last good coin that the hours doc keeps."""
     say = log or (lambda s: print("radar: " + redact(s), file=sys.stderr, flush=True))
     now = int(a.now) if a.now else int(time.time() * 1000)
-    hw = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS") or "7-24")
+    hw = parse_hours(os.environ.get("MEMEBOT_RADAR_HOURS"))
     if in_hours(now, hw):
         print("inside=true")
         return 0

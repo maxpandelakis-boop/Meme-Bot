@@ -10,8 +10,8 @@
 # live store row "radar" (with the Supabase secrets) and its working caches (actions/cache, key radar-cache-<run id>).
 # Stop it: Actions -> "Meme-Bot launch radar" -> ... -> Disable workflow (GitHub refuses every start; the running loop sees the switch at
 # its next round, writes state off and ends without starting another). Repository variable MEMEBOT_RADAR=0: the run going on ends
-# within the hour (a variable is read when a job starts), then no run does anything (the scan starts none, a start is skipped). MEMEBOT_RADAR_HOURS (default 7-24, Berlin): the active hours; the loop ends when they end, a start
-# outside them only writes state hours with the next start.
+# within the hour (a variable is read when a job starts), then no run does anything (the scan starts none, a start is skipped). MEMEBOT_RADAR_HOURS (default 0-24, Berlin: around the clock): narrower active hours, e.g. 7-24; the loop ends when they end, a
+# start outside them only writes state hours with the next start.
 name: Meme-Bot launch radar
 run-name: "Launch radar · ${{ inputs.source || 'manual' }}"
 on:
@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 70              # setup, the push sender, the loop (55 minutes, 62 at most), the cache and the next start
     env:
       PYTHONUTF8: '1'
-      MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '7-24' }}
+      MEMEBOT_RADAR_HOURS: ${{ vars.MEMEBOT_RADAR_HOURS || '0-24' }}
       MEMEBOT_RADAR_ADAPTERS: ${{ vars.MEMEBOT_RADAR_ADAPTERS || '' }}   # optional, e.g. swap_trades=0,ll_new=1 (radar_src.ADAPTERS holds the defaults)
       MEMEBOT_RADAR_FEED: ${{ vars.MEMEBOT_RADAR_FEED || 'pumpportal' }}   # the live pump.fun feed (one websocket, free); 'off' switches it off
       MEMEBOT_RADAR_FAST: ${{ vars.MEMEBOT_RADAR_FAST || 'on' }}   # the fast lane: a graduation on the feed rated within seconds; 'off' switches it off

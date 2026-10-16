@@ -795,14 +795,14 @@ def _round_start(check, job, tmp):
     exec(compile(m.group(1) if m else "", "step-d-hours", "exec"), ns)
     samples = ["7-24", "0-24", "22-6", "5-5", "24-24", "25-3", "abc", "", None, " 8 - 23 ", "0-0", "23-24", "7-25", "-1-4"]
     mine = [ns["hours"](x) for x in samples] if "hours" in ns else []
-    want = [(7, 24), (0, 24), (22, 6), (0, 24), (0, 24), (7, 24), (7, 24), (7, 24), (7, 24), (8, 23), (0, 24), (23, 24), (7, 24), (7, 24)]
+    want = [(7, 24), (0, 24), (22, 6), (0, 24), (0, 24), (0, 24), (0, 24), (0, 24), (0, 24), (8, 23), (0, 24), (23, 24), (0, 24), (0, 24)]   # else: around the clock
     if os.path.exists(os.path.join(HERE, "launch_radar.py")):
         import importlib
         LR = importlib.import_module("launch_radar")
         theirs = [LR.parse_hours(x) for x in samples]
         check(mine == theirs == want, "step D reads MEMEBOT_RADAR_HOURS exactly as the radar does (launch_radar.parse_hours): %s" % list(zip(samples, mine))[:6])
     else:
-        check(mine == want, "step D reads MEMEBOT_RADAR_HOURS as the radar's spec says (a-b Berlin, wrap past midnight, a-a all day, else 7-24)")
+        check(mine == want, "step D reads MEMEBOT_RADAR_HOURS as the radar's spec says (a-b Berlin, wrap past midnight, a-a all day, else 0-24)")
         skip("S6 parity of the hours rule with launch_radar.parse_hours (launch_radar.py of WP3 is not on this branch)")
 
 

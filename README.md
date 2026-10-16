@@ -309,9 +309,9 @@ top of the page's New tab (above the full scan's new launches) and in the app, r
 (it names the first checks the coin passed and, once 20 earlier green coins have their 1 h outcome, how many of them doubled and how many rugged). Fake money only:
 the radar buys nothing and the paper trader never reads it.
 
-When it runs: inside the active hours, all the time. One run makes a round every 2 minutes for 55 minutes, then starts the
+When it runs: around the clock, night included (pushes too; the iPhone's Sleep focus mutes them). One run makes a round every 2 minutes for 55 minutes, then starts the
 next run itself (no cron: GitHub's timed starts come late or not at all). The hourly scan starts the radar at its start when no
-run is going (so the first rounds of the day come with the first scan after 7:00, or after a run that failed), and "Run workflow"
+run is going (after a run that failed, or with narrower hours set, the first scan inside them), and "Run workflow"
 on the radar's Actions page starts one by hand. The page asks for the new list every minute or so; after a tap on Start it says "Waiting for the new round".
 The Office tab opens with the radar's desk: its state, the round's sources, checks, verdicts and push; a tap on it opens New.
 Under it the desk's chat tells the same round in a few short messages from the radar's own bots (Scout found a coin, Checks names
@@ -409,12 +409,12 @@ marks the coins that look like past doubled coins. The rules:
   least 0.55 with its lower bound over 0.5).
 The first patterns can show after about 2 to 4 days, a win order after about 4 to 6.
 
-Nothing to set up. Active 7:00 to 24:00 Berlin. For a free VM instead, `python3 launch_radar.py loop --no-github --minutes 0
+Nothing to set up. Active around the clock (0-24 Berlin). For a free VM instead, `python3 launch_radar.py loop --no-github --minutes 0
 --cadence 120` runs the same loop without an end.
 Switches (repository variables, Settings > Secrets and variables > Actions > Variables):
 - `MEMEBOT_RADAR=0`: the run going on ends within the hour, then no round runs (the scan starts none, a start by hand is
   skipped). The quick stop: Actions > "Meme-Bot launch radar" > Disable workflow (it ends at the next round).
-- `MEMEBOT_RADAR_HOURS=8-22`: other active hours (Berlin).
+- `MEMEBOT_RADAR_HOURS=7-24`: narrower active hours (Berlin; the default 0-24 is around the clock).
 - `MEMEBOT_RADAR_FEED=off`: no live feed (the 2-minute rounds go on); `pumpportal` (the default) switches it on.
 - `MEMEBOT_RADAR_FAST=off`: no fast lane (a graduation gets the extra round as before).
 - `MEMEBOT_RADAR_CURVE=off`: no curve watch (its calls of the last 48 hours stay on radar-data).

@@ -142,7 +142,7 @@ def radar_positions(D):
     elif now < sw:
         body = '<p class="note">From %s, %s, every coin the radar finds without traps is bought on paper for %s.</p>' % (E(PA.mday(sw)), E(PA.hhmm(sw)), E(ticket(tk)))
     else:
-        body = '<p class="note">No radar paper position yet. The radar runs 07:00 to 24:00.</p>'
+        body = '<p class="note">No radar paper position yet.</p>'
     v1 = T.get("radarV1") or {}
     foot = ""
     if num(v1.get("n")):
