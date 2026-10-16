@@ -609,6 +609,9 @@ from the Actions cache. More is not better: of those, roughly
 - each run clones the `results` branch into `mb/`, restores the big-test snapshots from the Actions cache, runs
   `bot.py cycle --recommend --push --horizon 2h`, pushes the new page and docs back to `results`, and prints the two picks
   with links on the run's own page (`bot.py summary`);
+- the training runs beside the fetching; the trader waits for it until 36 minutes after the cycle began (`MEMEBOT_TRAIN_WAIT_S`,
+  in seconds), then stops it and the runs read the last training, so the scan ends inside the job's 55-minute limit (the Agent
+  office shows the trainer amber with why);
 - the **Run workflow** button takes two inputs: the profile (`2h` or `24h`) and `rescan` (force a full scan with a fresh snapshot);
 - runs queue behind each other (one running, one waiting): a second press while one waits replaces the waiting one.
 

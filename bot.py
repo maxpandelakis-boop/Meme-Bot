@@ -204,6 +204,10 @@ APP_JOBS = []         # this cycle's notifications on their way (app_bg): the en
 YOUNG_SENT = {"t": None}   # the cycle whose "new coins" notification went out (young_published sends one per cycle)
 EARLY_MAX_BYTES = 24000     # an early list bigger than this is not pushed (20 coins take about 10 KB)
 CHECK_LIMIT_S = 30          # radar.py check runs after the trader, on the scan's critical path: killed after this (it takes about 1 s)
+# the trader waits for the training beside the scan until this long after the cycle began (s); then it is stopped and the runs read
+# the last train.json. The scan job's limit is 55 min: about 2 before the cycle, 8 for the run after the training, 1 after the cycle
+# (on 2026-10-16 the training took 23 to 27 min and was already the last thing the trader waited for)
+TRAIN_WAIT_S = float(os.environ.get("MEMEBOT_TRAIN_WAIT_S") or 36 * 60)
 EARLY_STATES = ("listed", "empty", "small", "failed", "off")
 B58_RE = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 X_RE = re.compile(r"^https://(www\.)?(x|twitter)\.com/[A-Za-z0-9_]{1,30}(/status/\d{1,25})?/?$")
@@ -810,9 +814,10 @@ def tail_bg(job, office):
         pass
 
 
-def stop_spotter(job, why):
-    """Kills the launch spotter if it is still at work (why: its office phrase) and waits until its waiter has filed its result, so the
-    record saved next already says so. Its early list is of no use once the scan stops or the trader starts."""
+def stop_bg(job, why):
+    """Kills a background job if it is still at work (why: its office phrase) and waits until its waiter has filed its result, so the
+    record saved next already says so: the launch spotter (its early list is of no use once the scan stops or the trader starts) and
+    the trainer at its deadline (TRAIN_WAIT_S)."""
     try:
         if job["p"].poll() is None:
             job["killed"] = why
@@ -831,7 +836,7 @@ def stop_tails():
     while BG_JOBS:
         job = BG_JOBS.pop()
         if job.get("agent") == "spotter":
-            stop_spotter(job, "stopped when the scan stopped")
+            stop_bg(job, "stopped when the scan stopped")
         try:
             job["stop"].set()
             with job["lock"]:      # once closed, the tail files nothing more and ends at its next turn (no wait here)
@@ -866,6 +871,9 @@ def finish_bg(job):
     with open(job["out"].name, encoding="utf-8", errors="replace") as f:
         text = f.read()
     job["secs"] = time.time() - job["t0"]
+    if job.get("killed"):         # stopped by the cycle (stop_bg): not a failure of its own
+        log("%s stopped: %s" % (job["name"], job["killed"]), job["agent"])
+        return None
     if job["p"].returncode != 0:
         log("%s failed in the background (exit %s): %s" % (job["name"], job["p"].returncode, text[-500:]), job["agent"])
         return None
@@ -1089,21 +1097,36 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
             o.done("candles", lambda: "%d of %d pools of minute candles" % (c["pools"], len(mode["candles"])), end=candle_job["end"])
     if train_job:
         # the training ran on the scored snapshots beside the fetching: the run reads the zero model and the tuned limits
+        deadline = t0 / 1000.0 + TRAIN_WAIT_S
+        try:
+            train_job["p"].wait(max(0.0, deadline - time.time()))
+        except subprocess.TimeoutExpired:      # still at work at the deadline: stopped, the scan must end inside its job's limit
+            stop_bg(train_job, "still running %.0f min after the scan began: stopped, the runs read the last training" % (TRAIN_WAIT_S / 60))
         t = finish_bg(train_job)
         train_said = lambda: ("%s coin results from %d scans%s%s" % (commas(t["rows"]), t["scans"], " · zero model" if t.get("zeroModel") else "", " · tuned limits" if t.get("tunedWhy") else "")
                               if t["rows"] else "no scored snapshots yet: nothing to learn from")
+        left = deadline - time.time()
         if t is not None and os.path.exists(train_out):
             os.replace(train_out, os.path.join(d, "db", "memebot", "train.json"))
             log("training: %s (beside the scan, %.0f s)" % (t["note"], train_job["secs"]), "trainer")
             o.done("trainer", train_said, end=train_job["end"])
-        else:                  # it failed beside the scan: train now, as before
+        elif train_job.get("killed"):
+            o.done("trainer", train_job["killed"], "fallback", end=train_job["end"])
+        elif left < 60:
+            log("training: failed beside the scan and no time is left to train again: the runs read the last training", "trainer")
+            o.done("trainer", "failed beside the scan, no time left to train again: the runs read the last training", "failed", end=train_job["end"])
+        else:                  # it failed beside the scan: train now, as before, until the same deadline
             o.begin("trainer")
-            t = run(["memebot.py", "train", "--horizon", horizon], d, now)
-            log("training: " + t["note"])
-            o.done("trainer", train_said, "fallback")
+            t = run(["memebot.py", "train", "--horizon", horizon], d, now, soft=True, limit=int(left))
+            if t is None:
+                log("training: failed again in the foreground: the runs read the last training", "trainer")
+                o.done("trainer", "failed beside the scan and again after it: the runs read the last training", "failed")
+            else:
+                log("training: " + t["note"])
+                o.done("trainer", train_said, "fallback")
     if spot:
         if spot["p"].poll() is None:      # still at work when the trader starts: stopped, the scan does not wait for it
-            stop_spotter(spot, "still running at the trader step")
+            stop_bg(spot, "still running at the trader step")
             finish_bg(spot)
             o.done("spotter", "still running at the trader step", "failed")
             path = os.path.join(d, "young_early.json")
@@ -1194,7 +1217,7 @@ def spot_done(o, job, now):
     except (OSError, ValueError):
         j = None
     rc = job["p"].returncode
-    if job.get("killed"):          # stopped by the cycle (stop_spotter): that is the phrase, whatever it printed
+    if job.get("killed"):          # stopped by the cycle (stop_bg): that is the phrase, whatever it printed
         o.done("spotter", job["killed"], "failed", end=job.get("end"))
         return
     j = j if isinstance(j, dict) else {}
