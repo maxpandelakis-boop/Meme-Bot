@@ -612,6 +612,13 @@ history-build.yml and part 2, writes 3.0 million hourly rows of 62,600 graduated
 rules (`research/PREREG-HISTORY2-2026-10-21.md`) found none in profit on unseen coins: the best lost -1.90 per 20
 (`research/HISTORY2-2026-10-21.md`). Without any fee the gate passers would still lose -0.45 per 20.
 
+The same rows feed the look-alike forecast on the Pick tab (`forecast.py`, under Details, and one line in the pick
+notification): for the pick, the range its 100 nearest look-alikes of August to October ended in 1.7 hours later and their
+chances of a profit, of zero, and of 2x and 3x within 6 hours. It is display only: it changes no pick, no score and no sell
+rule. `research/forecast_build.py` writes `forecast_ref.json` and checks it: on the bot's own 326 top picks since 7 October the
+fifth with the best forecast was in profit 29% of the time and the worst fifth under 1%, but the zero chance runs high and
+the 2x and 3x chances were only a little better than the plain average on the data's last three weeks.
+
 The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
 off), so a running laptop picks up updates without anyone touching it.
 

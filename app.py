@@ -831,7 +831,14 @@ def notify_pick(rec):
     else:
         title = "New pick: %s" % sym
         lead = ", ".join(x for x in [name, ("score %.0f" % score) if score is not None else "", TIER_WORDS.get(p.get("tier"), "")] if x)
-    return notify("pick", title, "%s. Paper trading only, nothing is bought for real." % (lead or sym), "#tab-pick")
+    look = ""
+    if p.get("tier") != "watch":
+        try:
+            import forecast as FC      # display only: one line of what look-alike coins did, never part of the pick
+            look = FC.push_line(FC.forecast(p.get("f")))
+        except Exception:
+            look = ""
+    return notify("pick", title, "%s.%s Paper trading only, nothing is bought for real." % (lead or sym, (" %s." % look) if look else ""), "#tab-pick")
 
 
 def _finite(v):
