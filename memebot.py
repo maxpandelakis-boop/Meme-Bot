@@ -213,6 +213,10 @@ PROFILES = {
         # In the big test (76,019 coin results, 49 scans) such coins 6-24 hours old fell below half their price within 2 hours 2.6
         # times as often (20.0% vs 7.8%; 16.7% vs 4.3% among the gate passers; in both halves of the data; coin bootstrap of the
         # difference +5 to +23 points). They also multiply more often, so the average gain is not proven, only the crash risk.
+        # The gate review of 2026-10-21 (research/GATES-2026-10-21.md): the crash gate and the $100k floor stay. Their lone vetoes did
+        # better than the passers on average, but at the pick they guard: without them the pick changed in 54 of 327 scans and those
+        # picks lost -4.75 per 20 against -2.67, 9 of them to zero against 1. The liquidity-share veto below is off: it failed its own
+        # June/July check (research/HISTORY-2026-10-21.md). GATES-2026-10-21
         "RULE": "m9-2h", "GATE_MC": (100_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 6.0, "GATE_MAX_AGE_H": 24.0,
         "GATE_MIN_BUYRATIO1H": None, "GATE_MIN_VOL1SHARE": None, "GATE_CRASH": {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0},
         # GATE_MAX_LIQMC, the holdout study of 2026-10-21 (research/STUDY-2026-10-21.md), adopted at the user's request as an
@@ -222,7 +226,7 @@ PROFILES = {
         # in the hidden scans (FluxBeam-like pools left out). It changes the top pick in 10 of 208 discovery and 13 of 92 hidden
         # scans without a proven gain (-2.29 against -2.28, then -1.86 against -2.02 from one coin), and it does not cut wipeouts:
         # per coin the vetoed ones went to zero about as often. research/check_liqmc.py decides on 4 Nov 2026 whether it stays.
-        "GATE_MAX_LIQMC": 0.20,
+        "GATE_MAX_LIQMC": None,   # GATES-2026-10-21: off, it failed the June/July check (was 0.20)
         "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0, "MIN_LP_LOCKED": 90.0, "MAX_CREATOR_PCT": 5.0,
         "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 90.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over

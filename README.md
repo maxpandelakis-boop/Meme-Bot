@@ -575,7 +575,7 @@ grew from 17 to 26 minutes between 17 and 21 Oct, toward the scan's 36-minute de
 
 `--horizon 24h` (default) looks for coins that survive a day: liquidity, holders, no crash, re-priced 24 hours later.
 `--horizon 2h` looks for coins that may pump in the next two hours: 6 to 24 hours old, market cap $100k to $2M, at least
-$15k of liquidity and of 24h volume, liquidity under 20% of the market cap, no crash, not up 90% or more in the last 6 hours
+$15k of liquidity and of 24h volume, no crash, not up 90% or more in the last 6 hours
 (or 200% in the last hour), no whale above 20%, at most 10 insider wallets; buys versus sells
 and the last hour's volume share are scored, not gated (the gate audit showed they rejected 11,000 coins a scan while a
 high buyer ratio went with going to zero); scored by momentum
@@ -596,6 +596,14 @@ cap or more lost more than the rest in both periods, counted per scan and per co
 remaining coins from -2.41 to -1.98 per 20 on the hidden days. At the top pick, which it changes in 5% to 14% of the scans,
 it did not prove a gain, and it does not cut wipeouts: per coin the vetoed ones went to zero about as often.
 `research/check_liqmc.py` decides on 4 Nov 2026, on scans nobody has seen yet, whether it stays.
+
+The same evening the veto failed its pre-registered check on a third period (June and July 2026, coins that graduated from
+pump.fun, `research/HISTORY-2026-10-21.md`), and the gate review (`research/GATES-2026-10-21.md`, pre-registered in
+`research/PREREG-GATES-2026-10-21.md`) asked of each 2h gate whether the coins it alone threw out did worse than the passers,
+per coin. The crash gate (-10% in an hour) and the $100k floor did not on average: their coins did better in June and July
+(-2.20 and -1.92 against -3.57 per 20, in both halves). At the pick, where they act, it is the other way round: without them
+the pick changed in 54 of 327 October scans, and those picks lost -4.75 per 20 against -2.67, 9 to zero against 1. So both stay;
+only the liquidity-share veto is off. The page's "Filter team" asks every gate the same question on each scan (`filter_team.py`).
 
 The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
 off), so a running laptop picks up updates without anyone touching it.
@@ -756,7 +764,8 @@ recommend mode the page has four tabs, the same on the website and in the app: P
   paper line ("Bought on paper: 50 € at 17:21 · now +4.2%"), the safety check (RugCheck, GoPlus, creator, community) and, behind a
   tap, the reason in plain words, every figure behind the pick (first the score and the trained odds, which are about the same for
   every coin right now), the live chart and the links. Below it the runners-up, the hour grid and one "Details" fold with the tip
-  record, the training, the coin test, all candidates, the weights and the run log.
+  record, the training, the filter team (`filter_team.py`: each gate as a bot with its report card, in place of the old coin
+  test), all candidates, the weights and the run log.
 - **Radar** (`page_radar.py`): the launch radar's coins without traps (a coin bought on paper says "Bought on paper · 10 €"), the
   radar's paper positions (`page_traders.radar_positions`), and folds for the coins seen with traps, the radar record, why these
   checks and the curve test. Until the switch (`memebot.SWITCH_AT`) the full scan's new launches follow under "New launches (until <its day>)".
@@ -788,6 +797,7 @@ to show the picks, the charts and the links in chat.
 | `radar_paper.py`, `peak.py`, `exit_grid.py` | the radar account, the best price within 6 h (and the minute paths), the exit what-if |
 | `traders.py` | the three paper traders and the learning trader's frozen daily decisions |
 | `report.py` | the analysis page: renders `mb/report.html` from `db/` |
+| `filter_team.py` | the filter team on the page: each hard gate as a bot, with its report card (its lone vetoes against the passers, per coin) |
 | `app.py` | the iPhone app: the live store (Supabase), push notifications, the installed app's script and `sw.js` |
 | `supabase/setup.sql` | the one-time setup of the Supabase project (tables, access rules); `supabase/test_setup.py` tests it on PostgreSQL; `supabase/push-requirements.txt` pins the push sender with hashes (`supabase/pin_push.py` makes it) |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
