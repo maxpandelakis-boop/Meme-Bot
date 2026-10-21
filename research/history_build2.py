@@ -445,12 +445,14 @@ def final(meta_dir, shard_dir, out):
     print("built %d rows from %d coins in %.0f s" % (len(df), df["mint"].nunique() if len(df) else 0, time.time() - t0))
     if not len(df):
         return
-    df["month"] = pd.to_datetime(df["ts"], unit="ms").dt.strftime("%Y-%m")
-    for mo, part in df.groupby("month"):
-        p = os.path.join(hist, "hourly_%s.parquet" % mo)
-        part.drop(columns=["month"]).to_parquet(p, compression="zstd", index=False)
-        print("  %s: %d rows, %.1f MB" % (os.path.basename(p), len(part), os.path.getsize(p) / 1e6))
-    df = df.drop(columns=["month"])
+    # by day of the row (GitHub takes no file over 100 MB; a month came to about 125 MB)
+    os.makedirs(os.path.join(hist, "hourly"), exist_ok=True)
+    df["day"] = pd.to_datetime(df["ts"], unit="ms").dt.strftime("%Y-%m-%d")
+    for day, part in df.groupby("day"):
+        p = os.path.join(hist, "hourly", "hourly_%s.parquet" % day)
+        part.drop(columns=["day"]).to_parquet(p, compression="zstd", index=False)
+    print("  hourly/: %d days, largest %.1f MB" % (df["day"].nunique(), max(os.path.getsize(f) for f in glob.glob(os.path.join(hist, "hourly", "*.parquet"))) / 1e6))
+    df = df.drop(columns=["day"])
     # the bars themselves, for later exit studies, by graduation day (32-bit floats keep them small)
     gday = pd.to_datetime(bars["pool"].map(gi["grad_ms"]), unit="ms").dt.strftime("%Y-%m-%d")
     for c in ("p_open", "p_close", "p_hi", "p_lo", "sol_buy", "sol_sell"):
@@ -480,7 +482,7 @@ def final(meta_dir, shard_dir, out):
         "# Long-history rows for the Meme-Bot, part 2 (fake money only)\n\n"
         "%s\n\nDerived (changed) from that data set by research/history_build2.py: every PumpSwap swap of the coins that graduated "
         "from pump.fun between 10 August and 8 October 2026, made into one-minute bars (bars/, by graduation day) and into rows at "
-        "whole hours after each graduation (hourly_*.parquet) with screener-like numbers, the price %.1f hours later and the path "
+        "whole hours after each graduation (hourly/, by day) with screener-like numbers, the price %.1f hours later and the path "
         "over %.0f hours. Market cap, liquidity and the rug time are computed, not recorded; see the script's header. Rows whose "
         "windows touch a recorder outage are flagged (gap_pre, gap_1, gap_6).\n" % (ATTRIBUTION, EVAL_H, PATH_H))
     print(json.dumps({k: v for k, v in summ.items() if k != "columns"}))

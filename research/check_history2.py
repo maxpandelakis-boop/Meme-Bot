@@ -1,6 +1,6 @@
 """The pre-registered check of research/PREREG-HISTORY2-2026-10-21.md (fake money only): the bot's gates and a filter search on
 the August to October 2026 rows of the branch "history2" (research/history_build2.py). Written before those rows were looked at.
-usage: python3 research/check_history2.py <dir with hourly_*.parquet>     (needs numpy, pandas and pyarrow)
+usage: python3 research/check_history2.py <history2 dir, hourly_*.parquet in it or below>     (needs numpy, pandas and pyarrow)
 """
 import glob, itertools, os, random, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -81,7 +81,7 @@ def bot_gates(d):
 
 def main():
     import numpy as np, pandas as pd
-    d = pd.concat([pd.read_parquet(f) for f in sorted(glob.glob(os.path.join(sys.argv[1], "hourly_*.parquet")))], ignore_index=True)
+    d = pd.concat([pd.read_parquet(f) for f in sorted(glob.glob(os.path.join(sys.argv[1], "**", "hourly_*.parquet"), recursive=True))], ignore_index=True)
     d = d.sort_values(["mint", "ts"]).reset_index(drop=True)
     d = outcomes(d)
     print("rows %d, coins %d; with a hold result %d, with a 6 h result %d" % (len(d), d["mint"].nunique(), d["eur_hold"].notna().sum(), d["eur_A"].notna().sum()))
