@@ -50,7 +50,7 @@ def load_tips(d):
         doc = json.load(open(fn, encoding="utf-8"))
         if str(doc.get("rule") or "") != "m9-2h":
             continue
-        out = ((doc.get("outs") or {}).get("out") or {})
+        out = doc.get("out") or {}          # the horizon's result sits at the top level (outs holds the 1 h and 24 h checks)
         res = {p.get("sym"): p for p in out.get("picks") or [] if isinstance(p, dict)}
         for p in doc.get("picks") or []:
             r = res.get(p.get("sym"))
@@ -107,6 +107,8 @@ def main():
         print("no tips matched")
         return
     out.sort(key=lambda r: r["t"])
+    if os.environ.get("TM_DUMP"):          # the forecasts per tip, for later studies (added after the decision; does not change it)
+        json.dump(out, open(os.environ["TM_DUMP"], "w"), default=lambda v: v.item() if hasattr(v, "item") else str(v))
     brier = lambda rs, k, y: sum((r[k] - (1.0 if r[y] else 0.0)) ** 2 for r in rs) / len(rs)
     mid = len(out) // 2
     print("tips with a forecast: %d; profit %.1f%%, zero %.1f%%" % (len(out), 100 * sum(r["profit"] for r in out) / len(out), 100 * sum(r["zero"] for r in out) / len(out)))
