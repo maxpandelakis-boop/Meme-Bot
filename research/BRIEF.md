@@ -40,6 +40,9 @@ Gate history (the pass flag and the why tags of a row follow the gate of its sca
 - until 2026-10-07 21:26 UTC: 2h profile ages 3 to 12 h, the momentum gates "nobuyers" and "novol1h" active
 - from 2026-10-07 21:26 UTC: ages 3 to 24 h, the momentum gates became scored factors
 - from 2026-10-08 12:10 UTC (commit d8548bc): ages 6 to 24 h, market cap $100k to $2M (was $50k)
+- from the first 2h scan after the push of 2026-10-21 (GATE_MAX_LIQMC; the first rows with the why tag "liqmc" mark it):
+  liquidity at 20% of the market cap or more fails. Adopted at the user's request although it misses rules 1 and 3 below at
+  the top pick; research/check_liqmc.py decides on 4 Nov 2026 (research/STUDY-2026-10-21.md)
 Reconstruct a gate from the why tags plus ageH and mc when you compare across these dates. The first study's results are in
 research/RESULTS-2026-10-08.md; compare against them.
 

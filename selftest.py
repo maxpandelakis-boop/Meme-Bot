@@ -3174,6 +3174,17 @@ console.log(JSON.stringify(o));
         M.GATE_SPIKE = spk
     check("spike" in g_hot and "spike" not in g_calm and M.PROFILES["2h"]["GATE_SPIKE"]["chgH6"] == 90.0,
           "2h profile: a coin up 95% in 6 hours is still in its pump and fails the spike gate, one up 40% does not")
+    lm = M.GATE_MAX_LIQMC
+    try:      # the 2h profile's liquidity-share veto, the same way: 60k of 500k is 12% and passes, 100k is 20% and fails, unknown passes
+        M.GATE_MAX_LIQMC = M.PROFILES["2h"]["GATE_MAX_LIQMC"]
+        g_low, g_edge = M.gates(dict(g_pr, chgH6=40.0), g_base, {}), M.gates(dict(g_pr, chgH6=40.0), dict(g_base, liq=100_000.0), {})
+        g_unk = M.gates(dict(g_pr, chgH6=40.0), dict(g_base, mc=None), {})
+        lm_txt = M.fail_text("liqmc")
+    finally:
+        M.GATE_MAX_LIQMC = lm
+    check("liqmc" not in g_low and "liqmc" in g_edge and "liqmc" not in g_unk and lm_txt == "liquidity 20% of the market cap or more"
+          and lm is None and "liqmc" not in M.gates(dict(g_pr, chgH6=40.0), dict(g_base, liq=400_000.0), {}) and "GATE_MAX_LIQMC" not in M.PROFILES["24h"],
+          "2h profile: liquidity at 20%% of the market cap or more fails the liqmc gate (12%% passes, unknown passes); the 24h profile has no such gate (%s)" % g_edge)
     bdoc = {"t": 1000, "outs": {"1": {"picks": [{"sym": "T", "mult": 0.45, "eur": M.tip_net(0.45), "path": pth, "cv": M.CANDLE_V}, {"sym": "N", "mult": 1.0, "eur": -1.62}]}}}
     bnew, bch = M.backfill_tp(bdoc, 18.0)
     bo = bnew["outs"]["1"]["picks"]

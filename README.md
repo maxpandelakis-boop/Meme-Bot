@@ -575,8 +575,8 @@ grew from 17 to 26 minutes between 17 and 21 Oct, toward the scan's 36-minute de
 
 `--horizon 24h` (default) looks for coins that survive a day: liquidity, holders, no crash, re-priced 24 hours later.
 `--horizon 2h` looks for coins that may pump in the next two hours: 6 to 24 hours old, market cap $100k to $2M, at least
-$15k of liquidity and of 24h volume, no crash, not up 90% or more in the last 6 hours (or 200% in the last hour), no whale
-above 20%, at most 10 insider wallets; buys versus sells
+$15k of liquidity and of 24h volume, liquidity under 20% of the market cap, no crash, not up 90% or more in the last 6 hours
+(or 200% in the last hour), no whale above 20%, at most 10 insider wallets; buys versus sells
 and the last hour's volume share are scored, not gated (the gate audit showed they rejected 11,000 coins a scan while a
 high buyer ratio went with going to zero); scored by momentum
 and holder growth; every scan is re-priced 2 hours later, so the learned weights target exactly that outcome. Each profile
@@ -588,6 +588,14 @@ In the big test, coins 6 to 24 hours old that were up 90% or more in 6 hours fel
 2.6 times as often as the rest (20% against 8%, in both halves of the data). They also multiply more often, so the cap is
 proven to cut crashes, not yet to raise the average. A coin that rugs out of a calm climb (CLAUDIA, +44% over 14 hours,
 then -99.5% within one hour on 2026-10-09) shows nothing in these numbers beforehand; only an exit rule protects against that.
+
+The liquidity-share veto came from the holdout study of 2026-10-21 (`research/STUDY-2026-10-21.md`) and was adopted at
+the user's request as an exception to the research brief's bar. Rules were searched on the scans of 7 to 15 October and
+checked once on 16 to 20 October, which nobody had looked at. Coins 6 to 24 hours old whose liquidity was 20% of the market
+cap or more lost more than the rest in both periods, counted per scan and per coin; leaving them out cut the loss of the
+remaining coins from -2.41 to -1.98 per 20 on the hidden days. At the top pick, which it changes in 5% to 14% of the scans,
+it did not prove a gain, and it does not cut wipeouts: per coin the vetoed ones went to zero about as often.
+`research/check_liqmc.py` decides on 4 Nov 2026, on scans nobody has seen yet, whether it stays.
 
 The loop pulls new code from GitHub before each cycle and restarts itself when something changed (`--no-update` turns it
 off), so a running laptop picks up updates without anyone touching it.

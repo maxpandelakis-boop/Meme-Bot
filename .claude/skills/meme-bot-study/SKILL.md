@@ -53,6 +53,16 @@ Fake money only. Never suggest, prepare or simulate a real trade, a wallet conne
 - **Old rows.** Big-test rows scored before 2026-10-07 13:45 UTC (`LEARN_FROM` in harness.py) counted every unpriced
   coin as gone. Gates changed over time: a row's pass flag follows the gate of its scan time (`research/BRIEF.md`).
 - **Small n.** One runner (FLOYD, 93x) can carry a whole week. Report the result without the best trade too.
+- **DEX mix.** A radar rule "won" only because its baseline held Meteora pools, 98% of them dead within the hour. Compare
+  within one DEX as well as across all.
+- **Discovery lies.** In the study of 2026-10-21, 7 of 8 rules that won on the older days failed on the hidden ones
+  (`research/STUDY-2026-10-21.md`). No hidden days, no claim.
+- **Rows are not coins.** The big test lists a coin in every scan; the bot buys it once. Count per coin too: the
+  liquidity-share veto's "2 to 3 times as often to zero" was rows, and per coin it was about as often.
+- **What counts as zero.** The stored gone flag means no price; rugs that keep a price (0.002x) slip past it. Count 98%
+  down or more as zero (harness.py does) before claiming a rule cuts wipeouts.
+- **Where the rule acts.** Say whether it changes the bot's actual top pick and how often (the liquidity-share veto: 5% to
+  14% of scans, no proven gain there), and hold it to `research/BRIEF.md`'s rules of evidence at k=1.
 
 ## Ideas from outside
 

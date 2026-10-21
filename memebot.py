@@ -196,6 +196,7 @@ HORIZON = "24h"          # which profile is active: "24h" (survive a day) or "2h
 GATE_MAX_AGE_H = None    # 2h profile: coins older than this are not "early" anymore
 GATE_MIN_BUYRATIO1H = None   # 2h profile: buys must outweigh sells in the last hour by this factor
 GATE_MIN_VOL1SHARE = None    # 2h profile: the last hour's share of the day's volume must be at least this (1/24 = even pace)
+GATE_MAX_LIQMC = None        # 2h profile: a coin whose liquidity is this share of its market cap or more fails ("liqmc"); unknown passes
 PROFILES = {
     "24h": {},   # the defaults above
     "2h": {      # early, small, accelerating; measured two hours later; scored by momentum, not stability
@@ -214,6 +215,14 @@ PROFILES = {
         # difference +5 to +23 points). They also multiply more often, so the average gain is not proven, only the crash risk.
         "RULE": "m9-2h", "GATE_MC": (100_000, 2_000_000), "GATE_MIN_LIQ": 15_000, "GATE_MIN_VOL24": 15_000, "GATE_MIN_AGE_H": 6.0, "GATE_MAX_AGE_H": 24.0,
         "GATE_MIN_BUYRATIO1H": None, "GATE_MIN_VOL1SHARE": None, "GATE_CRASH": {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0},
+        # GATE_MAX_LIQMC, the holdout study of 2026-10-21 (research/STUDY-2026-10-21.md), adopted at the user's request as an
+        # exception: it misses the research brief's bar at the top pick. Coins 6 to 24 hours old whose liquidity was 20% of the
+        # market cap or more lost more than the rest in the discovery scans (7 to 15 Oct) and in the hidden ones (16 to 20 Oct),
+        # per row and per coin; leaving them out cut the loss of the rest from -2.71 to -2.51 per 20 there and from -2.41 to -1.98
+        # in the hidden scans (FluxBeam-like pools left out). It changes the top pick in 10 of 208 discovery and 13 of 92 hidden
+        # scans without a proven gain (-2.29 against -2.28, then -1.86 against -2.02 from one coin), and it does not cut wipeouts:
+        # per coin the vetoed ones went to zero about as often. research/check_liqmc.py decides on 4 Nov 2026 whether it stays.
+        "GATE_MAX_LIQMC": 0.20,
         "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0, "MIN_LP_LOCKED": 90.0, "MAX_CREATOR_PCT": 5.0,
         "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 90.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
@@ -1323,6 +1332,7 @@ def gates(pr, basic, sym_mc, f=None, standin=False):
     if GATE_MAX_AGE_H is not None and age_h is not None and age_h > GATE_MAX_AGE_H: fails.append("old")
     if GATE_MIN_BUYRATIO1H is not None and (f.get("buyRatio1h") is None or f["buyRatio1h"] < GATE_MIN_BUYRATIO1H): fails.append("nobuyers")
     if GATE_MIN_VOL1SHARE is not None and (f.get("vol1Share") is None or f["vol1Share"] < GATE_MIN_VOL1SHARE): fails.append("novol1h")
+    if GATE_MAX_LIQMC is not None and liq and mc and liq / mc >= GATE_MAX_LIQMC: fails.append("liqmc")
     return fails
 
 
@@ -1349,6 +1359,8 @@ def fail_text(k):
         return "spiked (up %.0f%%+ in 1h or %.0f%%+ in 6h)" % (GATE_SPIKE["chgH1"], GATE_SPIKE["chgH6"])
     if k == "wash":
         return "24h volume over %gx the market cap (wash trading)" % GATE_MAX_VOLMC
+    if k == "liqmc":
+        return "liquidity %s of the market cap or more" % ("%g%%" % (100 * GATE_MAX_LIQMC) if GATE_MAX_LIQMC else "a high share")
     return FAIL_TEXT.get(k, k)
 
 
