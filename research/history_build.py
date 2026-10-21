@@ -38,10 +38,11 @@ def fetch(path, out):
 
 
 def ms(col):
-    """A timestamp column as epoch milliseconds, NaN where it is empty (NaT must not become the smallest int64)."""
+    """A timestamp column as epoch milliseconds, NaN where it is empty: unit-agnostic (the corpus stores microseconds, and
+    astype(int64) would give them, not nanoseconds) and NaT never becomes the smallest int64."""
     import pandas as pd
     d = pd.to_datetime(col, utc=True)
-    return (d.astype("int64") // 10 ** 6).where(d.notna())
+    return (d - pd.Timestamp("1970-01-01", tz="UTC")) / pd.Timedelta(milliseconds=1)
 
 
 def nearest(t, x):
@@ -64,7 +65,7 @@ def main():
         fetch(f, os.path.join(raw, f))
     for f in ("README.md", "KNOWN_ISSUES.md"):
         print("\n==== %s of %s" % (f, SRC))
-        print(open(os.path.join(raw, f), encoding="utf-8", errors="replace").read()[:12000])
+        print(open(os.path.join(raw, f), encoding="utf-8", errors="replace").read()[:40000])
 
     print("\n==== schemas")
     for f in FILES:
@@ -74,7 +75,10 @@ def main():
 
     snap = pq.read_table(os.path.join(raw, "postgard_snapshots.parquet")).to_pandas()
     snap["ts"] = ms(snap["snapshot_time"])
-    snap = snap[snap["ts"].notna()].astype({"ts": "int64"}).sort_values(["mint", "ts"]).reset_index(drop=True)
+    print("  all snapshots by dex: %s" % snap["dex_id"].value_counts(dropna=False).to_dict())
+    # after the graduation the coin trades on its PumpSwap pool; the screener also keeps listing the finished pump.fun curve as
+    # a pair (dex "pumpfun"), whose price stands still, so mixing the two would fake flat paths. Only the PumpSwap pair is kept.
+    snap = snap[snap["ts"].notna() & (snap["dex_id"] == "pumpswap")].astype({"ts": "int64"}).sort_values(["mint", "ts"]).reset_index(drop=True)
     num = [c for c in snap.columns if c not in ("ts",) and pd.api.types.is_numeric_dtype(snap[c]) and not pd.api.types.is_bool_dtype(snap[c])]
     flags = [c for c in snap.columns if pd.api.types.is_bool_dtype(snap[c])]
     print("\n==== snapshots: %d rows, %d mints, %s to %s UTC" % (len(snap), snap["mint"].nunique(),
@@ -90,7 +94,7 @@ def main():
     print("  numeric columns kept: %s" % ", ".join(num))
 
     outc = pq.read_table(os.path.join(raw, "postgard_outcomes.parquet")).to_pandas()
-    for c in [c for c in outc.columns if "_at" in c and c != "computed_at"]:
+    for c in [c for c in outc.columns if pd.api.types.is_datetime64_any_dtype(outc[c]) and c != "computed_at"]:
         outc[c + "_ms"] = ms(outc[c])
     rug = dict(zip(outc["mint"], outc.get("rug_at_ms", pd.Series([None] * len(outc)))))
     mig = pq.read_table(os.path.join(raw, "migrations.parquet")).to_pandas()
@@ -145,8 +149,8 @@ def main():
     hist = os.path.join(out, "history")
     os.makedirs(hist, exist_ok=True)
     df.to_parquet(os.path.join(hist, "postgard_hourly.parquet"), compression="zstd", index=False)
-    keep = [c for c in outc.columns if not c.endswith("_at") or c == "computed_at"]
-    outc[[c for c in keep if c != "computed_at"]].to_parquet(os.path.join(hist, "postgard_outcomes.parquet"), compression="zstd", index=False)
+    keep = [c for c in outc.columns if not pd.api.types.is_datetime64_any_dtype(outc[c])]
+    outc[keep].to_parquet(os.path.join(hist, "postgard_outcomes.parquet"), compression="zstd", index=False)
     mig[["mint", "mig_ms", "seconds_to_graduation", "pool_address"]].to_parquet(os.path.join(hist, "migrations.parquet"), compression="zstd", index=False)
     summ = {"source": "https://huggingface.co/datasets/%s" % SRC, "licence": "MIT", "rows": len(df), "mints": int(df["mint"].nunique()) if len(df) else 0,
             "with_px1": int(df["px1"].notna().sum()) if len(df) else 0, "from": int(df["ts"].min()) if len(df) else None, "to": int(df["ts"].max()) if len(df) else None,
