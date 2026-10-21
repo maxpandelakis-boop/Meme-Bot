@@ -43,6 +43,8 @@ Gate history (the pass flag and the why tags of a row follow the gate of its sca
 - from the first 2h scan after the push of 2026-10-21 (GATE_MAX_LIQMC; the first rows with the why tag "liqmc" mark it):
   liquidity at 20% of the market cap or more fails. Adopted at the user's request although it misses rules 1 and 3 below at
   the top pick; research/check_liqmc.py decides on 4 Nov 2026 (research/STUDY-2026-10-21.md)
+- from the first 2h scan after the gate review of 2026-10-21 (research/GATES-2026-10-21.md): the liquidity-share veto off again
+  (no more "liqmc" tags); the crash gate and the $100k floor stay
 Reconstruct a gate from the why tags plus ageH and mc when you compare across these dates. The first study's results are in
 research/RESULTS-2026-10-08.md; compare against them.
 

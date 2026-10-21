@@ -395,7 +395,10 @@ def collect(d, now):
     # big test: chunks of the same snapshot run -> one group. The result docs are read one at a time and dropped (iter_docs): all of
     # them at once took about 9 GB on 16 Oct and the scan's runner was shut down while the page was built
     groups, seen_coins = {}, set()
+    team = FT.Team(M.RULE, M.train_since(now)) if FT else None     # the filter team's report cards (filter_team.py) from the same one pass
     for sid, r in iter_docs(d, "memesnapres"):
+        if team is not None:
+            team.feed(r)
         key = str(sid).rsplit("-", 1)[0]
         g = groups.setdefault(key, {"t0": M.num(r.get("t0")), "t": M.num(r.get("t")), "n": 0, "pass": [], "top": [], "fail": [], "up": 0, "gone": 0})
         for c in r.get("coins") or []:
@@ -437,7 +440,11 @@ def collect(d, now):
     young_hist = sorted([r for r in M.load_docs(d, "memeyoung").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))[:48]
     train = M.load_json(os.path.join(d, "db", "memebot", "train.json"), None)
     office = M.load_json(os.path.join(d, "db", "memebot", "office.json"), None)
-    return {"dir": d, "now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state, "paper": paper,
+    try:
+        team_rep = FT.report(team, FT.active_tags()) if team is not None else None
+    except Exception:                # a broken report card costs only the filter team's section
+        team_rep = None
+    return {"team": team_rep, "dir": d, "now": now, "rec": rec if isinstance(rec, dict) else None, "office": office if isinstance(office, dict) else None,"track": track[:80], "track_all": track, "young_hist": young_hist, "train": train if isinstance(train, dict) else None, "pos": rows, "open": open_rows, "open_bot": open_bot, "unpriced": unpriced, "closed": closed_rows, "cash": cash, "equity": equity, "state": state, "paper": paper,
             "curve": curve, "runs": runs, "big": big, "seen_coins": len(seen_coins), "cands": cands[:15], "scan_t": last_t, "scan_run": scan_run,
             "scan_n": scan_n,
             "held": held_addrs, "ever": ever_addrs, "weights": weights, "winfo": winfo, "detail": winfo.get("detail") or {}, "wins": wins, "bot_closed": bot_closed,
@@ -642,6 +649,10 @@ OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services 
     "reporter": ("Reporter", "writes this page", ())}
 OFFICE_AGENTS["radar"] = ("Launch radar", "rates every coin whose pool is under 10 minutes old in one quick round after each scan, in its own job; only coins without traps are shown and pushed",
                           ("DexScreener", "pump.fun", "GeckoTerminal", "Jupiter", "RugCheck", "Solana RPC", "LaunchLab"))
+try:
+    import filter_team as FT  # the gates as a team of single bots with report cards: the Pick tab's Details, in place of the old coin test
+except ImportError:           # a copy of the code without filter_team.py: the coin test as before it
+    FT = None
 try:
     import page_office as PO  # the agent cards, the Launch radar's desk (its own job: page_office.EXT_HOME), the daily overview, the scan strip (WP5c)
 except ImportError:           # a copy of the code without page_office.py (the selftest's stand-in folder): the office and the Pick tab as before it
@@ -3326,11 +3337,12 @@ def render(data, fragment=False):
         # #radar, #new) open Radar (page_radar.py's script; app.py PAGE_JS in the installed app)
         sw = M.switch_at()
         rest = [safe("profit", lambda: profit_section(D)), safe("training", lambda: train_section(D)),
-                section("Coin test: %s later" % hz, "what 20 € in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))),
+                (safe("filter team", lambda: FT.section(D, sys.modules[__name__])) if FT else
+                 section("Coin test: %s later" % hz, "what 20 € in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D)))),
                 safe("candidates", candidates), safe("weights", lambda: weights_section(D))]
         if D["runs"]:
             rest.append(safe("run log", runlog))
-        details = fold("Details", "tip record, training, coin test, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
+        details = fold("Details", "tip record, training, filter team, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D)) + details
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
