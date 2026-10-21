@@ -566,7 +566,10 @@ and writes `db/memebot/train.json` (shown on the page under "Training" and in th
   (priced again after the horizon), as win rate, zero rate and average per 20.
 
 The training needs 400 scored candidate coins and at least 10 zeros before the zero model counts, and 4 scans before the
-walk-forward test runs; on GitHub Actions that is about a day of hourly scans. It takes under a minute on 30k rows.
+walk-forward test runs; on GitHub Actions that is about a day of hourly scans. It learns from the scored snapshots of the last
+14 days only (`TRAIN_DAYS`; `since` and `days` in `train.json`): on all of them it grew from 17 to 26 minutes between 17 and
+21 Oct, toward the scan's 36-minute deadline for it. The big test itself keeps 60 days, and the run's own re-learn of the
+weights still reads all of them.
 
 ## Two profiles
 

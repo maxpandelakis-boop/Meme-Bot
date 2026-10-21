@@ -624,7 +624,7 @@ OFFICE_DEPTS = (   # key, name, colour (page tokens only, so dark and light both
 OFFICE_BRAIN = ("brain", "The Brain", "var(--accent)", ("trainer",))
 OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services it calls); the trader's job is read from the hold rule in use
     "dispatch": ("Dispatcher", "decides what this run needs: the kind of scan, the open positions to watch, the checks that are due", ()),
-    "trainer": ("Research lab", "fits the model again on every scored coin: the walk-forward test, the zero model and the tuned limits", ()),
+    "trainer": ("Research lab", "fits the model again on the scored coins of the last %d days: the walk-forward test, the zero model and the tuned limits" % M.TRAIN_DAYS, ()),
     "scouts": ("Source scouts", "collects coin addresses from DEX lists, launchpads, RugCheck lists, CoinGecko, CoinMarketCap, social posts and news",
                ("DexScreener", "GeckoTerminal", "Jupiter", "pump.fun", "Raydium", "Orca", "LaunchLab", "RugCheck", "CoinGecko", "CoinMarketCap", "Reddit", "Farcaster",
                 "Mastodon", "4chan", "news feeds", "fear & greed index", "GMGN")),

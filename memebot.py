@@ -1481,6 +1481,8 @@ TRAIN_MIN_ROWS = 400       # scored candidate coins before a fitted model counts
 TRAIN_BINS = 4             # equal-count value bins per factor in the zero model
 TRAIN_CHECKPOINTS = 8      # walk-forward: the models are refitted this many times along the history, each tested on the scans after it only
 TRAIN_MIN_TIPS = 30        # a limit is tuned only from at least this many out-of-sample tips
+TRAIN_DAYS = 14            # the training learns from the scored snapshots of the last this many days only (21 Oct, the user's go: it grew
+                           # with the big test, 1,040 s on 17 Oct to 1,548 s on 21 Oct, toward bot.py's 36-minute deadline)
 MAX_ZERO_P = 0.35          # a clean coin whose trained chance of going to zero is above this is skipped; the training may tighten it ...
 ZERO_P_FLOOR = 0.05        # ... but never below this, nor below 1.5x the base zero rate: a tighter limit would leave the picks to chance
 MIN_UP_P = 0.2             # a pick with a trained profit chance under this carries a "low odds" warning on the page (it is still named: only 3% of all
@@ -1502,15 +1504,18 @@ def bin_of(x, edges):
     return b
 
 
-def train_groups(d):
+def train_groups(d, since=None):     # since: cmd_train's TRAIN_DAYS window
     """The scored snapshots as (run, t0, [coin...]) in time order. One coin row: factors, clipped result, gone flag, gate pass,
-    the gates it failed, the score it had. Only candidate-like coins (learnable) are kept, as for the weights."""
+    the gates it failed, the score it had. Only candidate-like coins (learnable) are kept, as for the weights. since (ms): only the
+    snapshots taken at or after it (cmd_train's TRAIN_DAYS window); None keeps them all."""
     by_run = {}
     for sid, doc in load_docs(d, "memesnapres").items():
         if not usable_result(doc):
             continue
         run = str(sid).rsplit("-", 1)[0]
         t0 = num(doc.get("t0")) or num(doc.get("t")) or 0
+        if since is not None and t0 < since:     # older than the TRAIN_DAYS window
+            continue
         g = by_run.setdefault(run, {"t": t0, "rows": []})
         g["t"] = min(g["t"], t0)
         for c in doc.get("coins") or []:
@@ -2029,9 +2034,10 @@ def cmd_train(d, now, out=None):
     """The training programs, all on the scored snapshots of this profile: the walk-forward test of the ranking, the zero
     model, the limit grids, the gate audit, the factor splits and the real tip record. Writes db/memebot/train.json, which
     the next runs read (zero model and tuned limits), and prints the summary."""
-    groups = train_groups(d)
+    since = int(now) - TRAIN_DAYS * 86_400_000 if now else None      # the TRAIN_DAYS window: the last TRAIN_DAYS days of scored snapshots
+    groups = train_groups(d, since)
     rows = [r for _, _, g in groups for r in g]
-    doc = {"t": now, "rule": RULE, "rows": len(rows), "scans": len(groups), "zeros": sum(1 for r in rows if r["gone"]),
+    doc = {"t": now, "since": since, "days": TRAIN_DAYS, "rule": RULE, "rows": len(rows), "scans": len(groups), "zeros": sum(1 for r in rows if r["gone"]),
            "tested": 0, "walkForward": {}, "zeroGrid": [], "scoreGrid": [], "gates": [], "ages": [], "filters": [], "factors": [], "tips": tip_record(d),
            "tuned": {"MAX_ZERO_P": MAX_ZERO_P, "MIN_REC_SCORE": MIN_REC_SCORE, "PICK_BY": "score"}, "tunedWhy": [], "zeroModel": None, "upModel": None, "zeroFactors": [], "note": ""}
     if rows:
