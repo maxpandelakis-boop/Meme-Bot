@@ -164,9 +164,9 @@ def meta(out):
 
 # --------------------------------------------------------------------------------------------------------------- shard
 
-def cut_file(local, pools, grad, mints):
+def cut_file(local, pools, grad, mints, trades=None):
     """One swap file -> (one-minute bars of the graduated pools, buyers by age hour, swaps per minute over the whole data set,
-    SOL/USD minute prices from SOL-USDC swaps, counts for the log)."""
+    SOL/USD minute prices from SOL-USDC swaps, counts for the log). A list as trades gets the kept swaps themselves (wallet_build)."""
     import numpy as np, pandas as pd, pyarrow as pa, pyarrow.compute as pc, pyarrow.parquet as pq
     pf = pq.ParquetFile(local)
     pool_set = pa.array(sorted(pools))
@@ -223,6 +223,8 @@ def cut_file(local, pools, grad, mints):
     d["sb"] = np.where(d["buy"], d["sol"], 0.0)
     d["ss"] = np.where(d["buy"], 0.0, d["sol"])
     d["atomic"] = d["is_atomic"].fillna(False).astype(bool)
+    if trades is not None:
+        trades.append(d[["pool", "trader", "t", "buy", "sol", "tok", "atomic"]])
     gb = d.groupby(["pool", "m"], sort=False)
     bars = gb.agg(t_first=("t", "first"), t_last=("t", "last"), p_open=("px", "first"), p_close=("px", "last"), p_hi=("px", "max"),
                   p_lo=("px", "min"), sol_buy=("sb", "sum"), sol_sell=("ss", "sum"), n_buy=("buy", "sum"), n_swap=("t", "size"),
@@ -368,13 +370,9 @@ def coin_rows(c, b, solusd, gaps, who):
     return rows
 
 
-def final(meta_dir, shard_dir, out):
+def gap_minutes(find):
+    """Recorder outages: the start (ms) of every minute with almost no swap of any coin, sorted."""
     import numpy as np, pandas as pd
-    hist = os.path.join(out, "history2")
-    os.makedirs(os.path.join(hist, "bars"), exist_ok=True)
-    g = pd.read_parquet(os.path.join(meta_dir, "grads.parquet"))
-    find = lambda pat: sorted(glob.glob(os.path.join(shard_dir, "**", pat), recursive=True))
-    # recorder outages: minutes with almost no swap of any coin
     mins = pd.concat([pd.read_parquet(f) for f in find("minutes_*.parquet")]).groupby("m")["n"].sum()
     full = pd.Series(0, index=pd.RangeIndex(int(mins.index.min()), int(mins.index.max()) + 1)).add(mins, fill_value=0)
     base = full.rolling(24 * 60, center=True, min_periods=60).median()
@@ -383,6 +381,30 @@ def final(meta_dir, shard_dir, out):
     runs = np.split(gap_m, np.nonzero(np.diff(gap_m) > MIN)[0] + 1) if len(gap_m) else []
     for r in sorted(runs, key=len, reverse=True)[:15]:
         print("  gap %s, %d minutes" % (pd.to_datetime(r[0], unit="ms"), len(r)))
+    return gap_m
+
+
+def merged_bars(find):
+    """The shards' one-minute bars as one frame sorted by pool and minute (a minute split over two files joined)."""
+    import pandas as pd
+    bars = pd.concat([pd.read_parquet(f) for f in find("bars_*.parquet")], ignore_index=True)
+    dup = bars.duplicated(["pool", "m"], keep=False)
+    if dup.any():
+        one = bars[dup].sort_values(["pool", "m", "t_first"]).groupby(["pool", "m"], sort=False).agg(
+            t_first=("t_first", "first"), t_last=("t_last", "last"), p_open=("p_open", "first"), p_close=("p_close", "last"),
+            p_hi=("p_hi", "max"), p_lo=("p_lo", "min"), sol_buy=("sol_buy", "sum"), sol_sell=("sol_sell", "sum"),
+            n_buy=("n_buy", "sum"), n_sell=("n_sell", "sum"), n_atomic=("n_atomic", "sum")).reset_index()
+        bars = pd.concat([bars[~dup], one], ignore_index=True)
+    return bars.sort_values(["pool", "m"]).reset_index(drop=True)
+
+
+def final(meta_dir, shard_dir, out):
+    import numpy as np, pandas as pd
+    hist = os.path.join(out, "history2")
+    os.makedirs(os.path.join(hist, "bars"), exist_ok=True)
+    g = pd.read_parquet(os.path.join(meta_dir, "grads.parquet"))
+    find = lambda pat: sorted(glob.glob(os.path.join(shard_dir, "**", pat), recursive=True))
+    gap_m = gap_minutes(find)
     gaps = lambda a, z: bool(np.searchsorted(gap_m, z, side="right") > np.searchsorted(gap_m, a, side="left"))
     # SOL/USD by hour: Coinbase, else the median of the data's own SOL-USDC swaps
     cb = pd.read_parquet(os.path.join(meta_dir, "solusd.parquet"))
@@ -406,15 +428,7 @@ def final(meta_dir, shard_dir, out):
         i = int(np.searchsorted(hk, x, side="right")) - 1
         return float(hv[i]) if i >= 0 and x - hk[i] <= 3 * HOUR else None
 
-    bars = pd.concat([pd.read_parquet(f) for f in find("bars_*.parquet")], ignore_index=True)
-    dup = bars.duplicated(["pool", "m"], keep=False)
-    if dup.any():      # a minute split over two files
-        one = bars[dup].sort_values(["pool", "m", "t_first"]).groupby(["pool", "m"], sort=False).agg(
-            t_first=("t_first", "first"), t_last=("t_last", "last"), p_open=("p_open", "first"), p_close=("p_close", "last"),
-            p_hi=("p_hi", "max"), p_lo=("p_lo", "min"), sol_buy=("sol_buy", "sum"), sol_sell=("sol_sell", "sum"),
-            n_buy=("n_buy", "sum"), n_sell=("n_sell", "sum"), n_atomic=("n_atomic", "sum")).reset_index()
-        bars = pd.concat([bars[~dup], one], ignore_index=True)
-    bars = bars.sort_values(["pool", "m"]).reset_index(drop=True)
+    bars = merged_bars(find)
     print("bars: %d for %d pools" % (len(bars), bars["pool"].nunique()))
     wf = find("who_*.parquet")
     who = pd.concat([pd.read_parquet(f) for f in wf]).groupby(["pool", "ah"]).agg(
