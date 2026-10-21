@@ -1517,7 +1517,7 @@ def checks(check, env_=None):
                 # the three changes since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was), the big test read
                 # lazily (DocDir, 16 Oct, the user's go: only how memesnap and memesnapres are loaded) and the training window
                 # (TRAIN_DAYS, 21 Oct, the user's go). Every changed stretch of memebot.py names one of them, and nothing else in it moved
-                import difflib
+                import difflib, hashlib
                 hunks, cur = [], []
                 for ln in difflib.unified_diff(p.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
                     if ln.startswith("@@"):
@@ -1525,8 +1525,15 @@ def checks(check, env_=None):
                         hunks.append(cur)
                     elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
                         cur.append(ln)
-                same.append(bool(hunks) and all(any(k in "\n".join(h) for k in ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL", "DocDir", "LAZY_COLLS",
-                                                                                   "memesnapres", "collections.abc", "TRAIN_DAYS")) for h in hunks)
+                old_k = ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL", "DocDir", "LAZY_COLLS", "memesnapres", "collections.abc")
+                win_k = ("TRAIN_DAYS", "train_since", "in_window")
+                txt = lambda h: "\n".join(h)
+                # the stretches that name only the window are pinned whole (the fingerprint of their removed and added lines, 21 Oct): any
+                # other edit inside them, or a new one, fails until it is authorized and the fingerprint renewed
+                win = [h for h in hunks if any(k in txt(h) for k in win_k) and not any(k in txt(h) for k in old_k)]
+                win_ok = hashlib.sha256("\n".join(sorted(ln for h in win for ln in h)).encode("utf-8")).hexdigest() == \
+                    "d8bd4356505a87338c8cc34b3029245fe681d5538ad8e2cadec3b592f3a5c70a"
+                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k) for h in hunks) and win_ok
                             and not any(ln.startswith("-PAPER_RULE") for h in hunks for ln in h))
                 continue
             same.append(p.returncode == 0 and p.stdout == now_b)

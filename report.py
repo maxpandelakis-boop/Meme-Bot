@@ -318,13 +318,14 @@ class LazyDocs:
         return (doc for _, doc in iter_docs(self.d, self.coll))
 
 
-def blended_weights_lean(d):
-    """memebot.blended_weights(d), the same numbers, with the big test's results read one file at a time: its result_rows keeps only
-    the factors and results it learns from, not every snapshot whole (about 9 GB on 16 Oct; traps.feed swaps load_docs the same way)."""
+def blended_weights_lean(d, since=None):
+    """memebot.blended_weights(d, since), the same numbers, with the big test's results read one file at a time: its result_rows keeps
+    only the factors and results it learns from, not every snapshot whole (about 9 GB on 16 Oct; traps.feed swaps load_docs the same way).
+    since: the TRAIN_DAYS window's start the run scored with (M.train_since of its clock)."""
     orig = M.load_docs
     M.load_docs = lambda dd, coll: LazyDocs(dd, coll) if coll == "memesnapres" else orig(dd, coll)
     try:
-        return M.blended_weights(d)
+        return M.blended_weights(d, since)
     finally:
         M.load_docs = orig
 
@@ -429,7 +430,7 @@ def collect(d, now):
     scan_run = next((r for r in runs if isinstance(r, dict) and M.num(r.get("t")) == last_t), None) if last_t else None
     held_addrs = {r["p"].get("addr") for r in open_rows}
     ever_addrs = {r["p"].get("addr") for r in rows}
-    w, winfo = blended_weights_lean(d)
+    w, winfo = blended_weights_lean(d, M.train_since(M.num(state.get("lastRun")) or now))     # the run's weights: its clock's window
     weights = sorted(w.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:16]
     rec = M.load_json(os.path.join(d, "db", "memebot", "recommend.json"), None)
     track = sorted([r for r in M.load_docs(d, "memerec").values() if isinstance(r, dict)], key=lambda r: -(M.num(r.get("t")) or 0))
@@ -624,7 +625,7 @@ OFFICE_DEPTS = (   # key, name, colour (page tokens only, so dark and light both
 OFFICE_BRAIN = ("brain", "The Brain", "var(--accent)", ("trainer",))
 OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services it calls); the trader's job is read from the hold rule in use
     "dispatch": ("Dispatcher", "decides what this run needs: the kind of scan, the open positions to watch, the checks that are due", ()),
-    "trainer": ("Research lab", "fits the model again on the scored coins of the last %d days: the walk-forward test, the zero model and the tuned limits" % M.TRAIN_DAYS, ()),
+    "trainer": ("Research lab", "fits the model again on the scored coins of its window (the last 14 days in the hourly profile): the walk-forward test, the zero model and the tuned limits", ()),
     "scouts": ("Source scouts", "collects coin addresses from DEX lists, launchpads, RugCheck lists, CoinGecko, CoinMarketCap, social posts and news",
                ("DexScreener", "GeckoTerminal", "Jupiter", "pump.fun", "Raydium", "Orca", "LaunchLab", "RugCheck", "CoinGecko", "CoinMarketCap", "Reddit", "Farcaster",
                 "Mastodon", "4chan", "news feeds", "fear & greed index", "GMGN")),
@@ -2510,10 +2511,10 @@ def train_section(D):
     filters = [g for g in (T.get("filters") or []) if isinstance(g, dict)]
     if filters:
         tf = "".join('<tr><td>%s</td><td class="n">%s</td>%s</tr>' % (E(g.get("filter")), pct(g.get("share")) if g.get("share") is not None else "–", stat_cells(g)) for g in filters)
-        body.append('<details><summary>Filter recipes from outside, tested on the bot\'s results</summary><p class="note">trading-terminal presets as they circulate on TikTok (market cap, volume, age, "DEX paid"), applied to every scored coin of this profile, next to the bot\'s own gates · "DEX paid" is read from DexScreener\'s orders for new coins and from the presence of a DexScreener profile for older results</p>'
+        body.append('<details><summary>Filter recipes from outside, tested on the bot\'s results</summary><p class="note">trading-terminal presets as they circulate on TikTok (market cap, volume, age, "DEX paid"), applied to every scored coin of this profile\'s training window, next to the bot\'s own gates · "DEX paid" is read from DexScreener\'s orders for new coins and from the presence of a DexScreener profile for older results</p>'
                     '<div class="tbl stack"><table><thead><tr><th>filter</th><th class="n">keeps</th>%s</tr></thead><tbody>%s</tbody></table></div></details>' % (STAT_HEAD, tf))
     tips = T.get("tips") or {}
-    summary = ("%s coin results from %s scans" % (fmt_int(rows_n), fmt_int(scans_n))) if rows_n else "waiting for the first scored snapshot"
+    summary = ("%s coin results from %s scans%s" % (fmt_int(rows_n), fmt_int(scans_n), (" of the last %d days" % T["days"]) if isinstance(T.get("days"), int) else "")) if rows_n else "waiting for the first scored snapshot"
     if wf.get("top2zero") or wf.get("top2"):
         st = wf.get("top2zero") or wf["top2"]
         summary += " · the top 2 on scans the model had not seen: %s up, %s to zero" % (pct(st.get("win")), pct(st.get("zero")))
@@ -3071,8 +3072,8 @@ def office_panel(d, info, D):
     if d["key"] == "brain":
         T = D.get("train") or {}
         rows_n = int(M.num(T.get("rows")) or 0)
-        parts.append('<p class="note">%s</p>' % (E("The trained model and the scored history every pick is judged with: %s coin results from %d scans, %s of them went to zero within %s." % (
-            fmt_int(rows_n), int(M.num(T.get("scans")) or 0), fmt_int(T.get("zeros") or 0), horizon_text())) if rows_n else "No training yet: the Brain fills once the first scans are scored."))
+        parts.append('<p class="note">%s</p>' % (E("The trained model and the scored history every pick is judged with: %s coin results from %d scans%s, %s of them went to zero within %s." % (
+            fmt_int(rows_n), int(M.num(T.get("scans")) or 0), (" of the last %d days" % T["days"]) if isinstance(T.get("days"), int) else "", fmt_int(T.get("zeros") or 0), horizon_text())) if rows_n else "No training yet: the Brain fills once the first scans are scored."))
         parts.append(safe("daily overview", lambda: PO.daily(D, sys.modules[__name__])))    # today's launches in one sentence and the hour bar (page_office.py)
     for a in d["agents"]:
         if a.get("ext"):          # an agent in its own job (the Launch radar): its state and its last check, not a step of this run

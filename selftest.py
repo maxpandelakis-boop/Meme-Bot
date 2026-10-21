@@ -3520,22 +3520,27 @@ console.log(JSON.stringify(o));
                           "mult": round(mult, 4), "eur": round(19.9 * mult * 0.995 - 20, 2) if mult else -20.0, "gone": gone})
         syn["syn%02d-1" % g] = {"t": T0 + (g + 1) * 24 * H, "t0": T0 + g * 24 * H, "rule": M.RULE, "n": len(coins), "coins": coins}
         json.dump(syn["syn%02d-1" % g], open(os.path.join(td, "db", "memesnapres", "syn%02d-1.json" % g), "w"))
-    # trained with the window starting at the first scan (all 24 inside it: the window has no upper end), then 25 days in: only the last
-    # TRAIN_DAYS days count
-    r = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "train", "--dir", td, "--now", str(T0 + 14 * 24 * H)], capture_output=True, text=True)
+    # trained with all 24 daily scans inside the TRAIN_DAYS window (30 days in the 24h profile), then 40 days in: only the last 30 days
+    # count, for the training and for the run's weights alike (the 2h profile's window is 14 days)
+    r = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "train", "--dir", td, "--now", str(T0 + 25 * 24 * H)], capture_output=True, text=True)
     tr = json.load(open(os.path.join(td, "db", "memebot", "train.json"))) if os.path.exists(os.path.join(td, "db", "memebot", "train.json")) else {}
     wf, zm, tuned = tr.get("walkForward") or {}, tr.get("zeroModel") or {}, tr.get("tuned") or {}
     win_dir = tempfile.mkdtemp(prefix="memebot-train-window-")
     shutil.copytree(os.path.join(td, "db", "memesnapres"), os.path.join(win_dir, "db", "memesnapres"))
-    now_w = T0 + 25 * 24 * H
+    now_w = T0 + 40 * 24 * H
     rw = subprocess.run([PY, os.path.join(HERE, "memebot.py"), "train", "--dir", win_dir, "--now", str(now_w)], capture_output=True, text=True)
     trw = json.load(open(os.path.join(win_dir, "db", "memebot", "train.json"))) if os.path.exists(os.path.join(win_dir, "db", "memebot", "train.json")) else {}
-    in_win = [g for g in range(24) if T0 + g * 24 * H >= now_w - M.TRAIN_DAYS * 24 * H]
-    check(rw.returncode == 0 and M.TRAIN_DAYS == 14 and trw.get("days") == 14 and trw.get("since") == now_w - 14 * 24 * H and trw.get("scans") == len(in_win) == 13
-          and trw.get("rows") == 120 * len(in_win) and tr.get("rows") == 2880 and tr.get("since") == T0
-          and sum(len(rows_) for _, _, rows_ in M.train_groups(win_dir)) == 2880 and [g for g, _, _ in M.train_groups(win_dir, now_w - 14 * 24 * H)][0] == "syn%02d" % in_win[0],
-          "the training learns from the last %d days only: 25 days in, %s of 24 scans (%s rows) count; train_groups without a window keeps all 2880 rows"
-          % (M.TRAIN_DAYS, trw.get("scans"), trw.get("rows")))
+    in_win = [g for g in range(24) if T0 + g * 24 * H >= now_w - 30 * 24 * H]
+    _, wi_all = M.blended_weights(win_dir)
+    _, wi_win = M.blended_weights(win_dir, M.train_since(now_w))
+    msrc_ = open(os.path.join(HERE, "memebot.py"), encoding="utf-8").read()
+    check(rw.returncode == 0 and M.TRAIN_DAYS == 30 and M.PROFILES["2h"]["TRAIN_DAYS"] == 14 and trw.get("days") == 30 and trw.get("since") == now_w - 30 * 24 * H
+          and trw.get("scans") == len(in_win) == 14 and trw.get("rows") == 120 * len(in_win) and tr.get("rows") == 2880 and tr.get("since") == T0 - 5 * 24 * H
+          and sum(len(rows_) for _, _, rows_ in M.train_groups(win_dir)) == 2880 and [g for g, _, _ in M.train_groups(win_dir, M.train_since(now_w))][0] == "syn%02d" % in_win[0]
+          and wi_all["n"] == 2880 and wi_win["n"] == trw.get("rows") and M.train_since(None) is None
+          and msrc_.count("blended_weights(d, train_since(now))") == 2 and "in_window(doc, train_since(now))" in msrc_,
+          "the weights and the training learn from the last %d days only (14 in the 2h profile): 40 days in, %s of 24 scans (%s rows) count for both;"
+          " without a window all 2880; the shortlist, the run and its re-learn all score with the window's weights" % (M.TRAIN_DAYS, trw.get("scans"), trw.get("rows")))
     shutil.rmtree(win_dir, ignore_errors=True)
     check(r.returncode == 0 and tr.get("rows") == 2880 and tr.get("tested", 0) >= 10 and wf.get("top2", {}).get("n", 0) >= 30 and wf.get("allPass"),
           "train: %s rows, walk-forward over %s scans, %s top-2 tips (%s)" % (tr.get("rows"), tr.get("tested"), wf.get("top2", {}).get("n"), (r.stderr.strip().splitlines() or [""])[-1][:100]))

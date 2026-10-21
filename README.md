@@ -546,7 +546,7 @@ and writes `db/memebot/train.json` (shown on the page under "Training" and in th
 
 - **Outside filter recipes.** The presets that circulate on TikTok for trading terminals (market cap over $30k, over
   $50k traded, under 10 hours old, "DEX paid"; the "new play" of $6k to $60k coins) are applied to every scored coin of
-  the profile next to the bot's own gates: what each keeps, how many went up, how many to zero, the average per 20
+  the profile's training window next to the bot's own gates: what each keeps, how many went up, how many to zero, the average per 20
   (`filters` in `train.json`, shown in the Training fold). A recipe that beats the gates on the bot's own results is a
   reason to change the gates; a claim in a video is not.
 - **Walk-forward test.** The history is split at eight points; at each one the weights and the zero model are fitted on the
@@ -566,10 +566,10 @@ and writes `db/memebot/train.json` (shown on the page under "Training" and in th
   (priced again after the horizon), as win rate, zero rate and average per 20.
 
 The training needs 400 scored candidate coins and at least 10 zeros before the zero model counts, and 4 scans before the
-walk-forward test runs; on GitHub Actions that is about a day of hourly scans. It learns from the scored snapshots of the last
-14 days only (`TRAIN_DAYS`; `since` and `days` in `train.json`): on all of them it grew from 17 to 26 minutes between 17 and
-21 Oct, toward the scan's 36-minute deadline for it. The big test itself keeps 60 days, and the run's own re-learn of the
-weights still reads all of them.
+walk-forward test runs; on GitHub Actions that is about a day of hourly scans. The training and the weights every run scores
+with learn from the same window, the scored snapshots of the last 14 days in the 2h profile (`TRAIN_DAYS`; 30 days in the 24h
+profile, whose snapshot every 11.5 hours gives about 60 scans; `since` and `days` in `train.json`): on all of them the training
+grew from 17 to 26 minutes between 17 and 21 Oct, toward the scan's 36-minute deadline for it. The big test itself keeps 60 days.
 
 ## Two profiles
 

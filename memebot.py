@@ -217,6 +217,7 @@ PROFILES = {
         "MAX_TOP10": 35.0, "MIN_REC_SCORE": 50.0, "MIN_LP_LOCKED": 90.0, "MAX_CREATOR_PCT": 5.0,
         "GATE_SPIKE": {"chgH1": 200.0, "chgH6": 90.0}, "SNAP_GAP_H": 0.4, "EVAL_H": 1.7, "MIN_HOLDERS": 800, "MAX_TOP1": 20.0, "MAX_INSIDERS": 10,
         "SHORTLIST": 16, "RC_BIG": 60, "LEARN_FULL_N": 25000,     # ~3 full 2h snapshots before the learned weights take over
+        "TRAIN_DAYS": 14,         # the TRAIN_DAYS window of the hourly profile: about 330 scored scans
         "PRIOR": {"buyRatio1h": 0.3, "vol1Share": 0.25, "jup.netBuyers1": 0.2, "gt.buyerRatio": 0.15, "jup.holderChg24": 0.15, "buyShare": 0.1, "srcN": 0.2, "kwN": 0.05,
                   "c1": 0.1, "liqMc": 0.15, "logLiq": 0.1, "ageH": -0.1, "boosts": -0.15, "rc.top1": -0.15, "rc.insiders": -0.15, "rc.holders": 0.1, "rc.top10": -0.1,
                   "x": 0.05, "news.hits": 0.05, "gm.smartDegen": 0.15, "gm.bundler": -0.1, "gm.sniperHold": -0.1, "gm.wash": -0.15, "tb.smartHold": 0.15, "sw.lb": 0.2,
@@ -1382,10 +1383,10 @@ def usable_result(doc):
     return len(cand) < 20 or sum(1 for c in cand if c.get("gone")) <= 0.5 * len(cand)
 
 
-def result_rows(d):
+def result_rows(d, since=None):          # since: the TRAIN_DAYS window's start (train_since), None for every chunk
     rows = []
     for doc in load_docs(d, "memesnapres").values():
-        if not usable_result(doc):
+        if not usable_result(doc) or not in_window(doc, since):
             continue                      # each profile learns from its own horizon only, and only from chunks whose pricing worked
         for c in doc.get("coins") or []:
             if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c)):
@@ -1437,9 +1438,10 @@ def learn(rows):
     return w, len(rows), detail
 
 
-def blended_weights(d):
-    """Prior weights, replaced by the learned ones as scored coins pile up. Also returns where they came from."""
-    rows = result_rows(d)
+def blended_weights(d, since=None):
+    """Prior weights, replaced by the learned ones as scored coins pile up. Also returns where they came from. since: the TRAIN_DAYS
+    window's start (train_since(now)), as the training's; None learns from every chunk."""
+    rows = result_rows(d, since)
     learned, n, detail = learn(rows) if rows else ({}, 0, {})
     lam = clamp(n / float(LEARN_FULL_N))
     w = {}
@@ -1481,8 +1483,20 @@ TRAIN_MIN_ROWS = 400       # scored candidate coins before a fitted model counts
 TRAIN_BINS = 4             # equal-count value bins per factor in the zero model
 TRAIN_CHECKPOINTS = 8      # walk-forward: the models are refitted this many times along the history, each tested on the scans after it only
 TRAIN_MIN_TIPS = 30        # a limit is tuned only from at least this many out-of-sample tips
-TRAIN_DAYS = 14            # the training learns from the scored snapshots of the last this many days only (21 Oct, the user's go: it grew
-                           # with the big test, 1,040 s on 17 Oct to 1,548 s on 21 Oct, toward bot.py's 36-minute deadline)
+TRAIN_DAYS = 30            # the weights and the training learn from the scored snapshots of the last this many days only (21 Oct, the
+                           # user's go: the training grew with the big test, 1,040 s on 17 Oct to 1,548 s on 21 Oct, toward bot.py's
+                           # 36-minute deadline). 30 here (the 24h profile, a snapshot every 11.5 h: about 60 scans, enough for the
+                           # walk-forward's 30 tips), 14 in the 2h profile
+
+
+def train_since(now):
+    """The start (ms) of the TRAIN_DAYS window that ends at now, or None (no window) without a clock."""
+    return int(now) - TRAIN_DAYS * 86_400_000 if now else None
+
+
+def in_window(doc, since):
+    """Whether a scored chunk's snapshot time t0 (else its result time t) is inside the TRAIN_DAYS window from since (None: every chunk)."""
+    return since is None or (num(doc.get("t0")) or num(doc.get("t")) or 0) >= since
 MAX_ZERO_P = 0.35          # a clean coin whose trained chance of going to zero is above this is skipped; the training may tighten it ...
 ZERO_P_FLOOR = 0.05        # ... but never below this, nor below 1.5x the base zero rate: a tighter limit would leave the picks to chance
 MIN_UP_P = 0.2             # a pick with a trained profit chance under this carries a "low odds" warning on the page (it is still named: only 3% of all
@@ -1513,9 +1527,9 @@ def train_groups(d, since=None):     # since: cmd_train's TRAIN_DAYS window
         if not usable_result(doc):
             continue
         run = str(sid).rsplit("-", 1)[0]
-        t0 = num(doc.get("t0")) or num(doc.get("t")) or 0
-        if since is not None and t0 < since:     # older than the TRAIN_DAYS window
+        if not in_window(doc, since):          # older than the TRAIN_DAYS window
             continue
+        t0 = num(doc.get("t0")) or num(doc.get("t")) or 0
         g = by_run.setdefault(run, {"t": t0, "rows": []})
         g["t"] = min(g["t"], t0)
         for c in doc.get("coins") or []:
@@ -2034,7 +2048,7 @@ def cmd_train(d, now, out=None):
     """The training programs, all on the scored snapshots of this profile: the walk-forward test of the ranking, the zero
     model, the limit grids, the gate audit, the factor splits and the real tip record. Writes db/memebot/train.json, which
     the next runs read (zero model and tuned limits), and prints the summary."""
-    since = int(now) - TRAIN_DAYS * 86_400_000 if now else None      # the TRAIN_DAYS window: the last TRAIN_DAYS days of scored snapshots
+    since = train_since(now)          # the TRAIN_DAYS window: the last TRAIN_DAYS days of scored snapshots, as the run's weights
     groups = train_groups(d, since)
     rows = [r for _, _, g in groups for r in g]
     doc = {"t": now, "since": since, "days": TRAIN_DAYS, "rule": RULE, "rows": len(rows), "scans": len(groups), "zeros": sum(1 for r in rows if r["gone"]),
@@ -2389,7 +2403,7 @@ def cmd_shortlist(d, now, force=False, snapshot=False, recommend=False):
     pos, pairs = positions(d), load_pairs(d)
     state = load_json(os.path.join(d, "db", "memebot", "state.json"), {}) or {}
     room = PICKS_PER_RUN if recommend else pick_room(state, pos, now, force)[0]
-    w, _ = blended_weights(d)
+    w, _ = blended_weights(d, train_since(now))
     rows, _, held, recent, risk = scan(d, pos, pairs, now, w)
     cands = [r for r in rows if r["ok"] and r["a"] not in held and r["a"] not in recent and r["a"] not in risk]
     short = cands[:SHORTLIST] if room > 0 else []
@@ -2692,7 +2706,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             new_marks[k2].pop(x["id"], None)
 
     # ---------- scan + picks ----------
-    w, winfo = blended_weights(d)
+    w, winfo = blended_weights(d, train_since(now))
     zmodel, umodel, zmax, rec_bar, trained_n, pick_by = load_train(d)     # the zero and profit models, the limits and the ranking rule the last training left
     rows, fail_count, held, recent, risk = scan(d, pos, pairs, now, w)
     gated = [r for r in rows if r["ok"]]
@@ -2925,7 +2939,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         # new results -> re-learn and save the weights the next runs will use
         em = emitted.get("memesnapres", {})       # this run's chunks; the stored ones one file at a time (DocDir), never all at once
         all_res = itertools.chain(((sid, doc) for sid, doc in load_docs(d, "memesnapres").items() if sid not in em), em.items())
-        rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for _, doc in all_res if usable_result(doc) for c in (doc.get("coins") or [])
+        rows_l = [(c["f"], clamp(num(c["eur"]), EUR_CLIP[0], EUR_CLIP[1])) for _, doc in all_res if usable_result(doc) and in_window(doc, train_since(now)) for c in (doc.get("coins") or [])
                   if isinstance(c, dict) and isinstance(c.get("f"), dict) and num(c.get("eur")) is not None and learnable(c) and not (c.get("gone") and priceless_at_snapshot(c))]
         learned, n_l, detail = learn(rows_l)
         emit("memeweights", run_id, {"t": now, "rule": RULE, "n": n_l, "lambda": round(clamp(n_l / float(LEARN_FULL_N)), 3), "learned": learned,
@@ -3062,7 +3076,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             parts.append("No top coin had a clean safety report, so no new fake buys this time.")
         else:
             parts.append("Nothing passed the gates, so no new fake buys this time. Staying out is a result too.")
-        parts.append("Weights: %s (%d scored coins so far)." % (", ".join("%s %+.2f" % kv for kv in sorted(w.items(), key=lambda kv: -abs(kv[1]))[:5]), winfo["n"]))
+        parts.append("Weights: %s (%d scored coins of the last %d days)." % (", ".join("%s %+.2f" % kv for kv in sorted(w.items(), key=lambda kv: -abs(kv[1]))[:5]), winfo["n"], TRAIN_DAYS))
         fresh = load_json(os.path.join(d, "fresh.json"), {}) or {}
         if recommend and isinstance(fresh, dict) and num(fresh.get("t")):
             parts.append("Prices of %d candidates refreshed %d minutes after the scan started, right before the pick." % (int(num(fresh.get("n")) or 0), max(0, round((num(fresh["t"]) - now) / 60000))))
