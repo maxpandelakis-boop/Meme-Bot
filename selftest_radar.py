@@ -1516,8 +1516,10 @@ def checks(check, env_=None):
             if f == "memebot.py" and p.returncode == 0 and p.stdout != now_b:
                 # the four changes since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was), the big test read
                 # lazily (DocDir, 16 Oct, the user's go: only how memesnap and memesnapres are loaded), the training window
-                # (TRAIN_DAYS, 21 Oct, the user's go) and the 2h profile's liquidity-share veto (GATE_MAX_LIQMC, 21 Oct, the user's go
-                # after the holdout study). Every changed stretch of memebot.py names one of them, and nothing else in it moved
+                # (TRAIN_DAYS, 21 Oct, the user's go), the 2h profile's liquidity-share veto (GATE_MAX_LIQMC, 21 Oct, the user's go
+                # after the holdout study) and the gate review (GATES-2026-10-21, the same evening, the user's go after the June/July
+                # check and the check at the pick: the crash gate and the $100k floor stay, the veto is off). Every changed stretch of memebot.py names one
+                # of them, and nothing else in it moved
                 import difflib, hashlib
                 hunks, cur = [], []
                 for ln in difflib.unified_diff(p.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
@@ -1529,20 +1531,26 @@ def checks(check, env_=None):
                 old_k = ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL", "DocDir", "LAZY_COLLS", "memesnapres", "collections.abc")
                 win_k = ("TRAIN_DAYS", "train_since", "in_window")
                 veto_k = ("GATE_MAX_LIQMC", "liqmc")
+                rev_k = ("GATES-2026-10-21",)
                 txt = lambda h: "\n".join(h)
                 # the stretches that name only the window are pinned whole (the fingerprint of their removed and added lines, 21 Oct): any
                 # other edit inside them, or a new one, fails until it is authorized and the fingerprint renewed
                 win = [h for h in hunks if any(k in txt(h) for k in win_k) and not any(k in txt(h) for k in old_k)]
                 win_ok = hashlib.sha256("\n".join(sorted(ln for h in win for ln in h)).encode("utf-8")).hexdigest() == \
                     "d8bd4356505a87338c8cc34b3029245fe681d5538ad8e2cadec3b592f3a5c70a"
-                veto = [h for h in hunks if any(k in txt(h) for k in veto_k) and not any(k in txt(h) for k in old_k + win_k)]
+                veto = [h for h in hunks if any(k in txt(h) for k in veto_k) and not any(k in txt(h) for k in old_k + win_k + rev_k)]
                 veto_ok = hashlib.sha256("\n".join(sorted(ln for h in veto for ln in h)).encode("utf-8")).hexdigest() == \
-                    "80c27d4dac76f5434309d45f13db79edaa2039d2435a8b3d53771e416ea6cfea"
+                    "733306d39b96eaee590df518451be9748e38f7d08812d995b32d737ab6753e09"
+                # the gate review's stretches, pinned the same way (21 Oct)
+                rev = [h for h in hunks if any(k in txt(h) for k in rev_k) and not any(k in txt(h) for k in old_k + win_k)]
+                rev_ok = hashlib.sha256("\n".join(sorted(ln for h in rev for ln in h)).encode("utf-8")).hexdigest() == \
+                    "5d0cf066bf91ccdcc2d27f1585aa4bc2bf02dc729ba7afc871a61f059912e1c7"
                 # the fingerprint sees the lines, not where they sit: the veto must also be a key of the 2h profile (not of its PRIOR)
                 # and its gate line must come before gates() returns
                 g_src = now_b.decode("utf-8").split("\ndef gates(", 1)[1].split("\n    return fails", 1)[0]
-                veto_at = M.PROFILES["2h"].get("GATE_MAX_LIQMC") == 0.20 and "GATE_MAX_LIQMC" not in M.PROFILES["2h"].get("PRIOR", {}) and 'fails.append("liqmc")' in g_src
-                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k + veto_k) for h in hunks) and win_ok and veto_ok and veto_at
+                veto_at = "GATE_MAX_LIQMC" in M.PROFILES["2h"] and M.PROFILES["2h"]["GATE_MAX_LIQMC"] is None and M.PROFILES["2h"].get("GATE_CRASH") == {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0} and \
+                    M.PROFILES["2h"].get("GATE_MC") == (100_000, 2_000_000) and "GATE_MAX_LIQMC" not in M.PROFILES["2h"].get("PRIOR", {}) and 'fails.append("liqmc")' in g_src
+                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k + veto_k + rev_k) for h in hunks) and win_ok and veto_ok and rev_ok and veto_at
                             and not any(ln.startswith("-PAPER_RULE") for h in hunks for ln in h))
                 continue
             same.append(p.returncode == 0 and p.stdout == now_b)
@@ -1557,7 +1565,7 @@ def checks(check, env_=None):
         own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak", "radar_paper"}
         std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
                                                               "sys", "tarfile", "time", "urllib", "zoneinfo"}
-        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window and the liquidity-share veto (%s); imports: %s" % (BASE, same, sorted(mods - own)))
+        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto and the gate review (%s); imports: %s" % (BASE, same, sorted(mods - own)))
 
         print("== launch radar R9: no secret in any file, branch, row or log line")
         from selftest import Rest, serve_app, PushSink, APP_SECRET
