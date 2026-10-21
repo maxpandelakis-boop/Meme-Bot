@@ -205,8 +205,9 @@ def final(meta_dir, shard_dir, out):
             for k, src in (("p", "p0"), ("h", "hold"), ("a", "a"), ("b", "b"), ("x", "hi6")):
                 cols["%s%d" % (k, d)][a:z] = o[src][ii]
         last[a:z] = o["last"]
-    for k, v in cols.items():
-        pairs[k] = v
+    del bars, bm, bcl, bhi, blo, bc
+    for k in list(cols):
+        pairs[k] = cols.pop(k)
     print("copies priced (%.0f s)" % (time.time() - t0), flush=True)
     # outages: a copy whose buy-to-sell window touches one is flagged
     lo_i = np.searchsorted(gap_m, tq, side="left")
@@ -215,8 +216,11 @@ def final(meta_dir, shard_dir, out):
     # the wallet's own result on the coin: SOL out plus the tokens it still held at the last price, over SOL in
     left = np.maximum(pairs["tok_in"] - pairs["tok_out"], 0.0)
     pairs["roi"] = ((pairs["sol_out"] + left * last) / pairs["sol_in"]).astype("float32")
-    for k in ("sol_q", "px_q", "sol_in", "tok_in", "sol_out", "tok_out"):
+    pairs = pairs.drop(columns=["tok_in", "tok_out"])
+    for k in ("sol_q", "px_q", "sol_in", "sol_out"):
         pairs[k] = pairs[k].astype("float32")
+    for k in ("n_buy", "n_sell"):
+        pairs[k] = pairs[k].astype("int32")
     pairs["wid"] = pairs["wid"].astype("int32")
 
     # wallets with 3 pairs or more get their address (the others are a number only)
@@ -224,12 +228,16 @@ def final(meta_dir, shard_dir, out):
     keep = nw[nw >= 3]
     wl = pd.DataFrame({"wid": keep.index.astype("int32"), "address": [addr[int(w)] for w in keep.index], "pairs": keep.values.astype("int32")})
     wl.to_parquet(os.path.join(dst, "wallets.parquet"), compression="zstd", index=False)
+    del wl, addr
     print("wallets: %d with a pair, %d with 3 or more; pairs per wallet median %.0f, 99%% %.0f, max %d" % (
         len(nw), len(keep), nw.median(), nw.quantile(0.99), nw.max()), flush=True)
-    day = pd.to_datetime(pairs["grad_ms"], unit="ms").dt.strftime("%Y-%m-%d")
-    for d_, part in pairs.groupby(day):      # GitHub takes no file over 100 MB: a day in parts of at most 1.5M pairs
-        for j, a in enumerate(range(0, len(part), 1_500_000)):
-            part.iloc[a:a + 1_500_000].to_parquet(os.path.join(dst, "pairs", "pairs_%s_%d.parquet" % (d_, j)), compression="zstd", index=False)
+    # the pairs are sorted by coin, and the coins are numbered in graduation order
+    day = (pairs["grad_ms"].to_numpy() // (24 * HOUR)).astype("int64")
+    cuts = np.r_[0, np.nonzero(day[1:] != day[:-1])[0] + 1, len(day)]
+    for a0, z0 in zip(cuts[:-1], cuts[1:]):    # GitHub takes no file over 100 MB: a day in parts of at most 1.5M pairs
+        d_ = time.strftime("%Y-%m-%d", time.gmtime(int(day[a0]) * 86400))
+        for j, a in enumerate(range(a0, z0, 1_500_000)):
+            pairs.iloc[a:min(z0, a + 1_500_000)].to_parquet(os.path.join(dst, "pairs", "pairs_%s_%d.parquet" % (d_, j)), compression="zstd", index=False)
     sizes = [os.path.getsize(f) for f in glob.glob(os.path.join(dst, "pairs", "*.parquet"))]
     print("pairs/: %d days, %.0f MB, largest %.1f MB" % (len(sizes), sum(sizes) / 1e6, max(sizes) / 1e6))
     g[["coin", "mint", "pool", "grad_ms", "symbol", "token_name"]].to_parquet(os.path.join(dst, "coins.parquet"), compression="zstd", index=False)
@@ -250,7 +258,7 @@ def final(meta_dir, shard_dir, out):
     ok = pairs[~pairs["g6"] & pairs["p5"].notna()]
     print("copies at 5 min without outages: %d; hold median %.3f, under 0.02x %.1f%%; 3x within 6 h %.1f%%" % (
         len(ok), ok["h5"].median(), 100 * (ok["h5"] < 0.02).mean(), 100 * (ok["x5"] >= 3).mean()))
-    print(pairs.describe(percentiles=[0.1, 0.5, 0.9]).T.to_string()[:12000])
+    print(pairs.sample(min(len(pairs), 500_000), random_state=7).describe(percentiles=[0.1, 0.5, 0.9]).T.to_string()[:12000])
 
 
 def main():
