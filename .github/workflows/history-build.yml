@@ -1,0 +1,34 @@
+# Long-history data build: started by hand only (Actions -> history-build -> Run workflow), never on a push or a schedule.
+# Fake money only: it downloads public, openly licensed data sets from Hugging Face, turns them into compact research rows
+# (research/history_build.py) and force-pushes them as one commit to the branch "history", which nothing else writes. The bot,
+# its results branch and its paper accounts are not touched.
+name: history-build
+on:
+  workflow_dispatch:
+permissions:
+  contents: write                    # the history branch only
+concurrency:
+  group: history-build
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install pyarrow and pandas
+        run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - name: Build the rows (June and July 2026, graduated coins)
+        run: python3 research/history_build.py out
+      - name: Push them to the history branch (one commit, replaced each build)
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out/history && ls -la
+          git init -q && git checkout -q -b history && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "history rows $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" history && echo "history branch updated: $(du -sh . | cut -f1)"
