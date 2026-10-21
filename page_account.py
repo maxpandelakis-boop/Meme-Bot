@@ -916,6 +916,16 @@ def exit_grid(D):
     return PX.section(D)
 
 
+def filter_search(D):
+    """The nightly filter search block (page_search.py: frozen rules tested on coins they never saw; a report), or nothing when that
+    module is not there."""
+    try:
+        import page_search as PS
+    except ImportError:
+        return ""
+    return PS.section(D)
+
+
 def section(D, bought=None):
     """The whole account block (see the module doc); every part renders on its own, a broken part shows a notice. The top trades
     (one line while folded) come before the open positions, which can fill several phone screens."""
@@ -923,7 +933,8 @@ def section(D, bought=None):
     A = _acct(D)
     parts = ["<style>%s</style>" % CSS, R.safe("account", lambda: header(D, A)), R.safe("categories", lambda: strips(D, A)),
              R.safe("without the stop-loss", lambda: noloss(D, A)), R.safe("radar account", lambda: radar_account(D)),
-             R.safe("exit what-if", lambda: exit_grid(D)), R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
+             R.safe("exit what-if", lambda: exit_grid(D)), R.safe("filter search", lambda: filter_search(D)),
+             R.safe("activity", lambda: feed(D, A)), R.safe("trades", lambda: trades(D, A))]
     if bought:
         parts.append(R.safe("open positions", bought))
     parts += [R.safe("closed trades", lambda: old_trades(D)), R.safe("account curve", lambda: curve(D, A))]
