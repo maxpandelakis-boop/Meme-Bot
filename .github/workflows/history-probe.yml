@@ -1,0 +1,24 @@
+# Probe for the long-history study: started by hand only (Actions -> history-probe -> Run workflow), never on a push or a schedule.
+# Fake money only: it reads public data set listings on Hugging Face and GeckoTerminal's public API and writes nothing anywhere.
+# The log holds status codes, file lists with sizes, column names, licence lines and a few cell values cut short, with every
+# Solana address masked; no secret reaches the job.
+name: history-probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: history-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Probe the free data sets (about 5 to 12 minutes)
+        run: python3 research/history_probe.py
