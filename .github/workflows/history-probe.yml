@@ -1,10 +1,15 @@
 # Probe for the long-history study: started by hand only (Actions -> history-probe -> Run workflow), never on a push or a schedule.
-# Fake money only: it reads public data set listings on Hugging Face and GeckoTerminal's public API and writes nothing anywhere.
-# The log holds status codes, file lists with sizes, column names, licence lines and a few cell values cut short, with every
-# Solana address masked; no secret reaches the job.
+# Fake money only: it reads public data set listings on Hugging Face (file lists, cards, parquet footers through range requests)
+# and GeckoTerminal's public API, and writes nothing anywhere. The log holds status codes, file lists with sizes, column names,
+# licence lines and a few cell values cut short, with every Solana address masked; no secret reaches the job.
 name: history-probe
 on:
   workflow_dispatch:
+    inputs:
+      datasets:
+        description: 'Hugging Face data set ids, space separated (add --search and/or --gecko)'
+        type: string
+        default: '--search --gecko Slinky21/Pumpfun_v2_dataset'
 permissions:
   contents: read
 concurrency:
@@ -13,12 +18,15 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       PYTHONUTF8: '1'
+      DATASETS: ${{ inputs.datasets }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Probe the free data sets (about 5 to 12 minutes)
-        run: python3 research/history_probe.py
+      - name: Install pyarrow (parquet footers only)
+        run: python3 -m pip install --quiet pyarrow==17.0.0
+      - name: Probe the free data sets
+        run: python3 research/history_probe.py $DATASETS
