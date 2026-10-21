@@ -26,6 +26,8 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 PY = sys.executable
 BASE = "80e7fe0"
+PC_FETCH = "f9c45bb18f5f3d01a6d00163a398b26acf60d7b5ee3d3137d7b34238b5497d73"   # the fingerprints of the comment-speed stretches of fetch.py and memebot.py (21 Oct): see R8
+PC_MEMEBOT = "fe4c850c8c7275c620dfbe01df7655dad7cb06296afd181e5367cf69c554dac0"
 T0 = 1791892800000                # 2026-10-13 12:00 UTC (14:00 Berlin): the fake clock's start
 MIN = 60_000
 H = 3_600_000
@@ -1510,9 +1512,31 @@ def checks(check, env_=None):
               and {"gather", "weights", "ds_chunk"} <= used_r and "blended_weights" not in used_m and not re.search(r"^\s*def (scan|young_rows|cmd_gather|risk_view)\b", src, re.M),
               "launch_radar.py and radar_src.py call %d memebot, %d fetch and %d radar names, all exist, none copied, never blended_weights" % (len(used_m), len(used_f), len(used_r)))
         same = []
+        import difflib, hashlib
+        # the pump.fun comment speed (21 Oct, the user's go after research/SOCIAL-2026-10-21.md): measured only, the fetch.pf_comment_speed
+        # logger and memebot's pc.* factors (MEASURE_ONLY). Its stretches of fetch.py and memebot.py are pinned whole like the window's
+        pc_k = ("PC_COLS", "PC_LIMIT", "pf_comment_speed", '"pc"', '"pc.')
+
+        def hunks_of(old, new):
+            hs, cur = [], []
+            for ln in difflib.unified_diff(old.splitlines(), new.splitlines(), lineterm="", n=0):
+                if ln.startswith("@@"):
+                    cur = []
+                    hs.append(cur)
+                elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
+                    cur.append(ln)
+            return hs
+
+        def pc_ok(hs, want):
+            pc = [h for h in hs if any(k in "\n".join(h) for k in pc_k)]
+            return bool(pc) and hashlib.sha256("\n".join(sorted(ln for h in pc for ln in h)).encode("utf-8")).hexdigest() == want
         for f in ("memebot.py", "fetch.py", "radar.py"):
             p = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (BASE, f)], capture_output=True)
             now_b = open(os.path.join(HERE, f), "rb").read()
+            if f == "fetch.py" and p.returncode == 0 and p.stdout != now_b:
+                hs = hunks_of(p.stdout.decode("utf-8"), now_b.decode("utf-8"))
+                same.append(all(any(k in "\n".join(h) for k in pc_k) for h in hs) and pc_ok(hs, PC_FETCH))
+                continue
             if f == "memebot.py" and p.returncode == 0 and p.stdout != now_b:
                 # the four changes since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was), the big test read
                 # lazily (DocDir, 16 Oct, the user's go: only how memesnap and memesnapres are loaded), the training window
@@ -1520,14 +1544,7 @@ def checks(check, env_=None):
                 # after the holdout study) and the gate review (GATES-2026-10-21, the same evening, the user's go after the June/July
                 # check and the check at the pick: the crash gate and the $100k floor stay, the veto is off). Every changed stretch of memebot.py names one
                 # of them, and nothing else in it moved
-                import difflib, hashlib
-                hunks, cur = [], []
-                for ln in difflib.unified_diff(p.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
-                    if ln.startswith("@@"):
-                        cur = []
-                        hunks.append(cur)
-                    elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
-                        cur.append(ln)
+                hunks = hunks_of(p.stdout.decode("utf-8"), now_b.decode("utf-8"))
                 old_k = ("switch_at", "SWITCH_AT", "young_on", "PAPER_LABEL", "DocDir", "LAZY_COLLS", "memesnapres", "collections.abc")
                 win_k = ("TRAIN_DAYS", "train_since", "in_window")
                 veto_k = ("GATE_MAX_LIQMC", "liqmc")
@@ -1535,14 +1552,14 @@ def checks(check, env_=None):
                 txt = lambda h: "\n".join(h)
                 # the stretches that name only the window are pinned whole (the fingerprint of their removed and added lines, 21 Oct): any
                 # other edit inside them, or a new one, fails until it is authorized and the fingerprint renewed
-                win = [h for h in hunks if any(k in txt(h) for k in win_k) and not any(k in txt(h) for k in old_k)]
+                win = [h for h in hunks if any(k in txt(h) for k in win_k) and not any(k in txt(h) for k in old_k + pc_k)]
                 win_ok = hashlib.sha256("\n".join(sorted(ln for h in win for ln in h)).encode("utf-8")).hexdigest() == \
                     "d8bd4356505a87338c8cc34b3029245fe681d5538ad8e2cadec3b592f3a5c70a"
-                veto = [h for h in hunks if any(k in txt(h) for k in veto_k) and not any(k in txt(h) for k in old_k + win_k + rev_k)]
+                veto = [h for h in hunks if any(k in txt(h) for k in veto_k) and not any(k in txt(h) for k in old_k + win_k + rev_k + pc_k)]
                 veto_ok = hashlib.sha256("\n".join(sorted(ln for h in veto for ln in h)).encode("utf-8")).hexdigest() == \
                     "733306d39b96eaee590df518451be9748e38f7d08812d995b32d737ab6753e09"
                 # the gate review's stretches, pinned the same way (21 Oct)
-                rev = [h for h in hunks if any(k in txt(h) for k in rev_k) and not any(k in txt(h) for k in old_k + win_k)]
+                rev = [h for h in hunks if any(k in txt(h) for k in rev_k) and not any(k in txt(h) for k in old_k + win_k + pc_k)]
                 rev_ok = hashlib.sha256("\n".join(sorted(ln for h in rev for ln in h)).encode("utf-8")).hexdigest() == \
                     "5d0cf066bf91ccdcc2d27f1585aa4bc2bf02dc729ba7afc871a61f059912e1c7"
                 # the fingerprint sees the lines, not where they sit: the veto must also be a key of the 2h profile (not of its PRIOR)
@@ -1550,7 +1567,8 @@ def checks(check, env_=None):
                 g_src = now_b.decode("utf-8").split("\ndef gates(", 1)[1].split("\n    return fails", 1)[0]
                 veto_at = "GATE_MAX_LIQMC" in M.PROFILES["2h"] and M.PROFILES["2h"]["GATE_MAX_LIQMC"] is None and M.PROFILES["2h"].get("GATE_CRASH") == {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0} and \
                     M.PROFILES["2h"].get("GATE_MC") == (100_000, 2_000_000) and "GATE_MAX_LIQMC" not in M.PROFILES["2h"].get("PRIOR", {}) and 'fails.append("liqmc")' in g_src
-                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k + veto_k + rev_k) for h in hunks) and win_ok and veto_ok and rev_ok and veto_at
+                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k + veto_k + rev_k + pc_k) for h in hunks) and win_ok and veto_ok and rev_ok and veto_at
+                            and pc_ok([h for h in hunks if not any(k in txt(h) for k in old_k + win_k + veto_k + rev_k)], PC_MEMEBOT)
                             and not any(ln.startswith("-PAPER_RULE") for h in hunks for ln in h))
                 continue
             same.append(p.returncode == 0 and p.stdout == now_b)

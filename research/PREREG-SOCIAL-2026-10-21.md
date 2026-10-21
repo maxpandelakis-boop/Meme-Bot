@@ -56,3 +56,19 @@ A signal becomes a new bot in the filter team only if, on the **check half**:
 12 signals x 2 groups: about one false hit on the fit half is expected by chance; that is why the check half decides.
 If no signal passes: nothing is built into the bot, and the result names which sources lack history so a live log can
 collect it.
+
+## Part 2 (added 2026-10-21 after part 1, before any data exists): pump.fun comment speed, checked 4 Nov 2026
+
+Part 1 failed (research/SOCIAL-2026-10-21.md). The user chose to log the one untested free signal: how fast people comment.
+From the merge on, `fetch.pf_comment_speed` reads the newest 200 replies of up to 30 shortlisted pump.fun coins per scan
+and the bot stores `pc.n1h` (replies in the last hour), `pc.n6h`, `pc.users1h` (distinct commenters in the last hour) and
+`pc.newestMin` with every scored coin. Measured only: no weight, no gate, no effect on picks.
+
+Run on 4 Nov 2026: `python3 -I research/check_social.py <memesnapres> --speed`.
+
+- Rows: profile m9-2h, coins with `pc.n1h` known. Fit half: scans before the middle scan time of these rows; check half: the rest.
+- Signals: `speed` = `pc.n1h` at least the 70th percentile of the fit half; `people` = `pc.users1h` at least the 70th
+  percentile of the fit half; `fresh` = `pc.newestMin <= 10`.
+- Same fees, same one-entry-per-coin, same verdict rules as part 1.
+- If fewer than 300 coins with `pc.n1h` exist on either half, the answer is "not enough data yet", not a verdict;
+  if the logger read no comments at all (pump.fun blocks the runner), that is reported and the logger is taken out again.

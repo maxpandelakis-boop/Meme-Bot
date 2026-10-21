@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The social-signal check of research/PREREG-SOCIAL-2026-10-21.md (fake money only).
 
-usage: python3 -I research/check_social.py <memesnapres dir>
+usage: python3 -I research/check_social.py <memesnapres dir> [--speed]   (--speed: part 2, the pump.fun comment speed)
 """
 import os, random, sys
 
@@ -85,15 +85,42 @@ def fmt(s):
     return "n %5d  avg %+6.2f  zero %5.1f%%  3x %4.1f%%" % (s["n"], s["avg"], 100 * s["zero"], 100 * s["x3"])
 
 
-def main(d):
+def pct(vals, q):
+    vals = sorted(vals)
+    return vals[min(len(vals) - 1, int(q * len(vals)))]
+
+
+def speed_signals(rows):
+    """Part 2: the cut between the halves and the signals, fixed on the fit half (research/PREREG-SOCIAL-2026-10-21.md)."""
+    rows = [r for r in rows if r["f"].get("pc.n1h") is not None]
+    if not rows:
+        print("no row carries pc.n1h: the comment-speed logger read nothing (pump.fun blocked?)")
+        sys.exit(0)
+    cut = sorted(r["scan"] for r in rows)[len(rows) // 2]
+    fit = [r for r in rows if r["scan"] < cut]
+    n1 = pct([r["f"]["pc.n1h"] for r in fit], 0.7) if fit else 0
+    u1 = pct([r["f"].get("pc.users1h") or 0 for r in fit], 0.7) if fit else 0
+    print("part 2: cut %d, speed >= %s replies/h, people >= %s commenters/h" % (cut, n1, u1))
+    return rows, cut, {"speed": lambda r: r["f"]["pc.n1h"] >= n1, "people": lambda r: (r["f"].get("pc.users1h") or 0) >= u1,
+                       "fresh": lambda r: None if r["f"].get("pc.newestMin") is None else r["f"]["pc.newestMin"] <= 10}
+
+
+def main(d, speed=False):
     rows, _ = H.load(d, rule="m9-2h")
-    halves = {"fit": [r for r in rows if r["scan"] < CUT], "check": [r for r in rows if r["scan"] >= CUT]}
+    cut, signals = CUT, SIGNALS
+    if speed:
+        rows, cut, signals = speed_signals(rows)
+    halves = {"fit": [r for r in rows if r["scan"] < cut], "check": [r for r in rows if r["scan"] >= cut]}
+    if speed and min(len(first_per_coin(rs)) for rs in halves.values()) < 300:
+        print("not enough data yet: %s coins per half (300 needed)" % [len(first_per_coin(rs)) for rs in halves.values()])
+        return
     groups = {h: {"all": first_per_coin(rs), "pass": first_per_coin([r for r in rs if r["pass"]])} for h, rs in halves.items()}
     # K for the count signal: best average on the fit half, all coins
-    best = max(range(1, 7), key=lambda k: (stats(split(groups["fit"]["all"], lambda r: count(r) >= k)[0]).get("avg", -99)
+    best = 0 if speed else max(range(1, 7), key=lambda k: (stats(split(groups["fit"]["all"], lambda r: count(r) >= k)[0]).get("avg", -99)
                                            if len(split(groups["fit"]["all"], lambda r: count(r) >= k)[0]) >= 100 else -99))
-    sig = dict(SIGNALS, count=lambda r: count(r) >= best)
-    print("count signal: K =", best, "(chosen on the fit half)")
+    sig = signals if speed else dict(SIGNALS, count=lambda r: count(r) >= best)
+    if not speed:
+        print("count signal: K =", best, "(chosen on the fit half)")
     res = {}
     for h in ("fit", "check"):
         print("\n=== %s half ===" % h)
@@ -126,4 +153,4 @@ def main(d):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], speed="--speed" in sys.argv[2:])
