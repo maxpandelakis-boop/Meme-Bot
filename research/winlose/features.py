@@ -188,6 +188,48 @@ def wallet_all():
     return f.reindex(rows.index)
 
 
+def wallet_chunked(G, chunk=400):
+    """wallet_all for many rows: the wallet records once, then the buyers before each row, a few hundred coins at a time."""
+    global rows
+    p = pd.read_pickle(os.path.join(S, "pairs.pkl"))
+    wc = pd.read_parquet(os.path.join(S, "w", "coins.parquet"))
+    p["mint"] = p["coin"].map(wc.set_index("coin")["mint"])
+    p = p[["wid", "mint", "t_q", "sol_q", "grad_ms", "roi"]]
+    p["known"] = p["grad_ms"] + 3 * 86_400_000
+    rec = p[["wid", "known", "roi"]].sort_values(["wid", "known"])
+    rec["n"] = 1
+    rec["win"] = (rec["roi"] > 1.5).astype("int32")
+    rec["big"] = (rec["roi"] > 3).astype("int32")
+    rec["lroi"] = np.log(rec["roi"].clip(1e-3, 1e3)).astype("float32")
+    rec = pd.concat([rec[["wid", "known"]], rec.groupby("wid")[["n", "win", "big", "lroi"]].cumsum()], axis=1).sort_values("known")
+    mints = G["mint"].unique()
+    p = p[p["mint"].isin(set(mints))][["mint", "wid", "t_q", "sol_q"]]
+    out = []
+    for i in range(0, len(mints), chunk):
+        part = set(mints[i:i + chunk])
+        rows = G[G["mint"].isin(part)][["mint", "ts"]]
+        q = p[p["mint"].isin(part)]
+        x = rows.reset_index()
+        q = q.merge(x, on="mint")
+        q = q[q["t_q"] < q["ts"]].sort_values("ts")
+        q = pd.merge_asof(q, rec.rename(columns={"known": "ts"}), on="ts", by="wid", direction="backward")
+        q[["n", "win", "big", "lroi"]] = q[["n", "win", "big", "lroi"]].fillna(0)
+        q["exp"] = q["n"] >= 5
+        q["smart"] = q["exp"] & (q["win"] / q["n"].clip(lower=1) >= 0.5)
+        q["smart_big"] = q["exp"] & (q["big"] >= 2)
+        q["fresh"] = q["n"] == 0
+        q["recent"] = q["t_q"] >= q["ts"] - 3_600_000
+        g = q.groupby("index")
+        sn = g[["lroi", "n"]].sum()
+        out.append(pd.DataFrame({"w_buyers": g.size(), "w_sol": g["sol_q"].sum(), "w_top_share": g["sol_q"].max() / g["sol_q"].sum(),
+                                 "w_fresh_share": g["fresh"].mean(), "w_exp_share": g["exp"].mean(), "w_smart_n": g["smart"].sum(),
+                                 "w_smart_share": g["smart"].mean(), "w_smartbig_n": g["smart_big"].sum(),
+                                 "w_avg_lroi": sn["lroi"] / sn["n"].where(sn["n"] > 0), "w_recent_share": g["recent"].mean(),
+                                 "w_recent_smart": q[q["recent"]].groupby("index")["smart"].sum()}))
+        print("wallets", i, flush=True)
+    return pd.concat(out).reindex(G.index)
+
+
 def market_all():
     out = pd.DataFrame(index=rows.index)
     for s, name in (("BTCUSDT", "btc"), ("SOLUSDT", "sol")):
