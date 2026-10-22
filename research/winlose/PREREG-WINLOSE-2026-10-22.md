@@ -35,3 +35,13 @@ passes. THE choice: the candidate with the best dev walk-forward average per 20 
 lower bound (by coin) above 0, better than the bot's gates on the holdout, and a 3x share not below the gates'. Holm over the
 8 candidates' holdout p-values is reported. Also reported: how many of 10 picks end in profit (the user's goal: 6 of 10).
 A pass is built into the pick selection as a score; a fail changes nothing, the top differences go to the app as display only.
+
+## Addendum, 22 Oct 07:25 UTC: all signals together on the bot's own scans (written before this part was run)
+The user asked for all tests together. The dev/holder, RugCheck, social, smart-wallet and pump.fun numbers exist only in the
+bot's own big test (every coin of every scan from 7 Oct; outcome: held to the 2h check, 1% fee per side, as filter_search.py).
+Script: research/winlose/combined_bt.py. All 91 numbers the scan stores, in one LightGBM model (it finds the combinations
+itself), and a two-stage score: P(big move: x2 or more, or to 20% or less) times P(up | big move). Walk-forward by scan day
+(train on all days before, from 11 Oct); 2 scores x cuts at the top 2/5/10/20% = 8 candidates; THE choice = best dev
+average with 100 coins or more. Dev: scans before 18 Oct. Holdout: scans from 18 Oct (earlier used for the 21 Oct rule
+search, never for this model), once. Pass and consequence as in part B (above 0 with lower bound above 0, better than the
+gates, 3x share not below).
