@@ -42,7 +42,7 @@ def gates(te):
 if "--holdout" not in sys.argv:
     acc = {(s, c): [] for s in ("reg", "two") for c in CUTS}
     g = []
-    for d0 in range(int((1791676800000) // DAY) + 4, int(HOLD // DAY)):          # from 11 Oct
+    for d0 in range(int(1791676800000 // DAY), int(HOLD // DAY)):          # from 11 Oct
         tr, te = np.flatnonzero(day < d0), np.flatnonzero(day == d0)
         if not len(te):
             continue

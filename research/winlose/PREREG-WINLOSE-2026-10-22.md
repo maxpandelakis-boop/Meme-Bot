@@ -45,3 +45,19 @@ itself), and a two-stage score: P(big move: x2 or more, or to 20% or less) times
 average with 100 coins or more. Dev: scans before 18 Oct. Holdout: scans from 18 Oct (earlier used for the 21 Oct rule
 search, never for this model), once. Pass and consequence as in part B (above 0 with lower bound above 0, better than the
 gates, 3x share not below).
+Result of the addendum (run 22 Oct ~07:35 UTC): dev walk-forward choice "predicted result, top 2%" +0.33 per 20 (1,696 coins,
+lower bound -0.22); holdout -0.00 per 20 (417 coins, range -0.57 to +0.62; gates -1.38), 3x 0.24%. **FAILS** (not above 0).
+
+## Addendum 2, 22 Oct 07:40 UTC: rocket hunter and "few losers", side by side (written before this part was run)
+The user wants (B) the daily exploders found before take-off and (A) hardly any pick in the red. history2 coins, now every
+15 minutes from 30 minutes to 18 hours after the graduation (one-minute bars), so a take-off can be caught 5 to 60 minutes
+early; the same universe filters, computed from the bars (liquidity, market cap $100k-5M, 24 h volume, crash gate). Numbers:
+the chart, wallet and market numbers of features.py at that minute. Outcome: sell rule A from that minute, per 20 after fees,
+**not clipped** (what the paper account would really book; 11x is the most rule A can make). Dev/holdout split as before.
+- **A, few losers**: P(result > 0). Choice on dev: the cut (top 0.5/1/2/5%) with the most picks in profit among those with
+  100 coins or more. Passes on the holdout with 6 or more of 10 in profit AND an average above 0.
+- **B, rockets**: P(price reaches 10x within 6 h). Choice on dev: the cut with the best average among those with 100 coins or
+  more. Passes on the holdout with an average above 0 and the bootstrap lower bound above 0.
+- **C, expected profit**: predicted result (regression). Same choice and pass as B.
+Walk-forward weekly on dev as part B; Holm over the 12 holdout p-values reported. A pass is built into the radar's pick
+selection only as described before; a fail changes nothing and goes to the app as display.
