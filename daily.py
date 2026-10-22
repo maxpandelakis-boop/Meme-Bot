@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""daily.py: the evening report ("Tagesbericht") as one push notification to the iPhone app. Fake money only: nothing here buys, signs
-or sends anything but the notification, and nothing in it is advice. German words, like the user writes.
+"""daily.py: the evening report ("Daily report", German "Tagesbericht") as one push notification to the iPhone app. Fake money only:
+nothing here buys, signs or sends anything but the notification, and nothing in it is advice. English words (the user's wish of Oct 22).
 
 daily.yml runs it at 19:00 and 20:00 UTC; it sends at the first run whose Berlin time is from SEND_FROM_H on (21:xx in summer and in
 winter), once per Berlin day: the live store's row "daily" keeps the day it last went out (read before, written after), so a second
-run that evening, a late cron start or a run by hand ("send") never sends it twice. The phones' own switch "Tagesbericht" (prefs
+run that evening, a late cron start or a run by hand ("send") never sends it twice. The phones' own switch "Daily report" (prefs
 "daily", app.wants) decides whether a phone gets it.
 
 What it says (words(): a title and one body within app.TITLE_MAX and app.BODY_MAX, never buy, safe or clean):
@@ -57,9 +57,9 @@ def day_start(now):
 
 
 def eur(v, signed=True):
-    """+12,30 € / −8,05 € / 0,00 € (German, a real minus)."""
+    """+12.30 € / −8.05 € / 0.00 € (a real minus)."""
     v = num(v) or 0.0
-    s = format(abs(v), ",.2f").replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    s = format(abs(v), ",.2f")
     sign = MINUS if v < -0.004 else ("+" if signed and v > 0.004 else "")
     return "%s%s €" % (sign, s)
 
@@ -124,24 +124,24 @@ def shadow_line(d, now):
     except Exception:
         return ""
     if not S["n"]:
-        return "Schatten-Regeln: noch kein Kauf ausgewertet (%d läuft)" % S["open"] if S["open"] else "Schatten-Regeln: noch kein Kauf"
+        return "Shadow rules: no trade settled yet (%d running)" % S["open"] if S["open"] else "Shadow rules: no trade yet"
     k = next(a for a in S["accts"] if a["id"] == "K")
     lead = next((a for a in S["accts"] if a["id"] == S["leader"]), None)
     if not lead:
         return ""
     if not S["ahead"]:
-        return "Schatten (%d Käufe): keine Regel besser als die echte" % S["n"]
-    return "Schatten (%d Käufe): vorn %s %s, %s gegen die echte Regel" % (S["n"], lead["id"], lead["name"], eur(lead["eur"] - k["eur"]))
+        return "Shadow (%d trades): no rule better than the real one" % S["n"]
+    return "Shadow (%d trades): ahead %s %s, %s against the real rule" % (S["n"], lead["id"], lead["name"], eur(lead["eur"] - k["eur"]))
 
 
 def filter_line(doc, now):
     if not isinstance(doc, dict) or not isinstance(doc.get("data"), dict):
-        return "Filtersuche: kein Ergebnis"
+        return "Filter search: no result"
     t = num(doc.get("t")) or 0
-    old = " (von %s)" % berlin(t).strftime("%d.%m.") if t and now - t > 36 * 3_600_000 else ""
+    old = " (from %s)" % berlin(t).strftime("%b %d") if t and now - t > 36 * 3_600_000 else ""
     if isinstance(doc.get("leader"), dict):
-        return "Filtersuche%s: eine Regel schlägt die Gates bei neuen Coins (nicht eingeschaltet, deine Entscheidung)" % old
-    return "Filtersuche%s: noch keine Regel besser als die Gates" % old
+        return "Filter search%s: a rule beats the gates on new coins (not switched on, your call)" % old
+    return "Filter search%s: no rule better than the gates yet" % old
 
 
 def words(d, now, rocket=None, fs=None):
@@ -152,11 +152,11 @@ def words(d, now, rocket=None, fs=None):
     def part(name, x):
         if x is None:
             return "%s: –" % name
-        return "%s: %d %s, %d verkauft (%s), %d offen, Konto %s" % (
-            name, x["buys"], "Kauf" if x["buys"] == 1 else "Käufe", x["sold"], eur(x["soldEur"]), x["open"], eur(x["bal"]))
+        return "%s: %d bought, %d sold (%s), %d open, account %s" % (
+            name, x["buys"], x["sold"], eur(x["soldEur"]), x["open"], eur(x["bal"]))
     today = lambda x: eur(x["soldEur"]) if x is not None else "–"
-    title = "Tagesbericht %s: Pick %s, Radar %s" % (berlin(now).strftime("%d.%m."), today(pk), today(rk))
-    tail = "Nur Papiergeld."
+    title = "Daily report %s: Pick %s, Radar %s" % (berlin(now).strftime("%b %d"), today(pk), today(rk))
+    tail = "Paper money only."
     bits = [part("Pick", pk), part("Radar", rk), shadow_line(d, now), filter_line(fs, now)]
     bits = [b for b in bits if b]
     while bits:

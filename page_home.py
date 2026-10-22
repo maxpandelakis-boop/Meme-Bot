@@ -1,5 +1,5 @@
 """page_home.py: the Start tab (#pane-home), the first thing the app shows. Fake money only: nothing here buys, signs or sends anything,
-and nothing here is advice. German words, like the user writes.
+and nothing here is advice. English words (the user's wish of Oct 22: the whole app in English).
 
 The product has two parts, and this tab shows both at a glance:
   PICK   the full scan's paper account (50 € a pick, its sell rule unchanged)
@@ -9,11 +9,11 @@ Radar for comparison), because the open Pick positions were only in Archiv.
 section(D, R) -> HTML:
   - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
     (3x and 10x) and the open positions
-  - "Jetzt im Blick": the current pick with its look-alike forecast (forecast.py) and the rocket hunter's best candidates of its last
+  - "Right now": the current pick with its look-alike forecast (forecast.py) and the rocket hunter's best candidates of its last
     round, each with how close its score is to the buy cut
   - when the next scan and the last radar round ran, and a short map of the other tabs
 Every number comes from the page data (D) and rocket.json; nothing here changes a pick, a sell rule or an account. The Pick side counts the
-paper account's pick positions only (the new launches ended on Oct 16 and live in the Archiv tab). Every chain string is escaped.
+paper account's pick positions only (the new launches ended on Oct 16 and live in the Archive tab). Every chain string is escaped.
 """
 import html, json, os, sys
 
@@ -32,8 +32,8 @@ def num(v):
 
 
 def de_num(v, d=2):
-    """1234.5 -> 1.234,50 (German grouping), with a real minus sign."""
-    s = format(abs(v), ",.%df" % d).replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    """1234.5 -> 1,234.50 with a real minus sign (English notation since Oct 22; the name stays, other pages call it)."""
+    s = format(abs(v), ",.%df" % d)
     return (MINUS if v < 0 and s.strip("0,.") else "") + s
 
 
@@ -58,12 +58,12 @@ def hhmm(R, ms):
 
 
 def when(R, ms, now):
-    """'12:08' today, else '21.10. 12:08'."""
+    """'12:08' today, else 'Oct 21 12:08'."""
     try:
         t, n = R.local(ms), R.local(now)
     except Exception:
         return "–"
-    return t.strftime("%H:%M") if t.date() == n.date() else t.strftime("%d.%m. %H:%M")
+    return t.strftime("%H:%M") if t.date() == n.date() else t.strftime("%b %d %H:%M")
 
 
 def rocket_doc(D):
@@ -143,15 +143,15 @@ def acct_card(key, title, sub, b, empty, live=False, since=""):
     if not b:
         return ('<div class="hm-acc hm-%s">%s<p class="hm-empty">%s</p></div>') % (key, head, E(empty))
     h = (lambda k: ' data-rk-st="%s"' % k) if live else (lambda k: "")
-    win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(",")
-    stats = [("im Plus", ("<span%s>%s</span><small>/10</small>" % (h("win"), E(win))) if (b["win"] is not None or live) else "–"),
+    win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(".")
+    stats = [("in profit", ("<span%s>%s</span><small>/10</small>" % (h("win"), E(win))) if (b["win"] is not None or live) else "–"),
              ("3x · 10x", "<span%s>%d · %d</span>" % (h("hits"), b["x3"], b["x10"])),
-             ("offen", "<span%s>%d</span>" % (h("open"), b["open"]))]
+             ("open", "<span%s>%d</span>" % (h("open"), b["open"]))]
     return ('<div class="hm-acc hm-%s"%s>%s'
-            '<b class="hm-bal %s"%s>%s</b>%s<div class="hm-st">%s</div><small class="hm-n"><span%s>%d</span> abgeschlossen · %s pro Kauf · Spielgeld</small></div>') % (
+            '<b class="hm-bal %s"%s>%s</b>%s<div class="hm-st">%s</div><small class="hm-n"><span%s>%d</span> closed · %s per buy · fake money</small></div>') % (
         key, (' data-rk-box data-rk-t="%d"' % int(b.get("t") or 0)) if live else "", head, tone(b["bal"]), " data-rk-bal" if live else "",
         E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
-        "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), v) for k, v in stats), h("closed"), b["closed"], E(de_eur(b["ticket"]).replace(",00", "")))
+        "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), v) for k, v in stats), h("closed"), b["closed"], E(de_eur(b["ticket"]).replace(".00", "")))
 
 
 PICK_WHY = {"tp": "11x reached", "stop": "stop −30%", "time": "after 6 h", "rug": "coin gone", "reset": "restart", "manual": "by hand"}
@@ -238,7 +238,7 @@ def pick_now(D, R):
     picks = [c for c in ((D.get("rec") or {}).get("picks") or []) if isinstance(c, dict)]
     if not picks:
         return ('<div class="hm-now hm-pick"><div class="hm-nh"><span class="hm-tag">Pick</span></div>'
-                '<p class="hm-empty">Gerade kein Pick: kein Coin hat alle Filter und den Sicherheitscheck bestanden.</p></div>')
+                '<p class="hm-empty">No pick right now: no coin passed every filter and the safety check.</p></div>')
     p = picks[0]
     fc = None
     try:
@@ -249,36 +249,36 @@ def pick_now(D, R):
     rows = []
     po, pz = num(p.get("upP")), num(p.get("zeroP"))
     if po is not None:
-        rows.append(("Chance Gewinn (2 h)", "%d %%" % round(100 * po)))
+        rows.append(("Chance of a profit (2 h)", "%d%%" % round(100 * po)))
     if pz is not None:
-        rows.append(("Chance Totalverlust", "%d %%" % round(100 * pz)))
+        rows.append(("Chance of going to zero", "%d%%" % round(100 * pz)))
     if fc:
-        rows += [("Ähnliche Coins: 2x in 6 h", "%d %%" % round(100 * fc["x2"])), ("Ähnliche Coins: 3x in 6 h", "%d %%" % round(100 * fc["x3"]))]
-    tier = {"strong": "starker Pick", "fair": "mittlerer Pick", "weak": "schwacher Pick"}.get(str(p.get("tier") or ""), "")
+        rows += [("Similar coins: 2x in 6 h", "%d%%" % round(100 * fc["x2"])), ("Similar coins: 3x in 6 h", "%d%%" % round(100 * fc["x3"]))]
+    tier = {"strong": "strong pick", "fair": "fair pick", "weak": "weak pick"}.get(str(p.get("tier") or ""), "")
     held = ""
     hr = next((r for r in (pick_book(D) or {}).get("rows") or [] if r.get("open") and (r.get("p") or {}).get("addr") == p.get("addr")), None)
     if hr and num(hr.get("pct")) is not None:
-        held = '<span class="hm-chip %s">gekauft · %s %%</span>' % (tone(hr["pct"]), E(("+" if hr["pct"] > 0 else "") + de_num(100 * hr["pct"], 1)))
+        held = '<span class="hm-chip %s">bought · %s%%</span>' % (tone(hr["pct"]), E(("+" if hr["pct"] > 0 else "") + de_num(100 * hr["pct"], 1)))
     meta = []
     if num(p.get("mc")):
         meta.append("MC %s" % R.fmt_money(p.get("mc")))
     if num((p.get("f") or {}).get("ageH")) is not None:
-        meta.append("%s h alt" % de_num(num(p["f"]["ageH"]), 0))
+        meta.append("%s h old" % de_num(num(p["f"]["ageH"]), 0))
     if num(p.get("score")) is not None:
         meta.append("Score %d" % round(num(p["score"])))
-    return ('<div class="hm-now hm-pick"><div class="hm-nh"><span class="hm-tag">Pick</span><small>für die nächsten 2 Stunden</small></div>'
+    return ('<div class="hm-now hm-pick"><div class="hm-nh"><span class="hm-tag">Pick</span><small>for the next 2 hours</small></div>'
             '<div class="hm-coin"><b>%s</b><span>%s</span>%s%s%s</div><small class="hm-meta">%s</small>%s'
-            '<label class="hm-go" for="tab-pick" data-go="pick">Alles zum Pick ›</label></div>') % (
+            '<label class="hm-go" for="tab-pick" data-go="pick">All about the pick ›</label></div>') % (
         E(p.get("sym") or "?"), E(str(p.get("name") or "")[:28]), ('<span class="hm-chip">%s</span>' % E(tier)) if tier else "",
-        '<span class="hm-chip good">sicher</span>' if p.get("ok") else "", held, E(" · ".join(meta)),
+        '<span class="hm-chip good">safety: clean</span>' if p.get("ok") else "", held, E(" · ".join(meta)),
         ('<div class="hm-odds">%s</div>' % "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), E(v)) for k, v in rows)) if rows else "")
 
 
 def rocket_now(D, R, doc):
     """The rocket hunter's best candidates of its last round, each with a bar: its score as a share of the buy cut (100 % buys)."""
-    head = '<div class="hm-nh"><span class="hm-tag rad">Radar</span><small>Raketen-Kandidaten · Kauf ab 100 %</small></div>'
+    head = '<div class="hm-nh"><span class="hm-tag rad">Radar 🚀</span><small>Rocket candidates · buys at 100%</small></div>'
     if not doc:
-        return '<div class="hm-now hm-rd">%s<p class="hm-empty">Der Raketen-Jäger ist noch nicht gelaufen: er prüft alle 15 Minuten die neuen Coins.</p></div>' % head
+        return '<div class="hm-now hm-rd">%s<p class="hm-empty">The rocket hunter has not run yet: it checks the new coins every 15 minutes.</p></div>' % head
     cut = num(doc.get("cut")) or 0
     rows = []
     for r in [r for r in doc.get("top") or [] if isinstance(r, dict)][:CANDS_SHOWN]:
@@ -287,13 +287,13 @@ def rocket_now(D, R, doc):
         w = max(2.0, min(100.0, 100 * share))
         rows.append('<li class="%s"><b>%s</b><span class="hm-bar"><i style="width:%.1f%%"></i></span><em>%s</em><small>%s</small></li>' % (
             "buy" if r.get("buy") else ("near" if share >= 0.5 else ""), E(str(r.get("sym") or str(r.get("addr") or "?")[:6])[:14]), w,
-            "gekauft" if r.get("buy") else "%d %%" % round(100 * share), E("%d min alt" % int(num(r.get("age")) or 0))))
+            "bought" if r.get("buy") else "%d%%" % round(100 * share), E("%d min old" % int(num(r.get("age")) or 0))))
     rd = doc.get("round") or {}
     t = num(doc.get("t"))
-    foot = "Letzte Runde %s · %s Coins beobachtet · %d bewertet · %d gekauft" % (
+    foot = "Last round %s · %s coins watched · %d scored · %d bought" % (
         when(R, t, D["now"]) if t else "–", de_num(int(num(rd.get("candidates")) or 0), 0), int(num(rd.get("scored")) or 0), int(num(rd.get("bought")) or 0))
-    body = ('<ul class="hm-cands" data-rk-cands="hm">%s</ul>' % "".join(rows)) if rows else '<p class="hm-empty">In der letzten Runde lag kein Coin im passenden Alter.</p>'
-    return ('<div class="hm-now hm-rd" data-rk-box data-rk-t="%d">%s%s<small class="hm-meta">%s</small><label class="hm-go" for="tab-young" data-go="young">Zum Radar ›</label></div>') % (
+    body = ('<ul class="hm-cands" data-rk-cands="hm">%s</ul>' % "".join(rows)) if rows else '<p class="hm-empty">No coin of the right age in the last round.</p>'
+    return ('<div class="hm-now hm-rd" data-rk-box data-rk-t="%d">%s%s<small class="hm-meta">%s</small><label class="hm-go" for="tab-young" data-go="young">Go to Radar ›</label></div>') % (
         int(t or 0), head, body, E(foot))
 
 
@@ -303,18 +303,18 @@ def section(D, R):
     pk, rk = pick_book(D), rocket_book(doc)
     runs = [r for r in D.get("runs") or [] if isinstance(r, dict) and num(r.get("t"))]
     nxt = R.next_scan_ms(now, runs)
-    status = ['<span><i class="hm-pulse"></i>Scan zuletzt %s · nächster ≈ %s</span>' % (E(hhmm(R, num(runs[0]["t"]))) if runs else "–", E(hhmm(R, nxt)))]
+    status = ['<span><i class="hm-pulse"></i>Pick scan last %s · next ≈ %s</span>' % (E(hhmm(R, num(runs[0]["t"]))) if runs else "–", E(hhmm(R, nxt)))]
     if doc and num(doc.get("t")):
-        status.append('<span><i class="hm-pulse rad"></i>Raketen-Radar zuletzt %s · alle 15 Min</span>' % E(hhmm(R, num(doc["t"]))))
+        status.append('<span><i class="hm-pulse rad"></i>Rocket radar last %s · every 15 min</span>' % E(hhmm(R, num(doc["t"]))))
     # both accounts count from the same moment since the Pick's fresh start (memebot.FRESH_AT, the rocket hunter's first round)
     cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
              + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
-    nav = [("pick", "Pick", "Karte, Sicherheit, Stunde für Stunde"), ("young", "Radar", "Raketen-Jäger und Launch-Radar"),
-           ("office", "Gehirn", "Was der Bot gerade denkt"), ("account", "Archiv", "Forschung, alte Trader, alle Daten")]
+    nav = [("pick", "Pick", "The pick, its safety check, hour by hour"), ("young", "Radar", "Rocket hunter and launch radar"),
+           ("office", "Brain", "What the bot is thinking"), ("account", "Archive", "Research, old traders, all the data")]
     return ('<style>%s</style><section class="hm" data-home>'
-            '<div class="hm-hero"><div class="hm-ey">Zwei Konten · Spielgeld · kein echter Handel</div><div class="hm-accs">%s</div></div>'
+            '<div class="hm-hero"><div class="hm-ey">Two accounts · fake money · no real trades</div><div class="hm-accs">%s</div></div>'
             '<div class="hm-status">%s</div>'
-            '<h2 class="hm-h">Jetzt im Blick</h2><div class="hm-nows">%s%s</div>'
+            '<h2 class="hm-h">Right now</h2><div class="hm-nows">%s%s</div>'
             '<nav class="hm-nav">%s</nav></section><script>%s</script>') % (
         CSS, cards, "".join(status), pick_now(D, R), rocket_now(D, R, doc),
         "".join('<label for="tab-%s" data-go="%s"><b>%s</b><small>%s</small></label>' % (k, k, E(n), E(s)) for k, n, s in nav), JS)
@@ -331,7 +331,7 @@ document.addEventListener('click',function(e){var l=e.target&&e.target.closest?e
 
 CSS = r"""
 /* the Start tab (page_home.py): two account cards side by side, then the pick and the rocket candidates, then a map of the other tabs */
-.hm { display:grid; gap:14px }
+.hm { display:grid; gap:14px } .hm [hidden] { display:none !important }
 .hm-hero { position:relative; border-radius:18px; padding:14px; overflow:hidden; border:1px solid var(--line);
   background:radial-gradient(120% 90% at 0% 0%, color-mix(in srgb,var(--accent) 22%,transparent), transparent 60%),
              radial-gradient(120% 90% at 100% 100%, color-mix(in srgb,var(--nn2) 20%,transparent), transparent 60%), var(--surface) }

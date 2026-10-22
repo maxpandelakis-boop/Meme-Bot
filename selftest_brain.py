@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selftest_brain.py: the coin sheet of the brain (page_brain.py, the Gehirn tab): a tap on a coin opens its data. Fake money only: the
+"""selftest_brain.py: the coin sheet of the brain (page_brain.py, the Brain tab): a tap on a coin opens its data. Fake money only: the
 fixtures are hand-made docs, nothing is fetched.
 
   B1 one article per coin node, in the nodes' order, all in one dialog inside the brain and hidden until a tap; the tap hint
@@ -12,7 +12,7 @@ fixtures are hand-made docs, nothing is fetched.
   B5 the pick's paper position from the account rows (page_account)
   W1-W6 in Chromium (390 and 1280 px): a tap beside a coin's dot opens its sheet as a modal dialog that fits the screen, the cycle stops
      while it is open, the position's line is drawn, the DexScreener iframe appears only when its fold opens, the sheet closes with
-     its button, Escape and a tap beside it, the line under the brain opens the coin it names, "Radar-Tab" switches tabs; no script errors
+     its button, Escape and a tap beside it, the line under the brain opens the coin it names, "Radar tab" switches tabs; no script errors
 
   python3 selftest_brain.py      -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
   selftest.main: checks(check, SKIPS) after the traders' UI checks
@@ -82,42 +82,42 @@ def html_checks(check, tmp):
     nodes = re.findall(r'<g class="bn-coin (\w+)" data-coin="(\d+)"[^>]*role="button" tabindex="0" aria-label="([^"]*)"><circle class="hit"', pane)
     arts = re.findall(r'<article class="bc" data-cd="(\d+)" hidden>', pane)
     check(len(nodes) == 5 and [n[1] for n in nodes] == arts == ["0", "1", "2", "3", "4"] and [n[0] for n in nodes] == ["pick", "buy", "cand", "cand", "cand"]
-          and pane.count("<dialog") == 1 and pane.find("<dialog") > pane.find("data-bn-thoughts") and "Tippe auf einen Coin" in pane,
+          and pane.count("<dialog") == 1 and pane.find("<dialog") > pane.find("data-bn-thoughts") and "Tap a coin" in pane,
           "B1 one tap target and one hidden article per coin, in the nodes' order (%s / %s), one dialog in the brain, the tap hint" % ([n[:2] for n in nodes], arts))
     a0 = art(pane, 0)
-    check("Mein Pick für die nächsten 2 Stunden" in a0 and "19 % Chance auf Gewinn und 10 % Risiko Totalverlust" in a0 and "mindestens 20 %" in a0
-          and "1,05 Mio. $" in a0 and "90.934 $" in a0 and "0,00106 $" in a0 and "47 von 100 · Rang 3" in a0 and "+1.793 %" in a0,
-          "B2 the pick's sheet: thoughts with the odds, the numbers in German notation")
+    check("My pick for the next 2 hours" in a0 and "chance of a profit at 19% and its risk of going to zero at 10%" in a0 and "at least 20%" in a0
+          and "$1.05M" in a0 and "$90,934" in a0 and "$0.00106" in a0 and "47 of 100 · rank 3" in a0 and "+1,793%" in a0,
+          "B2 the pick's sheet: thoughts with the odds, the numbers in English notation")
     gates = re.findall(r'<li class="ok"><i aria-hidden="true">✓</i><span>([^<]*)</span><em>([^<]*)</em></li>', a0)
-    check([g[0] for g in gates][:8] == ["Pool", "Kein Fake", "Alter", "Größe", "Liquidität", "Volumen", "Chart", "Käufer"] and ("Chart", "1 h −3,5 % · 6 h +50 %") in gates
-          and ("Liquidität", "90.934 $ · 9 % des Marktwerts") in gates and ("Halter", "2.087") in gates and ("Größte Wallet", "4,4 %") in gates
-          and ("Mint-/Freeze-Rechte", "abgegeben") in gates, "B2 the eight filters with the coin's own values, the safety checks in German (%s)" % gates[:3])
+    check([g[0] for g in gates][:8] == ["Pool", "No fake", "Age", "Size", "Liquidity", "Volume", "Chart", "Buyers"] and ("Chart", "1 h −3.5% · 6 h +50%") in gates
+          and ("Liquidity", "$90,934 · 9% of the market cap") in gates and ("holders", "2,087") in gates and ("biggest wallet", "4.4%") in gates
+          and ("mint/freeze authority", "given up") in gates, "B2 the eight filters with the coin's own values, the safety checks (%s)" % gates[:3])
     lk = re.findall(r'<a href="([^"]*)" target="_blank" rel="noopener noreferrer">([^<]*)</a>', a0)
     check([n for _, n in lk][:2] == ["pump.fun", "DexScreener"] and lk[1][0] == "https://dexscreener.com/solana/" + PAIR and ("https://x.com/ChooTheRescue", "X / Twitter") in lk
-          and "<iframe" not in pane and 'data-bc-live="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark' % PAIR in a0 and "Alle Gründe des Bots" in a0,
+          and "<iframe" not in pane and 'data-bc-live="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark' % PAIR in a0 and "Every reason the bot gave" in a0,
           "B2 links (pump.fun, DexScreener with the pair first), the live chart only as a fold, no iframe in the page")
     check(XSS not in pane and "Choo &lt;img src=x onerror=alert(1)&gt;" in a0 and "score 47/100 &lt;img" in a0, "B2 the coin's strings are escaped")
     a1, a2, a3 = art(pane, 1), art(pane, 2), art(pane, 3)
-    check("Raketen-Kauf" in a1 and "mein Modell gab ihm 7,1 % Chance auf 10x" in a1 and "Ich verkaufe bei −30 %" in a1 and "offen seit" in a1 and "jetzt x1,64" in a1
+    check("Rocket buy" in a1 and "my model put its chance of 10x in 6 hours at 7.1%" in a1 and "I sell at −30%" in a1 and "open since" in a1 and "now x1.64" in a1
           and 'data-rk-ch="[[0,1.0],[5,1.32],[12,0.91],[20,1.64]]"' in a1.replace("&quot;", '"') and 'data-bc-tab="young"' in a1
           and "https://dexscreener.com/solana/" + POOL in a1, "B3 a bought candidate: its paper position, the price line's points, the way to the Radar tab, its pool's chart")
-    check("Nicht gekauft" in a2 and "4 % der Kaufschwelle" in a2 and "&lt;img" in a2 and "Er ist nah dran" not in a2 and "https://pump.fun/coin/" + RK[1] in a2
-          and "Nicht gekauft" in a3 and "58 % der Kaufschwelle" in a3 and "Er ist nah dran" in a3 and "https://dexscreener.com/solana/%s\"" % RK[2] in a3,
-          "B3 candidates: the share of the cut, 'nah dran' from half of it; a pool that is not an address falls back to the mint")
+    check("Not bought" in a2 and "4% of the buy line" in a2 and "&lt;img" in a2 and "It is close" not in a2 and "https://pump.fun/coin/" + RK[1] in a2
+          and "Not bought" in a3 and "58% of the buy line" in a3 and "It is close" in a3 and "https://dexscreener.com/solana/%s\"" % RK[2] in a3,
+          "B3 candidates: the share of the cut, 'It is close' from half of it; a pool that is not an address falls back to the mint")
     a4 = art(pane, 4)
-    check("verkauft um" in a4 and "Stopp −30 %" in a4 and "Ergebnis −6,30 €" in a4 and "gab ihm 8,0 % Chance" in a4 and "data-rk-end=" in a4 and "Alle Verkäufe" in a4,
+    check("sold at" in a4 and "stop −30%" in a4 and "result −6.30 €" in a4 and "at 8.0%, the buy line" in a4 and "data-rk-end=" in a4 and "All sells" in a4,
           "B3 a coin sold before: the numbers of its buy, the sell, its result and its line")
     empty = brain(mk(os.path.join(tmp, "empty"), pick=False, rocket=False))
-    check("data-brain" in empty and "<dialog" not in empty and "Tippe auf einen Coin" not in empty, "B4 no pick and no round: no dialog and no hint")
+    check("data-brain" in empty and "<dialog" not in empty and "Tap a coin" not in empty, "B4 no pick and no round: no dialog and no hint")
     bad = brain(mk(os.path.join(tmp, "bad"), rocket=False, f="x", risk=[1], relaxed="ab", rank="?", tier="fallback"))
     a0b = art(bad, 0)
-    check("data-brain" in bad and "<dialog" in bad and ("gelockert" in a0b or "ließen sich nicht lesen" in a0b), "B4 a broken pick record: the brain renders, the sheet still opens")
+    check("data-brain" in bad and "<dialog" in bad and ("relaxed" in a0b or "could not be read" in a0b), "B4 a broken pick record: the brain renders, the sheet still opens")
     import page_brain as PB, report as R
     t = NOW - 30 * MIN
     D = {"paper": {"acct2": {"rows": [{"p": {"addr": PICK}, "grp": "hold", "ticket": 50.0, "tBuy": t, "pnl": 3.2, "pct": 0.064, "open": True},
                                       {"p": {"addr": PICK}, "grp": "young", "ticket": 3.0, "tBuy": t + MIN, "pnl": -3.0, "pct": -1.0, "open": False}]}}}
     pp = PB.paper_pos(D, R, PICK).replace("\xa0", " ")
-    check("50 € auf Papier gekauft um %s" % R.local(t).strftime("%H:%M") in pp and "jetzt +3,20 € (+6,4 %)" in pp and 'class="bc-p good"' in pp
+    check("50 € bought on paper at %s" % R.local(t).strftime("%H:%M") in pp and "now +3.20 € (+6.4%)" in pp and 'class="bc-p good"' in pp
           and PB.paper_pos(D, R, RK[0]) == "", "B5 the pick's paper position from the account (not the young group's), nothing for another coin (%s)" % re.sub(r"<[^>]+>", " ", pp))
     return page
 
@@ -198,7 +198,7 @@ def browser_checks(check, skips, page):
         pg.locator('[data-cd="1"] [data-bc-tab]').click()
         pg.wait_for_timeout(300)
         s8 = pg.evaluate(state)
-        check(not s8["open"] and s8["young"], "W5 'Radar-Tab' closes the sheet and opens the Radar tab")
+        check(not s8["open"] and s8["young"], "W5 'Radar tab' closes the sheet and opens the Radar tab")
         ctx.close()
         ctx, pg = open_(1280, 900)
         pg.locator('.bn-coin[data-coin="2"]').click()

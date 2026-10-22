@@ -1,5 +1,5 @@
-"""page_shadow.py: the fold "Schatten-Regeln" on the Pick tab (shadow.py's accounts). Fake money only: nothing here buys, signs or sends
-anything, and nothing here is advice. German words, like the user writes.
+"""page_shadow.py: the fold "Shadow rules" on the Pick tab (shadow.py's accounts). Fake money only: nothing here buys, signs or sends
+anything, and nothing here is advice. English words (the user's wish of Oct 22: the whole app in English).
 
 section(D, R) -> HTML: a fold under the hour grid. Its summary line says how many buys were compared and which shadow rule is ahead of
 the real rule replayed (K); inside:
@@ -18,11 +18,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import memebot as M
-import page_home as PH       # pure helpers: German numbers (de_eur, de_num), tone
+import page_home as PH       # pure helpers: numbers (de_eur, de_num), tone
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 TRADES_SHOWN = 30
-WHY = {"tp": "Ziel", "half": "Hälfte", "stop": "Stop", "trail": "Stop", "time": "Zeit", "rug": "Pool tot", "dead": "Pool tot"}
+WHY = {"tp": "target", "half": "half", "stop": "stop", "trail": "stop", "time": "time", "rug": "pool dead", "dead": "pool dead"}
 
 
 def num(v):
@@ -30,7 +30,7 @@ def num(v):
 
 
 def short(v):
-    """−16,9 / +4,2 / 0,0: one decimal, a real minus, for the narrow cells."""
+    """−16.9 / +4.2 / 0.0: one decimal, a real minus, for the narrow cells."""
     v = num(v)
     if v is None:
         return "–"
@@ -40,7 +40,7 @@ def short(v):
 
 def when(R, ms):
     try:
-        return R.local(ms).strftime("%d.%m. %H:%M")
+        return R.local(ms).strftime("%b %d %H:%M")
     except Exception:
         return "–"
 
@@ -49,23 +49,23 @@ def head_line(S, R):
     """The fold's summary line."""
     if not S["n"]:
         if S["open"]:
-            return "%d Kauf%s läuft mit · erste Ergebnisse ca. 12 h nach dem Kauf" % (S["open"], "" if S["open"] == 1 else "e")
-        return "läuft seit %s · startet mit dem nächsten Pick-Kauf" % when(R, S["since"])
+            return "%d buy%s running along · first results about 12 h after the buy" % (S["open"], "" if S["open"] == 1 else "s")
+        return "running since %s · starts with the next Pick buy" % when(R, S["since"])
     lead = next((a for a in S["accts"] if a["id"] == S["leader"]), None)
     k = next(a for a in S["accts"] if a["id"] == "K")
     bit = ""
     if lead and S["ahead"]:
-        bit = " · vorn: %s %s (%s € gegen die echte Regel)" % (lead["id"], lead["name"], short(lead["eur"] - k["eur"]))
+        bit = " · ahead: %s %s (%s € against the real rule)" % (lead["id"], lead["name"], short(lead["eur"] - k["eur"]))
     elif lead:
-        bit = " · keine besser als die echte Regel"
-    return "%d Käufe verglichen%s" % (S["n"], bit)
+        bit = " · none better than the real rule"
+    return "%d buys compared%s" % (S["n"], bit)
 
 
 def acct_row(a, cls, S):
     vs = ""
     if a.get("vsK") is not None:
-        vs = '<small class="%s">%s € gegen K</small>' % (PH.tone(a["vsK"]), E(short(a["vsK"])))
-    chip = '<i class="sh-chip">vorn</i>' if cls == "lead" else ""
+        vs = '<small class="%s">%s € against K</small>' % (PH.tone(a["vsK"]), E(short(a["vsK"])))
+    chip = '<i class="sh-chip">ahead</i>' if cls == "lead" else ""
     label = "%s · %s" % (a["id"], a["name"]) if a["id"] != "real" else a["name"]
     won = "%d/%d" % (a["won"], a["n"]) if a["n"] else "–"
     return ('<tr class="%s"><td><b>%s</b>%s<small>%s</small></td><td class="n %s"><b>%s</b>%s</td><td class="n">%s</td><td class="n">%s</td></tr>') % (
@@ -78,7 +78,7 @@ def trades_table(S, R):
     if not rows:
         return ""
     ids = [a["id"] for a in S["accts"]]
-    head = "<tr><th>Coin</th><th>echt</th>%s</tr>" % "".join("<th>%s</th>" % E(i) for i in ids)
+    head = "<tr><th>Coin</th><th>real</th>%s</tr>" % "".join("<th>%s</th>" % E(i) for i in ids)
     body = []
     for r in rows:
         coin = '<td><b>%s</b><small>%s</small></td>' % (E(r["sym"]), E(when(R, r["t"])))
@@ -89,12 +89,12 @@ def trades_table(S, R):
                 cells.append('<td class="n %s" title="%s">%s</td>' % (PH.tone(x["eur"]), E(WHY.get(x["why"], x["why"])), E(short(x["eur"]))))
             body.append("<tr>%s%s</tr>" % (coin, "".join(cells)))
         else:
-            what = "läuft (Ergebnis ca. 12 h nach dem Kauf)" if r["state"] == "open" else "ohne Minutenkerzen, nicht gezählt"
+            what = "running (result about 12 h after the buy)" if r["state"] == "open" else "no minute candles, not counted"
             real = '<td class="n %s">%s</td>' % (PH.tone(r["real"]), E(short(r["real"]))) if r["real"] is not None else '<td class="n">–</td>'
             body.append('<tr class="wait">%s%s<td colspan="%d" class="m">%s</td></tr>' % (coin, real, len(ids), E(what)))
-    more = (' (die letzten %d von %d)' % (TRADES_SHOWN, len(S["trades"]))) if len(S["trades"]) > TRADES_SHOWN else ""
-    return ('<details class="sh-tr"><summary>Die Käufe einzeln%s</summary><div class="sh-scroll"><table class="sh-t2"><thead>%s</thead><tbody>%s</tbody>'
-            '</table></div><small class="sh-m">€ nach Gebühren je Kauf · echt = was das Pick-Konto wirklich bekam · K bis D nachgerechnet</small></details>') % (
+    more = (' (the last %d of %d)' % (TRADES_SHOWN, len(S["trades"]))) if len(S["trades"]) > TRADES_SHOWN else ""
+    return ('<details class="sh-tr"><summary>Every buy%s</summary><div class="sh-scroll"><table class="sh-t2"><thead>%s</thead><tbody>%s</tbody>'
+            '</table></div><small class="sh-m">€ after fees per buy · real = what the Pick account really got · K to D replayed</small></details>') % (
         E(more), head, "".join(body))
 
 
@@ -106,21 +106,21 @@ def section(D, R):
     rows = [acct_row(real, "real", S)]
     for a in S["accts"]:
         rows.append(acct_row(a, "ctl" if a["id"] == "K" else ("lead" if a["id"] == lead else ""), S))
-    note = ["Verglichen: %d Käufe, deren 12 Stunden vorbei sind" % S["n"]]
+    note = ["Compared: %d buys whose 12 hours are over" % S["n"]]
     if S["open"]:
-        note.append("%d noch offen" % S["open"])
+        note.append("%d still open" % S["open"])
     if S["out"]:
-        note.append("%d ohne Minutenkerzen (bei allen Regeln weggelassen)" % S["out"])
-    note.append("seit %s" % when(R, S["since"]))
-    few = ' Nach wenigen Käufen sagt ein Vorsprung noch nichts; nach etwa zwei Wochen wird verglichen.' if S["n"] < 60 else ""
-    inner = ('<div class="sh"><p class="sh-lead">Jeder echte Pick-Kauf läuft hier zusätzlich unter vier anderen Verkaufs-Regeln: gleicher Coin, '
-             'gleiche Minute, gleiche %s, gleiche Gebühren. Die echte Pick-Regel bleibt, wie sie ist. Nur Papiergeld.</p>'
-             '<div class="sh-scroll"><table class="sh-t"><thead><tr><th>Regel</th><th>Ergebnis</th><th>pro Kauf</th><th>im Plus</th></tr></thead>'
+        note.append("%d without minute candles (left out for every rule)" % S["out"])
+    note.append("since %s" % when(R, S["since"]))
+    few = ' After a few buys a lead means nothing yet; the comparison comes after about two weeks.' if S["n"] < 60 else ""
+    inner = ('<div class="sh"><p class="sh-lead">Every real Pick buy also runs here under four other sell rules: same coin, '
+             'same minute, same %s, same fees. The real Pick rule stays as it is. Paper money only.</p>'
+             '<div class="sh-scroll"><table class="sh-t"><thead><tr><th>Rule</th><th>Result</th><th>per buy</th><th>in profit</th></tr></thead>'
              '<tbody>%s</tbody></table></div>'
-             '<p class="sh-m">K ist die echte Regel, mit denselben Minutenkerzen nachgerechnet: daran werden A bis D gemessen. Die Ergebnisse kommen '
-             'etwa 12 Stunden nach jedem Kauf (dann liegen die Minutenkerzen vor).%s</p><p class="sh-m">%s</p>%s</div>') % (
+             '<p class="sh-m">K is the real rule, replayed on the same minute candles: A to D are measured against it. The results come '
+             'about 12 hours after each buy (when the minute candles are in).%s</p><p class="sh-m">%s</p>%s</div>') % (
         E(("%g €" % S["ticket"]) if S["ticket"] == int(S["ticket"]) else PH.de_eur(S["ticket"])), "".join(rows), E(few), E(" · ".join(note)), trades_table(S, R))
-    return ('<details class="fold sh-fold" id="schatten"><summary><span class="t">Schatten-Regeln</span><span class="sum">%s</span></summary>%s</details>'
+    return ('<details class="fold sh-fold" id="schatten"><summary><span class="t">Shadow rules</span><span class="sum">%s</span></summary>%s</details>'
             '<style>%s</style>') % (E(head_line(S, R)), inner, CSS)
 
 

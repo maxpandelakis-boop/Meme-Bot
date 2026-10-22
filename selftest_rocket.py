@@ -178,24 +178,24 @@ def r4():
         doc["top"][0]["sym"] = "<img src=x onerror=alert(1)>"
         json.dump(doc, open(os.path.join(tmp, "page", "db", "memebot", "rocket.json"), "w"))
         h = PK.section({"dir": os.path.join(tmp, "page")})
-        check("Rocket hunter" in h and "Pick" in h and "Raketen-Jäger" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
+        check("Rocket hunter" in h and "Pick account" in h and "Radar account 🚀" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
         js = PK.LIVE_JS
         check(all(k in h for k in ("data-rk-box", "data-rk-bal", 'data-rk-st="open"', "data-rk-op", "data-rk-sold", 'data-rk-cands="rk"', "data-rk-live"))
               and "id=eq.rocket" in js and "apikey:key" in js and "innerHTML" not in js and "Authorization" not in js and "tab-young" in js,
               "R5 the live row 'rocket' fills the block's data-rk hooks (publishable key, textContent only, while the Radar or Start tab is open)")
         lj = RW.live_doc(R.Book(doc["book"]), now, 0.5, [], [])
-        check(PK.sold_li(PH, {"sym": "A<b>", "mult": 0.68, "eur": -6.6, "why": "stop", "out": now}).count("Stopp") == 1 and "&lt;b&gt;" in PK.sold_li(PH, {"sym": "A<b>"})
+        check(PK.sold_li(PH, {"sym": "A<b>", "mult": 0.68, "eur": -6.6, "why": "stop", "out": now}).count("stop −30%") == 1 and "&lt;b&gt;" in PK.sold_li(PH, {"sym": "A<b>"})
               and isinstance(lj.get("summary"), dict) and isinstance(lj.get("open"), list), "R5 a sell row in the page's words (escaped); the live row has the shape LIVE_JS reads")
-        check("Geprüft am 22. Okt" in h and "hält nicht" in h and "134" in h, "R5 the fold with the tests of 22 Oct is in the block")
+        check("Tested on Oct 22" in h and "does not hold" in h and "134" in h, "R5 the fold with the tests of 22 Oct is in the block")
         rp = PK.tests({"history": {"0.005": {"coins": 3}}, "replay": {"0.005": {"coins": 137, "avg": -7.84, "inProfitOf10": 0.5, "x10": 0, "sim": 0.0}}})
-        check("Nachtest 9.–21. Okt" in rp and "137 Käufe" in rp and "kein 10x" in rp, "R5 the fold shows the replay on the unseen days")
+        check("Retest Oct 9–21" in rp and "137 buys" in rp and "no 10x" in rp, "R5 the fold shows the replay on the unseen days")
         tt = PK.tests({"history": {"0.005": {"coins": 3, "avg": "<script>", "x10": 1}}, "exits": {"rules": 2, "choice": "<b>x</b>"}})
         check("<script" not in tt and "<b>x" not in tt and "&lt;b&gt;x" in tt, "R5 the tests fold escapes what it shows")
         cd = PK.chart_div({"chart": [[0, 1], [5, "<b>"], [9, 2.5]], "t": now, "out": now + 9 * 60_000, "mult": 2.5}, True)
         check('data-rk-ch="[[0,1.0],[9,2.5]]"' in cd.replace("&quot;", '"') and 'data-rk-end="9,2.5"' in cd and "<b>" not in cd and "drawAll" in PK.LIVE_JS,
               "R5 a position's price line goes to the page as numbers only, LIVE_JS draws it with or without the live store")
         h0 = PK.section({"dir": os.path.join(tmp, "none")})
-        check("noch nicht gelaufen" in h0, "R5 without a doc: one sentence")
+        check("has not run yet" in h0, "R5 without a doc: one sentence")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -220,10 +220,10 @@ def r6():
 def r7():
     import app as A
     w = A.rocket_words([{"sym": "ONE<b>", "score": 0.1234, "cut": 0.0839}, {"sym": "TWO", "score": 0.09}], {"trades": 3, "eur": -12.5})
-    check(w and w[0].startswith("Radar 🚀") and "ONE" in w[0] and "+1" in w[0] and "0.123" in w[1] and "0.084" in w[1] and "Papiergeld" in w[1]
+    check(w and w[0].startswith("Radar 🚀") and "ONE" in w[0] and "+1" in w[0] and "0.123" in w[1] and "0.084" in w[1] and "Paper money only" in w[1]
           and "-12.50" in w[1], "R7 the push says Radar 🚀, the coin, its score and the cut, the record and that it is paper money (%s)" % (w,))
     w2 = A.rocket_words([], {"trades": 4, "eur": 170.0}, [{"sym": "TWO", "mult": 11.0, "eur": 190.03, "why": "11x"}, {"sym": "SIX", "mult": 0.5, "eur": -10.1, "why": "stop"}])
-    check(w2 and w2[0] == "Radar 🚀 verkauft: TWO x11.00 (+190.03 €, Ziel 11x)" and "SIX x0.50 (-10.10 €, Stop -30 %)" in w2[1] and "Papiergeld" in w2[1],
+    check(w2 and w2[0] == "Radar 🚀 sold: TWO x11.00 (+190.03 €, target 11x)" and "SIX x0.50 (-10.10 €, stop -30%)" in w2[1] and "Paper money only" in w2[1],
           "R7 a round with sells only: the push names each sale, its multiple, euros and why (%s)" % (w2,))
     w3 = A.rocket_words([{"sym": "NEW", "score": 0.1, "cut": 0.08}], None, [{"sym": "OLD", "mult": 1.2, "eur": 3.6, "why": "6h"}])
     check(w3 and "NEW" in w3[0] and "OLD x1.20" in w3[1], "R7 buys and sells of one round: one push (the rate guard would drop a second)")
