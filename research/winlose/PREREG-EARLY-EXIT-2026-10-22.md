@@ -77,3 +77,11 @@ minute with a high 238x its close, then no trade; the grid booked 11x on every e
 Both tests are therefore run again with the corrected outcome and label (FIX=1; the model trained on the corrected label), with the
 same variants, seeds, rules and pass checks as above. **The corrected run decides**; the first run is reported next to it. The
 chart numbers keep features.dense as it is (the trees were trained on them; the live code is checked against them by selftest R1).
+
+## Addendum 2, 22 Oct ~12:50 UTC: the chart numbers too (written while the FIX=1 run was going, before any of its numbers was read)
+The same forward fill also feeds the chart numbers (last candles' wicks, support/resistance, the 4 h low) of quiet minutes, while
+the live code (rocket.dense) uses the close there. So the trees learned numbers the live watcher never computes. features.dense
+gets fill_hl=False (high = low = close in a minute without a trade, as rocket.dense); early_grid.py with LIVEHL=1 builds the grid
+that way (outcome and chart numbers), and both tests run on it (GRID=live). **This run decides**, because it is the only one that
+describes what the live account computes; the FIX=1 run (corrected outcome, old chart numbers) is reported for information.
+Variants, seeds, rules and pass checks as above. If V15 (or another variant) holds here, the live model is exported from this grid.
