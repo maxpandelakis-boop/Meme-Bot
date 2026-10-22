@@ -5,7 +5,9 @@ section(D) -> HTML, a compact block "Rocket hunter (paper)":
     account: rocket_watch.py buys a coin once when its score reaches the cut, rule A sells it), each with its balance, how many of
     10 closed trades ended in profit, and its 3x/10x hits
   - the rocket hunter's open positions and the best scores of its last round
-  - one honest line: the model was positive on the earlier days only on few coins; this account is its live test
+  - one honest line: on the corrected history (22 Oct) the model was in the red; this account is its live test
+  - a fold with the tests of 22 Oct (rocket_tests.json next to this module, research/winlose/rocket_tests_export.py): the corrected
+    history, an earlier first check, 134 other exit rules, a model deciding "stay in or get out" (none held)
 D: report.py's page data; reads D["dir"]/db/memebot/rocket.json (rocket_watch.py writes it on the branch rocket-data, the scan job
 copies it) and, for the Pick side, page_account's numbers. Every value goes through a number check or html.escape. No script.
 """
@@ -18,6 +20,7 @@ import memebot as M
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 DOC = ("db", "memebot", "rocket.json")
+TESTS = os.path.join(HERE, "rocket_tests.json")
 SHOWN = 5                 # candidates in view on the Radar tab; the rest of the round behind "N weitere"
 
 
@@ -36,6 +39,51 @@ def load(d):
     except (OSError, ValueError):
         return None
     return doc if isinstance(doc, dict) and isinstance(doc.get("book"), dict) else None
+
+
+def load_tests(path=None):
+    try:
+        t = json.load(open(path or TESTS))
+    except (OSError, ValueError):
+        return None
+    return t if isinstance(t, dict) and isinstance(t.get("history"), dict) else None
+
+
+def tests(t=None):
+    """The fold "Geprüft am 22. Okt": the corrected history of the live rule and the three tests, each with its coins and result."""
+    import page_home as PH
+    t = t if t is not None else load_tests()
+    if not t:
+        return ""
+    pc = lambda v: "–" if num(v) is None else PH.de_num(num(v), 1) + " %"
+    h = (t.get("history") or {}).get("0.005") or {}
+    li = []
+    if num(h.get("coins")):
+        li.append("<li><b>Rückblick 10. Aug–8. Okt, korrigiert</b><span>%d Käufe: %s pro 20 € · %s von 10 im Plus · 10x bei %s · %s der 10.000 "
+                  "Simulationen im Plus</span></li>" % (int(num(h["coins"])), E(PH.de_eur(h.get("avg"), True)), E(PH.de_num(num(h.get("inProfitOf10")) or 0, 1)),
+                                                       E(pc(h.get("x10"))), E(pc(h.get("sim")))))
+    ea = t.get("early") or {}
+    vs = {k: v for k, v in (ea.get("variants") or {}).items() if isinstance(v, dict) and k != "V30"}
+    if vs:
+        best = max(vs.items(), key=lambda kv: num(kv[1].get("avg")) or -99)
+        held = [k for k, v in vs.items() if v.get("holds")]
+        li.append("<li><b>Früher einsteigen (5, 10, 15 oder 20 statt 30 Minuten)</b><span>%s · am besten %s Minuten: %s pro 20 €</span></li>" % (
+            "hält" if held else "hält nicht", E(best[0][1:]), E(PH.de_eur(best[1].get("avg"), True))))
+    ex = t.get("exits") or {}
+    if num(ex.get("rules")):
+        li.append("<li><b>Andere Verkaufsregeln (%d: Teilverkauf, Trailing-Stop, Zeitlimit)</b><span>%s</span></li>" % (
+            int(num(ex["rules"])), "keine schlägt −30 %, 11x, 6 h" if not ex.get("choice") else "neu: " + E(ex["choice"])))
+    ki = t.get("ki") or {}
+    if isinstance(ki.get("ki"), dict) and isinstance(ki.get("ruleA"), dict):
+        li.append("<li><b>KI entscheidet alle 15 Minuten: drinbleiben oder raus</b><span>%s · %s pro 20 € gegen %s mit der festen Regel "
+                  "(%d Käufe); beim einzigen echten 10x-Coin wäre sie drin geblieben, bis er abstürzte</span></li>" % (
+                      "hält" if ki.get("holds") else "hält nicht", E(PH.de_eur(ki["ki"].get("avg"), True)), E(PH.de_eur(ki["ruleA"].get("avg"), True)),
+                      int(num(ki["ki"].get("coins")) or 0)))
+    if not li:
+        return ""
+    return ('<details class="rk-more rk-tests"><summary>Geprüft am 22. Okt (Rückblick, Spielgeld)</summary><ul class="rk-tl">%s</ul>'
+            '<p class="rk-s">Jeder Test war vorab festgelegt und lief Woche für Woche nur mit Daten von davor. Die Live-Käufe dieses Kontos '
+            'sind der eigentliche Test.</p></details>') % "".join(li)
 
 
 def pick_side(D):
@@ -95,8 +143,9 @@ def section(D):
                 E(PH.de_num(cut, 4)), "".join(rows[:SHOWN]), ('<details class="rk-more"><summary>%d weitere</summary><ul class="rk-cands">%s</ul></details>' % (
                     len(rows) - SHOWN, "".join(rows[SHOWN:]))) if len(rows) > SHOWN else "") if rows else '<p class="rk-s">In der letzten Runde lag kein Coin im passenden Alter.</p>')
             + '<p class="rk-s">%s%s Radar-Coins beobachtet, %d bewertet. 20 € pro Coin, Verkauf bei −30 %%, 11x oder nach 6 h. '
-              'Live-Test: in der Historie wurde etwa 1 von 10 Käufen 10x, 2 von 10 endeten im Plus.</p>' % (E(when), E(PH.de_num(int(num(rd.get("candidates")) or 0), 0)), int(num(rd.get("scored")) or 0))
-            + cmp_)
+              'Live-Test: im korrigierten Rückblick lag diese Strategie im Minus (etwa 1 von 10 Käufen im Plus, 1 von 45 wurde 10x).</p>' % (
+                  E(when), E(PH.de_num(int(num(rd.get("candidates")) or 0), 0)), int(num(rd.get("scored")) or 0))
+            + tests() + cmp_)
     return wrap(body)
 
 
@@ -126,5 +175,7 @@ CSS = r"""
 .rk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
 .rk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
 .rk-cmp b.good { color:var(--good) } .rk-cmp b.bad { color:var(--bad) }
+.rk-tl { list-style:none; margin:0 0 6px; padding:0; display:grid; gap:8px } .rk-tl li { display:grid; gap:1px; font-size:var(--fs-s) }
+.rk-tl li span { color:var(--fg2); font-size:var(--fs-xs); overflow-wrap:anywhere }
 @media (max-width:560px) { .rk { padding:12px 12px 8px } .rk-acct { grid-template-columns:1fr } }
 """

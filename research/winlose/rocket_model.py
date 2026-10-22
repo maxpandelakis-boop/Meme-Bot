@@ -1,6 +1,8 @@
 """The rocket hunter for live use (fake money only): the model on exactly the numbers rocket.py computes live (one-minute candles,
 the latest trades, a seeded wallet memory, DexScreener's market cap/liquidity/volume, BTC/SOL), its stress test, and the export.
 usage: python3 research/winlose/rocket_model.py <scratch> [--export]
+<scratch>/grid_live.pkl: since 22 Oct the rows of 30 minutes and later of early_grid.py with LIVEHL=1 (a minute without a trade has
+high = low = the last close, as rocket.dense; grid.py's forward-filled wicks had booked fake 10x on dead pools, wick_check.py).
 Stress test (information: the holdout was seen for variant B before): walk-forward over every week from 24 Aug to 8 Oct (each
 week trained only on coins that graduated two days or more before it), cuts at the top 0.25-5%, fees 0.5-2% per side, the buy
 15 or 30 minutes late (the coin's next check), and filter_search.simulate's 10,000 runs."""
@@ -101,7 +103,7 @@ else:
     cut = float(np.quantile(s, 1 - 0.005))
     ex = G[NUM].head(20)
     model = {"v": 1, "made": "2026-10-22", "features": NUM, "trees": trees, "cut": cut, "cutTop": 0.005,
-             "rows": int(len(G)), "coins": int(G["mint"].nunique()), "src": "history2 10 Aug-8 Oct 2026; research/winlose/rocket_model.py",
+             "rows": int(len(G)), "coins": int(G["mint"].nunique()), "src": "history2 10 Aug-8 Oct 2026; research/winlose/rocket_model.py (grid without forward-filled wicks, 22 Oct)",
              "check": {"x": [[None if v != v else float(v) for v in r] for r in ex.values.tolist()], "p": [float(x) for x in m.predict_proba(ex)[:, 1]]}}
     json.dump(model, open(os.path.join(HERE, "..", "..", "rocket_model.json"), "w"), separators=(",", ":"))
     print("exported", len(trees), "trees, cut", cut, os.path.getsize(os.path.join(HERE, "..", "..", "rocket_model.json")) / 1e6, "MB")

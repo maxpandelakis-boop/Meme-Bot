@@ -1,0 +1,126 @@
+{
+ "v": 1,
+ "made": "2026-10-22",
+ "src": "research/winlose/PREREG-EARLY-EXIT-2026-10-22.md, EARLY-EXIT-2026-10-22.md",
+ "history": {
+  "0.005": {
+   "coins": 71,
+   "avg": -3.25,
+   "inProfitOf10": 1.2,
+   "x10": 2.2,
+   "sim": 22.6
+  },
+  "0.01": {
+   "coins": 226,
+   "avg": -2.3,
+   "inProfitOf10": 1.1,
+   "x10": 3.6,
+   "sim": 25.2
+  },
+  "0.02": {
+   "coins": 478,
+   "avg": -2.97,
+   "inProfitOf10": 1.2,
+   "x10": 3.2,
+   "sim": 10.4
+  }
+ },
+ "early": {
+  "choice": "V30",
+  "variants": {
+   "V30": {
+    "coins": 70.8,
+    "avg": -3.25,
+    "sim": 22.6,
+    "x10": 2.2,
+    "holds": false
+   },
+   "V20": {
+    "coins": 79.4,
+    "avg": -3.15,
+    "sim": 25.9,
+    "x10": 3.6,
+    "holds": false
+   },
+   "V15": {
+    "coins": 74.0,
+    "avg": -2.25,
+    "sim": 34.3,
+    "x10": 6.0,
+    "holds": false
+   },
+   "V10": {
+    "coins": 53.2,
+    "avg": -7.82,
+    "sim": 8.2,
+    "x10": 3.6,
+    "holds": false
+   },
+   "V5": {
+    "coins": 85.6,
+    "avg": -1.04,
+    "sim": 42.4,
+    "x10": 5.5,
+    "holds": false
+   }
+  }
+ },
+ "exits": {
+  "rules": 134,
+  "choice": null,
+  "beatEarlyAll3": 0,
+  "bestHindsight": {
+   "rule": "stop -50%, target 3x, 12 h",
+   "all0.5": {
+    "coins": 72,
+    "avg": -1.11,
+    "lo95": -5.81,
+    "hi95": 3.68,
+    "inProfitOf10": 2.6,
+    "x10booked": 0.0,
+    "total": -79.9
+   }
+  }
+ },
+ "ki": {
+  "holds": false,
+  "ki": {
+   "coins": 72,
+   "avg": -5.67,
+   "lo95": -8.04,
+   "hi95": -2.76,
+   "inProfitOf10": 1.8,
+   "x10booked": 0.0,
+   "total": -408.3
+  },
+  "ruleA": {
+   "coins": 72,
+   "avg": -3.89,
+   "lo95": -8.68,
+   "hi95": 3.12,
+   "inProfitOf10": 1.5,
+   "x10booked": 1.4,
+   "total": -280.0
+  },
+  "kiSim": 0.2,
+  "ruleASim": 12.9,
+  "ki1": {
+   "coins": 226,
+   "avg": -0.03,
+   "lo95": -7.65,
+   "hi95": 12.73,
+   "inProfitOf10": 1.6,
+   "x10booked": 0.9,
+   "total": -7.9
+  },
+  "ruleA1": {
+   "coins": 226,
+   "avg": -3.71,
+   "lo95": -7.32,
+   "hi95": 0.68,
+   "inProfitOf10": 1.1,
+   "x10booked": 2.2,
+   "total": -839.5
+  }
+ }
+}

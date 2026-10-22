@@ -74,7 +74,7 @@ def walk(r, hi, lo, c):
 
 def eur_of(sold):
     inv = M.TICKET - M.fee(M.TICKET)
-    return round(sum(inv * f * m - M.fee(inv * f * m) for f, m, _ in sold) - M.TICKET, 2)
+    return round(sum(max(0.0, inv * f * m - M.fee(inv * f * m)) for f, m, _ in sold) - M.TICKET, 2)     # as memebot.tip_net: a sale never costs more than it brings
 
 
 def bars(pools):
