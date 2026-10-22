@@ -159,7 +159,7 @@ def section(D):
     wrap = lambda inner: '<div class="rk" data-pa="rocket"%s>%s%s</div><style>%s</style>' % (
         (' data-rk-box data-rk-t="%d"' % int(num(doc.get("t")) or 0)) if doc else "", head, inner, CSS)
     ps = pick_side(D)
-    cmp_ = ('<p class="rk-cmp">Pick account for comparison: <b class="%s">%s</b> · %s/10 in profit · %d closed</p>' % (
+    cmp_ = ('<p class="rk-cmp">For comparison, Pick account: <b class="%s">%s</b> · %s/10 in profit · %d closed</p>' % (
         PH.tone(ps["bal"]), E(PH.de_eur(ps["bal"], True)), E("–" if ps["win"] is None else PH.de_num(ps["win"], 1)), ps["trades"])) if ps else ""
     if doc is None:
         return wrap('<p class="rk-s">The rocket hunter has not run yet: every 15 minutes it checks the radar\'s coins and buys on '
