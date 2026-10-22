@@ -618,7 +618,7 @@ jobs:
         timeout-minutes: 2
         run: python3 exit_grid.py run --dir mb
       - name: The learning trader's daily step (local computation, no requests; two minutes at most)
-        if: steps.restore.outputs.ok == 'true' && vars.MEMEBOT_TRADERS == '1'   # off since 22 Oct 2026 (two bots only: Pick and the rocket hunter; its data stays); the repository variable MEMEBOT_TRADERS=1 switches it on
+        if: steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'   # off since 22 Oct 2026 (two bots only: Pick and the rocket hunter; its data stays); the repository variable MEMEBOT_TRADERS=1 switches it on
         continue-on-error: true      # a record: an error or a timeout here never holds back the push below (the script itself exits 0)
         timeout-minutes: 3
         run: python3 traders.py run --dir mb
