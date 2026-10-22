@@ -1,0 +1,359 @@
+"""The rocket hunter on the page (fake money only, nothing is ever bought for real): report.py shows it at the top of the Radar tab.
+
+section(D) -> HTML, a compact block "Rocket hunter (paper)":
+  - the two paper accounts side by side: Pick (the scan's paper account, its sell rule unchanged) and Rocket hunter (its own
+    account: rocket_watch.py buys a coin once when its score reaches the cut, rule A sells it), each with its balance, how many of
+    10 closed trades ended in profit, and its 3x/10x hits
+  - the rocket hunter's open positions and the best scores of its last round
+  - one honest line: on the corrected history (22 Oct) the model was in the red; this account is its live test
+  - a fold with the tests of 22 Oct (rocket_tests.json next to this module, research/winlose/rocket_tests_export.py): the corrected
+    history, the replay on the unseen days 9-21 Oct (research/winlose/backfill.py), an earlier first check, 134 other exit rules, a
+    model deciding "stay in or get out" (none held)
+D: report.py's page data; reads D["dir"]/db/memebot/rocket.json (rocket_watch.py writes it on the branch rocket-data, the scan job
+copies it) and, for the Pick side, page_account's numbers. Every value goes through a number check or html.escape. No script in
+section(); LIVE_JS (report.py puts it after the block) reads the app's live row "rocket" (rocket_watch.py writes it every round) while
+the Radar or Start tab is open, so the account, its open positions, its last sells and the candidates move between two scans; it
+only fills the data-rk-* hooks of both tabs with textContent, and rocket.json stays what the page shows without the live store.
+"""
+import html, json, os, sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import memebot as M
+
+E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
+DOC = ("db", "memebot", "rocket.json")
+TESTS = os.path.join(HERE, "rocket_tests.json")
+SHOWN = 5                 # candidates in view on the Radar tab; the rest of the round behind "N weitere"
+SOLD = 5                  # last sells on the Radar tab
+WHY = {"stop": "Stopp −30 %", "11x": "11x erreicht", "6h": "nach 6 h", "gone": "Coin weg"}
+
+
+def num(v):
+    return M.num(v)
+
+
+def eur(v):
+    v = num(v)
+    return "–" if v is None else ("%+.2f €" % (0.0 if abs(v) < 0.005 else v)).replace("-", "−")
+
+
+def load(d):
+    try:
+        doc = json.load(open(os.path.join(d or "", *DOC)))
+    except (OSError, ValueError):
+        return None
+    return doc if isinstance(doc, dict) and isinstance(doc.get("book"), dict) else None
+
+
+def load_tests(path=None):
+    try:
+        t = json.load(open(path or TESTS))
+    except (OSError, ValueError):
+        return None
+    return t if isinstance(t, dict) and isinstance(t.get("history"), dict) else None
+
+
+def tests(t=None):
+    """The fold "Geprüft am 22. Okt": the corrected history of the live rule and the three tests, each with its coins and result."""
+    import page_home as PH
+    t = t if t is not None else load_tests()
+    if not t:
+        return ""
+    pc = lambda v: "–" if num(v) is None else PH.de_num(num(v), 1) + " %"
+    h = (t.get("history") or {}).get("0.005") or {}
+    li = []
+    if num(h.get("coins")):
+        li.append("<li><b>Rückblick 10. Aug–8. Okt, korrigiert</b><span>%d Käufe: %s pro 20 € · %s von 10 im Plus · 10x bei %s · %s der 10.000 "
+                  "Simulationen im Plus</span></li>" % (int(num(h["coins"])), E(PH.de_eur(h.get("avg"), True)), E(PH.de_num(num(h.get("inProfitOf10")) or 0, 1)),
+                                                       E(pc(h.get("x10"))), E(pc(h.get("sim")))))
+    rp = (t.get("replay") or {}).get("0.005") or {}
+    if num(rp.get("coins")):
+        x10 = int(num(rp.get("x10")) or 0)
+        li.append("<li><b>Nachtest 9.–21. Okt, neue Tage wie live</b><span>%d Käufe: %s pro 20 € · %s von 10 im Plus · %s · %s der 10.000 "
+                  "Simulationen im Plus</span></li>" % (int(num(rp["coins"])), E(PH.de_eur(rp.get("avg"), True)), E(PH.de_num(num(rp.get("inProfitOf10")) or 0, 1)),
+                                                       "kein 10x" if not x10 else "%d× 10x" % x10, E(pc(rp.get("sim")))))
+    ea = t.get("early") or {}
+    vs = {k: v for k, v in (ea.get("variants") or {}).items() if isinstance(v, dict) and k != "V30"}
+    if vs:
+        best = max(vs.items(), key=lambda kv: num(kv[1].get("avg")) or -99)
+        held = [k for k, v in vs.items() if v.get("holds")]
+        li.append("<li><b>Früher einsteigen (5, 10, 15 oder 20 statt 30 Minuten)</b><span>%s · am besten %s Minuten: %s pro 20 €</span></li>" % (
+            "hält" if held else "hält nicht", E(best[0][1:]), E(PH.de_eur(best[1].get("avg"), True))))
+    ex = t.get("exits") or {}
+    if num(ex.get("rules")):
+        li.append("<li><b>Andere Verkaufsregeln (%d: Teilverkauf, Trailing-Stop, Zeitlimit)</b><span>%s</span></li>" % (
+            int(num(ex["rules"])), "keine schlägt −30 %, 11x, 6 h" if not ex.get("choice") else "neu: " + E(ex["choice"])))
+    ki = t.get("ki") or {}
+    if isinstance(ki.get("ki"), dict) and isinstance(ki.get("ruleA"), dict):
+        li.append("<li><b>KI entscheidet alle 15 Minuten: drinbleiben oder raus</b><span>%s · %s pro 20 € gegen %s mit der festen Regel "
+                  "(%d Käufe); beim einzigen echten 10x-Coin wäre sie drin geblieben, bis er abstürzte</span></li>" % (
+                      "hält" if ki.get("holds") else "hält nicht", E(PH.de_eur(ki["ki"].get("avg"), True)), E(PH.de_eur(ki["ruleA"].get("avg"), True)),
+                      int(num(ki["ki"].get("coins")) or 0)))
+    if not li:
+        return ""
+    return ('<details class="rk-more rk-tests"><summary>Geprüft am 22. Okt (Rückblick, Spielgeld)</summary><ul class="rk-tl">%s</ul>'
+            '<p class="rk-s">Jeder Test war vorab festgelegt und lief Woche für Woche nur mit Daten von davor. Die Live-Käufe dieses Kontos '
+            'sind der eigentliche Test.</p></details>') % "".join(li)
+
+
+def pick_side(D):
+    """The scan's paper account, its pick positions only (the new launches ended on Oct 16: Archiv tab), the same numbers as the Start tab."""
+    try:
+        import page_home as PH
+        b = PH.pick_book(D)
+    except Exception:
+        return None
+    return {"bal": b["bal"], "trades": b["closed"], "open": b["open"], "win": b["win"], "x3": b["x3"], "x10": b["x10"]} if b else None
+
+
+def sym(p, a=None):
+    return str(p.get("sym") or str(p.get("addr") or a or "?")[:6])[:14]
+
+
+def chart_div(p, closed=False):
+    """The position's price line for LIVE_JS's chart (it draws every [data-rk-ch], with or without the live store): the points
+    [minutes since the buy, multiple], and for a sell its minute and multiple. Numbers only."""
+    pts = [[int(m), round(float(v), 4)] for m, v in (p.get("chart") or []) if num(m) is not None and num(v) is not None][-400:]
+    if len(pts) < 2 and not closed:
+        return '<div class="rk-ch" data-rk-ch="[]"></div>'
+    end = ""
+    if closed and num(p.get("out")) and num(p.get("t")):
+        end = ' data-rk-end="%d,%s"' % (int((num(p["out"]) - num(p["t"])) // 60_000), round(num(p.get("mult")) or 0.0, 4))
+    return '<div class="rk-ch" data-rk-ch="%s"%s></div>' % (E(json.dumps(pts, separators=(",", ":"))), end)
+
+
+def open_li(PH, p, a=None):
+    return '<li><b>%s</b><span>gekauft bei Score %s · jetzt x%s · Hoch x%s</span>%s</li>' % (
+        E(sym(p, a)), E(PH.de_num(num(p.get("score")) or 0, 3)), E(PH.de_num(num(p.get("now")) or 1.0)), E(PH.de_num(num(p.get("hi")) or 1.0)), chart_div(p))
+
+
+def sold_li(PH, p):
+    """One sell: symbol, multiple, why and when, the result in euro (LIVE_JS builds the same row)."""
+    try:
+        import page_account as PA
+        at = PA.hhmm(p["out"]) if num(p.get("out")) else ""
+    except Exception:
+        at = ""
+    v = num(p.get("eur")) or 0.0
+    bits = ["x" + PH.de_num(num(p.get("mult")) or 0.0), WHY.get(str(p.get("why") or ""), str(p.get("why") or "")), at]
+    return '<li class="%s"><b>%s</b><span>%s</span><em>%s</em>%s</li>' % (
+        PH.tone(v), E(sym(p)), E(" · ".join(b for b in bits if b)), E(PH.de_eur(v, True)), chart_div(p, True) if p.get("chart") else "")
+
+
+def section(D):
+    """The Radar tab's top block: the rocket hunter's own account, its open positions, every candidate of its last round with a bar to the
+    buy cut, the rules in one line and the Pick account for comparison."""
+    import page_home as PH
+    doc = load((D or {}).get("dir"))
+    head = ('<div class="rk-head"><div><h3>Raketen-Jäger</h3><small>Rocket hunter · eigenes Papierkonto</small></div>'
+            '<span class="chip warn">Spielgeld</span></div>')
+    wrap = lambda inner: '<div class="rk" data-pa="rocket"%s>%s%s</div><style>%s</style>' % (
+        (' data-rk-box data-rk-t="%d"' % int(num(doc.get("t")) or 0)) if doc else "", head, inner, CSS)
+    ps = pick_side(D)
+    cmp_ = ('<p class="rk-cmp">Zum Vergleich Pick: <b class="%s">%s</b> · %s/10 im Plus · %d abgeschlossen</p>' % (
+        PH.tone(ps["bal"]), E(PH.de_eur(ps["bal"], True)), E("–" if ps["win"] is None else PH.de_num(ps["win"], 1)), ps["trades"])) if ps else ""
+    if doc is None:
+        return wrap('<p class="rk-s">Der Raketen-Jäger ist noch nicht gelaufen: er prüft alle 15 Minuten die Coins des Radars und kauft auf '
+                    'Papier nur, wenn der Raketen-Score eines Coins die Schwelle erreicht.</p>' + cmp_)
+    b = PH.rocket_book(doc)
+    win = "–" if b["win"] is None else PH.de_num(b["win"], 1).rstrip("0").rstrip(",")
+    stats = [("im Plus", '<span data-rk-st="win">%s</span>/10' % E(win), ""), ("3x · 10x", "%d · %d" % (b["x3"], b["x10"]), "hits"),
+             ("offen", str(b["open"]), "open"), ("abgeschlossen", str(b["closed"]), "closed")]
+    acct = ('<div class="rk-acct"><div class="rk-bal"><span class="k">Kontostand</span><b class="%s" data-rk-bal>%s</b>%s</div><div class="rk-sts">%s</div></div>') % (
+        PH.tone(b["bal"]), E(PH.de_eur(b["bal"], True)), PH.spark(b["pts"], PH.tone(b["pts"][-1] if b["pts"] else 0)),
+        "".join('<span><i>%s</i><b%s>%s</b></span>' % (E(k), (' data-rk-st="%s"' % c) if c else "", v if not c else E(v)) for k, v, c in stats))
+    bk = doc.get("book") or {}
+    op = [open_li(PH, p, a) for a, p in sorted((bk.get("open") or {}).items(), key=lambda kv: -(num(kv[1].get("t")) or 0)) if isinstance(p, dict)]
+    sold = [sold_li(PH, p) for p in sorted((p for p in bk.get("closed") or [] if isinstance(p, dict)), key=lambda p: -(num(p.get("out")) or 0))[:SOLD]]
+    cut = num(doc.get("cut")) or 0
+    rows = []
+    for r in [r for r in doc.get("top") or [] if isinstance(r, dict)]:
+        sh = (num(r.get("score")) or 0) / cut if cut > 0 else 0
+        rows.append('<li class="%s"><b>%s</b><span class="rk-bar"><i style="width:%.1f%%"></i></span><em>%s</em><small>%d min alt%s</small></li>' % (
+            "buy" if r.get("buy") else ("near" if sh >= 0.5 else ""), E(str(r.get("sym") or str(r.get("addr") or "?")[:6])[:14]), max(2.0, min(100.0, 100 * sh)),
+            "gekauft" if r.get("buy") else "%d %%" % round(100 * sh), int(num(r.get("age")) or 0),
+            (" · MC %s $" % PH.de_num(num(r["mc"]), 0)) if num(r.get("mc")) else ""))
+    rd = doc.get("round") or {}
+    when = ""
+    if num(doc.get("t")):
+        try:
+            import page_account as PA
+            when = "Letzte Runde %s %s · " % (PA.mday(doc["t"]), PA.hhmm(doc["t"]))
+        except Exception:
+            when = ""
+    body = (acct
+            + '<p class="rk-s rk-live" data-rk-live hidden></p>'
+            + '<div class="rk-st" data-rk-opw%s><span class="k">Offene Positionen</span><ul class="rk-op" data-rk-op>%s</ul></div>' % ("" if op else " hidden", "".join(op))
+            + '<div class="rk-st" data-rk-soldw%s><span class="k">Zuletzt verkauft</span><ul class="rk-sold" data-rk-sold>%s</ul></div>' % ("" if sold else " hidden", "".join(sold))
+            + ('<div class="rk-st"><span class="k">Kandidaten der letzten Runde · Kauf ab 100 %% der Schwelle (%s)</span><ul class="rk-cands" data-rk-cands="rk">%s</ul>%s</div>' % (
+                E(PH.de_num(cut, 4)), "".join(rows[:SHOWN]), ('<details class="rk-more" data-rk-more><summary>%d weitere</summary><ul class="rk-cands">%s</ul></details>' % (
+                    len(rows) - SHOWN, "".join(rows[SHOWN:]))) if len(rows) > SHOWN else "") if rows else '<p class="rk-s">In der letzten Runde lag kein Coin im passenden Alter.</p>')
+            + '<p class="rk-s">%s%s Radar-Coins beobachtet, %d bewertet. 20 € pro Coin, Verkauf bei −30 %%, 11x oder nach 6 h. '
+              'Live-Test: im korrigierten Rückblick lag diese Strategie im Minus (etwa 1 von 10 Käufen im Plus, 1 von 45 wurde 10x).</p>' % (
+                  E(when), E(PH.de_num(int(num(rd.get("candidates")) or 0), 0)), int(num(rd.get("scored")) or 0))
+            + tests() + cmp_)
+    return wrap(body)
+
+
+CSS = r"""
+/* the rocket hunter (page_rocket.py) at the top of the Radar tab */
+.rk { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 16px 10px; display:grid; gap:12px; min-width:0; margin-bottom:12px;
+  background-image:radial-gradient(120% 80% at 100% 0%, color-mix(in srgb,var(--nn2) 14%,transparent), transparent 60%) }
+.rk-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 10px } .rk-head h3 { margin:0; font-size:19px }
+.rk-head small { font-size:var(--fs-xs); color:var(--muted) }
+.rk-acct { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:12px; align-items:center }
+.rk-bal { display:grid; gap:2px; min-width:0 } .rk-bal b { font-size:28px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; white-space:nowrap }
+.rk-bal b.good { color:var(--good) } .rk-bal b.bad { color:var(--bad) }
+.rk .k { font-size:var(--fs-xs); color:var(--muted) }
+.rk-sts { display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.rk-sts > span { display:grid; padding:6px 8px; border-radius:10px; background:color-mix(in srgb,var(--fg) 4%,transparent) }
+.rk-sts i { font-style:normal; font-size:11px; color:var(--muted) } .rk-sts b { font-size:15px; font-variant-numeric:tabular-nums }
+.rk-st { display:grid; gap:6px } .rk-st ul { list-style:none; margin:0; padding:0; display:grid; gap:6px }
+.rk-op li { display:grid; font-size:var(--fs-s) } .rk-op li span { color:var(--fg2); font-size:var(--fs-xs) }
+.rk-cands li { display:grid; grid-template-columns:minmax(64px,auto) 1fr auto; column-gap:10px; align-items:center; font-size:var(--fs-s) }
+.rk-cands li b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px }
+.rk-cands li em { font-style:normal; font-variant-numeric:tabular-nums; color:var(--fg2); min-width:44px; text-align:right }
+.rk-cands li small { grid-column:1 / -1; font-size:11px; color:var(--muted); margin-top:-2px }
+.rk-bar { height:6px; border-radius:6px; background:color-mix(in srgb,var(--fg) 8%,transparent); overflow:hidden }
+.rk-bar i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),var(--nn2)) }
+.rk-cands li.near em { color:var(--warn) } .rk-cands li.buy em { color:var(--good); font-weight:600 } .rk-cands li.buy .rk-bar i { background:var(--good-mark) }
+.rk-more > summary { cursor:pointer; color:var(--accent); font-size:var(--fs-s); padding:6px 0 } .rk-more[open] > summary { margin-bottom:6px }
+.rk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
+.rk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
+.rk-cmp b.good { color:var(--good) } .rk-cmp b.bad { color:var(--bad) }
+.rk-sold li { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px; font-size:var(--fs-s); padding:4px 6px; border-radius:10px; margin:0 -6px }
+.rk-sold li span { grid-column:1; color:var(--fg2); font-size:var(--fs-xs) } .rk-sold li em { grid-column:2; grid-row:1 / span 2; align-self:center; font-style:normal; font-variant-numeric:tabular-nums; font-weight:600 }
+.rk-sold li.good em { color:var(--good) } .rk-sold li.bad em { color:var(--bad) }
+.rk-sold li.new, .rk-op li.new { background:color-mix(in srgb,var(--nn1) 12%,transparent); animation:rkNew 2.4s ease-out 2 }
+@keyframes rkNew { 0% { box-shadow:0 0 0 0 color-mix(in srgb,var(--nn1) 60%,transparent) } 100% { box-shadow:0 0 0 10px transparent } }
+.rk-live { display:flex; align-items:center; gap:6px; color:var(--fg2) } .rk-live::before, .hm-live::before { content:""; width:7px; height:7px; border-radius:50%;
+  background:var(--good); box-shadow:0 0 8px var(--good); flex:none }
+.rk-op li { gap:4px } .rk-ch { grid-column:1 / -1; min-width:0; margin-top:4px } .rk-ch svg { display:block; width:100%; height:auto; overflow:visible }
+.rk-ch-wait { font-size:11px; color:var(--muted) }
+.rk-svg .ln { fill:none; stroke-width:1.8; stroke-linejoin:round; stroke-linecap:round } .rk-svg.up .ln { stroke:var(--good) } .rk-svg.dn .ln { stroke:var(--bad) }
+.rk-svg .g0 { stop-opacity:.28 } .rk-svg.up .g0, .rk-svg.up .g1 { stop-color:var(--good) } .rk-svg.dn .g0, .rk-svg.dn .g1 { stop-color:var(--bad) } .rk-svg .g1 { stop-opacity:0 }
+.rk-svg .lv { stroke-width:1; stroke-dasharray:3 3; stroke:var(--muted) } .rk-svg .lv.stop { stroke:var(--bad) } .rk-svg .lv.goal { stroke:var(--good) }
+.rk-svg text { font:10px/1 system-ui, sans-serif; fill:var(--muted) } .rk-svg .lt.stop { fill:var(--bad) } .rk-svg .lt.goal { fill:var(--good) }
+.rk-svg .lx { fill:var(--fg); font-weight:600 } .rk-svg .pb { fill:var(--accent) } .rk-svg .pn { fill:var(--fg) } .rk-svg.up .ps { fill:var(--good) } .rk-svg.dn .ps { fill:var(--bad) }
+.rk-svg .pulse { fill:var(--nn1); opacity:.35; transform-box:fill-box; transform-origin:center; animation:rkPulse 1.6s ease-out infinite }
+@keyframes rkPulse { 0% { transform:scale(.5); opacity:.6 } 100% { transform:scale(1.8); opacity:0 } }
+.rk-sold li .rk-ch { grid-column:1 / -1; grid-row:3 }
+@media (prefers-reduced-motion:reduce) { .rk-sold li.new, .rk-op li.new, .rk-svg .pulse { animation:none } }
+.rk-tl { list-style:none; margin:0 0 6px; padding:0; display:grid; gap:8px } .rk-tl li { display:grid; gap:1px; font-size:var(--fs-s) }
+.rk-tl li span { color:var(--fg2); font-size:var(--fs-xs); overflow-wrap:anywhere }
+@media (max-width:560px) { .rk { padding:12px 12px 8px } .rk-acct { grid-template-columns:1fr } }
+"""
+
+
+# The live row "rocket" of the app's live store (rocket_watch.py writes it after every 15-minute round): one GET with the publishable key
+# (data-sb-url/data-sb-key on <html>, set by bot.py site) every 45 s while the page is visible and the Radar or Start tab is open. It
+# fills the data-rk-* hooks of every [data-rk-box] whose scan copy (data-rk-t) is not newer, only with textContent; without the store,
+# or when a read fails, the page keeps what the scan wrote (rocket.json).
+LIVE_JS = r"""
+(function(){
+  var root=document.documentElement,url=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),key=root.getAttribute('data-sb-key')||'';
+  var boxes=[].slice.call(document.querySelectorAll('[data-rk-box]'));
+  var NS='http://www.w3.org/2000/svg',W=300,HT=96,PL=4,PR=58,PT=8,PB=16;
+  function sv(tag,at,txt){var e=document.createElementNS(NS,tag);for(var k in at)e.setAttribute(k,at[k]);if(txt!=null)e.textContent=txt;return e;}
+  function dex(v,d){return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toFixed(d).replace('.',',');}
+  // one position's price line: log scale, the buy (1x) and the stop (0.7x) as dashed lines, 11x when the line comes near it, the buy
+  // as a dot at minute 0, the sell (data-rk-end) as a dot at its minute, an open position's last point pulsing
+  function draw(div){
+    var pts;try{pts=JSON.parse(div.getAttribute('data-rk-ch')||'[]');}catch(e){pts=[];}
+    pts=(Array.isArray(pts)?pts:[]).filter(function(q){return Array.isArray(q)&&isFinite(q[0])&&isFinite(q[1])&&q[1]>0;});
+    var end=String(div.getAttribute('data-rk-end')||'').split(','),em=parseFloat(end[0]),ev=parseFloat(end[1]),sold=isFinite(em);
+    if(sold&&isFinite(ev)&&ev>0)pts.push([em,ev]);
+    div.textContent='';
+    if(pts.length<2){div.appendChild(el('small','rk-ch-wait','Kursverlauf erscheint nach dem ersten Minuten-Check'));return;}
+    var xs=pts.map(function(q){return q[0];}),vs=pts.map(function(q){return q[1];});
+    var x1=Math.max(30,Math.max.apply(null,xs)),lo=Math.min(0.62,Math.min.apply(null,vs)*0.95),hi=Math.max(1.3,Math.max.apply(null,vs)*1.12);
+    if(hi>7)hi=Math.max(hi,12);
+    var L=Math.log,X=function(m){return PL+(W-PL-PR)*m/x1;},Y=function(v){return PT+(HT-PT-PB)*(L(hi)-L(Math.max(v,1e-6)))/(L(hi)-L(lo));};
+    var last=pts[pts.length-1],up=last[1]>=1,svg=sv('svg',{viewBox:'0 0 '+W+' '+HT,'class':'rk-svg '+(up?'up':'dn'),role:'img','aria-label':'Kursverlauf seit dem Kauf'});
+    var gid='rkg'+Math.random().toString(36).slice(2,8),g=sv('linearGradient',{id:gid,x1:0,y1:0,x2:0,y2:1});
+    g.appendChild(sv('stop',{offset:'0','class':'g0'}));g.appendChild(sv('stop',{offset:'1','class':'g1'}));var df=sv('defs',{});df.appendChild(g);svg.appendChild(df);
+    function lvl(v,cls,txt){if(v<lo||v>hi)return;var y=Y(v).toFixed(1);svg.appendChild(sv('line',{x1:PL,x2:W-PR,y1:y,y2:y,'class':'lv '+cls}));
+      svg.appendChild(sv('text',{x:W-PR+4,y:(+y+3).toFixed(1),'class':'lt '+cls},txt));}
+    lvl(1,'buy','Kauf 1x');lvl(0.7,'stop','Stopp');if(hi>=11)lvl(11,'goal','Ziel 11x');
+    var d=pts.map(function(q,i){return (i?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1);}).join(' ');
+    svg.appendChild(sv('path',{d:d+' L'+X(last[0]).toFixed(1)+' '+(HT-PB)+' L'+X(pts[0][0]).toFixed(1)+' '+(HT-PB)+' Z',fill:'url(#'+gid+')','class':'ar'}));
+    svg.appendChild(sv('path',{d:d,'class':'ln'}));
+    svg.appendChild(sv('circle',{cx:X(pts[0][0]).toFixed(1),cy:Y(pts[0][1]).toFixed(1),r:3.5,'class':'pb'}));
+    var lx=X(last[0]),ly=Y(last[1]);
+    if(!sold)svg.appendChild(sv('circle',{cx:lx.toFixed(1),cy:ly.toFixed(1),r:7,'class':'pulse'}));
+    svg.appendChild(sv('circle',{cx:lx.toFixed(1),cy:ly.toFixed(1),r:3.5,'class':sold?'ps':'pn'}));
+    var ty=ly-9<PT+6?ly+16:ly-9;
+    svg.appendChild(sv('text',{x:(lx-6).toFixed(1),y:ty.toFixed(1),'class':'lx','text-anchor':'end'},(sold?'Verkauf x':'jetzt x')+dex(last[1],2)));
+    svg.appendChild(sv('text',{x:PL,y:HT-3,'class':'ax'},'Kauf'));
+    svg.appendChild(sv('text',{x:W-PR,y:HT-3,'class':'ax','text-anchor':'end'},x1>=120?dex(x1/60,1)+' h':Math.round(x1)+' min'));
+    div.appendChild(svg);
+  }
+  function drawAll(root){[].forEach.call((root||document).querySelectorAll('[data-rk-ch]'),draw);}
+  window.memebotRkChart=draw;      // the brain's coin sheet (page_brain.py) draws a bought candidate's line with it when the sheet opens
+  function chartDiv(p,sold){var e=el('div','rk-ch');e.setAttribute('data-rk-ch',JSON.stringify(Array.isArray(p.chart)?p.chart:[]));
+    if(sold&&isFinite(+p.out)&&isFinite(+p.t))e.setAttribute('data-rk-end',Math.floor((+p.out-+p.t)/60000)+','+(+p.mult||0));return e;}
+  drawAll();
+  if(!/^https:\/\/[^\s\/]+$/.test(url)||!key||!boxes.length||!window.fetch)return;
+  var EVERY=45000,SOLD=5,SHOWN=5,next=0,busy=false,seen=null,MINUS='−';
+  var WHY={stop:'Stopp −30 %','11x':'11x erreicht','6h':'nach 6 h',gone:'Coin weg'};
+  function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
+  function de(v,d){var s=Math.abs(v).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});return (v<0&&/[1-9]/.test(s)?MINUS:'')+s;}
+  function eur(v){return (v>0.004?'+':'')+de(v,2)+' €';}
+  function tone(v){return v>0.004?'good':(v<-0.004?'bad':'');}
+  function hhmm(ms){try{return new Date(ms).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+  function sym(p){return String(p.sym||String(p.addr||'?').slice(0,6)).slice(0,14);}
+  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function li(cls,b,span,em){var e=el('li',cls);e.appendChild(el('b',null,b));if(span!=null)e.appendChild(el('span',null,span));if(em!=null)e.appendChild(el('em',null,em));return e;}
+  function fill(box,sel,items){var u=box.querySelector(sel);if(!u)return null;u.textContent='';items.forEach(function(x){u.appendChild(x);});return u;}
+  function show(w,on){if(w){if(on)w.removeAttribute('hidden');else w.setAttribute('hidden','');}}
+  function set(box,k,v){[].forEach.call(box.querySelectorAll('[data-rk-st="'+k+'"]'),function(e){e.textContent=v;});}
+  function apply(d){
+    var s=d.summary,t=n(d.t)||0,cut=n(d.cut)||0,bal=(n(s.eur)||0)+(n(s.openEur)||0),w=n(s.inProfitOf10);
+    var now=(Array.isArray(d.soldNow)?d.soldNow:[]).map(String);
+    var op=(Array.isArray(d.open)?d.open:[]).filter(function(p){return p&&typeof p==='object';}).sort(function(a,b){return (n(b.t)||0)-(n(a.t)||0);});
+    var cl=(Array.isArray(d.closed)?d.closed:[]).filter(function(p){return p&&typeof p==='object';}).sort(function(a,b){return (n(b.out)||0)-(n(a.out)||0);}).slice(0,SOLD);
+    var ids=cl.map(function(p){return String(p.addr)+'@'+(n(p.out)||0);}),fresh=function(p){var id=String(p.addr)+'@'+(n(p.out)||0);
+      return now.indexOf(String(p.addr))>=0||(seen!==null&&seen.indexOf(id)<0);};
+    boxes.forEach(function(box){
+      if(t<(n(box.getAttribute('data-rk-t'))||0))return;
+      [].forEach.call(box.querySelectorAll('[data-rk-bal]'),function(e){e.textContent=eur(bal);e.classList.remove('good','bad');if(tone(bal))e.classList.add(tone(bal));});
+      set(box,'win',w===null?'–':de(w,1).replace(/,0$/,''));
+      set(box,'hits',(n(s.x3)||0)+' · '+(n(s.x10)||0));
+      set(box,'open',String(n(s.open)||0));set(box,'closed',String(n(s.trades)||0));
+      var u=fill(box,'[data-rk-op]',op.map(function(p){var e=li('',sym(p),'gekauft bei Score '+de(n(p.score)||0,3)+' · jetzt x'+de(n(p.now)||1,2)+' · Hoch x'+de(n(p.hi)||1,2));
+        e.appendChild(chartDiv(p,false));return e;}));
+      if(u)show(u.closest('[data-rk-opw]'),op.length);
+      u=fill(box,'[data-rk-sold]',cl.map(function(p){var v=n(p.eur)||0,o=n(p.out);
+        var e=li((tone(v)+(fresh(p)?' new':'')).trim(),sym(p),['x'+de(n(p.mult)||0,2),WHY[p.why]||String(p.why||''),o?hhmm(o):''].filter(Boolean).join(' · '),eur(v));
+        if(Array.isArray(p.chart)&&p.chart.length)e.appendChild(chartDiv(p,true));return e;}));
+      if(u)show(u.closest('[data-rk-soldw]'),cl.length);
+      var cs=box.querySelector('[data-rk-cands]');
+      if(cs&&Array.isArray(d.top)&&d.top.length){var pre=cs.getAttribute('data-rk-cands')==='hm'?'hm':'rk';
+        fill(box,'[data-rk-cands]',d.top.slice(0,SHOWN).filter(function(r){return r&&typeof r==='object';}).map(function(r){
+          var sh=cut>0?(n(r.score)||0)/cut:0,e=li(r.buy?'buy':(sh>=0.5?'near':''),sym(r),null,null),bar=el('span',pre+'-bar'),i=el('i');
+          i.style.width=Math.max(2,Math.min(100,100*sh)).toFixed(1)+'%';bar.appendChild(i);e.appendChild(bar);
+          e.appendChild(el('em',null,r.buy?'gekauft':Math.round(100*sh)+' %'));e.appendChild(el('small',null,Math.round(n(r.age)||0)+' min alt'));return e;}));
+        [].forEach.call(box.querySelectorAll('[data-rk-more]'),function(m){m.setAttribute('hidden','');});}
+      drawAll(box);
+      [].forEach.call(box.querySelectorAll('[data-rk-live]'),function(e){e.textContent='Live · Stand '+hhmm(t)+' · neue Käufe und Verkäufe erscheinen hier ohne Neuladen';e.removeAttribute('hidden');});
+    });
+    seen=ids;
+  }
+  function want(){if(document.visibilityState==='hidden')return false;var a=document.getElementById('tab-young'),b=document.getElementById('tab-home');
+    return (!a&&!b)||!!(a&&a.checked)||!!(b&&b.checked);}
+  function poll(){
+    if(busy||!want()||Date.now()<next)return;busy=true;next=Date.now()+EVERY;
+    var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort();},10000);
+    fetch(url+'/rest/v1/live?select=doc&id=eq.rocket',{headers:{apikey:key,Accept:'application/json'},cache:'no-store',signal:ac?ac.signal:undefined})
+      .then(function(r){if(!r.ok)throw r.status;return r.json();})
+      .then(function(rows){var d=Array.isArray(rows)&&rows[0]&&rows[0].doc;if(d&&typeof d==='object'&&d.summary&&typeof d.summary==='object')apply(d);})
+      .catch(function(){next=Date.now()+2*EVERY;})
+      .then(function(){clearTimeout(tm);busy=false;});
+  }
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){next=0;poll();}});
+  document.addEventListener('change',function(e){if(e.target&&/^tab-(young|home)$/.test(e.target.id||''))poll();});
+  setInterval(poll,5000);poll();
+})();
+"""

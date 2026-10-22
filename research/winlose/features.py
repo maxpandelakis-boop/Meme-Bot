@@ -12,10 +12,11 @@ usage: python3 research/winlose/features.py <scratch dir with d.pkl, pairs.pkl, 
 import glob, json, os, sys
 import numpy as np, pandas as pd
 
-S = sys.argv[1]
-d = pd.read_pickle(os.path.join(S, "d.pkl"))
-rows = d[d["univ"] & d["eur_A"].notna()].copy()
-pools = set(rows["pool"])
+S = sys.argv[1] if len(sys.argv) > 1 else ""
+if S and os.path.exists(os.path.join(S, "d.pkl")):        # imported without a scratch dir (selftest_rocket): chart_feats only
+    d = pd.read_pickle(os.path.join(S, "d.pkl"))
+    rows = d[d["univ"] & d["eur_A"].notna()].copy()
+    pools = set(rows["pool"])
 
 
 def rsi(close, n=14):
@@ -26,10 +27,11 @@ def rsi(close, n=14):
     return 100.0 if dn == 0 else 100 - 100 / (1 + up / dn)
 
 
-def chart_feats(b, E):
-    """b: dense per-minute arrays of one pool (index = minute since graduation); E: entry minute (bars before it only)."""
+def chart_feats(b, E, min_e=30):
+    """b: dense per-minute arrays of one pool (index = minute since graduation); E: entry minute (bars before it only).
+    min_e: the youngest entry minute (30 for the study and the live model; early_entry.py tests 5 to 20)."""
     c, hi, lo, vb, vs, nb, ns, na = (x[:E] for x in (b["c"], b["hi"], b["lo"], b["vb"], b["vs"], b["nb"], b["ns"], b["na"]))
-    if E < 30 or not np.isfinite(c[-1]) or c[-1] <= 0:
+    if E < max(5, min_e) or not np.isfinite(c[-1]) or c[-1] <= 0:
         return {}
     lc = np.log(c)
     f = {}
@@ -77,6 +79,8 @@ def chart_feats(b, E):
         f["trend_r2"] = 1 - res.var() / c5.var() if c5.var() > 0 else 0.0
     # candles: the last 5-minute and 15-minute candle
     for k in (5, 15):
+        if E <= k:
+            continue
         o, cl, h, l = c[-k - 1], c[-1], np.nanmax(hi[-k:]), np.nanmin(lo[-k:])
         rng = h - l
         if rng > 0:
@@ -104,7 +108,9 @@ def chart_feats(b, E):
     return f
 
 
-def dense(g):
+def dense(g, fill_hl=True):
+    """fill_hl=True (the study's grids before 22 Oct): a minute without a trade repeats the last traded minute's high and low.
+    fill_hl=False: its high and low are the last close, as rocket.dense computes them live (PREREG-EARLY-EXIT addendum 2)."""
     n = int(g["mi"].max()) + 1
     out = {k: np.zeros(n) for k in ("vb", "vs", "nb", "ns", "na")}
     for k, col in (("vb", "sol_buy"), ("vs", "sol_sell"), ("nb", "n_buy"), ("ns", "n_sell"), ("na", "n_atomic")):
@@ -112,7 +118,7 @@ def dense(g):
     for k, col in (("c", "p_close"), ("hi", "p_hi"), ("lo", "p_lo")):
         a = np.full(n, np.nan)
         a[g["mi"].to_numpy()] = g[col].to_numpy()
-        out[k] = pd.Series(a).ffill().to_numpy()
+        out[k] = pd.Series(a).ffill().to_numpy() if (fill_hl or k == "c") else a
     out["hi"] = np.where(np.isnan(out["hi"]), out["c"], out["hi"])
     out["lo"] = np.where(np.isnan(out["lo"]), out["c"], out["lo"])
     return out
@@ -227,6 +233,43 @@ def wallet_chunked(G, chunk=400):
                                  "w_avg_lroi": sn["lroi"] / sn["n"].where(sn["n"] > 0), "w_recent_share": g["recent"].mean(),
                                  "w_recent_smart": q[q["recent"]].groupby("index")["smart"].sum()}))
         print("wallets", i, flush=True)
+    return pd.concat(out).reindex(G.index)
+
+
+def wallet_recent(G, chunk=400, smart_min=5):
+    """The wallet numbers a live watcher can get from GeckoTerminal's last trades: only the wallets whose first buy was in the
+    hour before the row, and of their history only what a seed of experienced wallets (smart_min or more earlier coins) knows."""
+    p = pd.read_pickle(os.path.join(S, "pairs.pkl"))
+    wc = pd.read_parquet(os.path.join(S, "w", "coins.parquet"))
+    p["mint"] = p["coin"].map(wc.set_index("coin")["mint"])
+    p = p[["wid", "mint", "t_q", "sol_q", "grad_ms", "roi"]]
+    p["known"] = p["grad_ms"] + 3 * 86_400_000
+    rec = p[["wid", "known", "roi"]].sort_values(["wid", "known"])
+    rec["n"] = 1
+    rec["win"] = (rec["roi"] > 1.5).astype("int32")
+    rec["big"] = (rec["roi"] > 3).astype("int32")
+    rec["lroi"] = np.log(rec["roi"].clip(1e-3, 1e3)).astype("float32")
+    rec = pd.concat([rec[["wid", "known"]], rec.groupby("wid")[["n", "win", "big", "lroi"]].cumsum()], axis=1).sort_values("known")
+    mints = G["mint"].unique()
+    p = p[p["mint"].isin(set(mints))][["mint", "wid", "t_q", "sol_q"]]
+    out = []
+    for i in range(0, len(mints), chunk):
+        part = set(mints[i:i + chunk])
+        x = G[G["mint"].isin(part)][["mint", "ts"]].reset_index()
+        q = p[p["mint"].isin(part)].merge(x, on="mint")
+        q = q[(q["t_q"] < q["ts"]) & (q["t_q"] >= q["ts"] - 3_600_000)].sort_values("ts")
+        q = pd.merge_asof(q, rec.rename(columns={"known": "ts"}), on="ts", by="wid", direction="backward")
+        q[["n", "win", "big", "lroi"]] = q[["n", "win", "big", "lroi"]].fillna(0)
+        known = q["n"] >= smart_min
+        q["smart"] = known & (q["win"] / q["n"].clip(lower=1) >= 0.5)
+        q["smartbig"] = known & (q["big"] >= 2)
+        q["known"] = known
+        q["kl"] = np.where(known, q["lroi"] / q["n"].clip(lower=1), np.nan)
+        g = q.groupby("index")
+        out.append(pd.DataFrame({"r_buyers": g.size(), "r_sol": g["sol_q"].sum(), "r_top_share": g["sol_q"].max() / g["sol_q"].sum(),
+                                 "r_avg_buy": g["sol_q"].mean(), "r_known_share": g["known"].mean(), "r_smart_n": g["smart"].sum(),
+                                 "r_smart_share": g["smart"].mean(), "r_smartbig_n": g["smartbig"].sum(), "r_avg_lroi": g["kl"].mean()}))
+        print("recent wallets", i, flush=True)
     return pd.concat(out).reindex(G.index)
 
 

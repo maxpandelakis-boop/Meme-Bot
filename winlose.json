@@ -277,7 +277,7 @@
     "rocket10x": 6.0,
     "zero": 21.6
    },
-   "verdict": "fails as pre-registered (top 2%: -2.78 per 20); the strictest cut (top 0.5%) was positive on both parts but on 28 and 34 coins only"
+   "verdict": "fails as pre-registered (top 2%: -2.78 per 20); the strictest cut (top 0.5%) was positive on both parts but on 28 and 34 coins only; CORRECTED 22 Oct: these numbers carried a data error (dead pools' last wick counted as 11x). Corrected history: top 0.5% -3.25 per 20 on 71 coins; replay on the unseen days 9-21 Oct: -7.84 per 20 on 137 coins, 0 of 10,000 runs in profit"
   },
   "C": {
    "name": "expected profit",

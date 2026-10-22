@@ -48,6 +48,7 @@ import glob, json, os, re, shutil, subprocess, sys, tempfile, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+os.environ["MEMEBOT_RADAR_ACCOUNT"] = "1"     # the radar account is off by default since 22 Oct; these checks keep its mechanism working
 sys.path.insert(0, HERE)
 FIX = os.path.join(HERE, "tests", "fixtures", "peak")
 MIN, HOUR = 60_000, 3_600_000

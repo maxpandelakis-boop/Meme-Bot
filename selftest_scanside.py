@@ -522,9 +522,9 @@ def _s5(check, tmp):
     finally:
         A.notify = saved
     words = [t + " " + b for _, t, b, _ in texts[:4]]
-    check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young", "curve": "young"} and A.KINDS.get("curve") == (300, "high", 60)
+    check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young", "curve": "young", "rocket": "young"} and A.KINDS.get("curve") == (300, "high", 60)
           and all(A.KINDS.get(k) == v for k, v in (("young", (1800, "normal", 300)), ("pick", (3600, "high", 300)))),
-          "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar (and the curve watch's own kind, off by default) to the "
+          "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar (and the curve watch's own kind, off by default, and the rocket hunter's buys) to the "
           "phone's young switch; young and pick unchanged")
     check(len(texts) == 7 and texts[0][1:] == ("HIRE: no trap found (pool 6 min)", "9 checks passed · liquidity $23k · fake money, nothing is bought.", "#tab-radar")
           and texts[1][1] == "HIRE: no trap found (pool 6 min) +1 more" and texts[2][1] == "X<b>Y: no trap found (pool <1 min)"
@@ -717,8 +717,9 @@ def _peaks_job(check, scan, tmp):
           "job peaks: the exit replay runs after the pricing and before the push, with its own short timeout, never failing the job, and the "
           "job's timeout leaves the push its minute after all three")
     check(i_xg < i_tr < i_up and tr.get("continue-on-error") is True and 0 < int(tr.get("timeout-minutes") or 0) <= 3
-          and tr.get("if") == "steps.restore.outputs.ok == 'true'" and "traders.py" in str(tr.get("name") or "") + str(tr.get("run")),
-          "TR15 job peaks runs the learning trader's step (traders.py run) after the exit replay and before the push, continue-on-error, %s min at most"
+          and tr.get("if") == "steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'" and "traders.py" in str(tr.get("name") or "") + str(tr.get("run")),
+          "TR15 job peaks has the learning trader's step (traders.py run) after the exit replay and before the push, continue-on-error, "
+          "off unless the repository variable MEMEBOT_TRADERS is 1 (two bots only since 22 Oct), %s min at most"
           % tr.get("timeout-minutes"))
     flows = {os.path.basename(f): open(f, encoding="utf-8").read() for f in glob.glob(os.path.join(HERE, ".github", "workflows", "*.y*ml"))}
     sync = B.SYNC_IGNORE.splitlines()

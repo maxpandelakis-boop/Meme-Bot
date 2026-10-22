@@ -1,0 +1,26 @@
+# Rocket hunter backfill probe for 8-22 Oct (fake money only): research/winlose/backfill_probe.py counts the graduations Helius
+# lists and checks old minute bars and past-hour swaps. The key is never printed or written; only counts and
+# field names go to the data branch "backfillprobe". Runs only on a push of this file on this branch.
+name: winlose-backfill
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-backfill.yml, research/winlose/backfill_probe.py]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HK: ${{ secrets.HELIUS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir out
+          python3 research/winlose/backfill_probe.py | tee out/summary.txt
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && rm -rf .git && git init -q && git checkout -q -b backfillprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "helius probe" && git push -q --force "$URL" backfillprobe

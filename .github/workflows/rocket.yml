@@ -1,0 +1,97 @@
+# The rocket hunter (rocket_watch.py): every 15 minutes it scores the launch radar's coins of the last 18 hours (30 minutes old and
+# more) from GeckoTerminal's minute candles and latest trades, and books paper trades in its OWN account (20 a coin, -30% / 11x / 6 h).
+# Fake money only: nothing is bought. A round with paper buys sends one push "Radar 🚀" to the iPhone app (app.notify_rocket, the
+# phones' "New coins" setting) when the Supabase secrets are set; the scan's paper account and its sell rule are untouched. Its state
+# and log go to the branch "rocket-data"; the scan job copies rocket.json into the page. After the round the same job looks at the open
+# positions every minute until about 13 minutes after it started (rocket_watch.py watch): a sell is booked, pushed and in the app's
+# live row within a minute; with nothing open it ends at once.
+name: Meme-Bot rocket hunter
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/rocket.yml]
+permissions:
+  contents: write                    # the rocket-data branch only
+concurrency:
+  group: memebot-rocket
+  cancel-in-progress: false
+jobs:
+  round:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    env:
+      PYTHONUTF8: '1'
+      HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}
+    steps:
+      - name: Note the start (the minute watch ends 13 minutes after it)
+        run: echo "STARTED=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Get the radar's records and the rocket hunter's state
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch radar-data "$REPO_URL" rd || mkdir -p rd
+          if git ls-remote --exit-code --heads "$REPO_URL" rocket-data >/dev/null; then
+            git clone -q --depth 1 --branch rocket-data "$REPO_URL" rk
+          else
+            mkdir rk && git -C rk init -q && git -C rk checkout -q -b rocket-data
+          fi
+          if [ ! -f rk/rocket_memory.json.gz ]; then
+            python3 -m pip install -q pyarrow==17.0.0 pandas==2.2.3
+            git clone -q --depth 1 --branch wallets "$REPO_URL" wl && python3 research/winlose/rocket_memory.py wl rk/rocket_memory.json.gz && rm -rf wl
+          fi
+      - name: Install the push sender for the iPhone app (only with the Supabase secrets; a minute at most, the round never depends on it)
+        if: env.HAS_SUPABASE == 'true'
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          RESULTS_URL: ''            # the GitHub token stays out of this step
+        run: |
+          # pywebpush 2.5.0 and every package it needs, exactly as pinned in supabase/push-requirements.txt (each file checked against its
+          # sha256; wheels only, so nothing runs while installing; nothing newer is ever fetched), into a folder of its own: the system
+          # Python refuses pip installs into itself (PEP 668) on ubuntu 24.04 and on 26.04 (ubuntu-latest from late October 2026). bot.py
+          # keeps running on the system Python and imports pywebpush from that folder (MEMEBOT_PUSH_LIB, placed after the standard library)
+          # only when it makes the VAPID keys or sends a notification. PyPI down or slow: no notification this round, the round goes on.
+          lib=""
+          opts="-q --disable-pip-version-check --no-input --retries 1 --timeout 10 --require-hashes --only-binary=:all: --no-deps -r supabase/push-requirements.txt"
+          if python3 -m venv "$RUNNER_TEMP/pushenv" 2>/dev/null && timeout 60 "$RUNNER_TEMP/pushenv/bin/python" -m pip install $opts; then
+            lib=$("$RUNNER_TEMP/pushenv/bin/python" -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+          elif timeout 60 python3 -m pip install $opts --target "$RUNNER_TEMP/pushlib"; then
+            lib="$RUNNER_TEMP/pushlib"     # no venv module on this runner: pip's --target needs none and is not refused by PEP 668
+          fi
+          # http-ece 1.2.1 has no wheel: its one module comes from its sdist, checked against the sha256 PyPI lists (supabase/pin_push.py
+          # prints it), without running its setup.py
+          ece="$RUNNER_TEMP/http_ece-1.2.1.tar.gz"
+          if [ -n "$lib" ] && timeout 30 curl -fsSL --retry 1 -o "$ece" \
+               "https://files.pythonhosted.org/packages/7c/af/249d1576653b69c20b9ac30e284b63bd94af6a175d72d87813235caf2482/http_ece-1.2.1.tar.gz" \
+             && echo "8c6ab23116bbf6affda894acfd5f2ca0fb8facbcbb72121c11c75c33e7ce8cff  $ece" | sha256sum -c --quiet - \
+             && tar -xzf "$ece" -C "$lib" --strip-components=1 http_ece-1.2.1/http_ece/__init__.py \
+             && MEMEBOT_PUSH_LIB="$lib" python3 -c "import app; app._push_path(); import pywebpush, http_ece, cryptography" 2>/dev/null; then
+            echo "MEMEBOT_PUSH_LIB=$lib" >> "$GITHUB_ENV"
+            echo "pywebpush 2.5.0 ready (pinned, hashes checked): this round can send its push"
+          else
+            echo "pywebpush could not be installed: no push notifications this run, the round goes on"
+          fi
+      - name: One round
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python3 rocket_watch.py round --dir rk --radar rd
+      - name: Watch the open positions every minute until the next round
+        continue-on-error: true
+        timeout-minutes: 14
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python3 rocket_watch.py watch --dir rk --until $((STARTED + 780))
+      - name: Save the state
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd rk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocket round $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q "$REPO_URL" HEAD:rocket-data || echo "nothing to save"

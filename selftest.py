@@ -1792,6 +1792,7 @@ def app_browser_checks(check, sd, young):
             pg.on("pageerror", lambda e: errs.append(str(e)[:160]))
             pg.goto(pages_url)
             pg.wait_for_selector(".appbar", timeout=8000)
+            pg.click('.appbar button[data-tab="pick"]')      # the app opens on Start since Oct 22; the full scan's strip is on Pick
             scan_btn = pg.evaluate("(() => { const b = document.querySelector('[data-ss-now]'), l = document.querySelector('.wrap > .live');"
                                    " return b && !b.hidden && b.getClientRects().length && !(l && l.getClientRects().length) ? b.getBoundingClientRect().height : 0; })()")
             got_badge = True
@@ -1902,7 +1903,7 @@ def app_browser_checks(check, sd, young):
           "installed app: the same snapshot feeds the office view (%r) and the early box; when the scan ends the box says so and keeps the list, the office dot goes; "
           "one poller only: %d status reads, current only per new nver (%d: not again for the end's new ver), no GitHub poll (%d)%s" % (
               office[0][:20], calls_main["status"], calls_main["current"], calls_main["github"], "" if done_ok and after == [str(n), False, n] else " %s %s %s" % (done_ok, after, office)))
-    check(aria == ["Radar, %d listed now" % n, "Office, a scan is running now"] and nobadge == [False, "Radar"] and scan_btn >= 44,
+    check(aria == ["Radar, %d listed now" % n, "Gehirn, a scan is running now"] and nobadge == [False, "Radar"] and scan_btn >= 44,
           "installed app: the Radar tab's badge only with a scan's early list (none while the scan has not listed yet), the tabs' badge and dot read out in words"
           " (%s), the full scan's strip has the one Scan now (%d px tall; the Live box with its own button is not shown)" % (aria, scan_btn))
     check(wait_ok and 0 < deep["y"] and -1 <= deep["box"] <= 40 and deep["card"] + 60 <= deep["bar"] and deep["status"].startswith("Found at") and deep["hscroll"] <= 0
@@ -4010,6 +4011,8 @@ console.log(JSON.stringify(o));
     selftest_office.office_checks(check, SKIPS)
     import selftest_traders_ui                  # the four tabs after the three traders: the Traders tab, the pick's heading and paper line, the app's bar (page_traders.py)
     selftest_traders_ui.checks(check, SKIPS)
+    import selftest_brain                       # the brain's coin sheet: a tap on a coin opens its data (page_brain.py)
+    selftest_brain.checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:

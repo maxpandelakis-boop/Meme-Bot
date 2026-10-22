@@ -32,7 +32,7 @@ BANNED = re.compile(r"(?i)\b(buy|buys|buying|safe|safely|guaranteed?|clean|shoul
 MONEY = re.compile(r"^[+−]?\d{1,3}(,\d{3})*\.\d{2}\u00a0€$")
 TICKET = re.compile(r"^\d+\u00a0€$")
 SPOTTER = re.compile(r'<label class="ocard[^"]*" for="od-[a-z]+" data-agent="spotter"')     # the Launch spotter's card (its desk on the floor plan stays)
-LIMITS = {"pick": 2000, "young": 1600, "account": 2400, "office": 1400}     # 4.10: the app at 390 px, folds closed (the radar without a coin)
+LIMITS = {"home": 2400, "pick": 2000, "young": 1600, "account": 2400, "office": 2600}     # 4.10: the app at 390 px, folds closed (the radar without a coin); Oct 22: Start, the brain on top of the office
 B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
@@ -108,14 +108,25 @@ def text(h):
 
 
 def pane(page, key):
-    """The inner HTML of #pane-<key> (the panes follow each other in this order: pick, young, account, office)."""
-    nxt = {"pick": "young", "young": "account", "account": "office"}.get(key)
+    """The old office (the radar's desk, the agent cards) sits in the Archiv tab's fold since Oct 22: "office" is that fold."""
+    if key == "office":
+        a = page.find('<details class="fold arch-office">')
+        return page[a:page.find('<details class="fold arch-tr">', a)] if a >= 0 else ""
+    return _pane(page, key)
+
+
+def _pane(page, key):
+    """The inner HTML of #pane-<key> (the panes follow each other in this order: home, pick, young, office, account). For "account" (the
+    Archiv tab) only its traders fold, the last block of the pane: the research fold before it is the Pick tab's old Details."""
+    nxt = {"home": "pick", "pick": "young", "young": "office", "office": "account"}.get(key)
     a = page.find('<div class="pane" id="pane-%s"' % key)
     if a < 0:
         return ""
     a = page.find(">", a) + 1
     b = page.find('<div class="pane" id="pane-%s"' % nxt, a) if nxt else page.find("</div></div><script>", a)
-    return page[a:b if b > 0 else len(page)]
+    inner = page[a:b if b > 0 else len(page)]
+    t = inner.find('<details class="fold arch-tr">') if key == "account" else -1
+    return inner[t:] if t >= 0 else inner
 
 
 class Classes(HTMLParser):
@@ -139,7 +150,7 @@ class Classes(HTMLParser):
 
 
 def checks(check, skips=None):
-    print("== the four tabs after the three traders: Pick, Radar, Traders, Office in the app and on the website (page_traders.py, UI1-UI10)")
+    print("== the five tabs after the reorganisation: Start, Pick, Radar, Gehirn, Archiv in the app and on the website (page_traders.py, UI1-UI10)")
     skips = skips if skips is not None else []
     tmp = tempfile.mkdtemp(prefix="memebot-trui-")
     try:
@@ -189,16 +200,16 @@ def _checks(check, tmp, skips):
           "the page reads the big test one file at a time (load_docs never asked for memesnap or memesnapres): its groups, 4 coins seen, the "
           "newest scan's candidates (S4, S2) and its 70 coins, the weights as memebot.blended_weights")
 
-    # UI1: four radios in order, the labels, the Traders content once and inside its pane, no account block outside the panes
+    # UI1: five radios in order, the labels, the Traders content once and inside its pane, no account block outside the panes
     radios = re.findall(r'<input type="radio" name="tab" id="(tab-\w+)"', page)
     labels = [re.sub(r"<[^>]+>", "", x).strip() for x in re.findall(r'<label for="tab-\w+" role="tab">(.*?)</label>', page)]
     cp = Classes()
     cp.feed(page)
     outside = [c for c in cp.out if not c[2]]
-    check(radios == ["tab-pick", "tab-young", "tab-account", "tab-office"] and labels == ["Pick", "Radar", "Traders", "Office"] and 'id="tab-pick" checked' in page
+    check(radios == ["tab-home", "tab-pick", "tab-young", "tab-office", "tab-account"] and labels == ["Start", "Pick", "Radar", "Gehirn", "Archiv"] and 'id="tab-home" checked' in page
           and page.count('data-tr="compare"') == 1 and 'data-tr="compare"' in acc and page.count("<h2>Three paper traders</h2>") == 1 and "<h2>Three paper traders</h2>" in acc
           and cp.out and not outside and '<div class="pane" id="pane-account" data-app="account"' in page and "could not be rendered" not in page,
-          "UI1 the website: four radios in the order pick, young, account, office, labelled Pick, Radar, Traders, Office; the Traders content once, inside "
+          "UI1 the website: five radios in the order home, pick, young, office, account, labelled Start, Pick, Radar, Gehirn, Archiv; the Traders content once, inside "
           "#pane-account (data-app account); no element with a pa- class outside a pane (%d inside, outside: %s)" % (len(cp.out), outside[:3]))
 
     # UI4: the numbers are traders.load's, parsed from the page; the account total is the paper account plus the closed rule-2 results
@@ -473,6 +484,7 @@ PROBE = r"""(tab) => {
   p.querySelectorAll('svg.chart-svg').forEach(s => { const r = s.getBoundingClientRect(); if (r.width < 1) return;     // chart text cut at the chart's edge
     s.querySelectorAll('text').forEach(t => { const b = t.getBoundingClientRect(); if (b.width >= 1 && (b.right > r.right + 0.5 || b.left < r.left - 0.5)) out.clip.push(t.textContent); }); });
   if (tab === 'account') {      // text runs that overlap other text inside the trader cards (shoot.py's check; the text of a closed ⓘ is not shown)
+    p.querySelectorAll('details.arch-tr').forEach(d => { d.open = true; });     // the traders' fold on the Archiv tab, opened after the height is read
     const runs = [];
     const shut = e => { for (let a = e; a; a = a.parentElement) { const d = a.parentElement; if (d && d.tagName === 'DETAILS' && !d.open && a.tagName !== 'SUMMARY') return true; } return false; };
     document.querySelectorAll('.trcards *').forEach(e => e.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim() && !shut(e)) { const rg = document.createRange(); rg.selectNodeContents(n);
@@ -481,14 +493,14 @@ PROBE = r"""(tab) => {
     for (let i = 0; i < runs.length; i++) for (let j = i + 1; j < runs.length; j++) { const a = runs[i], b = runs[j];
       if (a.e === b.e || a.e.contains(b.e) || b.e.contains(a.e)) continue;
       if (Math.min(a.r, b.r) - Math.max(a.l, b.l) > 2 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > 3) out.over++; }
-    out.last = p.lastElementChild ? p.lastElementChild.className : '';
   }
+  out.last = p.lastElementChild ? p.lastElementChild.className : '';
   return out; }"""
 
 
 # the notifications card once the live store is set up and notifications are not on yet (render()'s "off": the state chip, the note, the
 # button, the "Which notifications" fold); the probe opens the fold and reads the switches' opacity along their ancestors, and the tab's height
-OFF_JS = r"""() => { const a = document.querySelector('#pane-account .appnotif'); if (!a) return null;
+OFF_JS = r"""() => { const a = document.querySelector('#pane-home .appnotif'); if (!a) return null;
   const n = a.querySelector('.nf-note'), b = a.querySelector('.nf-btn'), w = a.querySelector('.nf-which');
   a.querySelector('.chip').textContent = 'Off'; n.hidden = false; n.textContent = 'Get a notification on this iPhone for a coin with no trap found and for each pick.';
   b.hidden = false; b.textContent = 'Turn on notifications'; if (w) w.hidden = false; document.querySelectorAll('details').forEach(d => d.open = false); window.scrollTo(0, 0);
@@ -503,7 +515,7 @@ def _browser(check, tmp, d, now, page, skips):
         from playwright.sync_api import sync_playwright
     except ImportError:
         skips.append("the Traders tab's browser checks (no Playwright)")
-        print("  SKIP the browser checks of the four tabs: Playwright is not installed")
+        print("  SKIP the browser checks of the five tabs: Playwright is not installed")
         return
     exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
     # the radar doc current by the browser's clock: its cards show (a running loop), the app's badge counts them
@@ -553,9 +565,9 @@ def _browser(check, tmp, d, now, page, skips):
             app["bar"] = pg.evaluate("Array.from(document.querySelectorAll('.appbar button')).map(b => [b.getAttribute('data-tab'), b.querySelector('span:not([class])').textContent])")
             pg.wait_for_function("!!document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt')", timeout=8000)
             app["badge"] = pg.evaluate("(() => { const b = document.querySelector('.appbar [data-tab=\"young\"] .ab-cnt'); return [b.textContent, b.classList.contains('good'), document.querySelectorAll('.appbar .ab-cnt').length]; })()")
-            pg.click('.appbar button[data-tab="account"]')
+            pg.click('.appbar button[data-tab="home"]')
             pg.wait_for_timeout(300)
-            app["notif"] = pg.evaluate(PROBE, "account")["last"]
+            app["notif"] = pg.evaluate(PROBE, "home")["last"]
             app["paper"] = pg.evaluate("(() => { return Array.from(document.querySelectorAll('[data-r-cards] .rcard')).map(c => [c.querySelector('.rsym').textContent, (c.querySelector('.rpaper')||{}).textContent || '', Array.from(c.querySelectorAll('.chip.t3')).map(x => x.textContent)]); })()")
             ctx.close()
             app["deep"] = []
@@ -572,7 +584,7 @@ def _browser(check, tmp, d, now, page, skips):
             # the notifications card once the store is set up, notifications off: compact, full opacity, the Traders tab within its limit
             if sbidx:
                 ctx, pg = open_(sbidx, 390, True)
-                pg.click('.appbar button[data-tab="account"]')
+                pg.click('.appbar button[data-tab="home"]')
                 pg.wait_for_timeout(300)
                 app["off"] = pg.evaluate(OFF_JS)
                 ctx.close()
@@ -583,7 +595,7 @@ def _browser(check, tmp, d, now, page, skips):
                 for w in (320, 375, 390, 1280):
                     for scheme in (("light", "dark") if w in (390, 1280) else ("light",)):
                         ctx, pg = open_(index, w, w != 1280, scheme)
-                        for tab in ("pick", "young", "account", "office"):
+                        for tab in ("home", "pick", "young", "office", "account"):
                             if w != 1280:
                                 pg.click('.appbar button[data-tab="%s"]' % tab)
                             else:
@@ -597,27 +609,27 @@ def _browser(check, tmp, d, now, page, skips):
                         ctx.close()
             br.close()
     except Exception as e:
-        check(False, "the browser checks of the four tabs ran (%s)" % str(e)[:200])
+        check(False, "the browser checks of the five tabs ran (%s)" % str(e)[:200])
         return
-    check(app["bar"] == [["pick", "Pick"], ["young", "Radar"], ["account", "Traders"], ["office", "Office"]] and app["badge"] == ["2", True, 1]
+    check(app["bar"] == [["home", "Start"], ["pick", "Pick"], ["young", "Radar"], ["office", "Gehirn"], ["account", "Archiv"]] and app["badge"] == ["2", True, 1]
           and app["deep"] == [["young", "tab-young"], ["young", "tab-young"], ["young", "tab-young"], ["account", "tab-account"]] and app["notif"] == "appnotif"
           and app["paper"] == [["GRNA", "Bought on paper · 10\u00a0€", ["Learning trader skips: no socials and no X link"]], ["GRNB", "", []]] and not errs,
-          "UI2 the app: the bottom bar Pick, Radar, Traders, Office; #tab-young, #tab-radar and #new open Radar, #tab-account Traders; the badge is the radar's "
-          "count of coins without traps only (2, green); the notifications card is the last block of Traders; UI7 in the browser: the paper line on the pb 1 "
-          "card only, the learning trader's skip chip on it %s" % ({k: app[k] for k in ("bar", "badge", "deep", "notif")} if errs or app["bar"][1][1] != "Radar" else (errs[:2] or "")))
+          "UI2 the app: the bottom bar Start, Pick, Radar, Gehirn, Archiv; #tab-young, #tab-radar and #new open Radar, #tab-account Archiv; the badge is the radar's "
+          "count of coins without traps only (2, green); the notifications card is the last block of Start; UI7 in the browser: the paper line on the pb 1 "
+          "card only, the learning trader's skip chip on it %s" % ({k: app[k] for k in ("bar", "badge", "deep", "notif")} if errs or app["bar"][2][1] != "Radar" else (errs[:2] or "")))
     off = app.get("off") or {}
     check(app["web"] == ["tab-account", "tab-office", "tab-pick", "tab-young"] and off.get("which") and off.get("rows") == 2 and off.get("op") == 1 and off.get("last")
-          and off.get("h", 9e9) <= LIMITS["account"] and ".nf-prefs.dim" not in __import__("app").PAGE_CSS,
+          and off.get("h", 9e9) <= LIMITS["home"] and ".nf-prefs.dim" not in __import__("app").PAGE_CSS,
           "UI2 the website's deep links #tab-account, #tab-office, #tab-pick and #tab-radar open their tab (%s); the app's notifications card once the live "
-          "store is set up and notifications are off: the two switches behind 'Which notifications', at full opacity (%s), the card last, the Traders tab "
-          "%s px at 390 (at most %d, %s data)" % (app["web"], off.get("op"), off.get("h"), LIMITS["account"], "real" if ridx else "fixture"))
+          "store is set up and notifications are off: the two switches behind 'Which notifications', at full opacity (%s), the card last, the Start tab "
+          "%s px at 390 (at most %d, %s data)" % (app["web"], off.get("op"), off.get("h"), LIMITS["home"], "real" if ridx else "fixture"))
     clip = {k: v["clip"] for k, v in lay.items() if v.get("clip")}
     hs = {k: v["hs"] for k, v in lay.items() if v["hs"] > 0}
     ov = {k: v["over"] for k, v in lay.items() if v.get("over")}
     heights = {(n, t): v["h"] for (n, w, sc, t), v in lay.items() if w == 390 and sc == "light"}
     over_lim = {k: h for k, h in heights.items() if h > LIMITS[k[1]] and not (k[0] == "fixture" and k[1] == "young")}
     check(lay and not hs and not ov and not over_lim and app.get("dim") == 0 and not clip,
-          "UI9 the layout (Chromium, fake fonts as the screenshots): no sideways page scroll at 320, 375, 390 and 1280 px on all four tabs (light and dark at 390 "
+          "UI9 the layout (Chromium, fake fonts as the screenshots): no sideways page scroll at 320, 375, 390 and 1280 px on all five tabs (light and dark at 390 "
           "and 1280), no overlapping text in the trader cards, no faded block, no chart label cut at the chart's edge; the app's tabs at 390 px with "
           "folds closed within %s: %s%s" % (LIMITS, {"%s %s" % k: h for k, h in sorted(heights.items())},
                                             (" scroll %s overlap %s over %s clipped %s" % (hs, ov, over_lim, clip)) if hs or ov or over_lim or clip else ""))

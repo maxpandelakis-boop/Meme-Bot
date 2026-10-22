@@ -34,8 +34,8 @@ pywebpush (and cryptography, which it brings) are imported when a push or the VA
 site-packages folder, put right after the standard library: the scan workflow installs supabase/push-requirements.txt there, every
 package pinned with its sha256).
 
-Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_radar(coins,
-record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
+Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_rocket(buys,
+summary), notify_radar(coins, record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
 and PAGE_JS (the installed app: bottom tab bar, notifications) and SW_JS (sw.js); bot.py site writes them into the website.
 
   python3 app.py check     what is set up (store reachable, VAPID key, subscriptions, pywebpush), without printing any key
@@ -64,10 +64,11 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
     "radar": (600, "high", 60),     # the launch radar's coin without a trap found: stale within minutes (its pool is under 10 minutes old)
     "curve": (300, "high", 60),     # the curve watch's call of a coin still on pump.fun's curve (off unless radar_curve.json switches it on):
                                     # stale within minutes, its own rate guard so it never holds up a green coin's push
+    "rocket": (1800, "high", 60),   # the rocket hunter's paper buys of one round (rocket_watch.py), one notification a round
 }
-TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal"}   # the push Topic header per kind:
+TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal", "rocket": "rocketbt"}   # the push Topic header per kind:
 # Apple refuses a topic that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
-PREF_OF = {"radar": "young", "curve": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
+PREF_OF = {"radar": "young", "curve": "young", "rocket": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
 TITLE_MAX, BODY_MAX = 120, 300   # characters of a notification's title and body (message cuts there; the radar's words stay inside)
 RADAR_WHY_N = 2           # passed checks a radar notification names (the first ones of its trap-check line)
@@ -963,6 +964,44 @@ def notify_curve(c):
     return notify("curve", words[0], words[1], "#tab-radar")
 
 
+def rocket_words(buys, summary=None, sells=None):
+    """(title, body) of the rocket hunter's notification for one round's paper buys and sells, or None: "Radar 🚀", each bought coin
+    with its score and the cut, each sold coin with its multiple, euros and why (stop, 11x, 6 h), the account so far, and that it
+    is paper money and a live test."""
+    buys = [b for b in buys or [] if isinstance(b, dict)]
+    sells = [x for x in sells or [] if isinstance(x, dict)]
+    if not buys and not sells:
+        return None
+    why = {"stop": "Stop -30 %", "11x": "Ziel 11x", "6h": "nach 6 h", "gone": "Pool weg"}
+    sold = ["%s x%.2f (%+.2f €, %s)" % (_sym(x.get("sym")), _num(x.get("mult")) or 0.0, _num(x.get("eur")) or 0.0, why.get(x.get("why"), "verkauft"))
+            for x in sells]
+    if buys:
+        b = buys[0]
+        more = " +%d" % (len(buys) - 1) if len(buys) > 1 else ""
+        title = "Radar 🚀 Paper-Kauf: %s%s" % (_sym(b.get("sym")), more)
+        lead = "Score %.3f (Schwelle %.3f), verkauft bei -30 %%, 11x oder nach 6 h." % (_num(b.get("score")) or 0.0, _num(b.get("cut")) or 0.0)
+        if sold:
+            lead += " Verkauft: %s." % "; ".join(sold)
+    else:
+        title = "Radar 🚀 verkauft: %s" % sold[0]
+        lead = ("Auch verkauft: %s." % "; ".join(sold[1:])) if len(sold) > 1 else ""
+    s = summary if isinstance(summary, dict) else {}
+    rec = ""
+    if _num(s.get("trades")):
+        rec = " Konto bisher: %d verkauft, %+.2f €." % (int(_num(s.get("trades"))), _num(s.get("eur")) or 0.0)
+    body = ("%s%s Ein Live-Test: im Rückblick war diese Strategie nicht sicher im Plus. Nur Papiergeld, nichts wird echt gekauft." % (lead, rec)).strip()
+    return title, body
+
+
+def notify_rocket(buys, summary=None, sells=None):
+    """The rocket hunter's notification (kind "rocket") for one round's paper buys and sells, in rocket_words' words; it opens the
+    Radar tab. The phones' "New coins" setting covers it (PREF_OF). Nothing when the round bought and sold nothing."""
+    words = rocket_words(buys, summary, sells)
+    if words is None:
+        return {"skipped": "no buys"}
+    return notify("rocket", words[0], words[1], "#tab-radar")
+
+
 def notify_radar(coins, record=None):
     """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
     rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour), in radar_words' words
@@ -1060,7 +1099,7 @@ html.app .tabbar { display:none }
 html.app body { padding-bottom:calc(66px + max(10px, env(safe-area-inset-bottom))) }
 html.app .wrap { padding-top:max(16px, env(safe-area-inset-top)); padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)) }
 html.app .app-off, html.app [data-live-link] { display:none !important }   /* the website's address: the app is it */
-.appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+.appbar { position:fixed; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
   padding:4px max(6px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
   background:color-mix(in srgb,var(--surface) 94%,transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
   border-top:1px solid var(--line) }
@@ -1115,11 +1154,11 @@ details.nf-which > .nf-small { margin-top:8px }
 
 PAGE_JS = r"""
 (function(){
-// The installed app (Home Screen, from Safari): a bottom tab bar (Pick, Radar, Traders, Office: the website's order) instead of the top one,
-// a bell and a notifications card at the end of the Traders tab (permission asked from the tap, the subscription saved in the live store
+// The installed app (Home Screen, from Safari): a bottom tab bar (Start, Pick, Radar, Gehirn, Archiv: the website's order) instead of the top one,
+// a bell and a notifications card at the end of the Start tab (permission asked from the tap, the subscription saved in the live store
 // through save_push_sub with its two settings), deep links (#tab-young, #tab-radar ...) from notifications. Radar (tab id young) holds the
 // launch radar; the old links (#tab-radar, #radar, #new) open it. In a browser tab it does nothing. window.MemebotApp holds its decisions for the tests.
-var A=window.MemebotApp={TABS:['pick','young','account','office'],
+var A=window.MemebotApp={TABS:['home','pick','young','office','account'],
   // an installed web app: Safari's navigator.standalone, or the display mode of an installed app (iOS reports "display": "standalone"
   // as fullscreen, WebKit bug 264218)
   installed:function(nav,mm){try{if(nav&&nav.standalone===true)return true;
@@ -1147,7 +1186,7 @@ var A=window.MemebotApp={TABS:['pick','young','account','office'],
   pick:function(st,cur,pageT){var c=[st&&st.pick,cur&&cur.pick];for(var i=0;i<c.length;i++){var p=c[i];
     if(p&&typeof p==='object'&&p.sym&&(+p.t||0)>(+pageT||0))return p;}return null;},
   // the tab of a link: #tab-pick ... #tab-account; #tab-radar, #radar and #new open Radar (tab id young)
-  tab:function(h){h=String(h||'');var m=/^#?tab-(pick|radar|young|office|account)$/.exec(h)||/^#(radar|new)$/.exec(h);return m?(m[1]==='radar'||m[1]==='new'?'young':m[1]):null;},
+  tab:function(h){h=String(h||'');var m=/^#?tab-(home|pick|radar|young|office|account)$/.exec(h)||/^#(radar|new)$/.exec(h);return m?(m[1]==='radar'||m[1]==='new'?'young':m[1]):null;},
   // a link to the radar (the top of the Radar tab), not to the full scan's early list
   radarLink:function(h){return /^#?(tab-)?radar$/.test(String(h||''));},
   store:function(u,k){u=String(u||'').replace(/\/+$/,'');k=String(k||'');
@@ -1159,20 +1198,20 @@ function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorag
 function ss(k,v){try{if(v===undefined)return sessionStorage.getItem(k);sessionStorage.setItem(k,v);}catch(e){}return null;}
 function el(tag,cls,text){var e=doc.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
 function svg(d){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';}
-var ICON={pick:svg('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>'),
+var ICON={home:svg('<path d="M4 11.2 12 4.6l8 6.6"/><path d="M6.2 9.6V19h11.6V9.6"/><path d="M10 19v-5h4v5"/>'),pick:svg('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>'),
   radar:svg('<path d="M12 12l6.2-6.2"/><path d="M19.2 9.2A7.9 7.9 0 1 1 14.8 4.6"/><path d="M15.8 11.1A4 4 0 1 1 12.9 8.1"/><circle cx="12" cy="12" r="1.3"/>'),
   young:svg('<path d="M12 12l6.2-6.2"/><path d="M19.2 9.2A7.9 7.9 0 1 1 14.8 4.6"/><path d="M15.8 11.1A4 4 0 1 1 12.9 8.1"/><circle cx="12" cy="12" r="1.3"/>'),
-  office:svg('<circle cx="9" cy="8.2" r="3.1"/><path d="M3.6 19.2c.6-3.2 2.8-5 5.4-5s4.8 1.8 5.4 5"/><circle cx="16.9" cy="9.2" r="2.4"/><path d="M15.6 14.3c2.3.2 4 1.8 4.6 4.9"/>'),
-  account:svg('<path d="M4.2 8.2V7.4A2.4 2.4 0 0 1 6.6 5h10.6v3.2"/><rect x="4.2" y="8.2" width="15.6" height="10.8" rx="2.4"/><circle cx="15.9" cy="13.6" r="1.2"/>'),
+  office:svg('<path d="M11.2 5.2a3 3 0 0 0-5 1.6 2.9 2.9 0 0 0-1.6 4.9 3 3 0 0 0 1.4 4.6 3 3 0 0 0 5.2 1.9z"/><path d="M12.8 5.2a3 3 0 0 1 5 1.6 2.9 2.9 0 0 1 1.6 4.9 3 3 0 0 1-1.4 4.6 3 3 0 0 1-5.2 1.9z"/><path d="M12 5v14"/>'),
+  account:svg('<rect x="3.6" y="4.6" width="16.8" height="4.4" rx="1.2"/><path d="M5.2 9v8.8a1.6 1.6 0 0 0 1.6 1.6h10.4a1.6 1.6 0 0 0 1.6-1.6V9"/><path d="M10 13h4"/>'),
   bell:svg('<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>')};
-var NAMES={pick:'Pick',young:'Radar',account:'Traders',office:'Office'},SHORT={},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
+var NAMES={home:'Start',pick:'Pick',young:'Radar',account:'Archiv',office:'Gehirn'},SHORT={},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
 var counts={radar:null,early:null};      // the Radar tab's badge: the radar's coins without traps, the early list's count (until the switch)
 var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,pos={},lastEarly=null,toEarly=0,jumped=false;
 // a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'radar' (a link to the radar: the top of Radar, no jump to the early
 // list), 'keep' (back where this tab was left, as iOS apps do) or nothing
 function select(t,scroll){
   if(t==='radar')t='young';            // the Radar tab's id is young (a tab remembered from before)
-  if(A.TABS.indexOf(t)<0)t='pick';
+  if(A.TABS.indexOf(t)<0)t='home';
   if(t!==cur)pos[cur]=window.scrollY||0;
   cur=t;
   var r=doc.getElementById('tab-'+t);
@@ -1183,8 +1222,9 @@ function select(t,scroll){
   ss('memebot-apptab',t);
   if(scroll==='top'||scroll==='radar')window.scrollTo(0,0);else if(scroll==='keep')window.scrollTo(0,pos[t]||0);
   toEarly=scroll==='top'&&t==='young'?Date.now():0;jumped=false;if(toEarly)setTimeout(early,0);
-  if(t==='account'&&store&&!P.key&&!P.busy&&P.ready)getKey().then(render);   // the key may have come with a scan since the start
+  if(t==='home'&&store&&!P.key&&!P.busy&&P.ready)getKey().then(render);   // the key may have come with a scan since the start
 }
+A.select=function(t,scroll){select(t,scroll);};      // the Start tab's links switch through here, so the bar follows
 function checked(){var r=doc.querySelector('input[name="tab"]:checked');return r?A.tab(r.id):null;}
 // a deep link to the early list (a tap on the "new coins" notification, until the switch): once the early box shows the scan's list (within 30 s, and only while
 // the reader has not scrolled), the page scrolls to the box, so its status line and the first coins are in view, not the scored list's head
@@ -1198,7 +1238,7 @@ function early(){
 function buildBar(){
   var nav=el('nav','appbar');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Sections');
   A.TABS.forEach(function(t){var b=el('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('data-tab',t);
-    b.innerHTML=ICON[t];b.appendChild(el('span','',SHORT[t]||NAMES[t]));     // four tabs: the short name on the bar, the full one read out
+    b.innerHTML=ICON[t];b.appendChild(el('span','',SHORT[t]||NAMES[t]));     // five tabs: the short name on the bar, the full one read out
     b.addEventListener('click',function(){if(t===cur){try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}}else select(t,'keep');});btns[t]=b;nav.appendChild(b);});
   return nav;
 }
@@ -1275,7 +1315,7 @@ function card(){
   var pa=doc.getElementById('pane-account'),TK={pick:pa&&pa.getAttribute('data-tk-pick')||'50 €',radar:pa&&pa.getAttribute('data-tk-radar')||'10 €'};
   var sec=el('section','appnotif'),head=el('div','sec-head'),c=el('div','card');
   head.appendChild(el('h2','','Notifications'));     // fake money is said at the top of the page and of the tab
-  // compact: one row with the state and the button, the note, the two switches behind "Which notifications" (the Traders tab stays short)
+  // compact: one row with the state and the button, the note, the two switches behind "Which notifications" (the Start tab stays short)
   var top=el('div','nf-top');ui.chip=el('span','chip');ui.note=el('p','nf-note');ui.btn=el('button','nf-btn');ui.btn.type='button';top.appendChild(ui.chip);top.appendChild(ui.btn);
   ui.btn.addEventListener('click',function(){if(state()==='on')turnOff();else turnOn();});
   ui.which=el('details','nf-which');var ws=el('summary','','Which notifications');ui.wsum=el('small');ws.appendChild(ui.wsum);ui.which.appendChild(ws);
@@ -1347,16 +1387,16 @@ function init(){
   }
   all('[data-app-only]').forEach(function(e){e.hidden=false;});
   var eh=doc.querySelector('.ehint');if(eh&&store)eh.textContent=eh.textContent.replace(/ Keep this tab open\.$/,' With notifications on, this iPhone tells you when they are here.');
-  var sec=card();if(tabs)sec.setAttribute('data-app','account');
-  // the notifications card is the last block of the Traders tab (a page without that pane: before the footer)
-  var pa=doc.getElementById('pane-account'),spot=doc.querySelector('.wrap > footer');if(pa)pa.appendChild(sec);else if(spot)spot.parentNode.insertBefore(sec,spot);
+  var sec=card();if(tabs)sec.setAttribute('data-app','home');
+  // the notifications card is the last block of the Start tab (a page without that pane: before the footer)
+  var pa=doc.getElementById('pane-home')||doc.getElementById('pane-account'),spot=doc.querySelector('.wrap > footer');if(pa)pa.appendChild(sec);else if(spot)spot.parentNode.insertBefore(sec,spot);
   if(hdr){ui.bell=el('button','appbell');ui.bell.type='button';ui.bell.innerHTML=ICON.bell;hdr.appendChild(ui.bell);
-    ui.bell.addEventListener('click',function(){if(tabs)select('account',false);sec.scrollIntoView({block:'start'});if(ui.btn&&!ui.btn.hidden)ui.btn.focus({preventScroll:true});});}
+    ui.bell.addEventListener('click',function(){if(tabs)select('home',false);sec.scrollIntoView({block:'start'});if(ui.btn&&!ui.btn.hidden)ui.btn.focus({preventScroll:true});});}
   // a deep link (#tab-young from a notification) picks the tab; the hash is dropped again (the next link with the same hash still counts) and the
   // page stays at the top instead of the browser's jump to the radio of that name. #tab-radar (the radar's notification) opens Radar at its top
   function link(){var h=location.hash,t=A.tab(h);if(!t)return null;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}return [t,A.radarLink(h)?'radar':'top'];}
   var first=link();
-  select(first?first[0]:(tabs?ss('memebot-apptab'):null)||checked()||'pick',first?first[1]:null);
+  select(first?first[0]:(tabs?ss('memebot-apptab'):null)||checked()||'home',first?first[1]:null);
   if(first)window.addEventListener('load',function(){if(!jumped)window.scrollTo(0,0);});
   window.addEventListener('hashchange',function(){var t=link();if(t)select(t[0],t[1]);});
   window.addEventListener('memebot-live',onLive);
