@@ -291,6 +291,7 @@ LIVE_JS = r"""
     div.appendChild(svg);
   }
   function drawAll(root){[].forEach.call((root||document).querySelectorAll('[data-rk-ch]'),draw);}
+  window.memebotRkChart=draw;      // the brain's coin sheet (page_brain.py) draws a bought candidate's line with it when the sheet opens
   function chartDiv(p,sold){var e=el('div','rk-ch');e.setAttribute('data-rk-ch',JSON.stringify(Array.isArray(p.chart)?p.chart:[]));
     if(sold&&isFinite(+p.out)&&isFinite(+p.t))e.setAttribute('data-rk-end',Math.floor((+p.out-+p.t)/60000)+','+(+p.mult||0));return e;}
   drawAll();
