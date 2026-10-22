@@ -964,29 +964,39 @@ def notify_curve(c):
     return notify("curve", words[0], words[1], "#tab-radar")
 
 
-def rocket_words(buys, summary=None):
-    """(title, body) of the rocket hunter's notification for the paper buys of one round, or None: "Radar 🚀", each coin with its
-    score and the cut, what the history says such buys did, and that it is paper money."""
+def rocket_words(buys, summary=None, sells=None):
+    """(title, body) of the rocket hunter's notification for one round's paper buys and sells, or None: "Radar 🚀", each bought coin
+    with its score and the cut, each sold coin with its multiple, euros and why (stop, 11x, 6 h), the account so far, and that it
+    is paper money and a live test."""
     buys = [b for b in buys or [] if isinstance(b, dict)]
-    if not buys:
+    sells = [x for x in sells or [] if isinstance(x, dict)]
+    if not buys and not sells:
         return None
-    b = buys[0]
-    more = " +%d" % (len(buys) - 1) if len(buys) > 1 else ""
-    title = "Radar 🚀 Paper-Kauf: %s%s" % (_sym(b.get("sym")), more)
-    sc, cut = _num(b.get("score")), _num(b.get("cut"))
+    why = {"stop": "Stop -30 %", "11x": "Ziel 11x", "6h": "nach 6 h", "gone": "Pool weg"}
+    sold = ["%s x%.2f (%+.2f €, %s)" % (_sym(x.get("sym")), _num(x.get("mult")) or 0.0, _num(x.get("eur")) or 0.0, why.get(x.get("why"), "verkauft"))
+            for x in sells]
+    if buys:
+        b = buys[0]
+        more = " +%d" % (len(buys) - 1) if len(buys) > 1 else ""
+        title = "Radar 🚀 Paper-Kauf: %s%s" % (_sym(b.get("sym")), more)
+        lead = "Score %.3f (Schwelle %.3f), verkauft bei -30 %%, 11x oder nach 6 h." % (_num(b.get("score")) or 0.0, _num(b.get("cut")) or 0.0)
+        if sold:
+            lead += " Verkauft: %s." % "; ".join(sold)
+    else:
+        title = "Radar 🚀 verkauft: %s" % sold[0]
+        lead = ("Auch verkauft: %s." % "; ".join(sold[1:])) if len(sold) > 1 else ""
     s = summary if isinstance(summary, dict) else {}
     rec = ""
     if _num(s.get("trades")):
-        rec = " Bisher: %d verkauft, %+.2f €." % (int(_num(s.get("trades"))), _num(s.get("eur")) or 0.0)
-    body = ("Score %.3f (Schwelle %.3f). Prognose aus dem Test: etwa 2 von 10 solcher Käufe enden im Plus, etwa 1 von 12 wird 10x, "
-            "verkauft bei -30 %%, 11x oder nach 6 h.%s Nur Papiergeld, nichts wird echt gekauft.") % (sc or 0.0, cut or 0.0, rec)
+        rec = " Konto bisher: %d verkauft, %+.2f €." % (int(_num(s.get("trades"))), _num(s.get("eur")) or 0.0)
+    body = ("%s%s Ein Live-Test: im Rückblick war diese Strategie nicht sicher im Plus. Nur Papiergeld, nichts wird echt gekauft." % (lead, rec)).strip()
     return title, body
 
 
-def notify_rocket(buys, summary=None):
-    """The rocket hunter's notification (kind "rocket") for the paper buys of one round, in rocket_words' words; it opens the Radar tab.
-    The phones' "New coins" setting covers it (PREF_OF). Nothing for an empty list."""
-    words = rocket_words(buys, summary)
+def notify_rocket(buys, summary=None, sells=None):
+    """The rocket hunter's notification (kind "rocket") for one round's paper buys and sells, in rocket_words' words; it opens the
+    Radar tab. The phones' "New coins" setting covers it (PREF_OF). Nothing when the round bought and sold nothing."""
+    words = rocket_words(buys, summary, sells)
     if words is None:
         return {"skipped": "no buys"}
     return notify("rocket", words[0], words[1], "#tab-radar")
