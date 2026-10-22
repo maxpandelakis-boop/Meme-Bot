@@ -850,9 +850,12 @@ def _s6(check, scan, tmp):
           "filter search's doc); the workflow-level group and permissions are unchanged")
     f_ = step_index(job, "The nightly filter search's result for the page")
     sf = job["steps"][f_] if f_ >= 0 else {}
-    check(f_ >= 0 and f_ + 1 == step_index(job, "Build the website folder") and sf.get("continue-on-error") is True and sf.get("timeout-minutes") == 1
-          and "filtersearch.json > mb/db/memebot/filtersearch.json" in (sf.get("run") or "") and "push" not in (sf.get("run") or ""),
-          "the filter search's doc is copied into the page right before the website is built: read only (no push), continue-on-error, 1 min at most")
+    check(f_ >= 0 and f_ == step_index(job, "Restore the bot's state from the results branch") + 1 and f_ < step_index(job, "Scan and recommend")
+          and sf.get("continue-on-error") is True and sf.get("timeout-minutes") == 1
+          and "filtersearch.json > mb/db/memebot/filtersearch.json" in (sf.get("run") or "") and "rocket.json > mb/db/memebot/rocket.json" in (sf.get("run") or "")
+          and "push" not in (sf.get("run") or ""),
+          "the filter search's and the rocket hunter's docs are copied right after the restore, before the scan builds the page: read only "
+          "(no push), continue-on-error, 1 min at most")
     check(pos[2] < a < pos[3] and b == pos[7] + 1 and d_ == 1 and pos[0] == 0
           and sa.get("continue-on-error") is True and sa.get("timeout-minutes") == 1 and sa.get("if") == "steps.recent.outputs.skip != 'true'"
           and sb.get("continue-on-error") is True and sb.get("timeout-minutes") == 3 and sb.get("if") == "steps.recent.outputs.skip != 'true'"

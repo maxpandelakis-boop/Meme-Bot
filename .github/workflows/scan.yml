@@ -193,6 +193,25 @@ jobs:
             echo "the results branch could not be checked (git exit $rc): this scan stops, the results stay as they are"
             exit 1
           fi
+      - name: The nightly filter search's result for the page (read only; filter_search.py writes it on its own branch)
+        # before the scan: the scan builds the page, so the filter search and the rocket hunter's round (the Radar tab's fallback, the
+        # coins in the brain) are on it only when their docs are already here (copied after the scan, they never reached the page)
+        if: steps.recent.outputs.skip != 'true'
+        continue-on-error: true      # a report: without it the page shows "no search yet"
+        timeout-minutes: 1
+        env:
+          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          if git ls-remote --exit-code --heads "$RESULTS_URL" filtersearch >/dev/null; then
+            git fetch -q --depth 1 "$RESULTS_URL" filtersearch && mkdir -p mb/db/memebot && git show FETCH_HEAD:filtersearch.json > mb/db/memebot/filtersearch.json \
+              && echo "filter search doc copied ($(wc -c < mb/db/memebot/filtersearch.json) bytes)"
+          else
+            echo "no filter search yet"
+          fi
+          if git ls-remote --exit-code --heads "$RESULTS_URL" rocket-data >/dev/null; then
+            git fetch -q --depth 1 "$RESULTS_URL" rocket-data && mkdir -p mb/db/memebot && git show FETCH_HEAD:rocket.json > mb/db/memebot/rocket.json \
+              && echo "rocket hunter doc copied ($(wc -c < mb/db/memebot/rocket.json) bytes)"
+          fi
       - name: Import the launch radar's records (branches radar-data and radar-feed; a minute at most, the scan never depends on it)
         if: steps.recent.outputs.skip != 'true'
         continue-on-error: true
@@ -521,23 +540,6 @@ jobs:
             echo "## Scan ${{ steps.scan.outcome }}: the picks below are from an earlier run" >> "$GITHUB_STEP_SUMMARY"
           fi
           python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"
-      - name: The nightly filter search's result for the page (read only; filter_search.py writes it on its own branch)
-        if: steps.recent.outputs.skip != 'true'
-        continue-on-error: true      # a report: without it the page shows "no search yet"
-        timeout-minutes: 1
-        env:
-          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-        run: |
-          if git ls-remote --exit-code --heads "$RESULTS_URL" filtersearch >/dev/null; then
-            git fetch -q --depth 1 "$RESULTS_URL" filtersearch && mkdir -p mb/db/memebot && git show FETCH_HEAD:filtersearch.json > mb/db/memebot/filtersearch.json \
-              && echo "filter search doc copied ($(wc -c < mb/db/memebot/filtersearch.json) bytes)"
-          else
-            echo "no filter search yet"
-          fi
-          if git ls-remote --exit-code --heads "$RESULTS_URL" rocket-data >/dev/null; then
-            git fetch -q --depth 1 "$RESULTS_URL" rocket-data && mkdir -p mb/db/memebot && git show FETCH_HEAD:rocket.json > mb/db/memebot/rocket.json \
-              && echo "rocket hunter doc copied ($(wc -c < mb/db/memebot/rocket.json) bytes)"
-          fi
       - name: Build the website folder
         if: steps.recent.outputs.skip != 'true'
         env:
