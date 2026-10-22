@@ -211,6 +211,35 @@ def score(model, A):
     return A @ w
 
 
+def scan_ranks(V):
+    """pct_block in plain Python for one scan's rows (lists of floats, nan when missing): the scan job has no numpy, only the nightly
+    training does."""
+    n, k = len(V), len(V[0]) if V else 0
+    P = [[0.5] * k for _ in range(n)]
+    for j in range(k):
+        ok = [i for i in range(n) if not math.isnan(V[i][j])]
+        if len(ok) < 2:
+            continue
+        cnt = {}
+        for i in ok:
+            cnt[V[i][j]] = cnt.get(V[i][j], 0) + 1
+        mid, below = {}, 0
+        for v in sorted(cnt):
+            mid[v] = below + cnt[v] / 2.0
+            below += cnt[v]
+        for i in ok:
+            P[i][j] = mid[V[i][j]] / len(ok)
+    return P
+
+
+def scan_scores(model, V):
+    """score(model, design(V, [one scan])) in plain Python -> (scores, ranks)."""
+    P = scan_ranks(V)
+    w, wn, b = model["w"], model["wn"], float(model["b"])
+    return [b + sum(float(w[j]) * p[j] for j in range(len(p))) + sum(float(wn[j]) for j in range(len(p)) if math.isnan(v[j]))
+            for p, v in zip(P, V)], P
+
+
 # ---------------------------------------------------------------- the big test rows
 class Rows(object):
     """The universe rows of the big test, in scan order: scan (t0), t (scored), r (EUR per 50), mult (numpy columns), F (each row's factor
@@ -656,9 +685,7 @@ def buy(d, now):
         if not uni:
             out["why"] = "no coin of this scan in the universe"
             return out
-        import numpy as np
-        V_ = np.array([values(c, model["feats"], model.get("fsRule")) for c in uni], dtype=float)
-        s = score(model, design(V_, [np.arange(len(uni))]))
+        s, P_ = scan_scores(model, [[float(x) for x in values(c, model["feats"], model.get("fsRule"))] for c in uni])
         if any(int(num(p.get("t")) or 0) == int(t) for p in pos.values()):
             out["why"] = "already bought this scan"
             return out
@@ -676,7 +703,7 @@ def buy(d, now):
             out["why"] = "every scored coin is held or has no pool address"
             return out
         i, c, pr = pick
-        P = design(V_, [np.arange(len(uni))])[i]
+        P = P_[i]
         top = sorted(((k, float(model["w"][j]) * (float(P[j]) - 0.5)) for j, k in enumerate(model["feats"])), key=lambda kv: -kv[1])[:4]
         pid = "%s-l-%s-%s" % (time.strftime("%Y-%m-%dT%H%M", time.gmtime(t / 1000)), M.slug(c.get("s")), str(c.get("a"))[:6])
         same = [q for q in M.load_docs(d, "memepos").values() if q.get("grp") == "hold" and num(q.get("t")) == t]

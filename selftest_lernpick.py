@@ -16,7 +16,8 @@ LP4 train() end to end: the first night replays the nights before (marked replay
     state (no second replay, one new candidate)
 LP5 buy(): one coin a scan from this scan's snapshot, in the universe, at the snapshot's price, with a pool address, not one it holds,
     never twice a scan; no brain, a stale snapshot or the switch MEMEBOT_LERNPICK=0 buy nothing; marks for open positions; nothing is
-    written outside db/memelern (the Pick's own docs byte for byte the same)
+    written outside db/memelern (the Pick's own docs byte for byte the same); buy, run, the summary and the fold without numpy (the scan
+    and peaks jobs have none, only the nightly training does)
 LP6 run() against a mock GeckoTerminal: a position is asked once its 6 hours have passed (one request), sold by its own rule replayed on
     the path; a pool without candles waits, then is sold at its marks (the first scan price after its hold time, 0 after a rug); the
     deadline holds; nothing outside db/memelern
@@ -32,6 +33,18 @@ sys.path.insert(0, HERE)
 os.environ.setdefault("MEMEBOT_PAUSE", "0")
 MIN, HOUR, DAY = 60_000, 3_600_000, 86_400_000
 T0 = 1_791_500_000_000           # 2026-10-09, after memebot.LEARN_FROM
+
+
+class _no_numpy(object):
+    """import numpy fails inside the block, as on the scan and peaks jobs' runners (only filtersearch.yml installs it)."""
+    def __enter__(self):
+        self.had = sys.modules.get("numpy", False)
+        sys.modules["numpy"] = None
+    def __exit__(self, *a):
+        if self.had is False:
+            sys.modules.pop("numpy", None)
+        else:
+            sys.modules["numpy"] = self.had
 
 
 def _coin(rnd, i, sig, mult, uni=True, extra=None):
@@ -97,6 +110,15 @@ def _lp1(check):
           "LP1 ranks within a scan: ties averaged (mid-rank over the count), a missing value at 0.5")
     A = L.design(np.array([[1.0, float("nan")], [2.0, 3.0]]), [np.arange(2)])
     check(A.shape == (2, 5) and list(A[:, 3]) == [1.0, 0.0] and list(A[:, 4]) == [1.0, 1.0], "LP1 the design: ranks, missing flags, a constant")
+    rnd = random.Random(7)
+    V = [[rnd.choice((float("nan"), 0.0, -0.0, 1.0, 1.0, 2.5, rnd.random())) for _ in range(5)] for _ in range(40)]
+    mdl = {"w": [rnd.uniform(-9, 9) for _ in range(5)], "wn": [rnd.uniform(-3, 3) for _ in range(5)], "b": 0.7}
+    with _no_numpy():
+        s_py, P_py = L.scan_scores(mdl, V)
+        s_one, _ = L.scan_scores(mdl, V[:1])
+    s_np = L.score(mdl, L.design(np.array(V), [np.arange(len(V))]))
+    check(np.allclose(s_py, s_np) and np.allclose(P_py, L.pct_block(np.array(V))) and len(s_one) == 1,
+          "LP1 the scan's scores in plain Python (no numpy on the scan's runner) are the trained model's scores (ties, missing values, -0.0)")
     p = dict(L.FEE_POS, ticket=50.0)
     check(L.r_of(1.0) == round(M.pos_value(p, 1.0, 1.0) - 50.0, 2) and L.r_of(40.0) == L.r_of(11.0) and L.r_of(0.0) == -50.0 and L.FEE_POS["paper"] == M.PAPER_RULE,
           "LP1 the label: what 50 € became after the Pick's paper fees, the multiple capped at 11x (a 40x counts as 11x), 0 is the whole ticket")
@@ -232,8 +254,9 @@ def _lp5_lp6(check, tmp):
     off = L.buy(d, t)
     os.environ.pop("MEMEBOT_LERNPICK")
     stale = L.buy(d, t + L.SNAP_FRESH_MS + MIN)
-    b1 = L.buy(d, t)
-    b1b = L.buy(d, t)
+    with _no_numpy():
+        b1 = L.buy(d, t)
+        b1b = L.buy(d, t)
     pos = L.positions(d)
     p1 = pos.get(b1.get("pid")) or {}
     check(off["bought"] is None and "switched off" in off["why"] and stale["bought"] is None and b1["bought"] == "C1" and b1b["bought"] is None
@@ -243,9 +266,10 @@ def _lp5_lp6(check, tmp):
           "Pick's coin too; never twice a scan; a stale snapshot or MEMEBOT_LERNPICK=0 buys nothing")
     t2 = t + HOUR
     _snapdir(d, t2, coins)
-    b2 = L.buy(d, t2)
+    with _no_numpy():
+        b2 = L.buy(d, t2)
     p1 = L.positions(d)[p1["pid"]]
-    check(b2["bought"] == "C2" and p1["marks"][-1] == [t2, 0.002, 40000],
+    check(b1.get("ok") is True and b2.get("ok") is True and b2["bought"] == "C2" and p1["marks"][-1] == [t2, 0.002, 40000],
           "LP5 the next scan does not buy what it holds (the next best instead) and notes the scan's price of its open position")
     json.dump({"v": 1, "buy": None, "pending": []}, open(os.path.join(d, "db", "memebot", L.DOC), "w"))
     _snapdir(d, t2 + HOUR, coins)
@@ -261,16 +285,17 @@ def _lp5_lp6(check, tmp):
     gt = SS._GT({"POOL1": up})
     keep6 = {k: v for k, v in _tree(d, "db").items() if not k.startswith("db/memelern")}
     try:
-        early = L.run(d, A0 + 6 * HOUR, 20, gt.url)
-        r1 = L.run(d, A0 + 6 * HOUR + 3 * MIN, 20, gt.url)
-        asked1 = list(gt.asked)
-        sa = L.positions(d)[pa["pid"]]
-        pb2 = L.positions(d)[pb["pid"]]
-        pb2["marks"] = pb2["marks"] + [[pb2["entryAt"] + 6 * HOUR + 10 * MIN, 0.0025, 30000]]
-        L.write_pos(d, pb2)
-        outs = [L.run(d, pb["entryAt"] + 6 * HOUR + 3 * MIN + k * HOUR, 20, gt.url) for k in range(3)]
-        sb = L.positions(d)[pb["pid"]]
-        short = L.run(d, A0 + 30 * HOUR, 0.5, gt.url)
+        with _no_numpy():
+            early = L.run(d, A0 + 6 * HOUR, 20, gt.url)
+            r1 = L.run(d, A0 + 6 * HOUR + 3 * MIN, 20, gt.url)
+            asked1 = list(gt.asked)
+            sa = L.positions(d)[pa["pid"]]
+            pb2 = L.positions(d)[pb["pid"]]
+            pb2["marks"] = pb2["marks"] + [[pb2["entryAt"] + 6 * HOUR + 10 * MIN, 0.0025, 30000]]
+            L.write_pos(d, pb2)
+            outs = [L.run(d, pb["entryAt"] + 6 * HOUR + 3 * MIN + k * HOUR, 20, gt.url) for k in range(3)]
+            sb = L.positions(d)[pb["pid"]]
+            short = L.run(d, A0 + 30 * HOUR, 0.5, gt.url)
     finally:
         gt.close()
     check(early["due"] == 0 and r1["due"] == 1 and r1["sold"] == 1 and [a[0] for a in asked1] == ["POOL1"] and all(a[1] == 1000 for a in asked1)
@@ -292,7 +317,8 @@ def _lp7(check, tmp):
     import lernpick as L, page_lernpick as PL, report as R, bot as B
     print("== learning pick LP7: the summary and the fold")
     d = os.path.join(tmp, "mb5")
-    S = L.summary(d, T0 + 30 * DAY)
+    with _no_numpy():
+        S = L.summary(d, T0 + 30 * DAY)
     check(S["me"]["n"] == 2 and S["me"]["sold"] == 2 and S["me"]["closedPnl"] == round(sum(p["eur"] for p in L.positions(d).values()), 2)
           and S["since"] == T0 + 20 * DAY and S["pick"]["n"] == 1,
           "LP7 the summary: its account from its own positions; the Pick's buys since its first buy beside it")
@@ -305,7 +331,8 @@ def _lp7(check, tmp):
                "data": {"rows": 100, "scans": 10, "paths": {"hold": 3}, "trades": {"pick": 4}}}, open(os.path.join(d, "db", "memebot", L.DOC), "w"))
     L.write_pos(d, {"v": 1, "pid": "x-l-esc", "sym": "<b>x</b>", "addr": "Esc", "pair": "P", "t": T0 + 29 * DAY, "entryAt": T0 + 29 * DAY, "px": 1.0,
                     "ticket": 50.0, "rule": dict(L.START_SELL), "state": "open", "marks": []})
-    h1 = PL.section({"dir": d, "now": T0 + 30 * DAY}, R)
+    with _no_numpy():
+        h1 = PL.section({"dir": d, "now": T0 + 30 * DAY}, R)
     words = h1.lower()
     check('id="learning-pick"' in h1 and "No brain yet" in h0 and "Learning Pick" in h1 and "learned last night" in h1 and "prefers a higher" in h1 and "avoids a high" in h1 and "Oct 18" in h1
           and "Kauf" not in h1 and "Regel" not in h1 and not any(w in words for w in (" safe ", "buy now", "guaranteed")),
