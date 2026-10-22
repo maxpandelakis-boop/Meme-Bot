@@ -110,6 +110,10 @@ def main():
         h2 = PS.section({"dir": d})
         check("<script>" not in h2 and "&lt;script&gt;" in h2 and ("beat the gates" in h2 or "No rule beats" in h2) and "ⓘ how" in h2,
               "S6 a doc: the verdict, escaped text, the method fold, no script")
+        import report as R
+        h3 = R.search_block({"dir": d})
+        check('data-pa="filtersearch"' in h3 and h3.startswith("<section>") and "Filter search" in R.search_block.__doc__ + h3,
+              "S7 the page shows the block: the Pick tab's Details holds it (report.search_block)")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("\n%d checks failed" % len(FAILS) if FAILS else "\nALL PASS")
