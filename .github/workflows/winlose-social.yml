@@ -1,0 +1,27 @@
+# Winner/loser study (fake money only): pump.fun replies and Reddit search for a sample of history2 coins, to see whether people
+# talked about winners more, and earlier, than about losers. Runs only on a push of this file's branch; reads public pages only,
+# no key, no secret; writes only the data branch "socialprobe".
+name: winlose-social
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-social.yml, research/winlose/social_probe.py, research/winlose/social_coins.csv]
+permissions:
+  contents: write
+jobs:
+  social:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: mkdir out && python3 research/winlose/social_probe.py research/winlose/social_coins.csv out/social.jsonl
+      - name: Push to the socialprobe branch
+        if: always()
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b socialprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "social probe" \
+            && git push -q --force "$URL" socialprobe
