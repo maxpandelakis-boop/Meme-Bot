@@ -1,0 +1,25 @@
+# Winner/loser study (fake money only): lists the Hugging Face Pumpfun_v2 dataset's files (names, sizes, last commit) to see
+# whether it now covers days after 8 Oct 2026 (a fresh forward test of the rocket hunter). Public API, no key; writes only the
+# data branch "hfprobe". Runs only on a push of this file on this branch.
+name: winlose-hfprobe
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-hfprobe.yml]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: |
+          mkdir out
+          curl -sf "https://huggingface.co/api/datasets/Slinky21/Pumpfun_v2_dataset?blobs=true" > out/dataset.json
+          python3 -c "import json;d=json.load(open('out/dataset.json'));print(d.get('lastModified'));s=d.get('siblings') or [];print(len(s));[print(x['rfilename'],x.get('size')) for x in s[-40:]]" > out/summary.txt
+          cat out/summary.txt
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b hfprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "hf probe" && git push -q --force "$URL" hfprobe
