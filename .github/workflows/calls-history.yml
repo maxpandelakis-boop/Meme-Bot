@@ -1,0 +1,82 @@
+# More days for the call-channel test of the third video (fake money only; research/PREREG-CALLS-2026-10-22.md, addendum):
+# research/calls_fetch.py lists the graduations of 25 Apr-9 Aug 2026 (Helius; 9-21 Oct comes from branch "backfill"), keeps at
+# most 300 a day before 9 Oct, and fetches each pool's one-minute candles of its first 1000 minutes from GeckoTerminal.
+# Nothing is bought; the key is never printed or written. The candles go to the data branch "callsdata".
+# Runs only on a push of this file or calls_fetch.py on this branch. 10 shards leave runners free for the live bots.
+name: calls-history
+on:
+  push:
+    branches: [claude/project-thread-suyyex]
+    paths: [.github/workflows/calls-history.yml, research/calls_fetch.py]
+permissions:
+  contents: write
+concurrency:
+  group: calls-history
+  cancel-in-progress: false
+jobs:
+  grads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        p: [["2026-04-25", "2026-05-25"], ["2026-05-25", "2026-06-25"], ["2026-06-25", "2026-07-25"], ["2026-07-25", "2026-08-10"]]
+    env:
+      HK: ${{ secrets.HELIUS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/calls_fetch.py grads ${{ matrix.p[0] }} ${{ matrix.p[1] }} grads_${{ matrix.p[0] }}.json
+      - uses: actions/upload-artifact@v4
+        with: {name: "grads-${{ matrix.p[0] }}", path: "grads_*.json", retention-days: 3}
+  plan:
+    needs: grads
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: "grads-*", merge-multiple: true, path: g}
+      - run: |
+          git fetch -q --depth 1 origin backfill && git show FETCH_HEAD:grads.json > g/grads_oct.json
+          python3 research/calls_fetch.py plan plan.json 300 g/grads_*.json
+      - uses: actions/upload-artifact@v4
+        with: {name: plan, path: "plan.json", retention-days: 3}
+      - uses: actions/upload-artifact@v4
+        with: {name: gradlists, path: "g/*.json", retention-days: 3}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    env:
+      GT_GAP: "2.2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: plan}
+      - run: python3 research/calls_fetch.py shard plan.json ${{ matrix.i }} 10 bars_${{ matrix.i }}.json.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "bars-${{ matrix.i }}", path: "bars_*.json.gz", retention-days: 3}
+  final:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: "bars-*", merge-multiple: true, path: out}
+      - uses: actions/download-artifact@v4
+        with: {name: plan, path: out}
+      - uses: actions/download-artifact@v4
+        with: {name: gradlists, path: out/gradlists}
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          printf 'One-minute GeckoTerminal candles (USD, first 1000 minutes) of pump.fun graduations, 25 Apr-9 Aug 2026 (at most 300 a day) and 9-21 Oct 2026 (all), for research/check_calls.py ext. Fake money only.\n' > out/README.md
+          cd out && git init -q && git checkout -q -b callsdata && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "call test candles" && git push -q --force "$URL" callsdata
