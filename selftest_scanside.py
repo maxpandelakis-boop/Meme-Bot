@@ -134,7 +134,7 @@ def run_script(script, cwd, env, timeout=120):
     path = os.path.join(cwd, ".step.sh")
     with open(path, "w", encoding="utf-8") as f:
         f.write(script)
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_", "GITHUB_", "GH_", "RESULTS_URL", "RUNNER_"))}
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_", "GITHUB_", "GH_", "RESULTS_URL", "RUNNER_")) or k == "MEMEBOT_PUSH_ALL"}
     t = time.time()
     p = subprocess.run(["bash", "--noprofile", "--norc", "-e", path], cwd=cwd, capture_output=True, text=True, env=dict(base, **env), timeout=timeout)
     os.remove(path)
@@ -435,7 +435,7 @@ def _app_env(tmp):
     with open(os.path.join(fake, "pywebpush.py"), "w") as f:
         f.write(S.FAKE_PYWEBPUSH)
     real = importlib.util.find_spec("pywebpush") is not None and importlib.util.find_spec("http_ece") is not None
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_PUSH_ALL"}
     base.update(PYTHONUTF8="1", MEMEBOT_PAUSE="0")
     env = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=S.APP_SECRET)
     if not real:
@@ -471,7 +471,7 @@ def _s4(check, scan, tmp):
             "    out.append(bot.young_published(y))\n"
             "bot.YOUNG_SENT['t'] = None\nos.environ['MEMEBOT_PUSH_YOUNG'] = '1'\nempty = bot.young_published(dict(y, coins=[]))\n"
             "print(json.dumps([out, calls, empty]))\n")
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_PUSH_ALL"}
     p, out = _drive(code, env)
     check(out == [[False, False, False, False, True, False], [["notify_young", 777]], False],
           "young_published: unset, 0, true or yes send nothing; 1 sends the notification once per cycle as before (a second call and an empty list"

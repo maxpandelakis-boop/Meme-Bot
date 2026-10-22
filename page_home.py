@@ -4,6 +4,8 @@ and nothing here is advice. German words, like the user writes.
 The product has two parts, and this tab shows both at a glance:
   PICK   the full scan's paper account (50 € a pick, its sell rule unchanged)
   RADAR  the rocket hunter's own paper account (rocket_watch.py, 20 € a coin when its rocket score reaches the cut)
+pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells, the
+Radar for comparison), because the open Pick positions were only in Archiv.
 section(D, R) -> HTML:
   - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
     (3x and 10x) and the open positions
@@ -125,20 +127,110 @@ def spark(pts, cls):
             '<path class="a" d="%s L120 30 L0 30 Z"/><path class="l" d="%s"/></svg>') % (cls, z, z, d, d)
 
 
-def acct_card(key, title, sub, b, empty, live=False):
-    """One account card; live=True (the rocket hunter) adds the data-rk-* hooks page_rocket.LIVE_JS fills from the app's live row."""
+def since_words(R, ms):
+    """'since 22 Oct, 12:08' (Berlin), '' without a start."""
+    try:
+        return "since %s" % R.local(ms).strftime("%-d %b, %H:%M") if num(ms) else ""
+    except Exception:
+        return ""
+
+
+def acct_card(key, title, sub, b, empty, live=False, since=""):
+    """One account card; live=True (the rocket hunter) adds the data-rk-* hooks page_rocket.LIVE_JS fills from the app's live row. since:
+    the account's start in words (both accounts count from the same moment since the Pick's fresh start, memebot.FRESH_AT)."""
+    head = '<div class="hm-k"><span class="hm-dot"></span>%s<small>%s</small></div>%s' % (
+        E(title), E(sub), ('<small class="hm-since">%s</small>' % E(since)) if since else "")
     if not b:
-        return ('<div class="hm-acc hm-%s"><div class="hm-k"><span class="hm-dot"></span>%s</div><p class="hm-empty">%s</p></div>') % (key, E(title), E(empty))
+        return ('<div class="hm-acc hm-%s">%s<p class="hm-empty">%s</p></div>') % (key, head, E(empty))
     h = (lambda k: ' data-rk-st="%s"' % k) if live else (lambda k: "")
     win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(",")
     stats = [("im Plus", ("<span%s>%s</span><small>/10</small>" % (h("win"), E(win))) if (b["win"] is not None or live) else "–"),
              ("3x · 10x", "<span%s>%d · %d</span>" % (h("hits"), b["x3"], b["x10"])),
              ("offen", "<span%s>%d</span>" % (h("open"), b["open"]))]
-    return ('<div class="hm-acc hm-%s"%s><div class="hm-k"><span class="hm-dot"></span>%s<small>%s</small></div>'
+    return ('<div class="hm-acc hm-%s"%s>%s'
             '<b class="hm-bal %s"%s>%s</b>%s<div class="hm-st">%s</div><small class="hm-n"><span%s>%d</span> abgeschlossen · %s pro Kauf · Spielgeld</small></div>') % (
-        key, (' data-rk-box data-rk-t="%d"' % int(b.get("t") or 0)) if live else "", E(title), E(sub), tone(b["bal"]), " data-rk-bal" if live else "",
+        key, (' data-rk-box data-rk-t="%d"' % int(b.get("t") or 0)) if live else "", head, tone(b["bal"]), " data-rk-bal" if live else "",
         E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
         "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), v) for k, v in stats), h("closed"), b["closed"], E(de_eur(b["ticket"]).replace(",00", "")))
+
+
+PICK_WHY = {"tp": "11x reached", "stop": "stop −30%", "time": "after 6 h", "rug": "coin gone", "reset": "restart", "manual": "by hand"}
+PICK_SOLD = 5             # last sells in the Pick tab's account block
+
+
+def pick_account(D, R):
+    """The Pick tab's account block (the user could not find the open Pick positions on Oct 22; they sat in Archiv > Drei Papier-Trader):
+    the Pick account since its start (balance, the same stats as the Start card), every open pick position as the page's own position card
+    (R.hold_card, tap opens: price since the buy, stop and target, the clock, the links), the last sells, and the Radar account for
+    comparison. Display only; the account, its rule and the trades before the start stay where they were (Archiv)."""
+    now = D["now"]
+    b = pick_book(D)
+    since = since_words(R, ((D.get("paper") or {}).get("since")))
+    ticket = de_eur(num(getattr(M, "TOP_TICKET", None)) or 50.0).replace(",00", "")
+    head = ('<div class="pk-head"><div><h3>Pick account</h3><small>hourly pick · %s</small></div><span class="chip warn">fake money</span></div>' % E(
+        " · ".join(x for x in (since, "%s per buy" % ticket) if x)))
+    if not b:
+        return '<div class="pk" data-pa="pick">%s<p class="pk-s">No pick bought since the start yet.</p></div><style>%s</style>' % (head, PK_CSS)
+    win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(",")
+    stats = [("in profit", "%s/10" % win), ("3x · 10x", "%d · %d" % (b["x3"], b["x10"])), ("open", str(b["open"])), ("closed", str(b["closed"]))]
+    acct = ('<div class="pk-acct"><div class="pk-bal"><span class="k">Balance</span><b class="%s">%s</b>%s</div><div class="pk-sts">%s</div></div>') % (
+        tone(b["bal"]), E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
+        "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), E(v)) for k, v in stats))
+    opn = [r for r in D.get("open") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold"]
+    cards = []
+    for r in opn:
+        try:
+            cards.append(R.hold_card(r, now))
+        except Exception:
+            cards.append('<div class="pk-s">%s</div>' % E((r.get("p") or {}).get("sym") or "?"))
+    t0 = num((D.get("paper") or {}).get("since")) or 0
+    before = sum(1 for r in opn if (num((r.get("p") or {}).get("t")) or 0) < t0)
+    op_html = ('<div class="pk-st"><span class="k">Open positions (%d)%s</span><div class="holds">%s</div></div>' % (
+        len(opn), (" · %d bought before the start, not counted" % before) if before else "", "".join(cards)) if opn else
+        '<div class="pk-st"><span class="k">Open positions (0)</span><p class="pk-s">None right now. Every scan buys its pick on paper for %s.</p></div>' % E(ticket))
+    closed = sorted((r for r in b["rows"] if not r.get("open")), key=lambda r: -(num(r.get("exitT")) or num(r.get("t")) or 0))[:PICK_SOLD]
+    sold = []
+    for r in closed:
+        ex = [e for e in r.get("status") or [] if isinstance(e, dict)]
+        why = str(ex[-1].get("why") or "") if ex else ""
+        pct = num(r.get("pct"))
+        bits = [("%s%s %%" % ("+" if pct > 0 else "", de_num(100 * pct, 0))) if pct is not None else "", PICK_WHY.get(why, why),
+                when(R, num(r.get("exitT")), now) if num(r.get("exitT")) else ""]
+        sold.append('<li class="%s"><b>%s</b><span>%s</span><em>%s</em></li>' % (
+            tone(r.get("pnl")), E(str(r.get("sym") or "?")[:14]), E(" · ".join(x for x in bits if x)), E(de_eur(r.get("pnl"), True))))
+    sold_html = ('<div class="pk-st"><span class="k">Recently sold</span><ul class="pk-sold">%s</ul></div>' % "".join(sold)) if sold else ""
+    rk = rocket_book(rocket_doc(D))
+    cmp_ = ('<p class="pk-cmp">For comparison, Radar 🚀: <b class="%s">%s</b> · %d closed · %d open</p>' % (
+        tone(rk["bal"]), E(de_eur(rk["bal"], True)), rk["closed"], rk["open"])) if rk else ""
+    foot = ('<p class="pk-s">Sells at −30%%, at 11x or after 6 h (the rule is unchanged). The trades before the start (%d) are in the archive under '
+            '“Drei Papier-Trader”.</p>' % sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold"))
+    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>' % (head, acct, op_html, sold_html, foot, cmp_, PK_CSS)
+
+
+PK_CSS = r"""
+/* the Pick tab's account block (page_home.pick_account), the same look as the rocket hunter's block on the Radar tab */
+.pk { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 16px 10px; display:grid; gap:12px; min-width:0; margin:0 0 12px;
+  background-image:radial-gradient(120% 80% at 100% 0%, color-mix(in srgb,var(--accent) 14%,transparent), transparent 60%) }
+.pk-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 10px } .pk-head h3 { margin:0; font-size:19px }
+.pk-head small { font-size:var(--fs-xs); color:var(--muted) }
+.pk-acct { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:12px; align-items:center }
+.pk-bal { display:grid; gap:2px; min-width:0 } .pk-bal b { font-size:28px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; white-space:nowrap }
+.pk-bal b.good { color:var(--good) } .pk-bal b.bad { color:var(--bad) }
+.pk .k { font-size:var(--fs-xs); color:var(--muted) }
+.pk-sts { display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.pk-sts > span { display:grid; padding:6px 8px; border-radius:10px; background:color-mix(in srgb,var(--fg) 4%,transparent) }
+.pk-sts i { font-style:normal; font-size:11px; color:var(--muted) } .pk-sts b { font-size:15px; font-variant-numeric:tabular-nums }
+.pk-st { display:grid; gap:6px; min-width:0 } .pk-st .holds { display:grid; gap:8px; min-width:0 }
+.pk-sold { list-style:none; margin:0; padding:0; display:grid; gap:6px }
+.pk-sold li { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px; font-size:var(--fs-s) }
+.pk-sold li span { grid-column:1; color:var(--fg2); font-size:var(--fs-xs) }
+.pk-sold li em { grid-column:2; grid-row:1 / span 2; align-self:center; font-style:normal; font-variant-numeric:tabular-nums; font-weight:600 }
+.pk-sold li.good em { color:var(--good) } .pk-sold li.bad em { color:var(--bad) }
+.pk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
+.pk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
+.pk-cmp b.good { color:var(--good) } .pk-cmp b.bad { color:var(--bad) }
+@media (max-width:420px) { .pk-acct { grid-template-columns:1fr } }
+"""
 
 
 def pick_now(D, R):
@@ -214,8 +306,9 @@ def section(D, R):
     status = ['<span><i class="hm-pulse"></i>Scan zuletzt %s · nächster ≈ %s</span>' % (E(hhmm(R, num(runs[0]["t"]))) if runs else "–", E(hhmm(R, nxt)))]
     if doc and num(doc.get("t")):
         status.append('<span><i class="hm-pulse rad"></i>Raketen-Radar zuletzt %s · alle 15 Min</span>' % E(hhmm(R, num(doc["t"]))))
-    cards = (acct_card("pick", "PICK", "der sichere", pk, "Noch keine Pick-Käufe.")
-             + acct_card("rad", "RADAR", "Raketen-Jäger", rk, "Startet mit der ersten Radar-Runde.", live=True))
+    # both accounts count from the same moment since the Pick's fresh start (memebot.FRESH_AT, the rocket hunter's first round)
+    cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
+             + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
     nav = [("pick", "Pick", "Karte, Sicherheit, Stunde für Stunde"), ("young", "Radar", "Raketen-Jäger und Launch-Radar"),
            ("office", "Gehirn", "Was der Bot gerade denkt"), ("account", "Archiv", "Forschung, alte Trader, alle Daten")]
     return ('<style>%s</style><section class="hm" data-home>'
@@ -247,7 +340,7 @@ CSS = r"""
 .hm-acc { min-width:0; display:grid; gap:6px; align-content:start; padding:12px; border-radius:14px; background:color-mix(in srgb,var(--bg) 55%,transparent);
   border:1px solid color-mix(in srgb,var(--fg) 8%,transparent); backdrop-filter:blur(6px) }
 .hm-k { display:flex; flex-wrap:wrap; align-items:center; gap:2px 6px; font-weight:600; letter-spacing:.06em; font-size:var(--fs-s) }
-.hm-k small { font-weight:400; letter-spacing:0; color:var(--muted); font-size:var(--fs-xs) }
+.hm-k small { font-weight:400; letter-spacing:0; color:var(--muted); font-size:var(--fs-xs) } .hm-since { font-size:11px; color:var(--fg2); margin-top:-4px }
 .hm-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent) }
 .hm-rad .hm-dot { background:var(--nn2); box-shadow:0 0 10px var(--nn2) }
 .hm-bal { font-size:clamp(19px,5.6vw,30px); font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; white-space:nowrap }

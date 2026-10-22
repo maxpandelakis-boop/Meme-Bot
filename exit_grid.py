@@ -561,12 +561,13 @@ def group_block(evs, fill, n_all, out_why):
 # ---------------------------------------------------------------- the run
 def collect(d):
     """The trades of every group: {grp: (evidence list, closed trades in all, {why left out: n})} and the fill model. The paper
-    groups are the closed positions of the account since the restart (memebot.in_account, all of the position sold); the radar
+    groups are the closed positions of the account since the paper rule's start (memebot.in_account from paperRuleSince: the Pick's fresh
+    start of Oct 22 kept the rule, so its trades before it still count here; all of the position sold); the radar
     group is every settled radar account doc (closed or void)."""
     ctx = P.context(d)
     out = {g: ([], 0, {}) for g in GROUPS}
     for pid, p in sorted(ctx["pos"].items()):
-        if not M.in_account(p, ctx["since"]) or (num(p.get("_left")) or 0.0) > 1e-9:
+        if not M.in_account(p, ctx.get("ruleSince") or ctx["since"]) or (num(p.get("_left")) or 0.0) > 1e-9:
             continue
         evs, n_all, why = out[p["grp"]]
         ev, w = paper_evidence(ctx, pid, p)

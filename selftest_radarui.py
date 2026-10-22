@@ -500,8 +500,8 @@ def py_checks(check, tmp, T, standin):
     words += re.findall(r"'([^'\\]{12,})'", P.JS)
     words += re.findall(r"'([^'\\]*(?:radar|Radar|trap)[^'\\]*)'", A.PAGE_JS)
     bad = [w for w in words if BANNED.search(w)]
-    check(not bad and "\u2014" not in P.JS + P.CSS + json.dumps(P.LABELS) + visible_text(page) and "a coin with no trap found" in A.PAGE_JS and "finds a coin with no trap," not in A.PAGE_JS,
-          "U7 the radar's words carry no 'safe', 'guaranteed' or advice-style 'buy', and no em dash; the app's notification card says 'a coin with no trap found' (%d texts read)%s" % (
+    check(not bad and "\u2014" not in P.JS + P.CSS + json.dumps(P.LABELS) + visible_text(page) and "when a bot makes a paper purchase" in A.PAGE_JS and "finds a coin with no trap," not in A.PAGE_JS,
+          "U7 the radar's words carry no 'safe', 'guaranteed' or advice-style 'buy', and no em dash; the app's notification card says it notifies paper purchases only (Oct 22) (%d texts read)%s" % (
               len(words), (" " + str(bad[:3])) if bad else ""))
     check("around the clock" in P.INFO_TEXT and not re.search(r"7 to 24|07:00|24:00|first full scan after", P.INFO_TEXT),
           "U7 the Start/Stop info says the radar runs around the clock (no 7 to 24 h, no start with the first scan after its hours)")

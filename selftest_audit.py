@@ -55,7 +55,7 @@ print(json.dumps([[o["sent"], o["failed"]] for o in out]))
 def check_push_reason(check):
     """F1: a refused push names the push service's reason (cut, no control characters), and "check the VAPID keys" only for a 403 while
     no kind has reached a phone in this process."""
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_PUSH_ALL"}
     env.update(SUPABASE_URL="http://127.0.0.1:9", SUPABASE_SECRET_KEY="sb_secret_auditkey123456", PYTHONUTF8="1")
     rc, out, err = run_py(PUSH_REASON, env)
     lines = [l for l in err.splitlines() if "notification failed" in l]
@@ -257,7 +257,7 @@ def check_store_url(check):
              ("http://abcref.supabase.co", None, "plain http"), ("https://user:pw@abcref.supabase.co", None, "not a host"),
              ("ftp://abcref.supabase.co", None, "not https"), ("http://127.0.0.1:5432", "http://127.0.0.1:5432", ""), ("", None, "missing")]
     wrong = [f[0] for f in forms if A.store_url(f[0]) != (f[1], f[2])]
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_PUSH_ALL"}
     said = {}
     for u in ("http://abcref.supabase.co", "https://abcref.supabase.co/rest/v1"):
         rc, out, err = run_py("import app\nprint([app.enabled(), app.enabled()])", dict(base, SUPABASE_URL=u, SUPABASE_SECRET_KEY="sb_secret_auditkey123456"))

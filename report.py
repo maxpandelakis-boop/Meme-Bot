@@ -2860,7 +2860,7 @@ def paper_curve(D):
     """The paper account's profit or loss after every run since the restart (memecurve "paper"), break-even as the reference line."""
     since = D["paper"]["since"] or 0
     pts = [(M.num(c["t"]), M.num(c["paper"].get("pnl"))) for c in D["curve"] if isinstance(c, dict) and M.num(c.get("t")) and M.num(c.get("t")) >= since
-           and isinstance(c.get("paper"), dict) and M.num(c["paper"].get("pnl")) is not None]
+           and isinstance(c.get("paper"), dict) and M.num(c["paper"].get("pnl")) is not None and (M.num(c["paper"].get("since")) or since) >= since]
     series = [("paper account", "s1", pts)]
     wide = line_chart(series, 0.0, WIDE, ref_label="break-even", aria_label="Paper account profit or loss since the restart")
     if not wide:
@@ -3470,7 +3470,8 @@ def render(data, fragment=False):
         if D["runs"]:
             rest.append(safe("run log", runlog))
         details = fold("Forschung", "Prognose, Tipp-Bilanz, Training, Filter-Team, Filtersuche, Gewinner vs. Verlierer, Kandidaten, Lauf-Log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
-        pane_pick = (strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
+        pane_pick = (strip_html + (safe("pick account", lambda: PH.pick_account(D, sys.modules[__name__])) if PH else "")
+                     + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
                      + safe("shadow rules", lambda: shadow_block(D)))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""

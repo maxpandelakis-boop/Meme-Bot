@@ -115,6 +115,10 @@ PAPER_GROUPS = ("hold", "young")
 # the paper account's identity key (state.json paperRule): never edit, not even a letter; the page's words come from PAPER_LABEL
 PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"    # state.json "paperRule": a run that finds another rule there restarts the account
 PAPER_LABEL = "sells at −%d%%, at %gx (+%s%%) or after %g h" % (round(100 * HOLD_STOP), 1 + HOLD_TP, "{:,}".format(round(100 * HOLD_TP)), HOLD_MAX_H)
+FRESH_AT = 1792663680000    # Thu 22 Oct 2026 10:08 UTC (12:08 Berlin), the rocket hunter's first round: the user restarted the Pick account
+                            # to this moment so both accounts count from the same start. The rule stays (PAPER_RULE), nothing is sold for it:
+                            # paperSince moves here once, a position bought before it runs on under the rule outside the account, and the
+                            # research on the account's trades keeps the rule's own start (state.json paperRuleSince). Never edit after it.
 SWITCH_AT = 1792108800000   # Fri 16 Oct 2026 00:00 UTC (02:00 Berlin; the radar is off then): the new-launch buys end,
                             # the radar's 10 € paper positions start, the learning trader goes live. Never edit after it has passed.
 
@@ -2662,6 +2666,9 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
     # the account counts positions from paperSince
     restart = str(state.get("paperRule") or "") != PAPER_RULE
     paper_since = int(min([now] + [num(p.get("t")) or now for p in pos.values() if p.get("paper") == PAPER_RULE])) if restart else int(num(state.get("paperSince")) or now)
+    rule_since = paper_since if restart else int(num(state.get("paperRuleSince")) or paper_since)
+    if now >= FRESH_AT and paper_since < FRESH_AT:      # the user's fresh start of Oct 22 (FRESH_AT), once; same rule, nothing sold
+        paper_since = FRESH_AT
     n_reset = 0
     new_marks = {"t": now, "px": {}, "liq": {}, "miss": {}, "chk": {}, "cpx": {}}
     for pid, p in sorted(pos.items()):
@@ -3156,7 +3163,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                               "scanned": len(rows) if mode == "pick" or snap_n else state.get("scanned"),
                               "passed": len(gated) if mode == "pick" or snap_n else state.get("passed"),
                               "bigSnapT": now if snap_n else state.get("bigSnapT"), "bigSnapN": snap_n or state.get("bigSnapN"),
-                              "weightsN": winfo["n"], "lastEarly": state.get("lastEarly"), "paperSince": paper_since, "paperRule": PAPER_RULE, "paper": acct})
+                              "weightsN": winfo["n"], "lastEarly": state.get("lastEarly"), "paperSince": paper_since, "paperRuleSince": rule_since, "paperRule": PAPER_RULE, "paper": acct})
     emit("memebot", "marks", new_marks)
     emit("memecurve", run_id, curve_point(all_pos, all_ex, new_marks["px"], now, paper_since))
     emit("memeruns", run_id, {"t": now, "mode": mode, "rule": RULE, "scanned": len(rows), "passed": len(gated),

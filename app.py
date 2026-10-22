@@ -70,6 +70,10 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
 }
 TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal", "rocket": "rocketbt", "daily": "dailyrep"}   # the push Topic header per kind:
 # Apple refuses a topic that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
+# the user's wish of Oct 22: a notification only when a bot buys on paper (the Pick's paper buy, the rocket hunter's paper buy). These kinds
+# stay quiet (notify skips them), notify_pick sends only when the scan really bought its pick, notify_rocket only for a round with buys.
+# The selftests set MEMEBOT_PUSH_ALL=1 to drive the old pipelines; no workflow sets it. Switching one back on is an edit here.
+QUIET = ("young", "radar", "curve", "daily")
 PREF_OF = {"radar": "young", "curve": "young", "rocket": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
 TITLE_MAX, BODY_MAX = 120, 300   # characters of a notification's title and body (message cuts there; the radar's words stay inside)
@@ -691,6 +695,18 @@ def wants(row, kind):
     return v is not False
 
 
+def buy_only():
+    """True unless MEMEBOT_PUSH_ALL=1 (the selftests only): notifications only for paper buys (QUIET)."""
+    return _env("MEMEBOT_PUSH_ALL") != "1"
+
+
+def bought_now(p):
+    """Whether this scan bought the pick on paper: memebot.py's recommend.json puts the ticket (a number) under "bought" then; "held",
+    "watch coin" or nothing means no buy."""
+    v = p.get("bought") if isinstance(p, dict) else None
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0
+
+
 def notify(kind, title, body, url=None):
     """One notification of kind ("young": new coins listed, "pick": the pick is made, "radar": a launch radar coin without a trap found,
     "test") to every saved subscription whose settings want it (prefs[PREF_OF.get(kind, kind)] not false: the radar follows "young").
@@ -703,6 +719,9 @@ def notify(kind, title, body, url=None):
     out = {"kind": kind, "sent": 0, "gone": 0, "bad": 0, "failed": 0, "skipped": None}
     if kind not in KINDS:
         out["skipped"] = "unknown kind"
+        return out
+    if kind in QUIET and buy_only():
+        out["skipped"] = "off: only buy notifications"
         return out
     if not enabled():
         out["skipped"] = "no live store"
@@ -841,6 +860,8 @@ def notify_pick(rec):
     if not picks:
         return {"skipped": "no pick"}
     p = picks[0]
+    if buy_only() and not bought_now(p):
+        return {"skipped": "pick not bought"}
     sym, name, score = _sym(p.get("sym")), " ".join(str(p.get("name") or "").split())[:40], _num(p.get("score"))
     if p.get("tier") == "watch":
         title = "Watch only: %s" % sym
@@ -1012,6 +1033,8 @@ def rocket_words(buys, summary=None, sells=None):
 def notify_rocket(buys, summary=None, sells=None):
     """The rocket hunter's notification (kind "rocket") for one round's paper buys and sells, in rocket_words' words; it opens the
     Radar tab. The phones' "New coins" setting covers it (PREF_OF). Nothing when the round bought and sold nothing."""
+    if buy_only() and not [b for b in buys or [] if isinstance(b, dict)]:
+        return {"skipped": "no buys"}          # a round with sells only stays quiet (QUIET's note)
     words = rocket_words(buys, summary, sells)
     if words is None:
         return {"skipped": "no buys"}
@@ -1330,7 +1353,7 @@ function back(){
   if(!P.key)getKey().then(render);
   else if(P.sub&&!P.saved&&perm()==='granted'){P.busy=true;render();save(false).then(function(){P.busy=false;render();});}
 }
-var TEXT={off:['Off','','Get a notification on this iPhone for a coin with no trap found and for each pick.','Turn on notifications'],
+var TEXT={off:['Off','','Get a notification on this iPhone when a bot makes a paper purchase: the rocket hunter or the pick.','Turn on notifications'],
   on:['On','good','This iPhone gets the notifications switched on under \u201cWhich notifications\u201d.','Turn off notifications'],
   denied:['Blocked','bad','Notifications are blocked for Meme-Bot. Allow them in Settings > Notifications > Meme-Bot, then open the app again.',''],
   unsupported:['Not supported','warn','Notifications need iOS 16.4 or newer. If Meme-Bot was added to the Home Screen from another browser, add it again from Safari and open it from there.',''],
@@ -1348,15 +1371,15 @@ function card(){
   ui.btn.addEventListener('click',function(){if(state()==='on')turnOff();else turnOn();});
   ui.which=el('details','nf-which');var ws=el('summary','','Which notifications');ui.wsum=el('small');ws.appendChild(ui.wsum);ui.which.appendChild(ws);
   ui.prefs=el('div','nf-prefs');
-  [['young','Radar: coin found without traps (bought on paper for '+TK.radar+')','a push when the launch radar finds one'],['pick','The pick (bought on paper for '+TK.pick+')','at the end of each scan'],
-   ['daily','Tagesbericht um 21 Uhr','Käufe, Verkäufe und beide Konten des Tages, Schatten-Regeln, Filtersuche']].forEach(function(p){
+  // only the two purchase notifications (the user, Oct 22; app.py QUIET): the Tagesbericht, the sells and the launch radar are off in the code
+  [['young','Radar 🚀: the rocket hunter buys on paper','one notification per round with a buy'],['pick','Pick: bought on paper ('+TK.pick+')','when a scan buys its pick']].forEach(function(p){
     var row=el('label','nf-row'),sp=el('span'),inp=el('input');sp.appendChild(el('b','',p[1]));sp.appendChild(el('small','',p[2]));
     inp.type='checkbox';inp.setAttribute('role','switch');inp.checked=prefs[p[0]];inp.setAttribute('data-pref',p[0]);
     inp.addEventListener('change',function(){var was=prefs[p[0]];prefs[p[0]]=inp.checked;ls('memebot-push-prefs',JSON.stringify(prefs));
       if(P.sub&&state()==='on'){P.busy=true;render();save(false).then(function(){P.busy=false;
         if(!P.saved){prefs[p[0]]=was;ls('memebot-push-prefs',JSON.stringify(prefs));P.quiet='That change was not saved: the live store did not answer. Try again in a moment.';}render();});}});   // not saved: the switch goes back
     row.appendChild(sp);row.appendChild(inp);ui.prefs.appendChild(row);});
-  ui.pnote=el('p','nf-small','These apply once notifications are on.');
+  ui.pnote=el('p','nf-small','Only paper purchases notify: the evening report, the sells and the launch radar are off. These apply once notifications are on.');
   ui.small=el('p','nf-small','If notifications stop arriving, turn them off and on again here. A Focus mode can hide them; allow Meme-Bot in its settings.');
   [ui.prefs,ui.pnote,ui.small].forEach(function(x){ui.which.appendChild(x);});
   [top,ui.note,ui.which].forEach(function(x){c.appendChild(x);});
@@ -1371,7 +1394,7 @@ function render(){
   ui.btn.hidden=!t[3]&&!retry;ui.btn.textContent=P.busy?'One moment':retry?'Try again':t[3];ui.btn.disabled=P.busy||!P.ready&&s!=='unsupported';ui.btn.classList.toggle('quiet',s==='on');
   ui.which.hidden=['on','off','error'].indexOf(s)<0;ui.pnote.hidden=s==='on';     // not on yet: the note under the switches says they are for later
   all('input',ui.prefs).forEach(function(i){i.disabled=P.busy;i.checked=prefs[i.getAttribute('data-pref')];});
-  ui.wsum.textContent=[prefs.young&&'radar',prefs.pick&&'pick',prefs.daily&&'Tagesbericht'].filter(Boolean).join(', ')||'none';
+  ui.wsum.textContent=[prefs.young&&'radar buys',prefs.pick&&'pick buys'].filter(Boolean).join(', ')||'none';
   ui.small.hidden=s!=='on';
   if(ui.bell){ui.bell.setAttribute('data-on',s==='on'?'1':'0');ui.bell.setAttribute('aria-label','Notifications: '+t[0]);var i=ui.bell.querySelector('i');
     if(s==='on'&&!i)ui.bell.appendChild(el('i'));if(s!=='on'&&i)ui.bell.removeChild(i);}

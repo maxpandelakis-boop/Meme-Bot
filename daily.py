@@ -14,6 +14,8 @@ What it says (words(): a title and one body within app.TITLE_MAX and app.BODY_MA
   - the shadow rules (shadow.summary): which one is ahead of the real rule replayed, on how many buys
   - the nightly filter search (filtersearch.json from the branch filtersearch): a rule that beat the gates on unseen coins, or not
 "Today" is the Berlin day up to now. Each part says "–" when its doc is missing; a missing doc never stops the report.
+Since the user's wish of Oct 22 (a notification only when a bot buys) app.QUIET holds "daily": the report is still built and shown on
+the run's page, and the push is skipped ("not sent: off: only buy notifications").
 
 Usage:
   python3 daily.py run --dir mb [--rocket rocket.json] [--fs filtersearch.json] [--now ms] [--mode auto|send|dry]

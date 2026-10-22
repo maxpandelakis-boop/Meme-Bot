@@ -428,8 +428,23 @@ def _sh8(check):
     src = open(os.path.join(HERE, "app.py"), encoding="utf-8").read()
     pj = A.PAGE_JS
     check("if kind != \"test\" and not wants(row, kind):" in src and "prefs={young:true,pick:true,daily:true}" in pj and "['young','pick','daily'].forEach" in pj
-          and "j.memebot={daily:prefs.daily!==false};" in pj and "['daily','Tagesbericht um 21 Uhr'" in pj and "These apply once notifications are on." in pj,
-          "SH8 the page: a third switch \"Tagesbericht um 21 Uhr\", on by default, kept on the phone and saved inside the subscription")
+          and "j.memebot={daily:prefs.daily!==false};" in pj and "['daily','Tagesbericht um 21 Uhr'" not in pj
+          and "['young','Radar 🚀: the rocket hunter buys on paper'" in pj and "['pick','Pick: bought on paper ('" in pj and "Only paper purchases notify:" in pj
+          and "These apply once notifications are on." in pj,
+          "SH8 the page: two switches, the two buy notifications (the Tagesbericht's switch is gone while app.QUIET keeps it off; its pref is still saved)")
+    old = os.environ.pop("MEMEBOT_PUSH_ALL", None)
+    try:
+        quiet = {k: A.notify(k, "t", "b") for k in ("young", "radar", "curve", "daily")}
+        pick_no = [A.notify_pick({"t": 1, "picks": [dict(sym="P1", bought=b)]}) for b in (None, "held", "watch coin", True, 0)]
+        rk_sell = A.notify_rocket([], {"trades": 1}, [{"sym": "R1", "mult": 0.7, "eur": -6.0, "why": "stop"}])
+        on = A.buy_only() and A.bought_now({"bought": 50.0}) and not A.bought_now({"bought": True})
+    finally:
+        if old is not None:
+            os.environ["MEMEBOT_PUSH_ALL"] = old
+    check(on and all(v.get("skipped") == "off: only buy notifications" for v in quiet.values()) and all(v.get("skipped") == "pick not bought" for v in pick_no)
+          and rk_sell.get("skipped") == "no buys" and set(A.QUIET) == {"young", "radar", "curve", "daily"},
+          "SH8 only buy notifications (the user, Oct 22): new coins, launch radar, curve, Tagesbericht skipped; a pick push only when the scan bought it; "
+          "a rocket round with sells only stays quiet")
     sql = open(os.path.join(HERE, "supabase", "setup.sql"), encoding="utf-8").read()
     check("'young', case when jsonb_typeof(p_prefs->'young')" in sql and "'daily', case" not in sql and "length(sub::text) <= 4096" in sql,
           "SH8 setup.sql is unchanged in what it keeps (the switch rides in the subscription, which it stores whole): nothing to run again in Supabase")

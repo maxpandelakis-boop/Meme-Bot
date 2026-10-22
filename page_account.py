@@ -422,7 +422,7 @@ def balance_line(D, A):
     numbers only; drawn with a stretched viewBox and strokes that do not scale, so it fills any width without scrolling."""
     since = A.get("since") or 0
     pts = [(num(c.get("t")), num(c["paper"].get("pnl"))) for c in D.get("curve") or [] if isinstance(c, dict) and num(c.get("t")) and num(c.get("t")) >= since
-           and isinstance(c.get("paper"), dict) and num(c["paper"].get("pnl")) is not None]
+           and isinstance(c.get("paper"), dict) and num(c["paper"].get("pnl")) is not None and (num(c["paper"].get("since")) or since) >= since]
     pts.sort()
     if len(pts) < 2:
         return '<div class="pa-line pa-line-empty"><span>the balance line starts after two runs</span></div>'
@@ -873,7 +873,7 @@ def curve(D, A):
     R = _report()
     since = A.get("since") or 0
     pts = [(num(c["t"]), num(c["paper"].get("pnl"))) for c in D.get("curve") or [] if isinstance(c, dict) and num(c.get("t")) and num(c.get("t")) >= since
-           and isinstance(c.get("paper"), dict) and num(c["paper"].get("pnl")) is not None]
+           and isinstance(c.get("paper"), dict) and num(c["paper"].get("pnl")) is not None and (num(c["paper"].get("since")) or since) >= since]
     pk = [(t, v) for t, v in A.get("peakPts") or [] if t and t >= since]
     series = [("stop-loss account", "s1", pts)]
     two = len(pk) >= 2
