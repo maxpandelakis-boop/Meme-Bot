@@ -37,6 +37,7 @@ def eur2(m):
 
 
 def boot_low(v):
+    rng = np.random.default_rng(SEED)
     n = len(v)
     m = np.array([v[rng.integers(0, n, n)].mean() for _ in range(BOOT_N)])
     return [round(float(np.percentile(m, q)), 3) for q in (LOW_PCT, 2.5, 97.5)]
