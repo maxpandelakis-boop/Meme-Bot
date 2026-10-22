@@ -66,3 +66,14 @@ the app names it. If not, rule A stays.
 ## Live checks after a change
 The paper account's own live results are the forward test; the fixed check on 4 Nov 2026 (radar account against pick account)
 reports them with the coin count.
+
+## Addendum, 22 Oct ~12:45 UTC: a data error in the outcomes (written before the corrected numbers were run)
+Test 1 ran (V15 passed all five checks, V5/V10/V20 did not). Test 2's replay of rule A on the 55 h bars then disagreed with the
+grid on 6 of 993 picks, among them the two biggest winners. Cause: features.dense forward-fills each minute's HIGH and LOW into the
+following minutes without a trade, so a dead pool's last wick counts again in every quiet minute after it (one coin: last trade
+minute with a high 238x its close, then no trade; the grid booked 11x on every entry after it). The live code never did this
+(rocket.dense and Book.update use the close for a minute without a trade). wick_check.py recomputes every grid row's outcome and
+10x label the live way: 55 rows of 3 coins lose the 10x label, rule A's result changes on 182 rows.
+Both tests are therefore run again with the corrected outcome and label (FIX=1; the model trained on the corrected label), with the
+same variants, seeds, rules and pass checks as above. **The corrected run decides**; the first run is reported next to it. The
+chart numbers keep features.dense as it is (the trees were trained on them; the live code is checked against them by selftest R1).
