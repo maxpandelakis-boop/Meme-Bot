@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""shadow.py: the Pick's shadow rules ("Schatten-Regeln"). Fake money only: nothing here buys, signs or sends anything, nothing the
+"""shadow.py: the Pick's shadow rules ("Shadow rules", German "Schatten-Regeln"). Fake money only: nothing here buys, signs or sends anything, nothing the
 trader, the training or the big test reads comes from here, and nothing here is advice. The Pick's own sell rule (memebot.PAPER_RULE:
 -30 % stop, 11x, 6 h) and its paper account are not touched: this file reads the positions and their exits and writes only its own
 docs (db/memeshadow).
@@ -62,11 +62,11 @@ STATES = ("ok", "none")    # settled: never asked again
 # id, the page's name and words, and the rule. stop: the fraction under cpx (None: no stop); target: the multiple (None: none); half: the
 # multiple at which half is sold; trail: the stop follows the best close at this fraction under it (it starts at 1 - trail); hours.
 RULES = (
-    {"id": "K", "name": "Echte Regel, nachgerechnet", "text": "Stop −30 %, Ziel 11x, 6 h", "stop": 0.30, "target": 11.0, "hours": 6.0},
-    {"id": "A", "name": "Enger Stop", "text": "Stop −20 %, Ziel 3x, 6 h", "stop": 0.20, "target": 3.0, "hours": 6.0},
-    {"id": "B", "name": "Länger, ohne Stop", "text": "kein Stop, Ziel 2x, 12 h", "stop": None, "target": 2.0, "hours": 12.0},
-    {"id": "C", "name": "Hälfte bei 2x", "text": "Hälfte bei 2x, Rest −30 % / 11x / 6 h", "stop": 0.30, "target": 11.0, "half": 2.0, "hours": 6.0},
-    {"id": "D", "name": "Mitlaufender Stop", "text": "Stop 30 % unter dem besten Kurs, 6 h", "stop": 0.30, "target": None, "trail": 0.30, "hours": 6.0},
+    {"id": "K", "name": "Real rule, replayed", "text": "stop −30%, target 11x, 6 h", "stop": 0.30, "target": 11.0, "hours": 6.0},
+    {"id": "A", "name": "Tight stop", "text": "stop −20%, target 3x, 6 h", "stop": 0.20, "target": 3.0, "hours": 6.0},
+    {"id": "B", "name": "Longer, no stop", "text": "no stop, target 2x, 12 h", "stop": None, "target": 2.0, "hours": 12.0},
+    {"id": "C", "name": "Half at 2x", "text": "half at 2x, rest −30% / 11x / 6 h", "stop": 0.30, "target": 11.0, "half": 2.0, "hours": 6.0},
+    {"id": "D", "name": "Trailing stop", "text": "stop 30% under the best price, 6 h", "stop": 0.30, "target": None, "trail": 0.30, "hours": 6.0},
 )
 CONTROL = "K"
 assert (RULES[0]["stop"], RULES[0]["target"], RULES[0]["hours"]) == (M.HOLD_STOP, 1.0 + M.HOLD_TP, M.HOLD_MAX_H)   # K is the real rule
@@ -338,7 +338,7 @@ def summary(d, now=None, pos=None):
         if a["id"] != CONTROL and done:
             a["vsK"] = round(a["eur"] - k["eur"], 2)
     real = acct([x["real"] for x in done])
-    real.update(id="real", name="Echtes Pick-Konto", text="Stop −%d %%, Ziel %gx, %g h · wirklich gebucht" % (round(100 * M.HOLD_STOP), 1.0 + M.HOLD_TP, M.HOLD_MAX_H))
+    real.update(id="real", name="Real Pick account", text="stop −%d%%, target %gx, %g h · really booked" % (round(100 * M.HOLD_STOP), 1.0 + M.HOLD_TP, M.HOLD_MAX_H))
     shadows = [a for a in accts if a["id"] != CONTROL]
     lead = max(shadows, key=lambda a: a["eur"]) if done else None     # the best shadow (the first of equals); ahead: better than K
     return {"v": V, "t": now, "since": SINCE, "ticket": ticket, "pathH": PATH_H, "n": len(done), "open": n_open, "out": n_out,

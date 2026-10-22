@@ -1009,24 +1009,24 @@ def rocket_words(buys, summary=None, sells=None):
     sells = [x for x in sells or [] if isinstance(x, dict)]
     if not buys and not sells:
         return None
-    why = {"stop": "Stop -30 %", "11x": "Ziel 11x", "6h": "nach 6 h", "gone": "Pool weg"}
-    sold = ["%s x%.2f (%+.2f €, %s)" % (_sym(x.get("sym")), _num(x.get("mult")) or 0.0, _num(x.get("eur")) or 0.0, why.get(x.get("why"), "verkauft"))
+    why = {"stop": "stop -30%", "11x": "target 11x", "6h": "after 6 h", "gone": "pool gone"}
+    sold = ["%s x%.2f (%+.2f €, %s)" % (_sym(x.get("sym")), _num(x.get("mult")) or 0.0, _num(x.get("eur")) or 0.0, why.get(x.get("why"), "sold"))
             for x in sells]
     if buys:
         b = buys[0]
         more = " +%d" % (len(buys) - 1) if len(buys) > 1 else ""
-        title = "Radar 🚀 Paper-Kauf: %s%s" % (_sym(b.get("sym")), more)
-        lead = "Score %.3f (Schwelle %.3f), verkauft bei -30 %%, 11x oder nach 6 h." % (_num(b.get("score")) or 0.0, _num(b.get("cut")) or 0.0)
+        title = "Radar 🚀 bought on paper: %s%s" % (_sym(b.get("sym")), more)
+        lead = "Score %.3f (line %.3f), sold at -30%%, 11x or after 6 h." % (_num(b.get("score")) or 0.0, _num(b.get("cut")) or 0.0)
         if sold:
-            lead += " Verkauft: %s." % "; ".join(sold)
+            lead += " Sold: %s." % "; ".join(sold)
     else:
-        title = "Radar 🚀 verkauft: %s" % sold[0]
-        lead = ("Auch verkauft: %s." % "; ".join(sold[1:])) if len(sold) > 1 else ""
+        title = "Radar 🚀 sold: %s" % sold[0]
+        lead = ("Also sold: %s." % "; ".join(sold[1:])) if len(sold) > 1 else ""
     s = summary if isinstance(summary, dict) else {}
     rec = ""
     if _num(s.get("trades")):
-        rec = " Konto bisher: %d verkauft, %+.2f €." % (int(_num(s.get("trades"))), _num(s.get("eur")) or 0.0)
-    body = ("%s%s Ein Live-Test: im Rückblick war diese Strategie nicht sicher im Plus. Nur Papiergeld, nichts wird echt gekauft." % (lead, rec)).strip()
+        rec = " Radar account so far: %d sold, %+.2f €." % (int(_num(s.get("trades"))), _num(s.get("eur")) or 0.0)
+    body = ("%s%s A live test: in the look back this strategy was not reliably in profit. Paper money only, nothing is bought for real." % (lead, rec)).strip()
     return title, body
 
 
@@ -1043,7 +1043,7 @@ def notify_rocket(buys, summary=None, sells=None):
 
 def notify_daily(title, body):
     """The evening report (kind "daily", daily.py's words: today's buys and sales of both paper accounts, their balances, the shadow rules
-    and the filter search); it opens the Start tab. The phones' "Tagesbericht" switch decides (prefs "daily", wants())."""
+    and the filter search); it opens the Start tab. The phones' "Daily report" switch decides (prefs "daily", wants())."""
     t, b = _line(title or ""), _line(body or "")
     if not t or not b:
         return {"skipped": "no words"}
@@ -1204,7 +1204,7 @@ details.nf-which > .nf-small { margin-top:8px }
 
 PAGE_JS = r"""
 (function(){
-// The installed app (Home Screen, from Safari): a bottom tab bar (Start, Pick, Radar, Gehirn, Archiv: the website's order) instead of the top one,
+// The installed app (Home Screen, from Safari): a bottom tab bar (Start, Pick, Radar, Brain, Archive: the website's order) instead of the top one,
 // a bell and a notifications card at the end of the Start tab (permission asked from the tap, the subscription saved in the live store
 // through save_push_sub with its two settings), deep links (#tab-young, #tab-radar ...) from notifications. Radar (tab id young) holds the
 // launch radar; the old links (#tab-radar, #radar, #new) open it. In a browser tab it does nothing. window.MemebotApp holds its decisions for the tests.
@@ -1254,7 +1254,7 @@ var ICON={home:svg('<path d="M4 11.2 12 4.6l8 6.6"/><path d="M6.2 9.6V19h11.6V9.
   office:svg('<path d="M11.2 5.2a3 3 0 0 0-5 1.6 2.9 2.9 0 0 0-1.6 4.9 3 3 0 0 0 1.4 4.6 3 3 0 0 0 5.2 1.9z"/><path d="M12.8 5.2a3 3 0 0 1 5 1.6 2.9 2.9 0 0 1 1.6 4.9 3 3 0 0 1-1.4 4.6 3 3 0 0 1-5.2 1.9z"/><path d="M12 5v14"/>'),
   account:svg('<rect x="3.6" y="4.6" width="16.8" height="4.4" rx="1.2"/><path d="M5.2 9v8.8a1.6 1.6 0 0 0 1.6 1.6h10.4a1.6 1.6 0 0 0 1.6-1.6V9"/><path d="M10 13h4"/>'),
   bell:svg('<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>')};
-var NAMES={home:'Start',pick:'Pick',young:'Radar',account:'Archiv',office:'Gehirn'},SHORT={},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
+var NAMES={home:'Start',pick:'Pick',young:'Radar',account:'Archive',office:'Brain'},SHORT={},btns={},cur='pick',store=A.store(root.getAttribute('data-sb-url'),root.getAttribute('data-sb-key'));
 var counts={radar:null,early:null};      // the Radar tab's badge: the radar's coins without traps, the early list's count (until the switch)
 var box=doc.querySelector('[data-live-src]'),pageT=box?+box.getAttribute('data-run-t')||0:0,pos={},lastEarly=null,toEarly=0,jumped=false;
 // a tab: scroll 'top' (a deep link, a tap on the tab already shown), 'radar' (a link to the radar: the top of Radar, no jump to the early

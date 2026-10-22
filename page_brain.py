@@ -1,9 +1,9 @@
-"""page_brain.py: "Das Gehirn", the top of the Office tab (#pane-office). Fake money only: nothing here buys, signs or sends anything.
+"""page_brain.py: "The brain", the top of the Brain tab (#pane-office). Fake money only: nothing here buys, signs or sends anything.
 
 A dark panel that draws the bot as a brain: the core in the middle (the research lab that learns), the scan's agents on a ring around it
 (each node lit by its state in the last run: done, failed, running), the coins the bot is thinking about on an inner ring (the pick and the
 rocket hunter's best candidates, each node as bright as its score is close to the buy cut) and lines that carry signals into the core.
-Under it the bot's "thoughts" in plain German sentences, built from the same numbers the other tabs show (the last scan, the pick and its
+Under it the bot's "thoughts" in plain English sentences, built from the same numbers the other tabs show (the last scan, the pick and its
 odds, the rocket round and its decision, the training, the two accounts).
 
 Live: report.py's office script sends the event memebot-live with the live status row (app.status_doc: the agents with their status and
@@ -32,11 +32,11 @@ RING_X, RING_Y = 124, 128          # the agents' ring (an ellipse: the panel is 
 INNER = 70                          # the coins' ring
 COINS_MAX = 6
 HIT = 20                            # a coin's tap circle (viewBox units: about 34 px across on a phone; neighbours sit 60+ apart)
-NAMES = {"dispatch": "Dirigent", "scouts": "Späher", "deep": "Tiefensuche", "spotter": "Launch-Späher", "candles": "Kerzen", "market": "Preise",
-         "refresh": "Preis-Update", "analyst": "Filter", "safety": "Sicherheit", "trader": "Händler", "reporter": "Bericht", "radar": "Launch-Radar",
-         "rocket": "Raketen-Jäger"}
+NAMES = {"dispatch": "Dispatcher", "scouts": "Scouts", "deep": "Deep search", "spotter": "Launch scout", "candles": "Candles", "market": "Prices",
+         "refresh": "Price refresh", "analyst": "Filter", "safety": "Safety", "trader": "Trader", "reporter": "Reporter", "radar": "Launch radar",
+         "rocket": "Rocket hunter"}
 ORDER = ("dispatch", "scouts", "deep", "market", "candles", "analyst", "safety", "refresh", "trader", "reporter", "radar", "rocket")
-ST_WORD = {"done": "fertig", "failed": "Fehler", "fallback": "Ersatzweg", "running": "arbeitet", "skipped": "pausiert", "absent": "pausiert"}
+ST_WORD = {"done": "done", "failed": "failed", "fallback": "fallback", "running": "working", "skipped": "paused", "absent": "paused"}
 
 
 def num(v):
@@ -44,11 +44,12 @@ def num(v):
 
 
 def de_int(v):
-    return format(int(round(v)), ",").replace(",", ".")
+    """1234 -> 1,234 (English grouping since Oct 22; the name stays)."""
+    return format(int(round(v)), ",")
 
 
 def de_eur(v):
-    s = format(abs(v), ",.2f").replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    s = format(abs(v), ",.2f")
     return ("−" if v < -0.004 else "+" if v > 0.004 else "") + s + " €"
 
 
@@ -71,19 +72,19 @@ def agents(D):
     doc = rocket_doc(D)
     if doc:
         rd = doc.get("round") or {}
-        by["rocket"] = ("done", "%s Coins beobachtet, %d bewertet, %d gekauft" % (de_int(num(rd.get("candidates")) or 0), int(num(rd.get("scored")) or 0), int(num(rd.get("bought")) or 0)))
-    by.setdefault("radar", ("done", "neue Pools unter 10 Minuten"))
+        by["rocket"] = ("done", "%s coins watched, %d scored, %d bought" % (de_int(num(rd.get("candidates")) or 0), int(num(rd.get("scored")) or 0), int(num(rd.get("bought")) or 0)))
+    by.setdefault("radar", ("done", "new pools under 10 minutes"))
     return [(i, NAMES[i]) + by[i] for i in ORDER if i in by]
 
 
 TEAM = ("dispatch", "scouts", "deep", "market", "candles", "analyst", "safety", "refresh", "trader", "reporter", "trainer")
-JOBS = {"dispatch": "plant den Lauf", "scouts": "sammelt Coins aus allen Quellen", "deep": "sucht mit mehr Stichworten", "market": "holt die Preise",
-        "candles": "holt Minutenkerzen", "analyst": "Filter und Score", "safety": "prüft die besten auf Fallen", "refresh": "frische Preise vor dem Pick",
-        "trader": "kauft den Pick auf Papier", "reporter": "baut diese Seite", "trainer": "lernt aus allen Ergebnissen"}
+JOBS = {"dispatch": "plans the run", "scouts": "collects coins from every source", "deep": "searches with more keywords", "market": "fetches the prices",
+        "candles": "fetches minute candles", "analyst": "filters and scores", "safety": "checks the best ones for traps", "refresh": "fresh prices before the pick",
+        "trader": "buys the pick on paper", "reporter": "builds this page", "trainer": "learns from every result"}
 
 
 def dur(sec):
-    return "%d s" % round(sec) if sec < 90 else ("%s min" % ("%.1f" % (sec / 60)).replace(".", ",").replace(",0 ", " ")).replace(",0 min", " min")
+    return "%d s" % round(sec) if sec < 90 else ("%.1f min" % (sec / 60)).replace(".0 min", " min")
 
 
 def team(D, R):
@@ -99,12 +100,12 @@ def team(D, R):
         s, e = num(a.get("start")), num(a.get("end"))
         st = str(a.get("status") or "")
         st = st if st in ST_WORD else ("done" if s and e else "skipped")
-        rows.append((i, "Lernlabor" if i == "trainer" else NAMES.get(i, i), JOBS.get(i, ""), st, dur((e - s) / 1000.0) if s and e and e >= s else "–", str(a.get("out") or "")[:140]))
+        rows.append((i, "Learning lab" if i == "trainer" else NAMES.get(i, i), JOBS.get(i, ""), st, dur((e - s) / 1000.0) if s and e and e >= s else "–", str(a.get("out") or "")[:140]))
     t0, t1 = num(O.get("t")), num(O.get("end"))
     head = ""
     if t0:
-        mode = {"full": "Vollscan", "light": "kurzer Scan", "none": "nur Preise"}.get(str(O.get("mode") or ""), "Scan")
-        head = "Letzter Lauf %s · %s%s · %d Helfer" % (R.local(t0).strftime("%H:%M"), mode, (" · %s" % dur((t1 - t0) / 1000.0)) if t1 and t1 > t0 else "", len(rows))
+        mode = {"full": "full scan", "light": "short scan", "none": "prices only"}.get(str(O.get("mode") or ""), "scan")
+        head = "Last run %s · %s%s · %d helpers" % (R.local(t0).strftime("%H:%M"), mode, (" · %s" % dur((t1 - t0) / 1000.0)) if t1 and t1 > t0 else "", len(rows))
     return head, rows
 
 
@@ -114,12 +115,12 @@ def coins(D, doc):
     picks = [c for c in ((D.get("rec") or {}).get("picks") or []) if isinstance(c, dict)]
     if picks:
         p = picks[0]
-        bits = ["mein Pick", "Score %d" % round(num(p.get("score")) or 0)]
+        bits = ["my pick", "score %d" % round(num(p.get("score")) or 0)]
         if num(p.get("upP")) is not None:
-            bits.append("%d %% Chance auf Gewinn" % round(100 * num(p["upP"])))
+            bits.append("%d%% chance of a profit" % round(100 * num(p["upP"])))
         if num(p.get("zeroP")) is not None:
-            bits.append("%d %% Risiko Totalverlust" % round(100 * num(p["zeroP"])))
-        bits.append("Sicherheitscheck bestanden" if p.get("ok") else "Sicherheitscheck nicht sauber")
+            bits.append("%d%% risk of going to zero" % round(100 * num(p["zeroP"])))
+        bits.append("safety check passed" if p.get("ok") else "safety check not clean")
         out.append((str(p.get("sym") or "?")[:12], "pick", 1.0, ", ".join(bits), p))
     if doc:
         cut = num(doc.get("cut")) or 0
@@ -127,8 +128,8 @@ def coins(D, doc):
             sh = (num(r.get("score")) or 0) / cut if cut > 0 else 0
             mc = num(r.get("mc"))
             out.append((str(r.get("sym") or str(r.get("addr") or "?")[:6])[:12], "buy" if r.get("buy") else "cand", max(0.0, min(1.0, sh)),
-                        "Raketen-Kandidat, %d %% der Kaufschwelle, %d min alt%s%s" % (round(100 * sh), int(num(r.get("age")) or 0),
-                                                                                       (", Marktwert %s $" % de_int(mc)) if mc else "", ", gekauft" if r.get("buy") else ""), r))
+                        "rocket candidate, %d%% of the buy line, %d min old%s%s" % (round(100 * sh), int(num(r.get("age")) or 0),
+                                                                                     (", market cap $%s" % de_int(mc)) if mc else "", ", bought" if r.get("buy") else ""), r))
     return out
 
 
@@ -143,88 +144,77 @@ def thoughts(D, R, doc):
         bought = [r for r in top if r.get("buy")]
         t = num(doc.get("t"))
         if bought:
-            out.append((hm(t), "go", "Entscheidung Radar: gekauft %s, der Score hat die Schwelle erreicht. 20 € Spielgeld." % ", ".join(str(r.get("sym") or "?") for r in bought)))
+            out.append((hm(t), "go", "Radar decision: bought %s, the score reached the buy line. 20 € fake money." % ", ".join(str(r.get("sym") or "?") for r in bought)))
         elif top:
             b = top[0]
-            out.append((hm(t), "no", "Entscheidung Radar: nichts gekauft. Bester war %s mit %d %% der Kaufschwelle; ich kaufe erst bei 100 %%."
+            out.append((hm(t), "no", "Radar decision: nothing bought. Best was %s at %d%% of the buy line; I only buy at 100%%."
                         % (b.get("sym") or "?", round(100 * (num(b.get("score")) or 0) / cut) if cut else 0)))
-        out.append((hm(t), "see", "Raketen-Radar: %s neue Coins beobachtet, %d im richtigen Alter bewertet." % (de_int(num(rd.get("candidates")) or 0), int(num(rd.get("scored")) or 0))))
+        out.append((hm(t), "see", "Rocket radar: %s new coins watched, %d of the right age scored." % (de_int(num(rd.get("candidates")) or 0), int(num(rd.get("scored")) or 0))))
     picks = [c for c in rc.get("picks") or [] if isinstance(c, dict)]
     t = num(rc.get("t"))
     if picks:
         p = picks[0]
         odds = ""
         if num(p.get("upP")) is not None and num(p.get("zeroP")) is not None:
-            odds = " Chance auf Gewinn %d %%, Risiko Totalverlust %d %%." % (round(100 * num(p["upP"])), round(100 * num(p["zeroP"])))
-        out.append((hm(t), "go", "Entscheidung Pick: %s für die nächsten 2 Stunden (Score %d).%s" % (p.get("sym") or "?", round(num(p.get("score")) or 0), odds)))
+            odds = " Chance of a profit %d%%, risk of going to zero %d%%." % (round(100 * num(p["upP"])), round(100 * num(p["zeroP"])))
+        out.append((hm(t), "go", "Pick decision: %s for the next 2 hours (score %d).%s" % (p.get("sym") or "?", round(num(p.get("score")) or 0), odds)))
     elif rc:
-        out.append((hm(t), "no", "Entscheidung Pick: kein Coin war sauber genug, also kein Pick."))
+        out.append((hm(t), "no", "Pick decision: no coin was clean enough, so no pick."))
     if num(rc.get("scanned")):
-        out.append((hm(t), "see", "Scan: %s Coins angeschaut, %d kamen durch alle Filter." % (de_int(rc["scanned"]), int(num(rc.get("passed")) or 0))))
+        out.append((hm(t), "see", "Scan: looked at %s coins, %d passed every filter." % (de_int(rc["scanned"]), int(num(rc.get("passed")) or 0))))
     O = D.get("office") if isinstance(D.get("office"), dict) else {}
     tr = next((a for a in O.get("agents") or [] if isinstance(a, dict) and a.get("id") == "trainer"), None)
     if tr and tr.get("out"):
-        out.append((hm(num(O.get("t"))), "learn", "Lernlabor: %s." % str(tr["out"])[:140]))
+        out.append((hm(num(O.get("t"))), "learn", "Learning lab: %s." % str(tr["out"])[:140]))
     return out
 
 
 # ---------------------------------------------------------------- the coin sheet: a tap on a coin opens its data
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 ICON = {"ok": "✓", "warn": "!", "bad": "✕", "note": "i", "unknown": "?"}
-TIER_THINK = {"": "Mein Pick für die nächsten %s: der beste saubere Coin dieses Scans.",
-              "weak": "Mein Pick für die nächsten %s, aber nur der beste, den es gab: sauber, doch sein Score liegt unter meiner Marke.",
-              "fallback": "Kein Coin hat diesmal alle Filter geschafft. Das ist der beste mit gelockerten Regeln, also Vorsicht.",
-              "risky": "Kein Coin hatte einen sauberen Sicherheitsbericht. Das ist der handelbare mit den besten Chancen, also Vorsicht.",
-              "watch": "Kein Pick, nur zur Beobachtung: mein Modell schätzt sein Risiko Totalverlust zu hoch."}
-# the safety report's checks (report.safety_checks, English) in the sheet's German; a value not listed here is shown as it is
-SAFE_DE = {"liquidity locked": "Liquidität gesperrt", "biggest wallet": "Größte Wallet", "top 10 wallets": "Top-10-Wallets", "holders": "Halter",
-           "insider wallets": "Insider-Wallets", "creator holds": "Ersteller hält", "mint/freeze authority": "Mint-/Freeze-Rechte",
-           "danger flags": "Gefahr-Hinweise", "warnings": "Warnungen", "metadata": "Metadaten"}
-VAL_DE = {"unknown": "unbekannt", "none": "keine", "given up": "abgegeben", "locked": "gesperrt", "can still be changed": "noch änderbar",
-          "freeze still active": "Freeze noch aktiv", "sold in the last 3h": "in den letzten 3 h verkauft"}
-WHY_DE = {"stop": "Stopp −30 %", "11x": "11x erreicht", "6h": "nach 6 h", "gone": "Coin weg"}
+TIER_THINK = {"": "My pick for the next %s: the best clean coin of this scan.",
+              "weak": "My pick for the next %s, but only the best there was: clean, yet its score is below my mark.",
+              "fallback": "No coin passed every filter this time. This is the best one with relaxed rules, so be careful.",
+              "risky": "No coin had a clean safety report. This is the tradable one with the best odds, so be careful.",
+              "watch": "Not a pick, only to watch: my model puts its risk of going to zero too high."}
+WHY_EN = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone"}
 
 
-def val_de(v):
-    """A safety value in German: the words of VAL_DE, numbers in German notation (2,087 -> 2.087, 4.4% -> 4,4 %)."""
-    v = str(v)
-    if v in VAL_DE:
-        return VAL_DE[v]
-    if re.fullmatch(r"[\d.,]+%?", v):
-        v = v.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
-        return v[:-1] + " %" if v.endswith("%") else v
-    return v
+def val_en(v):
+    """A safety value as the sheet shows it: numbers as they come (2,087 · 4.4%), words as they are."""
+    return str(v)
 
 
 def de(v, d=0):
-    s = format(abs(v), ",.%df" % d).replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    """1234.5 -> 1,234.5 with a real minus (English notation since Oct 22; the short name stays)."""
+    s = format(abs(v), ",.%df" % d)
     return ("−" if v < 0 and s.strip("0,.") else "") + s
 
 
 def usd(v):
-    """1048113 -> '1,05 Mio. $', 90934 -> '90.934 $', a coin price keeps three significant digits."""
+    """1048113 -> '$1.05M', 90934 -> '$90,934', a coin price keeps three significant digits."""
     v = num(v)
     if v is None or v < 0:
         return "–"
     if v >= 1e6:
-        return de(v / 1e6, 2) + " Mio. $"
+        return "$" + de(v / 1e6, 2) + "M"
     if v >= 1000:
-        return de(v) + " $"
+        return "$" + de(v)
     if v == 0:
-        return "0 $"
+        return "$0"
     d = min(12, max(2, 2 - int(math.floor(math.log10(v)))))
-    return de(v, d).rstrip("0").rstrip(",") + " $"
+    return "$" + de(v, d).rstrip("0").rstrip(".")
 
 
 def share(v, d=0):
     v = num(v)
-    return "–" if v is None else de(100 * v, d) + " %"
+    return "–" if v is None else de(100 * v, d) + "%"
 
 
 def chg(v):
-    """A change already in percent: +50 %, −3,6 % (one decimal under 10)."""
+    """A change already in percent: +50%, −3.6% (one decimal under 10)."""
     v = num(v)
-    return "–" if v is None else ("+" if v > 0.05 else "") + de(v, 1 if abs(v) < 10 else 0) + " %"
+    return "–" if v is None else ("+" if v > 0.05 else "") + de(v, 1 if abs(v) < 10 else 0) + "%"
 
 
 def mult(v):
@@ -235,7 +225,7 @@ def mult(v):
 def hours():
     h = str(getattr(M, "HORIZON", "") or "")[:-1]
     n = int(h) if h.isdigit() else 2
-    return "1 Stunde" if n == 1 else "%d Stunden" % n
+    return "1 hour" if n == 1 else "%d hours" % n
 
 
 def hm(R, ms):
@@ -272,14 +262,14 @@ def live_chart(a, pair):
     p = pair if B58.match(str(pair or "")) else a
     if not B58.match(str(p or "")):
         return ""
-    return ('<details class="bc-live" data-bc-live="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0"><summary>Live-Chart (DexScreener)</summary>'
+    return ('<details class="bc-live" data-bc-live="https://dexscreener.com/solana/%s?embed=1&amp;theme=dark&amp;trades=0&amp;info=0"><summary>Live chart (DexScreener)</summary>'
             '<div class="bc-fr"></div></details>') % E(p)
 
 
 def head(sym, name, kind, chip):
     nm = str(name or "").strip()
     return ('<div class="bc-hd"><div class="bc-id"><b>%s</b>%s</div><span class="bc-chip %s">%s</span>'
-            '<button type="button" class="bc-x" data-bc-x aria-label="Schließen">×</button></div>') % (
+            '<button type="button" class="bc-x" data-bc-x aria-label="Close">×</button></div>') % (
         E(sym), ('<small>%s</small>' % E(nm[:48])) if nm and nm.lower() != str(sym).lower() else "", kind, E(chip))
 
 
@@ -294,10 +284,10 @@ def paper_pos(D, R, a):
         return ""
     r = max(rows, key=lambda r: num(r.get("tBuy")) or 0)
     t, pnl, pc = num(r.get("tBuy")), num(r.get("pnl")), num(r.get("pct"))
-    bits = ["%s € auf Papier gekauft um %s" % (de(num(r.get("ticket")) or 0), hm(R, t))]
+    bits = ["%s € bought on paper at %s" % (de(num(r.get("ticket")) or 0), hm(R, t))]
     if pnl is not None:
-        bits.append(("%s %s%s" % ("jetzt" if r.get("open") else "verkauft:", de_eur(pnl), (" (%s)" % chg(100 * pc)) if pc is not None else "")))
-    return '<div class="bc-sec"><h4>Papier-Position</h4><p class="bc-p %s">%s</p></div>' % ("good" if (pnl or 0) > 0.004 else "bad" if (pnl or 0) < -0.004 else "", E(" · ".join(bits)))
+        bits.append(("%s %s%s" % ("now" if r.get("open") else "sold:", de_eur(pnl), (" (%s)" % chg(100 * pc)) if pc is not None else "")))
+    return '<div class="bc-sec"><h4>Paper position (Pick account)</h4><p class="bc-p %s">%s</p></div>' % ("good" if (pnl or 0) > 0.004 else "bad" if (pnl or 0) < -0.004 else "", E(" · ".join(bits)))
 
 
 def pick_card(D, R, p):
@@ -307,40 +297,40 @@ def pick_card(D, R, p):
     tier = tier if tier in TIER_THINK else ""
     think = [TIER_THINK[tier] % hz if "%s" in TIER_THINK[tier] else TIER_THINK[tier]]
     if up is not None and zp is not None:
-        think.append("Ich schätze %s Chance auf Gewinn und %s Risiko Totalverlust in %s." % (share(up), share(zp), hz))
+        think.append("I put its chance of a profit at %s and its risk of going to zero at %s in %s." % (share(up), share(zp), hz))
     if p.get("lowOdds") and up is not None:
-        think.append("Das ist wenig: ich wünsche mir mindestens %s." % share(M.MIN_UP_P))
-    think.append("Sicherheitscheck bestanden." if p.get("ok") else "Sicherheitscheck nicht sauber.")
+        think.append("That is low: I would like at least %s." % share(M.MIN_UP_P))
+    think.append("Safety check passed." if p.get("ok") else "Safety check not clean.")
     rk = (D.get("rec") or {})
-    stats = [("Score", ("%s von 100" % de(sc or 0)) + ((" · Rang %d" % int(num(p["rank"]))) if num(p.get("rank")) else "")),
-             ("Chance auf Gewinn", share(up)), ("Risiko Totalverlust", share(zp)), ("Preis beim Scan", usd(p.get("px"))),
-             ("Marktwert", usd(p.get("mc"))), ("Liquidität", usd(p.get("liq"))), ("Volumen 24 h", usd(p.get("vol"))),
-             ("Alter", (de(num(f["ageH"]), 1) + " h") if num(f.get("ageH")) is not None else "–"), ("Kauf-Anteil", share(f.get("buyShare"))),
+    stats = [("Score", ("%s of 100" % de(sc or 0)) + ((" · rank %d" % int(num(p["rank"]))) if num(p.get("rank")) else "")),
+             ("Chance of a profit", share(up)), ("Risk of going to zero", share(zp)), ("Price at the scan", usd(p.get("px"))),
+             ("Market cap", usd(p.get("mc"))), ("Liquidity", usd(p.get("liq"))), ("Volume 24 h", usd(p.get("vol"))),
+             ("Age", (de(num(f["ageH"]), 1) + " h") if num(f.get("ageH")) is not None else "–"), ("Share of buys", share(f.get("buyShare"))),
              ("24 h", chg(f.get("c24")))]
     lq = num(f.get("liqMc"))
-    gates = [("Pool", "echter Pool%s" % ((" auf %s" % p["dex"]) if p.get("dex") else "")),
-             ("Kein Fake", "kein Nachahmer" + ((" · auf %d Quellen-Listen" % int(num(f["srcN"]))) if num(f.get("srcN")) else "")),
-             ("Alter", (de(num(f["ageH"]), 1) + " h") if num(f.get("ageH")) is not None else "–"), ("Größe", "Marktwert " + usd(p.get("mc"))),
-             ("Liquidität", usd(p.get("liq")) + ((" · %s des Marktwerts" % share(lq)) if lq is not None else "")), ("Volumen", usd(p.get("vol")) + " in 24 h"),
+    gates = [("Pool", "real pool%s" % ((" on %s" % p["dex"]) if p.get("dex") else "")),
+             ("No fake", "no copycat" + ((" · on %d source lists" % int(num(f["srcN"]))) if num(f.get("srcN")) else "")),
+             ("Age", (de(num(f["ageH"]), 1) + " h") if num(f.get("ageH")) is not None else "–"), ("Size", "market cap " + usd(p.get("mc"))),
+             ("Liquidity", usd(p.get("liq")) + ((" · %s of the market cap" % share(lq)) if lq is not None else "")), ("Volume", usd(p.get("vol")) + " in 24 h"),
              ("Chart", "1 h %s · 6 h %s" % (chg(f.get("c1")), chg(f.get("c6")))),
-             ("Käufer", ("%s Käufe in 1 h" % de(num(f["buys1"]))) if num(f.get("buys1")) is not None else "–")]
+             ("Buyers", ("%s buys in 1 h" % de(num(f["buys1"]))) if num(f.get("buys1")) is not None else "–")]
     relaxed = [str(x) for x in p.get("relaxed") or []] if isinstance(p.get("relaxed"), list) else []
     gate_st = "note" if tier == "fallback" else "ok"
-    gate_html = checks("Filter: %s" % ("gelockert" if tier == "fallback" else "alle bestanden"), [(gate_st, k, v) for k, v in gates],
-                       ('<p class="bc-s">Nicht geschafft (englisch): %s</p>' % E("; ".join(relaxed))) if relaxed else "")
+    gate_html = checks("Filters: %s" % ("relaxed" if tier == "fallback" else "all passed"), [(gate_st, k, v) for k, v in gates],
+                       ('<p class="bc-s">Not passed: %s</p>' % E("; ".join(relaxed))) if relaxed else "")
     try:
         srows = R.safety_checks(p.get("risk"))
     except Exception:
         srows = []
-    safe = checks("Sicherheitscheck", [(s, SAFE_DE.get(w, w), val_de(v)) for s, w, v, _ in srows]) if srows else (
-        '<div class="bc-sec"><h4>Sicherheitscheck</h4><p class="bc-s">%s</p></div>' % E(p.get("safety") or "kein Bericht"))
-    why = ('<details class="bc-why"><summary>Alle Gründe des Bots (englisch)</summary><p>%s</p></details>' % E(p["why"])) if p.get("why") else ""
+    safe = checks("Safety check", [(s, w, val_en(v)) for s, w, v, _ in srows]) if srows else (
+        '<div class="bc-sec"><h4>Safety check</h4><p class="bc-s">%s</p></div>' % E(p.get("safety") or "no report"))
+    why = ('<details class="bc-why"><summary>Every reason the bot gave</summary><p>%s</p></details>' % E(p["why"])) if p.get("why") else ""
     t = num(rk.get("t"))
-    return (head(p.get("sym") or "?", p.get("name"), "pick", "Mein Pick" if tier != "watch" else "Beobachtung")
-            + '<div class="bc-think"><i>Gedanken</i><p>%s</p></div>' % E(" ".join(think))
+    return (head(p.get("sym") or "?", p.get("name"), "pick", "My pick" if tier != "watch" else "Watch only")
+            + '<div class="bc-think"><i>Thoughts</i><p>%s</p></div>' % E(" ".join(think))
             + kv(stats) + gate_html + safe + paper_pos(D, R, p.get("addr")) + why + live_chart(p.get("addr"), p.get("pair"))
             + links(R, p.get("addr"), p.get("pair"), p.get("x"))
-            + '<p class="bc-t">Stand: Scan um %s · neue Zahlen mit dem nächsten Scan%s</p>' % (E(hm(R, t)), ("<br><code>%s</code>" % E(p["addr"])) if p.get("addr") else ""))
+            + '<p class="bc-t">As of the scan at %s · new numbers with the next scan%s</p>' % (E(hm(R, t)), ("<br><code>%s</code>" % E(p["addr"])) if p.get("addr") else ""))
 
 
 def rocket_card(D, R, doc, r):
@@ -354,28 +344,28 @@ def rocket_card(D, R, doc, r):
     bought = bool(r.get("buy") or pos)
     if bought:      # the numbers of the buy (a bought coin is not scored again)
         bs, bc = (num((pos or {}).get("score")) or sc), (num((pos or {}).get("cut")) or cut)
-        think = "Gekauft%s: mein Modell gab ihm %s Chance auf 10x in 6 Stunden, die Kaufschwelle war %s. 20 € Spielgeld. " % (
-            (" um %s" % hm(R, num(pos["t"]))) if pos and num(pos.get("t")) else "", share(bs, 1), share(bc, 1))
+        think = "Bought%s: my model put its chance of 10x in 6 hours at %s, the buy line was %s. 20 € fake money. " % (
+            (" at %s" % hm(R, num(pos["t"]))) if pos and num(pos.get("t")) else "", share(bs, 1), share(bc, 1))
         if pos and pos is not op:
-            think += "Verkauft um %s (%s), Ergebnis %s." % (hm(R, num(pos.get("out"))), WHY_DE.get(str(pos.get("why") or ""), str(pos.get("why") or "")),
-                                                           de_eur(num(pos.get("eur")) or 0))
+            think += "Sold at %s (%s), result %s." % (hm(R, num(pos.get("out"))), WHY_EN.get(str(pos.get("why") or ""), str(pos.get("why") or "")),
+                                                     de_eur(num(pos.get("eur")) or 0))
         else:
-            think += "Ich verkaufe bei −30 %, bei 11x oder nach 6 Stunden."
+            think += "I sell at −30%, at 11x or after 6 hours."
     else:
-        think = ("Nicht gekauft: mein Modell gibt ihm %s Chance auf 10x in 6 Stunden, das sind %d %% der Kaufschwelle (%s). Ich kaufe erst bei 100 %%. "
-                 "%sIch schaue ihn in den nächsten Runden wieder an, solange er jünger als 18 Stunden ist." % (
-                     share(sc, 1), round(100 * sh), share(cut, 1), "Er ist nah dran. " if sh >= 0.5 else ""))
-    stats = [("Chance auf 10x (6 h)", share(sc, 1)), ("Kaufschwelle", share(cut, 1)), ("Erreicht", "%d %% der Schwelle" % round(100 * sh)),
-             ("Alter bei der Prüfung", "%d min" % int(num(r.get("age")) or 0)), ("Marktwert", usd(r.get("mc"))), ("Preis bei der Prüfung", usd(r.get("px")))]
-    bar = '<div class="bc-bar" role="img" aria-label="%d %% der Kaufschwelle"><i class="%s" style="width:%.1f%%"></i></div>' % (
+        think = ("Not bought: my model puts its chance of 10x in 6 hours at %s, that is %d%% of the buy line (%s). I only buy at 100%%. "
+                 "%sI look at it again in the next rounds while it is younger than 18 hours." % (
+                     share(sc, 1), round(100 * sh), share(cut, 1), "It is close. " if sh >= 0.5 else ""))
+    stats = [("Chance of 10x (6 h)", share(sc, 1)), ("Buy line", share(cut, 1)), ("Reached", "%d%% of the line" % round(100 * sh)),
+             ("Age at the check", "%d min" % int(num(r.get("age")) or 0)), ("Market cap", usd(r.get("mc"))), ("Price at the check", usd(r.get("px")))]
+    bar = '<div class="bc-bar" role="img" aria-label="%d%% of the buy line"><i class="%s" style="width:%.1f%%"></i></div>' % (
         round(100 * sh), "buy" if bought else "near" if sh >= 0.5 else "", max(2.0, min(100.0, 100 * sh)))
     try:
         import rocket as RK
         lim = (RK.START_MIN, RK.END_MIN // 60)
     except Exception:
         lim = (30, 18)
-    gates = [("ok", "Alter", "%d min bis %d h" % lim), ("ok", "Marktwert", "100.000 $ bis 5 Mio. $"), ("ok", "Liquidität", "mindestens 15.000 $"),
-             ("ok", "Volumen 24 h", "mindestens 15.000 $"), ("ok", "Kein Absturz", "1 h über −10 %, 6 h über −50 %")]
+    gates = [("ok", "Age", "%d min to %d h" % lim), ("ok", "Market cap", "$100,000 to $5M"), ("ok", "Liquidity", "at least $15,000"),
+             ("ok", "Volume 24 h", "at least $15,000"), ("ok", "No crash", "1 h above −10%, 6 h above −50%")]
     pos_html = ""
     if pos:
         try:
@@ -384,18 +374,18 @@ def rocket_card(D, R, doc, r):
         except Exception:
             ch = ""
         if pos is op:
-            line = "offen seit %s · jetzt %s · Hoch %s" % (hm(R, num(pos.get("t"))), mult(pos.get("now") or 1.0), mult(pos.get("hi") or 1.0))
+            line = "open since %s · now %s · high %s" % (hm(R, num(pos.get("t"))), mult(pos.get("now") or 1.0), mult(pos.get("hi") or 1.0))
         else:
-            line = "verkauft um %s · %s · %s · %s" % (hm(R, num(pos.get("out"))), mult(pos.get("mult")), WHY_DE.get(str(pos.get("why") or ""), str(pos.get("why") or "")),
-                                                     de_eur(num(pos.get("eur")) or 0))
-        pos_html = ('<div class="bc-sec"><h4>Papier-Position (Raketen-Konto)</h4><p class="bc-p">%s</p>%s<p class="bc-s">%s auf dem '
-                    '<button type="button" class="bc-go" data-bc-tab="young">Radar-Tab</button></p></div>') % (
-            E(line), ch, "Live, jede Minute neu," if pos is op else "Alle Verkäufe")
+            line = "sold at %s · %s · %s · %s" % (hm(R, num(pos.get("out"))), mult(pos.get("mult")), WHY_EN.get(str(pos.get("why") or ""), str(pos.get("why") or "")),
+                                                 de_eur(num(pos.get("eur")) or 0))
+        pos_html = ('<div class="bc-sec"><h4>Paper position (Radar account 🚀)</h4><p class="bc-p">%s</p>%s<p class="bc-s">%s on the '
+                    '<button type="button" class="bc-go" data-bc-tab="young">Radar tab</button></p></div>') % (
+            E(line), ch, "Live, updated every minute," if pos is op else "All sells")
     t = num(doc.get("t")) or num(r.get("t"))
-    return (head(r.get("sym") or a[:6] or "?", "", "buy" if bought else "cand", "Raketen-Kauf" if bought else "Raketen-Kandidat")
-            + '<div class="bc-think"><i>Gedanken</i><p>%s</p></div>' % E(think) + bar + kv(stats)
-            + checks("Radar-Filter: alle bestanden", gates) + pos_html + live_chart(a, r.get("pool")) + links(R, a, r.get("pool"))
-            + '<p class="bc-t">Stand: Raketen-Runde um %s · alle 15 Minuten neu%s</p>' % (E(hm(R, t)), ("<br><code>%s</code>" % E(a)) if a else ""))
+    return (head(r.get("sym") or a[:6] or "?", "", "buy" if bought else "cand", "Rocket buy" if bought else "Rocket candidate")
+            + '<div class="bc-think"><i>Thoughts</i><p>%s</p></div>' % E(think) + bar + kv(stats)
+            + checks("Radar filters: all passed", gates) + pos_html + live_chart(a, r.get("pool")) + links(R, a, r.get("pool"))
+            + '<p class="bc-t">As of the rocket round at %s · new every 15 minutes%s</p>' % (E(hm(R, t)), ("<br><code>%s</code>" % E(a)) if a else ""))
 
 
 def sheet(D, R, doc, cs):
@@ -405,11 +395,11 @@ def sheet(D, R, doc, cs):
         try:
             body = pick_card(D, R, rec) if kind == "pick" else rocket_card(D, R, doc or {}, rec)
         except Exception as e:            # one coin's bad record never takes the brain down: its sheet says so
-            body = head(rec.get("sym") or "?", "", kind, "Daten") + '<p class="bc-s">Die Daten dieses Coins ließen sich nicht lesen (%s).</p>' % E(type(e).__name__)
+            body = head(rec.get("sym") or "?", "", kind, "Data") + '<p class="bc-s">The data of this coin could not be read (%s).</p>' % E(type(e).__name__)
         arts.append('<article class="bc" data-cd="%d" hidden>%s</article>' % (i, body))
     if not arts:
         return ""
-    return '<dialog class="bn-dlg" data-bn-dlg aria-label="Coin-Daten"><div class="bc-in">%s</div></dialog>' % "".join(arts)
+    return '<dialog class="bn-dlg" data-bn-dlg aria-label="Coin data"><div class="bc-in">%s</div></dialog>' % "".join(arts)
 
 
 def ring_xy(i, n, rx, ry, start=-90.0):
@@ -435,7 +425,7 @@ def stars():
 
 
 def svg(ags, cs, live_word):
-    parts = ['<svg class="bn-svg" viewBox="0 0 %d %d" role="img" aria-label="Das Gehirn des Bots: %d Helfer, %d Coins im Blick">' % (W, H, len(ags), len(cs)),
+    parts = ['<svg class="bn-svg" viewBox="0 0 %d %d" role="img" aria-label="The bot’s brain: %d helpers, %d coins in view">' % (W, H, len(ags), len(cs)),
              '<defs><radialGradient id="bn-core" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#fff" stop-opacity=".95"/>'
              '<stop offset=".25" stop-color="var(--nn1)"/><stop offset=".7" stop-color="var(--nn2)" stop-opacity=".55"/><stop offset="1" stop-color="var(--nn2)" stop-opacity="0"/></radialGradient>'
              '<filter id="bn-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>',
@@ -456,12 +446,12 @@ def svg(ags, cs, live_word):
         r = 3.2 + 4.2 * k
         links.append('<line class="bn-cl %s" x1="%.1f" y1="%.1f" x2="%d" y2="%d" style="opacity:%.2f"/>' % (kind, x, y, CX, CY, 0.25 + 0.6 * k))
         # a wide invisible circle under each coin: a thumb-sized tap target for its data (the dots alone are a few pixels on a phone)
-        nodes.append('<g class="bn-coin %s" data-coin="%d" style="--k:%.2f" role="button" tabindex="0" aria-label="%s: Daten öffnen"><circle class="hit" cx="%.1f" cy="%.1f" r="%d"/>'
+        nodes.append('<g class="bn-coin %s" data-coin="%d" style="--k:%.2f" role="button" tabindex="0" aria-label="%s: open its data"><circle class="hit" cx="%.1f" cy="%.1f" r="%d"/>'
                      '<circle class="h" cx="%.1f" cy="%.1f" r="%.1f"/><circle class="c" cx="%.1f" cy="%.1f" r="%.1f"/>'
                      '<text x="%.1f" y="%.1f" text-anchor="middle">%s</text></g>' % (kind, i, k, E(sym), x, y, HIT, x, y, r * 2.4, x, y, r, x, y - r - 5, E(sym)))
     core = ('<g class="bn-core"><circle class="o3" cx="%d" cy="%d" r="44"/><circle class="o2" cx="%d" cy="%d" r="34"/><circle class="o1" cx="%d" cy="%d" r="27"/>'
             '<circle class="g" cx="%d" cy="%d" r="30" fill="url(#bn-core)"/>'
-            '<text class="t1" x="%d" y="%d" text-anchor="middle">GEHIRN</text><text class="t2" x="%d" y="%d" text-anchor="middle" data-bn-word>%s</text></g>') % (
+            '<text class="t1" x="%d" y="%d" text-anchor="middle">BRAIN</text><text class="t2" x="%d" y="%d" text-anchor="middle" data-bn-word>%s</text></g>') % (
         CX, CY, CX, CY, CX, CY, CX, CY, CX, CY + 2, CX, CY + 14, E(live_word))
     parts += ['<g class="bn-links">%s</g>' % "".join(links), core, '<g filter="url(#bn-glow)">%s</g>' % "".join(nodes), '</svg>']
     return "".join(parts)
@@ -470,20 +460,20 @@ def svg(ags, cs, live_word):
 def section(D, R):
     doc = rocket_doc(D)
     ags, cs, th = agents(D), coins(D, doc), thoughts(D, R, doc)
-    focus = "".join('<li data-f="%d"><b>%s</b> %s<span class="bn-more" aria-hidden="true">Daten ›</span></li>' % (i, E(s), E(w)) for i, (s, _, _, w, _) in enumerate(cs))
+    focus = "".join('<li data-f="%d"><b>%s</b> %s<span class="bn-more" aria-hidden="true">Data ›</span></li>' % (i, E(s), E(w)) for i, (s, _, _, w, _) in enumerate(cs))
     tl = "".join('<li class="%s" style="animation-delay:%.2fs"><time>%s</time><span>%s</span></li>' % (k, 0.15 + 0.12 * i, E(t), E(s)) for i, (t, k, s) in enumerate(th))
     head, rows = team(D, R)
-    team_html = ('<div class="bn-tm"><h3>Helfer</h3>%s<ul>%s</ul><p class="bn-tmn">Alle Details des alten Office (Grundriss, Zeitachse, Tagesübersicht) liegen im Archiv.</p></div>' % (
+    team_html = ('<div class="bn-tm"><h3>Helpers</h3>%s<ul>%s</ul><p class="bn-tmn">Every detail of the old office (floor plan, timeline, daily overview) is in the Archive.</p></div>' % (
         ('<p class="bn-tmh">%s</p>' % E(head)) if head else "",
         "".join('<li class="st-%s" data-tm="%s" title="%s"><i></i><div><b>%s</b><span data-tm-out>%s</span></div><em data-tm-st>%s</em></li>' % (
             st, E(i), E(j), E(n), E(o or ST_WORD.get(st, st)), E(d if st != "running" else ST_WORD["running"])) for i, n, j, st, d, o in rows))) if rows else ""
-    legend = ('<div class="bn-leg"><span class="l-pick">Pick</span><span class="l-rk">Raketen-Kandidat</span><span class="l-ok">Helfer fertig</span>'
-              '<span class="l-run">arbeitet gerade</span><span class="l-bad">Fehler</span>%s</div>') % ('<em class="bn-tap">Tippe auf einen Coin für seine Daten</em>' if cs else "")
-    return ('<style>%s</style><section class="bn" data-brain data-state="rest"><div class="bn-head"><div><div class="bn-ey">Office · live</div><h2 class="bn-h">Das Gehirn</h2></div>'
-            '<span class="bn-live" data-bn-live>ruht · letzter Scan</span></div>'
+    legend = ('<div class="bn-leg"><span class="l-pick">Pick</span><span class="l-rk">Rocket candidate</span><span class="l-ok">Helper done</span>'
+              '<span class="l-run">working now</span><span class="l-bad">Failed</span>%s</div>') % ('<em class="bn-tap">Tap a coin for its data</em>' if cs else "")
+    return ('<style>%s</style><section class="bn" data-brain data-state="rest"><div class="bn-head"><div><div class="bn-ey">Live</div><h2 class="bn-h">The brain</h2></div>'
+            '<span class="bn-live" data-bn-live>resting · last scan</span></div>'
             '<div class="bn-stage">%s</div><ul class="bn-focus" aria-live="polite">%s</ul>%s'
-            '<div class="bn-th"><h3>Gedanken</h3><ol data-bn-thoughts>%s</ol></div>%s%s</section><script>%s</script>') % (
-        CSS, svg(ags, cs, "ruht"), focus, legend, tl or '<li class="see"><time>–</time><span>Noch keine Gedanken: der erste Scan kommt bald.</span></li>', team_html,
+            '<div class="bn-th"><h3>Thoughts</h3><ol data-bn-thoughts>%s</ol></div>%s%s</section><script>%s</script>') % (
+        CSS, svg(ags, cs, "resting"), focus, legend, tl or '<li class="see"><time>–</time><span>No thoughts yet: the first scan comes soon.</span></li>', team_html,
         sheet(D, R, doc, cs), JS)
 
 
@@ -519,22 +509,22 @@ if(dlg){dlg.addEventListener('close',done);
   dlg.addEventListener('toggle',function(e){var d=e.target;if(!d||!d.open||!d.getAttribute||!d.hasAttribute('data-bc-live'))return;
     var box=d.querySelector('.bc-fr'),u=d.getAttribute('data-bc-live')||'';
     if(!box||box.firstChild||!/^https:\/\/dexscreener\.com\/solana\/[1-9A-HJ-NP-Za-km-z]{32,44}\?/.test(u))return;
-    var f=document.createElement('iframe');f.src=u;f.title='Live-Chart';f.setAttribute('loading','lazy');box.appendChild(f);},true);}
+    var f=document.createElement('iframe');f.src=u;f.title='Live chart';f.setAttribute('loading','lazy');box.appendChild(f);},true);}
 var ST={done:1,failed:1,fallback:1,running:1,skipped:1};
 // the live status row (report.py's office script): the running agents light up, the newest agent line becomes a thought
 window.addEventListener('memebot-live',function(e){var d=e&&e.detail||{},st=d.status,live=d.state==='live';
-  root.setAttribute('data-state',live?'live':'rest');if(word)word.textContent=live?'denkt nach':'ruht';
-  if(badge)badge.textContent=live?'denkt gerade · Scan läuft':'ruht · letzter Scan';
+  root.setAttribute('data-state',live?'live':'rest');if(word)word.textContent=live?'thinking':'resting';
+  if(badge)badge.textContent=live?'thinking · scan running':'resting · last scan';
   if(!st||!Array.isArray(st.agents))return;var run=null;
   st.agents.forEach(function(a){if(!a||!a.id)return;var s=ST[a.status]?a.status:(a.end?'done':'skipped');
     var g=root.querySelector('[data-ag="'+String(a.id).replace(/[^a-z0-9_-]/gi,'')+'"]'),l=root.querySelector('[data-ln="'+String(a.id).replace(/[^a-z0-9_-]/gi,'')+'"]');
     [g,l].forEach(function(x){if(x)x.setAttribute('class',x.getAttribute('class').replace(/\bst-\w+/,'st-'+s));});
     var row=root.querySelector('[data-tm="'+String(a.id).replace(/[^a-z0-9_-]/gi,'')+'"]');
-    if(row&&live){row.className='st-'+s;var so=row.querySelector('[data-tm-st]');if(so&&s==='running')so.textContent='arbeitet';
+    if(row&&live){row.className='st-'+s;var so=row.querySelector('[data-tm-st]');if(so&&s==='running')so.textContent='working';
       var lo=row.querySelector('[data-tm-out]');if(lo&&a.lines&&a.lines.length&&s==='running')lo.textContent=String(a.lines[a.lines.length-1]).slice(0,160);}
     if(s==='running'&&a.lines&&a.lines.length)run={n:g?g.textContent:a.id,l:String(a.lines[a.lines.length-1]).slice(0,160)};});
   var old=list&&list.querySelector('li.now');if(old)old.parentNode.removeChild(old);
-  if(live&&run&&list){var li=document.createElement('li');li.className='now';var t=document.createElement('time');t.textContent='jetzt';
+  if(live&&run&&list){var li=document.createElement('li');li.className='now';var t=document.createElement('time');t.textContent='now';
     var s=document.createElement('span');s.textContent=run.n+': '+run.l;li.appendChild(t);li.appendChild(s);list.insertBefore(li,list.firstChild);}
 });
 })();

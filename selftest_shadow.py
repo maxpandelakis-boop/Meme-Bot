@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """selftest_shadow.py: the Pick's shadow rules (shadow.py, page_shadow.py) and the evening report (daily.py, daily.yml, the app's
-"Tagesbericht" switch) on made-up data. Fake money only: nothing is bought, nothing is sent (a local mock stands in for GeckoTerminal,
+"Daily report" switch) on made-up data. Fake money only: nothing is bought, nothing is sent (a local mock stands in for GeckoTerminal,
 stand-ins for the live store and the push).
 
   python3 selftest_shadow.py        -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
@@ -313,11 +313,11 @@ def _sh5(check, tmp):
     h0 = PS.section({"dir": empty, "now": S.SINCE + HOUR}, R)
     d = _sh3_state[0]
     h1 = PS.section({"dir": d, "now": S.SINCE + 20 * HOUR}, R)
-    check("Schatten-Regeln" in h0 and "startet mit dem nächsten Pick-Kauf" in h0 and "<script" not in h0,
+    check("Shadow rules" in h0 and "starts with the next Pick buy" in h0 and "<script" not in h0,
           "SH5 before the first mirrored buy the fold says it starts with the next pick buy")
-    check(all(x in h1 for x in ("Echtes Pick-Konto", "K · Echte Regel, nachgerechnet", "A · Enger Stop", "B · Länger, ohne Stop", "C · Hälfte bei 2x",
-                                "D · Mitlaufender Stop", "gegen K", "Die Käufe einzeln", "ohne Minutenkerzen", "gleiche 50 €",
-                                "keine besser als die echte Regel"))
+    check(all(x in h1 for x in ("Real Pick account", "K · Real rule, replayed", "A · Tight stop", "B · Longer, no stop", "C · Half at 2x",
+                                "D · Trailing stop", "against K", "Every buy", "no minute candles", "same 50 €",
+                                "none better than the real rule"))
           and 'class="sh-chip"' not in h1 and "&lt;b&gt;x&lt;/b&gt;" in h1 and "<b>x</b>" not in h1 and "<script" not in h1 and 'id="schatten"' in h1,
           "SH5 with buys: the real account, K and A to D on the same buys, each buy, symbols escaped, no script; no rule ahead of K, none marked")
     # the same buys, but p1 falls on to 0.6 after its dip: A's tight stop (sold at 0.75) is now ahead of K (stopped at 0.6)
@@ -329,12 +329,12 @@ def _sh5(check, tmp):
     json.dump(doc, open(f, "w", encoding="utf-8"))
     s2 = S.summary(d2, S.SINCE + 20 * HOUR)
     h2 = PS.section({"dir": d2, "now": S.SINCE + 20 * HOUR}, R)
-    check(s2["leader"] == "A" and s2["ahead"] is True and h2.count('class="sh-chip"') == 1 and "vorn: A Enger Stop" in h2
-          and re.search(r'<tr class="lead"><td><b>A · Enger Stop</b><i class="sh-chip">vorn</i>', h2),
-          "SH5 a rule ahead of K is marked \"vorn\" in the summary line and in its row")
+    check(s2["leader"] == "A" and s2["ahead"] is True and h2.count('class="sh-chip"') == 1 and "ahead: A Tight stop" in h2
+          and re.search(r'<tr class="lead"><td><b>A · Tight stop</b><i class="sh-chip">ahead</i>', h2),
+          "SH5 a rule ahead of K is marked \"ahead\" in the summary line and in its row")
     src = open(os.path.join(HERE, "report.py"), encoding="utf-8").read()
     i_pick = src.find("pane_pick = (")
-    check(i_pick > 0 and 'safe("shadow rules", lambda: shadow_block(D))' in src[i_pick:i_pick + 400] and "Schatten-Regeln" in R.shadow_block({"dir": d, "now": S.SINCE + 20 * HOUR}),
+    check(i_pick > 0 and 'safe("shadow rules", lambda: shadow_block(D))' in src[i_pick:i_pick + 400] and "Shadow rules" in R.shadow_block({"dir": d, "now": S.SINCE + 20 * HOUR}),
           "SH5 the fold sits on the Pick tab under the hour grid (report.shadow_block)")
     check({"!db/memeshadow/", "!db/memeshadow/**"} <= set(B.SYNC_IGNORE.splitlines()), "SH5 db/memeshadow travels to the results branch (bot.SYNC_IGNORE)")
 
@@ -365,17 +365,17 @@ def _sh6_sh7(check, tmp):
           "SH6 Radar today from rocket.json's book (open is a dict, closed a list), None without the doc")
     title, body = DY.words(d, now, rk, fs)
     t2, b2 = DY.words(d, now, None, None)
-    check(title.startswith("Tagesbericht 22.10.: Pick 0,00 €, Radar +5,50 €") and "Pick: 2 Käufe, 2 verkauft (0,00 €), 1 offen, Konto" in body
-          and "Radar: 1 Kauf, 1 verkauft (+5,50 €), 1 offen, Konto +1,50 €" in body and "Filtersuche: noch keine Regel besser als die Gates" in body
-          and "Schatten-Regeln: noch kein Kauf" in body and body.endswith("Nur Papiergeld.") and len(title) <= A.TITLE_MAX and len(body) <= A.BODY_MAX
-          and not A.NO_ADVICE.search(title + " " + body) and "Radar: –" in b2 and "Filtersuche: kein Ergebnis" in b2 and "Radar –" in t2,
-          "SH6 the words: both accounts, the shadow and the filter lines, within the limits, German, no advice words; a missing doc says –")
+    check(title.startswith("Daily report Oct 22: Pick 0.00 €, Radar +5.50 €") and "Pick: 2 bought, 2 sold (0.00 €), 1 open, account" in body
+          and "Radar: 1 bought, 1 sold (+5.50 €), 1 open, account +1.50 €" in body and "Filter search: no rule better than the gates yet" in body
+          and "Shadow rules: no trade yet" in body and body.endswith("Paper money only.") and len(title) <= A.TITLE_MAX and len(body) <= A.BODY_MAX
+          and not A.NO_ADVICE.search(title + " " + body) and "Radar: –" in b2 and "Filter search: no result" in b2 and "Radar –" in t2,
+          "SH6 the words: both accounts, the shadow and the filter lines, within the limits, English, no advice words; a missing doc says –")
     long_d = os.path.join(tmp, "db6b")
     shutil.copytree(d, long_d)
     for i in range(40):
         _pos(long_d, "z%02d" % i, start + HOUR + i * MIN, "Q%d" % i, sym="Z", exits=[(start + 2 * HOUR, 1.0, 12345.678, "tp")])
     tl, bl = DY.words(long_d, now, {"book": {"open": {}, "closed": [], "summary": {"eur": -12345678.9, "openEur": 0}}}, {"data": {}, "t": 0, "leader": {"x": 1}})
-    check(len(bl) <= A.BODY_MAX and bl.startswith("Pick: 42 Käufe") and bl.endswith("Nur Papiergeld."),
+    check(len(bl) <= A.BODY_MAX and bl.startswith("Pick: 42 bought") and bl.endswith("Paper money only."),
           "SH6 a body that would run over the limit drops its last parts first; the accounts stay (%d chars)" % len(bl))
 
     print("== shadow SH7: when it goes out")
@@ -452,12 +452,12 @@ def _sh8(check):
     saved = A.notify
     try:
         A.notify = lambda kind, t, b, url=None: rs.append((kind, t, b, url)) or {"kind": kind, "sent": 1}
-        ok = A.notify_daily("Tagesbericht 22.10.", "Pick: 1 Kauf · Nur Papiergeld.")
-        bad = A.notify_daily("Tagesbericht", "safe buy now")
+        ok = A.notify_daily("Daily report Oct 22", "Pick: 1 bought · Paper money only.")
+        bad = A.notify_daily("Daily report", "safe buy now")
         none = A.notify_daily("", "x")
     finally:
         A.notify = saved
-    check(rs == [("daily", "Tagesbericht 22.10.", "Pick: 1 Kauf · Nur Papiergeld.", "#tab-home")] and bad.get("skipped") and none.get("skipped"),
+    check(rs == [("daily", "Daily report Oct 22", "Pick: 1 bought · Paper money only.", "#tab-home")] and bad.get("skipped") and none.get("skipped"),
           "SH8 notify_daily opens the Start tab and never sends advice words or an empty message")
 
 

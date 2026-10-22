@@ -671,7 +671,7 @@ try:
 except ImportError:
     PH = None
 try:
-    import page_brain as PB   # the brain at the top of the Office tab (Gehirn)
+    import page_brain as PB   # the brain at the top of the Brain tab (tab id office)
 except ImportError:
     PB = None
 OFFICE_HOSTS = (("launch-mint", "LaunchLab"), ("dexscreener", "DexScreener"), ("geckoterminal", "GeckoTerminal"), ("jup.ag", "Jupiter"), ("pump.fun", "pump.fun"),
@@ -1188,7 +1188,7 @@ function go(){
   try{names=JSON.parse(box.getAttribute('data-names'))||{};}catch(e){}
   var all=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   var office=document.querySelector('.office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
-  var tabs=['tab-office','tab-young','tab-account'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open (Gehirn, Radar, Archiv: the old office)
+  var tabs=['tab-office','tab-young','tab-account'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open (Brain, Radar, Archive: the old office)
   var root=document.documentElement,sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var mode=MB.transport(sbUrl,sbKey,src),SB={next:0,fails:0,busy:false,nv:null,cur:null,st:null,back:0,at:0},SBKEY='memebot-sb '+sbUrl;
   var onSite=!!home&&location.href.indexOf(home)===0;if(onSite)all('[data-live-link]').forEach(function(e){e.hidden=true;});
@@ -2793,9 +2793,9 @@ def runs_table(runs, rec_mode):
     return '<div class="tbl runs stack"><table><thead><tr><th>when</th><th>mode</th><th class="n">scanned</th><th class="n">passed gates</th><th class="n">sources</th><th class="n">buys</th><th class="n">sells</th><th>what happened</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(tr)
 
 
-TABS = ("home", "pick", "young", "office", "account")     # the tab ids in their order (app.py PAGE_JS's TABS): Start, Pick, Radar, Gehirn, Archiv
-ARCHIVE_HEAD = ('<div class="arch-head"><h2>Archiv &amp; Forschung</h2><p>Alles, was Forschung ist oder nicht mehr läuft: die Studien und Simulationen, '
-                'die drei Papier-Trader und die New Launches (beendet am 16. Okt). Nichts ist gelöscht; jede Zahl ist noch da und wird weiter aktualisiert.</p></div>')
+TABS = ("home", "pick", "young", "office", "account")     # the tab ids in their order (app.py PAGE_JS's TABS): Start, Pick, Radar, Brain, Archive
+ARCHIVE_HEAD = ('<div class="arch-head"><h2>Archive &amp; research</h2><p>Everything that is research or no longer runs: the studies and simulations, '
+                'the three paper traders and the new launches (ended on Oct 16). Nothing is deleted; every number is still here and still updated.</p></div>')
 TRADERS_ERR = [""]                                # why page_traders.py could not be imported (the Traders tab's fallback says it)
 
 
@@ -3458,9 +3458,9 @@ def render(data, fragment=False):
         # #radar, #new) open Radar (page_radar.py's script; app.py PAGE_JS in the installed app)
         # five tabs (the user's direction of Oct 22: two parts, PICK and RADAR, and everything else in an archive): Start (page_home.py: both
         # paper accounts side by side, the pick and the rocket candidates), Pick (the full scan's strip, the pick, the hour grid), Radar (the
-        # rocket hunter, then the launch radar and its paper positions), Gehirn (page_brain.py, then the radar's desk and the agent office) and
-        # Archiv (research and the three paper traders: nothing deleted, only out of the way). The tab ids stay (young is Radar, account is
-        # Archiv) so the old links and notifications still open the right place.
+        # rocket hunter, then the launch radar and its paper positions), Brain (page_brain.py, then the radar's desk and the agent office) and
+        # Archive (research and the three paper traders: nothing deleted, only out of the way). The tab ids stay (young is Radar, office is
+        # Brain, account is Archive) so the old links and notifications still open the right place. All words in English since Oct 22.
         sw = M.switch_at()
         rest = [safe("forecast", lambda: forecast_section(D)) if FC else "", safe("profit", lambda: profit_section(D)), safe("training", lambda: train_section(D)),
                 (safe("filter team", lambda: FT.section(D, sys.modules[__name__])) if FT else
@@ -3469,7 +3469,7 @@ def render(data, fragment=False):
                 safe("candidates", candidates), safe("weights", lambda: weights_section(D))]
         if D["runs"]:
             rest.append(safe("run log", runlog))
-        details = fold("Forschung", "Prognose, Tipp-Bilanz, Training, Filter-Team, Filtersuche, Gewinner vs. Verlierer, Kandidaten, Lauf-Log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
+        details = fold("Research", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = (strip_html + (safe("pick account", lambda: PH.pick_account(D, sys.modules[__name__])) if PH else "")
                      + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
                      + safe("shadow rules", lambda: shadow_block(D)))
@@ -3484,20 +3484,20 @@ def render(data, fragment=False):
         else:             # page_traders.py missing: the plain account strip as before, with a note; the rest of the page is unaffected
             traders_html = ('<p class="note">The three traders could not be loaded this time (%s). The paper account itself is unaffected.</p>' % E(TRADERS_ERR[0])
                             + safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
-        # the old office (the radar's desk and its chat, the agent cards, the floor plan, the timeline, the daily overview): out of the Gehirn
+        # the old office (the radar's desk and its chat, the agent cards, the floor plan, the timeline, the daily overview): out of the Brain
         # tab since Oct 22 (the brain shows the helpers, their results and the decisions), kept whole in the archive; its live script still
-        # feeds the brain (it polls while Gehirn, Radar or Archiv is open)
-        old_office = ('<details class="fold arch-office"><summary><span class="t">Altes Office (alle Details)</span><span class="sum">Launch-Radar-Pult, '
-                      'Helfer-Karten, Grundriss, Zeitachse, Tagesübersicht</span></summary><div class="rest">%s%s</div></details>' % (
+        # feeds the brain (it polls while Brain, Radar or Archive is open)
+        old_office = ('<details class="fold arch-office"><summary><span class="t">Old office (every detail)</span><span class="sum">launch radar desk, '
+                      'helper cards, floor plan, timeline, daily overview</span></summary><div class="rest">%s%s</div></details>' % (
                           safe("radar desk", lambda: PO.desk(D, sys.modules[__name__])), safe("agent office", lambda: office_section(D))))
         pane_account = (ARCHIVE_HEAD + details + old_office
-                        + '<details class="fold arch-tr"><summary><span class="t">Drei Papier-Trader (Vergleich)</span><span class="sum">Stop-Loss, bester Preis im Rückblick, lernend · '
-                          'mit den New Launches (beendet %s)</span></summary>%s</details>' % (E(local(sw).strftime("%b %d")), traders_html))
+                        + '<details class="fold arch-tr"><summary><span class="t">Three paper traders (comparison)</span><span class="sum">stop-loss, best price in hindsight, learning · '
+                          'with the new launches (ended %s)</span></summary>%s</details>' % (E(local(sw).strftime("%b %d")), traders_html))
         pane_office = (safe("brain", lambda: PB.section(D, sys.modules[__name__])) if PB else "")
         pane_home = safe("start", lambda: PH.section(D, sys.modules[__name__])) if PH else ""
         radios = "".join('<input type="radio" name="tab" id="tab-%s"%s>' % (k, " checked" if k == TABS[0] else "") for k in TABS)
         labels = ('<label for="tab-home" role="tab">Start</label><label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>Radar</span>%s</label>'
-                  '<label for="tab-office" role="tab">Gehirn</label><label for="tab-account" role="tab">Archiv</label>') % PR.tab_label()
+                  '<label for="tab-office" role="tab">Brain</label><label for="tab-account" role="tab">Archive</label>') % PR.tab_label()
         body.append('<style>%s</style><div class="tabs">%s<div class="tabbar" role="tablist">%s</div><div class="pane" id="pane-home" data-app="home">%s</div><div class="pane" id="pane-pick">%s</div>'
                     '<div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div>'
                     '<div class="pane" id="pane-account" data-app="account" data-tk-pick="%s" data-tk-radar="%s">%s</div></div><script>%s</script>' % (

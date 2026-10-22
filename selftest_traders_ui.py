@@ -108,7 +108,7 @@ def text(h):
 
 
 def pane(page, key):
-    """The old office (the radar's desk, the agent cards) sits in the Archiv tab's fold since Oct 22: "office" is that fold."""
+    """The old office (the radar's desk, the agent cards) sits in the Archive tab's fold since Oct 22: "office" is that fold."""
     if key == "office":
         a = page.find('<details class="fold arch-office">')
         return page[a:page.find('<details class="fold arch-tr">', a)] if a >= 0 else ""
@@ -117,7 +117,7 @@ def pane(page, key):
 
 def _pane(page, key):
     """The inner HTML of #pane-<key> (the panes follow each other in this order: home, pick, young, office, account). For "account" (the
-    Archiv tab) only its traders fold, the last block of the pane: the research fold before it is the Pick tab's old Details."""
+    Archive tab) only its traders fold, the last block of the pane: the research fold before it is the Pick tab's old Details."""
     nxt = {"home": "pick", "pick": "young", "young": "office", "office": "account"}.get(key)
     a = page.find('<div class="pane" id="pane-%s"' % key)
     if a < 0:
@@ -150,7 +150,7 @@ class Classes(HTMLParser):
 
 
 def checks(check, skips=None):
-    print("== the five tabs after the reorganisation: Start, Pick, Radar, Gehirn, Archiv in the app and on the website (page_traders.py, UI1-UI10)")
+    print("== the five tabs after the reorganisation: Start, Pick, Radar, Brain, Archive in the app and on the website (page_traders.py, UI1-UI10)")
     skips = skips if skips is not None else []
     tmp = tempfile.mkdtemp(prefix="memebot-trui-")
     try:
@@ -206,10 +206,10 @@ def _checks(check, tmp, skips):
     cp = Classes()
     cp.feed(page)
     outside = [c for c in cp.out if not c[2]]
-    check(radios == ["tab-home", "tab-pick", "tab-young", "tab-office", "tab-account"] and labels == ["Start", "Pick", "Radar", "Gehirn", "Archiv"] and 'id="tab-home" checked' in page
+    check(radios == ["tab-home", "tab-pick", "tab-young", "tab-office", "tab-account"] and labels == ["Start", "Pick", "Radar", "Brain", "Archive"] and 'id="tab-home" checked' in page
           and page.count('data-tr="compare"') == 1 and 'data-tr="compare"' in acc and page.count("<h2>Three paper traders</h2>") == 1 and "<h2>Three paper traders</h2>" in acc
           and cp.out and not outside and '<div class="pane" id="pane-account" data-app="account"' in page and "could not be rendered" not in page,
-          "UI1 the website: five radios in the order home, pick, young, office, account, labelled Start, Pick, Radar, Gehirn, Archiv; the Traders content once, inside "
+          "UI1 the website: five radios in the order home, pick, young, office, account, labelled Start, Pick, Radar, Brain, Archive; the Traders content once, inside "
           "#pane-account (data-app account); no element with a pa- class outside a pane (%d inside, outside: %s)" % (len(cp.out), outside[:3]))
 
     # UI4: the numbers are traders.load's, parsed from the page; the account total is the paper account plus the closed rule-2 results
@@ -484,7 +484,7 @@ PROBE = r"""(tab) => {
   p.querySelectorAll('svg.chart-svg').forEach(s => { const r = s.getBoundingClientRect(); if (r.width < 1) return;     // chart text cut at the chart's edge
     s.querySelectorAll('text').forEach(t => { const b = t.getBoundingClientRect(); if (b.width >= 1 && (b.right > r.right + 0.5 || b.left < r.left - 0.5)) out.clip.push(t.textContent); }); });
   if (tab === 'account') {      // text runs that overlap other text inside the trader cards (shoot.py's check; the text of a closed ⓘ is not shown)
-    p.querySelectorAll('details.arch-tr').forEach(d => { d.open = true; });     // the traders' fold on the Archiv tab, opened after the height is read
+    p.querySelectorAll('details.arch-tr').forEach(d => { d.open = true; });     // the traders' fold on the Archive tab, opened after the height is read
     const runs = [];
     const shut = e => { for (let a = e; a; a = a.parentElement) { const d = a.parentElement; if (d && d.tagName === 'DETAILS' && !d.open && a.tagName !== 'SUMMARY') return true; } return false; };
     document.querySelectorAll('.trcards *').forEach(e => e.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim() && !shut(e)) { const rg = document.createRange(); rg.selectNodeContents(n);
@@ -611,10 +611,10 @@ def _browser(check, tmp, d, now, page, skips):
     except Exception as e:
         check(False, "the browser checks of the five tabs ran (%s)" % str(e)[:200])
         return
-    check(app["bar"] == [["home", "Start"], ["pick", "Pick"], ["young", "Radar"], ["office", "Gehirn"], ["account", "Archiv"]] and app["badge"] == ["2", True, 1]
+    check(app["bar"] == [["home", "Start"], ["pick", "Pick"], ["young", "Radar"], ["office", "Brain"], ["account", "Archive"]] and app["badge"] == ["2", True, 1]
           and app["deep"] == [["young", "tab-young"], ["young", "tab-young"], ["young", "tab-young"], ["account", "tab-account"]] and app["notif"] == "appnotif"
           and app["paper"] == [["GRNA", "Bought on paper · 10\u00a0€", ["Learning trader skips: no socials and no X link"]], ["GRNB", "", []]] and not errs,
-          "UI2 the app: the bottom bar Start, Pick, Radar, Gehirn, Archiv; #tab-young, #tab-radar and #new open Radar, #tab-account Archiv; the badge is the radar's "
+          "UI2 the app: the bottom bar Start, Pick, Radar, Brain, Archive; #tab-young, #tab-radar and #new open Radar, #tab-account Archive; the badge is the radar's "
           "count of coins without traps only (2, green); the notifications card is the last block of Start; UI7 in the browser: the paper line on the pb 1 "
           "card only, the learning trader's skip chip on it %s" % ({k: app[k] for k in ("bar", "badge", "deep", "notif")} if errs or app["bar"][2][1] != "Radar" else (errs[:2] or "")))
     off = app.get("off") or {}
