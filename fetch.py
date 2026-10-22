@@ -37,6 +37,7 @@ RC = "https://api.rugcheck.xyz/v1"
 GT = "https://api.geckoterminal.com/api/v2"
 CG = "https://api.coingecko.com/api/v3"
 PF = "https://frontend-api-v3.pump.fun"
+PC_LIMIT = 200                                         # newest pump.fun replies read per coin for the comment speed
 JUP = "https://lite-api.jup.ag/tokens/v2"
 GM = "https://gmgn.ai/defi/quotation/v1"
 LC = "https://lunarcrush.com/api4/public"
@@ -120,7 +121,7 @@ NEWS_FEEDS = [("gnews-memecoin", "https://news.google.com/rss/search?q=solana+me
               ("gnews-pumpfun", "https://news.google.com/rss/search?q=pump.fun+OR+%22meme+coin%22+solana&hl=en-US&gl=US&ceid=US:en"),
               ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"), ("cointelegraph", "https://cointelegraph.com/rss"),
               ("decrypt", "https://decrypt.co/feed"), ("cryptoslate", "https://cryptoslate.com/feed/"), ("theblock", "https://www.theblock.co/rss.xml")]
-SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp", "candles", "fl")
+SOURCE_DIRS = ("pairs", "risk", "gt", "pf", "jup", "gm", "tb", "dev", "ll", "gp", "gi", "cm", "bq", "lc", "hl", "vt", "dp", "candles", "fl", "pc")
 SOURCE_FILES = ("lists.json", "cg.json", "news.json", "social.json", "wallets.json", "reddit.json", "cgmeme.json", "cmc.json", "market.json", "fresh.json")
 HOST_GAP = {"api.geckoterminal.com": 10.0, "frontend-api-v3.pump.fun": 0.7, "api.mainnet-beta.solana.com": 0.3, "www.reddit.com": 12.0, "api.coinmarketcap.com": 1.0,
             "api.gopluslabs.io": 0.5, "api.coingecko.com": 1.2, "api.stocktwits.com": 0.5, "syndication.twitter.com": 3.0, "cdn.syndication.twimg.com": 1.5, "t.me": 1.0, "api.warpcast.com": 0.5, "mastodon.social": 0.5,
@@ -1626,6 +1627,44 @@ def viral(http, d, addrs, meta, now=None):
     return n
 
 
+def pf_comment_speed(http, d, addrs, now=None):
+    """How fast people comment on a pump.fun coin before the pick: the newest replies of each shortlisted pump.fun mint
+    (address ending in 'pump') -> pc/<stamp>.txt with the replies in the last hour and the last 6 hours, the distinct
+    commenters in the last hour and the minutes since the newest reply. Measured only (memebot.MEASURE_ONLY): the comment
+    COUNT already exists (pf.replies) but says nothing about now; research/PREREG-SOCIAL-2026-10-21.md checks the speed on
+    4 Nov 2026 before it may move a pick."""
+    now = now or time.time()
+    rows, tried = [], 0
+    for a in addrs:
+        if not str(a).endswith("pump") or urllib.parse.urlparse(PF).hostname in http.dead:
+            continue
+        tried += 1
+        data = http.get(PF + "/replies/%s?limit=%d&offset=0&reverseOrder=true" % (a, PC_LIMIT))
+        items = data.get("replies") if isinstance(data, dict) else data
+        if not isinstance(items, list):
+            continue
+        stamps, users1 = [], set()
+        for it in items:
+            ts = num((it or {}).get("timestamp")) if isinstance(it, dict) else None
+            if ts is None:
+                continue
+            ts = ts / 1000.0 if ts > 1e11 else ts       # milliseconds or seconds
+            age = now - ts
+            if age < -300:
+                continue
+            stamps.append(age)
+            if age <= 3600:
+                users1.add(str(it.get("user") or it.get("username") or ""))
+        n1, n6 = sum(1 for x in stamps if x <= 3600), sum(1 for x in stamps if x <= 6 * 3600)
+        newest = round(max(0.0, min(stamps)) / 60.0, 1) if stamps else None
+        rows.append(row(a, n1, n6, len(users1 - {""}), newest, len(items), len(items) >= PC_LIMIT and n6 >= len(stamps)))
+    n = write_rows(d, "pc", "pc_%d.txt" % int(now), rows)
+    if tried >= 3 and n == 0:
+        http.log("  ! pump.fun comments: %d coins looked up, none read (blocked, or did the replies endpoint change?)" % tried)
+    http.log("  pump.fun comment speed %d of %d pump.fun coins (%d coins)" % (n, tried, len(addrs)))
+    return n
+
+
 def cmd_risk(http, d, addrs, meta=None):
     n = rc_reports(http, d, addrs)
     reported = set()
@@ -1640,6 +1679,7 @@ def cmd_risk(http, d, addrs, meta=None):
     rpc_flow(http, d, [{"a": a, "pool": ((meta or {}).get(a) or {}).get("pair")} for a in addrs[:20]])
     community(http, d, addrs[:20], meta)
     viral(http, d, addrs[:60], meta)
+    pf_comment_speed(http, d, addrs[:30])
     ds_orders(http, d, addrs[:40])
     bitquery_trades(http, d, addrs[:40], os.environ.get("BITQUERY_TOKEN"))
     lunarcrush_topics(http, d, addrs[:4], meta, os.environ.get("LUNARCRUSH_API_KEY"))

@@ -527,7 +527,8 @@ HL_COLS = ("address", "top1Pct", "top10Pct", "top20Pct", "largestN", "supply")
 VT_COLS = ("address", "tweetId", "likes", "replies", "tweetAgeH", "followers", "verified", "media", "animal", "screenName", "text")
 DP_COLS = ("address", "paid", "paidAgeH", "ads", "cto", "orders")
 FL_COLS = ("address", "pool", "rate1h", "sampled", "spanMin", "buyers", "sellers", "buys", "sells", "flip", "topBuyerShare", "buyUsd", "sellUsd", "quote", "wallets")   # fl/*.txt: the public-RPC trade sample (fetch.rpc_flow)
-MEASURE_ONLY = ("fl.",)  # factors that are measured and stored with every scored coin but get neither a prior nor a learned weight until a study approves them
+PC_COLS = ("address", "n1h", "n6h", "users1h", "newestMin", "read", "capped")   # pc/*.txt: pump.fun comment speed (fetch.pf_comment_speed)
+MEASURE_ONLY = ("fl.", "pc.")  # factors that are measured and stored with every scored coin but get neither a prior nor a learned weight until a study approves them
 ANIMALS = re.compile(r"\b(monkey|monkeys|macaque|ape|apes|chimp|gorilla|cat|cats|kitten|kitty|dog|dogs|puppy|pup|doge|shiba|capybara|frog|frogs|toad|pepe|penguin|hamster|squirrel|raccoon|otter|bear|bears|panda|hippo|hippopotamus|moo deng|cow|cows|pig|piglet|duck|duckling|goat|bird|parrot|owl|fish|rat|mouse|seal|sloth|fox|wolf|lion|tiger|elephant|turtle|tortoise|rabbit|bunny|chick|chicken|giraffe|zebra|koala|kangaroo|llama|alpaca|dolphin|shark|octopus|snail|hedgehog|deer|moose|donkey|horse|pony|lamb|sheep|bat|crab|lobster|axolotl|quokka|wombat|lemur|baboon|orangutan)\b", re.I)
 TRUSTED_LP = re.compile(r"pump\.?fun|^pump$|pumpswap|bonk|^bags", re.I)        # the launchpads the terminal traders keep: pump.fun, Bonk, Bags
 OTHER_LP = re.compile(r"launchlab|believe|moonshot|boop|heaven|moonit|sugar|jupiter|dbc|meteora|virtuals|daos|time\.fun|zora|raydium", re.I)   # where the bundled 'fake charts' live
@@ -729,6 +730,7 @@ def cmd_gather(d, now):
     vt, _ = load_side(d, "vt", VT_COLS)
     dp, _ = load_side(d, "dp", DP_COLS)
     fl, _ = load_side(d, "fl", FL_COLS)
+    pc, _ = load_side(d, "pc", PC_COLS)
     ll, ltags = load_side(d, "ll", LL_COLS)
     for src in (jtags, ptags, gtags, mtags, ltags):
         for a, t in src.items():
@@ -761,7 +763,7 @@ def cmd_gather(d, now):
             p["dev"] = dict(dev[a])
         if a in ll:
             p["ll"] = {k: ll[a].get(k) for k in ("creator", "marketCap", "createdAt", "finished")}
-        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl), ("vt", vt), ("dp", dp), ("fl", fl)):
+        for sub, table in (("gp", gp), ("gi", gi), ("cm", cm), ("bq", bq), ("lc", lc), ("hl", hl), ("vt", vt), ("dp", dp), ("fl", fl), ("pc", pc)):
             if a in table:
                 p[sub] = {k: v for k, v in table[a].items() if k != "address" and v is not None}
         if a in gm:
@@ -1224,6 +1226,12 @@ def feats(pr, now, soc=None, rc=None, news=None, cg=None, wallets=None, tb=None,
             f["fl.netUsd"] = bs - ss
             if bs + ss > 0:
                 f["fl.netShare"] = (bs - ss) / (bs + ss)
+    # pump.fun comment speed (fetch.pf_comment_speed): measured only, checked on 4 Nov 2026 (research/PREREG-SOCIAL-2026-10-21.md)
+    pc = pr.get("pc") or {}
+    if num(pc.get("n1h")) is not None:
+        for k, src in (("pc.n1h", "n1h"), ("pc.n6h", "n6h"), ("pc.users1h", "users1h"), ("pc.newestMin", "newestMin")):
+            if num(pc.get(src)) is not None:
+                f[k] = num(pc.get(src))
     hl = pr.get("hl") or {}
     for k, src in (("hl.top1", "top1Pct"), ("hl.top10", "top10Pct"), ("hl.top20", "top20Pct")):
         if num(hl.get(src)) is not None:
@@ -2227,7 +2235,7 @@ def scan(d, pos, pairs, now, w):
     """Factors, gates and scores for every coin with pair data. Returns rows (best first) and helpers."""
     soc, risk = load_social(d), load_risk(d)
     # the shortlist's side tables are fetched after the gather, so the run reads them itself (gather attaches them next time anyway)
-    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS), ("vt", VT_COLS), ("dp", DP_COLS), ("fl", FL_COLS)):
+    for sub, cols in (("dev", DEV_COLS), ("gp", GP_COLS), ("gi", GI_COLS), ("cm", CM_COLS), ("bq", BQ_COLS), ("lc", LCT_COLS), ("hl", HL_COLS), ("vt", VT_COLS), ("dp", DP_COLS), ("fl", FL_COLS), ("pc", PC_COLS)):
         table, _ = load_side(d, sub, cols)
         for a, r in table.items():
             if a in pairs and not pairs[a].get(sub):

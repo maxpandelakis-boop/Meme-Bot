@@ -137,7 +137,8 @@ FACTOR = {"lp.trusted": "launchpad pump.fun / Bonk / Bags", "lp.other": "launchp
           "jup.traders24": "traders, 24h", "jup.netBuyers24": "net buyers, 24h", "jup.holderChg24": "holder change, 24h", "jup.netBuyers1": "net buyers, 1h",
           "jup.buyVolShare": "buy share of volume", "jup.mcPerHolder": "market cap per holder",
           "dev.pct": "creator holds % (Jupiter)", "dev.sold": "creator sold in the last 3h", "dev.txs3h": "creator transactions, 3h", "dev.authOff": "mint and freeze authority gone",
-          "pf.replies": "pump.fun replies", "pf.live": "pump.fun live stream", "pf.athRatio": "all-time-high ÷ now", "pf.twitter": "has X (pump.fun)", "pf.website": "has website (pump.fun)", "pf.telegram": "has Telegram (pump.fun)"}
+          "pf.replies": "pump.fun replies", "pf.live": "pump.fun live stream", "pf.athRatio": "all-time-high ÷ now", "pf.twitter": "has X (pump.fun)", "pf.website": "has website (pump.fun)", "pf.telegram": "has Telegram (pump.fun)",
+          "pc.n1h": "pump.fun comments, last hour", "pc.n6h": "pump.fun comments, last 6 h", "pc.users1h": "pump.fun commenters, last hour", "pc.newestMin": "minutes since the newest pump.fun comment"}
 
 
 def factor_label(k):
