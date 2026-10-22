@@ -1,0 +1,7 @@
+{"title": "The big search of 21 Oct 2026: nothing beat the gates on untouched data (research/SEARCH-2026-10-21.md)",
+ "lines": [
+  "2 months of history (Aug to Oct, 18,700 coins): 123,120 combinations tried. The best on train and check (2-3 h old coins with one big buyer) made -0.19 per 20 on the untouched last 3 weeks, with almost no 3x coins (0.6% against 5.3% for the gates). Fails.",
+  "The bot's own scans (7 to 21 Oct, 91 numbers incl. RugCheck, creator, holders, social, smart wallets): 90,354 combinations. The best made -2.49 per 20 on the untouched last 4 days; the gates made -0.84. Fails.",
+  "After correcting for the number of rules tried, not one rule of either search was better than chance.",
+  "New launches (coins under 1 hour old) lost the most everywhere: -2.4 to -6.2 per 20 in the history, -7.8 to -10.8 in the bot's own scans (34 to 54% went to zero within 2 hours), -5.90 in the paper account (the top picks: -3.17). They do have the most 3x coins, which is why they felt better."
+ ]}
