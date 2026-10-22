@@ -5,7 +5,7 @@ The product has two parts, and this tab shows both at a glance:
   PICK   the full scan's paper account (50 € a pick, its sell rule unchanged)
   RADAR  the rocket hunter's own paper account (rocket_watch.py, 20 € a coin when its rocket score reaches the cut)
 pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells, the
-Radar for comparison), because the open Pick positions were only in Archiv.
+Radar for comparison), because the open Pick positions were only in the Archive.
 section(D, R) -> HTML:
   - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
     (3x and 10x) and the open positions
@@ -128,9 +128,9 @@ def spark(pts, cls):
 
 
 def since_words(R, ms):
-    """'since 22 Oct, 12:08' (Berlin), '' without a start."""
+    """'since Oct 22, 12:08' (Berlin; the page's own way to write a day), '' without a start."""
     try:
-        return "since %s" % R.local(ms).strftime("%-d %b, %H:%M") if num(ms) else ""
+        return "since %s" % R.local(ms).strftime("%b %d, %H:%M") if num(ms) else ""
     except Exception:
         return ""
 
@@ -159,19 +159,19 @@ PICK_SOLD = 5             # last sells in the Pick tab's account block
 
 
 def pick_account(D, R):
-    """The Pick tab's account block (the user could not find the open Pick positions on Oct 22; they sat in Archiv > Drei Papier-Trader):
+    """The Pick tab's account block (the user could not find the open Pick positions on Oct 22; they sat in Archive > Three paper traders):
     the Pick account since its start (balance, the same stats as the Start card), every open pick position as the page's own position card
     (R.hold_card, tap opens: price since the buy, stop and target, the clock, the links), the last sells, and the Radar account for
-    comparison. Display only; the account, its rule and the trades before the start stay where they were (Archiv)."""
+    comparison. Display only; the account, its rule and the trades before the start stay where they were (Archive)."""
     now = D["now"]
     b = pick_book(D)
     since = since_words(R, ((D.get("paper") or {}).get("since")))
-    ticket = de_eur(num(getattr(M, "TOP_TICKET", None)) or 50.0).replace(",00", "")
+    ticket = de_eur(num(getattr(M, "TOP_TICKET", None)) or 50.0).replace(".00", "")
     head = ('<div class="pk-head"><div><h3>Pick account</h3><small>hourly pick · %s</small></div><span class="chip warn">fake money</span></div>' % E(
         " · ".join(x for x in (since, "%s per buy" % ticket) if x)))
     if not b:
         return '<div class="pk" data-pa="pick">%s<p class="pk-s">No pick bought since the start yet.</p></div><style>%s</style>' % (head, PK_CSS)
-    win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(",")
+    win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(".")
     stats = [("in profit", "%s/10" % win), ("3x · 10x", "%d · %d" % (b["x3"], b["x10"])), ("open", str(b["open"])), ("closed", str(b["closed"]))]
     acct = ('<div class="pk-acct"><div class="pk-bal"><span class="k">Balance</span><b class="%s">%s</b>%s</div><div class="pk-sts">%s</div></div>') % (
         tone(b["bal"]), E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
@@ -194,7 +194,7 @@ def pick_account(D, R):
         ex = [e for e in r.get("status") or [] if isinstance(e, dict)]
         why = str(ex[-1].get("why") or "") if ex else ""
         pct = num(r.get("pct"))
-        bits = [("%s%s %%" % ("+" if pct > 0 else "", de_num(100 * pct, 0))) if pct is not None else "", PICK_WHY.get(why, why),
+        bits = [("%s%s%%" % ("+" if pct > 0 else "", de_num(100 * pct, 0))) if pct is not None else "", PICK_WHY.get(why, why),
                 when(R, num(r.get("exitT")), now) if num(r.get("exitT")) else ""]
         sold.append('<li class="%s"><b>%s</b><span>%s</span><em>%s</em></li>' % (
             tone(r.get("pnl")), E(str(r.get("sym") or "?")[:14]), E(" · ".join(x for x in bits if x)), E(de_eur(r.get("pnl"), True))))
@@ -203,7 +203,7 @@ def pick_account(D, R):
     cmp_ = ('<p class="pk-cmp">For comparison, Radar 🚀: <b class="%s">%s</b> · %d closed · %d open</p>' % (
         tone(rk["bal"]), E(de_eur(rk["bal"], True)), rk["closed"], rk["open"])) if rk else ""
     foot = ('<p class="pk-s">Sells at −30%%, at 11x or after 6 h (the rule is unchanged). The trades before the start (%d) are in the archive under '
-            '“Drei Papier-Trader”.</p>' % sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold"))
+            '“Three paper traders”.</p>' % sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold"))
     return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>' % (head, acct, op_html, sold_html, foot, cmp_, PK_CSS)
 
 

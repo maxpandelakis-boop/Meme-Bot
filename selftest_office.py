@@ -201,8 +201,8 @@ def office_checks(check, skips=None):
         cards = re.findall(r'<label class="ocard( ext)?" for="od-([a-z]+)" data-agent="([a-z]+)"', page)
         D1 = R.collect(d1, NOW)
         info = R.office_data(D1)
-        pane_g = page[page.find('<div class="pane" id="pane-office">'):page.find('<div class="pane" id="pane-account"')]     # Gehirn: the brain only since Oct 22
-        pane_o = page[page.find('<details class="fold arch-office">'):]                                                  # the old office: a fold on Archiv
+        pane_g = page[page.find('<div class="pane" id="pane-office">'):page.find('<div class="pane" id="pane-account"')]     # Brain: the brain only since Oct 22
+        pane_o = page[page.find('<details class="fold arch-office">'):]                                                  # the old office: a fold on Archive
         pane_d = pane_o[pane_o.find('<div class="rest">') + len('<div class="rest">'):]
         check(off_before == off_after and [c[2] for c in cards] == list(AGENTS) and not any(c[0] for c in cards) and 'data-agent="radar"' not in cut(page, '<div class="ocards"', "</div>")
               and [a["id"] for a in info["agents"]] == list(AGENTS) and [a["id"] for a in info["ext"]] == ["radar"] and "could not be rendered" not in page
@@ -211,7 +211,7 @@ def office_checks(check, skips=None):
               and pane_d.startswith('<style>') and pane_d.find("</style>") + 8 == pane_d.find('<div class="odk-box"><label class="odesk" for="tab-young" data-po-desk')
               and -1 < pane_o.find('<label class="odesk"') < pane_o.find("<h2>Agent office</h2>") < pane_o.find('<div class="ocards"') < pane_o.find('<div class="office">')
               and page.count('<label class="odesk"') == 1 and "data-ext-stat" not in page and "ocard ext" not in page + PO.CSS,
-              "U6 office: the Gehirn tab holds only the brain; the old office is a fold on Archiv with the Launch radar's desk first (before its heading and the grid); one card per agent of office.json "
+              "U6 office: the Brain tab holds only the brain; the old office is a fold on Archive with the Launch radar's desk first (before its heading and the grid); one card per agent of office.json "
               "in run order and no card for the radar any more; the radar's name, job and tools are the spec's words; office.json is not written (%d cards)" % len(cards))
         card_dept = dict((c[2], c[1]) for c in cards)
         card_line = lambda aid: R.html.unescape(re.search(r'<label class="ocard[^"]*" for="od-[a-z]+" data-agent="%s".*?<span class="ocl"[^>]*>(.*?)</span>' % aid, page, re.S).group(1))

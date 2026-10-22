@@ -98,20 +98,20 @@ def f3(check):
                  + PH.acct_card("rad", "RADAR", "Radar account 🚀", PH.rocket_book(PH.rocket_doc(D)), "x", live=True, since=PH.since_words(S, M.FRESH_AT)))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    check("<h3>Pick account</h3>" in h and "since 22 Oct, 12:08" in h and "50 € per buy" in h and "−4,06 €" in h,
-          "F3 the head: Pick account since 22 Oct, 12:08, the balance of the pick trades only (the new launch left out)")
+    check("<h3>Pick account</h3>" in h and "since Oct 22, 12:08" in h and "50 € per buy" in h and "−4.06 €" in h,
+          "F3 the head: Pick account since Oct 22, 12:08, the balance of the pick trades only (the new launch left out)")
     check("Open positions (1)" in h and h.count('<details class="card pos hold">') == 1 and "OPEN1" in h and "OLDY" not in h,
           "F3 the open pick positions as the page's cards (a new launch not among them)")
     sold = re.findall(r'<li class="(\w*)"><b>([^<]*)</b><span>([^<]*)</span><em>([^<]*)</em></li>', h)
-    check([s[1] for s in sold] == ["LOSS", "WIN"] and "stop −30%" in sold[0][2] and "−33 %" in sold[0][2] and sold[0][0] == "bad" and sold[1][3] == "+13,36 €"
+    check([s[1] for s in sold] == ["LOSS", "WIN"] and "stop −30%" in sold[0][2] and "−33%" in sold[0][2] and sold[0][0] == "bad" and sold[1][3] == "+13.36 €"
           and "after 6 h" in sold[1][2], "F3 the last sells, newest first (%s)" % sold)
-    check("The trades before the start (3)" in h and "For comparison, Radar 🚀: <b class=\"\">0,00 €</b>" in h, "F3 the trades before the start (Pick only) and the Radar")
+    check("The trades before the start (3)" in h and "For comparison, Radar 🚀: <b class=\"\">0.00 €</b>" in h, "F3 the trades before the start (Pick only) and the Radar")
     check("Open positions (0)" in h0 and "None right now" in h0, "F3 no open position says so")
     rp = open(os.path.join(HERE, "report.py"), encoding="utf-8").read()
     i = rp.find("pane_pick = (")
     check(i > 0 and rp.find("PH.pick_account(D, sys.modules[__name__])", i) - i < 200, "F3 report.py puts the block on the Pick tab, under the scan strip")
-    check("Pick account" in cards and "Radar account 🚀" in cards and cards.count("since 22 Oct, 12:08") == 2 and "der sichere" not in cards,
-          "F4 the Start cards: Pick account and Radar account 🚀, both since 22 Oct, 12:08")
+    check("Pick account" in cards and "Radar account 🚀" in cards and cards.count("since Oct 22, 12:08") == 2 and "der sichere" not in cards,
+          "F4 the Start cards: Pick account and Radar account 🚀, both since Oct 22, 12:08")
 
 
 def checks(check, skips=None):

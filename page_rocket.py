@@ -147,8 +147,15 @@ def section(D):
     buy cut, the rules in one line and the Pick account for comparison."""
     import page_home as PH
     doc = load((D or {}).get("dir"))
-    head = ('<div class="rk-head"><div><h3>Radar account 🚀</h3><small>Rocket hunter · its own paper account</small></div>'
-            '<span class="chip warn">Fake money</span></div>')
+    since = ""
+    try:
+        import page_account as PA
+        fresh = num(getattr(M, "FRESH_AT", None))
+        since = ("since %s, %s" % (PA.mday(fresh), PA.hhmm(fresh))) if fresh else ""
+    except Exception:
+        since = ""
+    head = ('<div class="rk-head"><div><h3>Radar account 🚀</h3><small>%s</small></div><span class="chip warn">fake money</span></div>' % E(
+        " · ".join(x for x in ("rocket hunter, every 15 minutes", since, "%s per buy" % PH.de_eur(float(M.TICKET)).replace(".00", "")) if x)))
     wrap = lambda inner: '<div class="rk" data-pa="rocket"%s>%s%s</div><style>%s</style>' % (
         (' data-rk-box data-rk-t="%d"' % int(num(doc.get("t")) or 0)) if doc else "", head, inner, CSS)
     ps = pick_side(D)

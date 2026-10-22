@@ -178,7 +178,7 @@ def r4():
         doc["top"][0]["sym"] = "<img src=x onerror=alert(1)>"
         json.dump(doc, open(os.path.join(tmp, "page", "db", "memebot", "rocket.json"), "w"))
         h = PK.section({"dir": os.path.join(tmp, "page")})
-        check("Rocket hunter" in h and "Pick account" in h and "Radar account 🚀" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
+        check("rocket hunter" in h and "Pick account" in h and "Radar account 🚀" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
         js = PK.LIVE_JS
         check(all(k in h for k in ("data-rk-box", "data-rk-bal", 'data-rk-st="open"', "data-rk-op", "data-rk-sold", 'data-rk-cands="rk"', "data-rk-live"))
               and "id=eq.rocket" in js and "apikey:key" in js and "innerHTML" not in js and "Authorization" not in js and "tab-young" in js,
