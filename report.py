@@ -1969,6 +1969,16 @@ def search_block(D):
     return '<section>%s</section>' % PS.section(D)
 
 
+def rocket_block(D):
+    """The two paper accounts side by side and the rocket hunter's live test (page_rocket.py, fake money) at the top of the Radar
+    tab. Nothing without the module."""
+    try:
+        import page_rocket as PK
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PK.section(D)
+
+
 def winlose_block():
     """The winner/loser study (page_winlose.py, display only: which numbers come before big moves, and the few that tell the
     way) in the Pick tab's Details under the filter search. Nothing without the module."""
@@ -3412,7 +3422,7 @@ def render(data, fragment=False):
         pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D)) + details
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
-        pane_young = safe("launch radar", lambda: PR.block(D, safe("radar paper positions", lambda: PT.radar_positions(D)) if PT else "")) + legacy
+        pane_young = safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar", lambda: PR.block(D, safe("radar paper positions", lambda: PT.radar_positions(D)) if PT else "")) + legacy
         if rec_mode:      # before the first paper position the Traders tab holds one sentence
             pane_account = '<div class="empty">No paper trades yet: each scan\'s pick is bought on paper for %s and every radar coin found without traps for %s (fake money, nothing is bought for real).</div>' % (
                 E(fmt_eur(M.TOP_TICKET)), E(fmt_eur(radar_ticket())))

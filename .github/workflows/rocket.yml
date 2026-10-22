@@ -1,0 +1,49 @@
+# The rocket hunter (rocket_watch.py): every 15 minutes it scores the launch radar's coins of the last 18 hours (30 minutes old and
+# more) from GeckoTerminal's minute candles and latest trades, and books paper trades in its OWN account (20 a coin, -30% / 11x / 6 h).
+# Fake money only: nothing is bought, no push notification is sent, the scan's paper account, its sell rule and the radar's paper
+# buys are untouched. Its state and log go to the branch "rocket-data"; the scan job copies rocket.json into the page.
+name: Meme-Bot rocket hunter
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/rocket.yml]
+permissions:
+  contents: write                    # the rocket-data branch only
+concurrency:
+  group: memebot-rocket
+  cancel-in-progress: false
+jobs:
+  round:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Get the radar's records and the rocket hunter's state
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch radar-data "$REPO_URL" rd || mkdir -p rd
+          if git ls-remote --exit-code --heads "$REPO_URL" rocket-data >/dev/null; then
+            git clone -q --depth 1 --branch rocket-data "$REPO_URL" rk
+          else
+            mkdir rk && git -C rk init -q && git -C rk checkout -q -b rocket-data
+          fi
+          if [ ! -f rk/rocket_memory.json.gz ]; then
+            python3 -m pip install -q pyarrow==17.0.0 pandas==2.2.3
+            git clone -q --depth 1 --branch wallets "$REPO_URL" wl && python3 research/winlose/rocket_memory.py wl rk/rocket_memory.json.gz && rm -rf wl
+          fi
+      - name: One round
+        run: python3 rocket_watch.py round --dir rk --radar rd
+      - name: Save the state
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd rk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocket round $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q "$REPO_URL" HEAD:rocket-data || echo "nothing to save"

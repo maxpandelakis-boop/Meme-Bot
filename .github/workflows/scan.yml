@@ -533,6 +533,10 @@ jobs:
           else
             echo "no filter search yet"
           fi
+          if git ls-remote --exit-code --heads "$RESULTS_URL" rocket-data >/dev/null; then
+            git fetch -q --depth 1 "$RESULTS_URL" rocket-data && mkdir -p mb/db/memebot && git show FETCH_HEAD:rocket.json > mb/db/memebot/rocket.json \
+              && echo "rocket hunter doc copied ($(wc -c < mb/db/memebot/rocket.json) bytes)"
+          fi
       - name: Build the website folder
         if: steps.recent.outputs.skip != 'true'
         env:
