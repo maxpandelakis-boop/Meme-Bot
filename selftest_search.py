@@ -114,6 +114,17 @@ def main():
         h3 = R.search_block({"dir": d})
         check('data-pa="filtersearch"' in h3 and h3.startswith("<section>") and "Filter search" in R.search_block.__doc__ + h3,
               "S7 the page shows the block: the Pick tab's Details holds it (report.search_block)")
+        # S8 the user's goal: about 6 of 10 in profit, and only with a profit per pick
+        lead = doc3["challengers"][0]
+        check(doc3["winGoal"] == FS.WIN_GOAL and lead["fwd"]["win"] >= FS.WIN_GOAL and lead["goal"] is (lead["verdict"] != "watch"),
+              "S8 the made-up edge wins %.0f%% of its unseen coins: goal %s (verdict %s)" % (lead["fwd"]["win"], lead["goal"], lead["verdict"]))
+        check("Goal: 6 of 10 in profit" in h2 and ("Reached." in h2) == bool(doc3.get("leader") and lead["goal"]) and "of 10 in profit ·" in h2,
+              "S8 the page names the goal, where the rule stands, and the share in profit next to the profit per 20")
+        many_small = {"n": 200, "days": 5, "avg": -0.5, "win": 70.0, "hit3": 0.0, "zero": 5.0}
+        g = PS.goal_line({"winGoal": 60.0}, many_small, {})
+        check("Not yet." in g and "7.0 of 10" in g, "S8 7 of 10 in profit but a loss per pick is no goal: %s" % g[g.find("This rule"):])
+        old = doc5["challengers"][0]
+        check(not old["goal"], "S8 a losing rule never reaches the goal")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("\n%d checks failed" % len(FAILS) if FAILS else "\nALL PASS")

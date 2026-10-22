@@ -8,11 +8,14 @@ The question: is there a filter that does better than the bot's own gates on coi
      grown by a day, the day's picks and their real results included. A search over SEARCH_RULES conditions on those rows (one or
      two numbers above or below a quartile of the training rows, in one of the age windows WINDOWS) picks the rule that did best
      in BOTH halves of the training rows (the lower of the two averages counts), with at least MIN_HALF coins in each half and a
-     3x share not below the gates'. That rule is FROZEN with its thresholds and the time of the last row it saw (frozenAt).
+     3x share not below the gates'; a rule that also has WIN_GOAL % of its coins in profit and a profit per pick above zero in
+     both halves (the user's goal: about 6 of 10) beats every rule that does not. That rule is FROZEN with its thresholds and the time of the last row it saw (frozenAt).
   2. test: every frozen rule of the last MAX_CHALLENGERS nights is measured on the rows that came AFTER its frozenAt only (it
      never saw them), next to the gates on the same rows. A rule is "better" only when, on at least MIN_FWD coins over at least
-     MIN_DAYS days, its average per 20 is above zero, above the gates' average, its 3x share is not below the gates', and the lower
+     MIN_DAYS days, its average per 20 is above zero, above the gates' average, its 3x share and its share of coins in profit are not below the gates', and the lower
      end of its bootstrap interval is above zero at the 95% level corrected for the number of rules under test (Bonferroni).
+     It reaches the goal ("goal") when, on top of a verdict, WIN_GOAL % or more of its unseen coins ended in profit and the
+     profit per pick is above zero: a high win share alone (many small wins, a few big losses) is no goal.
   3. mistakes: the bot's top picks (rank 1 among the gate passers) of the last LOOKBACK_DAYS days that lost money, and how many of
      them the leading rule would have let through, against how many winning picks it would have blocked.
 Profit per 20 after FEE_SIDE per buy and per sell, the price multiple capped at MULT_CAP (one freak coin cannot carry a rule); one
@@ -43,6 +46,7 @@ WINDOWS = {"new": "coins under 1 h old (the old new launches)", "1-6h": "1 to 6 
            "24h+": "older than a day", "any": "any age", "gates": "coins that passed the bot's gates"}
 MIN_HALF = 60            # coins in each training half
 MIN_FWD, MIN_DAYS = 100, 3
+WIN_GOAL = 60.0          # the user's goal (22 Oct 2026): about 6 of 10 picks in profit, with the profit per pick above zero as well
 MAX_CHALLENGERS = 30
 LOOKBACK_DAYS = 7
 DAY = 86_400_000
@@ -188,6 +192,7 @@ def search(R, upto):
     for w in WINDOWS:
         sub = np.flatnonzero(window_mask(R, w) & known)      # the window's training rows only: every mask below is this short
         S = {k: R[k][sub] for k in ("coin", "r", "hit3")}
+        S["ncoin"] = R.get("ncoin")
         hw = [h[sub] for h in halves]
         cms = [c[sub] for c in cm]
         for combo in combos:
@@ -195,15 +200,18 @@ def search(R, upto):
             m = None
             for i in combo:
                 m = cms[i] if m is None else m & cms[i]
-            sc, ok = [], True
+            sc, wins, ok = [], [], True
             for h in hw:
                 ix = entries(S, h if m is None else h & m)
                 if len(ix) < MIN_HALF or float(S["hit3"][ix].mean()) < gate3:
                     ok = False
                     break
                 sc.append(float(S["r"][ix].mean()))
-            if ok and (best is None or min(sc) > best[0]):
-                best = (min(sc), {"w": w, "c": [conds[i] for i in combo]}, sc)
+                wins.append(100.0 * float((S["r"][ix] > 0).mean()))
+            # a rule that reaches the win goal in both halves with a profit in both comes first; then the profit per pick
+            key = (min(wins) >= WIN_GOAL and min(sc) > 0, min(sc)) if ok else None
+            if ok and (best is None or key > best[0]):
+                best = (key, {"w": w, "c": [conds[i] for i in combo]}, sc)
     if best is None:
         return None, None, tried
     rule = best[1]
@@ -221,11 +229,12 @@ def forward(R, ch, n_live):
     if fwd.get("n", 0) < MIN_FWD or fwd.get("days", 0) < MIN_DAYS:
         verdict = "watch"
     elif (fwd["avg"] > 0 and fwd["avg"] > (gates.get("avg") if gates.get("n") else -1e9) and fwd.get("lo", -1) > 0
-          and fwd["hit3"] >= (gates.get("hit3") or 0.0)):
+          and fwd["hit3"] >= (gates.get("hit3") or 0.0) and fwd["win"] >= (gates.get("win") or 0.0)):
         verdict = "better"
     else:
         verdict = "worse"
-    return dict(ch, fwd=fwd, gates=gates, verdict=verdict)
+    goal = verdict != "watch" and fwd["win"] >= WIN_GOAL and fwd["avg"] > 0
+    return dict(ch, fwd=fwd, gates=gates, verdict=verdict, goal=goal)
 
 
 def mistakes(R, rule, now):
@@ -265,7 +274,8 @@ def build(snaps, state, now, study=None):
            "gatesAll": stats(R, entries(R, (R["t"] <= upto) & R["pass"])),
            "tonight": {k: tonight[k] for k in ("id", "text", "train", "frozenAt")} if tonight else None,
            "leader": {k: leader[k] for k in ("id", "text", "fwd", "gates", "train")} if leader else None,
-           "challengers": [{k: c[k] for k in ("id", "text", "frozenAt", "fwd", "gates", "verdict")} for c in ranked[:10]],
+           "challengers": [{k: c[k] for k in ("id", "text", "frozenAt", "fwd", "gates", "verdict", "goal")} for c in ranked[:10]],
+           "winGoal": WIN_GOAL,
            "nLive": len(chs), "mistakes": mistakes(R, lead_rule, now), "rules": {"minFwd": MIN_FWD, "minDays": MIN_DAYS, "minHalf": MIN_HALF}}
     if study:
         doc["study"] = study

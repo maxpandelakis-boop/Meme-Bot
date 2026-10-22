@@ -44,14 +44,28 @@ def load(d):
 
 
 def st_line(s, what="coins"):
-    """'312 coins over 5 days · −1.20 € per 20 · 3x 1.3% · to zero 4.0% · 95% range −2.10 € to −0.30 €'."""
+    """'312 coins over 5 days · −1.20 € per 20 · 3.4 of 10 in profit · 3x 1.3% · to zero 4.0% · range −2.10 € to −0.30 €'."""
     if not isinstance(s, dict) or not num(s.get("n")):
         return "no coins yet"
     bits = ["%d %s over %d day%s" % (int(s["n"]), what, int(num(s.get("days")) or 0), "" if int(num(s.get("days")) or 0) == 1 else "s"),
-            "%s per 20" % per(num(s.get("avg"))), "3x %.1f%%" % (num(s.get("hit3")) or 0.0), "to zero %.1f%%" % (num(s.get("zero")) or 0.0)]
+            "%s per 20" % per(num(s.get("avg"))), "%.1f of 10 in profit" % ((num(s.get("win")) or 0.0) / 10), "3x %.1f%%" % (num(s.get("hit3")) or 0.0), "to zero %.1f%%" % (num(s.get("zero")) or 0.0)]
     if num(s.get("lo")) is not None and num(s.get("hi")) is not None:
         bits.append("range %s to %s" % (per(num(s["lo"])), per(num(s["hi"]))))
     return " · ".join(bits)
+
+
+def goal_line(doc, fwd, gates):
+    """The user's goal (about 6 of 10 picks in profit, with a profit per pick): where the rule and the gates stand."""
+    g = num(doc.get("winGoal"))
+    if g is None:
+        return ""
+    if not num((fwd or {}).get("n")):
+        return '<small class="fs-goal">Goal: %g of 10 in profit and a profit per pick. Not measured yet.</small>' % (g / 10)
+    w, a = num(fwd.get("win")) or 0.0, num(fwd.get("avg")) or 0.0
+    gw = ("; the gates: %.1f of 10" % ((num(gates.get("win")) or 0.0) / 10)) if num((gates or {}).get("n")) else ""
+    ok = w >= g and a > 0
+    return '<small class="fs-goal %s">Goal: %g of 10 in profit and a profit per pick. This rule: %.1f of 10, %s per 20%s. %s</small>' % (
+        "good" if ok else "", g / 10, w / 10, E(per(a)), gw, "Reached." if ok else "Not yet.")
 
 
 def verdict(doc):
@@ -61,8 +75,8 @@ def verdict(doc):
     if lead:
         fwd, g = lead.get("fwd") or {}, lead.get("gates") or {}
         return ('<div class="fs-v good"><span class="k">A rule beat the gates on coins it never saw (not switched on: your decision)</span>'
-                '<b>%s</b><small>this rule: %s</small><small>the gates on the same days: %s</small></div>') % (
-            E(lead.get("text")), E(st_line(fwd)), E(st_line(g)))
+                '<b>%s</b><small>this rule: %s</small><small>the gates on the same days: %s</small>%s</div>') % (
+            E(lead.get("text")), E(st_line(fwd)), E(st_line(g)), goal_line(doc, fwd, g))
     chs = [c for c in (doc.get("challengers") or []) if isinstance(c, dict)]
     best = chs[0] if chs else None
     if not best:
@@ -70,8 +84,8 @@ def verdict(doc):
     fwd, g = best.get("fwd") or {}, best.get("gates") or {}
     state = ("still collecting: %d of %d unseen coins" % (int(num(fwd.get("n")) or 0), need)) if best.get("verdict") == "watch" else "tested: not better"
     return ('<div class="fs-v"><span class="k">No rule beats the gates on unseen coins yet</span><b>Best so far: %s</b>'
-            '<small>%s · %s</small><small>the gates on the same days: %s</small></div>') % (
-        E(best.get("text")), E(state), E(st_line(fwd)), E(st_line(g)))
+            '<small>%s · %s</small><small>the gates on the same days: %s</small>%s</div>') % (
+        E(best.get("text")), E(state), E(st_line(fwd)), E(st_line(g)), goal_line(doc, fwd, g))
 
 
 def tonight(doc):
@@ -111,10 +125,11 @@ def how(doc):
     return ("Every night the search reads every coin of every scan so far (%s rows, %s coins, %s scans) with what 20 became about "
             "2 hours later, after %g%% fees per buy and per sell, the price multiple capped at %gx. It tries %s rules (one or two numbers above "
             "or below a quartile, in %d age windows, the old new launches among them) and keeps the one that did best in both halves of the "
-            "scans and lost no 3x coins against the gates. That rule is frozen with its numbers; from then on it is measured only on coins "
+            "scans and lost no 3x coins against the gates; a rule with about 6 of 10 coins in profit and a profit in both halves comes first. That rule is frozen with its numbers; from then on it is measured only on coins "
             "that came later, next to the gates on the same coins. It counts as better only with %d coins or more over %d days or more, "
-            "above zero and above the gates per 20, a 3x share not below the gates', and the low end of its range above zero, the range "
-            "widened for the number of rules under test at once (%s now). The leading rule's mistakes line uses the bot's top picks. Fake money; nothing "
+            "above zero and above the gates per 20, a 3x share and a share in profit not below the gates', and the low end of its range above zero, the range "
+            "widened for the number of rules under test at once (%s now). The goal of 6 of 10 counts only with a profit per pick: many small wins "
+            "and a few big losses still lose money. The leading rule's mistakes line uses the bot's top picks. Fake money; nothing "
             "here changes what the bot buys.") % (
         "{:,}".format(int(num(d.get("rows")) or 0)), "{:,}".format(int(num(d.get("coins")) or 0)), "{:,}".format(int(num(d.get("scans")) or 0)),
         100 * (num(doc.get("fee")) or 0.01), num(doc.get("cap")) or 11, "{:,}".format(int(num(doc.get("tried")) or 0)), int(num(doc.get("windows")) or 6),
@@ -144,7 +159,7 @@ CSS = r"""
 .fs-cnt { margin-left:auto; font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums }
 .fs-keep { margin:0; font-size:var(--fs-s); color:var(--fg2); max-width:70ch; text-wrap:pretty }
 .fs-v { border:1px solid var(--line); border-left:4px solid var(--warn-mark); border-radius:10px; padding:10px 14px 12px; display:grid; gap:3px; min-width:0 }
-.fs-v.good { border-left-color:var(--good) } .fs-v .k, .fs-s .k { font-size:var(--fs-xs); color:var(--muted) }
+.fs-v.good { border-left-color:var(--good) } .fs-v .fs-goal { color:var(--fg2) } .fs-v .fs-goal.good { color:var(--good) } .fs-v .k, .fs-s .k { font-size:var(--fs-xs); color:var(--muted) }
 .fs-v b { font-size:16px; font-weight:600; overflow-wrap:anywhere }
 .fs-v small, .fs-s small { font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
 .fs-s { margin:0; font-size:var(--fs-s); color:var(--fg2); overflow-wrap:anywhere }
