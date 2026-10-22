@@ -2013,6 +2013,16 @@ def shadow_block(D):
     return '<section>%s</section>' % PSH.section(D, sys.modules[__name__])
 
 
+def lernpick_block(D):
+    """The Learning Pick (page_lernpick.py, fake money: a self-learning shadow bot with its own paper account; the Pick and the Radar are
+    untouched) under the shadow rules on the Pick tab. Nothing without the module."""
+    try:
+        import page_lernpick as PL
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PL.section(D, sys.modules[__name__])
+
+
 def rocket_block(D):
     """The two paper accounts side by side and the rocket hunter's live test (page_rocket.py, fake money) at the top of the Radar
     tab. Nothing without the module."""
@@ -3472,7 +3482,7 @@ def render(data, fragment=False):
         details = fold("Research", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = (strip_html + (safe("pick account", lambda: PH.pick_account(D, sys.modules[__name__])) if PH else "")
                      + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
-                     + safe("shadow rules", lambda: shadow_block(D)))
+                     + safe("shadow rules", lambda: shadow_block(D)) + safe("learning pick", lambda: lernpick_block(D)))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
         pane_young = safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar", lambda: PR.block(D, safe("radar paper positions", lambda: PT.radar_positions(D)) if PT else "")) + legacy
