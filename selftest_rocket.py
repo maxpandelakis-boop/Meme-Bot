@@ -186,6 +186,9 @@ def r4():
         check("Geprüft am 22. Okt" in h and "hält nicht" in h and "134" in h, "R5 the fold with the tests of 22 Oct is in the block")
         tt = PK.tests({"history": {"0.005": {"coins": 3, "avg": "<script>", "x10": 1}}, "exits": {"rules": 2, "choice": "<b>x</b>"}})
         check("<script" not in tt and "<b>x" not in tt and "&lt;b&gt;x" in tt, "R5 the tests fold escapes what it shows")
+        cd = PK.chart_div({"chart": [[0, 1], [5, "<b>"], [9, 2.5]], "t": now, "out": now + 9 * 60_000, "mult": 2.5}, True)
+        check('data-rk-ch="[[0,1.0],[9,2.5]]"' in cd.replace("&quot;", '"') and 'data-rk-end="9,2.5"' in cd and "<b>" not in cd and "drawAll" in PK.LIVE_JS,
+              "R5 a position's price line goes to the page as numbers only, LIVE_JS draws it with or without the live store")
         h0 = PK.section({"dir": os.path.join(tmp, "none")})
         check("noch nicht gelaufen" in h0, "R5 without a doc: one sentence")
     finally:
@@ -263,6 +266,13 @@ def r8():
         check(out["sold"] == 1 and list(st["book"]["open"]) == ["BBB"] and st["book"]["closed"][0]["why"] == "11x" and '"closed":true' in logs
               and st["top"][0]["sym"] == "X" and st["checked"] == {"X": t0} and st["t"] == t0,
               "R8 the watch sells AAA at 11x within the minute, logs it, keeps BBB open and the round's scores (%s)" % out)
+        bb = st["book"]["open"]["BBB"].get("chart") or []
+        aa = st["book"]["closed"][0].get("chart") or []
+        check(bb[0] == [0, 1.0] and bb[-1][1] == 1.1 and len(bb) >= 2 and aa and aa[-1][1] == 8.0 and all(m >= 0 for m, _ in bb),
+              "R8 every look adds the minute closes to the position's price line (the buy is [0, 1]); a sell keeps its line (%s, %s)" % (bb[-3:], aa[-2:]))
+        big = {"t": t0, "px": 1.0, "chart": [[i, 1.0] for i in range(400)]}
+        RW.chart_add(big, [], 1.0, t0 + 401 * 60_000)
+        check(len(big["chart"]) <= RW.CHART_N and big["chart"][0] == [0, 1.0] and big["chart"][-1][0] == 401, "R8 a long line is thinned to CHART_N points, the buy and the newest kept")
         check(out["why"] == "time" and out["looks"] == 3 and slept[:2] == [60, 60], "R8 one look a minute until the next round (%s, %s)" % (out, slept))
         st["book"]["open"] = {}
         json.dump(st, open(os.path.join(rk, "rocket.json"), "w"))

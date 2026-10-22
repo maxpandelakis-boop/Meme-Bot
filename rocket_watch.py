@@ -32,6 +32,7 @@ MODEL = os.path.join(HERE, "rocket_model.json")
 MAX_SCORE = 24            # coins scored a round (2 GeckoTerminal calls each)
 GT_GAP = 2.2              # s between GeckoTerminal calls (its public limit is about 30 a minute)
 DS_GAP = 0.6
+CHART_N = 150            # points of a position's price line (chart_add)
 WATCH_S = 60              # s between two looks at the open positions between rounds (watch)
 UA = {"User-Agent": "memebot rocket hunter (fake money only)", "Accept": "application/json"}
 H = 3_600_000
@@ -161,12 +162,38 @@ def load_memory(d):
 def live_doc(book, now, cut, scored, closed):
     """The small doc of the app's live row "rocket": the account's summary, the open positions (now and high as multiples), the last
     10 sells and the round's best 5 scores. Public data only (coins, prices, fake-money results)."""
-    keep = ("addr", "sym", "t", "px", "score", "now", "hi", "lo", "out", "mult", "eur", "why")
+    keep = ("addr", "sym", "t", "px", "score", "now", "hi", "lo", "out", "mult", "eur", "why", "chart")
     return {"v": 1, "t": now, "cut": cut, "summary": book.summary(),
             "open": [{k: p.get(k) for k in keep if k in p} for p in book.open.values()],
             "closed": [{k: p.get(k) for k in keep if k in p} for p in book.closed[-10:]],
             "soldNow": [p.get("addr") for p in closed],
             "top": [{k: r.get(k) for k in ("addr", "sym", "score", "age", "buy")} for r in sorted(scored, key=lambda r: -r["score"])[:5]]}
+
+
+def chart_add(pos, cs, px, now):
+    """The position's price line for the app's chart: [minutes since the buy, close as a multiple of the buy price] from the
+    one-minute candles of each look (the buy itself is [0, 1]); at most CHART_N points (older ones thinned, the newest kept)."""
+    bp, t0 = R.num(pos.get("px")), pos["t"]
+    if not bp or bp <= 0:
+        return
+    pts = {int(m): v for m, v in (pos.get("chart") or [[0, 1.0]]) if isinstance(m, (int, float))}
+    for r in cs:
+        m = int((r[0] - t0) // 60_000)
+        if m >= 0 and R.num(r[4]):
+            pts[m] = round(float(r[4]) / bp, 4)
+    if px and now > t0:
+        pts[max(0, int((now - t0) // 60_000))] = round(px / bp, 4)
+    pts.setdefault(0, 1.0)
+    ch = sorted([m, v] for m, v in pts.items())
+    while len(ch) > CHART_N:
+        ch = ch[:1] + ch[1:-40:2] + ch[-40:]             # thin the older part, keep the buy and the last 40 minutes
+    pos["chart"] = ch
+
+
+def slim(book):
+    """Only the last 10 sells keep their price line (the app shows those), so rocket.json stays small."""
+    for p in book.closed[:-10]:
+        p.pop("chart", None)
 
 
 def check_open(http, book, pairs, now):
@@ -181,6 +208,7 @@ def check_open(http, book, pairs, now):
         lo = min((float(r[3]) for r in cs), default=None)
         px = R.num((p or {}).get("priceUsd"))
         pos["seen"] = now
+        chart_add(pos, cs, px, now)
         out = book.update(a, now, hi=hi, lo=lo, px=px)
         if out:
             closed.append(out)
@@ -212,6 +240,7 @@ def watch(d, until, mock=None, clock=None, sleep=time.sleep, every=WATCH_S):
         closed = check_open(http, book, ds_pairs(http, sorted(book.open)), now)
         looks += 1
         sells += len(closed)
+        slim(book)
         state["book"] = book.doc()
         with open(fn + ".tmp", "w") as fh:
             json.dump(state, fh, separators=(",", ":"))
@@ -300,6 +329,7 @@ def round_(d, radar_dir, now, mock=None):
     for a in [a for a, t in checked.items() if now - (R.num(t) or 0) > 26 * H]:
         checked.pop(a, None)
     scored.sort(key=lambda r: -r["score"])
+    slim(book)
     doc = {"v": 1, "t": now, "book": book.doc(), "checked": checked, "round": {"candidates": len(cand), "scored": len(scored),
            "bought": sum(1 for r in scored if r["buy"]), "closed": len(closed), "calls": http.calls, "memory": len(memory)},
            "top": scored[:12], "cut": model["cut"], "model": {"made": model.get("made"), "rows": model.get("rows"), "src": model.get("src")}}
