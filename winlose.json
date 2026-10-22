@@ -111,7 +111,7 @@
   },
   {
    "num": "regime_hit3",
-   "label": "regime_hit3",
+   "label": "3x share of coins 2-3 days ago",
    "dev": 0.436,
    "hold": 0.414,
    "holds": false,
@@ -161,5 +161,158 @@
    "p": 0.9999903847286569
   },
   "verdict": "fails"
+ },
+ "combined": {
+  "dev": {
+   "n": 1696,
+   "avg": 0.332,
+   "lo": -0.224,
+   "hi": 1.016,
+   "win": 26.8,
+   "hit3": 0.53
+  },
+  "hold": {
+   "n": 417,
+   "avg": -0.004,
+   "lo": -0.57,
+   "hi": 0.617,
+   "win": 27.1,
+   "hit3": 0.24
+  },
+  "hold_gates": {
+   "n": 62,
+   "avg": -1.377,
+   "win": 41.9,
+   "hit3": 0.0
+  },
+  "numbers": 91,
+  "verdict": "fails"
+ },
+ "variants": {
+  "base": {
+   "coins": 1662,
+   "avg": -8.649,
+   "lo95": -9.772,
+   "hi95": -7.433,
+   "in_profit_of10": 1.1,
+   "hit3": 15.8,
+   "rocket10x": 1.9,
+   "zero": 31.9
+  },
+  "A": {
+   "name": "few losers",
+   "cut": 0.05,
+   "dev": {
+    "coins": 31,
+    "avg": -0.068,
+    "lo95": -4.382,
+    "hi95": 3.528,
+    "in_profit_of10": 7.4,
+    "hit3": 0.0,
+    "rocket10x": 0.0,
+    "zero": 22.6
+   },
+   "hold": {
+    "coins": 34,
+    "avg": -3.075,
+    "lo95": -7.06,
+    "hi95": 0.589,
+    "in_profit_of10": 5.9,
+    "hit3": 0.0,
+    "rocket10x": 0.0,
+    "zero": 29.4
+   },
+   "sim": {
+    "sims": 10000,
+    "days": 11,
+    "pProfit": 26.2,
+    "avg": [
+     -8.482,
+     -2.342,
+     3.075
+    ]
+   },
+   "verdict": "fails: never 100 picks on the earlier days; on unseen days 5.9 of 10 in profit but -3.08 per 20 (the losers go to zero)"
+  },
+  "B": {
+   "name": "rocket hunter",
+   "cut": 0.005,
+   "dev": {
+    "coins": 28,
+    "avg": 8.886,
+    "lo95": -7.776,
+    "hi95": 31.34,
+    "in_profit_of10": 1.8,
+    "hit3": 17.9,
+    "rocket10x": 7.1,
+    "zero": 10.7
+   },
+   "hold": {
+    "coins": 34,
+    "avg": 16.103,
+    "lo95": -3.102,
+    "hi95": 38.186,
+    "in_profit_of10": 2.4,
+    "hit3": 38.2,
+    "rocket10x": 11.8,
+    "zero": 14.7
+   },
+   "sim": {
+    "sims": 10000,
+    "days": 9,
+    "pProfit": 99.8,
+    "avg": [
+     6.235,
+     16.885,
+     29.414
+    ]
+   },
+   "chosen": {
+    "coins": 199,
+    "avg": -2.778,
+    "lo95": -7.733,
+    "hi95": 2.565,
+    "in_profit_of10": 1.2,
+    "hit3": 26.6,
+    "rocket10x": 6.0,
+    "zero": 21.6
+   },
+   "verdict": "fails as pre-registered (top 2%: -2.78 per 20); the strictest cut (top 0.5%) was positive on both parts but on 28 and 34 coins only"
+  },
+  "C": {
+   "name": "expected profit",
+   "cut": 0.02,
+   "dev": {
+    "coins": 183,
+    "avg": -0.383,
+    "lo95": -4.695,
+    "hi95": 4.88,
+    "in_profit_of10": 1.9,
+    "hit3": 12.6,
+    "rocket10x": 3.3,
+    "zero": 7.1
+   },
+   "hold": {
+    "coins": 146,
+    "avg": 0.456,
+    "lo95": -5.062,
+    "hi95": 7.051,
+    "in_profit_of10": 1.8,
+    "hit3": 21.9,
+    "rocket10x": 4.8,
+    "zero": 17.1
+   },
+   "sim": {
+    "sims": 10000,
+    "days": 13,
+    "pProfit": 63.8,
+    "avg": [
+     -4.338,
+     1.435,
+     8.502
+    ]
+   },
+   "verdict": "fails: +0.46 per 20 on unseen days, range -5.06 to +7.05"
+  }
  }
 }

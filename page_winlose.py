@@ -5,6 +5,7 @@ section(path=None) -> HTML, a compact block "Winners vs losers (study)":
   - the verdict first: the score learned from all the numbers beat the gates on unseen days but still lost, so nothing changed
   - "big move either way": the numbers that tell a coin will move a lot (up OR down), the reason danger signals look like 3x signals
   - "which way": the few numbers that separate winners from losers among similar coins, and how weak they are
+  - all signals of the bot's own scans together, and the three variants side by side (A few losers, B rockets, C expected profit)
   - the social probe (pump.fun replies, Reddit before the entry), when the file carries it
   - an ⓘ fold with the method
 The file is winlose.json next to this module (written once by research/winlose/export.py); every value goes through a number check
@@ -27,7 +28,7 @@ def num(v):
 
 def per(v):
     v = num(v)
-    return "–" if v is None else ("%+.2f €" % v).replace("-", "−")
+    return "–" if v is None else ("%+.2f €" % (0.0 if abs(v) < 0.005 else v)).replace("-", "−")
 
 
 def load(path=None):
@@ -41,8 +42,10 @@ def load(path=None):
 def st(s):
     if not isinstance(s, dict) or not num(s.get("coins")):
         return "no coins"
-    return "%d coins · %s per 20 · %.1f of 10 in profit · 3x %.1f%% · fell 80%% %.1f%%" % (
-        int(num(s["coins"])), per(s.get("avg")), num(s.get("in_profit_of10")) or 0, num(s.get("hit3")) or 0, num(s.get("lose80")) or 0)
+    tail = ("10x %.1f%% · to zero %.1f%%" % (num(s.get("rocket10x")) or 0, num(s.get("zero")) or 0)) if "rocket10x" in s else (
+        "fell 80%% %.1f%%" % (num(s.get("lose80")) or 0))
+    return "%d coins · %s per 20 · %.1f of 10 in profit · 3x %.1f%% · %s" % (
+        int(num(s["coins"])), per(s.get("avg")), num(s.get("in_profit_of10")) or 0, num(s.get("hit3")) or 0, tail)
 
 
 def strength(auc):
@@ -84,6 +87,31 @@ def section(path=None):
     way = ('<div class="wl-st"><p class="wl-s"><span class="k">Which way: winners against losers of the same age and size (%d of %d hold)</span> '
            'Only these separate the 3x coins from the ones that fell 80%%, and only a little.</p>%s</div>') % (
         int(num(h.get("win_vs_lose")) or 0), int(num(doc.get("numbers")) or 0), items(doc.get("direction"), "higher in winners", "lower in winners"))
+    comb = ""
+    cb = doc.get("combined")
+    if isinstance(cb, dict) and isinstance(cb.get("hold"), dict):
+        hd, hg = cb["hold"], cb.get("hold_gates") or {}
+        comb = ('<p class="wl-s"><span class="k">All %d numbers of the bot\'s own scans together (dev/holder, RugCheck, social, smart wallets)</span> '
+                'unseen days: %s per 20 on %d coins, %.0f%% in profit, 3x %.2f%% · gates %s. Fails: it picks quiet coins that lose only the fees.</p>') % (
+            int(num(cb.get("numbers")) or 0), E(per(hd.get("avg"))), int(num(hd.get("n")) or 0), num(hd.get("win")) or 0, num(hd.get("hit3")) or 0,
+            E(per(hg.get("avg"))))
+    var = ""
+    vs = doc.get("variants")
+    if isinstance(vs, dict):
+        cards = []
+        for key in ("A", "B", "C"):
+            v = vs.get(key)
+            if not isinstance(v, dict):
+                continue
+            sim = v.get("sim") if isinstance(v.get("sim"), dict) else None
+            simtxt = (" · %s%% of 10,000 simulated runs in profit" % E(num(sim.get("pProfit")))) if sim else ""
+            cards.append('<div class="wl-c"><span class="k">%s · %s (top %s%%)</span><small>earlier days: %s</small><small>unseen days: %s%s</small>'
+                         '<small>%s</small></div>' % (E(key), E(v.get("name")), E("%g" % (100 * (num(v.get("cut")) or 0))), E(st(v.get("dev"))),
+                                                       E(st(v.get("hold"))), E(simtxt), E(v.get("verdict"))))
+        var = ('<div class="wl-st"><p class="wl-s"><span class="k">Few losers or rockets? (every coin every 15 minutes, sell rule A, not clipped)</span> '
+               'Neither reaches both goals: the more picks end in profit, the less the bot makes, because the safe-looking coins '
+               'that still fail go to zero and there are no rockets among them. Only the rocket hunter made money, on very few coins.</p>'
+               '<div class="wl-cards">%s</div></div>') % "".join(cards)
     soc = ""
     s = doc.get("social")
     if isinstance(s, dict) and s.get("text"):
@@ -95,7 +123,7 @@ def section(path=None):
            "checked once on unseen days. Sell rule A (-30%%/11x/6 h), fees as the paper account. research/winlose/.") % (
         "{:,}".format(int(num(doc.get("coins")) or 0)), "{:,}".format(int(num(doc.get("rows")) or 0)), E(doc.get("period")))
     info = '<details class="pa-i"><summary>ⓘ how</summary><p>%s</p></details>' % E(how)
-    return wrap(verdict + move + way + soc + info)
+    return wrap(verdict + move + way + comb + var + soc + info)
 
 
 CSS = r"""
@@ -108,6 +136,9 @@ CSS = r"""
 .wl-v b { font-size:16px; font-weight:600; overflow-wrap:anywhere }
 .wl-v small { font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
 .wl-s { margin:0; font-size:var(--fs-s); color:var(--fg2); overflow-wrap:anywhere; max-width:70ch }
+.wl-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px; margin-top:6px }
+.wl-c { border:1px solid var(--line); border-radius:10px; padding:8px 12px; display:grid; gap:2px; min-width:0 }
+.wl-c .k { font-size:var(--fs-xs); color:var(--muted) } .wl-c small { font-size:var(--fs-xs); color:var(--fg2); overflow-wrap:anywhere }
 .wl-st ul { margin:6px 0 0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2) }
 @media (max-width:560px) { .wl { padding:12px 12px 2px } .wl-v { padding:10px 12px 12px } }
 """

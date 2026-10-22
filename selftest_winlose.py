@@ -27,8 +27,9 @@ def main():
     a, b = PW.section(os.path.join(tmp, "none.json")), PW.section(bad)
     check("No study file" in a and "No study file" in b, "W1 no file / a broken file: a short note")
     h = PW.section()
-    check("nothing switched on" in h and "Big move, either way" in h and "Which way" in h and "ⓘ how" in h and "<script" not in h,
-          "W2 the real file: verdict, both lists, method, no script")
+    check("nothing switched on" in h and "Big move, either way" in h and "Which way" in h and "ⓘ how" in h and "<script" not in h
+          and "rocket hunter" in h and "few losers" in h and "together" in h,
+          "W2 the real file: verdict, both lists, all signals together, the variants, method, no script")
     doc = json.load(open(PW.PATH))
     check(doc["score"]["verdict"] == "fails", "W2 the file records the failed pre-registered test")
     doc["move"][0]["label"] = "<img src=x onerror=alert(1)>"

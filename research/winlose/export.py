@@ -17,7 +17,7 @@ LABEL = {
     "w_sol": "SOL the wallets put in", "w_avg_lroi": "earlier results of those wallets", "buys_trend_30": "buys, last 30 min vs before",
     "upwick_15": "upper wick, 15-min candle", "lowick_15": "lower wick, 15-min candle", "mc_chg": "market cap vs an hour ago", "nn_win": "look-alike charts: winner share", "nn_lose": "look-alike charts: loser share",
     "nn_eur": "look-alike charts: average result", "w_smart_share": "share of smart wallets", "w_fresh_share": "share of fresh wallets",
-    "w_top_share": "biggest wallet's share", "max_drop_1m_60": "biggest 1-min drop", "vola_60": "volatility, last hour", "ret_grad": "change since graduation",
+    "w_top_share": "biggest wallet's share", "max_drop_1m_60": "biggest 1-min drop", "vola_60": "volatility, last hour", "regime_hit3": "3x share of coins 2-3 days ago", "regime_eur": "result of coins 2-3 days ago", "ret_grad": "change since graduation",
 }
 R = pd.read_json(os.path.join(S, "partA.json"))
 ch, ho = json.load(open(os.path.join(S, "choice.json"))), json.load(open(os.path.join(S, "holdout.json")))
@@ -37,6 +37,23 @@ doc = {"v": 1, "made": "2026-10-22", "coins": 4738, "rows": 24710, "numbers": 87
        "holds": {c: int(R[(R["comp"] == c) & R["holds"]].shape[0]) for c in ("move_vs_calm", "win_vs_lose", "win_vs_rest")},
        "move": rows("move_vs_calm", 8), "direction": rows("win_vs_lose", 5),
        "score": {"dev": ch["dev"], "dev_gates": ch["dev_gates"], "hold": ho[key], "hold_gates": ho["gates"], "verdict": "fails"}}
+cb = os.path.join(S, "combined_bt.json")
+if os.path.exists(cb):
+    doc["combined"] = json.load(open(cb))
+hc, cc = os.path.join(S, "holdoutC.json"), os.path.join(S, "choiceC.json")
+if os.path.exists(hc):
+    H, C = json.load(open(hc)), json.load(open(cc))
+    sim = json.load(open(os.path.join(S, "simC.json"))) if os.path.exists(os.path.join(S, "simC.json")) else {}
+    keep = lambda o: {k: o.get(k) for k in ("coins", "avg", "lo95", "hi95", "in_profit_of10", "hit3", "rocket10x", "zero")}
+    doc["variants"] = {
+        "base": keep(H["holdout"]["base"]),
+        "A": {"name": "few losers", "cut": 0.05, "dev": keep(C["dev"]["A_0.05"]), "hold": keep(H["holdout"]["A_0.05"]), "sim": sim.get("A_0.05"),
+              "verdict": "fails: never 100 picks on the earlier days; on unseen days 5.9 of 10 in profit but -3.08 per 20 (the losers go to zero)"},
+        "B": {"name": "rocket hunter", "cut": 0.005, "dev": keep(C["dev"]["B_0.005"]), "hold": keep(H["holdout"]["B_0.005"]), "sim": sim.get("B_0.005"),
+              "chosen": keep(H["holdout"]["B_0.02"]),
+              "verdict": "fails as pre-registered (top 2%: -2.78 per 20); the strictest cut (top 0.5%) was positive on both parts but on 28 and 34 coins only"},
+        "C": {"name": "expected profit", "cut": 0.02, "dev": keep(C["dev"]["C_0.02"]), "hold": keep(H["holdout"]["C_0.02"]), "sim": sim.get("C_0.02"),
+              "verdict": "fails: +0.46 per 20 on unseen days, range -5.06 to +7.05"}}
 if len(sys.argv) > 2 and os.path.exists(sys.argv[2]):
     doc["social"] = json.load(open(sys.argv[2]))
 json.dump(doc, open("winlose.json", "w"), indent=1, default=float)

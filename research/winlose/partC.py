@@ -97,5 +97,5 @@ else:
         print("CHOICE", v, c, "PASSES" if ok else "FAILS")
     json.dump({"holdout": out, "verdict": verdict}, open(os.path.join(S, "holdoutC.json"), "w"), default=float)
     # the picks themselves, for the shared simulation
-    for v, c in ch["choice"].items():
-        picks(hold, s_te[v], np.quantile(s_tr[v], 1 - c))[["mint", "ts", "mult", "eur"]].to_pickle(os.path.join(S, "picks_%s.pkl" % v))
+    for v, c in [(v, c) for v in "ABC" for c in CUTS]:
+        picks(hold, s_te[v], np.quantile(s_tr[v], 1 - c))[["mint", "ts", "mult", "eur"]].to_pickle(os.path.join(S, "picks_%s_%g.pkl" % (v, c)))
