@@ -1,0 +1,6 @@
+secret present: True length ok: True
+rpc getSlot status 200 ok
+parsed swaps status 200 n 99
+fields ['accountData', 'description', 'events', 'fee', 'feePayer', 'instructions', 'lighthouseData', 'nativeTransfers', 'signature', 'slot', 'source', 'timestamp', 'tokenTransfers', 'transactionError', 'type']
+feePayer present True tokenTransfers 4 source PUMP_AMM
+time span s 44
