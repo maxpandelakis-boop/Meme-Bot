@@ -155,6 +155,17 @@ def load_memory(d):
         return {}
 
 
+def live_doc(book, now, cut, scored, closed):
+    """The small doc of the app's live row "rocket": the account's summary, the open positions (now and high as multiples), the last
+    10 sells and the round's best 5 scores. Public data only (coins, prices, fake-money results)."""
+    keep = ("addr", "sym", "t", "px", "score", "now", "hi", "lo", "out", "mult", "eur", "why")
+    return {"v": 1, "t": now, "cut": cut, "summary": book.summary(),
+            "open": [{k: p.get(k) for k in keep if k in p} for p in book.open.values()],
+            "closed": [{k: p.get(k) for k in keep if k in p} for p in book.closed[-10:]],
+            "soldNow": [p.get("addr") for p in closed],
+            "top": [{k: r.get(k) for k in ("addr", "sym", "score", "age", "buy")} for r in sorted(scored, key=lambda r: -r["score"])[:5]]}
+
+
 def round_(d, radar_dir, now, mock=None):
     http = Http(mock)
     model = json.load(open(MODEL))
@@ -202,14 +213,6 @@ def round_(d, radar_dir, now, mock=None):
             row["buy"] = True
             log("  paper buy %s (%s) score %.4f >= %.4f at %s" % (c.get("sym"), a, sc, model["cut"], px))
         scored.append(row)
-    buys = [dict(r, cut=model["cut"]) for r in scored if r["buy"]]
-    if buys and not mock:
-        try:
-            import app
-            out = app.notify_rocket(buys, book.summary())
-            log("  push: %s" % {k: v for k, v in (out or {}).items() if k in ("sent", "skipped", "failed")})
-        except Exception as e:
-            log("  push failed: %s" % type(e).__name__)
     # the open positions: their high and low since the last look, the price now, rule A
     closed = []
     for a, pos in list(book.open.items()):
@@ -225,6 +228,19 @@ def round_(d, radar_dir, now, mock=None):
         if out:
             closed.append(out)
             log("  paper sell %s x%.2f (%s) %+.2f" % (out.get("sym"), out["mult"], out["why"], out["eur"]))
+    # one push for the round's paper buys and sells; the account to the app's live store (row "rocket"), so the app can show it
+    # between two scans
+    buys = [dict(r, cut=model["cut"]) for r in scored if r["buy"]]
+    if not mock:
+        try:
+            import app
+            if buys or closed:
+                out = app.notify_rocket(buys, book.summary(), closed)
+                log("  push: %s" % {k: v for k, v in (out or {}).items() if k in ("sent", "skipped", "failed")})
+            if app.enabled():
+                app.put_row("rocket", live_doc(book, now, model["cut"], scored, closed))
+        except Exception as e:
+            log("  push or live row failed: %s" % type(e).__name__)
     for a in [a for a, t in checked.items() if now - (R.num(t) or 0) > 26 * H]:
         checked.pop(a, None)
     scored.sort(key=lambda r: -r["score"])
