@@ -22,6 +22,12 @@ CHART = ["ret_5", "ret_15", "ret_30", "ret_60", "ret_120", "ret_240", "ret_grad"
 WAL = ["r_buyers", "r_sol", "r_top_share", "r_avg_buy", "r_known_share", "r_smart_n", "r_smart_share", "r_smartbig_n", "r_avg_lroi"]
 MKT = ["mc", "liqmc", "volmc", "btc_1h", "btc_24h", "sol_1h", "sol_24h"]
 NUM = CHART + WAL + MKT
+# EXTRA=hour,atomic_60,... adds columns for a variant test (hour/dow from the time of the check); never with --export
+G["hour"] = pd.to_datetime(G["ts"], unit="ms").dt.hour
+G["dow"] = pd.to_datetime(G["ts"], unit="ms").dt.dayofweek
+EXTRA = [c for c in (os.environ.get("EXTRA") or "").split(",") if c]
+assert not (EXTRA and "--export" in sys.argv)
+NUM = NUM + EXTRA
 P = dict(n_estimators=300, learning_rate=0.03, num_leaves=15, min_child_samples=50, subsample=0.8, subsample_freq=1,
          colsample_bytree=0.7, reg_lambda=5.0, verbose=-1, random_state=7)
 DAY = 86_400_000
@@ -84,7 +90,7 @@ if "--export" not in sys.argv:
         print("  weeks:", {w: (s["coins"], s["avg"]) for w, s in r["weeks"].items()})
         print("  fees 0.5/1/2%%: %s %s %s" % (r["fee0.005"]["avg"], r["fee0.01"]["avg"], r["fee0.02"]["avg"]), " late 15/30 min:", r["late15"].get("avg"), r["late30"].get("avg"))
         print("  sim:", sim)
-    json.dump(res, open(os.path.join(S, "rocket_stress.json"), "w"), default=float)
+    json.dump(res, open(os.path.join(S, "rocket_stress%s.json" % ("_" + "+".join(EXTRA) if EXTRA else "")), "w"), default=float)
 else:
     m = lgb.LGBMClassifier(**P).fit(G[NUM], G["rocket"])
     s = m.predict_proba(G[NUM])[:, 1]

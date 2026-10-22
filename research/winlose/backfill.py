@@ -34,6 +34,7 @@ GT_GAP = float(os.environ.get("GT_GAP") or 2.2)
 HL_GAP = float(os.environ.get("HL_GAP") or 0.5)
 CUTS = {"0.5%": None, "1%": None, "2%": None}          # filled from the model's training scores (cutTop 0.5 % is the live one)
 calls = collections.Counter()
+ERRORS = []
 
 
 def log(*a):
@@ -69,6 +70,10 @@ def helius(address, opts):
     calls["helius"] += 1
     j = get(RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTransactionsForAddress", "params": [address, opts]}, HL_GAP)
     res = (j or {}).get("result") if isinstance(j, dict) else None
+    if res is None and len(ERRORS) < 30:
+        e = (j or {}).get("error") if isinstance(j, dict) else None
+        ERRORS.append({"opts": {k: v for k, v in opts.items() if k != "paginationToken"}, "error": e if e else ("no answer" if j is None else str(j)[:200])})
+        log("helius error", ERRORS[-1])
     if isinstance(res, dict):
         n = len(res.get("data") or [])
         calls["credits"] += 10 if opts.get("transactionDetails") == "signatures" else max(10, 10 * math.ceil(n / 100))
@@ -136,11 +141,25 @@ def swap(tx, pool, mint):
 
 
 # ------------------------------------------------------------------------------------------------- step 1: the graduations
+VARIANTS = [
+    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}},
+    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM, "lte": T_TO}}},
+    {"encoding": "json", "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}},
+    {"maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM}}},
+    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0},
+]
+OPTS = {}
+
+
 def cmd_grads(out):
     grads, tok, pages = {}, None, 0
-    while pages < 400:
-        o = {"transactionDetails": "full", "sortOrder": "asc", "limit": 100, "encoding": "jsonParsed", "maxSupportedTransactionVersion": 0,
-             "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}}
+    for v in VARIANTS:
+        if helius(MIG, dict(v, transactionDetails="full", sortOrder="asc", limit=100)) is not None:
+            OPTS.update(v); log("helius options that work:", v); break
+    else:
+        json.dump({"grads": [], "errors": ERRORS, "calls": dict(calls)}, open(out, "w")); log("no option set works"); return
+    while pages < 600:
+        o = dict(OPTS, transactionDetails="full", sortOrder="asc" if "filters" in OPTS else "desc", limit=100)
         if tok:
             o["paginationToken"] = tok
         res = helius(MIG, o)
@@ -154,7 +173,9 @@ def cmd_grads(out):
             g = migration(tx)
             if g and g["mint"] not in grads:
                 grads[g["mint"]] = g
-        if pages == 1 and res.get("data") and calls["outside"] == len(res["data"]):
+        if "filters" not in OPTS and res.get("data") and (res["data"][-1].get("blockTime") or 0) < T_FROM:
+            break
+        if "filters" in OPTS and pages == 1 and res.get("data") and calls["outside"] == len(res["data"]):
             log("grads: the blockTime filter was not applied (first page all outside 9-21 Oct)"); sys.exit(2)
         tok = res.get("paginationToken")
         if not tok or not res.get("data"):
@@ -163,7 +184,7 @@ def cmd_grads(out):
             log("grads page", pages, len(grads))
     day = collections.Counter(dt.datetime.fromtimestamp(g["t"] / 1000, dt.timezone.utc).strftime("%m-%d") for g in grads.values())
     log("graduations", len(grads), "pages", pages, "per day", dict(sorted(day.items())), "calls", dict(calls))
-    json.dump({"from": T_FROM, "to": T_TO, "grads": sorted(grads.values(), key=lambda g: g["t"]), "calls": dict(calls)}, open(out, "w"))
+    json.dump({"from": T_FROM, "to": T_TO, "opts": OPTS, "grads": sorted(grads.values(), key=lambda g: g["t"]), "calls": dict(calls), "errors": ERRORS}, open(out, "w"))
 
 
 # ------------------------------------------------------------------------------------------------- step 2: one shard
@@ -230,7 +251,7 @@ LIMIT = [300]
 
 def last_trades(pool, mint, t, sol):
     """The pool's last 300 transactions before t (one request of 300, or three of 100 if the method allows only 100)."""
-    o = {"transactionDetails": "full", "sortOrder": "desc", "limit": LIMIT[0], "encoding": "jsonParsed",
+    o = {"transactionDetails": "full", "sortOrder": "desc", "limit": LIMIT[0], "encoding": OPTS.get("encoding", "jsonParsed"),
          "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"lt": int(t // 1000)}}}
     data, res = [], helius(pool, o)
     if res is None and LIMIT[0] == 300:
@@ -275,7 +296,9 @@ def hold(cm, t_buy, px):
 
 def cmd_shard(fn, i, n, out):
     i, n = int(i), int(n)
-    G = json.load(open(fn))["grads"][i::n]
+    GD = json.load(open(fn))
+    OPTS.update({k: v for k, v in (GD.get("opts") or {}).items() if k in ("encoding", "maxSupportedTransactionVersion")})
+    G = GD["grads"][i::n]
     if os.environ.get("MAX_COINS"):
         G = G[::max(1, len(G) // int(os.environ["MAX_COINS"]))][:int(os.environ["MAX_COINS"])]
     model = json.load(open(os.path.join(ROOT, "rocket_model.json")))
@@ -335,7 +358,7 @@ def cmd_shard(fn, i, n, out):
         if gi % 100 == 0:
             log("coin %d/%d  universe coins %d  points %d  bought %d  calls %s  %.0f s" % (
                 gi, len(G), sum(1 for c in coins if c.get("pts")), len(rows), sum(len(c.get("bought") or []) for c in coins), dict(calls), time.time() - t_start))
-    json.dump({"shard": i, "n": n, "coins": coins, "rows": rows, "calls": dict(calls), "cuts": cuts}, open(out, "w"))
+    json.dump({"shard": i, "n": n, "coins": coins, "rows": rows, "calls": dict(calls), "cuts": cuts, "errors": ERRORS}, open(out, "w"))
     log("done", dict(calls))
 
 
@@ -366,7 +389,8 @@ def cmd_final(outdir, *files):
         coins += d["coins"]; rows += d["rows"]
         cr.update(d.get("calls") or {})
     res = {"made": int(time.time() * 1000), "graduations": len(coins), "gtMissing": sum(1 for c in coins if c.get("gt") == "none"),
-           "universeCoins": sum(1 for c in coins if c.get("pts")), "points": len(rows), "calls": dict(cr), "cuts": {}}
+           "universeCoins": sum(1 for c in coins if c.get("pts")), "points": len(rows), "calls": dict(cr), "cuts": {},
+           "errors": [e for fn in files for e in (json.load(open(fn)).get("errors") or [])[:5]]}
     for name in ("0.5%", "1%", "2%"):
         b = [x for c in coins for x in c.get("bought") or [] if x["cut"] == name]
         if not b:
