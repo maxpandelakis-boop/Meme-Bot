@@ -992,6 +992,12 @@ def radar_until(t0, deadline_s):
     return t0 + max(0.0, min(RADAR_MAX_S, RADAR_SHARE * float(deadline_s)))
 
 
+def radar_account_on():
+    """The old launch-radar paper account is off since 22 Oct 2026 (the user wants two bots: Pick and the rocket hunter); its data
+    stays. The repository variable MEMEBOT_RADAR_ACCOUNT=1 (scan.yml passes it) switches it back on."""
+    return (os.environ.get("MEMEBOT_RADAR_ACCOUNT") or "0").strip() == "1"
+
+
 def radar_account(d, now, http, mock, until, log):
     """The radar account (radar_paper.py: 3 EUR on each launch-radar round's best 5, sold by the paper rules) first in the run,
     until `until` (radar_until) and at most RADAR_MAX_429 of the run's 429s, then it stops and run's own windows get the rest: the
@@ -999,6 +1005,8 @@ def radar_account(d, now, http, mock, until, log):
     windows, oldest first. With nothing to price it asks nothing and returns at once. Why first: run's windows are at most 60 a
     run from a backlog priced oldest first anyway, while the radar account, priced last, got no request once the 8th 429 had
     given GeckoTerminal up (the peaks logs of 15 Oct). It never fails this run: an error is logged and returned as {"err"}."""
+    if not radar_account_on():
+        return {"off": "the radar account is switched off (only Pick and the rocket hunter trade on paper); MEMEBOT_RADAR_ACCOUNT=1 switches it on"}
     try:
         import radar_paper as RP
         return RP.run(d, now, http=http, mock=mock, until=until, log=log, max_429=RADAR_MAX_429)
