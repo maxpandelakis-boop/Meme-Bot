@@ -1,0 +1,87 @@
+# The evening report ("Tagesbericht", daily.py): one push notification to the iPhone app at about 21:00 Berlin time with today's buys and
+# sales of both paper accounts (Pick and the rocket hunter), their balances, the Pick's shadow rules and the nightly filter search. Fake
+# money only: nothing is bought, and this job writes nothing to any branch (it reads results, rocket-data and filtersearch). It runs at
+# 19:00 and 20:00 UTC; daily.py sends at the first run from 21:00 Berlin (summer and winter time) and only once a Berlin day (the live
+# store's row "daily" keeps the day). The phones' switch "Tagesbericht" decides who gets it. Without the Supabase secrets it sends nothing.
+# By hand (Actions -> Meme-Bot evening report -> Run workflow): "dry" shows the words on the run's page and sends nothing; "send" sends
+# now (still once a day).
+name: Meme-Bot evening report
+on:
+  schedule:
+    - cron: '0 19,20 * * *'          # UTC: 21:00 Berlin in summer (19 UTC) and in winter (20 UTC); the other run that evening does nothing
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry: only show the words; send: send the report now (once a day)'
+        type: choice
+        options: ['dry', 'send']
+        default: 'dry'
+permissions:
+  contents: read
+concurrency:
+  group: memebot-daily
+  cancel-in-progress: false
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONUTF8: '1'
+      HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Get the accounts (results), the rocket hunter's doc (rocket-data) and the filter search (filtersearch), read only
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch results "$REPO_URL" mb || (sleep 10 && git clone -q --depth 1 --branch results "$REPO_URL" mb) || mkdir -p mb
+          for b in rocket-data:rocket.json filtersearch:filtersearch.json; do
+            br=${b%%:*}; f=${b#*:}
+            if git ls-remote --exit-code --heads "$REPO_URL" "$br" >/dev/null; then
+              git fetch -q --depth 1 "$REPO_URL" "$br" && git show FETCH_HEAD:"$f" > "$f" && echo "$f: $(wc -c < "$f") bytes" || rm -f "$f"
+            fi
+          done
+      - name: Install the push sender for the iPhone app (only with the Supabase secrets; a minute at most, the report never depends on it)
+        if: env.HAS_SUPABASE == 'true' && (github.event_name == 'schedule' || inputs.mode == 'send')
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          RESULTS_URL: ''            # the GitHub token stays out of this step
+        run: |
+          # pywebpush 2.5.0 and every package it needs, exactly as pinned in supabase/push-requirements.txt (each file checked against its
+          # sha256; wheels only, so nothing runs while installing; nothing newer is ever fetched), into a folder of its own: the system
+          # Python refuses pip installs into itself (PEP 668) on ubuntu 24.04 and on 26.04 (ubuntu-latest from late October 2026). daily.py
+          # keeps running on the system Python and imports pywebpush from that folder (MEMEBOT_PUSH_LIB, placed after the standard library)
+          # only when it sends the notification. PyPI down or slow: no report tonight.
+          lib=""
+          opts="-q --disable-pip-version-check --no-input --retries 1 --timeout 10 --require-hashes --only-binary=:all: --no-deps -r supabase/push-requirements.txt"
+          if python3 -m venv "$RUNNER_TEMP/pushenv" 2>/dev/null && timeout 60 "$RUNNER_TEMP/pushenv/bin/python" -m pip install $opts; then
+            lib=$("$RUNNER_TEMP/pushenv/bin/python" -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+          elif timeout 60 python3 -m pip install $opts --target "$RUNNER_TEMP/pushlib"; then
+            lib="$RUNNER_TEMP/pushlib"     # no venv module on this runner: pip's --target needs none and is not refused by PEP 668
+          fi
+          # http-ece 1.2.1 has no wheel: its one module comes from its sdist, checked against the sha256 PyPI lists (supabase/pin_push.py
+          # prints it), without running its setup.py
+          ece="$RUNNER_TEMP/http_ece-1.2.1.tar.gz"
+          if [ -n "$lib" ] && timeout 30 curl -fsSL --retry 1 -o "$ece" \
+               "https://files.pythonhosted.org/packages/7c/af/249d1576653b69c20b9ac30e284b63bd94af6a175d72d87813235caf2482/http_ece-1.2.1.tar.gz" \
+             && echo "8c6ab23116bbf6affda894acfd5f2ca0fb8facbcbb72121c11c75c33e7ce8cff  $ece" | sha256sum -c --quiet - \
+             && tar -xzf "$ece" -C "$lib" --strip-components=1 http_ece-1.2.1/http_ece/__init__.py \
+             && MEMEBOT_PUSH_LIB="$lib" python3 -c "import app; app._push_path(); import pywebpush, http_ece, cryptography" 2>/dev/null; then
+            echo "MEMEBOT_PUSH_LIB=$lib" >> "$GITHUB_ENV"
+            echo "pywebpush 2.5.0 ready (pinned, hashes checked): the report can go out"
+          else
+            echo "pywebpush could not be installed: no report tonight"
+          fi
+      - name: The report (sent from 21:00 Berlin, once a day; by hand as chosen)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          MODE: ${{ github.event_name == 'schedule' && 'auto' || inputs.mode }}
+        run: |
+          args=""; [ -f rocket.json ] && args="$args --rocket rocket.json"; [ -f filtersearch.json ] && args="$args --fs filtersearch.json"
+          out=$(python3 daily.py run --dir mb --mode "$MODE" $args)
+          echo "$out"
+          echo "$out" | python3 -c "import json, sys; o = json.loads(sys.stdin.read()); print('## Tagesbericht (%s)\n\n**%s**\n\n%s\n\n%s' % (o.get('mode'), o.get('title', ''), o.get('body', ''), o.get('why') or o.get('err', '')))" >> "$GITHUB_STEP_SUMMARY"

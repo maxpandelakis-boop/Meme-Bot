@@ -1329,6 +1329,8 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memepath/**
 !db/memetrader/
 !db/memetrader/**
+!db/memeshadow/
+!db/memeshadow/**
 """
 
 

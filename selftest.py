@@ -2768,7 +2768,7 @@ var o={};
           " subscriptions an hour, counted in push_sub_log, new ones only from Apple's push service, one at a time under an advisory lock; keys must look like a P-256 key"
           " and 16 bytes; no supabase/migrations and no supabase/config.toml, so Supabase's GitHub integration applies nothing by itself (the SQL is pasted into the SQL Editor)")
     pj = __import__("app").PAGE_JS
-    check("iOS said no" not in pj and "from another browser" in pj and "These two apply once notifications are on." in pj and "applicationServerKey" in pj
+    check("iOS said no" not in pj and "from another browser" in pj and "These apply once notifications are on." in pj and "applicationServerKey" in pj
           and "select(t,'keep')" in pj and "A.badge(d.early,d.young)" in pj and "visibilitychange',back" in pj and "The app refreshes when you come back to it" in pj
           and "\u2014" not in pj and "Add to Home Screen from Safari first" not in pj,
           "the installed app's texts and habits: neutral subscribe errors, the right advice when push is missing, the switches marked as for later while off, "
@@ -4003,6 +4003,8 @@ console.log(JSON.stringify(o));
     selftest_account.account_checks(check, SKIPS)
     import selftest_exits                       # the exit what-if test: other stops and targets replayed on the same trades (exit_grid.py, page_exits.py)
     selftest_exits.checks(check, SKIPS)
+    import selftest_shadow                      # the Pick's shadow rules and the evening report (shadow.py, page_shadow.py, daily.py, daily.yml)
+    selftest_shadow.checks(check)
     import selftest_traders                     # the three paper traders: T1, T2, the learning trader's frozen decisions (traders.py)
     selftest_traders.checks(check, SKIPS)
     import selftest_radarui                     # the Radar tab, the trap-check line and the "no good coin" marks (page_radar.py)

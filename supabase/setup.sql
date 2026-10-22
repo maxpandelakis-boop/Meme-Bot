@@ -114,7 +114,8 @@ alter table public.push_subs add constraint push_subs_sub_ok check (
   and sub->'keys'->>'auth' ~ '^[A-Za-z0-9_-]{22}(==)?$'      -- 16 bytes in base64url
   and length(sub::text) <= 4096
 );
--- settings: {"young": true|false, "pick": true|false}
+-- settings: {"young": true|false, "pick": true|false}; the evening report's switch rides in the subscription itself
+-- (sub->'memebot'->'daily', app.py wants()): push_subs_sub_ok allows it, so this script needs no change for it
 alter table public.push_subs drop constraint if exists push_subs_prefs_ok;
 alter table public.push_subs add constraint push_subs_prefs_ok check (
   jsonb_typeof(prefs) = 'object'

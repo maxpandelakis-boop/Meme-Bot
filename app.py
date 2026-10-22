@@ -16,7 +16,8 @@ one after another.
 
 Push notifications go to the app installed from Safari (iOS 16.4 or newer). The VAPID key pair is made on first use and kept in the
 store: the private key in app_secret (the secret key only), the public key in app_config (the page subscribes with it). The page saves
-its subscription and its two settings (new coins, the pick) with the function save_push_sub. notify reads push_subs with the secret key
+its subscription and its settings (new coins, the pick; the evening report rides in the subscription itself, see wants) with the
+function save_push_sub. notify reads push_subs with the secret key
 and sends one Declarative Web Push message ({"web_push": 8030, "notification": {title, body, navigate}}: iOS 18.4 and newer shows it
 by itself, sw.js shows it on older systems) through pywebpush when it can be imported (else nothing is sent and the log says so once),
 SEND_THREADS at a time, NOTIFY_BUDGET s at most for the pushes (counted once the subscriptions are read). A subscription the push
@@ -34,8 +35,8 @@ pywebpush (and cryptography, which it brings) are imported when a push or the VA
 site-packages folder, put right after the standard library: the scan workflow installs supabase/push-requirements.txt there, every
 package pinned with its sha256).
 
-Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_rocket(buys,
-summary), notify_radar(coins, record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
+Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), wants(row, kind), notify_young(doc), notify_pick(rec),
+notify_rocket(buys, summary), notify_daily(title, body), notify_radar(coins, record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
 and PAGE_JS (the installed app: bottom tab bar, notifications) and SW_JS (sw.js); bot.py site writes them into the website.
 
   python3 app.py check     what is set up (store reachable, VAPID key, subscriptions, pywebpush), without printing any key
@@ -65,8 +66,9 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
     "curve": (300, "high", 60),     # the curve watch's call of a coin still on pump.fun's curve (off unless radar_curve.json switches it on):
                                     # stale within minutes, its own rate guard so it never holds up a green coin's push
     "rocket": (1800, "high", 60),   # the rocket hunter's paper buys of one round (rocket_watch.py), one notification a round
+    "daily": (21600, "normal", 60), # the evening report (daily.py, once a Berlin day at about 21:00): still worth reading late at night
 }
-TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal", "rocket": "rocketbt"}   # the push Topic header per kind:
+TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal", "rocket": "rocketbt", "daily": "dailyrep"}   # the push Topic header per kind:
 # Apple refuses a topic that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
 PREF_OF = {"radar": "young", "curve": "young", "rocket": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
@@ -674,6 +676,21 @@ def _settle(ok_eps, net_rows, heard, until):
         say("push: the delivered marks were not saved (%s)" % type(e).__name__, once="settle-x")
 
 
+def wants(row, kind):
+    """Whether a saved subscription wants notifications of kind: its setting (prefs[PREF_OF.get(kind, kind)]) unless that is false. A
+    setting setup.sql's save_push_sub does not keep (it keeps young and pick only) rides in the saved subscription itself, under
+    "memebot" (the page puts {"daily": true|false} there; setup.sql stores the subscription whole and allows that), so a new switch
+    needs no SQL change; no setting at all reads as on."""
+    key = PREF_OF.get(kind, kind)
+    prefs = row.get("prefs") if isinstance(row.get("prefs"), dict) else {}
+    v = prefs.get(key)
+    if not isinstance(v, bool):
+        sub = row.get("sub") if isinstance(row.get("sub"), dict) else {}
+        extra = sub.get("memebot") if isinstance(sub.get("memebot"), dict) else {}
+        v = extra.get(key)
+    return v is not False
+
+
 def notify(kind, title, body, url=None):
     """One notification of kind ("young": new coins listed, "pick": the pick is made, "radar": a launch radar coin without a trap found,
     "test") to every saved subscription whose settings want it (prefs[PREF_OF.get(kind, kind)] not false: the radar follows "young").
@@ -724,8 +741,7 @@ def notify(kind, title, body, url=None):
     for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict) or not _sub_ok(row.get("sub")):
             continue
-        prefs = row.get("prefs") if isinstance(row.get("prefs"), dict) else {}
-        if kind != "test" and prefs.get(PREF_OF.get(kind, kind)) is False:
+        if kind != "test" and not wants(row, kind):
             continue
         targets.append(row)
     results, nxt, lk, begun = [None] * len(targets), [0], threading.Lock(), [False] * len(targets)
@@ -1002,6 +1018,17 @@ def notify_rocket(buys, summary=None, sells=None):
     return notify("rocket", words[0], words[1], "#tab-radar")
 
 
+def notify_daily(title, body):
+    """The evening report (kind "daily", daily.py's words: today's buys and sales of both paper accounts, their balances, the shadow rules
+    and the filter search); it opens the Start tab. The phones' "Tagesbericht" switch decides (prefs "daily", wants())."""
+    t, b = _line(title or ""), _line(body or "")
+    if not t or not b:
+        return {"skipped": "no words"}
+    if NO_ADVICE.search(t + " " + b):
+        return {"skipped": "advice words"}
+    return notify("daily", t, b, "#tab-home")
+
+
 def notify_radar(coins, record=None):
     """The launch radar's notification (kind "radar") for the coins of one radar cycle that passed every check (the radar decides that:
     rated good, no holder cluster, nothing unknown, pool under 10 minutes, once per coin, at most 4 an hour), in radar_words' words
@@ -1252,8 +1279,8 @@ function label(t){var b=btns[t];if(!b)return;var c=b.querySelector('.ab-cnt'),d=
 function newBadge(){var k=A.newBadge(counts.radar,counts.early);mark('young','ab-cnt',!!k,k?String(k.n):null);
   var e=btns.young&&btns.young.querySelector('.ab-cnt');if(e)e.classList.toggle('good',!!(k&&k.good));label('young');}
 // ---- notifications
-var P={reg:null,key:null,sub:null,saved:false,error:'',quiet:'',hint:'',busy:false,ready:false},prefs={young:true,pick:true},ui={};
-try{var pp=JSON.parse(ls('memebot-push-prefs')||'null');if(pp&&typeof pp==='object')['young','pick'].forEach(function(k){if(typeof pp[k]==='boolean')prefs[k]=pp[k];});}catch(e){}
+var P={reg:null,key:null,sub:null,saved:false,error:'',quiet:'',hint:'',busy:false,ready:false},prefs={young:true,pick:true,daily:true},ui={};
+try{var pp=JSON.parse(ls('memebot-push-prefs')||'null');if(pp&&typeof pp==='object')['young','pick','daily'].forEach(function(k){if(typeof pp[k]==='boolean')prefs[k]=pp[k];});}catch(e){}
 function perm(){try{return window.Notification?Notification.permission:'default';}catch(e){return 'default';}}
 function state(){return A.pushState({sw:'serviceWorker' in navigator,push:'PushManager' in window,notif:'Notification' in window,store:!!store,why:root.getAttribute('data-sb-why'),key:P.key,perm:perm(),sub:P.sub,saved:P.saved,error:P.error});}
 function why(e){return e&&e.message?String(e.message).slice(0,80):String(e&&e.name||e||'unknown error').slice(0,80);}
@@ -1269,9 +1296,10 @@ function getKey(tap){return sb('app_config?select=value&key=eq.vapid_public_key'
   function(e){P.key=null;if(tap)P.error='the live store did not answer ('+why(e)+')';else P.quiet='The live store did not answer just now ('+why(e)+'). Tap Try again, or come back later.';});}
 function bytes(s){s=s.replace(/-/g,'+').replace(/_/g,'/');s+='==='.slice((s.length+3)%4);var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
 // save the subscription and its settings; tap: a failure is an error the card shows (the tap did not work), else (the quiet save at every
-// start) it only adds a note and is tried again when the app comes back
+// start) it only adds a note and is tried again when the app comes back. The evening report's switch rides in the subscription itself
+// (memebot.daily): setup.sql keeps the subscription whole but only young and pick of the settings (app.wants reads it there)
 function save(tap){
-  var j=P.sub.toJSON(),old=ls('memebot-push-ep');
+  var j=P.sub.toJSON(),old=ls('memebot-push-ep');j.memebot={daily:prefs.daily!==false};
   return sb('rpc/save_push_sub',{p_sub:j,p_prefs:prefs}).then(function(){P.saved=true;P.error='';P.quiet='';ls('memebot-push-ep',j.endpoint);ls('memebot-push-key',P.key||'');ls('memebot-push-on','1');
     if(old&&old!==j.endpoint)sb('rpc/drop_push_sub',{p_sub:{endpoint:old}}).catch(function(){});},
     function(e){P.saved=false;if(tap)P.error='the subscription was not saved ('+why(e)+')';
@@ -1315,19 +1343,20 @@ function card(){
   var pa=doc.getElementById('pane-account'),TK={pick:pa&&pa.getAttribute('data-tk-pick')||'50 €',radar:pa&&pa.getAttribute('data-tk-radar')||'10 €'};
   var sec=el('section','appnotif'),head=el('div','sec-head'),c=el('div','card');
   head.appendChild(el('h2','','Notifications'));     // fake money is said at the top of the page and of the tab
-  // compact: one row with the state and the button, the note, the two switches behind "Which notifications" (the Start tab stays short)
+  // compact: one row with the state and the button, the note, the switches behind "Which notifications" (the Start tab stays short)
   var top=el('div','nf-top');ui.chip=el('span','chip');ui.note=el('p','nf-note');ui.btn=el('button','nf-btn');ui.btn.type='button';top.appendChild(ui.chip);top.appendChild(ui.btn);
   ui.btn.addEventListener('click',function(){if(state()==='on')turnOff();else turnOn();});
   ui.which=el('details','nf-which');var ws=el('summary','','Which notifications');ui.wsum=el('small');ws.appendChild(ui.wsum);ui.which.appendChild(ws);
   ui.prefs=el('div','nf-prefs');
-  [['young','Radar: coin found without traps (bought on paper for '+TK.radar+')','a push when the launch radar finds one'],['pick','The pick (bought on paper for '+TK.pick+')','at the end of each scan']].forEach(function(p){
+  [['young','Radar: coin found without traps (bought on paper for '+TK.radar+')','a push when the launch radar finds one'],['pick','The pick (bought on paper for '+TK.pick+')','at the end of each scan'],
+   ['daily','Tagesbericht um 21 Uhr','Käufe, Verkäufe und beide Konten des Tages, Schatten-Regeln, Filtersuche']].forEach(function(p){
     var row=el('label','nf-row'),sp=el('span'),inp=el('input');sp.appendChild(el('b','',p[1]));sp.appendChild(el('small','',p[2]));
     inp.type='checkbox';inp.setAttribute('role','switch');inp.checked=prefs[p[0]];inp.setAttribute('data-pref',p[0]);
     inp.addEventListener('change',function(){var was=prefs[p[0]];prefs[p[0]]=inp.checked;ls('memebot-push-prefs',JSON.stringify(prefs));
       if(P.sub&&state()==='on'){P.busy=true;render();save(false).then(function(){P.busy=false;
         if(!P.saved){prefs[p[0]]=was;ls('memebot-push-prefs',JSON.stringify(prefs));P.quiet='That change was not saved: the live store did not answer. Try again in a moment.';}render();});}});   // not saved: the switch goes back
     row.appendChild(sp);row.appendChild(inp);ui.prefs.appendChild(row);});
-  ui.pnote=el('p','nf-small','These two apply once notifications are on.');
+  ui.pnote=el('p','nf-small','These apply once notifications are on.');
   ui.small=el('p','nf-small','If notifications stop arriving, turn them off and on again here. A Focus mode can hide them; allow Meme-Bot in its settings.');
   [ui.prefs,ui.pnote,ui.small].forEach(function(x){ui.which.appendChild(x);});
   [top,ui.note,ui.which].forEach(function(x){c.appendChild(x);});
@@ -1342,7 +1371,7 @@ function render(){
   ui.btn.hidden=!t[3]&&!retry;ui.btn.textContent=P.busy?'One moment':retry?'Try again':t[3];ui.btn.disabled=P.busy||!P.ready&&s!=='unsupported';ui.btn.classList.toggle('quiet',s==='on');
   ui.which.hidden=['on','off','error'].indexOf(s)<0;ui.pnote.hidden=s==='on';     // not on yet: the note under the switches says they are for later
   all('input',ui.prefs).forEach(function(i){i.disabled=P.busy;i.checked=prefs[i.getAttribute('data-pref')];});
-  ui.wsum.textContent=prefs.young&&prefs.pick?'radar and pick':prefs.young?'radar only':prefs.pick?'pick only':'none';
+  ui.wsum.textContent=[prefs.young&&'radar',prefs.pick&&'pick',prefs.daily&&'Tagesbericht'].filter(Boolean).join(', ')||'none';
   ui.small.hidden=s!=='on';
   if(ui.bell){ui.bell.setAttribute('data-on',s==='on'?'1':'0');ui.bell.setAttribute('aria-label','Notifications: '+t[0]);var i=ui.bell.querySelector('i');
     if(s==='on'&&!i)ui.bell.appendChild(el('i'));if(s!=='on'&&i)ui.bell.removeChild(i);}
