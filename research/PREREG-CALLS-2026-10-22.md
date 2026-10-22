@@ -87,3 +87,13 @@ The same 18 variants and rule A are replayed on it (check_calls.py ext) with the
 - The "winrate" numbers use 16 h after the call (1000 minutes of candles), not 24 h.
 Reported per period (25 Apr-9 Aug, 9-21 Oct) and together, with the same columns. It decides nothing new: a variant would only
 count if it held here AND in history2.
+
+## Addendum 2, 22 Oct ~18:45 UTC (before any candle of the extra days was fetched)
+Helius' migration account carries far more transactions than graduations from late May on (25 May-25 Jun: 11,250 pages of 100
+transactions held only 4,838 graduations when the 2 h limit stopped the job), so the lists of 25 May-24 Jun and 25 Jul-9 Aug
+did not finish; listing them again would cost several hundred thousand more Helius credits. The extra days are therefore
+25 Apr-24 May, 25 Jun-24 Jul and 9-21 Oct (36,373 graduations listed). To spend the GeckoTerminal calls on coins the test can
+use, the daily sample of at most 300 is now drawn among the normal migrations only (the rule of addendum 1: start reserves
+within 5% of the most common ones before / from 9 Oct, 85.0 and 67.4 SOL), instead of among all graduations. Nothing else changes.
+Seen on the lists (no outcome): from about 22 Jul a second kind of migration with 67.4 SOL appears next to the 85 SOL one, and
+from 9 Oct only 67.4 SOL; before 9 Oct the 67.4 SOL coins are left out by the rule.

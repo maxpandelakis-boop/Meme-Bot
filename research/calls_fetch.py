@@ -2,6 +2,8 @@
 period from Helius, and each pool's one-minute candles of its first 1000 minutes from GeckoTerminal (free: the last 6 months).
   grads <from YYYY-MM-DD> <to YYYY-MM-DD> <out.json>   every graduation (mint, PumpSwap pool, time, start reserves) in [from, to)
   plan <out.json> <per_day> <grads files...>           joins the lists; days before 9 Oct keep a random sample of per_day (seed 7)
+                                                       among the normal migrations (NORMAL=1, addendum 2: start reserves within
+                                                       5% of the most common ones before / from 9 Oct)
   shard <plan.json> <i> <n> <out.json.gz>              pools i, i+n, ...: {pool: [[t_ms, o, h, l, c, v_usd], ...]}
 Env HK = Helius key (never printed or written), GT_GAP = seconds between GeckoTerminal calls."""
 import collections, datetime as dt, gzip, json, os, random, sys
@@ -53,6 +55,13 @@ def cmd_plan(out, per_day, *files):
     for f in files:
         for g in json.load(open(f)).get("grads") or []:
             allg.setdefault(g["mint"], g)
+    if os.environ.get("NORMAL"):
+        mode = {}
+        for per in (False, True):
+            c = collections.Counter(round(g["sol0"], 1) for g in allg.values() if (g["t"] >= FULL_FROM) == per)
+            mode[per] = c.most_common(1)[0][0] if c else None
+        allg = {k: g for k, g in allg.items() if mode[g["t"] >= FULL_FROM] and abs(g["sol0"] / mode[g["t"] >= FULL_FROM] - 1) <= 0.05}
+        B.log("normal start reserves", mode, "normal graduations", len(allg))
     by_day = collections.defaultdict(list)
     for g in sorted(allg.values(), key=lambda g: g["t"]):
         by_day[g["t"] // 86_400_000].append(g)
