@@ -831,8 +831,14 @@ def _s6(check, scan, tmp):
     a, b, d_ = (step_index(job, n) for n in ("Import the launch radar's records", "Feed the launch radar", "Start the launch radar"))
     sa, sb, sd = (job["steps"][i] if i >= 0 else {} for i in (a, b, d_))
     check(scan.get("concurrency") == {"group": "memebot-scan", "cancel-in-progress": False} and scan.get("permissions") == {"contents": "write", "actions": "write"}
-          and all(x >= 0 for x in pos) and pos == sorted(pos) and len(names) == len(BASE_STEPS) + 4 and job.get("timeout-minutes") == 55,
-          "every step of the scan job from before is still there, in its order, plus four new ones (the radar's three, the snapshots' save); the workflow-level group and permissions are unchanged")
+          and all(x >= 0 for x in pos) and pos == sorted(pos) and len(names) == len(BASE_STEPS) + 5 and job.get("timeout-minutes") == 55,
+          "every step of the scan job from before is still there, in its order, plus five new ones (the radar's three, the snapshots' save, the "
+          "filter search's doc); the workflow-level group and permissions are unchanged")
+    f_ = step_index(job, "The nightly filter search's result for the page")
+    sf = job["steps"][f_] if f_ >= 0 else {}
+    check(f_ >= 0 and f_ + 1 == step_index(job, "Build the website folder") and sf.get("continue-on-error") is True and sf.get("timeout-minutes") == 1
+          and "filtersearch.json > mb/db/memebot/filtersearch.json" in (sf.get("run") or "") and "push" not in (sf.get("run") or ""),
+          "the filter search's doc is copied into the page right before the website is built: read only (no push), continue-on-error, 1 min at most")
     check(pos[2] < a < pos[3] and b == pos[7] + 1 and d_ == 1 and pos[0] == 0
           and sa.get("continue-on-error") is True and sa.get("timeout-minutes") == 1 and sa.get("if") == "steps.recent.outputs.skip != 'true'"
           and sb.get("continue-on-error") is True and sb.get("timeout-minutes") == 3 and sb.get("if") == "steps.recent.outputs.skip != 'true'"

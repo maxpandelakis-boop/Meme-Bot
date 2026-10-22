@@ -651,6 +651,10 @@ OFFICE_AGENTS = {   # id: (name on the page, what it does, the outside services 
 OFFICE_AGENTS["radar"] = ("Launch radar", "rates every coin whose pool is under 10 minutes old in one quick round after each scan, in its own job; only coins without traps are shown and pushed",
                           ("DexScreener", "pump.fun", "GeckoTerminal", "Jupiter", "RugCheck", "Solana RPC", "LaunchLab"))
 try:
+    import forecast as FC     # the look-alike forecast for the pick (display only): Pick tab, Details
+except ImportError:
+    FC = None
+try:
     import filter_team as FT  # the gates as a team of single bots with report cards: the Pick tab's Details, in place of the old coin test
 except ImportError:           # a copy of the code without filter_team.py: the coin test as before it
     FT = None
@@ -1954,6 +1958,67 @@ def pick_heading(picks):
     if tier in ("watch", "none"):
         return "No pick this scan"
     return ("Risky pick for the next %s" if tier in ("risky", "fallback") else "The pick for the next %s") % horizon_text()
+
+
+def search_block(D):
+    """The nightly filter search (page_search.py, a report: frozen rules tested on coins they never saw) in the Pick tab's Details; its
+    old place, the account block, is no longer on the page. Nothing without the module."""
+    try:
+        import page_search as PS
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PS.section(D)
+
+
+def winlose_block():
+    """The winner/loser study (page_winlose.py, display only: which numbers come before big moves, and the few that tell the
+    way) in the Pick tab's Details under the filter search. Nothing without the module."""
+    try:
+        import page_winlose as PW
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PW.section()
+
+
+def forecast_section(D):
+    """What coins that looked like the pick did next (forecast.py, display only: it changes no pick and no sell rule), with how well
+    these forecasts hit in their own backtest and on the bot's own picks."""
+    rc = D.get("rec") or {}
+    picks = [c for c in rc.get("picks") or [] if isinstance(c, dict)]
+    if not picks:
+        return ""
+    p = picks[0]
+    fc = FC.forecast(p.get("f"))
+    head = "Look-alike forecast: %s" % E(str(p.get("sym") or "the pick"))
+    sub = "what coins that looked like it at the scan did next, August to October 2026 · display only, it changes no pick"
+    if not fc:
+        return section(head, sub, '<div class="empty">No forecast: too few of the numbers it compares are known for this coin, or the reference file is missing.</div>')
+    pc, b = FC.pct, fc["base"]
+    lo, mid, hi = fc["m1"]
+    rows = [("1.7 hours later (the 2h check)", "%.2fx to %.2fx, middle %.2fx" % (lo, hi, mid), "8 of 10 look-alikes ended in this range"),
+            ("in profit after fees at 1.7 h", pc(fc["profit"]), "all coins of the data: %s" % pc(b["profit"])),
+            ("to zero within 1.7 h", pc(fc["zero"]), "all coins of the data: %s" % pc(b["zero"])),
+            ("2x at some point within 6 h", pc(fc["x2"]), "all coins of the data: %s" % pc(b["x2"])),
+            ("3x at some point within 6 h", pc(fc["x3"]), "all coins of the data: %s" % pc(b["x3"]))]
+    table = '<table class="fc"><tbody>%s</tbody></table>' % "".join(
+        '<tr><td>%s</td><td class="num"><b>%s</b></td><td class="sub">%s</td></tr>' % (E(a), E(v), E(n)) for a, v, n in rows)
+    ck = fc.get("check") or {}
+    bt, bp = ck.get("backtest") or {}, ck.get("bot_picks") or {}
+    honest = []
+    cal = (bp.get("profit") or {}).get("cal") or []
+    if bp.get("n") and len(cal) == 5:
+        honest.append("Checked on the bot's own %d top picks since 7 October: the fifth with the best forecast said %s in profit and %s were, "
+                      "the worst fifth said %s and %s were; the 8-of-10 range held %s of them." % (
+                          bp["n"], pc(cal[4][0]), pc(cal[4][1]), pc(cal[0][0]), pc(cal[0][1]), pc(bp.get("range_hit") or 0)))
+    zc = (bp.get("zero") or {}).get("cal") or []
+    if zc:
+        honest.append("Its chance of going to zero runs high: it said %s to %s, and %s to %s of those picks went to zero." % (
+            pc(min(x[0] for x in zc)), pc(max(x[0] for x in zc)), pc(min(x[1] for x in zc)), pc(max(x[1] for x in zc))))
+    if bt.get("n"):
+        honest.append("The 2x and 3x chances were only checked on the data's own last three weeks (%d coins), where they were a little better "
+                      "than the plain average." % bt["n"])
+    note = '<p class="note">%s A forecast from look-alikes is a count of what happened to similar coins, never a promise; fake money only.</p>' % E(" ".join(honest))
+    return section(head, sub + " · %d look-alikes" % fc["n"], table + note)
 
 
 def rec_section(D, embed):
@@ -3337,13 +3402,14 @@ def render(data, fragment=False):
         # office). CSS-only, so the fragment works without scripts; nothing of the account sits outside the panes. The old links (#tab-radar,
         # #radar, #new) open Radar (page_radar.py's script; app.py PAGE_JS in the installed app)
         sw = M.switch_at()
-        rest = [safe("profit", lambda: profit_section(D)), safe("training", lambda: train_section(D)),
+        rest = [safe("forecast", lambda: forecast_section(D)) if FC else "", safe("profit", lambda: profit_section(D)), safe("training", lambda: train_section(D)),
                 (safe("filter team", lambda: FT.section(D, sys.modules[__name__])) if FT else
                  section("Coin test: %s later" % hz, "what 20 € in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D)))),
+                safe("filter search", lambda: search_block(D)), safe("winners vs losers", winlose_block),
                 safe("candidates", candidates), safe("weights", lambda: weights_section(D))]
         if D["runs"]:
             rest.append(safe("run log", runlog))
-        details = fold("Details", "tip record, training, filter team, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
+        details = fold("Details", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D)) + details
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""

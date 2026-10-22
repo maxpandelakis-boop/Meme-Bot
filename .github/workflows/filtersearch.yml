@@ -1,0 +1,52 @@
+# The nightly filter search (filter_search.py): learns a rule from every scan so far, the day's picks included, freezes it, and tests
+# every frozen rule only on coins that came after it. Fake money only: nothing is bought, nothing the scan, the trader or the training
+# reads is written; the bot keeps its gates and its sell rule. The result goes to its own branch "filtersearch" (filtersearch.json for
+# the page, filtersearch-state.json with the frozen rules); the scan job copies the doc into the page. Its own branch and its own
+# concurrency group: it never writes the results branch and never holds up a scan.
+name: Meme-Bot filter search
+on:
+  schedule:
+    - cron: '50 6 * * *'             # UTC, after the 06 UTC scan has exported the day's big test to the bigtest branch
+  workflow_dispatch:
+permissions:
+  contents: write                    # the filtersearch branch only
+concurrency:
+  group: memebot-filtersearch
+  cancel-in-progress: false
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install numpy
+        run: python3 -m pip install -q numpy
+      - name: Get the big test and the frozen rules
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git fetch -q --depth 1 "$REPO_URL" bigtest
+          mkdir -p bt && git archive FETCH_HEAD | tar -x -C bt
+          if ls bt/memesnapres.tgz.part-* >/dev/null 2>&1; then cat bt/memesnapres.tgz.part-* | tar -xz -C bt; else tar -xzf bt/memesnapres.tgz -C bt; fi
+          rm -f bt/memesnapres.tgz*
+          echo "big test: $(ls bt/memesnapres | wc -l) snapshot chunks"
+          if git ls-remote --exit-code --heads "$REPO_URL" filtersearch >/dev/null; then
+            git clone -q --depth 1 --branch filtersearch "$REPO_URL" fs
+          else
+            mkdir fs && git -C fs init -q && git -C fs checkout -q -b filtersearch
+          fi
+      - name: Search, freeze, test (local computation, no requests)
+        timeout-minutes: 25
+        run: python3 filter_search.py run --snaps bt/memesnapres --out fs --study research/SEARCH-STUDY.json
+      - name: Push the result to the filtersearch branch
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd fs
+          git add filtersearch.json filtersearch-state.json
+          git -c user.name=memebot -c user.email=memebot@localhost commit -q -m "filter search $(date -u +%Y-%m-%d)" || echo "nothing new"
+          git push -q "$REPO_URL" HEAD:filtersearch

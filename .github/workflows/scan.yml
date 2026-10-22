@@ -520,6 +520,19 @@ jobs:
             echo "## Scan ${{ steps.scan.outcome }}: the picks below are from an earlier run" >> "$GITHUB_STEP_SUMMARY"
           fi
           python3 bot.py summary >> "$GITHUB_STEP_SUMMARY"
+      - name: The nightly filter search's result for the page (read only; filter_search.py writes it on its own branch)
+        if: steps.recent.outputs.skip != 'true'
+        continue-on-error: true      # a report: without it the page shows "no search yet"
+        timeout-minutes: 1
+        env:
+          RESULTS_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          if git ls-remote --exit-code --heads "$RESULTS_URL" filtersearch >/dev/null; then
+            git fetch -q --depth 1 "$RESULTS_URL" filtersearch && mkdir -p mb/db/memebot && git show FETCH_HEAD:filtersearch.json > mb/db/memebot/filtersearch.json \
+              && echo "filter search doc copied ($(wc -c < mb/db/memebot/filtersearch.json) bytes)"
+          else
+            echo "no filter search yet"
+          fi
       - name: Build the website folder
         if: steps.recent.outputs.skip != 'true'
         env:
