@@ -105,9 +105,21 @@ def sym(p, a=None):
     return str(p.get("sym") or str(p.get("addr") or a or "?")[:6])[:14]
 
 
+def chart_div(p, closed=False):
+    """The position's price line for LIVE_JS's chart (it draws every [data-rk-ch], with or without the live store): the points
+    [minutes since the buy, multiple], and for a sell its minute and multiple. Numbers only."""
+    pts = [[int(m), round(float(v), 4)] for m, v in (p.get("chart") or []) if num(m) is not None and num(v) is not None][-400:]
+    if len(pts) < 2 and not closed:
+        return '<div class="rk-ch" data-rk-ch="[]"></div>'
+    end = ""
+    if closed and num(p.get("out")) and num(p.get("t")):
+        end = ' data-rk-end="%d,%s"' % (int((num(p["out"]) - num(p["t"])) // 60_000), round(num(p.get("mult")) or 0.0, 4))
+    return '<div class="rk-ch" data-rk-ch="%s"%s></div>' % (E(json.dumps(pts, separators=(",", ":"))), end)
+
+
 def open_li(PH, p, a=None):
-    return '<li><b>%s</b><span>gekauft bei Score %s · jetzt x%s · Hoch x%s</span></li>' % (
-        E(sym(p, a)), E(PH.de_num(num(p.get("score")) or 0, 3)), E(PH.de_num(num(p.get("now")) or 1.0)), E(PH.de_num(num(p.get("hi")) or 1.0)))
+    return '<li><b>%s</b><span>gekauft bei Score %s · jetzt x%s · Hoch x%s</span>%s</li>' % (
+        E(sym(p, a)), E(PH.de_num(num(p.get("score")) or 0, 3)), E(PH.de_num(num(p.get("now")) or 1.0)), E(PH.de_num(num(p.get("hi")) or 1.0)), chart_div(p))
 
 
 def sold_li(PH, p):
@@ -119,8 +131,8 @@ def sold_li(PH, p):
         at = ""
     v = num(p.get("eur")) or 0.0
     bits = ["x" + PH.de_num(num(p.get("mult")) or 0.0), WHY.get(str(p.get("why") or ""), str(p.get("why") or "")), at]
-    return '<li class="%s"><b>%s</b><span>%s</span><em>%s</em></li>' % (
-        PH.tone(v), E(sym(p)), E(" · ".join(b for b in bits if b)), E(PH.de_eur(v, True)))
+    return '<li class="%s"><b>%s</b><span>%s</span><em>%s</em>%s</li>' % (
+        PH.tone(v), E(sym(p)), E(" · ".join(b for b in bits if b)), E(PH.de_eur(v, True)), chart_div(p, True) if p.get("chart") else "")
 
 
 def section(D):
@@ -211,7 +223,17 @@ CSS = r"""
 @keyframes rkNew { 0% { box-shadow:0 0 0 0 color-mix(in srgb,var(--nn1) 60%,transparent) } 100% { box-shadow:0 0 0 10px transparent } }
 .rk-live { display:flex; align-items:center; gap:6px; color:var(--fg2) } .rk-live::before, .hm-live::before { content:""; width:7px; height:7px; border-radius:50%;
   background:var(--good); box-shadow:0 0 8px var(--good); flex:none }
-@media (prefers-reduced-motion:reduce) { .rk-sold li.new, .rk-op li.new { animation:none } }
+.rk-op li { gap:4px } .rk-ch { grid-column:1 / -1; min-width:0; margin-top:4px } .rk-ch svg { display:block; width:100%; height:auto; overflow:visible }
+.rk-ch-wait { font-size:11px; color:var(--muted) }
+.rk-svg .ln { fill:none; stroke-width:1.8; stroke-linejoin:round; stroke-linecap:round } .rk-svg.up .ln { stroke:var(--good) } .rk-svg.dn .ln { stroke:var(--bad) }
+.rk-svg .g0 { stop-opacity:.28 } .rk-svg.up .g0, .rk-svg.up .g1 { stop-color:var(--good) } .rk-svg.dn .g0, .rk-svg.dn .g1 { stop-color:var(--bad) } .rk-svg .g1 { stop-opacity:0 }
+.rk-svg .lv { stroke-width:1; stroke-dasharray:3 3; stroke:var(--muted) } .rk-svg .lv.stop { stroke:var(--bad) } .rk-svg .lv.goal { stroke:var(--good) }
+.rk-svg text { font:10px/1 system-ui, sans-serif; fill:var(--muted) } .rk-svg .lt.stop { fill:var(--bad) } .rk-svg .lt.goal { fill:var(--good) }
+.rk-svg .lx { fill:var(--fg); font-weight:600 } .rk-svg .pb { fill:var(--accent) } .rk-svg .pn { fill:var(--fg) } .rk-svg.up .ps { fill:var(--good) } .rk-svg.dn .ps { fill:var(--bad) }
+.rk-svg .pulse { fill:var(--nn1); opacity:.35; transform-box:fill-box; transform-origin:center; animation:rkPulse 1.6s ease-out infinite }
+@keyframes rkPulse { 0% { transform:scale(.5); opacity:.6 } 100% { transform:scale(1.8); opacity:0 } }
+.rk-sold li .rk-ch { grid-column:1 / -1; grid-row:3 }
+@media (prefers-reduced-motion:reduce) { .rk-sold li.new, .rk-op li.new, .rk-svg .pulse { animation:none } }
 .rk-tl { list-style:none; margin:0 0 6px; padding:0; display:grid; gap:8px } .rk-tl li { display:grid; gap:1px; font-size:var(--fs-s) }
 .rk-tl li span { color:var(--fg2); font-size:var(--fs-xs); overflow-wrap:anywhere }
 @media (max-width:560px) { .rk { padding:12px 12px 8px } .rk-acct { grid-template-columns:1fr } }
@@ -226,6 +248,45 @@ LIVE_JS = r"""
 (function(){
   var root=document.documentElement,url=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),key=root.getAttribute('data-sb-key')||'';
   var boxes=[].slice.call(document.querySelectorAll('[data-rk-box]'));
+  var NS='http://www.w3.org/2000/svg',W=300,HT=96,PL=4,PR=58,PT=8,PB=16;
+  function sv(tag,at,txt){var e=document.createElementNS(NS,tag);for(var k in at)e.setAttribute(k,at[k]);if(txt!=null)e.textContent=txt;return e;}
+  function dex(v,d){return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toFixed(d).replace('.',',');}
+  // one position's price line: log scale, the buy (1x) and the stop (0.7x) as dashed lines, 11x when the line comes near it, the buy
+  // as a dot at minute 0, the sell (data-rk-end) as a dot at its minute, an open position's last point pulsing
+  function draw(div){
+    var pts;try{pts=JSON.parse(div.getAttribute('data-rk-ch')||'[]');}catch(e){pts=[];}
+    pts=(Array.isArray(pts)?pts:[]).filter(function(q){return Array.isArray(q)&&isFinite(q[0])&&isFinite(q[1])&&q[1]>0;});
+    var end=String(div.getAttribute('data-rk-end')||'').split(','),em=parseFloat(end[0]),ev=parseFloat(end[1]),sold=isFinite(em);
+    if(sold&&isFinite(ev)&&ev>0)pts.push([em,ev]);
+    div.textContent='';
+    if(pts.length<2){div.appendChild(el('small','rk-ch-wait','Kursverlauf erscheint nach dem ersten Minuten-Check'));return;}
+    var xs=pts.map(function(q){return q[0];}),vs=pts.map(function(q){return q[1];});
+    var x1=Math.max(30,Math.max.apply(null,xs)),lo=Math.min(0.62,Math.min.apply(null,vs)*0.95),hi=Math.max(1.3,Math.max.apply(null,vs)*1.12);
+    if(hi>7)hi=Math.max(hi,12);
+    var L=Math.log,X=function(m){return PL+(W-PL-PR)*m/x1;},Y=function(v){return PT+(HT-PT-PB)*(L(hi)-L(Math.max(v,1e-6)))/(L(hi)-L(lo));};
+    var last=pts[pts.length-1],up=last[1]>=1,svg=sv('svg',{viewBox:'0 0 '+W+' '+HT,'class':'rk-svg '+(up?'up':'dn'),role:'img','aria-label':'Kursverlauf seit dem Kauf'});
+    var gid='rkg'+Math.random().toString(36).slice(2,8),g=sv('linearGradient',{id:gid,x1:0,y1:0,x2:0,y2:1});
+    g.appendChild(sv('stop',{offset:'0','class':'g0'}));g.appendChild(sv('stop',{offset:'1','class':'g1'}));var df=sv('defs',{});df.appendChild(g);svg.appendChild(df);
+    function lvl(v,cls,txt){if(v<lo||v>hi)return;var y=Y(v).toFixed(1);svg.appendChild(sv('line',{x1:PL,x2:W-PR,y1:y,y2:y,'class':'lv '+cls}));
+      svg.appendChild(sv('text',{x:W-PR+4,y:(+y+3).toFixed(1),'class':'lt '+cls},txt));}
+    lvl(1,'buy','Kauf 1x');lvl(0.7,'stop','Stopp');if(hi>=11)lvl(11,'goal','Ziel 11x');
+    var d=pts.map(function(q,i){return (i?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1);}).join(' ');
+    svg.appendChild(sv('path',{d:d+' L'+X(last[0]).toFixed(1)+' '+(HT-PB)+' L'+X(pts[0][0]).toFixed(1)+' '+(HT-PB)+' Z',fill:'url(#'+gid+')','class':'ar'}));
+    svg.appendChild(sv('path',{d:d,'class':'ln'}));
+    svg.appendChild(sv('circle',{cx:X(pts[0][0]).toFixed(1),cy:Y(pts[0][1]).toFixed(1),r:3.5,'class':'pb'}));
+    var lx=X(last[0]),ly=Y(last[1]);
+    if(!sold)svg.appendChild(sv('circle',{cx:lx.toFixed(1),cy:ly.toFixed(1),r:7,'class':'pulse'}));
+    svg.appendChild(sv('circle',{cx:lx.toFixed(1),cy:ly.toFixed(1),r:3.5,'class':sold?'ps':'pn'}));
+    var ty=ly-9<PT+6?ly+16:ly-9;
+    svg.appendChild(sv('text',{x:(lx-6).toFixed(1),y:ty.toFixed(1),'class':'lx','text-anchor':'end'},(sold?'Verkauf x':'jetzt x')+dex(last[1],2)));
+    svg.appendChild(sv('text',{x:PL,y:HT-3,'class':'ax'},'Kauf'));
+    svg.appendChild(sv('text',{x:W-PR,y:HT-3,'class':'ax','text-anchor':'end'},x1>=120?dex(x1/60,1)+' h':Math.round(x1)+' min'));
+    div.appendChild(svg);
+  }
+  function drawAll(root){[].forEach.call((root||document).querySelectorAll('[data-rk-ch]'),draw);}
+  function chartDiv(p,sold){var e=el('div','rk-ch');e.setAttribute('data-rk-ch',JSON.stringify(Array.isArray(p.chart)?p.chart:[]));
+    if(sold&&isFinite(+p.out)&&isFinite(+p.t))e.setAttribute('data-rk-end',Math.floor((+p.out-+p.t)/60000)+','+(+p.mult||0));return e;}
+  drawAll();
   if(!/^https:\/\/[^\s\/]+$/.test(url)||!key||!boxes.length||!window.fetch)return;
   var EVERY=45000,SOLD=5,SHOWN=5,next=0,busy=false,seen=null,MINUS='−';
   var WHY={stop:'Stopp −30 %','11x':'11x erreicht','6h':'nach 6 h',gone:'Coin weg'};
@@ -253,10 +314,12 @@ LIVE_JS = r"""
       set(box,'win',w===null?'–':de(w,1).replace(/,0$/,''));
       set(box,'hits',(n(s.x3)||0)+' · '+(n(s.x10)||0));
       set(box,'open',String(n(s.open)||0));set(box,'closed',String(n(s.trades)||0));
-      var u=fill(box,'[data-rk-op]',op.map(function(p){return li('',sym(p),'gekauft bei Score '+de(n(p.score)||0,3)+' · jetzt x'+de(n(p.now)||1,2)+' · Hoch x'+de(n(p.hi)||1,2));}));
+      var u=fill(box,'[data-rk-op]',op.map(function(p){var e=li('',sym(p),'gekauft bei Score '+de(n(p.score)||0,3)+' · jetzt x'+de(n(p.now)||1,2)+' · Hoch x'+de(n(p.hi)||1,2));
+        e.appendChild(chartDiv(p,false));return e;}));
       if(u)show(u.closest('[data-rk-opw]'),op.length);
       u=fill(box,'[data-rk-sold]',cl.map(function(p){var v=n(p.eur)||0,o=n(p.out);
-        return li((tone(v)+(fresh(p)?' new':'')).trim(),sym(p),['x'+de(n(p.mult)||0,2),WHY[p.why]||String(p.why||''),o?hhmm(o):''].filter(Boolean).join(' · '),eur(v));}));
+        var e=li((tone(v)+(fresh(p)?' new':'')).trim(),sym(p),['x'+de(n(p.mult)||0,2),WHY[p.why]||String(p.why||''),o?hhmm(o):''].filter(Boolean).join(' · '),eur(v));
+        if(Array.isArray(p.chart)&&p.chart.length)e.appendChild(chartDiv(p,true));return e;}));
       if(u)show(u.closest('[data-rk-soldw]'),cl.length);
       var cs=box.querySelector('[data-rk-cands]');
       if(cs&&Array.isArray(d.top)&&d.top.length){var pre=cs.getAttribute('data-rk-cands')==='hm'?'hm':'rk';
@@ -265,6 +328,7 @@ LIVE_JS = r"""
           i.style.width=Math.max(2,Math.min(100,100*sh)).toFixed(1)+'%';bar.appendChild(i);e.appendChild(bar);
           e.appendChild(el('em',null,r.buy?'gekauft':Math.round(100*sh)+' %'));e.appendChild(el('small',null,Math.round(n(r.age)||0)+' min alt'));return e;}));
         [].forEach.call(box.querySelectorAll('[data-rk-more]'),function(m){m.setAttribute('hidden','');});}
+      drawAll(box);
       [].forEach.call(box.querySelectorAll('[data-rk-live]'),function(e){e.textContent='Live · Stand '+hhmm(t)+' · neue Käufe und Verkäufe erscheinen hier ohne Neuladen';e.removeAttribute('hidden');});
     });
     seen=ids;
