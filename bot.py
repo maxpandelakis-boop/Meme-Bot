@@ -203,6 +203,7 @@ LIVE_EXTRA, LIVE_EXTRA_LOCK, LIVE_EXTRA_REV = {}, threading.Lock(), [0]   # extr
 APP_JOBS = []         # this cycle's notifications on their way (app_bg): the end of the cycle waits for them, LIVE_WAIT s at most
 YOUNG_SENT = {"t": None}   # the cycle whose "new coins" notification went out (young_published sends one per cycle)
 EARLY_MAX_BYTES = 24000     # an early list bigger than this is not pushed (20 coins take about 10 KB)
+LERN_LIMIT_S = 60            # lernpick.py buy (the Learning Pick's buy of this scan, a shadow bot) runs after the trader: killed after this (a few seconds)
 CHECK_LIMIT_S = 30          # radar.py check runs after the trader, on the scan's critical path: killed after this (it takes about 1 s)
 # the trader waits for the training beside the scan until this long after the cycle began (s); then it is stopped and the runs read
 # the last train.json. The scan job's limit is 55 min: about 2 before the cycle, 8 for the run after the training, 1 after the cycle
@@ -742,7 +743,7 @@ def run(args, d, now=None, expect_json=True, soft=False, limit=None):
     cycle (the office records it), unless soft: then it is logged in one line and None comes back. limit (s): the child is killed once it
     runs this long (a stalled name lookup is not covered by a request's own timeout), which counts as a failure."""
     cmd = [PY, os.path.join(HERE, args[0])] + args[1:] + ["--dir", d]
-    if now and args[0] in ("memebot.py", "radar.py"):
+    if now and args[0] in ("memebot.py", "radar.py", "lernpick.py"):
         cmd += ["--now", str(now)]
     env = child_env(PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     # the child's progress lines (stderr) are shown as they happen; its result (stdout) is collected
@@ -1197,6 +1198,9 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
                 json.dump({"t": now, "rule": (M.PROFILES.get(horizon) or {}).get("RULE") or M.RULE, "horizon": horizon, "w": r["weights"]}, f, separators=(",", ":"))
         except Exception as e:
             log("spotter weights not saved: %s" % e)
+    # the Learning Pick (lernpick.py, fake money: its own paper account, the Pick untouched): its brain buys one coin of this scan's snapshot
+    if recommend:
+        run(["lernpick.py", "buy"], d, now, soft=True, limit=LERN_LIMIT_S)
     if os.path.exists(os.path.join(d, "young_early.json")):     # the early list's record: its coins priced again, their fate on the scored list
         run(["radar.py", "check", "--t0", str(t0), "--horizon", horizon] + (["--mock", mock] if mock else []), d, now, soft=True, limit=CHECK_LIMIT_S)
     prune(d, now)
@@ -1331,6 +1335,8 @@ SYNC_IGNORE = """# written by bot.py sync: only the page and the small docs trav
 !db/memetrader/**
 !db/memeshadow/
 !db/memeshadow/**
+!db/memelern/
+!db/memelern/**
 """
 
 

@@ -3,20 +3,24 @@
 # reads is written; the bot keeps its gates and its sell rule. The result goes to its own branch "filtersearch" (filtersearch.json for
 # the page, filtersearch-state.json with the frozen rules); the scan job copies the doc into the page. Its own branch and its own
 # concurrency group: it never writes the results branch and never holds up a scan.
+# After it, the Learning Pick's nightly training (lernpick.py train): the same big test plus the minute paths of every paper trade (read from
+# the results branch), an exam of the brain frozen two nights before against the current one on what neither has seen, tonight's brain
+# frozen. Its doc goes to its own branch "lernpick" (the scan copies it for its buy and the page). Soft: a failure there never touches the
+# filter search's result, and nothing the Pick, the Radar or the training reads is written.
 name: Meme-Bot filter search
 on:
   schedule:
     - cron: '50 6 * * *'             # UTC, after the 06 UTC scan has exported the day's big test to the bigtest branch
   workflow_dispatch:
 permissions:
-  contents: write                    # the filtersearch branch only
+  contents: write                    # the filtersearch and lernpick branches only
 concurrency:
   group: memebot-filtersearch
   cancel-in-progress: false
 jobs:
   search:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     env:
       PYTHONUTF8: '1'
     steps:
@@ -50,3 +54,33 @@ jobs:
           git add filtersearch.json filtersearch-state.json
           git -c user.name=memebot -c user.email=memebot@localhost commit -q -m "filter search $(date -u +%Y-%m-%d)" || echo "nothing new"
           git push -q "$REPO_URL" HEAD:filtersearch
+      - name: Get the results branch (minute paths, positions) and the Learning Pick's last doc (read only)
+        id: lpget
+        if: ${{ !cancelled() }}        # also after a failed filter search: the Learning Pick does not depend on it
+        continue-on-error: true
+        timeout-minutes: 4
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch results "$REPO_URL" res
+          if git ls-remote --exit-code --heads "$REPO_URL" lernpick >/dev/null; then
+            git clone -q --depth 1 --branch lernpick "$REPO_URL" lp
+          else
+            mkdir lp && git -C lp init -q && git -C lp checkout -q -b lernpick
+          fi
+      - name: The Learning Pick's nightly training (exam, freeze; local computation, no requests)
+        id: lptrain
+        if: ${{ !cancelled() && steps.lpget.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 12
+        run: python3 lernpick.py train --snaps bt/memesnapres --res res --out lp --fs fs
+      - name: Push the Learning Pick's brain to the lernpick branch
+        if: ${{ !cancelled() && steps.lptrain.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd lp
+          git add lernpick.json
+          git -c user.name=memebot -c user.email=memebot@localhost commit -q -m "learning pick $(date -u +%Y-%m-%d)" || echo "nothing new"
+          git push -q "$REPO_URL" HEAD:lernpick

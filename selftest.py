@@ -4006,6 +4006,8 @@ console.log(JSON.stringify(o));
     selftest_exits.checks(check, SKIPS)
     import selftest_shadow                      # the Pick's shadow rules and the evening report (shadow.py, page_shadow.py, daily.py, daily.yml)
     selftest_shadow.checks(check)
+    import selftest_lernpick                    # the Learning Pick: nightly brain with its exam, hourly buy, sales from minute candles (lernpick.py, page_lernpick.py)
+    selftest_lernpick.checks(check)
     import selftest_traders                     # the three paper traders: T1, T2, the learning trader's frozen decisions (traders.py)
     selftest_traders.checks(check, SKIPS)
     import selftest_radarui                     # the Radar tab, the trap-check line and the "no good coin" marks (page_radar.py)

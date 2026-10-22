@@ -20,7 +20,8 @@
 # most 4 of its ten minutes and 3 of GeckoTerminal's rate limits), then on the rest the closed 6-hour windows of the paper positions
 # (best price within 6 h, hindsight), on the same client, whose requests go further apart after each rate limit; then it replays
 # other stops and targets on the closed paper trades (exit_grid.py, hindsight, a report: the trader keeps its rule), the Pick's shadow rules
-# (shadow.py: four other sell rules on each pick buy's 12-hour minute path, a report: the Pick keeps its rule), and last the learning
+# (shadow.py: four other sell rules on each pick buy's 12-hour minute path, a report: the Pick keeps its rule), the Learning Pick's sales
+# (lernpick.py: its own paper account, each buy sold by its own rule on a 6-hour minute path), and last the learning
 # trader's daily step (traders.py: three paper traders on the same coins, the stop-loss account, the best price looking back, and one that
 # learns only from finished trades and writes one frozen decision per group and day; its radar skip signs go to radar-feed for the push).
 # Fake money only: nothing is bought anywhere.
@@ -193,7 +194,7 @@ jobs:
             echo "the results branch could not be checked (git exit $rc): this scan stops, the results stay as they are"
             exit 1
           fi
-      - name: The nightly filter search's result for the page (read only; filter_search.py writes it on its own branch)
+      - name: The nightly filter search's result for the page, the rocket hunter's round and the Learning Pick's brain (read only; each is written on its own branch)
         # before the scan: the scan builds the page, so the filter search and the rocket hunter's round (the Radar tab's fallback, the
         # coins in the brain) are on it only when their docs are already here (copied after the scan, they never reached the page)
         if: steps.recent.outputs.skip != 'true'
@@ -211,6 +212,13 @@ jobs:
           if git ls-remote --exit-code --heads "$RESULTS_URL" rocket-data >/dev/null; then
             git fetch -q --depth 1 "$RESULTS_URL" rocket-data && mkdir -p mb/db/memebot && git show FETCH_HEAD:rocket.json > mb/db/memebot/rocket.json \
               && echo "rocket hunter doc copied ($(wc -c < mb/db/memebot/rocket.json) bytes)"
+          fi
+          # the Learning Pick's brain (lernpick.py train, nightly in filtersearch.yml): the scan's buy step and the page read it
+          if git ls-remote --exit-code --heads "$RESULTS_URL" lernpick >/dev/null; then
+            git fetch -q --depth 1 "$RESULTS_URL" lernpick && mkdir -p mb/db/memebot && git show FETCH_HEAD:lernpick.json > mb/db/memebot/lernpick.json \
+              && echo "learning pick brain copied ($(wc -c < mb/db/memebot/lernpick.json) bytes)"
+          else
+            echo "no learning pick brain yet"
           fi
       - name: Import the launch radar's records (branches radar-data and radar-feed; a minute at most, the scan never depends on it)
         if: steps.recent.outputs.skip != 'true'
@@ -402,6 +410,7 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}  # empty without the secrets: nothing of it runs
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}            # sent only in the apikey header to SUPABASE_URL, never printed
           MEMEBOT_PUSH_YOUNG: ${{ vars.MEMEBOT_PUSH_YOUNG || '0' }}          # the "new coins" push of the early list: off unless the variable is 1 (the radar pushes coins without a trap found)
+          MEMEBOT_LERNPICK: ${{ vars.MEMEBOT_LERNPICK || '1' }}              # the Learning Pick's paper buys (lernpick.py, a shadow bot, no push); the repository variable MEMEBOT_LERNPICK=0 stops them
         timeout-minutes: 48          # inside the job's 55 with the steps before it (a minute, five at most) and the snapshots' save after it
         run: python3 bot.py cycle --recommend --horizon "$HORIZON" $RESCAN
       - name: Save the big-test snapshots (also after a scan that failed or ran out of time, so its new snapshots are not lost)
@@ -588,7 +597,7 @@ jobs:
     if: needs.scan.outputs.skipped != 'true' && needs.scan.result == 'success' && (vars.MEMEBOT_PEAKS || '1') != '0'   # the repository variable MEMEBOT_PEAKS=0 switches the peak category off
     runs-on: ubuntu-latest
     continue-on-error: true          # a failed or slow pricing run never turns the scan red: docs already written stay, the next scan goes on
-    timeout-minutes: 19              # about 60 GeckoTerminal calls at its 10 s gap, the exit replay, the shadow rules, the learning trader; the next scan waits for this job (the workflow-level group)
+    timeout-minutes: 21              # about 60 GeckoTerminal calls at its 10 s gap, the exit replay, the shadow rules, the Learning Pick's sales, the learning trader; the next scan waits for this job (the workflow-level group)
     permissions:
       contents: write                # the results branch: the scan job pushed it before this job starts, and nothing else writes it meanwhile
     env:
@@ -625,6 +634,11 @@ jobs:
         continue-on-error: true      # a report: an error or a timeout here never holds back the push below (the script itself exits 0)
         timeout-minutes: 2
         run: python3 shadow.py run --dir mb --deadline-s 90
+      - name: The Learning Pick's sales (a 6-hour minute path per buy, one GeckoTerminal request each; its own paper account, the Pick untouched; two minutes at most)
+        if: steps.restore.outputs.ok == 'true'
+        continue-on-error: true      # a shadow bot: an error or a timeout here never holds back the push below (the script itself exits 0)
+        timeout-minutes: 2
+        run: python3 lernpick.py run --dir mb --deadline-s 60
       - name: The learning trader's daily step (local computation, no requests; two minutes at most)
         if: steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'   # off since 22 Oct 2026 (two bots only: Pick and the rocket hunter; its data stays); the repository variable MEMEBOT_TRADERS=1 switches it on
         continue-on-error: true      # a record: an error or a timeout here never holds back the push below (the script itself exits 0)

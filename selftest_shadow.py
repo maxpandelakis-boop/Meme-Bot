@@ -491,7 +491,7 @@ def _sh9(check):
     st = pk["steps"][i_sh] if i_sh >= 0 else {}
     check(i_xg < i_sh < i_up and st.get("continue-on-error") is True and 0 < int(st.get("timeout-minutes") or 0) <= 2
           and st.get("if") == "steps.restore.outputs.ok == 'true'" and not st.get("env") and "--deadline-s 90" in st["run"]
-          and int(pk["timeout-minutes"]) <= 19,
+          and int(pk["timeout-minutes"]) <= 21,
           "SH9 the peaks job asks for the shadow paths after the exit replay and before the push: soft, 2 minutes at most, without the token")
 
 
