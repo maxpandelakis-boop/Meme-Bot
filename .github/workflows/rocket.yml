@@ -2,9 +2,13 @@
 # more) from GeckoTerminal's minute candles and latest trades, and books paper trades in its OWN account (20 a coin, -30% / 11x / 6 h).
 # Fake money only: nothing is bought. A round with paper buys sends one push "Radar 🚀" to the iPhone app (app.notify_rocket, the
 # phones' "New coins" setting) when the Supabase secrets are set; the scan's paper account and its sell rule are untouched. Its state
-# and log go to the branch "rocket-data"; the scan job copies rocket.json into the page. After the round the same job looks at the open
-# positions every minute until about 13 minutes after it started (rocket_watch.py watch): a sell is booked, pushed and in the app's
-# live row within a minute; with nothing open it ends at once.
+# and log go to the branch "rocket-data"; the scan job copies rocket.json into the page. After each round the job looks at the open
+# positions every minute until the next round (rocket_watch.py watch): a sell is booked, pushed and in the app's live row within a
+# minute.
+# One run holds four rounds, 15 minutes apart (about an hour): GitHub starts scheduled runs late or not at all when it is busy (on
+# 22 Oct only 13 of about 30 quarter-hours got a run, 30 to 45 minutes apart), so a run that did one round left the coins unscored and
+# the open positions unwatched for half an hour. The cron still fires every 15 minutes; while a run is busy the newest of them waits
+# (the concurrency group keeps one) and starts when it ends, so the rounds go on every 15 minutes.
 name: Meme-Bot rocket hunter
 on:
   schedule:
@@ -21,12 +25,12 @@ concurrency:
 jobs:
   round:
     runs-on: ubuntu-latest
-    timeout-minutes: 17
+    timeout-minutes: 75              # four rounds 15 minutes apart, the last watch, the saves
     env:
       PYTHONUTF8: '1'
       HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}
     steps:
-      - name: Note the start (the minute watch ends 13 minutes after it)
+      - name: Note the start (the rounds are counted from it, 15 minutes apart)
         run: echo "STARTED=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
@@ -77,21 +81,33 @@ jobs:
           else
             echo "pywebpush could not be installed: no push notifications this run, the round goes on"
           fi
-      - name: One round
+      - name: Four rounds, 15 minutes apart, the open positions watched every minute in between, the state saved after each round and each watch
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-        run: python3 rocket_watch.py round --dir rk --radar rd
-      - name: Watch the open positions every minute until the next round
-        continue-on-error: true
-        timeout-minutes: 14
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-        run: python3 rocket_watch.py watch --dir rk --until $((STARTED + 780))
-      - name: Save the state
-        env:
           REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
-          cd rk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocket round $(date -u +%Y-%m-%dT%H:%MZ)" \
-            && git push -q "$REPO_URL" HEAD:rocket-data || echo "nothing to save"
+          # the token is for the saves only: rocket_watch.py runs without it (env -u)
+          save() {
+            (cd rk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocket round $(date -u +%Y-%m-%dT%H:%MZ)" \
+              && git push -q "$REPO_URL" HEAD:rocket-data) || echo "nothing to save"
+          }
+          last=$((STARTED + 55 * 60))      # no round starts later: the run ends within about an hour and the waiting run takes over
+          i=0; failed=0
+          while [ $((STARTED + i * 900)) -le "$last" ]; do
+            at=$((STARTED + i * 900))
+            wait=$((at - $(date +%s))); [ "$wait" -gt 0 ] && sleep "$wait"
+            if [ "$i" -gt 0 ]; then      # the radar's records of the last minutes (the first round has the fresh clone)
+              git -C rd fetch -q --depth 1 origin radar-data && git -C rd reset -q --hard FETCH_HEAD || echo "radar-data not refreshed"
+            fi
+            env -u REPO_URL timeout 840 python3 rocket_watch.py round --dir rk --radar rd || { echo "round $i failed"; failed=$((failed + 1)); }
+            save
+            env -u REPO_URL timeout 900 python3 rocket_watch.py watch --dir rk --until $((at + 840)) || echo "watch $i failed"
+            save
+            i=$((i + 1))
+          done
+          # the next run (waiting since a cron of this hour) starts when this one ends: end a minute before the next round is due, so its
+          # first round comes 15 minutes after this run's last one and not at once (it would find the coins just checked)
+          wait=$((STARTED + i * 900 - 60 - $(date +%s))); [ "$wait" -gt 0 ] && sleep "$wait"
+          echo "$i rounds, $failed failed"
+          [ "$failed" -eq 0 ]

@@ -8,7 +8,10 @@ minutes without a trade (high = low = the last close, features.dense fill_hl=Fal
 give lightgbm's own probabilities (rocket_model.json's check rows); R3 the paper account: one buy per coin, rule A (stop on a low
 first, 11x, 6 h), fees; R4 a round on mocked answers: universe, scoring, a buy at the cut, a sell, the state and the log, no network;
 R5 the page block: no doc, a doc (escaped, no script), its place at the top of the Radar tab; R6 the workflow only writes rocket-data,
-uses the run's token and the push secrets only, and the scan job only reads rocket.json; R7 the "Radar 🚀" push of a round's paper buys.
+uses the run's token and the push secrets only, and the scan job only reads rocket.json; R7 the "Radar 🚀" push of a round's paper buys;
+R8 the minute watch between rounds; R9 rocket.yml's round step as written, on a fake clock: four rounds 15 minutes apart in one run,
+each followed by a save, the watch until the next round and a save, the radar's records fetched again before each later round,
+rocket_watch.py always without the token, a failed round neither stops the others nor ends the run green.
 """
 import json, math, os, random, shutil, sys, tempfile
 
@@ -205,8 +208,11 @@ def r6():
     check(secrets == {"GITHUB_TOKEN", "SUPABASE_URL", "SUPABASE_SECRET_KEY"} and "HEAD:rocket-data" in wf and "--force" not in wf
           and "memebot-rocket" in wf and "--require-hashes" in wf,
           "R6 rocket.yml uses the run's token and the push secrets only (%s), pushes only to rocket-data (no force) in its own concurrency group, the push sender pinned" % sorted(secrets))
-    rnd = wf[wf.index("- name: One round"):wf.index("- name: Save the state")]
-    check("GITHUB_TOKEN" not in rnd, "R6 the round itself never sees the GitHub token")
+    rnd = wf[wf.index("- name: Four rounds"):]
+    calls = [l.strip() for l in rnd.splitlines() if "rocket_watch.py" in l and not l.strip().startswith("#")]
+    check(len(calls) == 2 and all(c.startswith("env -u REPO_URL ") for c in calls) and rnd.count("secrets.GITHUB_TOKEN") == 1
+          and "REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}" in rnd,
+          "R6 the round itself never sees the GitHub token: rocket_watch.py runs with REPO_URL (the token's only carrier) removed (%s)" % calls)
     sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml")).read()
     check("git show FETCH_HEAD:rocket.json > mb/db/memebot/rocket.json" in sc, "R6 the scan job copies rocket.json into the page (read only)")
 
@@ -282,14 +288,102 @@ def r8():
         check(out2 == {"looks": 0, "sold": 0, "why": "nothing open"}, "R8 nothing open: the watch ends at once (%s)" % out2)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    wf = open(os.path.join(HERE, ".github", "workflows", "rocket.yml")).read()
-    w = wf[wf.index("- name: Watch the open positions"):wf.index("- name: Save the state")]
-    check("rocket_watch.py watch" in w and "continue-on-error: true" in w and "GITHUB_TOKEN" not in w and "STARTED + 780" in w,
-          "R8 rocket.yml watches after the round, without the GitHub token, and saves the state even when the watch fails")
+
+
+STUB_RW = r"""import json, os, sys
+d = os.path.dirname(os.path.abspath(__file__))
+now = int(open(os.path.join(d, "clock")).read())
+cmd = sys.argv[1]
+rec = {"cmd": cmd, "at": now, "argv": sys.argv[2:], "token": "REPO_URL" in os.environ, "supabase": "SUPABASE_URL" in os.environ}
+open(os.path.join(d, "calls.jsonl"), "a").write(json.dumps(rec) + "\n")
+plan = json.load(open(os.path.join(d, "plan.json")))
+n = sum(1 for l in open(os.path.join(d, "calls.jsonl")) if json.loads(l)["cmd"] == cmd) - 1
+if cmd == "round":
+    open(os.path.join(d, "clock"), "w").write(str(now + 170))         # a round takes about 3 minutes
+    sys.exit(1 if n in plan.get("fail", []) else 0)
+until = int(sys.argv[sys.argv.index("--until") + 1])
+if n in plan.get("open", []):                                        # something open: it looks every minute until the next round
+    open(os.path.join(d, "clock"), "w").write(str(max(now, until)))
+"""
+
+
+def _shim(bindir, name, body):
+    fn = os.path.join(bindir, name)
+    open(fn, "w").write("#!/bin/bash\n" + body + "\n")
+    os.chmod(fn, 0o755)
+
+
+def r9():
+    """rocket.yml's round step run as written (bash -e, as GitHub runs it) with stand-ins for rocket_watch.py, git, date and sleep on a
+    fake clock."""
+    import subprocess
+    try:
+        import yaml
+    except ImportError:
+        print("skip  R9 (PyYAML is not installed)")
+        return
+    wf = yaml.safe_load(open(os.path.join(HERE, ".github", "workflows", "rocket.yml"), encoding="utf-8"))
+    job = wf["jobs"]["round"]
+    st = next(x for x in job["steps"] if str(x.get("name", "")).startswith("Four rounds"))
+    on = wf.get("on") or wf.get(True) or {}
+    check(on.get("schedule") == [{"cron": "7,22,37,52 * * * *"}] and wf["concurrency"] == {"group": "memebot-rocket", "cancel-in-progress": False}
+          and job["timeout-minutes"] == 75 and job["steps"][-1] is st and "STARTED" in job["steps"][0]["run"],
+          "R9 rocket.yml: the cron still fires every 15 minutes, one run at a time (the newest waiting run takes over), 75 minutes for a run of four rounds")
+    started = 1_800_000_000
+
+    def run(plan):
+        tmp = tempfile.mkdtemp()
+        try:
+            ws, bindir = os.path.join(tmp, "ws"), os.path.join(tmp, "bin")
+            for x in (ws, bindir, os.path.join(ws, "rk"), os.path.join(ws, "rd")):
+                os.makedirs(x)
+            open(os.path.join(ws, "rocket_watch.py"), "w").write(STUB_RW)
+            open(os.path.join(ws, "plan.json"), "w").write(json.dumps(plan))
+            open(os.path.join(ws, "clock"), "w").write(str(started + 25))      # the clones and the push sender took 25 s
+            open(os.path.join(ws, "calls.jsonl"), "w").close()
+            clock = os.path.join(ws, "clock")
+            _shim(bindir, "date", 'if [ "$1" = "+%%s" ]; then cat "%s"; else /bin/date "$@"; fi' % clock)
+            _shim(bindir, "sleep", 'echo $(( $(cat "%s") + $1 )) > "%s"' % (clock, clock))
+            _shim(bindir, "git", 'printf "%%s|%%s|%%s\\n" "$(cat "%s")" "${REPO_URL:+token}" "$*" >> "%s"; exit 0'
+                  % (clock, os.path.join(ws, "git.log")))
+            env = {"PATH": bindir + os.pathsep + os.environ.get("PATH", ""), "STARTED": str(started), "HOME": tmp,
+                   "REPO_URL": "https://x-access-token:SECRET@github.com/o/r.git", "SUPABASE_URL": "https://x.supabase.co", "SUPABASE_SECRET_KEY": "k"}
+            p = subprocess.run(["bash", "-e", "-c", st["run"]], cwd=ws, env=env, capture_output=True, text=True, timeout=60)
+            calls = [json.loads(l) for l in open(os.path.join(ws, "calls.jsonl"))]
+            gl = [l.split("|", 2) for l in open(os.path.join(ws, "git.log")).read().splitlines()] if os.path.exists(os.path.join(ws, "git.log")) else []
+            return p, calls, gl, int(open(clock).read())
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    p, calls, gl, end = run({"open": [1, 2]})
+    rounds = [c for c in calls if c["cmd"] == "round"]
+    watches = [c for c in calls if c["cmd"] == "watch"]
+    ats = [started + i * 900 for i in range(4)]
+    order = [c["cmd"] for c in calls]
+    pushes = [g for g in gl if g[2].startswith("push")]
+    fetches = [g for g in gl if "fetch" in g[2] and "radar-data" in g[2]]
+    check(p.returncode == 0 and len(rounds) == 4 and [r["at"] for r in rounds] == [started + 25] + ats[1:]
+          and [int(w["argv"][w["argv"].index("--until") + 1]) for w in watches] == [a + 840 for a in ats] and order == ["round", "watch"] * 4,
+          "R9 one run: four rounds 15 minutes apart (the first at once), each followed by the watch until 14 minutes after its start (%s)"
+          % [(r["at"] - started) for r in rounds])
+    check(not any(c["token"] for c in calls) and all(c["supabase"] for c in calls) and len(pushes) == 8
+          and all(g[1] == "token" and "HEAD:rocket-data" in g[2] for g in pushes) and "SECRET" not in p.stdout + p.stderr,
+          "R9 rocket_watch.py never has the token (the push secrets it has); the state is pushed to rocket-data after every round and every "
+          "watch (%d pushes)" % len(pushes))
+    t_push = [int(g[0]) for g in pushes]
+    check(all(t_push[2 * i] < (int(watches[i]["argv"][watches[i]["argv"].index("--until") + 1]) if i in (1, 2) else 10 ** 12) for i in range(4))
+          and t_push[2] == rounds[1]["at"] + 170 and len(fetches) == 3 and int(fetches[0][0]) == ats[1]
+          and end - started == 3600 - 60 and "4 rounds, 0 failed" in p.stdout,
+          "R9 a round's buys are saved before its watch begins; the radar's records are fetched again before each later round; the run "
+          "ends a minute before the next round is due (%d min after its start, inside its 75), so the waiting run's first round comes 15 "
+          "minutes after the last one" % ((end - started) // 60))
+    p2, calls2, _, _ = run({"fail": [1]})
+    check(p2.returncode != 0 and sum(1 for c in calls2 if c["cmd"] == "round") == 4 and "round 1 failed" in p2.stdout and "4 rounds, 1 failed" in p2.stdout,
+          "R9 a failed round neither stops the others nor lets the run end green (%s)" % p2.returncode)
 
 
 def main():
-    r1(); r1b(); r2(); r3(); r4(); r6(); r7(); r8()
+    r1(); r1b(); r2(); r3(); r4(); r6(); r7(); r8(); r9()
     print("\n%d failed" % len(FAILS) if FAILS else "\nall ok")
     sys.exit(1 if FAILS else 0)
 
