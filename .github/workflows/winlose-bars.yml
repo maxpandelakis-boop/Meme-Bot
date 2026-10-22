@@ -1,0 +1,40 @@
+# Winner/loser study (fake money only): copies the history2 one-minute bars (artifact "bars" of history-build run 39668736908)
+# into the data-only branch "chartbars", cut to each coin's first 25 hours, so the research session can read them. Runs only on a
+# push of this file's branch; touches no bot branch, no paper account and no secret beyond the run's own token.
+name: winlose-bars
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-bars.yml, research/winlose/chartbars_build.py]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  bars:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          name: bars
+          path: bars
+          run-id: 39668736908
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Coins list
+        run: git fetch -q --depth 1 origin history2 && git show FETCH_HEAD:coins.parquet > coins.parquet
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+      - name: Compact bars
+        run: du -sh bars && python3 research/winlose/chartbars_build.py bars coins.parquet out
+      - name: Push to the chartbars branch
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && du -sh .
+          git init -q && git checkout -q -b chartbars && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "chartbars $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" chartbars
