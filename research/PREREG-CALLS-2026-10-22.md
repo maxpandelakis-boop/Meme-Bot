@@ -69,3 +69,21 @@ None holds: nothing is built, and the 9-21 Oct fetch is not needed.
 - The same 18 variants with the stop filled at its level (kinder), with targets first in a shared minute (kinder), with 1% per
   sale and no minimum (a bigger ticket, still without slippage), and with no fees at all (the raw edge).
 - Per week per 20 for the variants, coins, in profit of 10, sold at least half at +30%.
+
+## Addendum, 22 Oct ~16:45 UTC: more data, as the user asked (written after the history2 run, before any new data was fetched)
+The history2 run is done (research/calls/calls-check-2026-10-22.json): no variant holds, so by the rules above nothing is built
+and the extra data cannot change that decision. The user asked (22 Oct, 16:24 UTC) for as much data as possible, "years if
+available". What exists for free: pump.fun started in January 2024, its graduations went to Raydium until March 2025 and to
+PumpSwap since; GeckoTerminal's free API serves candles of the last 6 months only (older needs a paid plan); the public
+Hugging Face sets found today hold bonding-curve trades or a few days, no longer post-graduation price paths than history2.
+So the extra data is the free part: research/calls_fetch.py (workflow calls-history.yml) lists the graduations of 25 Apr to
+9 Aug 2026 and 9 to 21 Oct 2026 with Helius and fetches each pool's one-minute candles of its first 1000 minutes from
+GeckoTerminal (USD prices). 25 Apr to 9 Aug: a random sample of at most 300 graduations per day (seed 7); 9-21 Oct: all.
+The same 18 variants and rule A are replayed on it (check_calls.py ext) with these differences, fixed now:
+- "Normal migration": start reserves within 5% of the period's most common start reserves (85 SOL in history2; the backfill
+  list of 9-21 Oct shows 67.4 SOL, so pump.fun changed it between 8 and 9 Oct).
+- Market cap = GeckoTerminal's USD price x 1e9 (pump.fun supply). A minute without a candle: high = low = the last close. No
+  recorder outages exist here; a pool GeckoTerminal does not know is left out.
+- The "winrate" numbers use 16 h after the call (1000 minutes of candles), not 24 h.
+Reported per period (25 Apr-9 Aug, 9-21 Oct) and together, with the same columns. It decides nothing new: a variant would only
+count if it held here AND in history2.
