@@ -8,11 +8,16 @@ The question: is there a filter that does better than the bot's own gates on coi
      grown by a day, the day's picks and their real results included. A search over SEARCH_RULES conditions on those rows (one or
      two numbers above or below a quartile of the training rows, in one of the age windows WINDOWS) picks the rule that did best
      in BOTH halves of the training rows (the lower of the two averages counts), with at least MIN_HALF coins in each half and a
-     3x share not below the gates'. That rule is FROZEN with its thresholds and the time of the last row it saw (frozenAt).
+     3x share not below the gates'; a rule that also has WIN_GOAL % of its coins in profit and a profit per pick above zero in
+     both halves (the user's goal: about 6 of 10) beats every rule that does not. That rule is FROZEN with its thresholds and the time of the last row it saw (frozenAt).
   2. test: every frozen rule of the last MAX_CHALLENGERS nights is measured on the rows that came AFTER its frozenAt only (it
      never saw them), next to the gates on the same rows. A rule is "better" only when, on at least MIN_FWD coins over at least
-     MIN_DAYS days, its average per 20 is above zero, above the gates' average, its 3x share is not below the gates', and the lower
+     MIN_DAYS days, its average per 20 is above zero, above the gates' average, its 3x share and its share of coins in profit are not below the gates', and the lower
      end of its bootstrap interval is above zero at the 95% level corrected for the number of rules under test (Bonferroni).
+     It must also stay in profit in at least SIM_HOLD % of SIMS simulated runs (simulate: the days drawn again, fees and slippage
+     drawn at random), so one lucky stretch of days cannot carry it.
+     It reaches the goal ("goal") when, on top of a verdict, WIN_GOAL % or more of its unseen coins ended in profit and the
+     profit per pick is above zero: a high win share alone (many small wins, a few big losses) is no goal.
   3. mistakes: the bot's top picks (rank 1 among the gate passers) of the last LOOKBACK_DAYS days that lost money, and how many of
      them the leading rule would have let through, against how many winning picks it would have blocked.
 Profit per 20 after FEE_SIDE per buy and per sell, the price multiple capped at MULT_CAP (one freak coin cannot carry a rule); one
@@ -43,6 +48,12 @@ WINDOWS = {"new": "coins under 1 h old (the old new launches)", "1-6h": "1 to 6 
            "24h+": "older than a day", "any": "any age", "gates": "coins that passed the bot's gates"}
 MIN_HALF = 60            # coins in each training half
 MIN_FWD, MIN_DAYS = 100, 3
+SIMS = 10_000            # simulated runs per rule (the user, 22 Oct 2026: "durch tausende Simulationen")
+SIM_FEE = (0.005, 0.02)  # fee per side drawn per run
+SIM_SLIP = (0.0, 0.04)   # slippage drawn per run and day (a later or worse fill)
+SIM_MIN = 20             # coins a rule needs before it is simulated
+SIM_HOLD = 90.0          # % of the runs that must end in profit for a "better" verdict
+WIN_GOAL = 60.0         # the user's goal (22 Oct 2026): about 6 of 10 picks in profit, with the profit per pick above zero as well
 MAX_CHALLENGERS = 30
 LOOKBACK_DAYS = 7
 DAY = 86_400_000
@@ -162,6 +173,37 @@ def stats(R, ix, k_tests=1, seed=7):
     return out
 
 
+def simulate(R, ix, n_sims=SIMS, seed=11):
+    """Many runs of a rule's picks: the days are drawn again with replacement (a run can get the bad days twice and miss the good
+    ones), each run pays a fee per side drawn from SIM_FEE and each day a slippage drawn from SIM_SLIP (a later fill, a worse
+    price), the price multiple capped at MULT_CAP as everywhere here. -> {"sims", "pProfit" (share of runs whose profit per pick is
+    above zero), "avg" (5th, 50th, 95th percentile of the profit per pick), "curve" {"typical", "bad"}: the paper account (20 a pick,
+    summed per day) of the median run and of the run at the 5th percentile}, or None with fewer than SIM_MIN coins. Usable for any
+    list of picks with a price multiple (the other research threads' models included): R needs "scan" and "mult" only."""
+    import numpy as np
+    ix = np.asarray(ix)
+    if len(ix) < SIM_MIN:
+        return None
+    day = (R["scan"][ix] // DAY).astype(np.int64)
+    days, inv = np.unique(day, return_inverse=True)
+    m = np.minimum(R["mult"][ix], MULT_CAP)
+    M = np.bincount(inv, weights=m)                 # per day: the sum of the price multiples and the number of picks
+    N = np.bincount(inv).astype(float)
+    rng = np.random.default_rng(seed)
+    D = len(days)
+    pick = rng.integers(0, D, size=(n_sims, D))
+    fee = rng.uniform(SIM_FEE[0], SIM_FEE[1], size=(n_sims, 1))
+    slip = rng.uniform(SIM_SLIP[0], SIM_SLIP[1], size=(n_sims, D))
+    eur = TICKET * (1 - fee) ** 2 * (1 - slip) * M[pick] - TICKET * N[pick]       # profit per drawn day
+    n = N[pick].sum(axis=1)
+    per = eur.sum(axis=1) / n
+    order = np.argsort(eur.sum(axis=1))         # the curves: runs ranked by where the paper account ends
+    path = lambda k: [round(float(x), 2) for x in np.cumsum(eur[order[k]])]
+    return {"sims": int(n_sims), "days": int(D), "pProfit": round(100 * float((per > 0).mean()), 1),
+            "avg": [round(float(np.percentile(per, q)), 3) for q in (5, 50, 95)],
+            "curve": {"typical": path(n_sims // 2), "bad": path(int(0.05 * n_sims))}}
+
+
 # ---------------------------------------------------------------------------------------------------------------- learn
 def search(R, upto):
     """The best rule on the rows scored by upto (both halves count) -> (rule or None, its stats, how many rules were tried)."""
@@ -188,6 +230,7 @@ def search(R, upto):
     for w in WINDOWS:
         sub = np.flatnonzero(window_mask(R, w) & known)      # the window's training rows only: every mask below is this short
         S = {k: R[k][sub] for k in ("coin", "r", "hit3")}
+        S["ncoin"] = R.get("ncoin")
         hw = [h[sub] for h in halves]
         cms = [c[sub] for c in cm]
         for combo in combos:
@@ -195,19 +238,24 @@ def search(R, upto):
             m = None
             for i in combo:
                 m = cms[i] if m is None else m & cms[i]
-            sc, ok = [], True
+            sc, wins, ok = [], [], True
             for h in hw:
                 ix = entries(S, h if m is None else h & m)
                 if len(ix) < MIN_HALF or float(S["hit3"][ix].mean()) < gate3:
                     ok = False
                     break
                 sc.append(float(S["r"][ix].mean()))
-            if ok and (best is None or min(sc) > best[0]):
-                best = (min(sc), {"w": w, "c": [conds[i] for i in combo]}, sc)
+                wins.append(100.0 * float((S["r"][ix] > 0).mean()))
+            # a rule that reaches the win goal in both halves with a profit in both comes first; then the profit per pick
+            key = (min(wins) >= WIN_GOAL and min(sc) > 0, min(sc)) if ok else None
+            if ok and (best is None or key > best[0]):
+                best = (key, {"w": w, "c": [conds[i] for i in combo]}, sc)
     if best is None:
         return None, None, tried
     rule = best[1]
-    st = stats(R, entries(R, known & rule_mask(R, rule)))
+    tix = entries(R, known & rule_mask(R, rule))
+    st = stats(R, tix)
+    st["sim"] = simulate(R, tix)
     st["halves"] = [round(x, 3) for x in best[2]]
     return rule, st, tried
 
@@ -216,16 +264,19 @@ def search(R, upto):
 def forward(R, ch, n_live):
     """A frozen rule on the rows after its frozenAt, next to the gates on the same rows -> the challenger dict with fwd, gates, verdict."""
     new = R["scan"] > ch["frozenAt"]
-    fwd = stats(R, entries(R, new & rule_mask(R, ch["rule"])), k_tests=n_live)
-    gates = stats(R, entries(R, new & R["pass"]))
+    fix, gix = entries(R, new & rule_mask(R, ch["rule"])), entries(R, new & R["pass"])
+    fwd, gates = stats(R, fix, k_tests=n_live), stats(R, gix)
+    fwd["sim"], gates["sim"] = simulate(R, fix), simulate(R, gix)
     if fwd.get("n", 0) < MIN_FWD or fwd.get("days", 0) < MIN_DAYS:
         verdict = "watch"
     elif (fwd["avg"] > 0 and fwd["avg"] > (gates.get("avg") if gates.get("n") else -1e9) and fwd.get("lo", -1) > 0
-          and fwd["hit3"] >= (gates.get("hit3") or 0.0)):
+          and fwd["hit3"] >= (gates.get("hit3") or 0.0) and fwd["win"] >= (gates.get("win") or 0.0)
+          and (fwd.get("sim") or {}).get("pProfit", 0.0) >= SIM_HOLD):
         verdict = "better"
     else:
         verdict = "worse"
-    return dict(ch, fwd=fwd, gates=gates, verdict=verdict)
+    goal = verdict != "watch" and fwd["win"] >= WIN_GOAL and fwd["avg"] > 0
+    return dict(ch, fwd=fwd, gates=gates, verdict=verdict, goal=goal)
 
 
 def mistakes(R, rule, now):
@@ -265,7 +316,8 @@ def build(snaps, state, now, study=None):
            "gatesAll": stats(R, entries(R, (R["t"] <= upto) & R["pass"])),
            "tonight": {k: tonight[k] for k in ("id", "text", "train", "frozenAt")} if tonight else None,
            "leader": {k: leader[k] for k in ("id", "text", "fwd", "gates", "train")} if leader else None,
-           "challengers": [{k: c[k] for k in ("id", "text", "frozenAt", "fwd", "gates", "verdict")} for c in ranked[:10]],
+           "challengers": [{k: c[k] for k in ("id", "text", "frozenAt", "fwd", "gates", "verdict", "goal")} for c in ranked[:10]],
+           "winGoal": WIN_GOAL, "sims": {"n": SIMS, "fee": list(SIM_FEE), "slip": list(SIM_SLIP), "hold": SIM_HOLD},
            "nLive": len(chs), "mistakes": mistakes(R, lead_rule, now), "rules": {"minFwd": MIN_FWD, "minDays": MIN_DAYS, "minHalf": MIN_HALF}}
     if study:
         doc["study"] = study

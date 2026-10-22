@@ -44,14 +44,60 @@ def load(d):
 
 
 def st_line(s, what="coins"):
-    """'312 coins over 5 days · −1.20 € per 20 · 3x 1.3% · to zero 4.0% · 95% range −2.10 € to −0.30 €'."""
+    """'312 coins over 5 days · −1.20 € per 20 · 3.4 of 10 in profit · 3x 1.3% · to zero 4.0% · range −2.10 € to −0.30 €'."""
     if not isinstance(s, dict) or not num(s.get("n")):
         return "no coins yet"
     bits = ["%d %s over %d day%s" % (int(s["n"]), what, int(num(s.get("days")) or 0), "" if int(num(s.get("days")) or 0) == 1 else "s"),
-            "%s per 20" % per(num(s.get("avg"))), "3x %.1f%%" % (num(s.get("hit3")) or 0.0), "to zero %.1f%%" % (num(s.get("zero")) or 0.0)]
+            "%s per 20" % per(num(s.get("avg"))), "%.1f of 10 in profit" % ((num(s.get("win")) or 0.0) / 10), "3x %.1f%%" % (num(s.get("hit3")) or 0.0), "to zero %.1f%%" % (num(s.get("zero")) or 0.0)]
     if num(s.get("lo")) is not None and num(s.get("hi")) is not None:
         bits.append("range %s to %s" % (per(num(s["lo"])), per(num(s["hi"]))))
     return " · ".join(bits)
+
+
+def goal_line(doc, fwd, gates):
+    """The user's goal (about 6 of 10 picks in profit, with a profit per pick): where the rule and the gates stand."""
+    g = num(doc.get("winGoal"))
+    if g is None:
+        return ""
+    if not num((fwd or {}).get("n")):
+        return '<small class="fs-goal">Goal: %g of 10 in profit and a profit per pick. Not measured yet.</small>' % (g / 10)
+    w, a = num(fwd.get("win")) or 0.0, num(fwd.get("avg")) or 0.0
+    gw = ("; the gates: %.1f of 10" % ((num(gates.get("win")) or 0.0) / 10)) if num((gates or {}).get("n")) else ""
+    ok = w >= g and a > 0
+    return '<small class="fs-goal %s">Goal: %g of 10 in profit and a profit per pick. This rule: %.1f of 10, %s per 20%s. %s</small>' % (
+        "good" if ok else "", g / 10, w / 10, E(per(a)), gw, "Reached." if ok else "Not yet.")
+
+
+def spark(curves):
+    """The typical and the bad simulated paper-account curve (20 a pick, summed per day) as one small inline SVG, zero dashed."""
+    lines = [(k, [num(v) for v in (curves.get(k) or []) if num(v) is not None]) for k in ("typical", "bad")]
+    lines = [(k, v) for k, v in lines if len(v) >= 2]
+    if not lines:
+        return ""
+    allv = [0.0] + [x for _, v in lines for x in v]
+    lo, hi = min(allv), max(allv)
+    span = (hi - lo) or 1.0
+    W, H = 240.0, 56.0
+    y = lambda v: round(H - 4 - (v - lo) / span * (H - 8), 1)
+    out = ['<line x1="0" x2="%g" y1="%s" y2="%s" class="z"/>' % (W, y(0.0), y(0.0))]
+    for k, v in lines:
+        pts = " ".join("%s,%s" % (round(i * W / (len(v) - 1), 1), y(x)) for i, x in enumerate(v))
+        out.append('<polyline points="%s" class="%s"/>' % (pts, "t" if k == "typical" else "b"))
+    return '<svg class="fs-sp" viewBox="0 0 %g %g" preserveAspectRatio="none" role="img" aria-label="simulated paper account">%s</svg>' % (W, H, "".join(out))
+
+
+def sim_line(sim, who="this rule"):
+    """'10,000 simulations: in profit in 73% of them · typical run +0.40 € per 20, bad run −1.10 € (end +12 € / −30 €)' plus the curves."""
+    if not isinstance(sim, dict) or not num(sim.get("sims")):
+        return ""
+    a = sim.get("avg") if isinstance(sim.get("avg"), list) and len(sim["avg"]) == 3 else [None] * 3
+    c = sim.get("curve") if isinstance(sim.get("curve"), dict) else {}
+    end = lambda k: (c.get(k) or [None])[-1]
+    txt = "%s simulations of %s (days drawn again, random fees and slippage): in profit in %.0f%% of them · typical run %s per 20, bad run (1 in 20) %s" % (
+        "{:,}".format(int(sim["sims"])), who, num(sim.get("pProfit")) or 0.0, per(num(a[1])), per(num(a[0])))
+    if num(end("typical")) is not None and num(end("bad")) is not None:
+        txt += " · paper account at the end: typical %s, bad %s" % (PA.eur(num(end("typical")), True), PA.eur(num(end("bad")), True))
+    return '<small class="fs-sim">%s</small>%s' % (E(txt), spark(c))
 
 
 def verdict(doc):
@@ -61,8 +107,8 @@ def verdict(doc):
     if lead:
         fwd, g = lead.get("fwd") or {}, lead.get("gates") or {}
         return ('<div class="fs-v good"><span class="k">A rule beat the gates on coins it never saw (not switched on: your decision)</span>'
-                '<b>%s</b><small>this rule: %s</small><small>the gates on the same days: %s</small></div>') % (
-            E(lead.get("text")), E(st_line(fwd)), E(st_line(g)))
+                '<b>%s</b><small>this rule: %s</small><small>the gates on the same days: %s</small>%s%s</div>') % (
+            E(lead.get("text")), E(st_line(fwd)), E(st_line(g)), goal_line(doc, fwd, g), sim_line(fwd.get("sim")))
     chs = [c for c in (doc.get("challengers") or []) if isinstance(c, dict)]
     best = chs[0] if chs else None
     if not best:
@@ -70,8 +116,8 @@ def verdict(doc):
     fwd, g = best.get("fwd") or {}, best.get("gates") or {}
     state = ("still collecting: %d of %d unseen coins" % (int(num(fwd.get("n")) or 0), need)) if best.get("verdict") == "watch" else "tested: not better"
     return ('<div class="fs-v"><span class="k">No rule beats the gates on unseen coins yet</span><b>Best so far: %s</b>'
-            '<small>%s · %s</small><small>the gates on the same days: %s</small></div>') % (
-        E(best.get("text")), E(state), E(st_line(fwd)), E(st_line(g)))
+            '<small>%s · %s</small><small>the gates on the same days: %s</small>%s%s</div>') % (
+        E(best.get("text")), E(state), E(st_line(fwd)), E(st_line(g)), goal_line(doc, fwd, g), sim_line(fwd.get("sim")))
 
 
 def tonight(doc):
@@ -82,7 +128,7 @@ def tonight(doc):
     h = tr.get("halves") if isinstance(tr.get("halves"), list) and len(tr["halves"]) == 2 else None
     halves = (" · older half %s, newer half %s" % (per(num(h[0])), per(num(h[1])))) if h else ""
     return ('<p class="fs-s"><span class="k">Learned last night (frozen, tested from now on only on new coins):</span> %s<br><small>on the '
-            'scans so far: %s%s</small></p>') % (E(t.get("text")), E(st_line(tr)), E(halves))
+            'scans so far: %s%s</small>%s</p>') % (E(t.get("text")), E(st_line(tr)), E(halves), sim_line(tr.get("sim"), "the scans it was chosen on (no proof: picked from thousands of rules on these very scans)"))
 
 
 def mistakes(doc):
@@ -108,17 +154,23 @@ def study(doc):
 
 def how(doc):
     d = doc["data"]
+    sims = doc.get("sims") if isinstance(doc.get("sims"), dict) else {}
     return ("Every night the search reads every coin of every scan so far (%s rows, %s coins, %s scans) with what 20 became about "
             "2 hours later, after %g%% fees per buy and per sell, the price multiple capped at %gx. It tries %s rules (one or two numbers above "
             "or below a quartile, in %d age windows, the old new launches among them) and keeps the one that did best in both halves of the "
-            "scans and lost no 3x coins against the gates. That rule is frozen with its numbers; from then on it is measured only on coins "
+            "scans and lost no 3x coins against the gates; a rule with about 6 of 10 coins in profit and a profit in both halves comes first. That rule is frozen with its numbers; from then on it is measured only on coins "
             "that came later, next to the gates on the same coins. It counts as better only with %d coins or more over %d days or more, "
-            "above zero and above the gates per 20, a 3x share not below the gates', and the low end of its range above zero, the range "
-            "widened for the number of rules under test at once (%s now). The leading rule's mistakes line uses the bot's top picks. Fake money; nothing "
+            "above zero and above the gates per 20, a 3x share and a share in profit not below the gates', and the low end of its range above zero, the range "
+            "widened for the number of rules under test at once (%s now). The goal of 6 of 10 counts only with a profit per pick: many small wins "
+            "and a few big losses still lose money. Every rule also goes through %s simulated runs: the days drawn again with replacement, "
+            "a fee per side between %g%% and %g%% and a slippage up to %g%% a day drawn at random; it counts as better only if %g%% of those runs "
+            "or more end in profit. The grey line is the typical run's paper account, the red one a bad run (1 in 20). The leading rule's mistakes line uses the bot's top picks. Fake money; nothing "
             "here changes what the bot buys.") % (
         "{:,}".format(int(num(d.get("rows")) or 0)), "{:,}".format(int(num(d.get("coins")) or 0)), "{:,}".format(int(num(d.get("scans")) or 0)),
         100 * (num(doc.get("fee")) or 0.01), num(doc.get("cap")) or 11, "{:,}".format(int(num(doc.get("tried")) or 0)), int(num(doc.get("windows")) or 6),
-        int(num((doc.get("rules") or {}).get("minFwd")) or 100), int(num((doc.get("rules") or {}).get("minDays")) or 3), int(num(doc.get("nLive")) or 0))
+        int(num((doc.get("rules") or {}).get("minFwd")) or 100), int(num((doc.get("rules") or {}).get("minDays")) or 3), int(num(doc.get("nLive")) or 0),
+        "{:,}".format(int(num(sims.get("n")) or 10000)), 100 * (num((sims.get("fee") or [0.005])[0]) or 0.005), 100 * (num((sims.get("fee") or [0, 0.02])[-1]) or 0.02),
+        100 * (num((sims.get("slip") or [0, 0.04])[-1]) or 0.04), num(sims.get("hold")) or 90)
 
 
 def section(D):
@@ -144,7 +196,10 @@ CSS = r"""
 .fs-cnt { margin-left:auto; font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums }
 .fs-keep { margin:0; font-size:var(--fs-s); color:var(--fg2); max-width:70ch; text-wrap:pretty }
 .fs-v { border:1px solid var(--line); border-left:4px solid var(--warn-mark); border-radius:10px; padding:10px 14px 12px; display:grid; gap:3px; min-width:0 }
-.fs-v.good { border-left-color:var(--good) } .fs-v .k, .fs-s .k { font-size:var(--fs-xs); color:var(--muted) }
+.fs-sim { display:block } .fs-sp { display:block; width:100%; height:56px; margin-top:4px }
+.fs-sp .z { stroke:var(--line); stroke-dasharray:3 3; stroke-width:1 } .fs-sp polyline { fill:none; stroke-width:1.5; vector-effect:non-scaling-stroke }
+.fs-sp .t { stroke:var(--fg2) } .fs-sp .b { stroke:var(--bad) }
+.fs-v.good { border-left-color:var(--good) } .fs-v .fs-goal { color:var(--fg2) } .fs-v .fs-goal.good { color:var(--good) } .fs-v .k, .fs-s .k { font-size:var(--fs-xs); color:var(--muted) }
 .fs-v b { font-size:16px; font-weight:600; overflow-wrap:anywhere }
 .fs-v small, .fs-s small { font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
 .fs-s { margin:0; font-size:var(--fs-s); color:var(--fg2); overflow-wrap:anywhere }

@@ -114,6 +114,35 @@ def main():
         h3 = R.search_block({"dir": d})
         check('data-pa="filtersearch"' in h3 and h3.startswith("<section>") and "Filter search" in R.search_block.__doc__ + h3,
               "S7 the page shows the block: the Pick tab's Details holds it (report.search_block)")
+        # S8 the user's goal: about 6 of 10 in profit, and only with a profit per pick
+        lead = doc3["challengers"][0]
+        check(doc3["winGoal"] == FS.WIN_GOAL and lead["fwd"]["win"] >= FS.WIN_GOAL and lead["goal"] is (lead["verdict"] != "watch"),
+              "S8 the made-up edge wins %.0f%% of its unseen coins: goal %s (verdict %s)" % (lead["fwd"]["win"], lead["goal"], lead["verdict"]))
+        check("Goal: 6 of 10 in profit" in h2 and ("Reached." in h2) == bool(doc3.get("leader") and lead["goal"]) and "of 10 in profit ·" in h2,
+              "S8 the page names the goal, where the rule stands, and the share in profit next to the profit per 20")
+        many_small = {"n": 200, "days": 5, "avg": -0.5, "win": 70.0, "hit3": 0.0, "zero": 5.0}
+        g = PS.goal_line({"winGoal": 60.0}, many_small, {})
+        check("Not yet." in g and "7.0 of 10" in g, "S8 7 of 10 in profit but a loss per pick is no goal: %s" % g[g.find("This rule"):])
+        old = doc5["challengers"][0]
+        check(not old["goal"], "S8 a losing rule never reaches the goal")
+        # S9 the simulations: thousands of runs per rule, the verdict needs most of them in profit
+        s_good, s_bad = lead["fwd"].get("sim") or {}, old["fwd"].get("sim") or {}
+        check(s_good.get("sims") == FS.SIMS and s_good["pProfit"] >= FS.SIM_HOLD and s_bad.get("pProfit", 100) < 50
+              and s_good["avg"][0] <= s_good["avg"][1] <= s_good["avg"][2] and len(s_good["curve"]["bad"]) == s_good["days"]
+              and s_good["curve"]["bad"][-1] <= s_good["curve"]["typical"][-1],
+              "S9 %d runs each: the edge in profit in %.0f%% of them, the losing rule in %.0f%%; the bad curve ends below the typical one" % (
+                  s_good.get("sims", 0), s_good.get("pProfit", 0), s_bad.get("pProfit", 0)))
+        import numpy as np
+        flat = {"scan": np.repeat(np.arange(8) * DAY, 20).astype(float), "mult": np.full(160, 1.01)}
+        sf = FS.simulate(flat, np.arange(160))
+        check(sf["pProfit"] < 5, "S9 a rule that only breaks even before costs loses in the runs (random fees and slippage): %.1f%% in profit" % sf["pProfit"])
+        check(FS.simulate(flat, np.arange(FS.SIM_MIN - 1)) is None, "S9 too few coins: no simulation")
+        orig = FS.SIM_HOLD
+        FS.SIM_HOLD = 101.0
+        doc6, _ = FS.build(snaps, state, end2 + DAY)
+        FS.SIM_HOLD = orig
+        check(doc6["challengers"][0]["verdict"] != "better" and not doc6.get("leader"), "S9 a rule that does not hold in enough runs is never 'better'")
+        check("simulations of this rule" in h2 and 'class="fs-sp"' in h2 and "<polyline" in h2, "S9 the page shows the runs' chance of profit and the two curves")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("\n%d checks failed" % len(FAILS) if FAILS else "\nALL PASS")
