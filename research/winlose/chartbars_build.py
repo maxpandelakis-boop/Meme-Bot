@@ -6,6 +6,7 @@ import glob, os, sys
 import numpy as np, pandas as pd
 
 src, coins, out = sys.argv[1:4]
+KEEP_H = int(os.environ.get("KEEP_H") or 25)
 os.makedirs(out, exist_ok=True)
 g = pd.read_parquet(coins, columns=["pool", "grad_ms"]).drop_duplicates("pool").set_index("pool")["grad_ms"]
 files = sorted(glob.glob(os.path.join(src, "**", "bars_*.parquet"), recursive=True))
@@ -14,7 +15,7 @@ n = 0
 for f in files:
     b = pd.read_parquet(f)
     b["mi"] = ((b["m"] - b["pool"].map(g)) // 60_000)
-    b = b[(b["mi"] >= 0) & (b["mi"] < 25 * 60)].copy()
+    b = b[(b["mi"] >= 0) & (b["mi"] < KEEP_H * 60)].copy()
     b["mi"] = b["mi"].astype("int16")
     keep = ["pool", "mi", "p_open", "p_close", "p_hi", "p_lo", "sol_buy", "sol_sell", "n_buy", "n_sell", "n_atomic"]
     b = b[keep]
