@@ -22,6 +22,8 @@ check at 30 minutes, then every 15), walk-forward over 7 weeks, mean of 5 seeds:
 | top 1% | 226 | -2.30 | 1.1 | 3.6% | 25.2% |
 | top 2% | 478 | -2.97 | 1.2 | 3.2% | 10.4% |
 
+For information (addendum 1, FIX=1: corrected outcome and label, the old chart numbers): top 0.5% -1.87 per 20 on 72 coins,
+36.6% of the runs in profit, no early variant holds either; so the outcome fix alone already removes the edge.
 Before the fix the same run said +5.56 at the top 0.5% (56 coins, 10x 6.5%, 81% of the runs in profit); the stress test of
 21-22 Oct said +3 to +10. That edge came mostly from the fake 11x of the dead pools. **The rocket hunter has no edge in the
 corrected history.** Its live paper account goes on as the forward test; rocket_model.json is exported again from the corrected
