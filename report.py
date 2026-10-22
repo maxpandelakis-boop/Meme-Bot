@@ -2003,6 +2003,16 @@ def search_block(D):
     return '<section>%s</section>' % PS.section(D)
 
 
+def shadow_block(D):
+    """The Pick's shadow rules (page_shadow.py, fake money: four other sell rules on the same buys; the Pick's own rule is untouched) under
+    the hour grid on the Pick tab. Nothing without the module."""
+    try:
+        import page_shadow as PSH
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PSH.section(D, sys.modules[__name__])
+
+
 def rocket_block(D):
     """The two paper accounts side by side and the rocket hunter's live test (page_rocket.py, fake money) at the top of the Radar
     tab. Nothing without the module."""
@@ -3460,7 +3470,8 @@ def render(data, fragment=False):
         if D["runs"]:
             rest.append(safe("run log", runlog))
         details = fold("Forschung", "Prognose, Tipp-Bilanz, Training, Filter-Team, Filtersuche, Gewinner vs. Verlierer, Kandidaten, Lauf-Log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
-        pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
+        pane_pick = (strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
+                     + safe("shadow rules", lambda: shadow_block(D)))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
         pane_young = safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar", lambda: PR.block(D, safe("radar paper positions", lambda: PT.radar_positions(D)) if PT else "")) + legacy

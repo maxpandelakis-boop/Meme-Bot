@@ -19,7 +19,8 @@
 # peaks, runs after the scan: first the radar account's buys (radar_paper.py, called from peak.py run: at most 15 windows, in at
 # most 4 of its ten minutes and 3 of GeckoTerminal's rate limits), then on the rest the closed 6-hour windows of the paper positions
 # (best price within 6 h, hindsight), on the same client, whose requests go further apart after each rate limit; then it replays
-# other stops and targets on the closed paper trades (exit_grid.py, hindsight, a report: the trader keeps its rule), and last the learning
+# other stops and targets on the closed paper trades (exit_grid.py, hindsight, a report: the trader keeps its rule), the Pick's shadow rules
+# (shadow.py: four other sell rules on each pick buy's 12-hour minute path, a report: the Pick keeps its rule), and last the learning
 # trader's daily step (traders.py: three paper traders on the same coins, the stop-loss account, the best price looking back, and one that
 # learns only from finished trades and writes one frozen decision per group and day; its radar skip signs go to radar-feed for the push).
 # Fake money only: nothing is bought anywhere.
@@ -585,7 +586,7 @@ jobs:
     if: needs.scan.outputs.skipped != 'true' && needs.scan.result == 'success' && (vars.MEMEBOT_PEAKS || '1') != '0'   # the repository variable MEMEBOT_PEAKS=0 switches the peak category off
     runs-on: ubuntu-latest
     continue-on-error: true          # a failed or slow pricing run never turns the scan red: docs already written stay, the next scan goes on
-    timeout-minutes: 17              # about 60 GeckoTerminal calls at its 10 s gap, the exit replay, the learning trader; the next scan waits for this job (the workflow-level group)
+    timeout-minutes: 19              # about 60 GeckoTerminal calls at its 10 s gap, the exit replay, the shadow rules, the learning trader; the next scan waits for this job (the workflow-level group)
     permissions:
       contents: write                # the results branch: the scan job pushed it before this job starts, and nothing else writes it meanwhile
     env:
@@ -617,6 +618,11 @@ jobs:
         continue-on-error: true      # a report: an error or a timeout here never holds back the push below (the script itself exits 0)
         timeout-minutes: 2
         run: python3 exit_grid.py run --dir mb
+      - name: The Pick's shadow rules (a 12-hour minute path per pick buy, one GeckoTerminal request each; hindsight only, the Pick's own rule is untouched; two minutes at most)
+        if: steps.restore.outputs.ok == 'true'
+        continue-on-error: true      # a report: an error or a timeout here never holds back the push below (the script itself exits 0)
+        timeout-minutes: 2
+        run: python3 shadow.py run --dir mb --deadline-s 90
       - name: The learning trader's daily step (local computation, no requests; two minutes at most)
         if: steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'   # off since 22 Oct 2026 (two bots only: Pick and the rocket hunter; its data stays); the repository variable MEMEBOT_TRADERS=1 switches it on
         continue-on-error: true      # a record: an error or a timeout here never holds back the push below (the script itself exits 0)

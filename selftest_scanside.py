@@ -24,8 +24,8 @@ S5  app.KINDS["radar"] == (600, "high", 60), PREF_OF radar (and curve) -> young:
     notify_radar's words say fake money and never buy, safe or clean, and open the Radar tab; an infinite age, count or liquidity reads
     as unknown
 S6  scan.yml lint: the cache step is unchanged (I9), steps A/B/D are soft with their timeouts and places, C exports memeradar, job
-    peaks needs scan with timeout <= 17, the token only in its restore and push steps, the exit replay after the pricing and the learning
-    trader's step (TR15: traders.py run, continue-on-error, at most 3 min) after it, both before the push, and, run as written (with a stand-in pricing step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the radar's safety net)
+    peaks needs scan with timeout <= 19, the token only in its restore and push steps, the exit replay after the pricing, the Pick's
+    shadow rules (shadow.py run: continue-on-error, at most 2 min, without the token) after it, and the learning trader's step (TR15: traders.py run, continue-on-error, at most 3 min) after it, both before the push, and, run as written (with a stand-in pricing step), adds its docs to results as one commit on top of the scan's; no step pushes radar-data; step D (the radar's safety net)
     against a stand-in GitHub API: it starts radar.yml (source hourly) after each full scan, only when the workflow is active, inside
     the hours and no radar run is running or waiting (any status but completed), never when MEMEBOT_RADAR is 0; radar.yml (when on this
     branch): group memebot-radar, no schedule, a round every 2 minutes for 55 minutes (timeout 70), never pushes results, live or
@@ -649,7 +649,7 @@ def _peaks_job(check, scan, tmp):
     open(os.path.join(ws, "peak.py"), "w").write(STANDIN_PEAK)
     outf = os.path.join(tmp, "s6-peaks-output")
     open(outf, "w").close()
-    logs, codes, priced, grid, trd = [], [], {}, {}, {}
+    logs, codes, priced, grid, trd, shd = [], [], {}, {}, {}, {}
     for st in pk["steps"][1:]:
         if "steps.restore.outputs.ok == 'true'" in str(st.get("if")) and "ok=true" not in open(outf).read():
             continue
@@ -657,6 +657,8 @@ def _peaks_job(check, scan, tmp):
             os.remove(os.path.join(ws, "peak.py"))
             for f in ("peak.py", "memebot.py", "fetch.py", "exit_grid.py"):
                 os.symlink(os.path.join(HERE, f), os.path.join(ws, f))
+        if "shadow.py run" in st["run"]:             # the shadow rules read the real modules (no pick buy here: nothing due, no request)
+            os.symlink(os.path.join(HERE, "shadow.py"), os.path.join(ws, "shadow.py"))
         if "traders.py run" in st["run"]:            # the learning trader reads the real modules (read only)
             for f in ("traders.py", "radar_paper.py", "traps.py", "radar_weights.json", "page_account.py"):
                 os.symlink(os.path.join(HERE, f), os.path.join(ws, f))
@@ -676,6 +678,11 @@ def _peaks_job(check, scan, tmp):
                 grid = json.loads((p.stdout.strip().splitlines() or ["{}"])[-1])
             except ValueError:
                 grid = {}
+        if "shadow.py run" in st["run"]:
+            try:
+                shd = json.loads((p.stdout.strip().splitlines() or ["{}"])[-1])
+            except ValueError:
+                shd = {}
         if "traders.py run" in st["run"]:
             try:
                 trd = json.loads((p.stdout.strip().splitlines() or ["{}"])[-1])
@@ -692,17 +699,18 @@ def _peaks_job(check, scan, tmp):
     out2 = os.path.join(tmp, "s6-peaks-output2")
     open(out2, "w").close()
     p2, _ = run_script(pk["steps"][1]["run"], ws2, dict(RESULTS_URL="file://" + empty, GITHUB_OUTPUT=out2))
-    check(codes == [0, 0, 0, 0, 0] and bool(parent) and parent == scan_head and head != scan_head
+    check(codes == [0, 0, 0, 0, 0, 0] and bool(parent) and parent == scan_head and head != scan_head
           and {"db/memepeak/y-0.json", "db/memepeak/y-1.json", "db/memepos/y-1.json", "report.html", "db/memebot/exitgrid.json", "db/memebot/traders.json"} <= ls
           and grid.get("ok") is True and (grid.get("young") or {}).get("verdict") == "empty" and trd.get("ok") is True
+          and shd.get("ok") is True and shd.get("due") == 0
           and not any(x.startswith("candles/") for x in ls) and p2.returncode == 0 and "ok=true" not in open(out2).read() and not os.path.exists(os.path.join(ws2, "mb")),
           "job peaks as written: it clones the results the scan just pushed, prices (a stand-in here), replays the exits (exit_grid.py: no closed "
-          "trade here, an empty doc), runs the learning trader's step (traders.py), and its sync adds the peak doc, the exit doc and the traders' summary as one commit on top of the scan's (the candle files stay on "
+          "trade here, an empty doc), the shadow rules (no pick buy here: nothing due), runs the learning trader's step (traders.py), and its sync adds the peak doc, the exit doc and the traders' summary as one commit on top of the scan's (the candle files stay on "
           "the runner); without a results branch it prices nothing and pushes nothing")
     check(priced.get("items") == 1 and priced.get("token") is False and "RESULTS_URL" not in (pk.get("env") or {})
-          and [bool((s.get("env") or {}).get("RESULTS_URL")) for s in pk["steps"]] == [False, True, False, False, False, True],
-          "job peaks: the token's address is only in the restore and the push step; the pricing step (GeckoTerminal only), the exit replay "
-          "and the learning trader run without it")
+          and [bool((s.get("env") or {}).get("RESULTS_URL")) for s in pk["steps"]] == [False, True, False, False, False, False, True],
+          "job peaks: the token's address is only in the restore and the push step; the pricing step (GeckoTerminal only), the exit replay, "
+          "the shadow rules and the learning trader run without it")
     names = [str(s.get("name") or "") for s in pk["steps"]]
     i_px = next((i for i, nm in enumerate(names) if nm.startswith("Price the closed 6-hour windows")), -1)
     i_xg = next((i for i, s in enumerate(pk["steps"]) if "exit_grid.py run --dir mb" in str(s.get("run") or "")), -1)
@@ -710,12 +718,17 @@ def _peaks_job(check, scan, tmp):
     xg = pk["steps"][i_xg] if i_xg >= 0 else {}
     i_tr = next((i for i, s in enumerate(pk["steps"]) if str(s.get("run") or "").strip() == "python3 traders.py run --dir mb"), -1)
     tr = pk["steps"][i_tr] if i_tr >= 0 else {}
+    i_sh = next((i for i, s in enumerate(pk["steps"]) if str(s.get("run") or "").strip() == "python3 shadow.py run --dir mb --deadline-s 90"), -1)
+    sh = pk["steps"][i_sh] if i_sh >= 0 else {}
     px_t = int((pk["steps"][i_px] if i_px >= 0 else {}).get("timeout-minutes") or 0)
     check(0 < i_px < i_xg < i_up and xg.get("continue-on-error") is True and 0 < int(xg.get("timeout-minutes") or 0) <= 2
           and xg.get("if") == "steps.restore.outputs.ok == 'true'"
-          and int(pk.get("timeout-minutes") or 0) >= px_t + int(xg.get("timeout-minutes") or 0) + int(tr.get("timeout-minutes") or 0) + 1,
-          "job peaks: the exit replay runs after the pricing and before the push, with its own short timeout, never failing the job, and the "
-          "job's timeout leaves the push its minute after all three")
+          and i_xg < i_sh < i_tr and sh.get("continue-on-error") is True and 0 < int(sh.get("timeout-minutes") or 0) <= 2
+          and sh.get("if") == "steps.restore.outputs.ok == 'true'"
+          and int(pk.get("timeout-minutes") or 0) >= px_t + int(xg.get("timeout-minutes") or 0) + int(sh.get("timeout-minutes") or 0)
+          + int(tr.get("timeout-minutes") or 0) + 1,
+          "job peaks: the exit replay and then the Pick's shadow rules run after the pricing and before the push, each with its own short "
+          "timeout, never failing the job, and the job's timeout leaves the push its minute after all four")
     check(i_xg < i_tr < i_up and tr.get("continue-on-error") is True and 0 < int(tr.get("timeout-minutes") or 0) <= 3
           and tr.get("if") == "steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'" and "traders.py" in str(tr.get("name") or "") + str(tr.get("run")),
           "TR15 job peaks has the learning trader's step (traders.py run) after the exit replay and before the push, continue-on-error, "
@@ -858,13 +871,13 @@ def _s6(check, scan, tmp):
     clone = next((l.strip() for l in restore_scan.splitlines() if "git clone" in l), "?")
     runs_pk = [s.get("run") or "" for s in pst]
     check(pk.get("needs") == "scan" and "needs.scan.outputs.skipped != 'true'" in str(pk.get("if")) and "needs.scan.result == 'success'" in str(pk.get("if"))
-          and pk.get("continue-on-error") is True and isinstance(pk.get("timeout-minutes"), int) and pk["timeout-minutes"] <= 17 and pk.get("permissions") == {"contents": "write"}
+          and pk.get("continue-on-error") is True and isinstance(pk.get("timeout-minutes"), int) and pk["timeout-minutes"] <= 19 and pk.get("permissions") == {"contents": "write"}
           and (pst[:1] == [{"uses": "actions/checkout@v4", "with": {"persist-credentials": False}}]) and clone in restore_pk
           and any(r.strip() == "python3 peak.py run --dir mb --deadline-s 600" for r in runs_pk) and runs_pk[-1].strip() == 'python3 bot.py sync --remote "$RESULTS_URL"'
-          and [i for i, r in enumerate(runs_pk) if "peak.py run" in r] == [len(runs_pk) - 4] and runs_pk[-3].strip() == "python3 exit_grid.py run --dir mb"
-          and runs_pk[-2].strip() == "python3 traders.py run --dir mb",
+          and [i for i, r in enumerate(runs_pk) if "peak.py run" in r] == [len(runs_pk) - 5] and runs_pk[-4].strip() == "python3 exit_grid.py run --dir mb"
+          and runs_pk[-3].strip() == "python3 shadow.py run --dir mb --deadline-s 90" and runs_pk[-2].strip() == "python3 traders.py run --dir mb",
           "job peaks: needs scan (not after a skipped or failed scan), continue-on-error, %s min at most, contents write only; checkout (no token kept), the scan's"
-          " results clone, peak.py run --deadline-s 600, the exit replay (exit_grid.py), the learning trader (traders.py), then bot.py sync" % pk.get("timeout-minutes"))
+          " results clone, peak.py run --deadline-s 600, the exit replay (exit_grid.py), the shadow rules (shadow.py), the learning trader (traders.py), then bot.py sync" % pk.get("timeout-minutes"))
     pushes = [(s.get("name") or s.get("uses"), l.strip()) for j in scan["jobs"].values() for s in j.get("steps") or [] for l in (s.get("run") or "").splitlines() if "git push" in l]
     check(len(pushes) == 2 and not any("radar-data" in l for _, l in pushes) and all(re.search(r"\b(bigtest|radar-feed)\b", l) for _, l in pushes),
           "no step of scan.yml pushes radar-data (the radar job is its only writer); the git pushes go to bigtest and radar-feed (%d), results via bot.py sync" % len(pushes))
