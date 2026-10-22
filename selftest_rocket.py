@@ -7,7 +7,7 @@ Checks: R1 rocket.chart gives the research numbers (research/winlose/features.py
 give lightgbm's own probabilities (rocket_model.json's check rows); R3 the paper account: one buy per coin, rule A (stop on a low
 first, 11x, 6 h), fees; R4 a round on mocked answers: universe, scoring, a buy at the cut, a sell, the state and the log, no network;
 R5 the page block: no doc, a doc (escaped, no script), its place at the top of the Radar tab; R6 the workflow only writes rocket-data,
-uses no secret but the run's token, and the scan job only reads rocket.json.
+uses the run's token and the push secrets only, and the scan job only reads rocket.json; R7 the "Radar 🚀" push of a round's paper buys.
 """
 import json, math, os, random, shutil, sys, tempfile
 
@@ -145,15 +145,36 @@ def r6():
     src = open(os.path.join(HERE, "report.py")).read()
     check('safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar"' in src, "R5 report.py puts the block at the top of the Radar tab")
     wf = open(os.path.join(HERE, ".github", "workflows", "rocket.yml")).read()
-    secrets = set(x.split("}")[0].strip() for x in wf.split("secrets.")[1:])
-    check(secrets == {"GITHUB_TOKEN"} and "HEAD:rocket-data" in wf and "--force" not in wf and "memebot-rocket" in wf,
-          "R6 rocket.yml uses only the run's token, pushes only to rocket-data (no force) in its own concurrency group")
+    secrets = set(x.split("}")[0].split()[0].strip() for x in wf.split("secrets.")[1:])
+    check(secrets == {"GITHUB_TOKEN", "SUPABASE_URL", "SUPABASE_SECRET_KEY"} and "HEAD:rocket-data" in wf and "--force" not in wf
+          and "memebot-rocket" in wf and "--require-hashes" in wf,
+          "R6 rocket.yml uses the run's token and the push secrets only (%s), pushes only to rocket-data (no force) in its own concurrency group, the push sender pinned" % sorted(secrets))
+    rnd = wf[wf.index("- name: One round"):wf.index("- name: Save the state")]
+    check("GITHUB_TOKEN" not in rnd, "R6 the round itself never sees the GitHub token")
     sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml")).read()
     check("git show FETCH_HEAD:rocket.json > mb/db/memebot/rocket.json" in sc, "R6 the scan job copies rocket.json into the page (read only)")
 
 
+def r7():
+    import app as A
+    w = A.rocket_words([{"sym": "ONE<b>", "score": 0.1234, "cut": 0.0839}, {"sym": "TWO", "score": 0.09}], {"trades": 3, "eur": -12.5})
+    check(w and w[0].startswith("Radar 🚀") and "ONE" in w[0] and "+1" in w[0] and "0.123" in w[1] and "0.084" in w[1] and "Papiergeld" in w[1]
+          and "-12.50" in w[1], "R7 the push says Radar 🚀, the coin, its score and the cut, the record and that it is paper money (%s)" % (w,))
+    check(A.rocket_words([]) is None and A.notify_rocket([]) == {"skipped": "no buys"}, "R7 no buys: no push")
+    check(A.KINDS.get("rocket") and len(A.TOPIC["rocket"]) in (4, 8) and A.PREF_OF.get("rocket") == "young",
+          "R7 kind rocket: its own rate guard, an 8-letter topic, the New coins setting")
+    old = os.environ.pop("SUPABASE_URL", None)
+    try:
+        check(A.notify_rocket([{"sym": "X", "score": 0.2, "cut": 0.08}]).get("skipped") == "no live store", "R7 without the store nothing is sent")
+    finally:
+        if old is not None:
+            os.environ["SUPABASE_URL"] = old
+    src = open(os.path.join(HERE, "rocket_watch.py")).read()
+    check("app.notify_rocket(buys" in src and "if buys and not mock" in src, "R7 rocket_watch pushes a round's buys once, never in a mocked round")
+
+
 def main():
-    r1(); r2(); r3(); r4(); r6()
+    r1(); r2(); r3(); r4(); r6(); r7()
     print("\n%d failed" % len(FAILS) if FAILS else "\nall ok")
     sys.exit(1 if FAILS else 0)
 

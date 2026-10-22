@@ -522,9 +522,9 @@ def _s5(check, tmp):
     finally:
         A.notify = saved
     words = [t + " " + b for _, t, b, _ in texts[:4]]
-    check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young", "curve": "young"} and A.KINDS.get("curve") == (300, "high", 60)
+    check(A.KINDS.get("radar") == (600, "high", 60) and A.PREF_OF == {"radar": "young", "curve": "young", "rocket": "young"} and A.KINDS.get("curve") == (300, "high", 60)
           and all(A.KINDS.get(k) == v for k, v in (("young", (1800, "normal", 300)), ("pick", (3600, "high", 300)))),
-          "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar (and the curve watch's own kind, off by default) to the "
+          "app.KINDS['radar'] = (600 s TTL, high urgency, 60 s gap); PREF_OF maps radar (and the curve watch's own kind, off by default, and the rocket hunter's buys) to the "
           "phone's young switch; young and pick unchanged")
     check(len(texts) == 7 and texts[0][1:] == ("HIRE: no trap found (pool 6 min)", "9 checks passed · liquidity $23k · fake money, nothing is bought.", "#tab-radar")
           and texts[1][1] == "HIRE: no trap found (pool 6 min) +1 more" and texts[2][1] == "X<b>Y: no trap found (pool <1 min)"
