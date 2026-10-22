@@ -1,0 +1,50 @@
+# Rocket hunter (fake money only): checks that the HELIUS_API_KEY secret exists and works, and what Helius' parsed-transaction API
+# gives for one PumpSwap pool (number of swaps, buyer field, time span). The key is never printed or written; only counts and
+# field names go to the data branch "heliusprobe". Runs only on a push of this file on this branch.
+name: winlose-helius
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-helius.yml]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HK: ${{ secrets.HELIUS_API_KEY }}
+      POOL: 6ibz5c6GommNYERbGPQCHEmm5qtcNvrdznT4kPRzVBi
+    steps:
+      - run: |
+          mkdir out
+          python3 - <<'PY' > out/summary.txt
+          import json, os, urllib.request
+          k = os.environ.get("HK") or ""
+          print("secret present:", bool(k), "length ok:", len(k) >= 20)
+          def get(url, data=None):
+              req = urllib.request.Request(url, data=json.dumps(data).encode() if data else None, headers={"Content-Type": "application/json"})
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as r:
+                      return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  return e.code, None
+              except Exception as e:
+                  return -1, str(type(e).__name__)
+          if k:
+              st, j = get("https://mainnet.helius-rpc.com/?api-key=" + k, {"jsonrpc": "2.0", "id": 1, "method": "getSlot"})
+              print("rpc getSlot status", st, "ok" if isinstance(j, dict) and "result" in j else j)
+              st, j = get("https://api.helius.xyz/v0/addresses/%s/transactions?api-key=%s&type=SWAP&limit=100" % (os.environ["POOL"], k))
+              print("parsed swaps status", st, "n", len(j) if isinstance(j, list) else j)
+              if isinstance(j, list) and j:
+                  t = j[0]
+                  print("fields", sorted(t.keys()))
+                  print("feePayer present", bool(t.get("feePayer")), "tokenTransfers", len(t.get("tokenTransfers") or []), "source", t.get("source"))
+                  print("time span s", j[0].get("timestamp", 0) - j[-1].get("timestamp", 0))
+          PY
+          cat out/summary.txt
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b heliusprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "helius probe" && git push -q --force "$URL" heliusprobe

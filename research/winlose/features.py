@@ -12,10 +12,11 @@ usage: python3 research/winlose/features.py <scratch dir with d.pkl, pairs.pkl, 
 import glob, json, os, sys
 import numpy as np, pandas as pd
 
-S = sys.argv[1]
-d = pd.read_pickle(os.path.join(S, "d.pkl"))
-rows = d[d["univ"] & d["eur_A"].notna()].copy()
-pools = set(rows["pool"])
+S = sys.argv[1] if len(sys.argv) > 1 else ""
+if S and os.path.exists(os.path.join(S, "d.pkl")):        # imported without a scratch dir (selftest_rocket): chart_feats only
+    d = pd.read_pickle(os.path.join(S, "d.pkl"))
+    rows = d[d["univ"] & d["eur_A"].notna()].copy()
+    pools = set(rows["pool"])
 
 
 def rsi(close, n=14):
@@ -227,6 +228,43 @@ def wallet_chunked(G, chunk=400):
                                  "w_avg_lroi": sn["lroi"] / sn["n"].where(sn["n"] > 0), "w_recent_share": g["recent"].mean(),
                                  "w_recent_smart": q[q["recent"]].groupby("index")["smart"].sum()}))
         print("wallets", i, flush=True)
+    return pd.concat(out).reindex(G.index)
+
+
+def wallet_recent(G, chunk=400, smart_min=5):
+    """The wallet numbers a live watcher can get from GeckoTerminal's last trades: only the wallets whose first buy was in the
+    hour before the row, and of their history only what a seed of experienced wallets (smart_min or more earlier coins) knows."""
+    p = pd.read_pickle(os.path.join(S, "pairs.pkl"))
+    wc = pd.read_parquet(os.path.join(S, "w", "coins.parquet"))
+    p["mint"] = p["coin"].map(wc.set_index("coin")["mint"])
+    p = p[["wid", "mint", "t_q", "sol_q", "grad_ms", "roi"]]
+    p["known"] = p["grad_ms"] + 3 * 86_400_000
+    rec = p[["wid", "known", "roi"]].sort_values(["wid", "known"])
+    rec["n"] = 1
+    rec["win"] = (rec["roi"] > 1.5).astype("int32")
+    rec["big"] = (rec["roi"] > 3).astype("int32")
+    rec["lroi"] = np.log(rec["roi"].clip(1e-3, 1e3)).astype("float32")
+    rec = pd.concat([rec[["wid", "known"]], rec.groupby("wid")[["n", "win", "big", "lroi"]].cumsum()], axis=1).sort_values("known")
+    mints = G["mint"].unique()
+    p = p[p["mint"].isin(set(mints))][["mint", "wid", "t_q", "sol_q"]]
+    out = []
+    for i in range(0, len(mints), chunk):
+        part = set(mints[i:i + chunk])
+        x = G[G["mint"].isin(part)][["mint", "ts"]].reset_index()
+        q = p[p["mint"].isin(part)].merge(x, on="mint")
+        q = q[(q["t_q"] < q["ts"]) & (q["t_q"] >= q["ts"] - 3_600_000)].sort_values("ts")
+        q = pd.merge_asof(q, rec.rename(columns={"known": "ts"}), on="ts", by="wid", direction="backward")
+        q[["n", "win", "big", "lroi"]] = q[["n", "win", "big", "lroi"]].fillna(0)
+        known = q["n"] >= smart_min
+        q["smart"] = known & (q["win"] / q["n"].clip(lower=1) >= 0.5)
+        q["smartbig"] = known & (q["big"] >= 2)
+        q["known"] = known
+        q["kl"] = np.where(known, q["lroi"] / q["n"].clip(lower=1), np.nan)
+        g = q.groupby("index")
+        out.append(pd.DataFrame({"r_buyers": g.size(), "r_sol": g["sol_q"].sum(), "r_top_share": g["sol_q"].max() / g["sol_q"].sum(),
+                                 "r_avg_buy": g["sol_q"].mean(), "r_known_share": g["known"].mean(), "r_smart_n": g["smart"].sum(),
+                                 "r_smart_share": g["smart"].mean(), "r_smartbig_n": g["smartbig"].sum(), "r_avg_lroi": g["kl"].mean()}))
+        print("recent wallets", i, flush=True)
     return pd.concat(out).reindex(G.index)
 
 
