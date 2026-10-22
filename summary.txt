@@ -1,0 +1,13 @@
+secret present: True
+migration account sigs since 8 Oct: 24307 pages 42
+per day {'10-08': 1697, '10-09': 1726, '10-10': 1757, '10-11': 1595, '10-12': 1748, '10-13': 1698, '10-14': 1635, '10-15': 1593, '10-16': 1632, '10-17': 1642, '10-18': 1632, '10-19': 1785, '10-20': 1732, '10-21': 1763, '10-22': 672}
+parse status 200 n 100
+types [(('CREATE_POOL', 'PUMP_AMM'), 61), (('CREATE_POOL', 'PUMP_FUN'), 15), (('UNKNOWN', 'PUMP_FUN'), 13), (('TRANSFER', 'SYSTEM_PROGRAM'), 9), (('SWAP', 'PUMP_AMM'), 2)]
+migrations parsed 79 sample [(['5yQcnuk4TGs2mSkXVZ9FK3q7uQf55uWSacVhZmy9pump'], 'CREATE_POOL', 'PUMP_AMM', 1791676786), (['pf4rNVH7KFpZC32nCSQ8NE23zsiJ9f8aXoBRV2Zpump'], 'CREATE_POOL', 'PUMP_AMM', 1791676647), (['BiVyCedVcPgPKuDsW42CWtqyzQcMVYibrs7wmL8ypump'], 'CREATE_POOL', 'PUMP_AMM', 1791676586)]
+first tx type TRANSFER source SYSTEM_PROGRAM desc 2QQds2VQUpe4Rs2jSoQd4f97dzimHC4CRpWbk8YiTBc3 transferred 0.00001 SOL to HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe.
+instr programs ['ComputeBudget111111111111111111111111111111', 'ComputeBudget111111111111111111111111111111', '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P', '11111111111111111111111111111111']
+gt token pools status 200 n 2
+gt old minute bars status 200 n 30 first..last age min (-1, 1499)
+pool sig pages back to the hour 1 sigs in that hour 0
+getTransactionsForAddress 200 ok
+calls {'getSignaturesForAddress': 43, 'parse': 1, 'getTransactionsForAddress': 1}
