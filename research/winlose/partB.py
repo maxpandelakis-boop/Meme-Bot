@@ -65,8 +65,9 @@ if not HOLDOUT:
         base.append(te.drop_duplicates("mint")); gp.append(gates(te))
         imp = pd.Series(reg.feature_importances_, NUM) if imp is None else imp + pd.Series(reg.feature_importances_, NUM)
         print("fold from", pd.to_datetime(st, unit="ms").date(), "train", tr["mint"].nunique(), "test", te["mint"].nunique(), flush=True)
-    print("\nall coins, first universe hour:", summary(pd.concat(base)))
-    print("bot gates:", summary(pd.concat(gp)))
+    sb, sg = summary(pd.concat(base)), summary(pd.concat(gp))
+    print("\nall coins, first universe hour:", sb)
+    print("bot gates:", sg)
     best = None
     for k, v in acc.items():
         sm = summary(pd.concat(v))
@@ -76,7 +77,8 @@ if not HOLDOUT:
     print("\nTHE CHOICE (dev walk-forward):", best)
     print("\nimportance (splits, regression):")
     print(imp.sort_values(ascending=False).head(25).to_string())
-    json.dump({"choice": [best[0][0], best[0][1]], "dev": best[1]}, open(os.path.join(S, "choice.json"), "w"))
+    json.dump({"choice": [best[0][0], best[0][1]], "dev": best[1], "dev_gates": sg, "dev_base": sb,
+               "importance": imp.sort_values(ascending=False).head(15).to_dict()}, open(os.path.join(S, "choice.json"), "w"))
 else:
     ch = json.load(open(os.path.join(S, "choice.json")))
     hold = F[F["grad_ms"] >= HOLD]

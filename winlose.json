@@ -1,0 +1,165 @@
+{
+ "v": 1,
+ "made": "2026-10-22",
+ "coins": 4738,
+ "rows": 24710,
+ "numbers": 87,
+ "period": "10 Aug to 8 Oct 2026 (unseen: from 25 Sep)",
+ "holds": {
+  "move_vs_calm": 37,
+  "win_vs_lose": 2,
+  "win_vs_rest": 0
+ },
+ "move": [
+  {
+   "num": "trades_60",
+   "label": "trades in the last hour",
+   "dev": 0.74,
+   "hold": 0.705,
+   "holds": true,
+   "up": true
+  },
+  {
+   "num": "mc_chg",
+   "label": "market cap vs an hour ago",
+   "dev": 0.616,
+   "hold": 0.689,
+   "holds": true,
+   "up": true
+  },
+  {
+   "num": "resist_touches",
+   "label": "touches of the resistance",
+   "dev": 0.326,
+   "hold": 0.315,
+   "holds": true,
+   "up": false
+  },
+  {
+   "num": "topbuyer",
+   "label": "biggest buyer's share",
+   "dev": 0.307,
+   "hold": 0.326,
+   "holds": true,
+   "up": false
+  },
+  {
+   "num": "body_5",
+   "label": "last 5-min candle body",
+   "dev": 0.667,
+   "hold": 0.672,
+   "holds": true,
+   "up": true
+  },
+  {
+   "num": "c5m",
+   "label": "screener change, 5 min",
+   "dev": 0.658,
+   "hold": 0.664,
+   "holds": true,
+   "up": true
+  },
+  {
+   "num": "ret_30",
+   "label": "price change, 30 min",
+   "dev": 0.7,
+   "hold": 0.662,
+   "holds": true,
+   "up": true
+  },
+  {
+   "num": "ret_5",
+   "label": "price change, 5 min",
+   "dev": 0.676,
+   "hold": 0.658,
+   "holds": true,
+   "up": true
+  }
+ ],
+ "direction": [
+  {
+   "num": "buyer_seller_ratio",
+   "label": "buyers per seller, last hour",
+   "dev": 0.512,
+   "hold": 0.624,
+   "holds": true,
+   "up": true
+  },
+  {
+   "num": "trades_60",
+   "label": "trades in the last hour",
+   "dev": 0.383,
+   "hold": 0.392,
+   "holds": true,
+   "up": false
+  },
+  {
+   "num": "avg_trade_sol_60",
+   "label": "average trade size, last hour",
+   "dev": 0.674,
+   "hold": 0.606,
+   "holds": false,
+   "up": true
+  },
+  {
+   "num": "bb_pos",
+   "label": "Bollinger position",
+   "dev": 0.489,
+   "hold": 0.59,
+   "holds": false,
+   "up": true
+  },
+  {
+   "num": "regime_hit3",
+   "label": "regime_hit3",
+   "dev": 0.436,
+   "hold": 0.414,
+   "holds": false,
+   "up": false
+  }
+ ],
+ "score": {
+  "dev": {
+   "coins": 279,
+   "avg": -1.468,
+   "lo95": -2.611,
+   "hi95": -0.178,
+   "in_profit_of10": 2.8,
+   "hit3": 2.5,
+   "lose80": 14.0,
+   "p": 0.9914214460469369
+  },
+  "dev_gates": {
+   "coins": 350,
+   "avg": -2.706,
+   "lo95": -3.702,
+   "hi95": -1.553,
+   "in_profit_of10": 2.1,
+   "hit3": 3.4,
+   "lose80": 14.0,
+   "p": 0.9999993771348601
+  },
+  "hold": {
+   "coins": 189,
+   "avg": -0.818,
+   "lo95": -2.489,
+   "hi95": 0.957,
+   "in_profit_of10": 2.8,
+   "hit3": 4.8,
+   "lose80": 12.2,
+   "p": 0.8159557476606865,
+   "p_holm": 1
+  },
+  "hold_gates": {
+   "coins": 213,
+   "avg": -2.651,
+   "lo95": -3.825,
+   "hi95": -1.468,
+   "in_profit_of10": 2.3,
+   "hit3": 3.3,
+   "lose80": 11.3,
+   "p": 0.9999903847286569
+  },
+  "verdict": "fails"
+ }
+}
