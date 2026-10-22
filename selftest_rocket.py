@@ -3,7 +3,8 @@
 
   python3 selftest_rocket.py
 
-Checks: R1 rocket.chart gives the research numbers (research/winlose/features.py chart_feats) on random charts; R2 the plain-JSON trees
+Checks: R1 rocket.chart gives the research numbers (research/winlose/features.py chart_feats) on random charts; R1b the same with
+minutes without a trade (high = low = the last close, features.dense fill_hl=False); R2 the plain-JSON trees
 give lightgbm's own probabilities (rocket_model.json's check rows); R3 the paper account: one buy per coin, rule A (stop on a low
 first, 11x, 6 h), fees; R4 a round on mocked answers: universe, scoring, a buy at the cut, a sell, the state and the log, no network;
 R5 the page block: no doc, a doc (escaped, no script), its place at the top of the Radar tab; R6 the workflow only writes rocket-data,
@@ -54,6 +55,45 @@ def r1():
             if not ((x != x and y != y) or abs(x - y) <= 1e-6 * max(1, abs(x))):
                 bad.append(k)
     check(not bad and n > 1000, "R1 rocket.chart = the research numbers on 30 random charts (%d values, %d differ: %s)" % (n, len(bad), sorted(set(bad))[:5]))
+
+
+def r1b():
+    """Minutes without a trade: rocket.dense (live) and the research grid (features.dense, fill_hl=False) give the same high, low and
+    close (the last close), and so the same chart numbers; the old forward fill of the high and low (fill_hl=True) does not."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "research", "winlose"))
+        import numpy as np, pandas as pd
+        import features as FE
+    except Exception as e:
+        check(True, "R1b skipped: the research module needs numpy and pandas (%s)" % type(e).__name__)
+        return
+    rng, bad, n, old_differs = random.Random(9), [], 0, 0
+    for _ in range(20):
+        E = rng.choice([40, 90, 250, 600])
+        pool_ms, sol = 1_800_000_000_000, 150.0
+        mins = sorted(set([E - 1] + [i for i in range(E - 1) if rng.random() < 0.4]))
+        px, rows = 1e-6, []
+        for i in mins:
+            px *= math.exp(rng.gauss(0, 0.08))
+            hi = px * (1 + rng.random() * (30 if rng.random() < 0.05 else 0.05))         # now and then a wild wick
+            rows.append([pool_ms + i * 60_000, px, hi, px * (1 - rng.random() * 0.05), px, rng.random() * 3000])
+        b = R.dense(rows, [], pool_ms, pool_ms + E * 60_000, sol)
+        g = pd.DataFrame({"mi": [int((r[0] - pool_ms) // 60_000) for r in rows], "p_close": [r[4] for r in rows], "p_hi": [r[2] for r in rows],
+                          "p_lo": [r[3] for r in rows], "sol_buy": [r[5] / sol / 2 for r in rows], "sol_sell": [r[5] / sol / 2 for r in rows],
+                          "n_buy": 0, "n_sell": 0, "n_atomic": 0})
+        a, a_old = FE.dense(g, fill_hl=False), FE.dense(g)
+        for k in ("c", "hi", "lo"):
+            n += E
+            if any(abs(x - y) > 1e-12 * max(1e-12, abs(y)) for x, y in zip(b[k], a[k])):
+                bad.append(k)
+        old_differs += any(abs(x - y) > 1e-12 for x, y in zip(b["hi"], a_old["hi"]))
+        f1, f2 = FE.chart_feats(a, E), R.chart(b)
+        for k in set(f1) | set(f2):
+            x, y = f1.get(k, float("nan")), f2.get(k, float("nan"))
+            if not ((x != x and y != y) or abs(x - y) <= 1e-6 * max(1, abs(x))):
+                bad.append(k)
+    check(not bad and n > 1000, "R1b minutes without a trade: live and research arrays and chart numbers agree (%d values, differ: %s)" % (n, sorted(set(bad))[:5]))
+    check(old_differs > 0, "R1b the old forward fill of highs would differ on such charts (%d of 20)" % old_differs)
 
 
 def r2():
@@ -143,6 +183,9 @@ def r4():
         lj = RW.live_doc(R.Book(doc["book"]), now, 0.5, [], [])
         check(PK.sold_li(PH, {"sym": "A<b>", "mult": 0.68, "eur": -6.6, "why": "stop", "out": now}).count("Stopp") == 1 and "&lt;b&gt;" in PK.sold_li(PH, {"sym": "A<b>"})
               and isinstance(lj.get("summary"), dict) and isinstance(lj.get("open"), list), "R5 a sell row in the page's words (escaped); the live row has the shape LIVE_JS reads")
+        check("Geprüft am 22. Okt" in h and "hält nicht" in h and "134" in h, "R5 the fold with the tests of 22 Oct is in the block")
+        tt = PK.tests({"history": {"0.005": {"coins": 3, "avg": "<script>", "x10": 1}}, "exits": {"rules": 2, "choice": "<b>x</b>"}})
+        check("<script" not in tt and "<b>x" not in tt and "&lt;b&gt;x" in tt, "R5 the tests fold escapes what it shows")
         h0 = PK.section({"dir": os.path.join(tmp, "none")})
         check("noch nicht gelaufen" in h0, "R5 without a doc: one sentence")
     finally:
@@ -192,7 +235,7 @@ def r7():
 
 
 def main():
-    r1(); r2(); r3(); r4(); r6(); r7()
+    r1(); r1b(); r2(); r3(); r4(); r6(); r7()
     print("\n%d failed" % len(FAILS) if FAILS else "\nall ok")
     sys.exit(1 if FAILS else 0)
 
