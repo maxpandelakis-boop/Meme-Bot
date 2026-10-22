@@ -1187,7 +1187,7 @@ function go(){
   try{names=JSON.parse(box.getAttribute('data-names'))||{};}catch(e){}
   var all=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   var office=document.querySelector('.office'),off=box.querySelector('[data-live-off]'),badge=box.querySelector('[data-live-badge]');
-  var tabs=['tab-office','tab-young'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open
+  var tabs=['tab-office','tab-young','tab-account'].map(function(i){return document.getElementById(i);}).filter(Boolean);   // the GitHub polls run while one of them is open (Gehirn, Radar, Archiv: the old office)
   var root=document.documentElement,sbUrl=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),sbKey=root.getAttribute('data-sb-key')||'';
   var mode=MB.transport(sbUrl,sbKey,src),SB={next:0,fails:0,busy:false,nv:null,cur:null,st:null,back:0,at:0},SBKEY='memebot-sb '+sbUrl;
   var onSite=!!home&&location.href.indexOf(home)===0;if(onSite)all('[data-live-link]').forEach(function(e){e.hidden=true;});
@@ -3471,10 +3471,16 @@ def render(data, fragment=False):
         else:             # page_traders.py missing: the plain account strip as before, with a note; the rest of the page is unaffected
             traders_html = ('<p class="note">The three traders could not be loaded this time (%s). The paper account itself is unaffected.</p>' % E(TRADERS_ERR[0])
                             + safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
-        pane_account = (ARCHIVE_HEAD + details
+        # the old office (the radar's desk and its chat, the agent cards, the floor plan, the timeline, the daily overview): out of the Gehirn
+        # tab since Oct 22 (the brain shows the helpers, their results and the decisions), kept whole in the archive; its live script still
+        # feeds the brain (it polls while Gehirn, Radar or Archiv is open)
+        old_office = ('<details class="fold arch-office"><summary><span class="t">Altes Office (alle Details)</span><span class="sum">Launch-Radar-Pult, '
+                      'Helfer-Karten, Grundriss, Zeitachse, Tagesübersicht</span></summary><div class="rest">%s%s</div></details>' % (
+                          safe("radar desk", lambda: PO.desk(D, sys.modules[__name__])), safe("agent office", lambda: office_section(D))))
+        pane_account = (ARCHIVE_HEAD + details + old_office
                         + '<details class="fold arch-tr"><summary><span class="t">Drei Papier-Trader (Vergleich)</span><span class="sum">Stop-Loss, bester Preis im Rückblick, lernend · '
                           'mit den New Launches (beendet %s)</span></summary>%s</details>' % (E(local(sw).strftime("%b %d")), traders_html))
-        pane_office = (safe("brain", lambda: PB.section(D, sys.modules[__name__])) if PB else "") + safe("radar desk", lambda: PO.desk(D, sys.modules[__name__])) + safe("agent office", lambda: office_section(D))
+        pane_office = (safe("brain", lambda: PB.section(D, sys.modules[__name__])) if PB else "")
         pane_home = safe("start", lambda: PH.section(D, sys.modules[__name__])) if PH else ""
         radios = "".join('<input type="radio" name="tab" id="tab-%s"%s>' % (k, " checked" if k == TABS[0] else "") for k in TABS)
         labels = ('<label for="tab-home" role="tab">Start</label><label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>Radar</span>%s</label>'
