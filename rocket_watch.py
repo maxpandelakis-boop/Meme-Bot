@@ -13,7 +13,9 @@ One round:
      forward test) go to the branch rocket-data; the scan job copies rocket.json into the app's page
 BTC and SOL hourly candles come from Binance's public market-data mirror. The wallet memory (rocket_memory.json.gz on rocket-data:
 wallets with 5 or more graduated coins of Aug-Oct 2026 and how they did) is read only.
+Between two rounds, `watch` looks at the open positions only, every minute (rule A, a sell at once, the app's live row every look).
 usage: python3 rocket_watch.py round --dir rk --radar radar-data-dir [--now ms] [--mock DIR]
+       python3 rocket_watch.py watch --dir rk --until unix-seconds
   --mock DIR reads every answer from DIR (selftest_rocket): ds.json, gt_<pool>_ohlcv.json, gt_<pool>_trades.json, binance_<SYM>.json
 """
 import argparse, datetime as dt, glob, gzip, json, os, sys, time, urllib.error, urllib.parse, urllib.request
@@ -30,6 +32,7 @@ MODEL = os.path.join(HERE, "rocket_model.json")
 MAX_SCORE = 24            # coins scored a round (2 GeckoTerminal calls each)
 GT_GAP = 2.2              # s between GeckoTerminal calls (its public limit is about 30 a minute)
 DS_GAP = 0.6
+WATCH_S = 60              # s between two looks at the open positions between rounds (watch)
 UA = {"User-Agent": "memebot rocket hunter (fake money only)", "Accept": "application/json"}
 H = 3_600_000
 
@@ -166,6 +169,73 @@ def live_doc(book, now, cut, scored, closed):
             "top": [{k: r.get(k) for k in ("addr", "sym", "score", "age", "buy")} for r in sorted(scored, key=lambda r: -r["score"])[:5]]}
 
 
+def check_open(http, book, pairs, now):
+    """The open positions: their high and low since the last look (one-minute candles), the price now, rule A. Returns the sells."""
+    closed = []
+    for a, pos in list(book.open.items()):
+        p = pick_pair(pairs.get(a), pos.get("pool"))
+        last = R.num(pos.get("seen")) or pos["t"]
+        cs = gt_candles(http, pos.get("pool"), last, now) if pos.get("pool") else []
+        cs = [r for r in cs if r[0] >= last - 60_000]
+        hi = max((float(r[2]) for r in cs), default=None)
+        lo = min((float(r[3]) for r in cs), default=None)
+        px = R.num((p or {}).get("priceUsd"))
+        pos["seen"] = now
+        out = book.update(a, now, hi=hi, lo=lo, px=px)
+        if out:
+            closed.append(out)
+            log("  paper sell %s x%.2f (%s) %+.2f" % (out.get("sym"), out["mult"], out["why"], out["eur"]))
+    return closed
+
+
+def watch(d, until, mock=None, clock=None, sleep=time.sleep, every=WATCH_S):
+    """Between two rounds: every `every` seconds until `until` (ms), only the open positions: DexScreener's price and GeckoTerminal's
+    candles since the last look, rule A (the same rule as the round; the candles cover the minutes between two looks, so how often it
+    looks changes when a sell is seen, not what it books). A sell goes to rocket.json, the day's log, one push and the live row at
+    once; the live row is refreshed every look, so the app's open positions move every minute. Nothing to watch: it returns at once.
+    Scoring and buying stay in the 15-minute round (the model was trained on 15-minute steps; 24 coins need 48 GeckoTerminal calls)."""
+    clock = clock or (lambda: time.time() * 1000)
+    fn = os.path.join(d, "rocket.json")
+    looks = sells = 0
+    while True:
+        try:
+            state = json.load(open(fn))
+        except (OSError, ValueError):
+            return {"looks": looks, "sold": sells, "why": "no state"}
+        book = R.Book(state.get("book"))
+        if not book.open:
+            return {"looks": looks, "sold": sells, "why": "nothing open"}
+        now = clock()
+        if now >= until:
+            return {"looks": looks, "sold": sells, "why": "time"}
+        http = Http(mock)
+        closed = check_open(http, book, ds_pairs(http, sorted(book.open)), now)
+        looks += 1
+        sells += len(closed)
+        state["book"] = book.doc()
+        with open(fn + ".tmp", "w") as fh:
+            json.dump(state, fh, separators=(",", ":"))
+        os.replace(fn + ".tmp", fn)
+        if closed:
+            os.makedirs(os.path.join(d, "log"), exist_ok=True)
+            day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
+            with open(os.path.join(d, "log", day + ".jsonl"), "a") as fh:
+                for r in closed:
+                    fh.write(json.dumps(dict(r, closed=True), separators=(",", ":")) + "\n")
+        if not mock:
+            try:
+                import app
+                if closed:
+                    app.notify_rocket([], book.summary(), closed)
+                if app.enabled():
+                    app.put_row("rocket", live_doc(book, now, state.get("cut"), state.get("top") or [], closed))
+            except Exception as e:
+                log("  push or live row failed: %s" % type(e).__name__)
+        wait = min(every * 1000, until - clock()) / 1000
+        if wait > 0:
+            sleep(wait)
+
+
 def round_(d, radar_dir, now, mock=None):
     http = Http(mock)
     model = json.load(open(MODEL))
@@ -213,21 +283,7 @@ def round_(d, radar_dir, now, mock=None):
             row["buy"] = True
             log("  paper buy %s (%s) score %.4f >= %.4f at %s" % (c.get("sym"), a, sc, model["cut"], px))
         scored.append(row)
-    # the open positions: their high and low since the last look, the price now, rule A
-    closed = []
-    for a, pos in list(book.open.items()):
-        p = pick_pair(pairs.get(a), pos.get("pool"))
-        last = R.num(pos.get("seen")) or pos["t"]
-        cs = gt_candles(http, pos.get("pool"), last, now) if pos.get("pool") else []
-        cs = [r for r in cs if r[0] >= last - 60_000]
-        hi = max((float(r[2]) for r in cs), default=None)
-        lo = min((float(r[3]) for r in cs), default=None)
-        px = R.num((p or {}).get("priceUsd"))
-        pos["seen"] = now
-        out = book.update(a, now, hi=hi, lo=lo, px=px)
-        if out:
-            closed.append(out)
-            log("  paper sell %s x%.2f (%s) %+.2f" % (out.get("sym"), out["mult"], out["why"], out["eur"]))
+    closed = check_open(http, book, pairs, now)
     # one push for the round's paper buys and sells; the account to the app's live store (row "rocket"), so the app can show it
     # between two scans
     buys = [dict(r, cut=model["cut"]) for r in scored if r["buy"]]
@@ -261,13 +317,19 @@ def round_(d, radar_dir, now, mock=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["round"])
+    ap.add_argument("cmd", choices=["round", "watch"])
     ap.add_argument("--dir", required=True)
-    ap.add_argument("--radar", required=True)
+    ap.add_argument("--radar")
+    ap.add_argument("--until", type=float, help="watch: stop at this Unix time (s)")
     ap.add_argument("--now", type=float)
     ap.add_argument("--mock")
     a = ap.parse_args(argv)
     os.makedirs(a.dir, exist_ok=True)
+    if a.cmd == "watch":
+        print(json.dumps(watch(a.dir, (a.until or 0) * 1000, a.mock)))
+        return
+    if not a.radar:
+        ap.error("round needs --radar")
     doc = round_(a.dir, a.radar, a.now or time.time() * 1000, a.mock)
     print(json.dumps({"round": doc["round"], "summary": doc["book"]["summary"]}))
 
