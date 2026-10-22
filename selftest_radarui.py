@@ -421,8 +421,8 @@ def py_checks(check, tmp, T, standin):
     radios = re.findall(r'<input type="radio" name="tab" id="(tab-\w+)"', page)
     check(m and emb.get("kind") == "radar" and len(m.group(1).encode()) <= P.DOC_MAX and "</" not in m.group(1) and cb and len(json.dumps(cb, separators=(",", ":")).encode()) <= P.DOC_MAX
           and len(cb["others"]) < 40 and P.clean_doc({"kind": "radar"}) is None and P.clean_doc({"kind": "live", "t": now}) is None
-          and tabs == ["tab-pick", "tab-young", "tab-account", "tab-office"] and radios == tabs and not re.search(r"ghp_[A-Za-z0-9]{10}|github_pat_|x-access-token:|sb_secret_|Bearer [A-Za-z0-9]", page),
-          "four tabs, Pick, Radar, Traders, Office, one radio each (%s); the embedded radar.json is whitelisted, %d bytes (at most %d; a big doc is trimmed to %d others) and cannot close "
+          and tabs == ["tab-home", "tab-pick", "tab-young", "tab-office", "tab-account"] and radios == tabs and not re.search(r"ghp_[A-Za-z0-9]{10}|github_pat_|x-access-token:|sb_secret_|Bearer [A-Za-z0-9]", page),
+          "five tabs, Start, Pick, Radar, Gehirn, Archiv, one radio each (%s); the embedded radar.json is whitelisted, %d bytes (at most %d; a big doc is trimmed to %d others) and cannot close "
           "its script block; no token in the page" % (radios, len(m.group(1).encode()) if m else -1, P.DOC_MAX, len(cb["others"]) if cb else -1))
     ids = re.findall(r'\bid="([^"]+)"', re.sub(r"(?s)<script\b.*?</script>", "", page))
     yp = young_pane(page)
@@ -672,9 +672,9 @@ def node_checks(check, tmp, skips):
           "U3 a round by hand: the live store every minute on New (5 min on Office); after a tap on Start every 20 s, GitHub 150 s after its last poll, the "
           "budget (12 left: 900 s) and a failure's back-off still win %s" % o.get("kick"))
     check(o["badge"] == [2, None, None, None, None, None, 2, None, None] and o["newBadge"] == [{"n": 2, "good": True}, {"n": 7, "good": False}, None, None]
-          and o["tabs"] == ["pick", "young", "account", "office"] and o["tab"] == ["young", "young", "young", "young", "young", None, None]
+          and o["tabs"] == ["home", "pick", "young", "office", "account"] and o["tab"] == ["young", "young", "young", "young", "young", None, None]
           and o["radarLink"] == [True, True, False, False],
-          "A3 MemebotApp: TABS %s (the website's order: Pick, Radar, Traders, Office); #tab-radar, #radar, #tab-young and #new open Radar (a radar link at its top, no "
+          "A3 MemebotApp: TABS %s (the website's order: Start, Pick, Radar, Gehirn, Archiv); #tab-radar, #radar, #tab-young and #new open Radar (a radar link at its top, no "
           "jump to the early list); the radar's count while its list is current (a round: the event's good), green before the early list's count on Radar's one badge %s %s" % (o["tabs"], o["badge"], o["newBadge"]))
     check(o["cleanRound"] == ["done", "round", 1e12 - 5, [True, False], ""],
           "U3 the script's whitelist keeps a round's state done, run.mode, hourly and miss60 (only a real true) %s" % o["cleanRound"])
@@ -1151,7 +1151,7 @@ def browser(check, tmp, d, skips, shots=None):
                         out.setdefault("banner", pg.evaluate("(() => { const b = document.querySelector('#pane-pick .nogood'), h = document.querySelector('#pane-pick h2'); return [b ? b.className : null, h ? h.textContent : null]; })()"))
                         shot(pg, "11-pick-banner-light-%dx%d.png" % (w, h))
                 ctx.close()
-            # 10. the installed app: four tabs, the radar on New from the live store (no GitHub poll), New's green badge, the deep links; the badge
+            # 10. the installed app: five tabs, the radar on New from the live store (no GitHub poll), New's green badge, the deep links; the badge
             # follows the radar's news (the live store's row turns to no good coin: the badge goes)
             state["doc"] = lambda: radar_doc(ms(), "good")
             state["gh"].clear()
@@ -1311,13 +1311,13 @@ def browser(check, tmp, d, skips, shots=None):
           "U5 browser: the fallback pick shows no banner any more, one heading by its tier instead (ui bug 19) %s" % bn)
     hs = out["h"]
     check(all(v <= 0 for v in hs.values()) and all(a["hscroll"] <= 0 for a in out["app"].values()) and len(hs) >= 16,
-          "U8 no sideways scroll on Pick, New (with the radar) and Office at 390 x 844 and 1280 x 900, light and dark, and in the installed app on all four tabs (%d views%s)" % (
+          "U8 no sideways scroll on Pick, New (with the radar) and Office at 390 x 844 and 1280 x 900, light and dark, and in the installed app on all five tabs (%d views%s)" % (
               len(hs) + len(out["app"]), "" if all(v <= 0 for v in hs.values()) else " " + str({k: v for k, v in hs.items() if v > 0})))
     ap = out["app"]["390x844 light"]
-    check(ap["app"] and ap["tabs"] == ["pick", "young", "account", "office"] and ap["names"] == ["Pick", "Radar", "Traders", "Office"] and ap["radar"]
+    check(ap["app"] and ap["tabs"] == ["home", "pick", "young", "office", "account"] and ap["names"] == ["Start", "Pick", "Radar", "Gehirn", "Archiv"] and ap["radar"]
           and ap["apptab"] == "young" and ap["badge_ok"] and ap["aria"] == "Radar, 1 coin without traps now" and ap["cards"] == 1 and out.get("deep") == ["young", True] and ap["y"] == 0
           and out["calls"]["gh"] == 0 and out["calls"]["sb"] >= 1 and all(a["over"] == 0 and a["btnW"] >= 60 for a in out["app"].values()) and not errs,
-          "A3 installed app: four tabs (Pick, Radar, Traders, Office), #tab-radar and the radar notification's message open Radar at its top, its badge says 1 in "
+          "A3 installed app: five tabs (Start, Pick, Radar, Gehirn, Archiv), #tab-radar and the radar notification's message open Radar at its top, its badge says 1 in "
           "green (%s, read out in words), the live store's row radar feeds it and GitHub is not polled; no label cut at 320 px %s" % (
               ap.get("badgeBg"), {k: ap[k] for k in ("names", "aria")} if not errs else [errs[:2], ap, out.get("deep"), out["calls"]]))
     bg = out.get("badgeGone") or [False, "?"]

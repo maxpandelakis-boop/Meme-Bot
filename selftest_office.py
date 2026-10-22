@@ -27,6 +27,8 @@ RADAR_AGENT = ("Launch radar", "rates every coin whose pool is under 10 minutes 
                ("DexScreener", "pump.fun", "GeckoTerminal", "Jupiter", "RugCheck", "Solana RPC", "LaunchLab"))     # SPEC 5 WP5c, verbatim
 
 
+DARK = lambda c: sum(int(x) for x in re.findall(r"\d+", str(c))[:3]) < 160     # a background of the page's dark theme (the only one since Oct 22)
+
 def b58(rng):
     return "".join(rng.choice(ALPH) for _ in range(40)) + "pump"
 
@@ -200,13 +202,16 @@ def office_checks(check, skips=None):
         D1 = R.collect(d1, NOW)
         info = R.office_data(D1)
         pane_o = page[page.find('<div class="pane" id="pane-office">'):]
+        brain_end = pane_o.find("</script>", pane_o.find("data-brain")) + len("</script>")     # the brain (page_brain.py) opens the Office tab
+        pane_d = '<div class="pane" id="pane-office">' + pane_o[brain_end:]
         check(off_before == off_after and [c[2] for c in cards] == list(AGENTS) and not any(c[0] for c in cards) and 'data-agent="radar"' not in cut(page, '<div class="ocards"', "</div>")
               and [a["id"] for a in info["agents"]] == list(AGENTS) and [a["id"] for a in info["ext"]] == ["radar"] and "could not be rendered" not in page
               and R.OFFICE_AGENTS["radar"] == RADAR_AGENT and (info["ext"][0]["name"], info["ext"][0]["job"], tuple(info["ext"][0]["tools"])) == RADAR_AGENT
-              and pane_o.startswith('<div class="pane" id="pane-office"><style>') and pane_o.find("</style>") + 8 == pane_o.find('<div class="odk-box"><label class="odesk" for="tab-young" data-po-desk')
+              and pane_o.startswith('<div class="pane" id="pane-office"><style>') and -1 < pane_o.find("data-brain") < pane_o.find('<div class="odk-box">')
+              and pane_d.startswith('<div class="pane" id="pane-office"><style>') and pane_d.find("</style>") + 8 == pane_d.find('<div class="odk-box"><label class="odesk" for="tab-young" data-po-desk')
               and -1 < pane_o.find('<label class="odesk"') < pane_o.find("<h2>Agent office</h2>") < pane_o.find('<div class="ocards"') < pane_o.find('<div class="office">')
               and page.count('<label class="odesk"') == 1 and "data-ext-stat" not in page and "ocard ext" not in page + PO.CSS,
-              "U6 office: the Launch radar's desk is the first block of the Office tab (before its heading and the grid); one card per agent of office.json "
+              "U6 office: the brain opens the Office tab, the Launch radar's desk is the next block (before its heading and the grid); one card per agent of office.json "
               "in run order and no card for the radar any more; the radar's name, job and tools are the spec's words; office.json is not written (%d cards)" % len(cards))
         card_dept = dict((c[2], c[1]) for c in cards)
         card_line = lambda aid: R.html.unescape(re.search(r'<label class="ocard[^"]*" for="od-[a-z]+" data-agent="%s".*?<span class="ocl"[^>]*>(.*?)</span>' % aid, page, re.S).group(1))
@@ -1065,6 +1070,7 @@ def browser_checks(check, skips, d1, tmp):
             ctx, pg = open_(page_live, live=live)
             link = pg.evaluate("(document.querySelector('[data-ss-now]')||{}).href||''")
             # the strip's controls are 44 px tap targets; the ⓘ keeps its place at the right edge when it opens
+            pg.click('label[for="tab-pick"]')     # the Start tab opens first since Oct 22: the strip is on Pick
             taps = pg.evaluate("""() => { const r = e => e.getBoundingClientRect(), a = document.querySelector('[data-ss-now]'), sm = document.querySelector('.sinfo > summary'),
                 strip = document.querySelector('.sstrip'), g = () => { const rg = document.createRange(); rg.selectNodeContents(sm); return rg.getBoundingClientRect().right; },
               x0 = g(), h0 = r(strip).height; sm.click(); const x1 = g(); sm.click();
@@ -1222,7 +1228,7 @@ def browser_checks(check, skips, d1, tmp):
             ok = all(m[0] <= 0 and m[1] <= 0 and m[2] >= 3 and m[4] <= 0 and m[5] <= 0 and m[6] > 200 and m[8] and m[9] >= 44 and m[11] <= 0 and m[12] for _, _, m in sizes)
             phone = [m for w, _, m in sizes if w == 390]
             desk = [m for w, _, m in sizes if w == 1280]
-            check(ok and all(m[3] <= 0 and not m[10] for m in phone + desk) and sizes[0][2][7] != sizes[1][2][7],
+            check(ok and all(m[3] <= 0 and not m[10] for m in phone + desk) and sizes[0][2][7] == sizes[1][2][7] and DARK(sizes[0][2][7]),
                   "U8 office and pick tabs at 390 and 1280 px, light and dark, every fold open (the daily overview's table too, also made 1500 px wide: it "
                   "scrolls in its box) and every department: no page scroll; the cards grid never scrolls inside itself and cuts no name; hour cells 44 px "
                   "tall (%s)" % [(w, "dark" if dk else "light", m[:4] + m[8:13]) for w, dk, m in sizes])
@@ -1289,16 +1295,16 @@ def browser_checks(check, skips, d1, tmp):
             for w, dark in ((320, False), (320, True), (390, False), (390, True), (1280, False), (1280, True)):
                 ctx, pg = open_(page_desk, w, 844, dark)
                 pg.evaluate("document.getElementById('tab-office').click()")
-                dsz.append(pg.evaluate("""() => { const k = document.querySelector('.odesk'), r = k.getBoundingClientRect(), h = document.querySelector('#pane-office h2').getBoundingClientRect(),
+                dsz.append(pg.evaluate("""() => { const k = document.querySelector('.odesk'), r = k.getBoundingClientRect(), h = document.querySelector('#pane-office h2:not(.bn-h)').getBoundingClientRect(),
                     ls = Array.from(k.querySelectorAll('.odk-s .l')), cols = new Set(Array.from(k.querySelectorAll('.odk-s')).map(e => Math.round(e.getBoundingClientRect().left))).size;
                   return [document.documentElement.scrollWidth - innerWidth, Math.round(r.right - innerWidth), k.scrollWidth - k.clientWidth, Math.round(r.height), r.top < h.top,
                     ls.filter(l => l.getBoundingClientRect().height > 2 * parseFloat(getComputedStyle(l).lineHeight) + 1).length, cols,
                     getComputedStyle(k).backgroundColor, Array.from(k.querySelectorAll('.odk-s .k')).filter(e => e.scrollWidth > e.clientWidth + 1).length]; }"""))
                 ctx.close()
             check(all(m[0] <= 0 and m[1] <= 0 and m[2] <= 0 and m[4] and m[5] == 0 and m[8] == 0 for m in dsz) and all(m[3] <= 220 and m[6] == 2 for m in dsz[:2]) and all(m[3] <= 200 and m[6] == 2 for m in dsz[2:4])
-                  and dsz[4][6] == 4 and dsz[4][3] <= 130 and dsz[0][7] != dsz[1][7] and dsz[2][7] != dsz[3][7],
+                  and dsz[4][6] == 4 and dsz[4][3] <= 130 and all(DARK(m[7]) for m in dsz),
                   "U8 the radar desk at 320, 390 and 1280 px, light and dark: above the office's heading, no sideways scroll, station names whole, each "
-                  "station line at most 2 lines, 2 x 2 on a phone (at most 200 px tall at 390 px) and one row on a desktop, its own colours in the dark theme (%s)" % dsz)
+                  "station line at most 2 lines, 2 x 2 on a phone (at most 200 px tall at 390 px) and one row on a desktop, the page's one dark theme whatever the system asks (%s)" % dsz)
             # the chat under it with a full round (8 messages): no sideways scroll at 320, 390 and 1280 px, light and dark; between the desk and the
             # office's heading; compact (small text on a phone, the two coins side by side from 1000 px); each speaker's badge in its own colour
             csz = []
@@ -1306,7 +1312,7 @@ def browser_checks(check, skips, d1, tmp):
                 ctx, pg = open_(page_chat, w, 844, dark)
                 pg.evaluate("document.getElementById('tab-office').click()")
                 csz.append(pg.evaluate("""() => { const c = document.querySelector('.ochat'), r = c.getBoundingClientRect(), k = document.querySelector('.odesk').getBoundingClientRect(),
-                    h = document.querySelector('#pane-office h2').getBoundingClientRect(), li = Array.from(c.querySelectorAll('.och')), col = e => getComputedStyle(e.querySelector('.och-a')).color;
+                    h = document.querySelector('#pane-office h2:not(.bn-h)').getBoundingClientRect(), li = Array.from(c.querySelectorAll('.och')), col = e => getComputedStyle(e.querySelector('.och-a')).color;
                   return [document.documentElement.scrollWidth - innerWidth, Math.round(r.right - innerWidth), c.scrollWidth - c.clientWidth, Math.round(r.height), Math.round(r.top - k.bottom),
                     r.bottom < h.top, li.length, new Set(li.map(e => Math.round(e.getBoundingClientRect().left))).size, new Set(li.map(col)).size,
                     li.filter(e => e.querySelector('.och-t').scrollWidth > e.querySelector('.och-t').clientWidth + 1).length, getComputedStyle(c).backgroundColor,
@@ -1321,13 +1327,13 @@ def browser_checks(check, skips, d1, tmp):
                 ctx.close()
             check(all(m[0] <= 0 and m[1] <= 0 and m[2] <= 0 and 0 <= m[4] <= 10 and m[5] and m[6] == 8 and m[8] == 5 and m[9] == 0 for m in csz)
                   and all(m[3] <= 400 and m[7] == 1 and m[11] == 12 for m in csz[:2]) and all(m[3] <= 320 and m[7] == 1 for m in csz[2:4])
-                  and all(m[3] <= 200 and m[7] == 2 and m[11] == 13 and col_of(m[12]) == [0] * 4 + [1] * 4 for m in csz[4:]) and csz[0][10] != csz[1][10] and csz[4][10] != csz[5][10]
+                  and all(m[3] <= 200 and m[7] == 2 and m[11] == 13 and col_of(m[12]) == [0] * 4 + [1] * 4 for m in csz[4:]) and all(DARK(m[10]) for m in csz)
                   and [x[0] for x in ccol[1]] == ["scout", "skeptic", "desk", "scout", "checks", "skeptic", "desk", "record"]
                   and col_of([x[1] for x in ccol[1]]) == [0] * 3 + [1] * 5 and col_of([x[1] for x in ccol[0]]) == [0] * 8,
                   "U8 the desk's chat at 320, 390 and 1280 px, light and dark: 8 messages right under the desk and above the office's heading, no sideways scroll "
                   "and no text cut, 12 px text on a phone (at most 400 px tall at 320, 320 at 390), the two coins side by side on a desktop (at most 200 px: "
                   "the second coin's thread starts the second column, also when the first coin has 3 messages and the second 4), five badge colours, the "
-                  "page's own colours in each theme (%s; %s)" % (csz, ccol))
+                  "page's dark colours in either system theme (%s; %s)" % (csz, ccol))
             # dimmed while the round is old news (late): the text keeps WCAG AA's 4.5:1 for small text in both themes, the ancestors' opacity
             # counted (the badges fade, the text only turns muted)
             ratio = """() => { const c = document.querySelector('.ochat'), num = s => s.match(/[\\d.]+/g).map(Number),
