@@ -1969,6 +1969,16 @@ def search_block(D):
     return '<section>%s</section>' % PS.section(D)
 
 
+def winlose_block():
+    """The winner/loser study (page_winlose.py, display only: which numbers come before big moves, and the few that tell the
+    way) in the Pick tab's Details under the filter search. Nothing without the module."""
+    try:
+        import page_winlose as PW
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PW.section()
+
+
 def forecast_section(D):
     """What coins that looked like the pick did next (forecast.py, display only: it changes no pick and no sell rule), with how well
     these forecasts hit in their own backtest and on the bot's own picks."""
@@ -3394,11 +3404,11 @@ def render(data, fragment=False):
         rest = [safe("forecast", lambda: forecast_section(D)) if FC else "", safe("profit", lambda: profit_section(D)), safe("training", lambda: train_section(D)),
                 (safe("filter team", lambda: FT.section(D, sys.modules[__name__])) if FT else
                  section("Coin test: %s later" % hz, "what 20 € in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D)))),
-                safe("filter search", lambda: search_block(D)),
+                safe("filter search", lambda: search_block(D)), safe("winners vs losers", winlose_block),
                 safe("candidates", candidates), safe("weights", lambda: weights_section(D))]
         if D["runs"]:
             rest.append(safe("run log", runlog))
-        details = fold("Details", "forecast, tip record, training, filter team, filter search, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
+        details = fold("Details", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D)) + details
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""

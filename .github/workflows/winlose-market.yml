@@ -1,0 +1,35 @@
+# Winner/loser study (fake money only): BTC and SOL hourly candles for 1 Aug to 10 Oct 2026 from Binance's public market-data
+# mirror, as market context. Runs only on a push of this file; writes only the data branch "marketctx". No key, no secret.
+name: winlose-market
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-market.yml]
+permissions:
+  contents: write
+jobs:
+  market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fetch hourly candles
+        run: |
+          mkdir out && cd out
+          for s in BTCUSDT SOLUSDT; do
+            start=1785542400000; end=1791676800000; : > $s.jsonl
+            while [ $start -lt $end ]; do
+              curl -sf "https://data-api.binance.vision/api/v3/klines?symbol=$s&interval=1h&startTime=$start&limit=1000" > page.json
+              python3 -c "import json;[print(json.dumps(r)) for r in json.load(open('page.json'))]" >> $s.jsonl
+              last=$(tail -1 $s.jsonl | python3 -c "import json,sys;print(json.loads(sys.stdin.read())[0])")
+              start=$((last + 3600000))
+            done
+            wc -l $s.jsonl
+          done
+          rm page.json
+      - name: Push to the marketctx branch
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b marketctx && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "market context" \
+            && git push -q --force "$URL" marketctx
