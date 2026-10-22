@@ -108,7 +108,7 @@ def rocket_book(doc):
         run += num(p["eur"])
         pts.append(run)
     return {"bal": (num(sm.get("eur")) or 0.0) + (num(sm.get("openEur")) or 0.0), "closed": int(num(sm.get("trades")) or 0), "open": int(num(sm.get("open")) or 0),
-            "win": num(sm.get("inProfitOf10")), "x3": int(num(sm.get("x3")) or 0), "x10": int(num(sm.get("x10")) or 0), "pts": pts, "ticket": float(M.TICKET)}
+            "win": num(sm.get("inProfitOf10")), "x3": int(num(sm.get("x3")) or 0), "x10": int(num(sm.get("x10")) or 0), "pts": pts, "ticket": float(M.TICKET), "t": num(doc.get("t")) or 0}
 
 
 def spark(pts, cls):
@@ -125,17 +125,20 @@ def spark(pts, cls):
             '<path class="a" d="%s L120 30 L0 30 Z"/><path class="l" d="%s"/></svg>') % (cls, z, z, d, d)
 
 
-def acct_card(key, title, sub, b, empty):
+def acct_card(key, title, sub, b, empty, live=False):
+    """One account card; live=True (the rocket hunter) adds the data-rk-* hooks page_rocket.LIVE_JS fills from the app's live row."""
     if not b:
         return ('<div class="hm-acc hm-%s"><div class="hm-k"><span class="hm-dot"></span>%s</div><p class="hm-empty">%s</p></div>') % (key, E(title), E(empty))
+    h = (lambda k: ' data-rk-st="%s"' % k) if live else (lambda k: "")
     win = "–" if b["win"] is None else de_num(b["win"], 1).rstrip("0").rstrip(",")
-    stats = [("im Plus", ("%s<small>/10</small>" % E(win)) if b["win"] is not None else "–"),
-             ("3x · 10x", "%d · %d" % (b["x3"], b["x10"])),
-             ("offen", "%d" % b["open"])]
-    return ('<div class="hm-acc hm-%s"><div class="hm-k"><span class="hm-dot"></span>%s<small>%s</small></div>'
-            '<b class="hm-bal %s">%s</b>%s<div class="hm-st">%s</div><small class="hm-n">%d abgeschlossen · %s pro Kauf · Spielgeld</small></div>') % (
-        key, E(title), E(sub), tone(b["bal"]), E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
-        "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), v) for k, v in stats), b["closed"], E(de_eur(b["ticket"]).replace(",00", "")))
+    stats = [("im Plus", ("<span%s>%s</span><small>/10</small>" % (h("win"), E(win))) if (b["win"] is not None or live) else "–"),
+             ("3x · 10x", "<span%s>%d · %d</span>" % (h("hits"), b["x3"], b["x10"])),
+             ("offen", "<span%s>%d</span>" % (h("open"), b["open"]))]
+    return ('<div class="hm-acc hm-%s"%s><div class="hm-k"><span class="hm-dot"></span>%s<small>%s</small></div>'
+            '<b class="hm-bal %s"%s>%s</b>%s<div class="hm-st">%s</div><small class="hm-n"><span%s>%d</span> abgeschlossen · %s pro Kauf · Spielgeld</small></div>') % (
+        key, (' data-rk-box data-rk-t="%d"' % int(b.get("t") or 0)) if live else "", E(title), E(sub), tone(b["bal"]), " data-rk-bal" if live else "",
+        E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
+        "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), v) for k, v in stats), h("closed"), b["closed"], E(de_eur(b["ticket"]).replace(",00", "")))
 
 
 def pick_now(D, R):
@@ -197,8 +200,9 @@ def rocket_now(D, R, doc):
     t = num(doc.get("t"))
     foot = "Letzte Runde %s · %s Coins beobachtet · %d bewertet · %d gekauft" % (
         when(R, t, D["now"]) if t else "–", de_num(int(num(rd.get("candidates")) or 0), 0), int(num(rd.get("scored")) or 0), int(num(rd.get("bought")) or 0))
-    body = ('<ul class="hm-cands">%s</ul>' % "".join(rows)) if rows else '<p class="hm-empty">In der letzten Runde lag kein Coin im passenden Alter.</p>'
-    return ('<div class="hm-now hm-rd">%s%s<small class="hm-meta">%s</small><label class="hm-go" for="tab-young" data-go="young">Zum Radar ›</label></div>') % (head, body, E(foot))
+    body = ('<ul class="hm-cands" data-rk-cands="hm">%s</ul>' % "".join(rows)) if rows else '<p class="hm-empty">In der letzten Runde lag kein Coin im passenden Alter.</p>'
+    return ('<div class="hm-now hm-rd" data-rk-box data-rk-t="%d">%s%s<small class="hm-meta">%s</small><label class="hm-go" for="tab-young" data-go="young">Zum Radar ›</label></div>') % (
+        int(t or 0), head, body, E(foot))
 
 
 def section(D, R):
@@ -211,7 +215,7 @@ def section(D, R):
     if doc and num(doc.get("t")):
         status.append('<span><i class="hm-pulse rad"></i>Raketen-Radar zuletzt %s · alle 15 Min</span>' % E(hhmm(R, num(doc["t"]))))
     cards = (acct_card("pick", "PICK", "der sichere", pk, "Noch keine Pick-Käufe.")
-             + acct_card("rad", "RADAR", "Raketen-Jäger", rk, "Startet mit der ersten Radar-Runde."))
+             + acct_card("rad", "RADAR", "Raketen-Jäger", rk, "Startet mit der ersten Radar-Runde.", live=True))
     nav = [("pick", "Pick", "Karte, Sicherheit, Stunde für Stunde"), ("young", "Radar", "Raketen-Jäger und Launch-Radar"),
            ("office", "Gehirn", "Was der Bot gerade denkt"), ("account", "Archiv", "Forschung, alte Trader, alle Daten")]
     return ('<style>%s</style><section class="hm" data-home>'
@@ -252,7 +256,7 @@ CSS = r"""
 .hm-sp .l { fill:none; stroke:var(--accent); stroke-width:1.6; vector-effect:non-scaling-stroke } .hm-sp .a { fill:var(--accent); opacity:.12 }
 .hm-sp.good .l { stroke:var(--good) } .hm-sp.good .a { fill:var(--good) } .hm-sp.bad .l { stroke:var(--bad) } .hm-sp.bad .a { fill:var(--bad) }
 .hm-st { display:grid; grid-template-columns:repeat(3,auto); justify-content:space-between; gap:4px }
-.hm-st span { display:grid; min-width:0 } .hm-st i { font-style:normal; font-size:11px; color:var(--muted) }
+.hm-st > span { display:grid; min-width:0 } .hm-st i { font-style:normal; font-size:11px; color:var(--muted) }
 .hm-st b { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap } .hm-st small { font-size:11px; font-weight:400; color:var(--muted); margin:0 3px 0 1px }
 .hm-n { font-size:11px; color:var(--muted) } .hm-empty { margin:0; font-size:var(--fs-s); color:var(--fg2) }
 .hm-status { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:var(--fs-xs); color:var(--fg2); padding:0 4px }

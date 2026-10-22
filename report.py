@@ -2009,7 +2009,7 @@ def rocket_block(D):
         import page_rocket as PK
     except ImportError:
         return ""
-    return '<section>%s</section>' % PK.section(D)
+    return '<section>%s</section><script>%s</script>' % (PK.section(D), getattr(PK, "LIVE_JS", ""))
 
 
 def winlose_block():

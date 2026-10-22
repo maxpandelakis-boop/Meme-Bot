@@ -17,6 +17,7 @@ sys.path.insert(0, HERE)
 import rocket as R
 import rocket_watch as RW
 import page_rocket as PK
+import page_home as PH
 
 FAILS = []
 H = 3_600_000
@@ -175,6 +176,13 @@ def r4():
         json.dump(doc, open(os.path.join(tmp, "page", "db", "memebot", "rocket.json"), "w"))
         h = PK.section({"dir": os.path.join(tmp, "page")})
         check("Rocket hunter" in h and "Pick" in h and "Raketen-Jäger" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
+        js = PK.LIVE_JS
+        check(all(k in h for k in ("data-rk-box", "data-rk-bal", 'data-rk-st="open"', "data-rk-op", "data-rk-sold", 'data-rk-cands="rk"', "data-rk-live"))
+              and "id=eq.rocket" in js and "apikey:key" in js and "innerHTML" not in js and "Authorization" not in js and "tab-young" in js,
+              "R5 the live row 'rocket' fills the block's data-rk hooks (publishable key, textContent only, while the Radar or Start tab is open)")
+        lj = RW.live_doc(R.Book(doc["book"]), now, 0.5, [], [])
+        check(PK.sold_li(PH, {"sym": "A<b>", "mult": 0.68, "eur": -6.6, "why": "stop", "out": now}).count("Stopp") == 1 and "&lt;b&gt;" in PK.sold_li(PH, {"sym": "A<b>"})
+              and isinstance(lj.get("summary"), dict) and isinstance(lj.get("open"), list), "R5 a sell row in the page's words (escaped); the live row has the shape LIVE_JS reads")
         check("Geprüft am 22. Okt" in h and "hält nicht" in h and "134" in h, "R5 the fold with the tests of 22 Oct is in the block")
         tt = PK.tests({"history": {"0.005": {"coins": 3, "avg": "<script>", "x10": 1}}, "exits": {"rules": 2, "choice": "<b>x</b>"}})
         check("<script" not in tt and "<b>x" not in tt and "&lt;b&gt;x" in tt, "R5 the tests fold escapes what it shows")
