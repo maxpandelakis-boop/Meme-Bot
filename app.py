@@ -34,8 +34,8 @@ pywebpush (and cryptography, which it brings) are imported when a push or the VA
 site-packages folder, put right after the standard library: the scan workflow installs supabase/push-requirements.txt there, every
 package pinned with its sha256).
 
-Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_radar(coins,
-record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
+Public: enabled(), sink(record), prepare(), notify(kind, title, body, url), notify_young(doc), notify_pick(rec), notify_rocket(buys,
+summary), notify_radar(coins, record), radar_words(coins, record), put_row(row_id, doc), page_key_verdict(key), site_url(). The page side lives here too: PAGE_CSS
 and PAGE_JS (the installed app: bottom tab bar, notifications) and SW_JS (sw.js); bot.py site writes them into the website.
 
   python3 app.py check     what is set up (store reachable, VAPID key, subscriptions, pywebpush), without printing any key
@@ -64,10 +64,11 @@ KINDS = {                 # kind: (TTL s, Urgency, the least gap s between two n
     "radar": (600, "high", 60),     # the launch radar's coin without a trap found: stale within minutes (its pool is under 10 minutes old)
     "curve": (300, "high", 60),     # the curve watch's call of a coin still on pump.fun's curve (off unless radar_curve.json switches it on):
                                     # stale within minutes, its own rate guard so it never holds up a green coin's push
+    "rocket": (1800, "high", 60),   # the rocket hunter's paper buys of one round (rocket_watch.py), one notification a round
 }
-TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal"}   # the push Topic header per kind:
+TOPIC = {"young": "newcoins", "pick": "pick", "test": "test", "radar": "radarhit", "curve": "curvecal", "rocket": "rocketbt"}   # the push Topic header per kind:
 # Apple refuses a topic that is not a whole base64url string ("BadWebPushTopic" for "young" and "radar", 5 letters): 4 or 8 letters, at most 32
-PREF_OF = {"radar": "young", "curve": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
+PREF_OF = {"radar": "young", "curve": "young", "rocket": "young"}   # kind -> the phone's setting that covers it: "New coins" covers the radar's pushes (no SQL change)
 PLAINTEXT_MAX = 3993      # bytes: Apple's 4 KB limit after aes128gcm
 TITLE_MAX, BODY_MAX = 120, 300   # characters of a notification's title and body (message cuts there; the radar's words stay inside)
 RADAR_WHY_N = 2           # passed checks a radar notification names (the first ones of its trap-check line)
@@ -961,6 +962,34 @@ def notify_curve(c):
     if words is None:
         return {"skipped": "trap verdict" if c.get("v") == "trap" else "no coin"}
     return notify("curve", words[0], words[1], "#tab-radar")
+
+
+def rocket_words(buys, summary=None):
+    """(title, body) of the rocket hunter's notification for the paper buys of one round, or None: "Radar 🚀", each coin with its
+    score and the cut, what the history says such buys did, and that it is paper money."""
+    buys = [b for b in buys or [] if isinstance(b, dict)]
+    if not buys:
+        return None
+    b = buys[0]
+    more = " +%d" % (len(buys) - 1) if len(buys) > 1 else ""
+    title = "Radar 🚀 Paper-Kauf: %s%s" % (_sym(b.get("sym")), more)
+    sc, cut = _num(b.get("score")), _num(b.get("cut"))
+    s = summary if isinstance(summary, dict) else {}
+    rec = ""
+    if _num(s.get("trades")):
+        rec = " Bisher: %d verkauft, %+.2f €." % (int(_num(s.get("trades"))), _num(s.get("eur")) or 0.0)
+    body = ("Score %.3f (Schwelle %.3f). Prognose aus dem Test: etwa 2 von 10 solcher Käufe enden im Plus, etwa 1 von 12 wird 10x, "
+            "verkauft bei -30 %%, 11x oder nach 6 h.%s Nur Papiergeld, nichts wird echt gekauft.") % (sc or 0.0, cut or 0.0, rec)
+    return title, body
+
+
+def notify_rocket(buys, summary=None):
+    """The rocket hunter's notification (kind "rocket") for the paper buys of one round, in rocket_words' words; it opens the Radar tab.
+    The phones' "New coins" setting covers it (PREF_OF). Nothing for an empty list."""
+    words = rocket_words(buys, summary)
+    if words is None:
+        return {"skipped": "no buys"}
+    return notify("rocket", words[0], words[1], "#tab-radar")
 
 
 def notify_radar(coins, record=None):

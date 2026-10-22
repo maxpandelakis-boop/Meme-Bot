@@ -202,6 +202,14 @@ def round_(d, radar_dir, now, mock=None):
             row["buy"] = True
             log("  paper buy %s (%s) score %.4f >= %.4f at %s" % (c.get("sym"), a, sc, model["cut"], px))
         scored.append(row)
+    buys = [dict(r, cut=model["cut"]) for r in scored if r["buy"]]
+    if buys and not mock:
+        try:
+            import app
+            out = app.notify_rocket(buys, book.summary())
+            log("  push: %s" % {k: v for k, v in (out or {}).items() if k in ("sent", "skipped", "failed")})
+        except Exception as e:
+            log("  push failed: %s" % type(e).__name__)
     # the open positions: their high and low since the last look, the price now, rule A
     closed = []
     for a, pos in list(book.open.items()):

@@ -1,0 +1,67 @@
+# Rocket hunter replay on 9-21 Oct (fake money only): research/winlose/backfill.py lists the graduations (Helius), screens them on
+# GeckoTerminal's candles, scores the coins in the universe with the live model on Helius' last 300 pool transactions, and plays rule A.
+# Nothing is bought; the key is never printed or written. The result (counts and fake-money numbers) goes to the data branch
+# "backfill". Runs only on a push of this file or backfill.py on this branch.
+name: winlose-backfill-run
+on:
+  push:
+    branches: [claude/project-thread-er8ru4]
+    paths: [.github/workflows/winlose-backfill-run.yml, research/winlose/backfill.py]
+permissions:
+  contents: write
+concurrency:
+  group: winlose-backfill
+  cancel-in-progress: false
+jobs:
+  grads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HK: ${{ secrets.HELIUS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/winlose/backfill.py grads grads.json
+      - uses: actions/upload-artifact@v4
+        with: {name: grads, path: grads.json, retention-days: 3}
+  shard:
+    needs: grads
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    env:
+      HK: ${{ secrets.HELIUS_API_KEY }}
+      BUDGET: "60000"
+      HL_GAP: "1.2"
+      MEMORY: rocket_memory.json.gz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: grads}
+      - run: |
+          git fetch -q --depth 1 origin rocket-data && git show FETCH_HEAD:rocket_memory.json.gz > rocket_memory.json.gz
+          python3 research/winlose/backfill.py shard grads.json ${{ matrix.i }} 12 shard_${{ matrix.i }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "shard-${{ matrix.i }}", path: "shard_*.json", retention-days: 3}
+  final:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: "shard-*", merge-multiple: true, path: shards}
+      - uses: actions/download-artifact@v4
+        with: {name: grads, path: shards}
+      - run: |
+          mkdir -p out && cp shards/grads.json out/ || true
+          python3 research/winlose/backfill.py final out shards/shard_*.json
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b backfill && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocket hunter replay 9-21 Oct" && git push -q --force "$URL" backfill
