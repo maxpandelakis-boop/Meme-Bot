@@ -55,8 +55,10 @@ print(json.dumps([[o["sent"], o["failed"]] for o in out]))
 def check_push_reason(check):
     """F1: a refused push names the push service's reason (cut, no control characters), and "check the VAPID keys" only for a 403 while
     no kind has reached a phone in this process."""
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_PUSH_ALL"}
-    env.update(SUPABASE_URL="http://127.0.0.1:9", SUPABASE_SECRET_KEY="sb_secret_auditkey123456", PYTHONUTF8="1")
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_"))}
+    # MEMEBOT_PUSH_ALL=1 here, also when this file runs alone: the young and radar pushes are the refused ones this check needs, and
+    # app.QUIET skips them otherwise (only buy notifications, Oct 22; selftest_shadow SH8 checks that)
+    env.update(SUPABASE_URL="http://127.0.0.1:9", SUPABASE_SECRET_KEY="sb_secret_auditkey123456", PYTHONUTF8="1", MEMEBOT_PUSH_ALL="1")
     rc, out, err = run_py(PUSH_REASON, env)
     lines = [l for l in err.splitlines() if "notification failed" in l]
     young = next((l for l in lines if "a young notification" in l), "")

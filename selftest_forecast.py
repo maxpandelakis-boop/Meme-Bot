@@ -60,14 +60,22 @@ def main():
     check("No forecast" in h2 and "<b>X</b>" not in h2, "without the numbers: one line, and a hostile symbol stays text")
     check(report.forecast_section({"rec": {"picks": []}}) == "", "no pick: no section")
 
+    # the pick push goes out only when the scan bought the pick on paper (app.QUIET, Oct 22): recommend.json's "bought" is then the ticket
     sent = []
     app.notify = lambda kind, title, body, url=None: sent.append((kind, title, body)) or {"sent": 0}
-    app.notify_pick({"t": 1, "picks": [dict(D["rec"]["picks"][0], tier="strong", score=50)]})
-    app.notify_pick({"t": 1, "picks": [dict(D["rec"]["picks"][0], tier="watch")]})
-    app.notify_pick({"t": 1, "picks": [{"sym": "P1"}]})
-    check(len(sent) == 3 and "Look-alikes: 3x in 6 h" in sent[0][2] and sent[0][2].endswith("Paper trading only, nothing is bought for real."),
-          "the pick notification carries the look-alike line (%r)" % (sent[0][2] if sent else None))
-    check("Look-alikes" not in sent[1][2] and "Look-alikes" not in sent[2][2], "a watch-only coin and a pick without numbers get no line")
+    old_all = os.environ.pop("MEMEBOT_PUSH_ALL", None)
+    try:
+        app.notify_pick({"t": 1, "picks": [dict(D["rec"]["picks"][0], tier="strong", score=50, bought=50)]})
+        app.notify_pick({"t": 1, "picks": [{"sym": "P1", "bought": 50}]})
+        quiet = [app.notify_pick({"t": 1, "picks": [dict(D["rec"]["picks"][0], tier="watch", bought="watch coin")]}),
+                 app.notify_pick({"t": 1, "picks": [dict(D["rec"]["picks"][0], tier="strong", score=50)]})]
+    finally:
+        if old_all is not None:
+            os.environ["MEMEBOT_PUSH_ALL"] = old_all
+    check(len(sent) == 2 and "Look-alikes: 3x in 6 h" in sent[0][2] and sent[0][2].endswith("Paper trading only, nothing is bought for real."),
+          "the pick notification of a paper buy carries the look-alike line (%r)" % (sent[0][2] if sent else None))
+    check(len(sent) == 2 and "Look-alikes" not in sent[1][2] and all(q.get("skipped") == "pick not bought" for q in quiet),
+          "a bought pick without numbers gets no line; a watch-only coin and a pick the scan did not buy send nothing")
     print("\n%s" % ("FORECAST ALL PASS" if not FAILS else "FORECAST %d FAILED" % len(FAILS)))
     return 1 if FAILS else 0
 
