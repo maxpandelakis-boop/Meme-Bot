@@ -665,6 +665,14 @@ except ImportError:           # a copy of the code without page_office.py (the s
         scan_minute = staticmethod(lambda runs, default: int(default) % 60)
         ext_agents = staticmethod(lambda *a: [])
         cards = daily = scan_strip = balance = desk = staticmethod(lambda *a: "")
+try:
+    import page_home as PH    # the Start tab: both paper accounts side by side, the pick and the rocket candidates
+except ImportError:
+    PH = None
+try:
+    import page_brain as PB   # the brain at the top of the Office tab (Gehirn)
+except ImportError:
+    PB = None
 OFFICE_HOSTS = (("launch-mint", "LaunchLab"), ("dexscreener", "DexScreener"), ("geckoterminal", "GeckoTerminal"), ("jup.ag", "Jupiter"), ("pump.fun", "pump.fun"),
                 ("raydium", "Raydium"), ("orca.so", "Orca"), ("rugcheck", "RugCheck"), ("coingecko", "CoinGecko"), ("coinmarketcap", "CoinMarketCap"), ("reddit", "Reddit"),
                 ("warpcast", "Farcaster"), ("mastodon", "Mastodon"), ("4cdn", "4chan"), ("gmgn", "GMGN"), ("gopluslabs", "GoPlus"), ("solana.com", "Solana RPC"),
@@ -761,10 +769,10 @@ details.fold > summary:hover { border-color:var(--accent) }
 @media (max-width:420px) { .tabbar .tl-long { display:none } .tabbar label { padding-inline:10px } }
 .tabbar label { cursor:pointer; padding:10px 14px; border-radius:8px 8px 0 0; font-weight:500; color:var(--fg2); border:1px solid transparent; border-bottom:none; margin-bottom:-1px; display:inline-flex; gap:8px; align-items:center; min-height:44px }
 .tabbar label:hover { color:var(--fg) } .tabbar .cnt { font-size:var(--fs-xs); background:var(--chip); color:var(--fg2); border-radius:999px; padding:1px 8px }
-#tab-pick:checked ~ .tabbar label[for="tab-pick"], #tab-young:checked ~ .tabbar label[for="tab-young"], #tab-account:checked ~ .tabbar label[for="tab-account"],
+#tab-home:checked ~ .tabbar label[for="tab-home"], #tab-pick:checked ~ .tabbar label[for="tab-pick"], #tab-young:checked ~ .tabbar label[for="tab-young"], #tab-account:checked ~ .tabbar label[for="tab-account"],
 #tab-office:checked ~ .tabbar label[for="tab-office"] { color:var(--accent); background:var(--surface); border-color:var(--line) }
 .tabbar label:focus-visible, .tabs > input:focus-visible ~ .tabbar label[for] { outline:2px solid var(--accent); outline-offset:2px }
-.pane { display:none; gap:24px } #tab-pick:checked ~ #pane-pick, #tab-young:checked ~ #pane-young, #tab-account:checked ~ #pane-account, #tab-office:checked ~ #pane-office { display:grid }
+.pane { display:none; gap:24px } #tab-home:checked ~ #pane-home, #tab-pick:checked ~ #pane-pick, #tab-young:checked ~ #pane-young, #tab-account:checked ~ #pane-account, #tab-office:checked ~ #pane-office { display:grid }
 .chips { display:flex; flex-wrap:wrap; gap:6px }
 .chip { display:inline-block; font-size:var(--fs-xs); font-weight:500; padding:3px 9px; border-radius:999px; background:var(--chip); color:var(--fg2); white-space:nowrap; line-height:1.4 }
 .chip.good { background:color-mix(in srgb,var(--good-mark) 16%,var(--surface)); color:var(--good) } .chip.bad { background:color-mix(in srgb,var(--bad-mark) 16%,var(--surface)); color:var(--bad) }
@@ -967,6 +975,31 @@ footer { color:var(--muted); font-size:var(--fs-s); border-top:1px solid var(--l
 
 # the early list on the New launches tab (only on a page built with GITHUB_REPOSITORY, so a page built elsewhere stays as it was): one column
 # of cards on a phone, two from 760px; tap targets of at least 44px; the page's own colour tokens, so light and dark both work; nothing moves
+THEME_CSS = r"""
+/* The look since Oct 22 (the user: modern, easy on the eye): a deep night-blue theme by default (a page can still ask for the light one with
+   data-theme="light"), soft glass cards, a pill tab bar, neon accents shared with the brain (--nn1 cyan, --nn2 violet). Only tokens and a
+   few frames change here; every block keeps its own layout. */
+:root:not([data-theme="light"]) { --bg:#070a14; --surface:#0f1424; --fg:#edf0fb; --fg2:#b8bfd6; --muted:#8890ad; --line:#1f2742; --line2:#192038;
+  --accent:#6f8dff; --s1:#5b8cff; --s2:#ff8a4c; --s3:#2ad49a; --good:#3ddc84; --good-mark:#22c56e; --bad:#ff6b7a; --bad-mark:#ff5a6a; --warn:#ffc35c; --warn-mark:#f2a93b;
+  --chip:#1a2138; --t3:#b18cff; color-scheme:dark }
+:root { --nn1:#22d3ee; --nn2:#a855f7 }
+:root:not([data-theme="light"]) { --nn1:#7cf7ff; --nn2:#b76bff }
+:root:not([data-theme="light"]) body { background:radial-gradient(1200px 600px at 10% -10%, rgba(111,141,255,.16), transparent 60%),
+  radial-gradient(900px 500px at 110% 10%, rgba(183,107,255,.12), transparent 60%), var(--bg); background-attachment:fixed }
+.card, .tile, .chart, details.fold > summary, .sstrip { border-radius:14px }
+:root:not([data-theme="light"]) .card, :root:not([data-theme="light"]) .tile, :root:not([data-theme="light"]) .chart,
+:root:not([data-theme="light"]) details.fold > summary { background:color-mix(in srgb,var(--surface) 88%,transparent); box-shadow:0 1px 0 rgba(255,255,255,.03) inset }
+h1 { background:linear-gradient(90deg,var(--fg) 30%,var(--nn1) 75%,var(--nn2)); -webkit-background-clip:text; background-clip:text; color:transparent }
+.tabbar { gap:4px; padding:4px; border:1px solid var(--line); border-radius:999px; background:color-mix(in srgb,var(--surface) 80%,transparent);
+  position:sticky; top:8px; z-index:5; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px) }
+.tabbar label { border:none; border-radius:999px; margin:0; min-height:40px; padding:8px 14px; justify-content:center; flex:1 1 auto; transition:background .2s, color .2s }
+#tab-home:checked ~ .tabbar label[for="tab-home"], #tab-pick:checked ~ .tabbar label[for="tab-pick"], #tab-young:checked ~ .tabbar label[for="tab-young"],
+#tab-account:checked ~ .tabbar label[for="tab-account"], #tab-office:checked ~ .tabbar label[for="tab-office"] {
+  color:#fff; border:none; background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--nn2) 75%,var(--accent))); box-shadow:0 4px 14px -6px var(--accent) }
+@media (max-width:560px) { .tabbar { gap:0; padding:3px } .tabbar label { padding:8px 6px; font-size:13.5px; min-height:38px } }
+.arch-head { display:grid; gap:4px } .arch-head p { margin:0; color:var(--fg2); font-size:var(--fs-s); max-width:70ch }
+"""
+
 EARLY_CSS = r"""
 .ehint { margin:0 }
 details.early { background:var(--surface); border:1px solid var(--line); border-radius:8px; min-width:0 }
@@ -2749,7 +2782,9 @@ def runs_table(runs, rec_mode):
     return '<div class="tbl runs stack"><table><thead><tr><th>when</th><th>mode</th><th class="n">scanned</th><th class="n">passed gates</th><th class="n">sources</th><th class="n">buys</th><th class="n">sells</th><th>what happened</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(tr)
 
 
-TABS = ("pick", "young", "account", "office")     # the tab ids in their order (app.py PAGE_JS's TABS): Pick, Radar, Traders, Office
+TABS = ("home", "pick", "young", "office", "account")     # the tab ids in their order (app.py PAGE_JS's TABS): Start, Pick, Radar, Gehirn, Archiv
+ARCHIVE_HEAD = ('<div class="arch-head"><h2>Archiv &amp; Forschung</h2><p>Alles, was Forschung ist oder nicht mehr läuft: die Studien und Simulationen, '
+                'die drei Papier-Trader und die New Launches (beendet am 16. Okt). Nichts ist gelöscht; jede Zahl ist noch da und wird weiter aktualisiert.</p></div>')
 TRADERS_ERR = [""]                                # why page_traders.py could not be imported (the Traders tab's fallback says it)
 
 
@@ -3410,6 +3445,11 @@ def render(data, fragment=False):
         # the switch the full scan's new launches under it), Traders (the three paper traders, page_traders.py) and Office (the radar's desk, the agent
         # office). CSS-only, so the fragment works without scripts; nothing of the account sits outside the panes. The old links (#tab-radar,
         # #radar, #new) open Radar (page_radar.py's script; app.py PAGE_JS in the installed app)
+        # five tabs (the user's direction of Oct 22: two parts, PICK and RADAR, and everything else in an archive): Start (page_home.py: both
+        # paper accounts side by side, the pick and the rocket candidates), Pick (the full scan's strip, the pick, the hour grid), Radar (the
+        # rocket hunter, then the launch radar and its paper positions), Gehirn (page_brain.py, then the radar's desk and the agent office) and
+        # Archiv (research and the three paper traders: nothing deleted, only out of the way). The tab ids stay (young is Radar, account is
+        # Archiv) so the old links and notifications still open the right place.
         sw = M.switch_at()
         rest = [safe("forecast", lambda: forecast_section(D)) if FC else "", safe("profit", lambda: profit_section(D)), safe("training", lambda: train_section(D)),
                 (safe("filter team", lambda: FT.section(D, sys.modules[__name__])) if FT else
@@ -3418,26 +3458,31 @@ def render(data, fragment=False):
                 safe("candidates", candidates), safe("weights", lambda: weights_section(D))]
         if D["runs"]:
             rest.append(safe("run log", runlog))
-        details = fold("Details", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
-        pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D)) + details
+        details = fold("Forschung", "Prognose, Tipp-Bilanz, Training, Filter-Team, Filtersuche, Gewinner vs. Verlierer, Kandidaten, Lauf-Log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
+        pane_pick = strip_html + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
         pane_young = safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar", lambda: PR.block(D, safe("radar paper positions", lambda: PT.radar_positions(D)) if PT else "")) + legacy
-        if rec_mode:      # before the first paper position the Traders tab holds one sentence
-            pane_account = '<div class="empty">No paper trades yet: each scan\'s pick is bought on paper for %s and every radar coin found without traps for %s (fake money, nothing is bought for real).</div>' % (
+        if rec_mode:      # before the first paper position the traders hold one sentence
+            traders_html = '<div class="empty">No paper trades yet: each scan\'s pick is bought on paper for %s and every radar coin found without traps for %s (fake money, nothing is bought for real).</div>' % (
                 E(fmt_eur(M.TOP_TICKET)), E(fmt_eur(radar_ticket())))
         elif PT:
-            pane_account = safe("traders", lambda: PT.section(D, bought))
+            traders_html = safe("traders", lambda: PT.section(D, bought))
         else:             # page_traders.py missing: the plain account strip as before, with a note; the rest of the page is unaffected
-            pane_account = ('<p class="note">The three traders could not be loaded this time (%s). The paper account itself is unaffected.</p>' % E(TRADERS_ERR[0])
+            traders_html = ('<p class="note">The three traders could not be loaded this time (%s). The paper account itself is unaffected.</p>' % E(TRADERS_ERR[0])
                             + safe("account", lambda: dash_section(D)) + safe("open positions", bought) + safe("closed trades", lambda: closed(True)) + safe("account curve", lambda: paper_curve(D)))
-        pane_office = safe("radar desk", lambda: PO.desk(D, sys.modules[__name__])) + safe("agent office", lambda: office_section(D))     # the Launch radar first (page_office.py)
-        radios = "".join('<input type="radio" name="tab" id="tab-%s"%s>' % (k, " checked" if k == "pick" else "") for k in TABS)
-        labels = ('<label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>Radar</span>%s</label>'
-                  '<label for="tab-account" role="tab">Traders</label><label for="tab-office" role="tab">Office</label>') % PR.tab_label()
-        body.append('<style>%s</style><div class="tabs">%s<div class="tabbar" role="tablist">%s</div><div class="pane" id="pane-pick">%s</div><div class="pane" id="pane-young">%s</div>'
-                    '<div class="pane" id="pane-account" data-app="account" data-tk-pick="%s" data-tk-radar="%s">%s</div><div class="pane" id="pane-office">%s</div></div><script>%s</script>' % (
-                        PR.CSS, radios, labels, pane_pick, pane_young, E(fmt_eur(M.TOP_TICKET)), E(fmt_eur(radar_ticket())), pane_account, pane_office, PR.JS))
+        pane_account = (ARCHIVE_HEAD + details
+                        + '<details class="fold arch-tr"><summary><span class="t">Drei Papier-Trader (Vergleich)</span><span class="sum">Stop-Loss, bester Preis im Rückblick, lernend · '
+                          'mit den New Launches (beendet %s)</span></summary>%s</details>' % (E(local(sw).strftime("%b %d")), traders_html))
+        pane_office = (safe("brain", lambda: PB.section(D, sys.modules[__name__])) if PB else "") + safe("radar desk", lambda: PO.desk(D, sys.modules[__name__])) + safe("agent office", lambda: office_section(D))
+        pane_home = safe("start", lambda: PH.section(D, sys.modules[__name__])) if PH else ""
+        radios = "".join('<input type="radio" name="tab" id="tab-%s"%s>' % (k, " checked" if k == TABS[0] else "") for k in TABS)
+        labels = ('<label for="tab-home" role="tab">Start</label><label for="tab-pick" role="tab">Pick</label><label for="tab-young" role="tab"><span>Radar</span>%s</label>'
+                  '<label for="tab-office" role="tab">Gehirn</label><label for="tab-account" role="tab">Archiv</label>') % PR.tab_label()
+        body.append('<style>%s</style><div class="tabs">%s<div class="tabbar" role="tablist">%s</div><div class="pane" id="pane-home" data-app="home">%s</div><div class="pane" id="pane-pick">%s</div>'
+                    '<div class="pane" id="pane-young">%s</div><div class="pane" id="pane-office">%s</div>'
+                    '<div class="pane" id="pane-account" data-app="account" data-tk-pick="%s" data-tk-radar="%s">%s</div></div><script>%s</script>' % (
+                        PR.CSS, radios, labels, pane_home, pane_pick, pane_young, pane_office, E(fmt_eur(M.TOP_TICKET)), E(fmt_eur(radar_ticket())), pane_account, PR.JS))
     else:
         rest = [section("Big test: %s later" % hz, "what 20 in each scanned coin was worth %s later, after fees" % hz, safe("big test", lambda: big_section(D))),
                 safe("hero", hero), safe("equity curve", curve), safe("bought coins", bought), safe("closed trades", closed), safe("candidates", candidates)]
@@ -3452,7 +3497,7 @@ def render(data, fragment=False):
                                                                          '<p>prices from DexScreener at the time of each run</p><p>times in %s</p>' % TZ_NAME, "Fees, prices and times")))
     content = '<div class="wrap">%s</div>\n<script>%s</script>' % ("\n".join(body), JS)
     head_html = ('<title>%s</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap">\n'
-                 '<style>%s</style>') % (E(TITLE), CSS + (EARLY_CSS if live_repo() and D.get("rec") and now < M.switch_at() else ""))
+                 '<style>%s</style>') % (E(TITLE), CSS + THEME_CSS + (EARLY_CSS if live_repo() and D.get("rec") and now < M.switch_at() else ""))
     if fragment:
         return head_html + "\n" + content
     return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n%s\n</head>\n<body>\n%s\n</body>\n</html>\n' % (head_html, content)

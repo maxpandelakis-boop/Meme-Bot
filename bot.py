@@ -1519,7 +1519,7 @@ def fmt_money(v):
 SITE_NOTICE = ('<div class="live"><span><strong>Live</strong> · rebuilt after every scan, every hour</span>'
                '<a class="btn" href="%s" target="_blank" rel="noopener">Scan now</a>'
                '<small>The page reloads itself. Scan now opens GitHub: tap “Run workflow” there and come back in about ten minutes.</small></div>')
-SITE_TAGS = ('<meta name="theme-color" content="#2a78d6">\n<link rel="manifest" href="manifest.webmanifest">\n'
+SITE_TAGS = ('<meta name="theme-color" content="#070a14">\n<link rel="manifest" href="manifest.webmanifest">\n'
              '<link rel="icon" href="icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">\n'
              '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="Meme-Bot">\n'
              '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n')
@@ -1590,7 +1590,7 @@ def site(d, out="site", repo=None):
     os.makedirs(out, exist_ok=True)
     files = {"index.html": h, "icon.svg": SITE_ICON, ".nojekyll": "", "sw.js": A.SW_JS,
              "manifest.webmanifest": json.dumps({"id": scope, "name": "Meme-Bot Ledger", "short_name": "Meme-Bot", "start_url": "./", "scope": "./",
-                                                 "display": "standalone", "background_color": "#f5f6f8", "theme_color": "#2a78d6",
+                                                 "display": "standalone", "background_color": "#070a14", "theme_color": "#070a14",
                                                  "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
                                                            {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
                                                            {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]})}

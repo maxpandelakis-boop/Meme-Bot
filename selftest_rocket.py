@@ -134,9 +134,9 @@ def r4():
         doc["top"][0]["sym"] = "<img src=x onerror=alert(1)>"
         json.dump(doc, open(os.path.join(tmp, "page", "db", "memebot", "rocket.json"), "w"))
         h = PK.section({"dir": os.path.join(tmp, "page")})
-        check("Rocket hunter" in h and "Pick" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
+        check("Rocket hunter" in h and "Pick" in h and "Raketen-Jäger" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
         h0 = PK.section({"dir": os.path.join(tmp, "none")})
-        check("has not run yet" in h0, "R5 without a doc: one sentence")
+        check("noch nicht gelaufen" in h0, "R5 without a doc: one sentence")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
