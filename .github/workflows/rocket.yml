@@ -2,7 +2,9 @@
 # more) from GeckoTerminal's minute candles and latest trades, and books paper trades in its OWN account (20 a coin, -30% / 11x / 6 h).
 # Fake money only: nothing is bought. A round with paper buys sends one push "Radar 🚀" to the iPhone app (app.notify_rocket, the
 # phones' "New coins" setting) when the Supabase secrets are set; the scan's paper account and its sell rule are untouched. Its state
-# and log go to the branch "rocket-data"; the scan job copies rocket.json into the page.
+# and log go to the branch "rocket-data"; the scan job copies rocket.json into the page. After the round the same job looks at the open
+# positions every minute until about 13 minutes after it started (rocket_watch.py watch): a sell is booked, pushed and in the app's
+# live row within a minute; with nothing open it ends at once.
 name: Meme-Bot rocket hunter
 on:
   schedule:
@@ -19,11 +21,13 @@ concurrency:
 jobs:
   round:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 17
     env:
       PYTHONUTF8: '1'
       HAS_SUPABASE: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SECRET_KEY != '' }}
     steps:
+      - name: Note the start (the minute watch ends 13 minutes after it)
+        run: echo "STARTED=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -78,6 +82,13 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python3 rocket_watch.py round --dir rk --radar rd
+      - name: Watch the open positions every minute until the next round
+        continue-on-error: true
+        timeout-minutes: 14
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python3 rocket_watch.py watch --dir rk --until $((STARTED + 780))
       - name: Save the state
         env:
           REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git

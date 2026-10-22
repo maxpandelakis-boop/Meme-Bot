@@ -234,8 +234,50 @@ def r7():
           "R7 the live row: summary, open positions, the last sells, the round's top scores, small (%d bytes)" % len(json.dumps(ld)))
 
 
+def r8():
+    """The minute watch between two rounds: rule A on the open positions only, a sell booked and logged at once, the round's scores
+    kept; nothing open or the time up: it returns without a request."""
+    tmp = tempfile.mkdtemp()
+    try:
+        t0 = 1_800_000_000_000
+        b = R.Book()
+        b.buy("AAA", "AAA", 1.0, t0, 0.5, 0.1, "pA")
+        b.buy("BBB", "BBB", 1.0, t0, 0.5, 0.1, "pB")
+        rk, mock = os.path.join(tmp, "rk"), os.path.join(tmp, "mock")
+        os.makedirs(rk); os.makedirs(mock)
+        json.dump({"v": 1, "t": t0, "book": b.doc(), "top": [{"addr": "X", "sym": "X", "score": 0.2, "age": 40, "buy": False}], "cut": 0.1, "checked": {"X": t0}},
+                  open(os.path.join(rk, "rocket.json"), "w"))
+        now = [t0 + 10 * 60_000]
+        json.dump([{"baseToken": {"address": "AAA"}, "pairAddress": "pA", "priceUsd": "8"}, {"baseToken": {"address": "BBB"}, "pairAddress": "pB", "priceUsd": "1.1"}],
+                  open(os.path.join(mock, "ds.json"), "w"))
+        s_ = (now[0] - 30_000) // 1000
+        json.dump({"data": {"attributes": {"ohlcv_list": [[s_, 5, 11.5, 5, 8, 100]]}}}, open(os.path.join(mock, "gt_pA_ohlcv.json"), "w"))
+        json.dump({"data": {"attributes": {"ohlcv_list": [[s_, 1, 1.2, 0.9, 1.1, 100]]}}}, open(os.path.join(mock, "gt_pB_ohlcv.json"), "w"))
+        slept = []
+        def sleep(x):
+            slept.append(x)
+            now[0] += x * 1000
+        out = RW.watch(rk, t0 + 13 * 60_000, mock, clock=lambda: now[0], sleep=sleep)
+        st = json.load(open(os.path.join(rk, "rocket.json")))
+        logs = open(os.path.join(rk, "log", os.listdir(os.path.join(rk, "log"))[0])).read()
+        check(out["sold"] == 1 and list(st["book"]["open"]) == ["BBB"] and st["book"]["closed"][0]["why"] == "11x" and '"closed":true' in logs
+              and st["top"][0]["sym"] == "X" and st["checked"] == {"X": t0} and st["t"] == t0,
+              "R8 the watch sells AAA at 11x within the minute, logs it, keeps BBB open and the round's scores (%s)" % out)
+        check(out["why"] == "time" and out["looks"] == 3 and slept[:2] == [60, 60], "R8 one look a minute until the next round (%s, %s)" % (out, slept))
+        st["book"]["open"] = {}
+        json.dump(st, open(os.path.join(rk, "rocket.json"), "w"))
+        out2 = RW.watch(rk, t0 + 99 * 60_000, os.path.join(tmp, "none"), clock=lambda: now[0], sleep=sleep)
+        check(out2 == {"looks": 0, "sold": 0, "why": "nothing open"}, "R8 nothing open: the watch ends at once (%s)" % out2)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    wf = open(os.path.join(HERE, ".github", "workflows", "rocket.yml")).read()
+    w = wf[wf.index("- name: Watch the open positions"):wf.index("- name: Save the state")]
+    check("rocket_watch.py watch" in w and "continue-on-error: true" in w and "GITHUB_TOKEN" not in w and "STARTED + 780" in w,
+          "R8 rocket.yml watches after the round, without the GitHub token, and saves the state even when the watch fails")
+
+
 def main():
-    r1(); r1b(); r2(); r3(); r4(); r6(); r7()
+    r1(); r1b(); r2(); r3(); r4(); r6(); r7(); r8()
     print("\n%d failed" % len(FAILS) if FAILS else "\nall ok")
     sys.exit(1 if FAILS else 0)
 
