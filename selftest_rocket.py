@@ -184,6 +184,8 @@ def r4():
         check(PK.sold_li(PH, {"sym": "A<b>", "mult": 0.68, "eur": -6.6, "why": "stop", "out": now}).count("Stopp") == 1 and "&lt;b&gt;" in PK.sold_li(PH, {"sym": "A<b>"})
               and isinstance(lj.get("summary"), dict) and isinstance(lj.get("open"), list), "R5 a sell row in the page's words (escaped); the live row has the shape LIVE_JS reads")
         check("Geprüft am 22. Okt" in h and "hält nicht" in h and "134" in h, "R5 the fold with the tests of 22 Oct is in the block")
+        rp = PK.tests({"history": {"0.005": {"coins": 3}}, "replay": {"0.005": {"coins": 137, "avg": -7.84, "inProfitOf10": 0.5, "x10": 0, "sim": 0.0}}})
+        check("Nachtest 9.–21. Okt" in rp and "137 Käufe" in rp and "kein 10x" in rp, "R5 the fold shows the replay on the unseen days")
         tt = PK.tests({"history": {"0.005": {"coins": 3, "avg": "<script>", "x10": 1}}, "exits": {"rules": 2, "choice": "<b>x</b>"}})
         check("<script" not in tt and "<b>x" not in tt and "&lt;b&gt;x" in tt, "R5 the tests fold escapes what it shows")
         cd = PK.chart_div({"chart": [[0, 1], [5, "<b>"], [9, 2.5]], "t": now, "out": now + 9 * 60_000, "mult": 2.5}, True)

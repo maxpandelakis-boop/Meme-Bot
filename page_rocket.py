@@ -7,7 +7,8 @@ section(D) -> HTML, a compact block "Rocket hunter (paper)":
   - the rocket hunter's open positions and the best scores of its last round
   - one honest line: on the corrected history (22 Oct) the model was in the red; this account is its live test
   - a fold with the tests of 22 Oct (rocket_tests.json next to this module, research/winlose/rocket_tests_export.py): the corrected
-    history, an earlier first check, 134 other exit rules, a model deciding "stay in or get out" (none held)
+    history, the replay on the unseen days 9-21 Oct (research/winlose/backfill.py), an earlier first check, 134 other exit rules, a
+    model deciding "stay in or get out" (none held)
 D: report.py's page data; reads D["dir"]/db/memebot/rocket.json (rocket_watch.py writes it on the branch rocket-data, the scan job
 copies it) and, for the Pick side, page_account's numbers. Every value goes through a number check or html.escape. No script in
 section(); LIVE_JS (report.py puts it after the block) reads the app's live row "rocket" (rocket_watch.py writes it every round) while
@@ -67,6 +68,12 @@ def tests(t=None):
         li.append("<li><b>Rückblick 10. Aug–8. Okt, korrigiert</b><span>%d Käufe: %s pro 20 € · %s von 10 im Plus · 10x bei %s · %s der 10.000 "
                   "Simulationen im Plus</span></li>" % (int(num(h["coins"])), E(PH.de_eur(h.get("avg"), True)), E(PH.de_num(num(h.get("inProfitOf10")) or 0, 1)),
                                                        E(pc(h.get("x10"))), E(pc(h.get("sim")))))
+    rp = (t.get("replay") or {}).get("0.005") or {}
+    if num(rp.get("coins")):
+        x10 = int(num(rp.get("x10")) or 0)
+        li.append("<li><b>Nachtest 9.–21. Okt, neue Tage wie live</b><span>%d Käufe: %s pro 20 € · %s von 10 im Plus · %s · %s der 10.000 "
+                  "Simulationen im Plus</span></li>" % (int(num(rp["coins"])), E(PH.de_eur(rp.get("avg"), True)), E(PH.de_num(num(rp.get("inProfitOf10")) or 0, 1)),
+                                                       "kein 10x" if not x10 else "%d× 10x" % x10, E(pc(rp.get("sim")))))
     ea = t.get("early") or {}
     vs = {k: v for k, v in (ea.get("variants") or {}).items() if isinstance(v, dict) and k != "V30"}
     if vs:
