@@ -39,10 +39,22 @@ import contextlib, glob, html, json, os, re, shutil, subprocess, sys, tempfile, 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+os.environ["MEMEBOT_RADAR_ACCOUNT"] = "1"     # the radar account is off by default since 22 Oct; these checks keep its mechanism working
 sys.path.insert(0, HERE)
 import memebot as M
 import peak as P
 import radar_paper as RP
+
+
+def _off_check():
+    old = os.environ.pop("MEMEBOT_RADAR_ACCOUNT", None)
+    try:
+        r = P.radar_account("nodir", 0, None, None, 0, lambda s: None)
+        ok = not P.radar_account_on() and "off" in r
+    finally:
+        os.environ["MEMEBOT_RADAR_ACCOUNT"] = old or "1"
+    sc = open(os.path.join(HERE, ".github", "workflows", "scan.yml")).read()
+    return ok and "MEMEBOT_RADAR_ACCOUNT: ${{ vars.MEMEBOT_RADAR_ACCOUNT || '0' }}" in sc
 
 MIN, H = 60_000, 3_600_000
 TA = 1791983760000                  # a round at a whole minute (2026-10-14 13:16 UTC)
@@ -191,6 +203,8 @@ def quiet():
 # ---------------------------------------------------------------- the checks
 def checks(check):
     print("== radar account: 3 EUR on each launch-radar round's best 5, sold by the paper rules on minute candles (radar_paper.py, page_radarpaper.py)")
+    check(_off_check(), "RA0 the radar account is off by default since 22 Oct (two bots only; its data stays): peak.py asks nothing, "
+          "scan.yml passes MEMEBOT_RADAR_ACCOUNT from the repository variable (default 0)")
     tmp = tempfile.mkdtemp(prefix="memebot-rp-")
     try:
         _buys(check, tmp)
