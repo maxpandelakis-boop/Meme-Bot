@@ -69,6 +69,38 @@ def agents(D):
     return [(i, NAMES[i]) + by[i] for i in ORDER if i in by]
 
 
+TEAM = ("dispatch", "scouts", "deep", "market", "candles", "analyst", "safety", "refresh", "trader", "reporter", "trainer")
+JOBS = {"dispatch": "plant den Lauf", "scouts": "sammelt Coins aus allen Quellen", "deep": "sucht mit mehr Stichworten", "market": "holt die Preise",
+        "candles": "holt Minutenkerzen", "analyst": "Filter und Score", "safety": "prüft die besten auf Fallen", "refresh": "frische Preise vor dem Pick",
+        "trader": "kauft den Pick auf Papier", "reporter": "baut diese Seite", "trainer": "lernt aus allen Ergebnissen"}
+
+
+def dur(sec):
+    return "%d s" % round(sec) if sec < 90 else ("%s min" % ("%.1f" % (sec / 60)).replace(".", ",").replace(",0 ", " ")).replace(",0 min", " min")
+
+
+def team(D, R):
+    """The scan's helpers in run order, each with its state, how long it took and its result of the last run (the old office cards, in
+    one compact list), and the run's head line: when it started, what kind of scan, how long. ("", []) without office.json."""
+    O = D.get("office") if isinstance(D.get("office"), dict) else {}
+    by = {a["id"]: a for a in O.get("agents") or [] if isinstance(a, dict) and a.get("id")}
+    rows = []
+    for i in TEAM:
+        a = by.get(i)
+        if not a:
+            continue
+        s, e = num(a.get("start")), num(a.get("end"))
+        st = str(a.get("status") or "")
+        st = st if st in ST_WORD else ("done" if s and e else "skipped")
+        rows.append((i, "Lernlabor" if i == "trainer" else NAMES.get(i, i), JOBS.get(i, ""), st, dur((e - s) / 1000.0) if s and e and e >= s else "–", str(a.get("out") or "")[:140]))
+    t0, t1 = num(O.get("t")), num(O.get("end"))
+    head = ""
+    if t0:
+        mode = {"full": "Vollscan", "light": "kurzer Scan", "none": "nur Preise"}.get(str(O.get("mode") or ""), "Scan")
+        head = "Letzter Lauf %s · %s%s · %d Helfer" % (R.local(t0).strftime("%H:%M"), mode, (" · %s" % dur((t1 - t0) / 1000.0)) if t1 and t1 > t0 else "", len(rows))
+    return head, rows
+
+
 def coins(D, doc):
     """[(symbol, kind, strength 0..1, what the bot knows)]: the pick first, then the rocket candidates by score."""
     out = []
@@ -187,13 +219,18 @@ def section(D, R):
     ags, cs, th = agents(D), coins(D, doc), thoughts(D, R, doc)
     focus = "".join('<li data-f="%d"><b>%s</b> %s</li>' % (i, E(s), E(w)) for i, (s, _, _, w) in enumerate(cs))
     tl = "".join('<li class="%s" style="animation-delay:%.2fs"><time>%s</time><span>%s</span></li>' % (k, 0.15 + 0.12 * i, E(t), E(s)) for i, (t, k, s) in enumerate(th))
+    head, rows = team(D, R)
+    team_html = ('<div class="bn-tm"><h3>Helfer</h3>%s<ul>%s</ul><p class="bn-tmn">Alle Details des alten Office (Grundriss, Zeitachse, Tagesübersicht) liegen im Archiv.</p></div>' % (
+        ('<p class="bn-tmh">%s</p>' % E(head)) if head else "",
+        "".join('<li class="st-%s" data-tm="%s" title="%s"><i></i><div><b>%s</b><span data-tm-out>%s</span></div><em data-tm-st>%s</em></li>' % (
+            st, E(i), E(j), E(n), E(o or ST_WORD.get(st, st)), E(d if st != "running" else ST_WORD["running"])) for i, n, j, st, d, o in rows))) if rows else ""
     legend = ('<div class="bn-leg"><span class="l-pick">Pick</span><span class="l-rk">Raketen-Kandidat</span><span class="l-ok">Helfer fertig</span>'
               '<span class="l-run">arbeitet gerade</span><span class="l-bad">Fehler</span></div>')
     return ('<style>%s</style><section class="bn" data-brain data-state="rest"><div class="bn-head"><div><div class="bn-ey">Office · live</div><h2 class="bn-h">Das Gehirn</h2></div>'
             '<span class="bn-live" data-bn-live>ruht · letzter Scan</span></div>'
             '<div class="bn-stage">%s</div><ul class="bn-focus" aria-live="polite">%s</ul>%s'
-            '<div class="bn-th"><h3>Gedanken</h3><ol data-bn-thoughts>%s</ol></div></section><script>%s</script>') % (
-        CSS, svg(ags, cs, "ruht"), focus, legend, tl or '<li class="see"><time>–</time><span>Noch keine Gedanken: der erste Scan kommt bald.</span></li>', JS)
+            '<div class="bn-th"><h3>Gedanken</h3><ol data-bn-thoughts>%s</ol></div>%s</section><script>%s</script>') % (
+        CSS, svg(ags, cs, "ruht"), focus, legend, tl or '<li class="see"><time>–</time><span>Noch keine Gedanken: der erste Scan kommt bald.</span></li>', team_html, JS)
 
 
 JS = r"""
@@ -214,6 +251,9 @@ window.addEventListener('memebot-live',function(e){var d=e&&e.detail||{},st=d.st
   st.agents.forEach(function(a){if(!a||!a.id)return;var s=ST[a.status]?a.status:(a.end?'done':'skipped');
     var g=root.querySelector('[data-ag="'+String(a.id).replace(/[^a-z0-9_-]/gi,'')+'"]'),l=root.querySelector('[data-ln="'+String(a.id).replace(/[^a-z0-9_-]/gi,'')+'"]');
     [g,l].forEach(function(x){if(x)x.setAttribute('class',x.getAttribute('class').replace(/\bst-\w+/,'st-'+s));});
+    var row=root.querySelector('[data-tm="'+String(a.id).replace(/[^a-z0-9_-]/gi,'')+'"]');
+    if(row&&live){row.className='st-'+s;var so=row.querySelector('[data-tm-st]');if(so&&s==='running')so.textContent='arbeitet';
+      var lo=row.querySelector('[data-tm-out]');if(lo&&a.lines&&a.lines.length&&s==='running')lo.textContent=String(a.lines[a.lines.length-1]).slice(0,160);}
     if(s==='running'&&a.lines&&a.lines.length)run={n:g?g.textContent:a.id,l:String(a.lines[a.lines.length-1]).slice(0,160)};});
   var old=list&&list.querySelector('li.now');if(old)old.parentNode.removeChild(old);
   if(live&&run&&list){var li=document.createElement('li');li.className='now';var t=document.createElement('time');t.textContent='jetzt';
@@ -271,6 +311,16 @@ CSS = r"""
 .bn-th li.go { border-left-color:var(--nok) } .bn-th li.no { border-left-color:#ffc35c } .bn-th li.see { border-left-color:var(--nn1) } .bn-th li.learn { border-left-color:var(--nn2) }
 .bn-th li.now { border-left-color:var(--nn1); background:rgba(124,247,255,.08) }
 .bn-th time { font-size:11px; color:var(--nmut); font-variant-numeric:tabular-nums; padding-top:2px } .bn-th span { color:#dfe4ff; overflow-wrap:anywhere }
+.bn-tm h3 { font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--nmut); font-weight:500; margin:4px 0 4px }
+.bn-tmh { margin:0 0 8px; font-size:12px; color:var(--nmut) } .bn-tmn { margin:8px 0 0; font-size:11px; color:var(--nmut) }
+.bn-tm ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr)); gap:6px }
+.bn-tm li { display:grid; grid-template-columns:10px 1fr auto; gap:8px; align-items:start; padding:8px 10px; border-radius:12px; background:rgba(255,255,255,.035); border:1px solid rgba(124,247,255,.08) }
+.bn-tm li > i { width:8px; height:8px; border-radius:50%; margin-top:5px; background:var(--nn1); box-shadow:0 0 6px var(--nn1) }
+.bn-tm li.st-failed > i { background:var(--nbad); box-shadow:0 0 6px var(--nbad) } .bn-tm li.st-fallback > i { background:#ffc35c; box-shadow:none }
+.bn-tm li.st-skipped > i, .bn-tm li.st-absent > i { background:var(--nmut); box-shadow:none }
+.bn-tm li.st-running { border-color:rgba(124,247,255,.4) } .bn-tm li.st-running > i { animation:bn-blink 1s ease-in-out infinite }
+.bn-tm li div { display:grid; min-width:0 } .bn-tm b { font-size:13px; color:#e8ecff } .bn-tm small { font-size:11px; color:var(--nmut) }
+.bn-tm span { font-size:12px; color:#c3cbef; overflow-wrap:anywhere; margin-top:2px } .bn-tm em { font-style:normal; font-size:12px; color:var(--nmut); font-variant-numeric:tabular-nums; white-space:nowrap }
 @keyframes bn-flow { to { stroke-dashoffset:-20 } }
 @keyframes bn-tw { 0%,100% { opacity:.15 } 50% { opacity:.6 } }
 @keyframes bn-pulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.5) } }
