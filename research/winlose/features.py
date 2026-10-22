@@ -27,10 +27,11 @@ def rsi(close, n=14):
     return 100.0 if dn == 0 else 100 - 100 / (1 + up / dn)
 
 
-def chart_feats(b, E):
-    """b: dense per-minute arrays of one pool (index = minute since graduation); E: entry minute (bars before it only)."""
+def chart_feats(b, E, min_e=30):
+    """b: dense per-minute arrays of one pool (index = minute since graduation); E: entry minute (bars before it only).
+    min_e: the youngest entry minute (30 for the study and the live model; early_entry.py tests 5 to 20)."""
     c, hi, lo, vb, vs, nb, ns, na = (x[:E] for x in (b["c"], b["hi"], b["lo"], b["vb"], b["vs"], b["nb"], b["ns"], b["na"]))
-    if E < 30 or not np.isfinite(c[-1]) or c[-1] <= 0:
+    if E < max(5, min_e) or not np.isfinite(c[-1]) or c[-1] <= 0:
         return {}
     lc = np.log(c)
     f = {}
@@ -78,6 +79,8 @@ def chart_feats(b, E):
         f["trend_r2"] = 1 - res.var() / c5.var() if c5.var() > 0 else 0.0
     # candles: the last 5-minute and 15-minute candle
     for k in (5, 15):
+        if E <= k:
+            continue
         o, cl, h, l = c[-k - 1], c[-1], np.nanmax(hi[-k:]), np.nanmin(lo[-k:])
         rng = h - l
         if rng > 0:
@@ -105,7 +108,9 @@ def chart_feats(b, E):
     return f
 
 
-def dense(g):
+def dense(g, fill_hl=True):
+    """fill_hl=True (the study's grids before 22 Oct): a minute without a trade repeats the last traded minute's high and low.
+    fill_hl=False: its high and low are the last close, as rocket.dense computes them live (PREREG-EARLY-EXIT addendum 2)."""
     n = int(g["mi"].max()) + 1
     out = {k: np.zeros(n) for k in ("vb", "vs", "nb", "ns", "na")}
     for k, col in (("vb", "sol_buy"), ("vs", "sol_sell"), ("nb", "n_buy"), ("ns", "n_sell"), ("na", "n_atomic")):
@@ -113,7 +118,7 @@ def dense(g):
     for k, col in (("c", "p_close"), ("hi", "p_hi"), ("lo", "p_lo")):
         a = np.full(n, np.nan)
         a[g["mi"].to_numpy()] = g[col].to_numpy()
-        out[k] = pd.Series(a).ffill().to_numpy()
+        out[k] = pd.Series(a).ffill().to_numpy() if (fill_hl or k == "c") else a
     out["hi"] = np.where(np.isnan(out["hi"]), out["c"], out["hi"])
     out["lo"] = np.where(np.isnan(out["lo"]), out["c"], out["lo"])
     return out
