@@ -72,3 +72,13 @@ minute; result: sell rule A from that minute, not clipped. Walk-forward weekly o
 choice: best dev average with 100 coins or more. Holdout (from 25 Sep) once. Pass: average above 0 with the lower bound above 0.
 Whatever the result, the score goes into the radar as a displayed and logged number only (no paper buy and no push changes);
 the logged live numbers are the forward test.
+Result of addendum 3: dev choice top 2% -7.22 per 20 (447 coins); holdout -11.58 (687 coins), 10x 3.2% against 2.2% for all coins
+at 5 minutes, to zero 31%. **FAILS.** From DexScreener's numbers at launch the radar cannot tell rockets from the coins that die.
+
+## Addendum 4, 22 Oct 08:15 UTC: the pick held longer (written before it was run)
+The user wants the pick to be the safe part, held longer. Only the selection the bot can compute live counts: its gates (hourly
+rows 6-24 h, first hour per coin, history2). Exits from the one-minute bars of the first 55 hours: hold 1.7, 6, 12 or 24 hours x
+stop none/-20/-30/-50% x target none/2x/3x/11x = 64 rules (rule A = 6 h, -30%, 11x is one of them). Per 20 after fees
+(memebot.tip_net), not clipped. THE choice: the best dev average (graduations before 25 Sep) among rules that keep at least the
+gates' in-profit share under rule A; reported with filter_search.simulate (10,000 runs). Holdout once. A changed sell rule restarts
+the paper account, so even a pass only goes to the user with the numbers; nothing is switched without the user's explicit yes.
