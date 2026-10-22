@@ -61,3 +61,14 @@ the chart, wallet and market numbers of features.py at that minute. Outcome: sel
 - **C, expected profit**: predicted result (regression). Same choice and pass as B.
 Walk-forward weekly on dev as part B; Holm over the 12 holdout p-values reported. A pass is built into the radar's pick
 selection only as described before; a fail changes nothing and goes to the app as display.
+
+## Addendum 3, 22 Oct 08:05 UTC: a rocket score the launch radar can compute live (written before it was run)
+The user wants the radar to be the rocket hunter. The radar sees a coin about 1 minute after its pool opens and prices it again
+5, 15, 30 and 60 minutes after first sight from DexScreener, so the score may only use what a DexScreener pair gives then: age,
+market cap, liquidity/market cap, volume 5 min and 1 h over market cap, price change 5 min and 1 h, buys and sells 5 min and 1 h,
+buy share, and the price against the first-sight price (minute 1). Rows: every history2 coin with liquidity >= $5k (the radar's
+YOUNG_MIN_LIQ) at 5, 15, 30 and 60 minutes after its pool opened (minute bars; no outage within). Target: 10x within 6 h of that
+minute; result: sell rule A from that minute, not clipped. Walk-forward weekly on dev, cuts at the top 0.5/1/2/5% of rows; THE
+choice: best dev average with 100 coins or more. Holdout (from 25 Sep) once. Pass: average above 0 with the lower bound above 0.
+Whatever the result, the score goes into the radar as a displayed and logged number only (no paper buy and no push changes);
+the logged live numbers are the forward test.
