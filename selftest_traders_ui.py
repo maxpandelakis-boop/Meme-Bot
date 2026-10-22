@@ -108,6 +108,14 @@ def text(h):
 
 
 def pane(page, key):
+    """The old office (the radar's desk, the agent cards) sits in the Archiv tab's fold since Oct 22: "office" is that fold."""
+    if key == "office":
+        a = page.find('<details class="fold arch-office">')
+        return page[a:page.find('<details class="fold arch-tr">', a)] if a >= 0 else ""
+    return _pane(page, key)
+
+
+def _pane(page, key):
     """The inner HTML of #pane-<key> (the panes follow each other in this order: home, pick, young, office, account). For "account" (the
     Archiv tab) only its traders fold, the last block of the pane: the research fold before it is the Pick tab's old Details."""
     nxt = {"home": "pick", "pick": "young", "young": "office", "office": "account"}.get(key)

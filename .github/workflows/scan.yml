@@ -609,6 +609,8 @@ jobs:
       - name: Price the closed 6-hour windows (best price within 6 h, hindsight only; GeckoTerminal minute candles, ten minutes at most)
         if: steps.restore.outputs.ok == 'true'
         timeout-minutes: 11
+        env:
+          MEMEBOT_RADAR_ACCOUNT: ${{ vars.MEMEBOT_RADAR_ACCOUNT || '0' }}   # the old launch-radar paper account: off (two bots only, its data stays); 1 switches it on
         run: python3 peak.py run --dir mb --deadline-s 600
       - name: Replay other stops and targets on the closed paper trades (hindsight only, local computation, two minutes at most)
         if: steps.restore.outputs.ok == 'true'
@@ -616,7 +618,7 @@ jobs:
         timeout-minutes: 2
         run: python3 exit_grid.py run --dir mb
       - name: The learning trader's daily step (local computation, no requests; two minutes at most)
-        if: steps.restore.outputs.ok == 'true'
+        if: steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'   # off since 22 Oct 2026 (two bots only: Pick and the rocket hunter; its data stays); the repository variable MEMEBOT_TRADERS=1 switches it on
         continue-on-error: true      # a record: an error or a timeout here never holds back the push below (the script itself exits 0)
         timeout-minutes: 3
         run: python3 traders.py run --dir mb

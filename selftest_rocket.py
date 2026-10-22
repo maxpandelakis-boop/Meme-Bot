@@ -203,6 +203,11 @@ def r7():
     w = A.rocket_words([{"sym": "ONE<b>", "score": 0.1234, "cut": 0.0839}, {"sym": "TWO", "score": 0.09}], {"trades": 3, "eur": -12.5})
     check(w and w[0].startswith("Radar 🚀") and "ONE" in w[0] and "+1" in w[0] and "0.123" in w[1] and "0.084" in w[1] and "Papiergeld" in w[1]
           and "-12.50" in w[1], "R7 the push says Radar 🚀, the coin, its score and the cut, the record and that it is paper money (%s)" % (w,))
+    w2 = A.rocket_words([], {"trades": 4, "eur": 170.0}, [{"sym": "TWO", "mult": 11.0, "eur": 190.03, "why": "11x"}, {"sym": "SIX", "mult": 0.5, "eur": -10.1, "why": "stop"}])
+    check(w2 and w2[0] == "Radar 🚀 verkauft: TWO x11.00 (+190.03 €, Ziel 11x)" and "SIX x0.50 (-10.10 €, Stop -30 %)" in w2[1] and "Papiergeld" in w2[1],
+          "R7 a round with sells only: the push names each sale, its multiple, euros and why (%s)" % (w2,))
+    w3 = A.rocket_words([{"sym": "NEW", "score": 0.1, "cut": 0.08}], None, [{"sym": "OLD", "mult": 1.2, "eur": 3.6, "why": "6h"}])
+    check(w3 and "NEW" in w3[0] and "OLD x1.20" in w3[1], "R7 buys and sells of one round: one push (the rate guard would drop a second)")
     check(A.rocket_words([]) is None and A.notify_rocket([]) == {"skipped": "no buys"}, "R7 no buys: no push")
     check(A.KINDS.get("rocket") and len(A.TOPIC["rocket"]) in (4, 8) and A.PREF_OF.get("rocket") == "young",
           "R7 kind rocket: its own rate guard, an 8-letter topic, the New coins setting")
@@ -213,7 +218,12 @@ def r7():
         if old is not None:
             os.environ["SUPABASE_URL"] = old
     src = open(os.path.join(HERE, "rocket_watch.py")).read()
-    check("app.notify_rocket(buys" in src and "if buys and not mock" in src, "R7 rocket_watch pushes a round's buys once, never in a mocked round")
+    check("app.notify_rocket(buys, book.summary(), closed)" in src and "if not mock:" in src and 'app.put_row("rocket"' in src,
+          "R7 rocket_watch pushes a round's buys and sells once and writes the live row, never in a mocked round")
+    b = R.Book(); b.buy("A", "A", 1.0, 1, 0.2, 0.1, "p"); b.buy("B", "B", 1.0, 1, 0.2, 0.1, "p"); out = b.update("B", 2, hi=12.0, lo=0.9, px=11.0)
+    ld = RW.live_doc(b, 3, 0.08, [{"addr": "A", "sym": "A", "score": 0.2, "age": 40, "buy": True, "pool": "x"}], [out])
+    check(ld["summary"]["trades"] == 1 and len(ld["open"]) == 1 and ld["soldNow"] == ["B"] and "pool" not in ld["top"][0] and len(json.dumps(ld)) < 4000,
+          "R7 the live row: summary, open positions, the last sells, the round's top scores, small (%d bytes)" % len(json.dumps(ld)))
 
 
 def main():

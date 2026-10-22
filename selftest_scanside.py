@@ -717,8 +717,9 @@ def _peaks_job(check, scan, tmp):
           "job peaks: the exit replay runs after the pricing and before the push, with its own short timeout, never failing the job, and the "
           "job's timeout leaves the push its minute after all three")
     check(i_xg < i_tr < i_up and tr.get("continue-on-error") is True and 0 < int(tr.get("timeout-minutes") or 0) <= 3
-          and tr.get("if") == "steps.restore.outputs.ok == 'true'" and "traders.py" in str(tr.get("name") or "") + str(tr.get("run")),
-          "TR15 job peaks runs the learning trader's step (traders.py run) after the exit replay and before the push, continue-on-error, %s min at most"
+          and tr.get("if") == "steps.restore.outputs.ok == 'true' && (vars.MEMEBOT_TRADERS || '0') == '1'" and "traders.py" in str(tr.get("name") or "") + str(tr.get("run")),
+          "TR15 job peaks has the learning trader's step (traders.py run) after the exit replay and before the push, continue-on-error, "
+          "off unless the repository variable MEMEBOT_TRADERS is 1 (two bots only since 22 Oct), %s min at most"
           % tr.get("timeout-minutes"))
     flows = {os.path.basename(f): open(f, encoding="utf-8").read() for f in glob.glob(os.path.join(HERE, ".github", "workflows", "*.y*ml"))}
     sync = B.SYNC_IGNORE.splitlines()

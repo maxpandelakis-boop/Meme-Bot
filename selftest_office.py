@@ -201,17 +201,17 @@ def office_checks(check, skips=None):
         cards = re.findall(r'<label class="ocard( ext)?" for="od-([a-z]+)" data-agent="([a-z]+)"', page)
         D1 = R.collect(d1, NOW)
         info = R.office_data(D1)
-        pane_o = page[page.find('<div class="pane" id="pane-office">'):]
-        brain_end = pane_o.find("</script>", pane_o.find("data-brain")) + len("</script>")     # the brain (page_brain.py) opens the Office tab
-        pane_d = '<div class="pane" id="pane-office">' + pane_o[brain_end:]
+        pane_g = page[page.find('<div class="pane" id="pane-office">'):page.find('<div class="pane" id="pane-account"')]     # Gehirn: the brain only since Oct 22
+        pane_o = page[page.find('<details class="fold arch-office">'):]                                                  # the old office: a fold on Archiv
+        pane_d = pane_o[pane_o.find('<div class="rest">') + len('<div class="rest">'):]
         check(off_before == off_after and [c[2] for c in cards] == list(AGENTS) and not any(c[0] for c in cards) and 'data-agent="radar"' not in cut(page, '<div class="ocards"', "</div>")
               and [a["id"] for a in info["agents"]] == list(AGENTS) and [a["id"] for a in info["ext"]] == ["radar"] and "could not be rendered" not in page
               and R.OFFICE_AGENTS["radar"] == RADAR_AGENT and (info["ext"][0]["name"], info["ext"][0]["job"], tuple(info["ext"][0]["tools"])) == RADAR_AGENT
-              and pane_o.startswith('<div class="pane" id="pane-office"><style>') and -1 < pane_o.find("data-brain") < pane_o.find('<div class="odk-box">')
-              and pane_d.startswith('<div class="pane" id="pane-office"><style>') and pane_d.find("</style>") + 8 == pane_d.find('<div class="odk-box"><label class="odesk" for="tab-young" data-po-desk')
+              and "data-brain" in pane_g and "odk-box" not in pane_g and 'class="ocards"' not in pane_g and pane_o.find('<details class="fold arch-office">') == 0
+              and pane_d.startswith('<style>') and pane_d.find("</style>") + 8 == pane_d.find('<div class="odk-box"><label class="odesk" for="tab-young" data-po-desk')
               and -1 < pane_o.find('<label class="odesk"') < pane_o.find("<h2>Agent office</h2>") < pane_o.find('<div class="ocards"') < pane_o.find('<div class="office">')
               and page.count('<label class="odesk"') == 1 and "data-ext-stat" not in page and "ocard ext" not in page + PO.CSS,
-              "U6 office: the brain opens the Office tab, the Launch radar's desk is the next block (before its heading and the grid); one card per agent of office.json "
+              "U6 office: the Gehirn tab holds only the brain; the old office is a fold on Archiv with the Launch radar's desk first (before its heading and the grid); one card per agent of office.json "
               "in run order and no card for the radar any more; the radar's name, job and tools are the spec's words; office.json is not written (%d cards)" % len(cards))
         card_dept = dict((c[2], c[1]) for c in cards)
         card_line = lambda aid: R.html.unescape(re.search(r'<label class="ocard[^"]*" for="od-[a-z]+" data-agent="%s".*?<span class="ocl"[^>]*>(.*?)</span>' % aid, page, re.S).group(1))
@@ -993,7 +993,7 @@ def curve_office_checks(check, skips, tmp, utc):
         q = ("[document.querySelector('[data-ext-hosts=\"radar\"]').textContent, Array.from(document.querySelectorAll('[data-pd-chat] li')).map(l => l.textContent), "
              "Array.from(document.querySelectorAll('[data-ext-hosts=\"radar\"] .chip')).filter(c => /Curve trades/.test(c.textContent)).map(c => c.className)]")
         built = pg.evaluate(q)
-        pg.evaluate("document.getElementById('tab-office').click()")
+        pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
         pg.wait_for_timeout(1500)
         live = pg.evaluate(q)
         br.close()
@@ -1075,7 +1075,7 @@ def browser_checks(check, skips, d1, tmp):
                 strip = document.querySelector('.sstrip'), g = () => { const rg = document.createRange(); rg.selectNodeContents(sm); return rg.getBoundingClientRect().right; },
               x0 = g(), h0 = r(strip).height; sm.click(); const x1 = g(); sm.click();
                 return [Math.round(r(a).height), Math.round(r(a).width), Math.round(r(sm).height), Math.round(r(sm).width), Math.round(x1 - x0), Math.round(h0)]; }""")
-            pg.click('label[for="tab-office"]')
+            pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
             pg.wait_for_function("!!document.querySelector('.office[data-live]')", timeout=10000)
             got = pg.evaluate("""() => { const q = s => document.querySelector(s), cs = e => getComputedStyle(e);
               return { desk: q('g[data-ext="radar"]').getAttribute('data-live'), card: q('label[data-po-desk]').getAttribute('data-live'),
@@ -1204,7 +1204,7 @@ def browser_checks(check, skips, d1, tmp):
                 for dark in (False, True):
                     ctx, pg = open_(page_plain, w, h, dark)
                     m = pg.evaluate("""() => { const over = () => document.documentElement.scrollWidth - innerWidth, s = document.querySelector('.sstrip').getBoundingClientRect();
-                      document.getElementById('tab-office').click();
+                      document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true;
                       const cs = Array.from(document.querySelectorAll('.ocard')), fd = document.querySelector('details[data-po-fold]'), st = e => getComputedStyle(e);
                       const one = c => { const ls = Array.from(c.querySelectorAll(':scope > .ocl')).filter(e => st(e).display !== 'none');
                         return ls.length === 1 && st(ls[0]).whiteSpace !== 'nowrap' && st(ls[0]).textOverflow !== 'ellipsis' && ls[0].scrollWidth <= ls[0].clientWidth + 1; };
@@ -1212,11 +1212,11 @@ def browser_checks(check, skips, d1, tmp):
                         cs.filter(c => !one(c)).map(c => c.getAttribute('data-agent')), cs.length,
                         document.querySelector('.obal') ? -1 : 0];
                       document.getElementById('tab-pick').click();
-                      document.querySelectorAll('#pane-pick details, #pane-office details').forEach(d => { d.open = true; });
+                      document.querySelectorAll('#pane-pick details, #pane-account details').forEach(d => { d.open = true; });
                       const a = over(); let b = 0, folds = 0;
-                      document.getElementById('tab-office').click();
+                      document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true;
                       document.querySelectorAll('input[name="odept"]').forEach(r => { r.checked = true; b = Math.max(b, over()); });
-                      document.getElementById('od-brain').checked = true; folds = document.querySelectorAll('#pane-pick details[open], #pane-office details[open]').length;
+                      document.getElementById('od-brain').checked = true; folds = document.querySelectorAll('#pane-pick details[open], #pane-account details[open]').length;
                       const oday = document.querySelector('.oday details[open] table'), row = document.querySelector('.ocards'), r = row.getBoundingClientRect(),
                         bar = document.querySelector('.ohb-bar').getBoundingClientRect(), cell = document.querySelector('.ohb-bar label').getBoundingClientRect();
                       const cut = Array.from(document.querySelectorAll('.ocard .ocn')).filter(e => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1).map(e => e.textContent);
@@ -1240,7 +1240,7 @@ def browser_checks(check, skips, d1, tmp):
                   "under them (%s)" % (n_cards, [(w, "dark" if dk else "light", m[13]) for w, dk, m in sizes]))
             # a tap on an hour shows its numbers (CSS radios); on a phone a tap on a card opens its department and brings its panel (the radar: its block) into view
             ctx, pg = open_(page_plain)
-            pg.click('label[for="tab-office"]')
+            pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
             pg.evaluate("scrollTo(0, 0)")
             pg.click('label.ocard[data-agent="safety"]')
             pg.wait_for_timeout(900)
@@ -1257,7 +1257,7 @@ def browser_checks(check, skips, d1, tmp):
             ctx.close()
             ctx, pg = open_(page_plain, 1280, 900)
             fresh = pg.evaluate("document.querySelector('details[data-po-fold]').open")
-            pg.click('label[for="tab-office"]')
+            pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
             pg.click('label.ocard[data-agent="trader"]')
             pg.wait_for_timeout(900)
             tap_d = pg.evaluate("[document.getElementById('od-trading').checked, Math.round(document.querySelector('.ogrid').getBoundingClientRect().top), innerHeight, "
@@ -1267,7 +1267,7 @@ def browser_checks(check, skips, d1, tmp):
                   "U6 browser: a tap on an agent's card opens the Details fold at its department and brings it into view (a phone: its panel; a desktop: "
                   "the floor plan with the panel beside it), a tap on the radar desk opens New with the radar in view; the fold stays open across the page's reload in that tab and is "
                   "closed in a new one; the link to the radar is hidden exactly when the page has no radar on New (%s, %s, %s, %s, %s)" % (tap, tap_r, tap_d, kept, fresh))
-            pg.evaluate("document.getElementById('tab-office').click(); document.getElementById('od-brain').checked = true;")
+            pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true; document.getElementById('od-brain').checked = true;")
             pg.click('label[for="ohb-3"]')
             shown = pg.evaluate("Array.from(document.querySelectorAll('.ohb-read p')).filter(p => p.getClientRects().length).map(p => p.textContent)")
             check(len(shown) == 1 and shown[0].startswith("03:00 to 04:00 · ") and not errs, "U9 browser: a tap on an hour of the bar shows that hour's numbers, one at a time (%s)" % (shown[:1], ))
@@ -1278,7 +1278,7 @@ def browser_checks(check, skips, d1, tmp):
             for sel in ('[data-po-radar] label', 'label[data-po-desk]'):
                 for app in (False, True):
                     ctx, pg = open_(page_rt)
-                    pg.evaluate("document.getElementById('tab-office').click(); document.querySelector('details[data-po-fold]').open = true; "
+                    pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true; document.querySelector('details[data-po-fold]').open = true; "
                                 "document.getElementById('od-analysts').checked = true;" + (" document.documentElement.classList.add('app');" if app else ""))
                     pg.evaluate("window._hc = 0; window.addEventListener('hashchange', () => { window._hc++; });")
                     lab = pg.locator(sel)
@@ -1294,8 +1294,8 @@ def browser_checks(check, skips, d1, tmp):
             dsz = []
             for w, dark in ((320, False), (320, True), (390, False), (390, True), (1280, False), (1280, True)):
                 ctx, pg = open_(page_desk, w, 844, dark)
-                pg.evaluate("document.getElementById('tab-office').click()")
-                dsz.append(pg.evaluate("""() => { const k = document.querySelector('.odesk'), r = k.getBoundingClientRect(), h = document.querySelector('#pane-office h2:not(.bn-h)').getBoundingClientRect(),
+                pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
+                dsz.append(pg.evaluate("""() => { const k = document.querySelector('.odesk'), r = k.getBoundingClientRect(), h = document.querySelector('.arch-office h2').getBoundingClientRect(),
                     ls = Array.from(k.querySelectorAll('.odk-s .l')), cols = new Set(Array.from(k.querySelectorAll('.odk-s')).map(e => Math.round(e.getBoundingClientRect().left))).size;
                   return [document.documentElement.scrollWidth - innerWidth, Math.round(r.right - innerWidth), k.scrollWidth - k.clientWidth, Math.round(r.height), r.top < h.top,
                     ls.filter(l => l.getBoundingClientRect().height > 2 * parseFloat(getComputedStyle(l).lineHeight) + 1).length, cols,
@@ -1310,9 +1310,9 @@ def browser_checks(check, skips, d1, tmp):
             csz = []
             for w, dark in ((320, False), (320, True), (390, False), (390, True), (1280, False), (1280, True)):
                 ctx, pg = open_(page_chat, w, 844, dark)
-                pg.evaluate("document.getElementById('tab-office').click()")
+                pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
                 csz.append(pg.evaluate("""() => { const c = document.querySelector('.ochat'), r = c.getBoundingClientRect(), k = document.querySelector('.odesk').getBoundingClientRect(),
-                    h = document.querySelector('#pane-office h2:not(.bn-h)').getBoundingClientRect(), li = Array.from(c.querySelectorAll('.och')), col = e => getComputedStyle(e.querySelector('.och-a')).color;
+                    h = document.querySelector('.arch-office h2').getBoundingClientRect(), li = Array.from(c.querySelectorAll('.och')), col = e => getComputedStyle(e.querySelector('.och-a')).color;
                   return [document.documentElement.scrollWidth - innerWidth, Math.round(r.right - innerWidth), c.scrollWidth - c.clientWidth, Math.round(r.height), Math.round(r.top - k.bottom),
                     r.bottom < h.top, li.length, new Set(li.map(e => Math.round(e.getBoundingClientRect().left))).size, new Set(li.map(col)).size,
                     li.filter(e => e.querySelector('.och-t').scrollWidth > e.querySelector('.och-t').clientWidth + 1).length, getComputedStyle(c).backgroundColor,
@@ -1322,7 +1322,7 @@ def browser_checks(check, skips, d1, tmp):
             ccol = []
             for w in (390, 1280):
                 ctx, pg = open_(page_cols, w, 844)
-                pg.evaluate("document.getElementById('tab-office').click()")
+                pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
                 ccol.append(pg.evaluate("Array.from(document.querySelectorAll('.ochat .och')).map(e => [e.className.slice(6), Math.round(e.getBoundingClientRect().left)])"))
                 ctx.close()
             check(all(m[0] <= 0 and m[1] <= 0 and m[2] <= 0 and 0 <= m[4] <= 10 and m[5] and m[6] == 8 and m[8] == 5 and m[9] == 0 for m in csz)
@@ -1347,7 +1347,7 @@ def browser_checks(check, skips, d1, tmp):
             cdim = []
             for dark in (False, True):
                 ctx, pg = open_(page_chat, 390, 844, dark)
-                pg.evaluate("document.getElementById('tab-office').click()")
+                pg.evaluate("document.getElementById('tab-account').click(); document.querySelector('details.arch-office').open = true")
                 cd_ = chat_doc(NOW - 26 * MIN)
                 pg.evaluate("([st, d, n]) => window.dispatchEvent(new CustomEvent('memebot-radar', {detail: {state: st, via: 'github', doc: window.MemebotRadar.clean(d), now: n}}))",
                             ["late", cd_, cd_["t"] + 60_000])
