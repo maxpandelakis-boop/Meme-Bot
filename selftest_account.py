@@ -270,7 +270,7 @@ def _checks(check, d, skips):
           and "1.80x" in cell(r_stop, "h1") and "0.40x" in cell(r_stop, "h2") and "1.80x" not in cell(r_stop, "h2") and "unknown" in cell(r_path, "h2"),
           "U2 the closed rows carry best in 6 h (multiple, when, P/L) and at 6 h (STOPPY 1.80x, then 0.40x at 6 h; an estimate without it 'unknown'), "
           "the filtered chip with its first reason (59,257x ignored: pool dead), estimate, 15-min, unit, window open")
-    pane = (re.search(r'<div class="pane" id="pane-account"[^>]*>(.*?)</div><div class="pane" id="pane-office">', page, re.S) or re.match("", "")).group(1) or ""
+    pane = (re.search(r'<div class="pane" id="pane-account"[^>]*>(.*?)</div></div><script>', page, re.S) or re.search("()", "")).group(1) or ""     # the Archiv tab: the last pane
     hm = _harness(D, now)
     i_trades, i_card = hm.find('data-pa="trades"'), hm.find('class="card pos hold"')
     check("Top trades · 8 closed · 2 open" in hm and 0 < i_trades < i_card and 'data-pa="header"' in hm and "profit/loss since the restart on " in hm

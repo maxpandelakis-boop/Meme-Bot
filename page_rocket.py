@@ -18,6 +18,7 @@ import memebot as M
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 DOC = ("db", "memebot", "rocket.json")
+SHOWN = 5                 # candidates in view on the Radar tab; the rest of the round behind "N weitere"
 
 
 def num(v):
@@ -38,78 +39,92 @@ def load(d):
 
 
 def pick_side(D):
-    """The scan's paper account: its balance (the last point of the balance line) and its closed trades."""
+    """The scan's paper account, its pick positions only (the new launches ended on Oct 16: Archiv tab), the same numbers as the Start tab."""
     try:
-        import page_account as PA
-        A = PA._acct(D)
+        import page_home as PH
+        b = PH.pick_book(D)
     except Exception:
         return None
-    rows = [r for r in (A or {}).get("rows") or [] if isinstance(r, dict)]
-    closed = [r for r in rows if not r.get("open") and num(r.get("pnl")) is not None]
-    pts = [c["paper"].get("pnl") for c in (D or {}).get("curve") or [] if isinstance(c, dict) and isinstance(c.get("paper"), dict)]
-    bal = num(pts[-1]) if pts else (sum(num(r["pnl"]) for r in closed) if closed else None)
-    win = round(10 * sum(1 for r in closed if num(r["pnl"]) > 0) / len(closed), 1) if closed else None
-    return {"bal": bal, "trades": len(closed), "open": sum(1 for r in rows if r.get("open")), "win": win}
-
-
-def card(title, sub, bal, trades, open_, win, hits):
-    w = "–" if win is None else "%.1f of 10" % win
-    return ('<div class="rk-c"><span class="k">%s</span><b class="%s">%s</b><small>%s</small>'
-            '<small>%d closed · %d open · in profit %s%s</small></div>') % (
-        E(title), "up" if (num(bal) or 0) > 0 else "dn" if (num(bal) or 0) < 0 else "", E(eur(bal)), E(sub), trades, open_, E(w), E(hits))
+    return {"bal": b["bal"], "trades": b["closed"], "open": b["open"], "win": b["win"], "x3": b["x3"], "x10": b["x10"]} if b else None
 
 
 def section(D):
+    """The Radar tab's top block: the rocket hunter's own account, its open positions, every candidate of its last round with a bar to the
+    buy cut, the rules in one line and the Pick account for comparison."""
+    import page_home as PH
     doc = load((D or {}).get("dir"))
-    head = '<div class="rk-head"><h3>Pick and rocket hunter (paper)</h3><span class="chip warn">fake money</span></div>'
+    head = ('<div class="rk-head"><div><h3>Raketen-Jäger</h3><small>Rocket hunter · eigenes Papierkonto</small></div>'
+            '<span class="chip warn">Spielgeld</span></div>')
     wrap = lambda inner: '<div class="rk" data-pa="rocket">%s%s</div><style>%s</style>' % (head, inner, CSS)
     ps = pick_side(D)
-    pick = card("Pick: the safer one", "the scan's paper account, sell rule unchanged", ps["bal"], ps["trades"], ps["open"], ps["win"], "") if ps else ""
+    cmp_ = ('<p class="rk-cmp">Zum Vergleich Pick: <b class="%s">%s</b> · %s/10 im Plus · %d abgeschlossen</p>' % (
+        PH.tone(ps["bal"]), E(PH.de_eur(ps["bal"], True)), E("–" if ps["win"] is None else PH.de_num(ps["win"], 1)), ps["trades"])) if ps else ""
     if doc is None:
-        return wrap('<div class="rk-cards">%s</div><p class="rk-s">The rocket hunter has not run yet: it checks the radar\'s coins every '
-                    '15 minutes and buys on paper only when a coin\'s rocket score reaches its cut.</p>' % pick)
-    sm = (doc.get("book") or {}).get("summary") or {}
-    hits = " · 3x %d · 10x %d" % (int(num(sm.get("x3")) or 0), int(num(sm.get("x10")) or 0))
-    bal = (num(sm.get("eur")) or 0.0) + (num(sm.get("openEur")) or 0.0)
-    rocket = card("Rocket hunter: the big ones", "own account, 20 a coin, -30% / 11x / 6 h", bal, int(num(sm.get("trades")) or 0),
-                  int(num(sm.get("open")) or 0), num(sm.get("inProfitOf10")), hits)
+        return wrap('<p class="rk-s">Der Raketen-Jäger ist noch nicht gelaufen: er prüft alle 15 Minuten die Coins des Radars und kauft auf '
+                    'Papier nur, wenn der Raketen-Score eines Coins die Schwelle erreicht.</p>' + cmp_)
+    b = PH.rocket_book(doc)
+    win = "–" if b["win"] is None else PH.de_num(b["win"], 1)
+    stats = [("im Plus", ("%s/10" % win) if b["win"] is not None else "–"), ("3x · 10x", "%d · %d" % (b["x3"], b["x10"])), ("offen", str(b["open"])), ("abgeschlossen", str(b["closed"]))]
+    acct = ('<div class="rk-acct"><div class="rk-bal"><span class="k">Kontostand</span><b class="%s">%s</b>%s</div><div class="rk-sts">%s</div></div>') % (
+        PH.tone(b["bal"]), E(PH.de_eur(b["bal"], True)), PH.spark(b["pts"], PH.tone(b["pts"][-1] if b["pts"] else 0)),
+        "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), E(v)) for k, v in stats))
     op = []
     for a, p in sorted(((doc.get("book") or {}).get("open") or {}).items(), key=lambda kv: -(num(kv[1].get("t")) or 0)):
         if isinstance(p, dict):
-            op.append("<li><b>%s</b> bought at score %.3f · now x%.2f · high x%.2f</li>" % (
-                E(p.get("sym") or str(a)[:6]), num(p.get("score")) or 0, num(p.get("now")) or 1.0, num(p.get("hi")) or 1.0))
-    top = []
-    for r in (doc.get("top") or [])[:5]:
-        if isinstance(r, dict):
-            top.append("<li>%s · score %.4f%s · %d min old</li>" % (E(r.get("sym") or str(r.get("addr"))[:6]), num(r.get("score")) or 0,
-                                                                   " · bought" if r.get("buy") else "", int(num(r.get("age")) or 0)))
+            op.append('<li><b>%s</b><span>gekauft bei Score %s · jetzt x%s · Hoch x%s</span></li>' % (
+                E(p.get("sym") or str(a)[:6]), E(PH.de_num(num(p.get("score")) or 0, 3)), E(PH.de_num(num(p.get("now")) or 1.0)), E(PH.de_num(num(p.get("hi")) or 1.0))))
+    cut = num(doc.get("cut")) or 0
+    rows = []
+    for r in [r for r in doc.get("top") or [] if isinstance(r, dict)]:
+        sh = (num(r.get("score")) or 0) / cut if cut > 0 else 0
+        rows.append('<li class="%s"><b>%s</b><span class="rk-bar"><i style="width:%.1f%%"></i></span><em>%s</em><small>%d min alt%s</small></li>' % (
+            "buy" if r.get("buy") else ("near" if sh >= 0.5 else ""), E(str(r.get("sym") or str(r.get("addr") or "?")[:6])[:14]), max(2.0, min(100.0, 100 * sh)),
+            "gekauft" if r.get("buy") else "%d %%" % round(100 * sh), int(num(r.get("age")) or 0),
+            (" · MC %s $" % PH.de_num(num(r["mc"]), 0)) if num(r.get("mc")) else ""))
     rd = doc.get("round") or {}
     when = ""
     if num(doc.get("t")):
         try:
             import page_account as PA
-            when = "last round %s %s · " % (PA.mday(doc["t"]), PA.hhmm(doc["t"]))
+            when = "Letzte Runde %s %s · " % (PA.mday(doc["t"]), PA.hhmm(doc["t"]))
         except Exception:
             when = ""
-    body = ('<div class="rk-cards">%s%s</div>' % (pick, rocket)
-            + ('<div class="rk-st"><span class="k">Open rocket positions</span><ul>%s</ul></div>' % "".join(op) if op else "")
-            + ('<div class="rk-st"><span class="k">Best scores of the last round (cut %.4f)</span><ul>%s</ul></div>' % (num(doc.get("cut")) or 0, "".join(top)) if top else "")
-            + '<p class="rk-s">%s%d radar coins watched, %d scored. A live test: on the history the strictest cut made money only on few coins '
-              '(about 1 in 10 bought became 10x, 2 of 10 ended in profit); this account shows whether it holds.</p>' % (
-                  E(when), int(num(rd.get("candidates")) or 0), int(num(rd.get("scored")) or 0)))
+    body = (acct
+            + ('<div class="rk-st"><span class="k">Offene Positionen</span><ul class="rk-op">%s</ul></div>' % "".join(op) if op else "")
+            + ('<div class="rk-st"><span class="k">Kandidaten der letzten Runde · Kauf ab 100 %% der Schwelle (%s)</span><ul class="rk-cands">%s</ul>%s</div>' % (
+                E(PH.de_num(cut, 4)), "".join(rows[:SHOWN]), ('<details class="rk-more"><summary>%d weitere</summary><ul class="rk-cands">%s</ul></details>' % (
+                    len(rows) - SHOWN, "".join(rows[SHOWN:]))) if len(rows) > SHOWN else "") if rows else '<p class="rk-s">In der letzten Runde lag kein Coin im passenden Alter.</p>')
+            + '<p class="rk-s">%s%s Radar-Coins beobachtet, %d bewertet. 20 € pro Coin, Verkauf bei −30 %%, 11x oder nach 6 h. '
+              'Live-Test: in der Historie wurde etwa 1 von 10 Käufen 10x, 2 von 10 endeten im Plus.</p>' % (E(when), E(PH.de_num(int(num(rd.get("candidates")) or 0), 0)), int(num(rd.get("scored")) or 0))
+            + cmp_)
     return wrap(body)
 
 
 CSS = r"""
-/* the rocket hunter (page_rocket.py) */
-.rk { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px 8px; display:grid; gap:10px; min-width:0; margin-bottom:12px }
-.rk-head { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px } .rk-head h3 { margin:0 }
-.rk-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px }
-.rk-c { border:1px solid var(--line); border-radius:10px; padding:10px 12px; display:grid; gap:2px; min-width:0 }
-.rk-c .k, .rk-st .k { font-size:var(--fs-xs); color:var(--muted) } .rk-c b { font-size:20px; font-weight:600; font-variant-numeric:tabular-nums }
-.rk-c b.up { color:var(--good) } .rk-c b.dn { color:var(--bad) }
-.rk-c small { font-size:var(--fs-xs); color:var(--fg2); overflow-wrap:anywhere }
-.rk-st ul { margin:4px 0 0; padding-left:18px; font-size:var(--fs-s); color:var(--fg2) }
+/* the rocket hunter (page_rocket.py) at the top of the Radar tab */
+.rk { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 16px 10px; display:grid; gap:12px; min-width:0; margin-bottom:12px;
+  background-image:radial-gradient(120% 80% at 100% 0%, color-mix(in srgb,var(--nn2) 14%,transparent), transparent 60%) }
+.rk-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 10px } .rk-head h3 { margin:0; font-size:19px }
+.rk-head small { font-size:var(--fs-xs); color:var(--muted) }
+.rk-acct { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:12px; align-items:center }
+.rk-bal { display:grid; gap:2px; min-width:0 } .rk-bal b { font-size:28px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; white-space:nowrap }
+.rk-bal b.good { color:var(--good) } .rk-bal b.bad { color:var(--bad) }
+.rk .k { font-size:var(--fs-xs); color:var(--muted) }
+.rk-sts { display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.rk-sts span { display:grid; padding:6px 8px; border-radius:10px; background:color-mix(in srgb,var(--fg) 4%,transparent) }
+.rk-sts i { font-style:normal; font-size:11px; color:var(--muted) } .rk-sts b { font-size:15px; font-variant-numeric:tabular-nums }
+.rk-st { display:grid; gap:6px } .rk-st ul { list-style:none; margin:0; padding:0; display:grid; gap:6px }
+.rk-op li { display:grid; font-size:var(--fs-s) } .rk-op li span { color:var(--fg2); font-size:var(--fs-xs) }
+.rk-cands li { display:grid; grid-template-columns:minmax(64px,auto) 1fr auto; column-gap:10px; align-items:center; font-size:var(--fs-s) }
+.rk-cands li b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px }
+.rk-cands li em { font-style:normal; font-variant-numeric:tabular-nums; color:var(--fg2); min-width:44px; text-align:right }
+.rk-cands li small { grid-column:1 / -1; font-size:11px; color:var(--muted); margin-top:-2px }
+.rk-bar { height:6px; border-radius:6px; background:color-mix(in srgb,var(--fg) 8%,transparent); overflow:hidden }
+.rk-bar i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),var(--nn2)) }
+.rk-cands li.near em { color:var(--warn) } .rk-cands li.buy em { color:var(--good); font-weight:600 } .rk-cands li.buy .rk-bar i { background:var(--good-mark) }
+.rk-more > summary { cursor:pointer; color:var(--accent); font-size:var(--fs-s); padding:6px 0 } .rk-more[open] > summary { margin-bottom:6px }
 .rk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
-@media (max-width:560px) { .rk { padding:12px 12px 6px } }
+.rk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
+.rk-cmp b.good { color:var(--good) } .rk-cmp b.bad { color:var(--bad) }
+@media (max-width:560px) { .rk { padding:12px 12px 8px } .rk-acct { grid-template-columns:1fr } }
 """
