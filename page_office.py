@@ -662,7 +662,8 @@ def balance(D, R):
         return ""
     since = _num(P.get("since")) or 0
     pts = sorted((int(_ms(c.get("t"))), _num(c["paper"].get("pnl"))) for c in D.get("curve") or []
-                 if isinstance(c, dict) and _ms(c.get("t")) and _ms(c.get("t")) >= since and isinstance(c.get("paper"), dict) and _num(c["paper"].get("pnl")) is not None)
+                 if isinstance(c, dict) and _ms(c.get("t")) and _ms(c.get("t")) >= since and isinstance(c.get("paper"), dict) and _num(c["paper"].get("pnl")) is not None
+                 and (_ms(c["paper"].get("since")) or since) >= since)
     now_v = _num((P.get("acct") or {}).get("pnl")) if isinstance(P.get("acct"), dict) else None
     now_v = now_v if now_v is not None else (pts[-1][1] if pts else None)
     tone = "flat" if now_v is None or abs(now_v) < 0.005 else ("good" if now_v > 0 else "bad")

@@ -172,7 +172,7 @@ def how(doc):
         calib = (" Check: the current rule replayed on the new launches gives %s per trade against %s it really made (a gap of %s%s)."
                  % (per(num(cal.get("replay"))), per(num(cal.get("actual"))), per(num(cal.get("gap"))), most))
     f = lambda k: ("%.0f%%" % (100 * num(fill.get(k)))) if num(fill.get(k)) is not None else "?"
-    return ("Hindsight on the paper trades since the restart, replayed rule by rule on stored prices: the 6-hour price record of each "
+    return ("Hindsight on the paper trades since the rule started (the Pick's fresh start of Oct 22 kept the rule, so they all count), replayed rule by rule on stored prices: the 6-hour price record of each "
             "trade (its best, lowest and last close) and, where they were kept, the 1-minute and 15-minute candles of the same coin. A rule "
             "sells at the first close at or below its stop (at the stop, or lower when the price fell through it), at the first close at or "
             "above its target (at the target), else at 6 hours; closes only, never wicks; a pool that died is a total loss; paper fees on both "

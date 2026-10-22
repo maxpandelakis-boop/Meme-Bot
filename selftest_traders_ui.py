@@ -32,7 +32,7 @@ BANNED = re.compile(r"(?i)\b(buy|buys|buying|safe|safely|guaranteed?|clean|shoul
 MONEY = re.compile(r"^[+−]?\d{1,3}(,\d{3})*\.\d{2}\u00a0€$")
 TICKET = re.compile(r"^\d+\u00a0€$")
 SPOTTER = re.compile(r'<label class="ocard[^"]*" for="od-[a-z]+" data-agent="spotter"')     # the Launch spotter's card (its desk on the floor plan stays)
-LIMITS = {"home": 2400, "pick": 2000, "young": 1600, "account": 2400, "office": 2600}     # 4.10: the app at 390 px, folds closed (the radar without a coin); Oct 22: Start, the brain on top of the office
+LIMITS = {"home": 2400, "pick": 2600, "young": 1600, "account": 2400, "office": 2600}     # 4.10: the app at 390 px, folds closed (the radar without a coin); Oct 22: Start, the brain on top of the office, the Pick account on top of the Pick tab
 B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
@@ -618,10 +618,10 @@ def _browser(check, tmp, d, now, page, skips):
           "count of coins without traps only (2, green); the notifications card is the last block of Start; UI7 in the browser: the paper line on the pb 1 "
           "card only, the learning trader's skip chip on it %s" % ({k: app[k] for k in ("bar", "badge", "deep", "notif")} if errs or app["bar"][2][1] != "Radar" else (errs[:2] or "")))
     off = app.get("off") or {}
-    check(app["web"] == ["tab-account", "tab-office", "tab-pick", "tab-young"] and off.get("which") and off.get("rows") == 3 and off.get("op") == 1 and off.get("last")
+    check(app["web"] == ["tab-account", "tab-office", "tab-pick", "tab-young"] and off.get("which") and off.get("rows") == 2 and off.get("op") == 1 and off.get("last")
           and off.get("h", 9e9) <= LIMITS["home"] and ".nf-prefs.dim" not in __import__("app").PAGE_CSS,
           "UI2 the website's deep links #tab-account, #tab-office, #tab-pick and #tab-radar open their tab (%s); the app's notifications card once the live "
-          "store is set up and notifications are off: the three switches (radar, pick, the evening report) behind 'Which notifications', at full opacity (%s), the card last, the Start tab "
+          "store is set up and notifications are off: the two switches (the radar's and the pick's paper buys; the evening report is off since Oct 22) behind 'Which notifications', at full opacity (%s), the card last, the Start tab "
           "%s px at 390 (at most %d, %s data)" % (app["web"], off.get("op"), off.get("h"), LIMITS["home"], "real" if ridx else "fixture"))
     clip = {k: v["clip"] for k, v in lay.items() if v.get("clip")}
     hs = {k: v["hs"] for k, v in lay.items() if v["hs"] > 0}

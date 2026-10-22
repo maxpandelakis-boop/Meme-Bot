@@ -416,7 +416,8 @@ def _list(v):
 
 
 def context(d):
-    """Everything settle needs from the db, read once: the positions with their exits, paperSince, the memepeak docs, the scan
+    """Everything settle needs from the db, read once: the positions with their exits, paperSince (and paperRuleSince, the paper rule's
+    own start, which the Pick's fresh start of Oct 22 did not move: exit_grid.py replays the rule's trades from it), the memepeak docs, the scan
     times (memeruns), the DexScreener points of the spotter's record (memeearly) and of the open positions (marks.json), and the
     tip record's docs (memeyoung for new launches, memerec for top picks) by run time. A doc or field of an unexpected shape is
     skipped, never fatal."""
@@ -441,7 +442,8 @@ def context(d):
             t0 = num(doc.get("t"))
             if t0:
                 tips.setdefault((coll, int(t0)), []).append(doc)
-    return {"pos": M.positions(d), "since": num((state if isinstance(state, dict) else {}).get("paperSince")), "docs": M.load_docs(d, "memepeak"),
+    st = state if isinstance(state, dict) else {}
+    return {"pos": M.positions(d), "since": num(st.get("paperSince")), "ruleSince": num(st.get("paperRuleSince")) or num(st.get("paperSince")), "docs": M.load_docs(d, "memepeak"),
             "runs": runs, "early": early, "tips": tips, "marks": marks if isinstance(marks, dict) else {}}
 
 

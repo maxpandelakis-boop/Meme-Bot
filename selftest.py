@@ -25,6 +25,7 @@ ALPH = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 WORDS = "dog cat pepe frog elon trump moon inu wif bonk chad doge baby meme giga degen ape monkey bear bull penguin hat rocket fart goat duck whale pig".split()
 T0 = int(time.time() * 1000)
 H = 3_600_000
+os.environ["MEMEBOT_PUSH_ALL"] = "1"   # every push kind as before (app.QUIET is the production's "only buy notifications"); app's own check turns it off
 
 
 def mk_universe(n=1100, seed=7):
@@ -2034,7 +2035,7 @@ def app_tests(check, mock, url):
     has_crypto = importlib.util.find_spec("cryptography") is not None
     # MEMEBOT_SWITCH_AT stays (main sets it 30 days after the fake clock): without it these subprocesses would use the real switch,
     # which is in the past from Oct 16, and their pages would lose the new launches these checks are about
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k == "MEMEBOT_SWITCH_AT"}
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k in ("MEMEBOT_SWITCH_AT", "MEMEBOT_PUSH_ALL")}
     base.update(PYTHONUTF8="1", MEMEBOT_PAUSE="0")
     env_app = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=APP_SECRET, MEMEBOT_PUSH_YOUNG="1")   # the scan's "new coins" push is off unless
     # MEMEBOT_PUSH_YOUNG=1 (selftest_scanside S4 checks the default); these checks test it switched on, exactly as before
@@ -4015,6 +4016,8 @@ console.log(JSON.stringify(o));
     selftest_traders_ui.checks(check, SKIPS)
     import selftest_brain                       # the brain's coin sheet: a tap on a coin opens its data (page_brain.py)
     selftest_brain.checks(check, SKIPS)
+    import selftest_fresh                       # the Pick account's fresh start of Oct 22 and its block on the Pick tab (memebot.FRESH_AT, page_home.pick_account)
+    selftest_fresh.checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:
