@@ -299,6 +299,7 @@ def cmd_shard(fn, i, n, out):
     GD = json.load(open(fn))
     OPTS.update({k: v for k, v in (GD.get("opts") or {}).items() if k in ("encoding", "maxSupportedTransactionVersion")})
     G = GD["grads"][i::n]
+    random.Random(11).shuffle(G)          # a budget stop then leaves out coins of every day alike, not the last days
     if os.environ.get("MAX_COINS"):
         G = G[::max(1, len(G) // int(os.environ["MAX_COINS"]))][:int(os.environ["MAX_COINS"])]
     model = json.load(open(os.path.join(ROOT, "rocket_model.json")))
@@ -312,10 +313,10 @@ def cmd_shard(fn, i, n, out):
           "sol": klines("SOLUSDT", (T_FROM - 2 * 86400) * 1000, (T_TO + 2 * 86400) * 1000)}
     sol_at = lambda t: market_at(kl, t)[1]
     log("shard", i, "of", n, "coins", len(G), "memory", len(memory), "klines", {k: len(v) for k, v in kl.items()}, "cuts", cuts)
-    rows, coins, t_start = [], [], time.time()
+    rows, coins, t_start, skipped = [], [], time.time(), 0
     for gi, g in enumerate(G):
         if calls["credits"] >= budget:
-            log("budget reached at coin", gi); break
+            log("budget reached at coin", gi); skipped = len(G) - gi; break
         c15 = gt_ohlcv(g["pool"], "minute", 15, int((g["t"] + 19 * H) // 1000), 100)
         if c15 is None:
             coins.append({"mint": g["mint"], "gt": "none"}); continue
@@ -358,7 +359,7 @@ def cmd_shard(fn, i, n, out):
         if gi % 100 == 0:
             log("coin %d/%d  universe coins %d  points %d  bought %d  calls %s  %.0f s" % (
                 gi, len(G), sum(1 for c in coins if c.get("pts")), len(rows), sum(len(c.get("bought") or []) for c in coins), dict(calls), time.time() - t_start))
-    json.dump({"shard": i, "n": n, "coins": coins, "rows": rows, "calls": dict(calls), "cuts": cuts, "errors": ERRORS}, open(out, "w"))
+    json.dump({"shard": i, "n": n, "coins": coins, "rows": rows, "calls": dict(calls), "cuts": cuts, "errors": ERRORS, "skipped": skipped}, open(out, "w"))
     log("done", dict(calls))
 
 
@@ -389,7 +390,8 @@ def cmd_final(outdir, *files):
         coins += d["coins"]; rows += d["rows"]
         cr.update(d.get("calls") or {})
     res = {"made": int(time.time() * 1000), "graduations": len(coins), "gtMissing": sum(1 for c in coins if c.get("gt") == "none"),
-           "universeCoins": sum(1 for c in coins if c.get("pts")), "points": len(rows), "calls": dict(cr), "cuts": {},
+           "universeCoins": sum(1 for c in coins if c.get("pts")),
+           "budgetSkipped": sum(json.load(open(fn)).get("skipped", 0) for fn in files), "points": len(rows), "calls": dict(cr), "cuts": {},
            "errors": [e for fn in files for e in (json.load(open(fn)).get("errors") or [])[:5]]}
     for name in ("0.5%", "1%", "2%"):
         b = [x for c in coins for x in c.get("bought") or [] if x["cut"] == name]
@@ -407,7 +409,7 @@ def cmd_final(outdir, *files):
                              "coins": sorted(b, key=lambda x: x["t"])}
     os.makedirs(outdir, exist_ok=True)
     json.dump(res, open(os.path.join(outdir, "backfill.json"), "w"), indent=1)
-    lines = ["graduations %d (GeckoTerminal missing %d), universe coins %d, scored points %d, calls %s" % (
+    lines = ["graduations %d (budget skipped %d)" % (res["graduations"] + res["budgetSkipped"], res["budgetSkipped"]) + ", replayed %d (GeckoTerminal missing %d), universe coins %d, scored points %d, calls %s" % (
         res["graduations"], res["gtMissing"], res["universeCoins"], res["points"], res["calls"])]
     for name, r in res["cuts"].items():
         if r["n"]:
