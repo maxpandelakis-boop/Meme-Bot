@@ -31,3 +31,5 @@
 !db/memepath/**
 !db/memetrader/
 !db/memetrader/**
+!db/memeshadow/
+!db/memeshadow/**
