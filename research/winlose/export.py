@@ -54,6 +54,14 @@ if os.path.exists(hc):
               "verdict": "fails as pre-registered (top 2%: -2.78 per 20); the strictest cut (top 0.5%) was positive on both parts but on 28 and 34 coins only"},
         "C": {"name": "expected profit", "cut": 0.02, "dev": keep(C["dev"]["C_0.02"]), "hold": keep(H["holdout"]["C_0.02"]), "sim": sim.get("C_0.02"),
               "verdict": "fails: +0.46 per 20 on unseen days, range -5.06 to +7.05"}}
+ph, rh = os.path.join(S, "pick_hold.json"), os.path.join(S, "radar_holdout.json")
+if os.path.exists(ph):
+    P = json.load(open(ph))
+    doc["pickhold"] = {"rules": len(P["rules"]), "hold": P["hold"], "safest": P["safest"], "sims": P["sims"]}
+if os.path.exists(rh):
+    Rr = json.load(open(rh))
+    keep2 = lambda o: {k: o.get(k) for k in ("coins", "avg", "lo95", "hi95", "in_profit_of10", "hit3", "rocket10x", "zero")}
+    doc["radar"] = {"hold": keep2(Rr["0.02"]), "base": keep2(Rr["base5"])}
 if len(sys.argv) > 2 and os.path.exists(sys.argv[2]):
     doc["social"] = json.load(open(sys.argv[2]))
 json.dump(doc, open("winlose.json", "w"), indent=1, default=float)

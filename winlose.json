@@ -314,5 +314,92 @@
    },
    "verdict": "fails: +0.46 per 20 on unseen days, range -5.06 to +7.05"
   }
+ },
+ "pickhold": {
+  "rules": 64,
+  "hold": {
+   "choice": {
+    "coins": 213,
+    "avg": -2.997,
+    "lo95": -4.056,
+    "hi95": -1.852,
+    "in_profit_of10": 2.4,
+    "zero": 2.8,
+    "x3": 0.0
+   },
+   "ruleA": {
+    "coins": 213,
+    "avg": -2.997,
+    "lo95": -4.056,
+    "hi95": -1.852,
+    "in_profit_of10": 2.4,
+    "zero": 2.8,
+    "x3": 0.0
+   },
+   "safest": {
+    "coins": 213,
+    "avg": -1.851,
+    "lo95": -3.567,
+    "hi95": -0.161,
+    "in_profit_of10": 3.9,
+    "zero": 11.7,
+    "x3": 0.0
+   }
+  },
+  "safest": "hold 12h, stop none, target 2x",
+  "sims": {
+   "choice": {
+    "sims": 10000,
+    "days": 14,
+    "pProfit": 0.0,
+    "avg": [
+     -3.178,
+     -2.284,
+     -1.44
+    ]
+   },
+   "ruleA": {
+    "sims": 10000,
+    "days": 14,
+    "pProfit": 0.0,
+    "avg": [
+     -3.178,
+     -2.284,
+     -1.44
+    ]
+   },
+   "safest": {
+    "sims": 10000,
+    "days": 14,
+    "pProfit": 4.3,
+    "avg": [
+     -2.469,
+     -1.221,
+     -0.06
+    ]
+   }
+  }
+ },
+ "radar": {
+  "hold": {
+   "coins": 687,
+   "avg": -11.576,
+   "lo95": -13.499,
+   "hi95": -9.426,
+   "in_profit_of10": 0.4,
+   "hit3": 27.9,
+   "rocket10x": 3.2,
+   "zero": 31.4
+  },
+  "base": {
+   "coins": 8196,
+   "avg": -10.395,
+   "lo95": -10.899,
+   "hi95": -9.864,
+   "in_profit_of10": 0.7,
+   "hit3": 14.3,
+   "rocket10x": 2.2,
+   "zero": 15.8
+  }
  }
 }

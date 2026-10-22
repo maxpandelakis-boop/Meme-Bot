@@ -43,9 +43,9 @@ def st(s):
     if not isinstance(s, dict) or not num(s.get("coins")):
         return "no coins"
     tail = ("10x %.1f%% · to zero %.1f%%" % (num(s.get("rocket10x")) or 0, num(s.get("zero")) or 0)) if "rocket10x" in s else (
-        "fell 80%% %.1f%%" % (num(s.get("lose80")) or 0))
+        "fell 80%% %.1f%%" % (num(s.get("lose80")) or 0)) if "lose80" in s else ("to zero %.1f%%" % (num(s.get("zero")) or 0))
     return "%d coins · %s per 20 · %.1f of 10 in profit · 3x %.1f%% · %s" % (
-        int(num(s["coins"])), per(s.get("avg")), num(s.get("in_profit_of10")) or 0, num(s.get("hit3")) or 0, tail)
+        int(num(s["coins"])), per(s.get("avg")), num(s.get("in_profit_of10")) or 0, num(s.get("hit3", s.get("x3"))) or 0, tail)
 
 
 def strength(auc):
@@ -112,6 +112,20 @@ def section(path=None):
                'Neither reaches both goals: the more picks end in profit, the less the bot makes, because the safe-looking coins '
                'that still fail go to zero and there are no rockets among them. Only the rocket hunter made money, on very few coins.</p>'
                '<div class="wl-cards">%s</div></div>') % "".join(cards)
+    ph = doc.get("pickhold")
+    if isinstance(ph, dict) and isinstance(ph.get("hold"), dict):
+        hh = ph["hold"]
+        sims = ph.get("sims") if isinstance(ph.get("sims"), dict) else {}
+        pp = lambda k: num((sims.get(k) or {}).get("pProfit"))
+        var += ('<p class="wl-s"><span class="k">The pick held longer (%d sell rules on the gates\' coins, unseen days)</span> today\'s rule: %s. '
+                'The safest one (%s): %s; %s%% of 10,000 simulated runs in profit. Meme coins lose value while held: no longer hold made '
+                'money, so the sell rule stays.</p>') % (int(num(ph.get("rules")) or 0), E(st(hh.get("ruleA"))), E(ph.get("safest")),
+                                                      E(st(hh.get("safest"))), E(pp("safest") if pp("safest") is not None else "–"))
+    rd = doc.get("radar")
+    if isinstance(rd, dict) and isinstance(rd.get("hold"), dict):
+        var += ('<p class="wl-s"><span class="k">A rocket score for the radar at launch (DexScreener numbers 5-60 min after the pool opens)</span> '
+                'unseen days, top 2%%: %s; all coins at 5 min: %s. At launch the radar cannot tell rockets from coins that die.</p>') % (
+            E(st(rd["hold"])), E(st(rd.get("base"))))
     soc = ""
     s = doc.get("social")
     if isinstance(s, dict) and s.get("text"):
