@@ -203,7 +203,9 @@ def check_open(http, book, pairs, now):
         p = pick_pair(pairs.get(a), pos.get("pool"))
         last = R.num(pos.get("seen")) or pos["t"]
         cs = gt_candles(http, pos.get("pool"), last, now) if pos.get("pool") else []
-        cs = [r for r in cs if r[0] >= last - 60_000]
+        # from the buy on (the minute before the buy is not the position's; its low could stop it at once), then one minute of
+        # overlap between two looks
+        cs = [r for r in cs if r[0] >= (last if not pos.get("seen") else last - 60_000)]
         hi = max((float(r[2]) for r in cs), default=None)
         lo = min((float(r[3]) for r in cs), default=None)
         px = R.num((p or {}).get("priceUsd"))

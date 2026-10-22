@@ -122,5 +122,42 @@
    "x10booked": 2.2,
    "total": -839.5
   }
+ },
+ "replay": {
+  "src": "research/winlose/backfill.py (branch backfill): 9-21 Oct, graduations the model never saw, GeckoTerminal candles + Helius' last 300 trades as live, the model of 22 Oct morning (cut 0.0838), rule A",
+  "graduations": 12084,
+  "universeCoins": 2174,
+  "points": 21026,
+  "credits": 631130,
+  "0.005": {
+   "coins": 137,
+   "avg": -7.84,
+   "inProfitOf10": 0.5,
+   "x10": 0,
+   "x3": 5,
+   "stops": 61,
+   "sim": 0.0,
+   "days": 13
+  },
+  "0.01": {
+   "coins": 454,
+   "avg": -6.83,
+   "inProfitOf10": 0.4,
+   "x10": 1,
+   "x3": 22,
+   "stops": 192,
+   "sim": 0.0,
+   "days": 13
+  },
+  "0.02": {
+   "coins": 744,
+   "avg": -6.59,
+   "inProfitOf10": 0.3,
+   "x10": 2,
+   "x3": 30,
+   "stops": 313,
+   "sim": 0.0,
+   "days": 13
+  }
  }
 }
