@@ -4013,6 +4013,8 @@ console.log(JSON.stringify(o));
     selftest_office.office_checks(check, SKIPS)
     import selftest_traders_ui                  # the four tabs after the three traders: the Traders tab, the pick's heading and paper line, the app's bar (page_traders.py)
     selftest_traders_ui.checks(check, SKIPS)
+    import selftest_brain                       # the brain's coin sheet: a tap on a coin opens its data (page_brain.py)
+    selftest_brain.checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:
