@@ -28,5 +28,11 @@ out = {"v": 1, "made": "2026-10-22", "src": "research/winlose/PREREG-EARLY-EXIT-
               "kiSim": (K["table"]["0.005"]["ki"]["sim"] or {}).get("pProfit"), "ruleASim": (K["table"]["0.005"]["ra"]["sim"] or {}).get("pProfit"),
               "ki1": K["table"]["0.01"]["ki"]["all"], "ruleA1": K["table"]["0.01"]["ra"]["all"]}}
 fn = os.path.join(HERE, "..", "..", "rocket_tests.json")
+try:
+    old = json.load(open(fn))
+except (OSError, ValueError):
+    old = {}
+if isinstance(old, dict) and "replay" in old:
+    out["replay"] = old["replay"]          # the 9-21 Oct replay (backfill.py) is written by its own thread; keep it
 json.dump(out, open(fn, "w"), indent=1)
 print(json.dumps(out, indent=1)[:1500])
