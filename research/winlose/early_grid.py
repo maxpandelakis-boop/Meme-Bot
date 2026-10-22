@@ -2,7 +2,8 @@
 early checks 5, 10, 15, 20 and 25 minutes after the graduation added to the 15-minute checks from 30 minutes to 18 hours. Same
 universe filters, same outcome (sell rule A from that minute, not clipped, the 6 h high), the live model's numbers (chart_feats
 with min_e=5, wallet_recent, market). The rows of 30 minutes and later are grid_live.pkl's rows again (the check prints the count).
-usage: python3 research/winlose/early_grid.py <scratch>  -> <scratch>/grid_early.pkl"""
+usage: python3 research/winlose/early_grid.py <scratch>  -> <scratch>/grid_early.pkl
+LIVEHL=1: a minute without a trade has high = low = the last close, as rocket.dense (outcome and chart numbers) -> grid_early_live.pkl"""
 import glob, json, math, multiprocessing as mp, os, sys
 import numpy as np, pandas as pd
 
@@ -16,6 +17,7 @@ import memebot as M
 EARLY = (5, 10, 15, 20, 25)
 ES = EARLY + tuple(range(30, 18 * 60 + 1, 15))
 PATH = 360
+LIVEHL = bool(os.environ.get("LIVEHL"))
 coins = pd.read_parquet(os.path.join(S, "h2", "coins.parquet")).drop_duplicates("pool").set_index("pool")
 gap = set(np.load(os.path.join(S, "h2", "gap_minutes.npy")).tolist())
 k = [json.loads(l) for l in open(os.path.join(S, "mk", "SOLUSDT.jsonl"))]
@@ -35,7 +37,7 @@ def one_file(f):
         g = g.sort_values("mi")
         if g["mi"].max() < EARLY[0]:
             continue
-        a = FE.dense(g)
+        a = FE.dense(g, fill_hl=not LIVEHL)
         n = len(a["c"])
         c0 = coins.loc[pool]
         gm, kk = int(c0["grad_ms"]), float(c0["sol0"]) * float(c0["tok0"])
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     G["hit3"] = G["hi6"] >= 3
     FE.rows = G
     G = pd.concat([G, FE.market_all(), FE.wallet_recent(G)], axis=1)
-    G.to_pickle(os.path.join(S, "grid_early.pkl"))
+    G.to_pickle(os.path.join(S, "grid_early_live.pkl" if LIVEHL else "grid_early.pkl"))
     print(G.shape, "coins", G["mint"].nunique(), "rows from 30 min:", int((G["E"] >= 30).sum()), "(grid_live.pkl: 69,647)")
     print(G.groupby("E").size().head(8).to_string())
     print(G.groupby(G["E"] < 30)[["eur", "rocket", "hit3"]].mean())

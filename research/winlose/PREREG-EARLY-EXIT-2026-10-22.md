@@ -85,3 +85,28 @@ gets fill_hl=False (high = low = close in a minute without a trade, as rocket.de
 that way (outcome and chart numbers), and both tests run on it (GRID=live). **This run decides**, because it is the only one that
 describes what the live account computes; the FIX=1 run (corrected outcome, old chart numbers) is reported for information.
 Variants, seeds, rules and pass checks as above. If V15 (or another variant) holds here, the live model is exported from this grid.
+
+## Addendum 3, 22 Oct ~12:55 UTC: test 3, a model that decides "stay in or get out" (written before it was built or run)
+The user (22 Oct 12:40): rule A sold at 11x although the coin went on; a model should decide live, per open position, whether to
+stay in or get out, and the app should show it. Script: research/winlose/exit_model.py, states from exit_states.py.
+- **States**: every coin of the grid every 15 minutes from 15 minutes to 42 hours after its graduation (one-minute bars of the
+  first 55 h, high = low = close in a minute without a trade), no recorder outage in the hour before or the 6 h after, price
+  known. Numbers: the live model's 60 numbers plus the age in minutes (all computable by rocket.features live). No universe filter
+  (a rocket held past 11x is above the $5M cap).
+- **Label**, fixed before any number: from the state's close, does the price reach 2x before it falls to 0.5x (first passage on the
+  minute highs and lows, a minute with both counts as the fall)? Neither within 24 h (or the end of the bars): 1 if the last close
+  is above the state's close. **Decision rule**, fixed: stay in while P(label) >= 1/3 (the break-even of +100% against -50%),
+  else sell at that check's close. No threshold is fitted.
+- **The policy (KI exit)**: the buy as now; the -30% stop on the minute lows stays (safety net); the 11x target and the 6 h limit
+  are replaced by the model's check every 15 minutes after the buy; 24 h at most.
+- **Test**: walk-forward by week as test 1 (each week's model trained only on coins that graduated two days or more before it), on
+  the rocket picks of the entry variant that is live after test 1 (seed 7), tiers top 0.5/1/2%, against rule A, after fees, not
+  clipped, with the 10,000 runs (blended multiple, no 11x cap). One candidate, so no choice step.
+- **It holds** when (a) it beats rule A in the late weeks at the top 0.5% and at the top 2%; (b) the per-coin difference to rule
+  A at the top 2% in the late weeks has a bootstrap 95% lower bound above 0; (c) over all weeks at the top 0.5% its share of the
+  10,000 runs in profit is not below rule A's. Reported also for the early weeks and every tier, with coins, per 20, in profit of
+  10, the share of picks that sold at 10x or more.
+- If it holds: the rocket account's new buys use it (stored with the position; earlier positions keep their rule) and the app shows
+  per open position the decision, the probability and the two numbers that pushed it most (from the trees' path contributions).
+  The Pick account gets the same as display only ("würde halten / würde verkaufen"); its sell rule does not change without the
+  user's explicit yes. If it does not hold: nothing changes in either account, and the app shows the test result only.

@@ -2,7 +2,8 @@
 after the graduation against today's 30 minutes. Walk-forward over every week (as rocket_model.py), five seeds, the top 0.5% (and
 1%, 2% for information), filter_search.simulate's 10,000 runs; then the pre-registered decision.
 usage: python3 research/winlose/early_entry.py <scratch>   (needs grid_early.pkl)  -> <scratch>/early_entry.json, early_picks.pkl
-FIX=1: the outcomes and the 10x label without the forward-filled wicks (wick_check.py, grid_early_fix.pkl) -> *_fix.json/.pkl"""
+FIX=1: the outcomes and the 10x label without the forward-filled wicks (wick_check.py, grid_early_fix.pkl) -> *_fix.json/.pkl
+GRID=live: grid_early_live.pkl (early_grid.py LIVEHL=1: outcome and chart numbers as the live code computes them) -> *_live.json/.pkl"""
 import importlib, json, os, sys
 import numpy as np, pandas as pd
 import lightgbm as lgb
@@ -49,9 +50,9 @@ def sim(p):
     return s
 
 
-FIX = "_fix" if os.environ.get("FIX") else ""
+FIX = "_fix" if os.environ.get("FIX") else ("_live" if os.environ.get("GRID") == "live" else "")
 G0 = pd.read_pickle(os.path.join(S, "grid_early%s.pkl" % FIX)).sort_values("ts").reset_index(drop=True)
-if FIX:
+if FIX == "_fix":
     for k in ("mult", "eur", "rocket", "hit3", "hi6", "lo6"):
         G0[k] = G0[k + "_fix"]
 base = G0[G0["E"].isin(REG)]

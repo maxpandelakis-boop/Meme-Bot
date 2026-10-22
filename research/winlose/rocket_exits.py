@@ -2,7 +2,8 @@
 of the first 55 hours (branch chartbars55), against rule A (-30% stop, 11x target, 6 h). The choice is made on the early weeks
 before the late weeks' numbers are printed.
 usage: python3 research/winlose/rocket_exits.py <scratch> [variant]   (needs early_picks.pkl, cb55/; variant: test 1's choice, V30
-default)  -> <scratch>/rocket_exits.json; FIX=1 reads early_picks_fix.pkl -> rocket_exits_fix.json"""
+default)  -> <scratch>/rocket_exits.json; FIX=1 reads early_picks_fix.pkl -> rocket_exits_fix.json;
+GRID=live reads early_picks_live.pkl -> rocket_exits_live.json"""
 import glob, importlib, itertools, json, os, sys
 import numpy as np, pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -92,7 +93,7 @@ def bars(pools):
 
 
 if __name__ == "__main__":
-    FIX = "_fix" if os.environ.get("FIX") else ""
+    FIX = "_fix" if os.environ.get("FIX") else ("_live" if os.environ.get("GRID") == "live" else "")
     PK = pd.read_pickle(os.path.join(S, "early_picks%s.pkl" % FIX))
     PK = PK[(PK["variant"] == VAR) & (PK["seed"] == 7)].copy()
     RU = rules()

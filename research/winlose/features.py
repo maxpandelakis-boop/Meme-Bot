@@ -108,7 +108,9 @@ def chart_feats(b, E, min_e=30):
     return f
 
 
-def dense(g):
+def dense(g, fill_hl=True):
+    """fill_hl=True (the study's grids before 22 Oct): a minute without a trade repeats the last traded minute's high and low.
+    fill_hl=False: its high and low are the last close, as rocket.dense computes them live (PREREG-EARLY-EXIT addendum 2)."""
     n = int(g["mi"].max()) + 1
     out = {k: np.zeros(n) for k in ("vb", "vs", "nb", "ns", "na")}
     for k, col in (("vb", "sol_buy"), ("vs", "sol_sell"), ("nb", "n_buy"), ("ns", "n_sell"), ("na", "n_atomic")):
@@ -116,7 +118,7 @@ def dense(g):
     for k, col in (("c", "p_close"), ("hi", "p_hi"), ("lo", "p_lo")):
         a = np.full(n, np.nan)
         a[g["mi"].to_numpy()] = g[col].to_numpy()
-        out[k] = pd.Series(a).ffill().to_numpy()
+        out[k] = pd.Series(a).ffill().to_numpy() if (fill_hl or k == "c") else a
     out["hi"] = np.where(np.isnan(out["hi"]), out["c"], out["hi"])
     out["lo"] = np.where(np.isnan(out["lo"]), out["c"], out["lo"])
     return out
