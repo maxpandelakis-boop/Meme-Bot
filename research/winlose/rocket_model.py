@@ -29,7 +29,7 @@ EXTRA = [c for c in (os.environ.get("EXTRA") or "").split(",") if c]
 assert not (EXTRA and "--export" in sys.argv)
 NUM = NUM + EXTRA
 P = dict(n_estimators=300, learning_rate=0.03, num_leaves=15, min_child_samples=50, subsample=0.8, subsample_freq=1,
-         colsample_bytree=0.7, reg_lambda=5.0, verbose=-1, random_state=7)
+         colsample_bytree=0.7, reg_lambda=5.0, verbose=-1, random_state=int(os.environ.get("SEED") or 7))
 DAY = 86_400_000
 CUTS = (0.0025, 0.005, 0.01, 0.02, 0.05)
 

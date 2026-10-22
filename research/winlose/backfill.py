@@ -142,11 +142,11 @@ def swap(tx, pool, mint):
 
 # ------------------------------------------------------------------------------------------------- step 1: the graduations
 VARIANTS = [
-    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}},
-    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM, "lte": T_TO}}},
-    {"encoding": "json", "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}},
-    {"maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"gte": T_FROM}}},
-    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0},
+    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1, "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}},
+    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1, "filters": {"blockTime": {"gte": T_FROM, "lte": T_TO}}},
+    {"encoding": "json", "maxSupportedTransactionVersion": 1, "filters": {"blockTime": {"gte": T_FROM, "lt": T_TO}}},
+    {"maxSupportedTransactionVersion": 1, "filters": {"blockTime": {"gte": T_FROM}}},
+    {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1},
 ]
 OPTS = {}
 
@@ -252,7 +252,7 @@ LIMIT = [300]
 def last_trades(pool, mint, t, sol):
     """The pool's last 300 transactions before t (one request of 300, or three of 100 if the method allows only 100)."""
     o = {"transactionDetails": "full", "sortOrder": "desc", "limit": LIMIT[0], "encoding": OPTS.get("encoding", "jsonParsed"),
-         "maxSupportedTransactionVersion": 0, "filters": {"blockTime": {"lt": int(t // 1000)}}}
+         "maxSupportedTransactionVersion": 1, "filters": {"blockTime": {"lt": int(t // 1000)}}}
     data, res = [], helius(pool, o)
     if res is None and LIMIT[0] == 300:
         LIMIT[0] = 100
