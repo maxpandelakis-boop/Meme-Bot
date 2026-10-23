@@ -5,8 +5,9 @@ period from Helius, and each pool's one-minute candles of its first 1000 minutes
                                                        among the normal migrations (NORMAL=1, addendum 2: start reserves within
                                                        5% of the most common ones before / from 9 Oct)
   shard <plan.json> <i> <n> <out.json.gz>              pools i, i+n, ...: {pool: [[t_ms, o, h, l, c, v_usd], ...]}
-Env HK = Helius key (never printed or written), GT_GAP = seconds between GeckoTerminal calls."""
-import collections, datetime as dt, gzip, json, os, random, sys
+Env HK = Helius key (never printed or written), GT_GAP = seconds between GeckoTerminal calls, SHARD_MINUTES = a shard stops
+fetching after this many minutes and saves what it has (default 300; on 22 Oct 8 of 10 shards hit the job limit unsaved)."""
+import collections, datetime as dt, gzip, json, os, random, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "winlose"))
@@ -76,8 +77,11 @@ def cmd_plan(out, per_day, *files):
 
 def cmd_shard(plan, i, n, out):
     gs = json.load(open(plan))["grads"][i::n]
-    res, miss = {}, 0
+    res, miss, stop = {}, 0, time.time() + 60 * float(os.environ.get("SHARD_MINUTES", 300))
     for k, g in enumerate(gs):
+        if time.time() > stop:
+            B.log("shard", i, "time budget used at", k, "of", len(gs))
+            break
         rows = B.gt_ohlcv(g["pool"], "minute", 1, g["t"] // 1000 + MINUTES * 60, MINUTES)
         if rows is None:
             miss += 1
@@ -86,7 +90,7 @@ def cmd_shard(plan, i, n, out):
         if k % 200 == 0:
             B.log("shard", i, k, "of", len(gs), "missing", miss, dict(B.calls))
     with gzip.open(out, "wt") as fh:
-        json.dump({"pools": res, "missing": miss, "calls": dict(B.calls)}, fh)
+        json.dump({"pools": res, "missing": miss, "planned": len(gs), "calls": dict(B.calls)}, fh)
     B.log("shard", i, "done", len(res), "missing", miss)
 
 
