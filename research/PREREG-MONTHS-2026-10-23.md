@@ -76,7 +76,9 @@ Three families, each a grid of entry filter x sell rule:
 - R (Radar-type, chart only): the Radar's universe (liquidity and 24 h volume >= $15k, market cap $100k-5M, 1 h change > -10 %,
   6 h change > -50 %), entries every 30 minutes from 30 min to 12 h, 20 EUR. Its filters as P/U, plus a LightGBM rocket
   classifier (the 17 numbers, target: 10x within 6 h, the rocket_model.py settings, seed 7) trained on the fit windows only,
-  at the top 0.25 / 0.5 / 1 / 2 / 5 % of its fit scores, one entry per coin.
+  at the top 0.25 / 0.5 / 1 / 2 / 5 % of its fit scores, one entry per coin. So the picker below sees honest numbers on the
+  fit windows, each fit window is scored by a model trained on the other fit windows (none at step 2, where the classifier
+  sits out); the unseen window is scored by a model trained on all fit windows, cut at that model's fit scores.
 
 Filters: the base alone; one condition "number <= its fit 20th / 33rd percentile" or ">= its fit 67th / 80th percentile" (68);
 every pair of conditions on two different numbers (2,176). So 2,245 filters x 222 sell rules = 498,390 rules per family, about
