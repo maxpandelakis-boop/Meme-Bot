@@ -4,6 +4,7 @@ and nothing here is advice. English words (the user's wish of Oct 22: the whole 
 The product has two parts, and this tab shows both at a glance:
   PICK   the full scan's paper account (50 € a pick, its sell rule unchanged)
   RADAR  the rocket hunter's own paper account (rocket_watch.py, 20 € a coin when its rocket score reaches the cut)
+and under them the Learning Pick (lernpick.py, a self-learning shadow with its own paper account) as a slim row whose tap opens its fold.
 pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells, the
 Radar for comparison), because the open Pick positions were only in the Archive.
 section(D, R) -> HTML:
@@ -152,6 +153,31 @@ def acct_card(key, title, sub, b, empty, live=False, since=""):
         key, (' data-rk-box data-rk-t="%d"' % int(b.get("t") or 0)) if live else "", head, tone(b["bal"]), " data-rk-bal" if live else "",
         E(de_eur(b["bal"], True)), spark(b["pts"], tone(b["pts"][-1] if b["pts"] else 0)),
         "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), v) for k, v in stats), h("closed"), b["closed"], E(de_eur(b["ticket"]).replace(".00", "")))
+
+
+def lern_row(D, R):
+    """The Learning Pick (lernpick.py, a self-learning shadow with its own paper account) as a slim row under the two accounts: its balance
+    the way the Pick card counts it (sold trades plus the open ones at the last scan price), the sold trades' result as the fold's summary
+    line says it, how many open, since its first buy. A tap opens the Pick tab with its fold open (the user could not find it at the foot
+    of the Pick tab, Oct 23). '' without the module or when it cannot be read."""
+    try:
+        import lernpick as L
+        S = L.summary((D or {}).get("dir") or "", (D or {}).get("now"))
+        me = S["me"]
+    except Exception:
+        return ""
+    if me["n"]:
+        big = '<b class="hm-bal %s">%s</b>' % (tone(me["pnl"]), E(de_eur(me["pnl"], True)))
+        line = "%s%d open · %s per buy · fake money" % (("%d sold %s · " % (me["sold"], de_eur(me["closedPnl"], True))) if me["sold"] else "",
+                                                       me["open"], de_eur(S.get("ticket") or 50).replace(".00", ""))
+    else:
+        big = '<b class="hm-bal">–</b>'
+        line = "buys from the next scan · fake money" if (S.get("brain") or {}).get("buy") else "waiting for its first training · fake money"
+    since = since_words(R, S.get("since"))
+    return ('<label class="hm-acc hm-lp" for="tab-pick" data-go="pick" data-open="learning-pick">'
+            '<span class="hm-k"><span class="hm-dot"></span>LEARNING PICK<small>shadow · learns every day · no push</small></span>'
+            '%s%s<span class="hm-lpf"><small class="hm-n">%s</small><span class="hm-go">Open ›</span></span></label>') % (
+        ('<small class="hm-since">%s</small>' % E(since)) if since else "", big, E(line))
 
 
 PICK_WHY = {"tp": "11x reached", "stop": "stop −30%", "time": "after 6 h", "rug": "coin gone", "reset": "restart", "manual": "by hand"}
@@ -309,23 +335,29 @@ def section(D, R):
     # both accounts count from the same moment since the Pick's fresh start (memebot.FRESH_AT, the rocket hunter's first round)
     cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
              + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
+    lp = lern_row(D, R)
     nav = [("pick", "Pick", "The pick, its safety check, hour by hour"), ("young", "Radar", "Rocket hunter and launch radar"),
            ("office", "Brain", "What the bot is thinking"), ("account", "Archive", "Research, old traders, all the data")]
     return ('<style>%s</style><section class="hm" data-home>'
-            '<div class="hm-hero"><div class="hm-ey">Two accounts · fake money · no real trades</div><div class="hm-accs">%s</div></div>'
+            '<div class="hm-hero"><div class="hm-ey">%s accounts · fake money · no real trades</div><div class="hm-accs">%s%s</div></div>'
             '<div class="hm-status">%s</div>'
             '<h2 class="hm-h">Right now</h2><div class="hm-nows">%s%s</div>'
             '<nav class="hm-nav">%s</nav></section><script>%s</script>') % (
-        CSS, cards, "".join(status), pick_now(D, R), rocket_now(D, R, doc),
+        CSS, "Three" if lp else "Two", cards, lp, "".join(status), pick_now(D, R), rocket_now(D, R, doc),
         "".join('<label for="tab-%s" data-go="%s"><b>%s</b><small>%s</small></label>' % (k, k, E(n), E(s)) for k, n, s in nav), JS)
 
 
 JS = r"""
 (function(){
-// a link on the Start tab opens its tab; in the installed app through its own tab switch (so the bottom bar follows), at the top
+// a link on the Start tab opens its tab; in the installed app through its own tab switch (so the bottom bar follows), at the top, or
+// with data-open at that fold, opened (the Learning Pick row)
 document.addEventListener('click',function(e){var l=e.target&&e.target.closest?e.target.closest('[data-home] [data-go]'):null;if(!l)return;
-  var A=window.MemebotApp;if(A&&typeof A.select==='function'){e.preventDefault();A.select(l.getAttribute('data-go'),'top');return;}
-  setTimeout(function(){try{window.scrollTo(0,0);}catch(x){}},0);});
+  var f=document.getElementById(l.getAttribute('data-open')||'');
+  function show(){try{if(!f){window.scrollTo(0,0);return;}f.open=true;      // below the website's sticky tab bar (none in the app)
+    var b=document.querySelector('.tabbar'),c=b?getComputedStyle(b):null,off=c&&c.position==='sticky'&&b.offsetHeight?(parseFloat(c.top)||0)+b.offsetHeight+10:12;
+    window.scrollTo(0,Math.max(0,f.getBoundingClientRect().top+(window.scrollY||0)-off));}catch(x){}}
+  var A=window.MemebotApp;if(A&&typeof A.select==='function'){e.preventDefault();A.select(l.getAttribute('data-go'),'top');if(f)setTimeout(show,0);return;}
+  setTimeout(show,0);});
 })();
 """
 
@@ -382,6 +414,10 @@ CSS = r"""
 .hm-nav { display:grid; grid-template-columns:1fr 1fr; gap:8px }
 .hm-nav label { display:grid; gap:2px; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:var(--surface); cursor:pointer; min-height:44px }
 .hm-nav label:hover { border-color:var(--accent) } .hm-nav b { font-size:var(--fs-m) } .hm-nav small { font-size:11px; color:var(--muted) }
+.hm-lp { grid-column:1 / -1; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; cursor:pointer; text-decoration:none; color:inherit }
+.hm-lp > .hm-k, .hm-lp > .hm-since { grid-column:1 } .hm-lp > .hm-bal { grid-column:2; grid-row:1 / span 2; align-self:center }
+.hm-lp .hm-dot { background:var(--good); box-shadow:0 0 10px var(--good) } .hm-lp:hover { border-color:var(--accent) }
+.hm-lpf { grid-column:1 / -1; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px 10px } .hm-lpf .hm-go { padding:0; min-height:0 }
 @media (min-width:700px) { .hm-nav { grid-template-columns:repeat(4,1fr) } .hm-hero { padding:18px } .hm-acc { padding:16px } }
 @media (max-width:360px) { .hm-accs { grid-template-columns:1fr } }
 @media (prefers-reduced-motion: reduce) { .hm-pulse { animation:none } }

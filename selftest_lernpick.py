@@ -22,7 +22,8 @@ LP6 run() against a mock GeckoTerminal: a position is asked once its 6 hours hav
     the path; a pool without candles waits, then is sold at its marks (the first scan price after its hold time, 0 after a rug); the
     deadline holds; nothing outside db/memelern
 LP7 summary and the fold: the account, the Pick and the Radar since its first buy, the brain's words, English, escaped symbols, before
-    the first brain; its place under the shadow rules on the Pick tab; memelern travels to the results branch; no push anywhere
+    the first brain; its place under the shadow rules on the Pick tab; its row on the Start tab that opens the fold; memelern travels to
+    the results branch; no push anywhere
 LP8 the workflows: the nightly steps after the filter search (soft, their own branch, no results push), the scan copies the brain before
     the scan and passes the switch, bot.py buys after the trader only in recommend mode (soft, with a time limit)
 """
@@ -342,6 +343,14 @@ def _lp7(check, tmp):
     i_sh, i_lp = page.find('safe("shadow rules", lambda: shadow_block(D))'), page.find('safe("learning pick", lambda: lernpick_block(D))')
     check(0 < i_sh < i_lp and "!db/memelern/**" in B.SYNC_IGNORE,
           "LP7 the fold sits under the shadow rules on the Pick tab; db/memelern travels to the results branch")
+    import page_home as PH
+    with _no_numpy():
+        r1, r0 = PH.lern_row({"dir": d, "now": T0 + 30 * DAY}, R), PH.lern_row({"dir": empty, "now": T0}, R)
+    home = open(os.path.join(HERE, "page_home.py"), encoding="utf-8").read()
+    check('for="tab-pick" data-go="pick" data-open="learning-pick"' in r1 and "LEARNING PICK" in r1 and 'class="hm-bal' in r1
+          and "2 sold %s · 1 open" % PH.de_eur(S["me"]["closedPnl"], True) in r1 and "waiting for its first training" in r0 and "lp = lern_row(D, R)" in home and '"Three" if lp else "Two"' in home
+          and "getElementById(l.getAttribute('data-open')" in home,
+          "LP7 the Start tab: a Learning Pick row under the two accounts (balance, the sold trades' result, open), a tap opens the Pick tab with the fold open")
     src = open(os.path.join(HERE, "lernpick.py"), encoding="utf-8").read() + open(os.path.join(HERE, "page_lernpick.py"), encoding="utf-8").read()
     check("import app" not in src and "notify" not in src and "live_put" not in src and "webpush" not in src,
           "LP7 no push: the Learning Pick never imports the app's sender")
