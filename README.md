@@ -1,0 +1,1 @@
+One-minute GeckoTerminal candles (USD, first 1000 minutes) of pump.fun graduations: 25 Apr-24 May and 25 Jun-24 Jul 2026 (normal migrations, at most 300 a day) and 9-21 Oct 2026 (all normal ones), for research/check_calls.py ext. Graduation lists from Helius in gradlists/. Fake money only.
