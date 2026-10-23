@@ -3484,7 +3484,10 @@ def render(data, fragment=False):
                      + safe("shadow rules", lambda: shadow_block(D)) + safe("learning pick", lambda: lernpick_block(D)))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
-        pane_young = safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar", lambda: PR.block(D, safe("radar paper positions", lambda: PT.radar_positions(D)) if PT else "")) + legacy
+        # the launch radar's old paper positions (10 € on every coin without traps) left the Radar tab on Oct 23: their account is off since Oct 22
+        # (scan.yml MEMEBOT_TRADERS), so the list only grew rows stuck at "waiting for a price" and read as Radar buys next to the Radar account's 0;
+        # every one of those trades is still in Archive > Three paper traders
+        pane_young = safe("rocket hunter", lambda: rocket_block(D)) + safe("launch radar", lambda: PR.block(D)) + legacy
         if rec_mode:      # before the first paper position the traders hold one sentence
             traders_html = '<div class="empty">No paper trades yet: each scan\'s pick is bought on paper for %s and every radar coin found without traps for %s (fake money, nothing is bought for real).</div>' % (
                 E(fmt_eur(M.TOP_TICKET)), E(fmt_eur(radar_ticket())))
