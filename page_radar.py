@@ -88,8 +88,8 @@ MEASURED_NOTE = "Measured, not weighted yet: it gets weight only when the radar'
 INFO_TEXT = ("The radar checks the newest pools every 2 minutes on its own, around the clock, and pump.fun graduations from a live feed when it is "
              "up: each run lasts about an hour and starts the next, and the hourly scan starts one when none is going. Start "
              "and Stop open its page on GitHub. Start (only when it is stopped): tap \u201cRun workflow\u201d, the first list comes in about 4 minutes. Stop: "
-             "the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Momentum and patterns: hindsight, paper only, never a push. Fake money: nothing is "
-             "bought for real; the radar's coins without traps are bought on paper only.")
+             "the \u201c\u2026\u201d menu, then \u201cDisable workflow\u201d. Momentum and patterns: hindsight, paper only, never a push. The launch radar only "
+             "lists and checks coins: its paper account is off since Oct 22, and only the Radar account above trades (fake money, nothing for real).")
 
 
 # ------------------------------------------------------------------------------------------------------------------ small helpers
@@ -992,7 +992,7 @@ def why_fold(W):
     notes = ('<ul class="rwhy-notes"><li>Green means no trap found in the checks that ran. A check that could not run (RugCheck pending, mint time or wallet memory unknown) blocks the green.</li>'
              '<li>The dev history, snipers, bundles, fresh wallets, funding clusters, copied X links, pump.fun replies and the source tweet\'s likes are measured and shown grey. They get weight only when the radar\'s own records confirm them.</li>'
              '<li>Coins still on the bonding curve are not rated here: the curve watch calls them on paper only (About to graduate), with no push while its switch is off. Later prices and the 1-hour peak are measured on the pool the radar saw.</li>'
-             '<li>Fake money: nothing is bought for real; the radar\'s coins without traps are bought on paper only.</li></ul>')
+             '<li>The launch radar only lists and checks coins: its paper account is off since Oct 22, and only the Radar account above trades (fake money, nothing for real).</li></ul>')
     body = ""
     if isinstance(W, dict):
         ev = W.get("evidence")
@@ -1065,7 +1065,8 @@ def tab_label():
 
 
 def block(D, mid=""):
-    """The Radar tab's radar (until the switch the full scan's new launches follow it): a heading and the pane, mid (the paper positions) inside."""
+    """The Radar tab's radar (until the switch the full scan's new launches follow it): a heading and the pane, mid (HTML) inside; the Radar tab
+    passes none since Oct 23 (the old paper positions are in the archive)."""
     return ('<section class="rsec"><div class="sec-head"><h2>Launch radar <span class="h2s">pools under 10 min</span></h2></div>%s</section>' % pane(D, mid))
 
 

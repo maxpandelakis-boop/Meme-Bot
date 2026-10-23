@@ -731,9 +731,9 @@ def _page(check, tmp, d, now):
     hm = SA._harness(R.collect(pd, now), now)          # page_account's whole block on a bare page: the page itself no longer shows it
     i_nl, i_rp, i_fd = hm.find('data-pa="noloss"'), hm.find('data-pa="radarpaper"'), hm.find('data-pa="feed"')
     check(0 < i_nl < i_rp < i_fd and "could not be rendered" not in hm + page and hm.count('data-pa="radarpaper"') == 1
-          and 'data-pa="radarpaper"' not in page and "raw top" not in page and 'data-tr="radar"' in page and "Radar paper positions" in page,
+          and 'data-pa="radarpaper"' not in page and "raw top" not in page and "Radar paper positions" not in page,
           "RA9 page_account.section still shows the block right under 'Without the stop-loss', before the activity feed, once; the page shows it no "
-          "more (with it the raw top): the Radar tab's paper positions replace it (the radar's 3 EUR test in one sentence)")
+          "more (with it the raw top), and since Oct 23 neither the Radar tab's old paper positions (their account is off; the trades stay in the archive)")
     src = open(os.path.join(HERE, "page_account.py"), encoding="utf-8").read()
     check('R.safe("radar account", lambda: radar_account(D))' in src and "except ImportError:" in src,
           "RA9 the hook: one line in page_account.section; without page_radarpaper.py the account block renders as before")

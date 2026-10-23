@@ -233,7 +233,11 @@ def _checks(check, tmp, skips):
           "plus the closed rule-2 results (%s)" % ([r[1] for r in got_rows], PA.eur(acct, True)))
 
     # UI5: words and formats of the new blocks
-    rpos = (re.search(r'<section class="trpos" data-tr="radar">.*?</section>', yp, re.S) or re.match("", "")).group(0)
+    rpos = (re.search(r'<section class="trpos" data-tr="radar">.*?</section>', PT.radar_positions(D), re.S) or re.match("", "")).group(0)
+    check('data-tr="radar"' not in yp and "Radar paper positions" not in page and "bought on paper only" not in yp + PR.INFO_TEXT and "paper account is off since Oct 22" in PR.INFO_TEXT
+          and "<h2>Three paper traders</h2>" in acc and "Radar paper positions" in rpos,
+          "UI5a the launch radar's old paper positions are off the Radar tab (their account is off since Oct 22) and its texts no longer say its coins are "
+          "bought on paper; the trades stay in Archive > Three paper traders and radar_positions still renders on its own")
     pick_lines = " ".join(re.findall(r'<h2>[^<]*</h2>|<p class="paper">[^<]*</p>|<p class="pick-note">[^<]*</p>', pp))
     words = text(acc) + " " + text(rpos) + " " + text(pick_lines)
     nosvg = lambda h: re.sub(r"(?s)<svg\b.*?</svg>", " ", h)       # the chart's end labels are whole euros (+1,753 €): UI11
@@ -321,7 +325,7 @@ def _checks(check, tmp, skips):
           and ".ecards" not in post and len(post.encode()) <= 1_200_000,
           "UI3 the switch: after it (MEMEBOT_SWITCH_AT in the past) no data-early, no new-launches section and no Launch spotter card, the page %d bytes "
           "(at most 1.2 MB); before it the legacy section 'New launches (until ...)', the early box and the spotter's card" % len(post.encode()))
-    e_pre = pre_y
+    e_pre = PT.radar_positions({"now": now, "traders": dict(L, switchAt=now + 2 * H, trades=[t for t in L["trades"] if t["group"] != "radar"])})   # off the Radar tab since Oct 23
     e_post = PT.radar_positions(dict(D, traders=dict(L, trades=[t for t in L["trades"] if t["group"] != "radar"])))
     want_pre = "From %s, %s, every coin the radar finds without traps is bought on paper for 10\u00a0€." % (PA.mday(now + 2 * H), PA.hhmm(now + 2 * H))
     check(html.escape(want_pre, quote=False) in e_pre and "No radar paper position yet." in e_post and "07:00" not in e_post,
@@ -363,7 +367,8 @@ def _checks(check, tmp, skips):
     ef = [PT.radar_positions({"now": now, "traders": tf}) for tf in ({"err": "ValueError: boom"}, dict(T._empty(now, "ValueError: boom")))]
     check("The traders could not be computed this time (X). The paper account itself is unaffected." in accf and 'data-tr="feed"' in accf and "Open positions (" in accf
           and 'class="pa-ev ' in accf and 'data-tr="compare"' not in accf and "could not be rendered" not in pf
-          and "The radar's paper positions could not be computed this time (X). The paper account itself is unaffected." in text(yf) and "No radar paper position yet" not in yf
+          and "The radar's paper positions could not be computed this time (X). The paper account itself is unaffected." in text(PT.radar_positions(Df))
+          and "No radar paper position yet" not in yf + PT.radar_positions(Df) and "could not be rendered" not in yf
           and all("could not be computed this time (ValueError)" in text(h) and "No radar paper position yet" not in h and "From " not in text(h) for h in ef),
           "UI10 traders.load failed (err X): the Traders tab says so in one note and shows the activity (the paper account's own) and the open positions only; "
           "the Radar tab's paper positions say so too, never 'No radar paper position yet' (also with load's empty error shape)")
