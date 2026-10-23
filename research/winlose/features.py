@@ -124,6 +124,32 @@ def dense(g, fill_hl=True):
     return out
 
 
+def live_view(b, E, ntr=300):
+    """The arrays of minute E as the live watcher has them (rocket.dense): GeckoTerminal gives only the pool's last ntr trades, counted
+    back from the minute of the check (its trades come in before the fetch), and for young busy coins they reach a minute or two. In
+    the minutes before them there is no buy/sell split (the candle's volume half and half) and no trade count; no atomic counts at all.
+    Returns (arrays cut at E, reach in minutes) as rocket.dense's "reach". LIVE-CHECK-2026-10-23.md: without this the model learned from
+    numbers the live account never sees."""
+    cnt = b["nb"] + b["ns"]
+    budget = ntr - (cnt[E] if E < len(cnt) else 0)
+    if budget <= 0:
+        oldest = E
+    else:
+        j = int(np.searchsorted(np.cumsum(cnt[:E][::-1]), budget))
+        if j < E:
+            oldest = E - 1 - j
+        else:                                 # every trade fits: they reach back to the pool's first traded minute
+            nz = np.nonzero(cnt[:E + 1] > 0)[0]
+            oldest = min(E, int(nz[0])) if len(nz) else 0
+    t = {k: b[k][:E].copy() for k in ("c", "hi", "lo", "vb", "vs", "nb", "ns", "na")}
+    if oldest > 0:
+        v = t["vb"][:oldest] + t["vs"][:oldest]
+        t["vb"][:oldest], t["vs"][:oldest] = v / 2, v / 2
+        t["nb"][:oldest], t["ns"][:oldest] = 0, 0
+    t["na"][:] = 0
+    return t, E - oldest
+
+
 def chart_all():
     res = []
     rows["E"] = ((rows["ts"] - rows["grad_ms"]) // 60_000).astype(int)
@@ -238,7 +264,8 @@ def wallet_chunked(G, chunk=400):
 
 def wallet_recent(G, chunk=400, smart_min=5):
     """The wallet numbers a live watcher can get from GeckoTerminal's last trades: only the wallets whose first buy was in the
-    hour before the row, and of their history only what a seed of experienced wallets (smart_min or more earlier coins) knows."""
+    hour before the row, and of their history only what a seed of experienced wallets (smart_min or more earlier coins) knows.
+    A "reach" column (minutes, live_view): only the wallets whose first buy is inside the last trades' reach, as live."""
     p = pd.read_pickle(os.path.join(S, "pairs.pkl"))
     wc = pd.read_parquet(os.path.join(S, "w", "coins.parquet"))
     p["mint"] = p["coin"].map(wc.set_index("coin")["mint"])
@@ -255,9 +282,11 @@ def wallet_recent(G, chunk=400, smart_min=5):
     out = []
     for i in range(0, len(mints), chunk):
         part = set(mints[i:i + chunk])
-        x = G[G["mint"].isin(part)][["mint", "ts"]].reset_index()
+        x = G[G["mint"].isin(part)][["mint", "ts"] + (["reach"] if "reach" in G.columns else [])].reset_index()
         q = p[p["mint"].isin(part)].merge(x, on="mint")
         q = q[(q["t_q"] < q["ts"]) & (q["t_q"] >= q["ts"] - 3_600_000)].sort_values("ts")
+        if "reach" in q.columns:
+            q = q[q["t_q"] >= q["ts"] - q["reach"] * 60_000]
         q = pd.merge_asof(q, rec.rename(columns={"known": "ts"}), on="ts", by="wid", direction="backward")
         q[["n", "win", "big", "lroi"]] = q[["n", "win", "big", "lroi"]].fillna(0)
         known = q["n"] >= smart_min

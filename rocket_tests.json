@@ -4,25 +4,25 @@
  "src": "research/winlose/PREREG-EARLY-EXIT-2026-10-22.md, EARLY-EXIT-2026-10-22.md",
  "history": {
   "0.005": {
-   "coins": 71,
-   "avg": -3.25,
-   "inProfitOf10": 1.2,
-   "x10": 2.2,
-   "sim": 22.6
+   "coins": 76,
+   "avg": -6.27,
+   "inProfitOf10": 0.7,
+   "x10": 1.1,
+   "sim": 3.0
   },
   "0.01": {
-   "coins": 226,
-   "avg": -2.3,
-   "inProfitOf10": 1.1,
-   "x10": 3.6,
-   "sim": 25.2
+   "coins": 243,
+   "avg": -7.36,
+   "inProfitOf10": 0.7,
+   "x10": 1.0,
+   "sim": 0.2
   },
   "0.02": {
-   "coins": 478,
-   "avg": -2.97,
-   "inProfitOf10": 1.2,
-   "x10": 3.2,
-   "sim": 10.4
+   "coins": 501,
+   "avg": -5.95,
+   "inProfitOf10": 0.8,
+   "x10": 1.9,
+   "sim": 0.0
   }
  },
  "early": {
@@ -159,5 +159,6 @@
    "sim": 0.0,
    "days": 13
   }
- }
+ },
+ "historySrc": "23 Oct: the live model retrained on the last 300 trades only, as the live account sees them (research/winlose/LIVE-CHECK-2026-10-23.md, rocket_model.py walk-forward, seeds 1/2/3/5/7); before: 71 buys, -3.25 per 20 with every trade of the hour"
 }

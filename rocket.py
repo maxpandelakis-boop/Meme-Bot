@@ -3,7 +3,8 @@ anything and holds no key). rocket_watch.py feeds it; research/winlose/ trained 
 
 What it does with the numbers of one coin at one check (every 15 minutes from 30 minutes to 18 hours after its pool opened):
   features(candles, trades, pool_ms, now_ms, sol_usd, mc, liq, vol24, market, memory) -> the model's numbers, the same as
-      research/winlose/features.py chart_feats + wallet_recent computes them from the history2 bars (selftest_rocket R1 checks it)
+      research/winlose/features.py chart_feats + wallet_recent computes them from the history2 bars (selftest_rocket R1 checks it);
+      the model is trained on features.live_view's last 300 trades, the trades GeckoTerminal gives here ("reach")
   score(model, f) -> P(the price reaches 10x within 6 hours), from radar_rocket model trees (rocket_model.json, plain JSON)
   universe(...) -> whether the coin is one the model was trained on (liquidity and 24 h volume $15k, market cap $100k-5M, not
       down 10% in an hour or 50% in 6 hours, 30 min to 18 h old)

@@ -4,7 +4,8 @@
   python3 selftest_rocket.py
 
 Checks: R1 rocket.chart gives the research numbers (research/winlose/features.py chart_feats) on random charts; R1b the same with
-minutes without a trade (high = low = the last close, features.dense fill_hl=False); R2 the plain-JSON trees
+minutes without a trade (high = low = the last close, features.dense fill_hl=False); R1c the grid's last 300 trades
+(features.live_view) reach as far back as the live trades and keep the same split; R2 the plain-JSON trees
 give lightgbm's own probabilities (rocket_model.json's check rows); R3 the paper account: one buy per coin, rule A (stop on a low
 first, 11x, 6 h), fees; R4 a round on mocked answers: universe, scoring, a buy at the cut, a sell, the state and the log, no network;
 R5 the page block: no doc, a doc (escaped, no script), its place at the top of the Radar tab; R6 the workflow only writes rocket-data,
@@ -97,6 +98,56 @@ def r1b():
                 bad.append(k)
     check(not bad and n > 1000, "R1b minutes without a trade: live and research arrays and chart numbers agree (%d values, differ: %s)" % (n, sorted(set(bad))[:5]))
     check(old_differs > 0, "R1b the old forward fill of highs would differ on such charts (%d of 20)" % old_differs)
+
+
+def r1c():
+    """The model is trained on what the live account sees (LIVE-CHECK-2026-10-23.md): features.live_view cut to the last 300 trades
+    reaches as far back as rocket.dense with GeckoTerminal's last 300 trades (trades after the check included), keeps the buy/sell
+    split and counts of the minutes after the oldest trade's minute and has none before it."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "research", "winlose"))
+        import numpy as np, pandas as pd
+        import features as FE
+    except Exception as e:
+        check(True, "R1c skipped: the research module needs numpy and pandas (%s)" % type(e).__name__)
+        return
+    rng, bad, reaches = random.Random(11), [], []
+    for _ in range(20):
+        E = rng.choice([40, 90, 250])
+        pool_ms, sol, busy = 1_800_000_000_000, 150.0, rng.choice([0.5, 3, 20, 120])
+        px, rows, trades, bars = 1e-6, [], [], []
+        for i in range(E + 1):
+            k = int(rng.expovariate(1 / busy)) if rng.random() < 0.7 else 0
+            if not k and i < E:
+                continue
+            px *= math.exp(rng.gauss(0, 0.05))
+            tr = [{"t": pool_ms + i * 60_000 + (j + 1) * 59_000 / (k + 1), "buy": rng.random() < 0.55, "usd": rng.random() * 300, "who": "w%d" % rng.randrange(500)}
+                  for j in range(k)]
+            trades += tr
+            if i < E:
+                usd = sum(x["usd"] for x in tr)
+                rows.append([pool_ms + i * 60_000, px, px * 1.02, px * 0.98, px, usd])
+                bars.append({"mi": i, "p_close": px, "p_hi": px * 1.02, "p_lo": px * 0.98, "n_atomic": 0,
+                             "sol_buy": sum(x["usd"] for x in tr if x["buy"]) / sol, "sol_sell": sum(x["usd"] for x in tr if not x["buy"]) / sol,
+                             "n_buy": sum(1 for x in tr if x["buy"]), "n_sell": sum(1 for x in tr if not x["buy"])})
+            else:
+                bars.append({"mi": i, "p_close": px, "p_hi": px, "p_lo": px, "n_atomic": 0, "sol_buy": 0.0, "sol_sell": 0.0,
+                             "n_buy": sum(1 for x in tr if x["buy"]), "n_sell": sum(1 for x in tr if not x["buy"])})
+        last = sorted(trades, key=lambda x: x["t"])[-300:]
+        b = R.dense(rows, last, pool_ms, pool_ms + E * 60_000, sol)
+        a, reach = FE.live_view(FE.dense(pd.DataFrame(bars), fill_hl=False), E, 300)
+        reaches.append(reach)
+        if reach != b["reach"]:
+            bad.append("reach %d vs %d" % (reach, b["reach"]))
+            continue
+        for i in range(E):
+            if i == E - reach:                    # the oldest trade's minute: live has only its last trades
+                continue
+            for k in ("nb", "ns", "vb", "vs"):
+                if abs(a[k][i] - b[k][i]) > 1e-9 * max(1.0, abs(b[k][i])):
+                    bad.append(k)
+    check(not bad and len(set(reaches)) > 3, "R1c the grid's last 300 trades = the live trades: same reach (%s), same split and counts (%s)" % (
+        sorted(set(reaches))[:8], sorted(set(bad))[:5]))
 
 
 def r2():
@@ -383,7 +434,7 @@ def r9():
 
 
 def main():
-    r1(); r1b(); r2(); r3(); r4(); r6(); r7(); r8(); r9()
+    r1(); r1b(); r1c(); r2(); r3(); r4(); r6(); r7(); r8(); r9()
     print("\n%d failed" % len(FAILS) if FAILS else "\nall ok")
     sys.exit(1 if FAILS else 0)
 
