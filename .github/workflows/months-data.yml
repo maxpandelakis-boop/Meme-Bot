@@ -1,0 +1,117 @@
+# Tests over months (fake money only; research/PREREG-MONTHS-2026-10-23.md): five-minute USD candles of the first 48 hours of
+# every pump.fun graduation we can get for free, in one format, for research/check_months.py.
+#   h2     the history2 one-minute bars (artifact "bars" of history-build run 39668736908, 10 Aug-8 Oct) -> branch "monthsh2"
+#   plan / shard / final   GeckoTerminal candles of 25 Apr-24 May, 25 Jun-24 Jul and 9-21 Oct (graduation lists from branch
+#          callsdata; the free API reaches 6 months back, so the oldest go first) -> branch "monthsdata"; a second run fetches
+#          only the pools still missing there
+# Nothing is bought; no key or secret beyond the run's own token is used. Touches no bot branch and no paper account.
+# Started by a push of this file's branch, or by hand. 10 shards at one call per 2.2 s each, as calls-history.yml (22 Oct),
+# which the live bots ran next to without trouble.
+name: months-data
+on:
+  push:
+    branches: [claude/project-thread-mejahm]
+    paths: [.github/workflows/months-data.yml, research/months_fetch.py]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: months-data
+  cancel-in-progress: false
+jobs:
+  h2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          name: bars
+          path: bars
+          run-id: 39668736908
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Five-minute candles
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          du -sh bars
+          git fetch -q --depth 1 origin history2 && git show FETCH_HEAD:coins.parquet > coins.parquet
+          git fetch -q --depth 1 origin marketctx && git show FETCH_HEAD:SOLUSDT.jsonl > SOLUSDT.jsonl
+          python3 research/months_fetch.py h2 bars coins.parquet SOLUSDT.jsonl out
+      - name: Push to the monthsh2 branch
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          printf 'Five-minute USD candles of the first 48 hours of the pump.fun graduations of 10 Aug-8 Oct 2026, made by research/months_fetch.py h2 from the history2 one-minute bars. Data provided by [Slink21]. Pumpfun Solana Dataset (2026). https://huggingface.co/datasets/Slinky21/Pumpfun_v2_dataset (CC BY 4.0). Fake money only.\n' > out/README.md
+          cd out && du -sh .
+          git init -q && git checkout -q -b monthsh2 && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "monthsh2 $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" monthsh2
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          mkdir -p g old
+          git fetch -q --depth 1 origin callsdata && git archive FETCH_HEAD gradlists | tar -x -C g
+          if git fetch -q --depth 1 origin monthsdata; then git archive FETCH_HEAD | tar -x -C old; fi
+          python3 research/months_fetch.py plan plan
+      - uses: actions/upload-artifact@v4
+        with: {name: plan, path: "plan/*.json", retention-days: 5}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      matrix:
+        i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    env:
+      GT_GAP: "2.2"
+      SHARD_MINUTES: "325"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with: {name: plan}
+      - run: python3 research/months_fetch.py shard plan.json ${{ matrix.i }} 10 gt_${{ matrix.i }}.json.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "gt-${{ matrix.i }}", path: "gt_*.json.gz", retention-days: 5}
+  final:
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "gt-*", merge-multiple: true, path: src}
+      - uses: actions/download-artifact@v4
+        with: {name: plan, path: plan}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p old
+          if git fetch -q --depth 1 origin monthsdata; then git archive FETCH_HEAD | tar -x -C old; fi
+          python3 research/months_fetch.py final src old out
+          cp plan/market.json out/market.json
+          printf 'Five-minute GeckoTerminal candles (USD) of the first 48 hours of the pump.fun graduations of 25 Apr-24 May, 25 Jun-24 Jul and 9-21 Oct 2026 (start SOL side >= 10; graduation lists from Helius, branch callsdata), made by research/months_fetch.py; meta_*.json lists every planned pool, market.json SOL/BTC by hour (Binance). Fake money only.\n' > out/README.md
+          cd out && du -sh .
+          git init -q && git checkout -q -b monthsdata && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "monthsdata $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" monthsdata
