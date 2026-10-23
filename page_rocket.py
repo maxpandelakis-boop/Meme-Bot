@@ -65,7 +65,7 @@ def tests(t=None):
     h = (t.get("history") or {}).get("0.005") or {}
     li = []
     if num(h.get("coins")):
-        li.append("<li><b>Look back Aug 10 – Oct 8, corrected</b><span>%d buys: %s per 20 € · %s of 10 in profit · 10x in %s · %s of 10,000 "
+        li.append("<li><b>Look back Aug 10 – Oct 8, only the trades live sees</b><span>%d buys: %s per 20 € · %s of 10 in profit · 10x in %s · %s of 10,000 "
                   "simulations in profit</span></li>" % (int(num(h["coins"])), E(PH.de_eur(h.get("avg"), True)), E(PH.de_num(num(h.get("inProfitOf10")) or 0, 1)),
                                                        E(pc(h.get("x10"))), E(pc(h.get("sim")))))
     rp = (t.get("replay") or {}).get("0.005") or {}

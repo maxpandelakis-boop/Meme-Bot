@@ -3,7 +3,9 @@ early checks 5, 10, 15, 20 and 25 minutes after the graduation added to the 15-m
 universe filters, same outcome (sell rule A from that minute, not clipped, the 6 h high), the live model's numbers (chart_feats
 with min_e=5, wallet_recent, market). The rows of 30 minutes and later are grid_live.pkl's rows again (the check prints the count).
 usage: python3 research/winlose/early_grid.py <scratch>  -> <scratch>/grid_early.pkl
-LIVEHL=1: a minute without a trade has high = low = the last close, as rocket.dense (outcome and chart numbers) -> grid_early_live.pkl"""
+LIVEHL=1: a minute without a trade has high = low = the last close, as rocket.dense (outcome and chart numbers) -> grid_early_live.pkl
+LIVETR=300 (with LIVEHL=1, since 23 Oct): the chart and wallet numbers from the last 300 trades only, as GeckoTerminal gives them live
+(features.live_view, a "reach" column) -> grid_early_live_tr300.pkl; LIVE-CHECK-2026-10-23.md"""
 import glob, json, math, multiprocessing as mp, os, sys
 import numpy as np, pandas as pd
 
@@ -18,6 +20,7 @@ EARLY = (5, 10, 15, 20, 25)
 ES = EARLY + tuple(range(30, 18 * 60 + 1, 15))
 PATH = 360
 LIVEHL = bool(os.environ.get("LIVEHL"))
+LIVETR = int(os.environ.get("LIVETR") or 0)
 coins = pd.read_parquet(os.path.join(S, "h2", "coins.parquet")).drop_duplicates("pool").set_index("pool")
 gap = set(np.load(os.path.join(S, "h2", "gap_minutes.npy")).tolist())
 k = [json.loads(l) for l in open(os.path.join(S, "mk", "SOLUSDT.jsonl"))]
@@ -71,7 +74,12 @@ def one_file(f):
                 mult = 11.0
             else:
                 mult = float(a["c"][min(E + PATH, n) - 1] / p0)
-            fe = FE.chart_feats(a, E, min_e=EARLY[0])
+            if LIVETR:
+                lv, reach = FE.live_view(a, E, LIVETR)
+                fe = FE.chart_feats(lv, E, min_e=EARLY[0])
+                fe["reach"] = reach
+            else:
+                fe = FE.chart_feats(a, E, min_e=EARLY[0])
             fe.update(pool=pool, mint=c0["mint"], ts=ts, grad_ms=gm, E=E, mc=np.log10(mc), liqmc=liq / mc, volmc=v24 / mc,
                       eur=M.tip_net(max(0.0, mult)), mult=mult, hi6=float(np.nanmax(hi)), lo6=float(np.nanmin(lo)))
             rows.append(fe)
@@ -89,7 +97,7 @@ if __name__ == "__main__":
     G["hit3"] = G["hi6"] >= 3
     FE.rows = G
     G = pd.concat([G, FE.market_all(), FE.wallet_recent(G)], axis=1)
-    G.to_pickle(os.path.join(S, "grid_early_live.pkl" if LIVEHL else "grid_early.pkl"))
+    G.to_pickle(os.path.join(S, ("grid_early_live" + ("_tr%d" % LIVETR if LIVETR else "") + ".pkl") if LIVEHL else "grid_early.pkl"))
     print(G.shape, "coins", G["mint"].nunique(), "rows from 30 min:", int((G["E"] >= 30).sum()), "(grid_live.pkl: 69,647)")
     print(G.groupby("E").size().head(8).to_string())
     print(G.groupby(G["E"] < 30)[["eur", "rocket", "hit3"]].mean())

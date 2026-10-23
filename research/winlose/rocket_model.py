@@ -2,7 +2,10 @@
 the latest trades, a seeded wallet memory, DexScreener's market cap/liquidity/volume, BTC/SOL), its stress test, and the export.
 usage: python3 research/winlose/rocket_model.py <scratch> [--export]
 <scratch>/grid_live.pkl: since 22 Oct the rows of 30 minutes and later of early_grid.py with LIVEHL=1 (a minute without a trade has
-high = low = the last close, as rocket.dense; grid.py's forward-filled wicks had booked fake 10x on dead pools, wick_check.py).
+high = low = the last close, as rocket.dense; grid.py's forward-filled wicks had booked fake 10x on dead pools, wick_check.py); since
+23 Oct with LIVEHL=1 LIVETR=300 (grid_early_live_tr300.pkl): the trade and wallet numbers from the last 300 trades only, as the live
+account gets them (the model of 22 Oct had learned them from every trade of the hour and bought 60% fewer coins live,
+LIVE-CHECK-2026-10-23.md).
 Stress test (information: the holdout was seen for variant B before): walk-forward over every week from 24 Aug to 8 Oct (each
 week trained only on coins that graduated two days or more before it), cuts at the top 0.25-5%, fees 0.5-2% per side, the buy
 15 or 30 minutes late (the coin's next check), and filter_search.simulate's 10,000 runs."""
@@ -90,7 +93,7 @@ if "--export" not in sys.argv:
         res["%g" % c] = r
         print("\ncut top %g%%: %s" % (100 * c, r["all"]))
         print("  weeks:", {w: (s["coins"], s["avg"]) for w, s in r["weeks"].items()})
-        print("  fees 0.5/1/2%%: %s %s %s" % (r["fee0.005"]["avg"], r["fee0.01"]["avg"], r["fee0.02"]["avg"]), " late 15/30 min:", r["late15"].get("avg"), r["late30"].get("avg"))
+        print("  fees 0.5/1/2%%: %s %s %s" % (r["fee0.005"].get("avg"), r["fee0.01"].get("avg"), r["fee0.02"].get("avg")), " late 15/30 min:", r["late15"].get("avg"), r["late30"].get("avg"))
         print("  sim:", sim)
     json.dump(res, open(os.path.join(S, "rocket_stress%s.json" % ("_" + "+".join(EXTRA) if EXTRA else "")), "w"), default=float)
 else:
@@ -102,8 +105,9 @@ else:
     trees = [t["tree_structure"] for t in dump["tree_info"]]
     cut = float(np.quantile(s, 1 - 0.005))
     ex = G[NUM].head(20)
-    model = {"v": 1, "made": "2026-10-22", "features": NUM, "trees": trees, "cut": cut, "cutTop": 0.005,
-             "rows": int(len(G)), "coins": int(G["mint"].nunique()), "src": "history2 10 Aug-8 Oct 2026; research/winlose/rocket_model.py (grid without forward-filled wicks, 22 Oct)",
+    model = {"v": 1, "made": "2026-10-23", "features": NUM, "trees": trees, "cut": cut, "cutTop": 0.005,
+             "rows": int(len(G)), "coins": int(G["mint"].nunique()),
+             "src": "history2 10 Aug-8 Oct 2026; research/winlose/rocket_model.py (grid without forward-filled wicks, 22 Oct; trades and wallets from the last 300 trades as live, 23 Oct)",
              "check": {"x": [[None if v != v else float(v) for v in r] for r in ex.values.tolist()], "p": [float(x) for x in m.predict_proba(ex)[:, 1]]}}
     json.dump(model, open(os.path.join(HERE, "..", "..", "rocket_model.json"), "w"), separators=(",", ":"))
     print("exported", len(trees), "trees, cut", cut, os.path.getsize(os.path.join(HERE, "..", "..", "rocket_model.json")) / 1e6, "MB")
