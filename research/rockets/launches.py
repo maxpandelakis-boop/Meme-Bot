@@ -619,10 +619,40 @@ def launch_check(rpc, rows):
     return out
 
 
-def chain_halfhour(rpc, h, top, ds_sig=None, ds_mint=None, ds_rows=None):
+def chain_back(rpc, spans):
+    """The mint authority's successful signatures inside the given [a, b) spans, paged back from the newest one (no start point
+    search: verify and verify2 found none in Sep and Oct). Returns {span start: [signatures]}."""
+    out = {a: [] for a, _ in spans}
+    lo = min(a for a, _ in spans)
+    before, pages, t_last = None, 0, None
+    while True:
+        opt = {"limit": 1000}
+        if before:
+            opt["before"] = before
+        page = rpc.call("getSignaturesForAddress", [MINT_AUTHORITY, opt])
+        if not page:
+            log("chain_back: empty page after", pages, "pages, last time", t_last)
+            break
+        pages += 1
+        for x in page:
+            bt = x.get("blockTime")
+            if x.get("err") is None and bt:
+                for a, b in spans:
+                    if a <= bt < b:
+                        out[a].append(x["signature"])
+        before, t_last = page[-1]["signature"], page[-1].get("blockTime")
+        if pages % 200 == 0:
+            log("chain_back", pages, "pages, at", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t_last or 0)))
+        if t_last and t_last < lo:
+            break
+    return out
+
+
+def chain_halfhour(rpc, h, top, ds_sig=None, ds_mint=None, ds_rows=None, sigs=None):
     """One half-hour of the chain's launches (successful transactions touching the mint authority, read and parsed) against a
     dataset: chain launches found in it, and its rows of [h+60, h+1740) found on the chain."""
-    sigs, _ = chain_launches(rpc, h, h + 1800, top)
+    if sigs is None:
+        sigs, _ = chain_launches(rpc, h, h + 1800, top)
     o = {"from": time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)), "chain_sigs": len(sigs)}
     known = [x for x in sigs if ds_sig is not None and x in ds_sig]
     rest = [x for x in sigs if not (ds_sig is not None and x in ds_sig)]
@@ -711,6 +741,27 @@ def cmd_verify2(work, md, h2):
                                    for dd in sorted(pl.index)}
     log("loophole", json.dumps(o)[:3000])
     json.dump(out, open(os.path.join(work, "verify2.json"), "w"), indent=1, default=str)
+
+
+def cmd_verify3(work, md, h2):
+    """Amendment 9: rule 1 of amendment 6 for Pumpfun_v2, in the same 6 half-hours as verify2 (seed 7), with the chain's list
+    read back from its newest signature."""
+    import numpy as np
+    os.makedirs(work, exist_ok=True)
+    k = os.environ.get("HK") or ""
+    rpc = rpc_only("https://mainnet.helius-rpc.com/?api-key=" + k, 0.12) if k else rpc_only(PUBLIC_RPC, 0.3)
+    lo, hi = _ts("2026-08-10"), _ts("2026-10-07")
+    rng = np.random.default_rng(7)
+    hh = sorted(rng.choice(np.arange(lo, hi, 1800), 6, replace=False).tolist())
+    log("half-hours", [time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)) for h in hh])
+    v2 = read_v2(work, min(hh) - 86400, max(hh) + 86400, ["block_time", "signature", "mint"])
+    sigs = chain_back(rpc, [(h, h + 1800) for h in hh])
+    sset, mset = set(v2["signature"]), set(v2["mint"])
+    o = {"halfhours": [chain_halfhour(rpc, h, None, sset, mset, v2, sigs=sigs[h]) for h in hh]}
+    o["chain_in_dataset_share"] = _share(o["halfhours"], "chain_in_dataset", "chain_launches")
+    o["dataset_on_chain_share"] = _share(o["halfhours"], "dataset_rows_on_chain", "dataset_rows")
+    log("v2", json.dumps(o)[:3000])
+    json.dump({"v2": o}, open(os.path.join(work, "verify3.json"), "w"), indent=1, default=str)
 
 
 def pd_num(x):
@@ -1100,6 +1151,6 @@ def cmd_final(src, out, prev=None):
 
 
 if __name__ == "__main__":
-    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "verify": cmd_verify, "verify2": cmd_verify2,
+    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "verify": cmd_verify, "verify2": cmd_verify2, "verify3": cmd_verify3,
      "build": cmd_build,
      "mshard": cmd_mshard, "mfinal": cmd_mfinal, "sigs": cmd_sigs, "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])

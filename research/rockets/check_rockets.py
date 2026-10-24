@@ -1,12 +1,17 @@
 """Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): which launch facts separate the coins that go
 10x from the rest, and does any of them make money on months it never saw?
 
-  python3 research/rockets/check_rockets.py <work dir> <history2 dir> <market.json> [<rocketsmeta dir>] [<rocketschain dir>] > out.json
+  python3 research/rockets/check_rockets.py <work dir> <history2 dir> <market.json> [<rocketsmeta dir>] [<rocketschain dir>]
+          [<rocketsimages dir>] > out.json
+
+[<rocketsimages dir>] is the branch rocketsimages (images.py: what each graduation's picture shows, F19-F22, amendment 5).
+Amendment 7: a fact, a Part B candidate and a Part C cut only count when they also pass on w4 alone (a full unseen month), and a
+money candidate's w5 mean after the allowance must not be below 0. w4 and w5 are reported on their own.
 
 [<rocketschain dir>] is the branch rocketschain (meta_chain.py). <work dir> holds paths.npz, coins.parquet (build_paths.py) and entries.parquet (base.py). <rocketsmeta dir> is the branch
 rocketsmeta (meta_fetch.py); without it only history2's launch facts (w3/w4) exist. Writes the result JSON to stdout and the rocket
 lists to <work dir>/rockets_E5.csv, rockets_E30.csv. No network."""
-import json, math, os, re, sys
+import glob, json, math, os, re, sys
 import numpy as np, pandas as pd
 
 BAR, MIN, H, DAY = 300_000, 60_000, 3_600_000, 86_400_000
@@ -262,11 +267,48 @@ BUCKETS = {
     "f_launch_other": ([-0.5, 0.5, 1.5], ["pump.fun", "other"]),
     "f_video": ([-0.5, 0.5, 1.5], ["no", "yes"]),
     "f_desc_len": ([-0.5, 0.5, 50.5, 200.5, np.inf], ["0", "1-50", "51-200", "over 200"]),
+    "f_group": ([-0.5 + k for k in range(7)], ["animal_photo", "animal_drawn", "person_photo", "character_drawn", "text_logo",
+                                               "object_scene"]),
+    "f_animated": ([-0.5, 0.5, 1.5], ["no", "yes"]),
+    "f_lookalike": ([-0.5, 0.5, 1.5], ["no", "yes"]),
+    "f_name_fit": None,
 }
+GROUPS = tuple(BUCKETS["f_group"][1])
 FACT_NO = {"f_creator_prior": "F1", "f_creator_rocket": "F2", "f_curve_min": "F3", "f_dup7": "F4", "f_cjk": "F5", "f_hour": "F6",
            "f_weekend": "F7", "f_grads24": "F8", "f_sol24": "F9", "f_nlinks": "F10", "f_xtype": "F11", "f_news": "F12",
            "f_theme24": "F13", "f_post_age": "F14", "f_img_reused": "F15", "f_launch_other": "F16", "f_video": "F17",
-           "f_desc_len": "F18"}
+           "f_desc_len": "F18", "f_group": "F19", "f_animated": "F20", "f_lookalike": "F21", "f_name_fit": "F22"}
+
+
+def picture_facts(c, images_dir):
+    """F19-F22 (amendment 5) for the graduations whose picture images.py could read; look-alike = a picture of another
+    graduation of the 7 days before at most 4 bits apart (64-bit average hash)."""
+    for k in ("f_group", "f_animated", "f_lookalike", "f_name_fit"):
+        c[k] = np.nan
+    files = sorted(glob.glob(os.path.join(images_dir, "*.parquet"))) if images_dir else []
+    if not files:
+        return c
+    im = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True).drop_duplicates("mint")
+    im = im[im["img_ok"].fillna(False).astype(bool)].set_index("mint")
+    j = c["mint"].map
+    c["f_group"] = j(im["group"].map({g: k for k, g in enumerate(GROUPS)})).astype(float)
+    c["f_animated"] = j(im["animated"].astype(float)).astype(float)
+    c["f_name_fit"] = pd.to_numeric(j(im["name_fit"]), errors="coerce")
+    h = j(im["ahash"])
+    ok = h.notna().to_numpy() & c["t"].notna().to_numpy()
+    t = c["t"].to_numpy(np.float64)
+    order = np.argsort(t[ok])
+    gi = np.nonzero(ok)[0][order]
+    gt = t[gi]
+    gh = np.array([int(x, 16) for x in h.to_numpy()[gi]], dtype=np.uint64)
+    look = np.full(len(c), np.nan)
+    for i in np.nonzero(ok)[0]:
+        a, b = np.searchsorted(gt, t[i] - 7 * DAY), np.searchsorted(gt, t[i])
+        idx = gi[a:b]
+        x = np.bitwise_xor(gh[a:b], np.uint64(int(h.iat[i], 16)))[idx != i]
+        look[i] = float((np.unpackbits(x.view(np.uint8).reshape(-1, 8), axis=1).sum(1) <= 4).any()) if len(x) else 0.0
+    c["f_lookalike"] = look
+    return c
 
 
 def holm(ps, alpha=0.05):
@@ -301,6 +343,15 @@ def ratio_ci(fav, y, day, draws=4000, seed=7):
     return [round(float(np.quantile(out, 0.025)), 2), round(float(np.quantile(out, 0.975)), 2)] if out else None
 
 
+def month_check(v, k):
+    """Amendment 7: the Part B criteria on one window alone (v = money per trade after the allowance)."""
+    v = np.asarray(v, float)
+    lb = round(boot_lo(v, 0.01 / k), 2) if len(v) >= 2 else None
+    wb = round(float((v.sum() - v.max()) / max(1, len(v) - 1)), 2) if len(v) > 1 else None
+    return {"n": int(len(v)), "after_allowance": round(float(v.mean()), 2) if len(v) else None, "lower_bound": lb,
+            "without_best": wb, "passes": bool(len(v) >= 40 and v.mean() > 0 and lb is not None and lb > 0 and wb > 0)}
+
+
 def boot_lo(v, q, draws=20000, seed=7):
     v = np.asarray(v, float)
     rng = np.random.default_rng(seed)
@@ -310,7 +361,7 @@ def boot_lo(v, q, draws=20000, seed=7):
     return float(np.quantile(means, q))
 
 
-def main(work, hist, market, meta_dir=None, chain_dir=None):
+def main(work, hist, market, meta_dir=None, chain_dir=None, images_dir=None):
     z = np.load(os.path.join(work, "paths.npz"))
     cl = z["cl"]
     coins = pd.read_parquet(os.path.join(work, "coins.parquet"))
@@ -319,6 +370,7 @@ def main(work, hist, market, meta_dir=None, chain_dir=None):
     if chain_dir and os.path.exists(os.path.join(chain_dir, "wiki_top.json")):
         wiki = json.load(open(os.path.join(chain_dir, "wiki_top.json")))
     c = launch_facts(coins, hist, meta_dir, chain_dir, wiki)
+    c = picture_facts(c, images_dir)
     sources = {k: {w: c[c["w"] == w][k].fillna("none").value_counts().to_dict() for w in sorted(c["w"].unique())}
                       for k in ("src_names", "src_creator", "src_created", "src_links")}
     row_of = {p: i for i, p in enumerate(coins["pool"])}
@@ -437,6 +489,13 @@ def main(work, hist, market, meta_dir=None, chain_dir=None):
                              "unseen_n": int(n1), "unseen_in": round(100 * x1 / n1, 2) if n1 else None,
                              "unseen_rest": round(100 * x2 / n2, 2) if n2 else None, "p": p,
                              "ratio_ci": ratio_ci(m, y, uns["day"].to_numpy()) if n1 and n2 else None}
+                for wn in ("w4", "w5"):             # amendment 7: each unseen window on its own
+                    sel = (uns["w"] == wn).to_numpy()
+                    a1, b1 = y[m & sel].sum(), (m & sel).sum()
+                    a2, b2 = y[~m & sel].sum(), (~m & sel).sum()
+                    rec[kind][wn] = {"n_in": int(b1), "in": round(100 * a1 / b1, 2) if b1 else None,
+                                     "rest": round(100 * a2 / b2, 2) if b2 else None,
+                                     "p": ztest(a1, b1, a2, b2, dirn) if b1 and b2 else 1.0}
                 pa.append((kind, rec))
             # Part B candidate
             best, bv = None, -np.inf
@@ -447,27 +506,35 @@ def main(work, hist, market, meta_dir=None, chain_dir=None):
             b, nm = best
             m = (bu == b).to_numpy()
             v = uns["m_" + nm].to_numpy()[m] - ALLOW
+            vw = {wn: uns["m_" + nm].to_numpy()[m & (uns["w"] == wn).to_numpy()] - ALLOW for wn in ("w4", "w5")}
             cand = {"fact": rec["fact"], "E": E, "bucket": str(b), "rule": RULE_NAME[nm], "fit_n": int(okb.loc[b, "n"]),
                     "fit_mean": round(float(bv), 2), "unseen_n": int(len(v)),
                     "unseen_mean": round(float(v.mean() + ALLOW), 2) if len(v) else None,
                     "after_allowance": round(float(v.mean()), 2) if len(v) else None,
                     "without_best": round(float((v.sum() - v.max()) / max(1, len(v) - 1)), 2) if len(v) > 1 else None,
                     "inProfit": round(100 * float((v + ALLOW > 0).mean()), 1) if len(v) else None,
-                    "_v": v}
+                    "_v": v, "_vw": vw}
             pb.append(cand)
             res["partA"].append(rec)
     for kind in ("rocket", "zero"):
         items = [r for k, r in pa if k == kind]
         ok = holm(np.array([r[kind]["p"] for r in items])) if items else []
-        for r, o in zip(items, ok):
+        ok4 = holm(np.array([r[kind]["w4"]["p"] for r in items])) if items else []
+        for r, o, o4 in zip(items, ok, ok4):
             r[kind]["holm"] = bool(o)
+            r[kind]["holm_w4"] = bool(o4)
+            r[kind]["counts"] = bool(o and o4)      # amendment 7: also on the full unseen month alone
             r[kind]["p"] = float("%.3g" % r[kind]["p"])
+            for wn in ("w4", "w5"):
+                r[kind][wn]["p"] = float("%.3g" % r[kind][wn]["p"])
     k = max(1, len(pb))
     for cand in pb:
-        v = cand.pop("_v")
+        v, vw = cand.pop("_v"), cand.pop("_vw")
         cand["lower_bound"] = round(boot_lo(v, 0.01 / k), 2) if len(v) >= 2 else None
-        cand["holds"] = bool(len(v) >= 40 and v.mean() > 0 and cand["lower_bound"] is not None and cand["lower_bound"] > 0
-                             and cand["without_best"] > 0)
+        cand["holds_unseen"] = bool(len(v) >= 40 and v.mean() > 0 and cand["lower_bound"] is not None and cand["lower_bound"] > 0
+                                    and cand["without_best"] > 0)
+        cand["w4"], cand["w5"] = month_check(vw["w4"], k), month_check(vw["w5"], k)
+        cand["holds"] = bool(cand["holds_unseen"] and cand["w4"]["passes"] and not (cand["w5"]["n"] and cand["w5"]["after_allowance"] < 0))
         res["partB"].append(cand)
     res["partB_candidates"] = k
     # ------------------------------------------------------------------- Part C
@@ -501,7 +568,7 @@ def main(work, hist, market, meta_dir=None, chain_dir=None):
 
 MODEL_FEATS = ["f_creator_prior", "f_creator_rocket", "f_curve_min", "f_dup7", "f_cjk", "f_hour", "f_weekend", "f_grads24",
                "f_sol24", "f_nlinks", "f_xtype", "f_news", "f_theme24", "f_post_age", "f_img_reused", "f_launch_other", "f_video",
-               "f_desc_len"]
+               "f_desc_len", "f_group", "f_animated", "f_lookalike", "f_name_fit"]
 
 
 def part_c(E_all, av):
@@ -526,6 +593,10 @@ def part_c(E_all, av):
         auc = roc_auc_score(uns["rocket"].astype(int), su) if uns["rocket"].any() else None
         imp = dict(sorted(zip(feats, clf.booster_.feature_importance("gain").round(1).tolist()), key=lambda x: -x[1]))
         m = {"E": E, "unseen_auc": round(float(auc), 3) if auc else None, "gain": imp, "cuts": []}
+        for wn in ("w4", "w5"):
+            sel = (uns["w"] == wn).to_numpy()
+            yy = uns["rocket"].astype(int).to_numpy()[sel]
+            m["auc_" + wn] = round(float(roc_auc_score(yy, su[sel])), 3) if sel.any() and 0 < yy.sum() < len(yy) else None
         for top in (0.01, 0.02, 0.05):
             thr = np.quantile(sf, 1 - top)
             sel = su >= thr
@@ -535,20 +606,24 @@ def part_c(E_all, av):
                    "base_rocketPct": round(100 * float(uns["rocket"].mean()), 2)}
             for nm in RULES:
                 v = u["m_" + nm].to_numpy() - ALLOW
-                cands.append((row, nm, v))
+                vw = {wn: u[u["w"] == wn]["m_" + nm].to_numpy() - ALLOW for wn in ("w4", "w5")}
+                cands.append((row, nm, v, vw))
                 row[nm] = {"mean": round(float(v.mean() + ALLOW), 2) if len(v) else None}
             m["cuts"].append(row)
         out["models"].append(m)
     k = len(cands)
-    for row, nm, v in cands:
+    for row, nm, v, vw in cands:
         lb = round(boot_lo(v, 0.01 / k), 2) if len(v) >= 2 else None
         wb = round(float((v.sum() - v.max()) / max(1, len(v) - 1)), 2) if len(v) > 1 else None
+        hu = bool(len(v) >= 40 and v.mean() > 0 and lb is not None and lb > 0 and wb > 0)
+        m4, m5 = month_check(vw["w4"], k), month_check(vw["w5"], k)
         row[nm].update({"after_allowance": round(float(v.mean()), 2) if len(v) else None, "lower_bound": lb, "without_best": wb,
-                        "holds": bool(len(v) >= 40 and v.mean() > 0 and lb is not None and lb > 0 and wb > 0)})
+                        "holds_unseen": hu, "w4": m4, "w5": m5,
+                        "holds": bool(hu and m4["passes"] and not (m5["n"] and m5["after_allowance"] < 0))})
     out["candidates"] = k
     return out
 
 
 if __name__ == "__main__":
-    r = main(*sys.argv[1:6])
+    r = main(*sys.argv[1:7])
     print(json.dumps(r, indent=1, default=lambda x: x.item() if hasattr(x, "item") else str(x)))

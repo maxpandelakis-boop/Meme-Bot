@@ -300,3 +300,23 @@ What follows, all fixed before the next check runs:
    window is marked "maybe biased by which files could be read" in the report, whatever its result.
 7. The metadata sample of 600,000 and the picture sub-sample of 150,000 are drawn (seed 7) from the test rows of universe L
    (w3, w4, w5, mayhem left out), sorted by mint.
+
+## Amendment 9 (24 Oct, ~13:10 UTC, before any fact result was read): verify2's result
+
+`launches.py verify2` ran at 12:34-13:00 UTC (verify2.json on branch rocketsprobe). Nothing about any fact was computed.
+- **Pumpfun_v2, rule 2: passes.** 292 of 300 rows found their launch transaction; name, ticker, metadata link and creator are
+  the same in 292 of 292. The curve's current creator field is the launch creator in only 268 of 292; in the 24 others the
+  dataset has the launch creator (24 of 24). So the curve field changes after some launches, and the dataset is right.
+- **Pumpfun_v2, rule 3: passes.** 42,945 of our 44,323 graduations of 11 Aug - 6 Oct are in it (96.9 %).
+- **loopholetape, rule 2: fails.** 247 of 300 rows found their launch transaction; name, ticker and metadata link agree in 247 of
+  247, but the creator only in 208 of 247 (84.2 %, rule: 98 %). On the days both datasets hold (27 Sep - 6 Oct) the two have
+  the same launches (465,774 of 471,066 v2 rows are in loophole, 465,774 of 470,762 loophole rows are in v2), but the same
+  creator for only 87.2 % of them. As amendment 6 says, loophole is dropped and **w5 leaves universe L**. Its rule 3 would have
+  passed (14,997 of 15,241, 98.4 %).
+- **Rule 1 is still not measured**: the chain's list came back empty in every half-hour again (the search for a starting point
+  still finds nothing in Sep and Oct). `launches.py verify3` reads the chain's list back from its newest signature instead,
+  in the same 6 half-hours (seed 7: 12 Sep 12:30, 15 Sep 04:30, 18 Sep 15:00, 23 Sep 23:30, 1 Oct 00:00, 3 Oct 16:30 UTC),
+  with the same two 95 % bars. If Pumpfun_v2 fails it, universe L is empty and the report says so.
+
+So universe L is Pumpfun_v2 alone: **fit w3 (10 Aug - 7 Sep), unseen w4 (10 Sep - 6 Oct)**, the full month of amendment 7.
+Mayhem-mode launches are history only (amendment 8). There is no w5 in universe L; w5 stays in the graduation study.
