@@ -3,6 +3,9 @@ five month windows straight from the Solana chain and the coin's own metadata fi
 (research/rockets/meta_fetch.py), which answers little from GitHub's runners.
 
   shard <plan.json> <i> <n> <out.json.gz>   mints i, i+n, ...; the file is rewritten every 200 mints
+  replan <plan dir> <earlier chain.parquet>   for a later run: plan.json without the coins an earlier run read, but with those
+                                            whose curve history failed (sig_error, asked again; nofile.json = their files
+                                            already read), and refetch.json = the [mint, link] pairs of the other unread files
   files <refetch.json> <i> <n> <out.json.gz>   only the metadata files of [mint, link] pairs i, i+n, ... (links an earlier run
                                             could not read); no RPC
   final <dir with shard files> <out dir> [<earlier chain.parquet>]   one chain.parquet (an earlier run's rows kept, their file
@@ -138,7 +141,7 @@ class Rpc:
             log("helius rpc", "works" if j is not None else "does not answer (%s)" % st)
             if j is not None:
                 self.urls.append((self.helius, 0.12))
-        self.urls.append((PUBLIC_RPC, 0.35))
+        self.urls.append((PUBLIC_RPC, float(os.environ.get("PGAP") or 0.35)))
         self.codes = {}
         self.miss = 0           # Helius answers in a row that were rate limits (429): after DROP_AFTER of them it is left out
 
@@ -284,6 +287,7 @@ def cmd_shard(plan, i, n, out):
     stop = time.time() + 60 * float(os.environ.get("SHARD_MINUTES", 200))
     rpc = Rpc()
     need = set(json.load(open(os.environ["NEED"]))) if os.environ.get("NEED") else set(mints)
+    nofile = set(json.load(open(os.environ["NOFILE"]))) if os.environ.get("NOFILE") and os.path.exists(os.environ["NOFILE"]) else set()
     res, files = {}, {}
     pool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("WORKERS") or 6))
     for a in range(0, len(mints), 100):
@@ -309,7 +313,7 @@ def cmd_shard(plan, i, n, out):
             if v and v.get("data"):
                 meta.setdefault(m, {}).update(parse_curve(v["data"][0]))
         jobs = {pool.submit(one, rpc, m, cv, m in need): m for m, cv in zip(part, cvs)}
-        fj = {pool.submit(metadata_file, meta.get(m, {}).get("uri")): m for m in part}
+        fj = {pool.submit(metadata_file, meta.get(m, {}).get("uri")): m for m in part if m not in nofile}
         for f in concurrent.futures.as_completed(jobs):
             m = jobs[f]
             r = f.result()
@@ -330,6 +334,31 @@ def cmd_shard(plan, i, n, out):
                 json.dump({"coins": res, "done": a + len(part), "planned": len(mints)}, fh)
             os.replace(tmp, out)
     pool.shutdown()
+
+
+def _clean(d):
+    import pandas as pd
+    for c in d.columns:
+        if not pd.api.types.is_numeric_dtype(d[c]):
+            d[c] = d[c].where(~d[c].isin(["NaN", "None", "null"]), None)
+    return d
+
+
+def cmd_replan(plan_dir, prev):
+    import pandas as pd
+    d = _clean(pd.read_parquet(prev))
+    p = json.load(open(os.path.join(plan_dir, "plan.json")))
+    redo = set(d.loc[d["sig_error"].notna(), "mint"]) if "sig_error" in d else set()
+    done = set(d["mint"]) - redo
+    n0 = len(p["mints"])
+    p["mints"] = [x for x in p["mints"] if x not in done]
+    json.dump(p, open(os.path.join(plan_dir, "plan.json"), "w"))
+    unread = d["f_keys"].isna() & d["uri"].fillna("").str.len().gt(0)
+    json.dump(sorted(d.loc[d["mint"].isin(redo) & ~unread, "mint"]), open(os.path.join(plan_dir, "nofile.json"), "w"))
+    r = d[unread & ~d["mint"].isin(redo)].sort_values("mint")
+    json.dump([[m, u] for m, u in zip(r["mint"], r["uri"])], open(os.path.join(plan_dir, "refetch.json"), "w"))
+    log("planned", n0, "already read", len(done), "asked again (curve history failed)", len(redo), "left", len(p["mints"]),
+        "metadata files to ask for again", len(r), "+", int((d["mint"].isin(redo) & unread).sum()), "in the coins asked again")
 
 
 def cmd_files(refetch, i, n, out):
@@ -385,15 +414,29 @@ def cmd_final(src, out, prev=None):
         files.update(j.get("files") or {})
     d = pd.DataFrame(rows).drop_duplicates("mint")
     if prev and os.path.exists(prev):
-        old = pd.read_parquet(prev)
-        for c in old.columns:
-            if not pd.api.types.is_numeric_dtype(old[c]):
-                old[c] = old[c].where(~old[c].isin(["NaN", "None", "null"]), None)
+        old = _clean(pd.read_parquet(prev))
+        if len(d):                     # coins asked again: what this run could not read is kept from the earlier run
+            o = old.drop_duplicates("mint").set_index("mint")
+            again = d["mint"].isin(o.index)
+            fcols = [c for c in o.columns if c.startswith("f_")]
+            for c in set(fcols) | {"name", "symbol", "uri", "meta_src", "curve_creator"}:
+                d[c] = d[c].astype(object) if c in d else None      # an all-empty column would be float and refuse text
+            nof = again & d["f_keys"].isna()
+            for c in fcols:
+                d.loc[nof, c] = d.loc[nof, "mint"].map(o[c])
+            for c in ("name", "symbol", "uri", "meta_src", "curve_creator"):
+                miss = again & d[c].isna()
+                d.loc[miss, c] = d.loc[miss, "mint"].map(o[c])
+            log("coins asked again", int(again.sum()), "their files kept from the earlier run", int(nof.sum()))
         got = old["mint"].isin(set(files)) & old["f_keys"].isna()
         for c in next(iter(files.values()), {}):
+            old[c] = old[c].astype(object) if c in old else None
             old.loc[got, c] = [files[m].get(c) for m in old.loc[got, "mint"]]
         log("earlier run", len(old), "this run", len(d), "earlier rows given a metadata file now", int(got.sum()))
         d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]) if len(d) else set())]], ignore_index=True)
+    for c in ("f_desc_len", "created_s", "curve_sigs", "curve_sigs_capped"):      # numbers stay numbers after the merges
+        if c in d:
+            d[c] = pd.to_numeric(d[c], errors="coerce")
     for c in d.columns:
         if (d[c].dtype == object or pd.api.types.is_string_dtype(d[c])) and c != "mint":
             d[c] = d[c].map(lambda x: None if x is None or (isinstance(x, float) and x != x) else
@@ -403,4 +446,4 @@ def cmd_final(src, out, prev=None):
 
 
 if __name__ == "__main__":
-    {"shard": cmd_shard, "files": cmd_files, "final": cmd_final, "wiki": cmd_wiki}[sys.argv[1]](*sys.argv[2:])
+    {"shard": cmd_shard, "replan": cmd_replan, "files": cmd_files, "final": cmd_final, "wiki": cmd_wiki}[sys.argv[1]](*sys.argv[2:])

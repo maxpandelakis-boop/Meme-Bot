@@ -366,3 +366,10 @@ So, with no change to any fact, bucket or test:
   w3 and w4). The report gives the coverage per window.
 - The Helius key answered only 429 from about 14:19 UTC; the code then uses the public Solana RPC, which is slower but reads
   the same data.
+
+**Chain run 7 (19:44 UTC, still no outcome used):** every one of the 71,978 graduations has a chain row now, and 58,043
+metadata files are read (80.6 %). Share of the E5 entries with a file: w1 76.3 %, w2 77.2 %, w3 78.3 %, w4 82.9 %, w5 87.4 %.
+ipfs.filebase.io answered 429 when two processes on one machine asked it more than about 2.5 times a second, and the public
+RPC rate-limited 52 % of the curve-history calls (6,630 coins with sig_error, most of them in w1, w2 and w5). One more pass
+(meta_chain.py replan) asks again for those coins and for every file still unread, at half the pace. The 80 % rule is applied
+to whatever that pass gives; nothing else changes.
