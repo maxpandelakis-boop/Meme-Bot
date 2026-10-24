@@ -4,6 +4,8 @@ month windows from the Solana chain, not only the ~72,000 that graduated, for th
   probe <out.json>                     what the free sources give (public Solana RPC, Helius when HK is set, HuggingFace, pump.fun)
   probe2 <out.json>                    the HuggingFace pump.fun datasets in detail (files, sizes, columns, first rows) and the
                                        launch transactions the first probe could not read (error -32015, a newer version)
+  probe3 <work dir> <grad mints.json>  the three free launch datasets up close: their documents, file coverage by day, one file
+                                       of each read, 100 random rows of each checked against the chain, overlap with our graduations
   sigs <out dir>                       every launch signature of the five windows (sigs_<w>.parquet: signature, slot, time, failed)
   shard <sig dir> <i> <n> <out.json.gz> launches i, i+n, ... of the random sample (SAMPLE launches, seed 7): the launch
                                        transaction, the curve account (graduated or not, read now) and the metadata file
@@ -252,6 +254,146 @@ def cmd_probe2(out_path):
     json.dump(out, open(out_path, "w"), indent=1)
 
 
+HF = "https://huggingface.co/datasets/%s/resolve/main/%s"
+DATASETS = {"corpus": "Slinky21/Pumpfun_Memecoin_Corpus", "v2": "Slinky21/Pumpfun_v2_dataset",
+            "loophole": "loopholetape/pumpfun-launches"}
+
+
+def hf_files(ds):
+    st, raw = http("https://huggingface.co/api/datasets/%s?blobs=true" % ds, gap=0.4, tries=3, timeout=60)
+    j = json.loads(raw)
+    return [(x.get("rfilename"), x.get("size") or 0) for x in j.get("siblings") or []]
+
+
+def hf_get(ds, path, dest):
+    """One file of a dataset to dest (streamed; urllib follows HuggingFace's redirect to its file store)."""
+    import shutil, urllib.request
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+    req = urllib.request.Request(HF % (ds, path), headers={"User-Agent": "memebot-research"})
+    with urllib.request.urlopen(req, timeout=300) as r, open(dest, "wb") as fh:
+        shutil.copyfileobj(r, fh, 1 << 20)
+    return dest
+
+
+def chain_check(rpc, rows):
+    """For dataset rows (mint, name, symbol, uri, creator where present): the mint's own Token-2022 metadata and the curve
+    account's creator, compared field by field."""
+    from meta_chain import token2022_meta, parse_curve
+    out = {"checked": 0, "mint_found": 0}
+    for a in range(0, len(rows), 100):
+        part = rows[a:a + 100]
+        mints = [r["mint"] for r in part]
+        acc = rpc.call("getMultipleAccounts", [mints, {"encoding": "jsonParsed"}]) or {}
+        acc2 = rpc.call("getMultipleAccounts", [[curve_address(m) for m in mints], {"encoding": "base64"}]) or {}
+        for r, v, c in zip(part, acc.get("value") or [None] * len(part), acc2.get("value") or [None] * len(part)):
+            out["checked"] += 1
+            t = token2022_meta(v) if v else None
+            if v:
+                out["mint_found"] += 1
+            cr = parse_curve(c["data"][0]).get("curve_creator") if c and c.get("data") else None
+            for k, chain_v in (("name", (t or {}).get("name")), ("symbol", (t or {}).get("symbol")), ("uri", (t or {}).get("uri")),
+                               ("creator", cr)):
+                if r.get(k) is None or chain_v is None:
+                    continue
+                key = k + "_same"
+                out.setdefault(key, [0, 0])
+                out[key][1] += 1
+                out[key][0] += int(str(r[k]).strip() == str(chain_v).strip())
+    return out
+
+
+def pick(cols, *names):
+    for n in names:
+        for c in cols:
+            if c.lower() == n:
+                return c
+    return None
+
+
+def summarize(df, label, grads, rpc, out):
+    import numpy as np, pandas as pd
+    cols = list(df.columns)
+    o = out.setdefault(label, {})
+    o["rows"], o["columns"] = len(df), [(c, str(t)) for c, t in df.dtypes.items()]
+    o["first_rows"] = [{k: str(v)[:70] for k, v in r.items()} for r in df.head(3).to_dict("records")]
+    mc = pick(cols, "mint", "token_mint", "mint_address", "token")
+    tc = pick(cols, "created_at", "created_timestamp", "block_time", "timestamp", "created", "launch_time", "ts", "time", "slot_time")
+    if tc:
+        t = df[tc]
+        num = pd.api.types.is_numeric_dtype(t) and not pd.api.types.is_bool_dtype(t)
+        tt = pd.to_datetime(t, unit="ms" if t.max() > 1e11 else "s", utc=True, errors="coerce") if num else \
+            pd.to_datetime(t, utc=True, errors="coerce")
+        o["time_col"], o["from"], o["to"] = tc, str(tt.min()), str(tt.max())
+        days = max((tt.max() - tt.min()).total_seconds() / 86400, 1e-9)
+        o["rows_per_day"] = round(len(df) / days)
+    if mc:
+        m = set(df[mc].astype(str))
+        o["mint_col"], o["distinct_mints"] = mc, len(m)
+        o["our_graduations_in_it"] = len(m & grads)
+        nc, sc, uc = pick(cols, "name", "token_name"), pick(cols, "symbol", "token_symbol", "ticker"), pick(cols, "uri", "metadata_uri")
+        cc = pick(cols, "creator", "dev_wallet", "creator_wallet", "user", "dev")
+        rng = np.random.default_rng(7)
+        sub = df.iloc[rng.choice(len(df), size=min(100, len(df)), replace=False)]
+        rows = [{"mint": str(r[mc]), "name": r.get(nc) if nc else None, "symbol": r.get(sc) if sc else None,
+                 "uri": r.get(uc) if uc else None, "creator": r.get(cc) if cc else None} for _, r in sub.iterrows()]
+        o["chain_check"] = chain_check(rpc, rows)
+    log(label, json.dumps(o)[:4000])
+
+
+def cmd_probe3(work, grads_path):
+    import pandas as pd
+    os.makedirs(work, exist_ok=True)
+    grads = set(json.load(open(grads_path))["mints"])
+    k = os.environ.get("HK") or ""
+    rpc = rpc_only("https://mainnet.helius-rpc.com/?api-key=" + k, 0.12) if k else rpc_only(PUBLIC_RPC, 0.3)
+    out = {}
+    for key, ds in DATASETS.items():
+        o = out.setdefault(key, {"dataset": ds})
+        try:
+            files = hf_files(ds)
+        except Exception as e:
+            o["files"] = "error %s" % type(e).__name__
+            continue
+        by = {}
+        for f, sz in files:
+            top = "/".join(f.split("/")[:-1]) or "."
+            b = by.setdefault(top, [0, 0, f, f])
+            b[0] += 1
+            b[1] += sz
+            b[2], b[3] = min(b[2], f), max(b[3], f)
+        o["folders"] = {k2: {"files": v[0], "MB": round(v[1] / 1e6), "first": v[2], "last": v[3]} for k2, v in sorted(by.items())}
+        log(key, "folders", json.dumps(o["folders"])[:3000])
+        for doc in ("README.md", "KNOWN_ISSUES.md", "DATASHEET.md"):
+            if any(f == doc for f, _ in files):
+                st, raw = http(HF % (ds, doc), gap=0.3, tries=2, timeout=60)
+                txt = (raw or b"").decode("utf-8", "replace")
+                o[doc] = txt[:20000]
+                log("=====", key, doc, len(txt), "chars =====")
+                log(txt[:9000])
+        want = []
+        if key == "corpus":
+            want = ["tokens.parquet", "migrations.parquet"]
+        elif key == "v2":
+            cr = sorted([(sz, f) for f, sz in files if "/create/" in f and f.endswith(".parquet")])
+            gr = sorted([(sz, f) for f, sz in files if "/graduate/" in f and f.endswith(".parquet")])
+            want = [cr[len(cr) // 2][1]] if cr else []
+            want += [gr[len(gr) // 2][1]] if gr else []
+        else:
+            la = sorted(f for f, _ in files if f.startswith("data/launches/") and f.endswith(".parquet"))
+            lg = sorted(f for f, _ in files if f.startswith("data/launches_legacy/") and f.endswith(".parquet"))
+            want = ([la[len(la) // 2]] if la else []) + ([lg[len(lg) // 2]] if lg else []) + \
+                   [f for f, _ in files if f.startswith("data/graduation_pools/") and f.endswith(".parquet")]
+        for f in want:
+            try:
+                dest = hf_get(ds, f, os.path.join(work, key, f))
+                df = pd.read_parquet(dest)
+                summarize(df, "%s:%s" % (key, f), grads, rpc, o)
+            except Exception as e:
+                o[f] = "error %s %s" % (type(e).__name__, str(e)[:200])
+                log(key, f, o[f])
+    json.dump(out, open(os.path.join(work, "probe3.json"), "w"), indent=1, default=str)
+
+
 # ------------------------------------------------------------------------------------------------ the fetch
 WINDOWS = (("w1", "2026-04-25", "2026-05-25"), ("w2", "2026-06-25", "2026-07-25"), ("w3", "2026-08-10", "2026-09-10"),
            ("w4", "2026-09-10", "2026-10-09"), ("w5", "2026-10-09", "2026-10-22"))      # as research/rockets/build_paths.py
@@ -365,7 +507,7 @@ def cmd_shard(sig_dir, i, n, out):
     pool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("WORKERS") or 12))
     fpool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("FILE_WORKERS") or 16))
     res, files, bad = {}, {}, 0
-    opts = {"encoding": "json", "maxSupportedTransactionVersion": 0}
+    opts = {"encoding": "json", "maxSupportedTransactionVersion": 1}      # since autumn 2026 many launches are version-1 transactions
     for a in range(0, len(part), 100):
         if time.time() > stop:
             log("time budget used at", a, "of", len(part))
@@ -446,4 +588,5 @@ def cmd_final(src, out, prev=None):
 
 
 if __name__ == "__main__":
-    {"probe": cmd_probe, "probe2": cmd_probe2, "sigs": cmd_sigs, "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
+    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "sigs": cmd_sigs, "shard": cmd_shard,
+     "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
