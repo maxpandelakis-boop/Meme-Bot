@@ -46,6 +46,8 @@ def launch_facts(coins, hist, meta_dir):
     c["src_names"] = np.where(c["symbol"].notna(), "h2", None)
     if meta_dir and os.path.exists(os.path.join(meta_dir, "meta.parquet")):
         pm = pd.read_parquet(os.path.join(meta_dir, "meta.parquet")).drop_duplicates("mint").set_index("mint")
+        pm = pm.reindex(columns=sorted(set(pm.columns) | {"name", "symbol", "creator", "created_timestamp", "twitter", "telegram",
+                                                          "website", "src"}))
         pf = pm[pm["src"].isna()] if "src" in pm else pm
         j = c["mint"].map
         for col, src in (("symbol", "symbol"), ("token_name", "name"), ("creator", "creator")):
