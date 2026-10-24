@@ -3,8 +3,12 @@ walk-forward over five windows of pump.fun graduations (25 Apr-21 Oct 2026), on 
 
   rows  <monthsdata dir> <monthsh2 dir> <gap_minutes.npy> <out dir>   entry rows of the three families -> rows_P/U/R.pkl
   part1 <out dir>                                                     the Pick's gates and the shadow rules per window
+  calib <out dir> <history2 d.pkl>                                    w3/w4 rule K on five-minute closes against one-minute bars
+  radar <Radar grid scratch dir> <out dir>                            the live Radar model's design, its buys by month -> radar.json
   part2 <out dir>                                                     the walk-forward search -> months.json
-<monthsdata dir> may be "-" (only history2's windows, for a dry run). Nothing is bought; no network."""
+  report <out dir> <tables.md>                                        the tables of research/MONTHS-2026-10-23.md
+<monthsdata dir> may be "-" (only history2's windows, for a dry run). Nothing is bought; no network. Needs pyarrow, lightgbm;
+rows needs about 8 GB of memory (3 workers). Results of 24 Oct: research/months/."""
 import glob, itertools, json, math, multiprocessing as mp, os, sys
 import numpy as np, pandas as pd
 
@@ -118,6 +122,7 @@ def money(pieces, kind):
 # --------------------------------------------------------------------------------------------------------- rows
 SOL = None
 GAPS = None
+META = None
 
 
 def solusd(t):
@@ -199,14 +204,20 @@ def coin_rows(c, b):
         oc = outcomes(P, jt)
         row = dict(pool=c["pool"], w=c["w"], E=E, te=te, grad=gm, fam="".join(fam), hi6=float(np.nanmax(H6)) if len(H6) else 1.0,
                    **f)
-        row["oc"] = oc
+        row["Op"] = np.array([money(pc, "pick") for pc in oc], np.float32)
+        row["Or"] = np.array([money(pc, "radar") for pc in oc], np.float32)
+        row["M"] = np.array([sum(sh * m for sh, m in pc) for pc in oc], np.float32)
         rows.append(row)
     return rows
 
 
 def _work(args):
-    path, meta = args
+    path, k, n = args
+    meta = META
     b = pd.read_parquet(path)
+    if n > 1:
+        pools = np.sort(b["pool"].unique())[k::n]
+        b = b[b["pool"].isin(pools)]
     out = []
     for pool, g in b.groupby("pool", sort=False):
         c = meta.get(pool)
@@ -217,7 +228,7 @@ def _work(args):
 
 
 def cmd_rows(md, h2, gapf, out):
-    global SOL, GAPS
+    global SOL, GAPS, META
     os.makedirs(out, exist_ok=True)
     mk = json.load(open(os.path.join(md, "market.json"))) if md != "-" else None
     if mk:
@@ -237,7 +248,7 @@ def cmd_rows(md, h2, gapf, out):
         if r["w"]:
             meta[r["pool"]] = r
             planned[r["w"]] = planned.get(r["w"], 0) + 1
-    jobs += [(f, None) for f in sorted(glob.glob(os.path.join(h2, "bars_*.parquet")))]
+    jobs += [(f, 0, 1) for f in sorted(glob.glob(os.path.join(h2, "bars_*.parquet")))]
     if md != "-":
         for f in sorted(glob.glob(os.path.join(md, "meta_w*.json"))):
             for r in json.load(open(f)):
@@ -245,11 +256,12 @@ def cmd_rows(md, h2, gapf, out):
                 if r["w"]:
                     meta[r["pool"]] = r
                     planned[r["w"]] = planned.get(r["w"], 0) + 1
-        jobs += [(f, None) for f in sorted(glob.glob(os.path.join(md, "bars_w*.parquet")))]
-    jobs = [(f, meta) for f, _ in jobs]
-    with mp.get_context("fork").Pool(4) as pool:
-        parts = pool.map(_work, jobs, chunksize=1)
-    rows = [r for p in parts for r in p]
+        jobs += [(f, k, 12) for f in sorted(glob.glob(os.path.join(md, "bars_w*.parquet"))) for k in range(12)]
+    META = meta
+    rows = []
+    with mp.get_context("fork").Pool(3) as pool:
+        for part in pool.imap_unordered(_work, jobs, chunksize=1):
+            rows += part
     print("rows", len(rows), flush=True)
     fetched = {}
     for p, r in meta.items():
@@ -257,9 +269,9 @@ def cmd_rows(md, h2, gapf, out):
             fetched[r["w"]] = fetched.get(r["w"], 0) + 1
     for fam, kind in (("P", "pick"), ("U", "pick"), ("R", "radar")):
         rs = [r for r in rows if fam in r["fam"]]
-        df = pd.DataFrame([{k: v for k, v in r.items() if k != "oc"} for r in rs])
-        O = np.array([[money(pc, kind) for pc in r["oc"]] for r in rs], dtype=np.float32)
-        Mx = np.array([[sum(s * m for s, m in pc) for pc in r["oc"]] for r in rs], dtype=np.float32)
+        df = pd.DataFrame([{k: v for k, v in r.items() if k not in ("Op", "Or", "M")} for r in rs])
+        O = np.stack([r["Op" if kind == "pick" else "Or"] for r in rs])
+        Mx = np.stack([r["M"] for r in rs])
         order = np.lexsort((df["E"].to_numpy(), df["pool"].to_numpy()))
         df = df.iloc[order].reset_index(drop=True)
         pd.to_pickle({"df": df, "O": O[order], "M": Mx[order], "planned": planned, "fetched": fetched}, os.path.join(out, "rows_%s.pkl" % fam))

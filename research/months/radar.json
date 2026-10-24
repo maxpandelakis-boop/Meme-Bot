@@ -1,0 +1,151 @@
+{
+ "src": "grid_early_live_tr300 rows from 30 min (69,647), weeks from 24 Aug, seeds 1/2/3/5/7, rule K at 20 EUR",
+ "cuts": {
+  "0.25%": {
+   "all": {
+    "buysPerSeed": 0.0,
+    "mean": NaN,
+    "inProfit": NaN,
+    "x10": NaN,
+    "x3": NaN,
+    "totalPerSeed": 0.0
+   }
+  },
+  "0.5%": {
+   "2026-08": {
+    "buysPerSeed": 4.0,
+    "mean": -6.27,
+    "inProfit": 30.0,
+    "x10": 0.0,
+    "x3": 15.0,
+    "totalPerSeed": -25.1
+   },
+   "2026-09": {
+    "buysPerSeed": 55.0,
+    "mean": -5.73,
+    "inProfit": 5.1,
+    "x10": 1.5,
+    "x3": 13.5,
+    "totalPerSeed": -315.2
+   },
+   "2026-10": {
+    "buysPerSeed": 16.6,
+    "mean": -8.03,
+    "inProfit": 9.6,
+    "x10": 0.0,
+    "x3": 8.4,
+    "totalPerSeed": -133.2
+   },
+   "all": {
+    "buysPerSeed": 75.6,
+    "mean": -6.26,
+    "inProfit": 7.4,
+    "x10": 1.1,
+    "x3": 12.4,
+    "totalPerSeed": -473.6
+   }
+  },
+  "1%": {
+   "2026-08": {
+    "buysPerSeed": 36.0,
+    "mean": -5.71,
+    "inProfit": 15.0,
+    "x10": 0.0,
+    "x3": 12.2,
+    "totalPerSeed": -205.5
+   },
+   "2026-09": {
+    "buysPerSeed": 150.2,
+    "mean": -7.0,
+    "inProfit": 6.0,
+    "x10": 1.1,
+    "x3": 14.4,
+    "totalPerSeed": -1051.2
+   },
+   "2026-10": {
+    "buysPerSeed": 56.4,
+    "mean": -9.4,
+    "inProfit": 5.3,
+    "x10": 1.4,
+    "x3": 16.0,
+    "totalPerSeed": -529.9
+   },
+   "all": {
+    "buysPerSeed": 242.6,
+    "mean": -7.36,
+    "inProfit": 7.2,
+    "x10": 1.0,
+    "x3": 14.4,
+    "totalPerSeed": -1786.6
+   }
+  },
+  "2%": {
+   "2026-08": {
+    "buysPerSeed": 80.4,
+    "mean": -5.87,
+    "inProfit": 10.0,
+    "x10": 1.2,
+    "x3": 11.4,
+    "totalPerSeed": -472.2
+   },
+   "2026-09": {
+    "buysPerSeed": 290.6,
+    "mean": -4.85,
+    "inProfit": 8.2,
+    "x10": 2.5,
+    "x3": 18.4,
+    "totalPerSeed": -1410.2
+   },
+   "2026-10": {
+    "buysPerSeed": 129.6,
+    "mean": -8.48,
+    "inProfit": 6.5,
+    "x10": 0.9,
+    "x3": 14.7,
+    "totalPerSeed": -1098.5
+   },
+   "all": {
+    "buysPerSeed": 500.6,
+    "mean": -5.95,
+    "inProfit": 8.0,
+    "x10": 1.9,
+    "x3": 16.3,
+    "totalPerSeed": -2980.8
+   }
+  },
+  "5%": {
+   "2026-08": {
+    "buysPerSeed": 186.4,
+    "mean": -4.52,
+    "inProfit": 12.8,
+    "x10": 1.4,
+    "x3": 14.7,
+    "totalPerSeed": -842.5
+   },
+   "2026-09": {
+    "buysPerSeed": 608.4,
+    "mean": -5.58,
+    "inProfit": 7.8,
+    "x10": 2.7,
+    "x3": 17.5,
+    "totalPerSeed": -3395.1
+   },
+   "2026-10": {
+    "buysPerSeed": 289.0,
+    "mean": -5.46,
+    "inProfit": 9.8,
+    "x10": 2.0,
+    "x3": 14.4,
+    "totalPerSeed": -1577.6
+   },
+   "all": {
+    "buysPerSeed": 1083.8,
+    "mean": -5.37,
+    "inProfit": 9.2,
+    "x10": 2.3,
+    "x3": 16.2,
+    "totalPerSeed": -5815.2
+   }
+  }
+ }
+}
