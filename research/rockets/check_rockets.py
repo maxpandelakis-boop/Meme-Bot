@@ -13,6 +13,7 @@ BAR, MIN, H, DAY = 300_000, 60_000, 3_600_000, 86_400_000
 FIT_ALL, UNSEEN_ALL = ("w1", "w2", "w3"), ("w4", "w5")
 ES = (5, 30)
 ALLOW = 0.60
+LIQ_MIN = 10_000
 RULES = {"S1": (None, 10.0, 24), "S2": (0.50, 10.0, 24), "S3": (0.30, 11.0, 6)}
 RULE_NAME = {"S1": "no stop / 10x / 24 h", "S2": "-50% / 10x / 24 h", "S3": "-30% / 11x / 6 h (rule K)"}
 CJK = re.compile(r"[぀-ヿ㐀-䶿一-鿿가-힯ｦ-ﾟ]")
@@ -182,12 +183,14 @@ def main(work, hist, market, meta_dir=None):
     mk = json.load(open(market))
     sol = np.array(mk["SOLUSDT"], float)
     res = {"facts_available": {}, "partA": [], "partB": [], "partC": [], "base": {}, "describe": {}}
-    E5 = ent[(ent["E"] == 5) & ent["ok"]]
+    E5 = ent[(ent["E"] == 5) & ent["ok"]].merge(coins[["pool", "sol0", "tok0"]], on="pool", how="left")
+    i5 = np.clip(np.searchsorted(sol[:, 0], E5["te"].to_numpy() - H, side="right") - 1, 0, None)
+    E5 = E5[2 * np.sqrt(E5["sol0"] * E5["tok0"] * E5["p0"] * sol[i5, 1]) >= LIQ_MIN]
     fr = creator_rocket(c, E5)
     allrows = []
     for E in ES:
         e = ent[(ent["E"] == E) & ent["ok"]].copy()
-        e = e.merge(c[["pool", "mint", "symbol", "token_name", "creator", "t"] + [k for k in c.columns if k.startswith("f_")]],
+        e = e.merge(c[["pool", "mint", "sol0", "tok0", "symbol", "token_name", "creator", "t"] + [k for k in c.columns if k.startswith("f_")]],
                     on="pool", how="left")
         # outage filter
         te = e["te"].to_numpy(np.int64)
@@ -195,6 +198,10 @@ def main(work, hist, market, meta_dir=None):
         h2w = e["w"].isin(["w3", "w4"]).to_numpy()
         for a, b in GAPS:
             bad |= h2w & (a <= te + 6 * H) & (b >= te - H)
+        # Amendment 1: pool liquidity at the entry of at least $10,000
+        i = np.clip(np.searchsorted(sol[:, 0], te - H, side="right") - 1, 0, None)
+        e["liq0"] = 2 * np.sqrt(e["sol0"] * e["tok0"] * e["p0"] * sol[i, 1])
+        bad |= ~(e["liq0"] >= LIQ_MIN)
         e = e[~bad].copy()
         # F2 creator rocket known at the entry
         frm = e["creator"].map(fr)

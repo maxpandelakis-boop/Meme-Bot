@@ -92,3 +92,12 @@ before, close after 24 h), and how the rockets differ from the other coins on th
 Say so plainly, and name what it would take: data that costs money or a login (bundle and sniper detection per launch from paid
 RPC credits, X engagement from the paid X API, Telegram calls with the user's own key, wallet labels from Nansen/Arkham-type
 services).
+
+## Amendment 1 (24 Oct, ~08:40 UTC, before any fact result was read)
+
+Checking the rocket list (no split by any fact) showed "rockets" of 400x to 5,800x from a market cap of $1,400-7,700: pools that
+were sold down to well under 1 SOL, where a buy of a few hundred dollars makes a 10x and a 20 EUR ticket would move the price
+itself. So every entry also needs a pool liquidity of at least $10,000 at the entry (two times the SOL side, from the start
+reserves and the price, SOL/USD from Binance, as research/check_months.py). With it: E = 5 50,683 entries, 1,089 rockets (2.15 %);
+E = 30 28,279 entries, 423 rockets (1.5 %). The result of a shuffled-outcome null run (no information) was looked at to check the
+code; one run with the real outcomes and history2's facts only was made and deleted unread.
