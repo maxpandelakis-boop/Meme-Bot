@@ -1,0 +1,1 @@
+Launch facts (pump.fun public coin data; GeckoTerminal names as fallback) of the pump.fun graduations of the five month windows (25 Apr-21 Oct 2026, start SOL side >= 10), made by research/rockets/meta_fetch.py. Fake money only.
