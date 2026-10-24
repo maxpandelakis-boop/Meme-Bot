@@ -580,6 +580,72 @@ def cmd_radar(scratch, out):
     json.dump(res, open(os.path.join(out, "radar.json"), "w"), indent=1)
 
 
+def cmd_report(out, doc):
+    """The tables of research/MONTHS-2026-10-23.md from part1.json, radar.json and months.json (the prose is written by hand)."""
+    p1 = json.load(open(os.path.join(out, "part1.json")))
+    rd = json.load(open(os.path.join(out, "radar.json")))
+    m2 = json.load(open(os.path.join(out, "months.json")))
+    eu = lambda x: "-" if x is None else ("%+.2f" % x)
+    L = ["## Data", "", "| window | graduations | with candles | Pick-type coins (P) | wide (U) | Radar-type (R) |", "|---|---|---|---|---|---|"]
+    for w in WN:
+        L.append("| %s %s | %s | %s | %s | %s | %s |" % (w, LABEL[w], p1["planned"].get(w, 0), p1["fetched"].get(w, 0),
+                 *(m2["families"][f]["coins"].get(w, 0) for f in "PUR")))
+    L += ["", "## Part 1a: the Pick's gates, one entry per coin, 50 EUR, per trade after paper fees", "",
+          "| window | coins | K (today) | in profit | 3x in 6 h | 11x in 6 h | stopped | A | B | C | D | clock hours with a gate coin | one random gate coin per hour, K |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for w in WN:
+        r = p1["windows"].get(w)
+        if not r:
+            continue
+        k = r["K"]
+        L.append("| %s %s | %d | %s | %.0f %% | %.1f %% | %.1f %% | %.0f %% | %s | %s | %s | %s | %d | %s |" % (
+            w, LABEL[w], r["coins"], eu(k["mean"]), k["inProfit"], k["x3"], k["x11"], k["stopped"], eu(r["A"]["mean"]), eu(r["B"]["mean"]),
+            eu(r["C"]["mean"]), eu(r["D"]["mean"]), r["hoursWithCoin"], eu(r["randomPerHour"])))
+    if p1.get("calib1min"):
+        L += ["", "Five-minute closes against history2's one-minute bars (stop on the minute's low), same coins and hours: " +
+              ", ".join("%s %s vs %s" % (w, eu(c["K5min"]), eu(c["K1min"])) for w, c in p1["calib1min"].items()) + " per 50 EUR."]
+    L += ["", "## Part 1b: the Radar model by month (walk-forward, 5 seeds, rule K, 20 EUR)", "",
+          "| cut | month | buys per seed | per 20 EUR | in profit | 10x | 3x |", "|---|---|---|---|---|---|---|"]
+    for c, r in rd["cuts"].items():
+        for mo, x in r.items():
+            if x["buysPerSeed"]:
+                L.append("| top %s | %s | %.1f | %s | %.0f %% | %.1f %% | %.1f %% |" % (c, mo, x["buysPerSeed"], eu(x["mean"]), x["inProfit"], x["x10"], x["x3"]))
+    for fam, name in (("P", "P, Pick-type, 50 EUR"), ("U", "U, wide, 50 EUR"), ("R", "R, Radar-type chart only, 20 EUR")):
+        F = m2["families"][fam]
+        L += ["", "## Part 2, family %s" % name, "",
+              "| unseen window | fit on | picker | filter | sell rule | fit mean | unseen coins | unseen mean | in profit | top 20 of fit > 0 unseen | Holm | best with hindsight on unseen |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        for w, st in F["steps"].items():
+            for pk in ("MEAN", "WORST"):
+                x = st.get(pk)
+                if not x:
+                    continue
+                t = x["test"]
+                L.append("| %s | %s | %s | %s | %s | %s | %d | %s | %.0f %% | %s | %s | %s |" % (
+                    w, "+".join(st["fit"]), pk, x["filter"], x["rule"], eu(x["fitScore"]), t["n"], eu(t.get("mean")), t.get("inProfit", 0),
+                    "%d of 20" % st["top20PositiveOnTest"] if pk == "MEAN" else "", st["holmSurvivors"] if pk == "MEAN" else "",
+                    ("%s, %s: %s on %d" % (st["hindsight"]["filter"], st["hindsight"]["rule"], eu(st["hindsight"]["mean"]), st["hindsight"]["coins"])) if pk == "MEAN" else ""))
+    L += ["", "## The decision (step 5: fit on w1-w4, judged on w5)", "",
+          "| candidate | coins | mean | after allowance | lower bound (1 %/6) | without best trade | windows > 0 | holds |", "|---|---|---|---|---|---|---|---|"]
+    verdict = []
+    for fam in "PUR":
+        st = m2["families"][fam]["steps"].get("w5")
+        for pk in ("MEAN", "WORST"):
+            x = (st or {}).get(pk)
+            if not x:
+                L.append("| %s %s | none eligible | | | | | | no |" % (fam, pk))
+                verdict.append(False)
+                continue
+            t = x["test"]
+            pos = sum(1 for v in x["perWindow"].values() if v.get("n") and v["mean"] > 0)
+            h = bool(t["holds"] and pos >= 4)
+            verdict.append(h)
+            L.append("| %s %s: %s, %s | %d | %s | %s | %s | %s | %d of %d | %s |" % (fam, pk, x["filter"], x["rule"], t["n"], eu(t["mean"]),
+                     eu(t["meanAfterAllowance"]), eu(t["lowerBound"]), eu(t["totalWithoutBest"]), pos, len(x["perWindow"]), "yes" if h else "no"))
+    open(doc, "w").write("\n".join(L) + "\n")
+    print("holds:", verdict)
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if a[0] == "rows":
@@ -590,5 +656,7 @@ if __name__ == "__main__":
         cmd_part2(a[1])
     elif a[0] == "calib":
         cmd_calib(a[1], a[2])
+    elif a[0] == "report":
+        cmd_report(a[1], a[2])
     elif a[0] == "radar":
         cmd_radar(a[1], a[2])
