@@ -1,7 +1,9 @@
 # Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): the launch facts of every pump.fun graduation of
 # the five month windows from the Solana chain and the coin's own metadata file (research/rockets/meta_chain.py): name, ticker,
 # creator wallet (pump.fun's bonding-curve account), creation time (the metadata account's first transaction), the X / Telegram /
-# website links of the metadata file -> branch "rocketschain". A second source next to pump.fun's API (rockets-meta.yml).
+# website links of the metadata file -> branch "rocketschain". A second source next to pump.fun's API (rockets-meta.yml). A later run
+# goes on with the coins an earlier one did not reach and asks again for the metadata files it could not read (gateways from the
+# probe of rockets-gateways.yml).
 # Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or saved; without it the public Solana RPC is used.
 # Touches no bot branch and no paper account. Started by a push of this file or meta_chain.py on this branch, or by hand.
 name: rockets-chain
@@ -38,7 +40,10 @@ jobs:
           if git fetch -q --depth 1 origin rocketschain 2>/dev/null; then
             git show FETCH_HEAD:chain.parquet > plan/prev.parquet
             python3 -c "import json, pandas as pd; done = set(pd.read_parquet('plan/prev.parquet')['mint']); p = json.load(open('plan/plan.json')); n0 = len(p['mints']); p['mints'] = [x for x in p['mints'] if x not in done]; json.dump(p, open('plan/plan.json', 'w')); print('already fetched', n0 - len(p['mints']), 'left', len(p['mints']))"
+            # their metadata files that could not be read are asked for again (meta_chain.py files; missing values were the text "NaN")
+            python3 -c "import json, pandas as pd; d = pd.read_parquet('plan/prev.parquet'); bad = lambda s: s.isna() | s.isin(['NaN', 'None', 'null', '']); r = d[bad(d['f_keys']) & ~bad(d['uri'])].sort_values('mint'); json.dump([[m, u] for m, u in zip(r['mint'], r['uri'])], open('plan/refetch.json', 'w')); print('metadata files to ask for again', len(r))"
           fi
+          [ -f plan/refetch.json ] || echo '[]' > plan/refetch.json
       - name: Probe on 24 coins (shows in this job's log within a minute or two)
         env:
           HK: ${{ secrets.HELIUS_API_KEY }}
@@ -58,7 +63,15 @@ jobs:
         i: [0, 1, 2]
     env:
       SHARD_MINUTES: "300"
+      FILE_MINUTES: "300"
       WORKERS: "16"
+      FILE_WORKERS: "16"
+      # the probe of 24 Oct (gateways.json on rocketsprobe): ipfs.filebase.io 297 of 299, pump.mypinata.cloud 194, gateway.pinata.cloud
+      # 136 (429s); ipfs.io answered every request with 429, the reason the run of 24 Oct read only 38.5 % of the files
+      GATEWAYS: "https://ipfs.filebase.io/ipfs/%s,https://pump.mypinata.cloud/ipfs/%s,https://gateway.pinata.cloud/ipfs/%s"
+      GW_ROTATE: "0"
+      GW_GAP: "0.4"
+      FILE_TRIES: "3"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,10 +81,13 @@ jobs:
       - env:
           HK: ${{ secrets.HELIUS_API_KEY }}
           NEED: need.json
-        run: python3 research/rockets/meta_chain.py shard plan.json ${{ matrix.i }} 3 chain_${{ matrix.i }}.json.gz
+        run: |
+          python3 research/rockets/meta_chain.py files refetch.json ${{ matrix.i }} 3 files_${{ matrix.i }}.json.gz &
+          python3 research/rockets/meta_chain.py shard plan.json ${{ matrix.i }} 3 chain_${{ matrix.i }}.json.gz
+          wait
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: "chain-${{ matrix.i }}", path: "chain_*.json.gz", retention-days: 5}
+        with: {name: "chain-${{ matrix.i }}", path: "*_${{ matrix.i }}.json.gz", retention-days: 5}
   final:
     needs: [shard]
     if: ${{ !cancelled() }}

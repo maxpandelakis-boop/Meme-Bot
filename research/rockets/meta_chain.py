@@ -3,7 +3,10 @@ five month windows straight from the Solana chain and the coin's own metadata fi
 (research/rockets/meta_fetch.py), which answers little from GitHub's runners.
 
   shard <plan.json> <i> <n> <out.json.gz>   mints i, i+n, ...; the file is rewritten every 200 mints
-  final <dir with shard files> <out dir> [<earlier chain.parquet>]   one chain.parquet (an earlier run's rows kept)
+  files <refetch.json> <i> <n> <out.json.gz>   only the metadata files of [mint, link] pairs i, i+n, ... (links an earlier run
+                                            could not read); no RPC
+  final <dir with shard files> <out dir> [<earlier chain.parquet>]   one chain.parquet (an earlier run's rows kept, their file
+                                            fields filled from the files output where it read one)
   wiki  <first day> <last day> <out.json>   the 1,000 most-read English Wikipedia articles of each day (a "news of the day" list)
 
 Per mint:
@@ -20,8 +23,9 @@ import base64, concurrent.futures, glob, gzip, hashlib, json, os, re, sys, threa
 PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 META = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 PUBLIC_RPC = "https://api.mainnet-beta.solana.com"
-GATEWAYS = ("https://ipfs.io/ipfs/%s", "https://gateway.pinata.cloud/ipfs/%s", "https://dweb.link/ipfs/%s", "https://w3s.link/ipfs/%s",
-            "https://4everland.io/ipfs/%s", "https://nftstorage.link/ipfs/%s", "https://ipfs.filebase.io/ipfs/%s")
+GATEWAYS = tuple(os.environ["GATEWAYS"].split(",")) if os.environ.get("GATEWAYS") else (   # env: the probe's best (gateways.py)
+    "https://ipfs.io/ipfs/%s", "https://gateway.pinata.cloud/ipfs/%s", "https://dweb.link/ipfs/%s", "https://w3s.link/ipfs/%s",
+    "https://4everland.io/ipfs/%s", "https://nftstorage.link/ipfs/%s", "https://ipfs.filebase.io/ipfs/%s")
 WIKI = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia.org/all-access/%s"
 UA = {"User-Agent": "memebot-research (github.com/maxpandelakis-boop/Meme-Bot)", "Accept": "application/json",
       "Content-Type": "application/json"}
@@ -178,26 +182,31 @@ def parse_curve(b64):
         return {}
 
 
-CID = re.compile(r"/ipfs/([A-Za-z0-9]+)")
+CID = re.compile(r"(?:/ipfs/|^ipfs://)([A-Za-z0-9]+)")      # also the bare ipfs:// links, which the run of 24 Oct skipped
 _gw = [0]
 
 
 def metadata_file(uri):
-    """The metadata JSON: an IPFS file over two gateways taken in turn (the load spread over all of them), anything else from
-    its own link."""
+    """The metadata JSON: an IPFS file over FILE_TRIES gateways (default 2) taken in turn (the load spread over all of them;
+    GW_ROTATE=0: always in the order of GATEWAYS, the probe's best first), anything else from its own link (FILE_TRIES tries,
+    a pause between them, none after an answer that will not change such as 404)."""
     if not uri:
         return None, "nouri"
     m = CID.search(uri)
     if m:
-        k = _gw[0]
+        k = _gw[0] if os.environ.get("GW_ROTATE") != "0" else 0
         _gw[0] += 1
-        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(2)]
+        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(min(TRIES, len(GATEWAYS)))]
     else:
-        urls = [uri]
+        urls = [uri] * TRIES
     last = None
-    for u in urls:
+    for t, u in enumerate(urls):
         if not u.startswith("http"):
             continue
+        if t and not m:
+            if str(last) in ("400", "401", "403", "404", "410", "badjson"):
+                break
+            time.sleep(3 * t)
         st, raw = http(u, gap=float(os.environ.get("GW_GAP") or 0.4), tries=1, timeout=12)
         last = st
         if raw:
@@ -206,6 +215,18 @@ def metadata_file(uri):
             except Exception:
                 last = "badjson"
     return None, str(last)
+
+
+TRIES = int(os.environ.get("FILE_TRIES") or 2)
+
+
+def file_fields(j):
+    return {"f_twitter": j.get("twitter"), "f_telegram": j.get("telegram"), "f_website": j.get("website"),
+            "f_name": j.get("name"), "f_symbol": j.get("symbol"), "f_createdOn": j.get("createdOn"),
+            "f_showName": j.get("showName"), "f_desc_len": len(str(j.get("description") or "")),
+            "f_keys": ",".join(sorted(map(str, j.keys())))[:300],
+            "f_image": str(j.get("image") or "")[:200],
+            "f_video": str(j.get("video") or j.get("animation_url") or j.get("video_uri") or "")[:200]}
 
 
 PAGES = int(os.environ.get("PAGES") or 8)
@@ -287,12 +308,7 @@ def cmd_shard(plan, i, n, out):
             j, st = f.result()
             files[st] = files.get(st, 0) + 1
             if isinstance(j, dict):
-                res[m].update({"f_twitter": j.get("twitter"), "f_telegram": j.get("telegram"), "f_website": j.get("website"),
-                               "f_name": j.get("name"), "f_symbol": j.get("symbol"), "f_createdOn": j.get("createdOn"),
-                               "f_showName": j.get("showName"), "f_desc_len": len(str(j.get("description") or "")),
-                               "f_keys": ",".join(sorted(map(str, j.keys())))[:300],
-                               "f_image": str(j.get("image") or "")[:200],
-                               "f_video": str(j.get("video") or j.get("animation_url") or j.get("video_uri") or "")[:200]})
+                res[m].update(file_fields(j))
         if a % 200 == 0 or a + 100 >= len(mints):
             got = sum(1 for r in res.values() if r.get("created_s"))
             log(a + len(part), "of", len(mints), "created", got, "names", sum(1 for r in res.values() if r.get("symbol")),
@@ -301,6 +317,30 @@ def cmd_shard(plan, i, n, out):
             with gzip.open(tmp, "wt") as fh:
                 json.dump({"coins": res, "done": a + len(part), "planned": len(mints)}, fh)
             os.replace(tmp, out)
+    pool.shutdown()
+
+
+def cmd_files(refetch, i, n, out):
+    """Only the metadata files, for links an earlier run could not read (no RPC); written every 500 links."""
+    pairs = json.load(open(refetch))[int(i)::int(n)]
+    stop = time.time() + 60 * float(os.environ.get("FILE_MINUTES", 200))
+    pool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("FILE_WORKERS") or 16))
+    res, codes = {}, {}
+    for a in range(0, len(pairs), 500):
+        if time.time() > stop:
+            log("files: time budget used at", a, "of", len(pairs))
+            break
+        fj = {pool.submit(metadata_file, u): m for m, u in pairs[a:a + 500]}
+        for f in concurrent.futures.as_completed(fj):
+            j, st = f.result()
+            codes[st] = codes.get(st, 0) + 1
+            if isinstance(j, dict):
+                res[fj[f]] = file_fields(j)
+        log("files", a + len(fj), "of", len(pairs), codes)
+        tmp = out + ".tmp"
+        with gzip.open(tmp, "wt") as fh:
+            json.dump({"files": res, "done": a + len(fj), "planned": len(pairs), "codes": codes}, fh)
+        os.replace(tmp, out)
     pool.shutdown()
 
 
@@ -326,20 +366,29 @@ def cmd_final(src, out, prev=None):
     """One chain.parquet from the shard files, plus the rows of an earlier run (prev) for the coins this run left out."""
     import pandas as pd
     os.makedirs(out, exist_ok=True)
-    rows = []
+    rows, files = [], {}
     for f in sorted(glob.glob(os.path.join(src, "**", "*.json.gz"), recursive=True)):
-        rows += list(json.load(gzip.open(f, "rt"))["coins"].values())
+        j = json.load(gzip.open(f, "rt"))
+        rows += list((j.get("coins") or {}).values())
+        files.update(j.get("files") or {})
     d = pd.DataFrame(rows).drop_duplicates("mint")
-    for c in d.columns:
-        if d[c].dtype == object and c != "mint":
-            d[c] = d[c].map(lambda x: None if x is None else (x if isinstance(x, str) else json.dumps(x)))
     if prev and os.path.exists(prev):
         old = pd.read_parquet(prev)
-        log("earlier run", len(old), "this run", len(d))
-        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]))]], ignore_index=True)
+        for c in old.columns:
+            if not pd.api.types.is_numeric_dtype(old[c]):
+                old[c] = old[c].where(~old[c].isin(["NaN", "None", "null"]), None)
+        got = old["mint"].isin(set(files)) & old["f_keys"].isna()
+        for c in next(iter(files.values()), {}):
+            old.loc[got, c] = [files[m].get(c) for m in old.loc[got, "mint"]]
+        log("earlier run", len(old), "this run", len(d), "earlier rows given a metadata file now", int(got.sum()))
+        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]) if len(d) else set())]], ignore_index=True)
+    for c in d.columns:
+        if (d[c].dtype == object or pd.api.types.is_string_dtype(d[c])) and c != "mint":
+            d[c] = d[c].map(lambda x: None if x is None or (isinstance(x, float) and x != x) else
+                            (x if isinstance(x, str) else json.dumps(x)))           # a missing value stays empty, not "NaN"
     d.to_parquet(os.path.join(out, "chain.parquet"), index=False)
     log("coins", len(d), {c: int(d[c].notna().sum()) for c in d.columns})
 
 
 if __name__ == "__main__":
-    {"shard": cmd_shard, "final": cmd_final, "wiki": cmd_wiki}[sys.argv[1]](*sys.argv[2:])
+    {"shard": cmd_shard, "files": cmd_files, "final": cmd_final, "wiki": cmd_wiki}[sys.argv[1]](*sys.argv[2:])

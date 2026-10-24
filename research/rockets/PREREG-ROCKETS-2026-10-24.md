@@ -340,3 +340,29 @@ The user asked for results per stage. So Part A is run once now on the facts tha
 L-F9, L-F13), after a shuffled-outcome run as a code check, and reported as an **interim** result. The final verdict on universe
 L is the later run with all L-facts in one Holm family (its p-value bar is stricter, so an interim pass can still fail there).
 After this interim look nothing in the plan, the buckets or the code changes except bug fixes, and any bug fix is reported.
+
+## Amendment 11 (24 Oct, ~17:40 UTC, before any media or picture fact result was read): reading the metadata files again
+
+The chain run of 24 Oct (rockets-chain.yml, branch rocketschain, 17:04 UTC) reached 48,300 of the 71,978 graduations before
+its time budget ran out, and read the metadata file of only 18,607 of them (38.5 %; ipfs.io links 34.7 %). It also wrote
+missing values as the text "NaN", which made every coin look as if it had a file; this bug is fixed in commit 10801c2 (the
+readers treat that text as empty), before any fact was computed on it. Under the 80 % rule of the plan, the media facts
+(F10-F18) and the picture facts (F19-F22) could not have been tested on that data.
+
+A probe (research/rockets/gateways.py, rockets-gateways.yml; gateways.json on branch rocketsprobe, 17:25 UTC) asked 16 IPFS
+gateways from GitHub's machines for 300 links that had failed and 100 that had worked (seed 7, no outcome used):
+**ipfs.filebase.io served 297 of the 299 IPFS links** (232 of 234 that had failed), pump.mypinata.cloud 194 (403 for the rest),
+gateway.pinata.cloud 136 (429, rate limit), and ipfs.io answered every request with 429: the reason for the low read rate. The
+other 12 gateways served none. Of the links that are not IPFS, metadata.j7tracker.io answered 404 for all 56 that had failed:
+that host has deleted those files, and no free source has them.
+
+So, with no change to any fact, bucket or test:
+- every metadata file not read yet is asked for again (meta_chain.py files), from ipfs.filebase.io first, then
+  pump.mypinata.cloud and gateway.pinata.cloud, and so are the bare ipfs:// links the first run skipped; the 23,678
+  graduations not reached yet are read the same way (chain run 6). The pictures (images.py) and universe L's metadata files
+  (launches.py mshard) use the same gateways.
+- metadata.j7tracker.io held 17-19 % of the w1 and w2 links, so the media and picture facts may stay below 80 % in w1 and w2.
+  The plan's own rule then applies: such a fact is fit on w3 alone and tested on w4 and w5 (as for the facts known only in
+  w3 and w4). The report gives the coverage per window.
+- The Helius key answered only 429 from about 14:19 UTC; the code then uses the public Solana RPC, which is slower but reads
+  the same data.

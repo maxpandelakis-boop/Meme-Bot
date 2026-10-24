@@ -14,9 +14,10 @@ import concurrent.futures, glob, io, json, os, re, sys, threading, time, urllib.
 GROUPS = {"animal_photo": "a photo of a real animal", "animal_drawn": "a cartoon drawing of an animal",
           "person_photo": "a photo of a real person", "character_drawn": "a cartoon drawing of a person or character",
           "text_logo": "a logo or text or symbol", "object_scene": "a photo of an object or a place"}
-GATEWAYS = ("https://ipfs.io/ipfs/%s", "https://gateway.pinata.cloud/ipfs/%s", "https://dweb.link/ipfs/%s", "https://w3s.link/ipfs/%s",
-            "https://4everland.io/ipfs/%s", "https://nftstorage.link/ipfs/%s", "https://ipfs.filebase.io/ipfs/%s")
-CID = re.compile(r"/ipfs/([A-Za-z0-9]{20,})")
+GATEWAYS = tuple(os.environ["GATEWAYS"].split(",")) if os.environ.get("GATEWAYS") else (   # env: the probe's best (gateways.py)
+    "https://ipfs.io/ipfs/%s", "https://gateway.pinata.cloud/ipfs/%s", "https://dweb.link/ipfs/%s", "https://w3s.link/ipfs/%s",
+    "https://4everland.io/ipfs/%s", "https://nftstorage.link/ipfs/%s", "https://ipfs.filebase.io/ipfs/%s")
+CID = re.compile(r"(?:/ipfs/|^ipfs://)([A-Za-z0-9]{20,})")      # also the bare ipfs:// links
 UA = {"User-Agent": "memebot-research (github.com/maxpandelakis-boop/Meme-Bot)"}
 MAX_BYTES = 4_000_000
 SAMPLE_N, SEED = 120, 7
@@ -53,9 +54,9 @@ def picture(url):
     m = CID.search(url or "")
     if m:
         with _g:
-            k = _k[0]
+            k = _k[0] if os.environ.get("GW_ROTATE") != "0" else 0      # GW_ROTATE=0: the probe's best gateway first
             _k[0] += 1
-        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(3)]
+        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(min(3, len(GATEWAYS)))]
     else:
         urls = [url] if (url or "").startswith("http") else []
     st = "nourl"
