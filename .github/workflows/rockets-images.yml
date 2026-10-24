@@ -1,0 +1,92 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendment 5): every coin's picture read by
+# OpenAI's CLIP model (research/rockets/images.py): what it shows (six fixed groups), animated or not, a look-alike hash, and
+# whether it fits the coin's name -> branch "rocketsimages". The picture links come from branch rocketschain (rockets-chain.yml).
+# Nothing is bought; no key or secret beyond the run's own token is used. Touches no bot branch and no paper account.
+# Started by a push of this file or images.py on this branch, or by hand. A probe on about 60 pictures runs first.
+# Run note: first run 24 Oct, after chain run 8 (63,032 metadata files read).
+name: rockets-images
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-images.yml, research/rockets/images.py]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: rockets-images
+  cancel-in-progress: true
+env:
+  # gateways from the probe of 24 Oct (gateways.json on rocketsprobe, amendment 11): ipfs.filebase.io first, ipfs.io rate-limits
+  GATEWAYS: "https://ipfs.filebase.io/ipfs/%s,https://pump.mypinata.cloud/ipfs/%s,https://gateway.pinata.cloud/ipfs/%s"
+  GW_ROTATE: "0"
+  GW_GAP: "0.45"                 # ipfs.filebase.io answered 429 above about 2.5 requests a second from one machine
+  FILE_TRIES: "3"
+  PIP_DEPS: pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4 pillow==11.0.0 transformers==4.46.3
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m pip install --quiet torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --quiet $PIP_DEPS
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          git fetch -q --depth 1 origin rocketschain && git show FETCH_HEAD:chain.parquet > chain.parquet
+          SHARD_MINUTES=10 python3 research/rockets/images.py shard chain.parquet 0 1000 probe.parquet
+          python3 -c "import pandas as pd; d = pd.read_parquet('probe.parquet'); print(d.drop(columns=['mint']).head(12).to_string()); print(d['status'].value_counts().to_dict())"
+      - uses: actions/upload-artifact@v4
+        with: {name: "chainfile", path: "chain.parquet", retention-days: 3}
+  shard:
+    needs: probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      max-parallel: 3                # the account has few runners: more than 3 research jobs at once hold up the bots' own scans
+      matrix:
+        i: [0, 1, 2]
+    env:
+      SHARD_MINUTES: "320"
+      WORKERS: "16"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m pip install --quiet torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --quiet $PIP_DEPS
+      - uses: actions/download-artifact@v4
+        with: {name: chainfile}
+      - run: python3 research/rockets/images.py shard chain.parquet ${{ matrix.i }} 3 img_${{ matrix.i }}.parquet thumbs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "img-${{ matrix.i }}", path: "img_*.parquet\nthumbs/", retention-days: 5, if-no-files-found: warn}
+  final:
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "img-*", merge-multiple: true, path: src}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          find src -maxdepth 2 | head -20
+          python3 research/rockets/images.py final src out
+          printf 'What the pictures of the pump.fun graduations of 25 Apr-21 Oct 2026 show, read by OpenAI CLIP (openai/clip-vit-base-patch32), made by research/rockets/images.py; handcheck/ = the 120 numbered pictures of the hand check. Fake money only.\n' > out/README.md
+          cd out && du -sh .
+          git init -q && git checkout -q -b rocketsimages && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketsimages $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketsimages
