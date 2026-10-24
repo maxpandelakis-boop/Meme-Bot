@@ -341,7 +341,7 @@ L-F9, L-F13), after a shuffled-outcome run as a code check, and reported as an *
 L is the later run with all L-facts in one Holm family (its p-value bar is stricter, so an interim pass can still fail there).
 After this interim look nothing in the plan, the buckets or the code changes except bug fixes, and any bug fix is reported.
 
-## Amendment 11 (24 Oct, ~17:40 UTC, before any media or picture fact result was read): reading the metadata files again
+## Amendment 11 (24 Oct, ~17:25 UTC, before any media or picture fact result was read): reading the metadata files again
 
 The chain run of 24 Oct (rockets-chain.yml, branch rocketschain, 17:04 UTC) reached 48,300 of the 71,978 graduations before
 its time budget ran out, and read the metadata file of only 18,607 of them (38.5 %; ipfs.io links 34.7 %). It also wrote
