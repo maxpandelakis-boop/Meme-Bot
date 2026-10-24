@@ -1,0 +1,1 @@
+Five-minute USD candles of the first 48 hours of the pump.fun graduations of 10 Aug-8 Oct 2026, made by research/months_fetch.py h2 from the history2 one-minute bars. Data provided by [Slink21]. Pumpfun Solana Dataset (2026). https://huggingface.co/datasets/Slinky21/Pumpfun_v2_dataset (CC BY 4.0). Fake money only.
