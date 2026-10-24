@@ -52,7 +52,7 @@ jobs:
         i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     env:
       SHARD_MINUTES: "200"
-      WORKERS: "6"
+      WORKERS: "16"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,8 +66,18 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: "chain-${{ matrix.i }}", path: "chain_*.json.gz", retention-days: 5}
+  wiki:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 research/rockets/meta_chain.py wiki 2026-04-23 2026-10-21 wiki_top.json
+      - uses: actions/upload-artifact@v4
+        with: {name: "chain-wiki", path: "wiki_top.json", retention-days: 5}
   final:
-    needs: shard
+    needs: [shard, wiki]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -83,6 +93,7 @@ jobs:
           URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           python3 research/rockets/meta_chain.py final src out
+          cp src/wiki_top.json out/ || true
           printf 'Launch facts from the Solana chain and the metadata files (IPFS) of the pump.fun graduations of the five month windows (25 Apr-21 Oct 2026, start SOL side >= 10), made by research/rockets/meta_chain.py. Fake money only.\n' > out/README.md
           cd out && du -sh .
           git init -q && git checkout -q -b rocketschain && git add -A \

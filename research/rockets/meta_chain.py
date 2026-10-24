@@ -4,6 +4,7 @@ five month windows straight from the Solana chain and the coin's own metadata fi
 
   shard <plan.json> <i> <n> <out.json.gz>   mints i, i+n, ...; the file is rewritten every 200 mints
   final <dir with shard files> <out dir>    one chain.parquet
+  wiki  <first day> <last day> <out.json>   the 1,000 most-read English Wikipedia articles of each day (a "news of the day" list)
 
 Per mint:
   - name, ticker and the link to the metadata file: from the mint account's own metadata (Token-2022 coins, pump.fun's newer
@@ -20,8 +21,10 @@ PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 META = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 PUBLIC_RPC = "https://api.mainnet-beta.solana.com"
 GATEWAYS = ("https://ipfs.io/ipfs/%s", "https://gateway.pinata.cloud/ipfs/%s", "https://dweb.link/ipfs/%s", "https://w3s.link/ipfs/%s",
-            "https://4everland.io/ipfs/%s")
-UA = {"User-Agent": "memebot-research", "Accept": "application/json", "Content-Type": "application/json"}
+            "https://4everland.io/ipfs/%s", "https://nftstorage.link/ipfs/%s", "https://ipfs.filebase.io/ipfs/%s")
+WIKI = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia.org/all-access/%s"
+UA = {"User-Agent": "memebot-research (github.com/maxpandelakis-boop/Meme-Bot)", "Accept": "application/json",
+      "Content-Type": "application/json"}
 
 
 def log(*a):
@@ -180,20 +183,22 @@ _gw = [0]
 
 
 def metadata_file(uri):
-    """The metadata JSON: the original link first, then the same file over other IPFS gateways."""
+    """The metadata JSON: an IPFS file over two gateways taken in turn (the load spread over all of them), anything else from
+    its own link."""
     if not uri:
         return None, "nouri"
-    urls = [uri]
     m = CID.search(uri)
     if m:
         k = _gw[0]
         _gw[0] += 1
-        urls += [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(2)]
+        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(2)]
+    else:
+        urls = [uri]
     last = None
     for u in urls:
         if not u.startswith("http"):
             continue
-        st, raw = http(u, gap=0.25, tries=2, timeout=20)
+        st, raw = http(u, gap=float(os.environ.get("GW_GAP") or 0.4), tries=1, timeout=12)
         last = st
         if raw:
             try:
@@ -284,7 +289,10 @@ def cmd_shard(plan, i, n, out):
             if isinstance(j, dict):
                 res[m].update({"f_twitter": j.get("twitter"), "f_telegram": j.get("telegram"), "f_website": j.get("website"),
                                "f_name": j.get("name"), "f_symbol": j.get("symbol"), "f_createdOn": j.get("createdOn"),
-                               "f_showName": j.get("showName"), "f_desc_len": len(str(j.get("description") or ""))})
+                               "f_showName": j.get("showName"), "f_desc_len": len(str(j.get("description") or "")),
+                               "f_keys": ",".join(sorted(map(str, j.keys())))[:300],
+                               "f_image": str(j.get("image") or "")[:200],
+                               "f_video": str(j.get("video") or j.get("animation_url") or j.get("video_uri") or "")[:200]})
         if a % 200 == 0 or a + 100 >= len(mints):
             got = sum(1 for r in res.values() if r.get("created_s"))
             log(a + len(part), "of", len(mints), "created", got, "names", sum(1 for r in res.values() if r.get("symbol")),
@@ -294,6 +302,24 @@ def cmd_shard(plan, i, n, out):
                 json.dump({"coins": res, "done": a + len(part), "planned": len(mints)}, fh)
             os.replace(tmp, out)
     pool.shutdown()
+
+
+def cmd_wiki(day0, day1, out):
+    """The 1,000 most-read English Wikipedia articles of every day from day0 to day1 (Wikimedia's free pageview API)."""
+    import datetime as dt
+    d, end, res = dt.date.fromisoformat(day0), dt.date.fromisoformat(day1), {}
+    while d <= end:
+        st, raw = http(WIKI % d.strftime("%Y/%m/%d"), gap=0.3)
+        try:
+            arts = json.loads(raw)["items"][0]["articles"] if raw else []
+        except Exception:
+            arts = []
+        res[d.isoformat()] = [[a.get("article"), a.get("views")] for a in arts]
+        if d.day == 1:
+            log(d, st, len(arts))
+        d += dt.timedelta(days=1)
+    json.dump(res, open(out, "w"))
+    log("days", len(res), "with articles", sum(1 for v in res.values() if v))
 
 
 def cmd_final(src, out):
@@ -311,4 +337,4 @@ def cmd_final(src, out):
 
 
 if __name__ == "__main__":
-    {"shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
+    {"shard": cmd_shard, "final": cmd_final, "wiki": cmd_wiki}[sys.argv[1]](*sys.argv[2:])
