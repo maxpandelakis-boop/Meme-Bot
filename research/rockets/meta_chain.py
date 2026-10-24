@@ -6,9 +6,11 @@ five month windows straight from the Solana chain and the coin's own metadata fi
   final <dir with shard files> <out dir>    one chain.parquet
 
 Per mint:
-  - the Metaplex metadata account (address derived from the mint): name, ticker, link to the metadata file
+  - name, ticker and the link to the metadata file: from the mint account's own metadata (Token-2022 coins, pump.fun's newer
+    launches) or the Metaplex metadata account (older SPL coins); probe of 24 Oct: no coin had a Metaplex account
   - pump.fun's bonding-curve account (address derived from the mint): the creator wallet stored in it
-  - the oldest transaction that touched the metadata account = the coin's creation (time; the account is written once)
+  - the oldest transaction of the bonding-curve account = the coin's creation (time) and how many curve transactions it had;
+    only for coins without history2's creation time (env NEED = a JSON list of those mints), at most PAGES pages of 1,000
   - the metadata file (IPFS, set at launch, cannot change): the X, Telegram and website links the creator gave
 RPC: Helius with the HELIUS_API_KEY secret when it answers, otherwise the public Solana RPC. The key is never printed or saved.
 Nothing is bought, no wallet is used."""
@@ -201,20 +203,49 @@ def metadata_file(uri):
     return None, str(last)
 
 
-def one(rpc, mint, md):
+PAGES = int(os.environ.get("PAGES") or 8)
+
+
+def one(rpc, mint, cv, need):
     rec = {"mint": mint}
-    sigs = rpc.call("getSignaturesForAddress", [md, {"limit": 1000}])
-    if isinstance(sigs, list) and sigs:
-        old = sigs[-1]
-        rec["created_s"] = old.get("blockTime")
-        rec["meta_sigs"] = len(sigs)
+    if not need:
+        return rec
+    before, n = None, 0
+    for _ in range(PAGES):
+        o = {"limit": 1000}
+        if before:
+            o["before"] = before
+        sigs = rpc.call("getSignaturesForAddress", [cv, o])
+        if not isinstance(sigs, list):
+            rec["sig_error"] = True
+            return rec
+        n += len(sigs)
+        if sigs:
+            before = sigs[-1]["signature"]
+            rec["created_s"] = sigs[-1].get("blockTime")
+        if len(sigs) < 1000:
+            rec["curve_sigs"] = n
+            return rec
+    rec["curve_sigs_capped"] = n          # more than PAGES x 1,000 curve transactions: created_s is not the creation
     return rec
+
+
+def token2022_meta(v):
+    try:
+        for ext in v["data"]["parsed"]["info"].get("extensions") or []:
+            if ext.get("extension") == "tokenMetadata":
+                st = ext.get("state") or {}
+                return {"name": st.get("name"), "symbol": st.get("symbol"), "uri": st.get("uri")}
+    except Exception:
+        pass
+    return None
 
 
 def cmd_shard(plan, i, n, out):
     mints = json.load(open(plan))["mints"][int(i)::int(n)]
     stop = time.time() + 60 * float(os.environ.get("SHARD_MINUTES", 200))
     rpc = Rpc()
+    need = set(json.load(open(os.environ["NEED"]))) if os.environ.get("NEED") else set(mints)
     res, files = {}, {}
     pool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("WORKERS") or 6))
     for a in range(0, len(mints), 100):
@@ -224,16 +255,22 @@ def cmd_shard(plan, i, n, out):
         part = mints[a:a + 100]
         mds = [metadata_address(m) for m in part]
         cvs = [curve_address(m) for m in part]
+        acc0 = rpc.call("getMultipleAccounts", [part, {"encoding": "jsonParsed"}]) or {}
         acc = rpc.call("getMultipleAccounts", [mds, {"encoding": "base64"}]) or {}
         acc2 = rpc.call("getMultipleAccounts", [cvs, {"encoding": "base64"}]) or {}
         meta = {}
-        for m, v in zip(part, (acc.get("value") or [None] * len(part)) if isinstance(acc, dict) else [None] * len(part)):
-            if v and v.get("data"):
-                meta[m] = parse_metadata(v["data"][0]) or {}
-        for m, v in zip(part, (acc2.get("value") or [None] * len(part)) if isinstance(acc2, dict) else [None] * len(part)):
+        none = [None] * len(part)
+        for m, v in zip(part, (acc0.get("value") or none) if isinstance(acc0, dict) else none):
+            t = token2022_meta(v) if v else None
+            if t:
+                meta[m] = dict(t, meta_src="token2022")
+        for m, v in zip(part, (acc.get("value") or none) if isinstance(acc, dict) else none):
+            if v and v.get("data") and m not in meta:
+                meta[m] = dict(parse_metadata(v["data"][0]) or {}, meta_src="metaplex")
+        for m, v in zip(part, (acc2.get("value") or none) if isinstance(acc2, dict) else none):
             if v and v.get("data"):
                 meta.setdefault(m, {}).update(parse_curve(v["data"][0]))
-        jobs = {pool.submit(one, rpc, m, md): m for m, md in zip(part, mds)}
+        jobs = {pool.submit(one, rpc, m, cv, m in need): m for m, cv in zip(part, cvs)}
         fj = {pool.submit(metadata_file, meta.get(m, {}).get("uri")): m for m in part}
         for f in concurrent.futures.as_completed(jobs):
             m = jobs[f]

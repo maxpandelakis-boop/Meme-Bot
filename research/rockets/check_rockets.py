@@ -1,9 +1,9 @@
 """Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): which launch facts separate the coins that go
 10x from the rest, and does any of them make money on months it never saw?
 
-  python3 research/rockets/check_rockets.py <work dir> <history2 dir> <market.json> [<rocketsmeta dir>] > out.json
+  python3 research/rockets/check_rockets.py <work dir> <history2 dir> <market.json> [<rocketsmeta dir>] [<rocketschain dir>] > out.json
 
-<work dir> holds paths.npz, coins.parquet (build_paths.py) and entries.parquet (base.py). <rocketsmeta dir> is the branch
+[<rocketschain dir>] is the branch rocketschain (meta_chain.py). <work dir> holds paths.npz, coins.parquet (build_paths.py) and entries.parquet (base.py). <rocketsmeta dir> is the branch
 rocketsmeta (meta_fetch.py); without it only history2's launch facts (w3/w4) exist. Writes the result JSON to stdout and the rocket
 lists to <work dir>/rockets_E5.csv, rockets_E30.csv. No network."""
 import json, math, os, re, sys
@@ -40,32 +40,62 @@ def rule_mult(P, stop, target, hours):
 
 
 # ------------------------------------------------------------------------------------------------ facts
-def launch_facts(coins, hist, meta_dir):
+def launch_facts(coins, hist, meta_dir, chain_dir=None):
+    """Launch facts by source, first found wins: history2's create records (w3/w4), the chain and metadata files
+    (meta_chain.py, branch rocketschain), pump.fun's API (meta_fetch.py, branch rocketsmeta), GeckoTerminal names (same branch)."""
     c = coins.copy()
     c["creator"] = c["creator"].where(c["creator"].notna(), None)
-    c["src_names"] = np.where(c["symbol"].notna(), "h2", None)
+    c["src_creator"] = np.where(c["creator"].notna(), "history2", None)
+    c["src_names"] = np.where(c["symbol"].notna(), "history2", None)
+    c["src_created"] = np.where(c["created_ms"].notna(), "history2", None)
+    c["tw"], c["tg"], c["ws"], c["src_links"] = None, None, None, None
+    j = c["mint"].map
+
+    def fill(col, val, src, srccol):
+        new = c[col].isna() & val.notna()
+        c.loc[new, col] = val[new]
+        if srccol:
+            c.loc[new, srccol] = src
+
+    if chain_dir and os.path.exists(os.path.join(chain_dir, "chain.parquet")):
+        ch = pd.read_parquet(os.path.join(chain_dir, "chain.parquet")).drop_duplicates("mint").set_index("mint")
+        ch = ch.reindex(columns=sorted(set(ch.columns) | {"name", "symbol", "curve_creator", "created_s", "curve_sigs", "f_twitter",
+                                                          "f_telegram", "f_website", "f_name"}))
+        fill("symbol", j(ch["symbol"].replace("", None)), "chain", "src_names")
+        fill("token_name", j(ch["name"].replace("", None)), "chain", None)
+        fill("creator", j(ch["curve_creator"]), "chain", "src_creator")
+        cs = pd.to_numeric(j(ch["created_s"]), errors="coerce") * 1000
+        cs[pd.to_numeric(j(ch["curve_sigs"]), errors="coerce").isna()] = np.nan      # capped: not the first transaction
+        fill("created_ms", cs, "chain", "src_created")
+        has = j(ch["f_name"]).notna() | j(ch["f_twitter"]).notna() | j(ch["f_website"]).notna()
+        for col, src in (("tw", "f_twitter"), ("tg", "f_telegram"), ("ws", "f_website")):
+            v = j(ch[src]).where(has, None)
+            c[col] = v.where(has, None).fillna("").where(has, None)
+        c.loc[has, "src_links"] = "metadata file"
     if meta_dir and os.path.exists(os.path.join(meta_dir, "meta.parquet")):
         pm = pd.read_parquet(os.path.join(meta_dir, "meta.parquet")).drop_duplicates("mint").set_index("mint")
         pm = pm.reindex(columns=sorted(set(pm.columns) | {"name", "symbol", "creator", "created_timestamp", "twitter", "telegram",
                                                           "website", "src"}))
-        pf = pm[pm["src"].isna()] if "src" in pm else pm
-        j = c["mint"].map
-        for col, src in (("symbol", "symbol"), ("token_name", "name"), ("creator", "creator")):
-            fill = j(pm[src]) if col != "creator" else j(pf[src])
-            c[col] = c[col].where(c[col].notna(), fill)
-        cr = pd.to_numeric(j(pf["created_timestamp"]), errors="coerce")
-        c["created_ms"] = c["created_ms"].where(c["created_ms"].notna(), cr)
-        has_pf = c["mint"].isin(pf.index)
-        tw = j(pf["twitter"]).fillna("").astype(str).str.strip()
-        tg = j(pf["telegram"]).fillna("").astype(str).str.strip()
-        ws = j(pf["website"]).fillna("").astype(str).str.strip()
-        nl = (tw != "").astype(int) + (tg != "").astype(int) + (ws != "").astype(int)
-        c["nlinks"] = np.where(has_pf, nl, np.nan)
-        xs = np.where(tw.str.contains(r"/status/", regex=True), 1, np.where(tw != "", 2, 0))
-        c["xtype"] = np.where(has_pf, xs, np.nan)
-    else:
-        c["nlinks"] = np.nan
-        c["xtype"] = np.nan
+        pf = pm[pm["src"].isna()]
+        fill("symbol", j(pf["symbol"]), "pump.fun", "src_names")
+        fill("token_name", j(pf["name"]), "pump.fun", None)
+        fill("creator", j(pf["creator"]), "pump.fun", "src_creator")
+        fill("created_ms", pd.to_numeric(j(pf["created_timestamp"]), errors="coerce"), "pump.fun", "src_created")
+        has = c["mint"].isin(pf.index) & c["src_links"].isna()
+        for col, src in (("tw", "twitter"), ("tg", "telegram"), ("ws", "website")):
+            c.loc[has, col] = j(pf[src])[has].fillna("")
+        c.loc[has, "src_links"] = "pump.fun"
+        gt = pm[pm["src"] == "gt"]
+        fill("symbol", j(gt["symbol"]), "geckoterminal", "src_names")
+        fill("token_name", j(gt["name"]), "geckoterminal", None)
+    hasl = c["src_links"].notna()
+    tw = c["tw"].fillna("").astype(str).str.strip()
+    tg = c["tg"].fillna("").astype(str).str.strip()
+    ws = c["ws"].fillna("").astype(str).str.strip()
+    nl = (tw != "").astype(int) + (tg != "").astype(int) + (ws != "").astype(int)
+    c["nlinks"] = np.where(hasl, nl, np.nan)
+    xs = np.where(tw.str.contains(r"/status/", regex=True), 1, np.where(tw != "", 2, 0))
+    c["xtype"] = np.where(hasl, xs, np.nan)
     c = c.sort_values("t").reset_index(drop=True)
     t = c["t"].to_numpy(np.int64)
     # F1 creator's earlier graduations within 30 days
@@ -169,12 +199,14 @@ def boot_lo(v, q, draws=20000, seed=7):
     return float(np.quantile(means, q))
 
 
-def main(work, hist, market, meta_dir=None):
+def main(work, hist, market, meta_dir=None, chain_dir=None):
     z = np.load(os.path.join(work, "paths.npz"))
     cl = z["cl"]
     coins = pd.read_parquet(os.path.join(work, "coins.parquet"))
     ent = pd.read_parquet(os.path.join(work, "entries.parquet"))
-    c = launch_facts(coins, hist, meta_dir)
+    c = launch_facts(coins, hist, meta_dir, chain_dir)
+    sources = {k: {w: c[c["w"] == w][k].fillna("none").value_counts().to_dict() for w in sorted(c["w"].unique())}
+                      for k in ("src_names", "src_creator", "src_created", "src_links")}
     row_of = {p: i for i, p in enumerate(coins["pool"])}
     # gaps (history2 recorder outages, w3/w4 only)
     g = np.sort(np.load(os.path.join(hist, "gap_minutes.npy")))
@@ -184,7 +216,7 @@ def main(work, hist, market, meta_dir=None):
     GAPS = np.c_[st[big], en[big]]
     mk = json.load(open(market))
     sol = np.array(mk["SOLUSDT"], float)
-    res = {"facts_available": {}, "partA": [], "partB": [], "partC": [], "base": {}, "describe": {}}
+    res = {"facts_available": {}, "partA": [], "partB": [], "partC": [], "base": {}, "describe": {}, "sources": sources}
     E5 = ent[(ent["E"] == 5) & ent["ok"]].merge(coins[["pool", "sol0", "tok0"]], on="pool", how="left")
     i5 = np.clip(np.searchsorted(sol[:, 0], E5["te"].to_numpy() - H, side="right") - 1, 0, None)
     E5 = E5[2 * np.sqrt(E5["sol0"] * E5["tok0"] * E5["p0"] * sol[i5, 1]) >= LIQ_MIN]
@@ -403,5 +435,5 @@ def part_c(E_all, av):
 
 
 if __name__ == "__main__":
-    r = main(*sys.argv[1:5])
+    r = main(*sys.argv[1:6])
     print(json.dumps(r, indent=1, default=lambda x: x.item() if hasattr(x, "item") else str(x)))
