@@ -40,7 +40,7 @@ def rule_mult(P, stop, target, hours):
 
 
 # ------------------------------------------------------------------------------------------------ facts
-def launch_facts(coins, hist, meta_dir, chain_dir=None):
+def launch_facts(coins, hist, meta_dir, chain_dir=None, wiki=None):
     """Launch facts by source, first found wins: history2's create records (w3/w4), the chain and metadata files
     (meta_chain.py, branch rocketschain), pump.fun's API (meta_fetch.py, branch rocketsmeta), GeckoTerminal names (same branch)."""
     c = coins.copy()
@@ -60,7 +60,8 @@ def launch_facts(coins, hist, meta_dir, chain_dir=None):
     if chain_dir and os.path.exists(os.path.join(chain_dir, "chain.parquet")):
         ch = pd.read_parquet(os.path.join(chain_dir, "chain.parquet")).drop_duplicates("mint").set_index("mint")
         ch = ch.reindex(columns=sorted(set(ch.columns) | {"name", "symbol", "curve_creator", "created_s", "curve_sigs", "f_twitter",
-                                                          "f_telegram", "f_website", "f_name"}))
+                                                          "f_telegram", "f_website", "f_name", "uri", "f_createdOn", "f_image",
+                                                          "f_video", "f_desc_len"}))
         fill("symbol", j(ch["symbol"].replace("", None)), "chain", "src_names")
         fill("token_name", j(ch["name"].replace("", None)), "chain", None)
         fill("creator", j(ch["curve_creator"]), "chain", "src_creator")
@@ -72,6 +73,12 @@ def launch_facts(coins, hist, meta_dir, chain_dir=None):
             v = j(ch[src]).where(has, None)
             c[col] = v.where(has, None).fillna("").where(has, None)
         c.loc[has, "src_links"] = "metadata file"
+        c["m_file"] = has
+        c["m_uri"] = j(ch["uri"])
+        c["m_createdOn"] = j(ch["f_createdOn"]).where(has, None)
+        c["m_image"] = j(ch["f_image"]).where(has, None)
+        c["m_video"] = j(ch["f_video"]).where(has, None)
+        c["m_desc_len"] = pd.to_numeric(j(ch["f_desc_len"]), errors="coerce").where(has, np.nan)
     if meta_dir and os.path.exists(os.path.join(meta_dir, "meta.parquet")):
         pm = pd.read_parquet(os.path.join(meta_dir, "meta.parquet")).drop_duplicates("mint").set_index("mint")
         pm = pm.reindex(columns=sorted(set(pm.columns) | {"name", "symbol", "creator", "created_timestamp", "twitter", "telegram",
@@ -128,7 +135,102 @@ def launch_facts(coins, hist, meta_dir, chain_dir=None):
     c["f_grads24"] = (np.arange(len(c)) - np.searchsorted(t, t - DAY)).astype(float)
     c["f_nlinks"] = c["nlinks"]
     c["f_xtype"] = c["xtype"]
+    media_facts(c, wiki)
     return c
+
+
+STOP = set("""that this with from have were they what when your about list film series season which there their these would other
+after first also into over more most some only then than them been will like just year years coin token official the and for
+real world news new""".split())
+
+
+def words(s):
+    return {w for w in re.split(r"[^a-z0-9]+", str(s or "").lower()) if len(w) >= 4 and w not in STOP and not w.isdigit()}
+
+
+TWEET = re.compile(r"/status(?:es)?/(\d{6,})")
+CIDRE = re.compile(r"/ipfs/([A-Za-z0-9]{20,})")
+
+
+def media_facts(c, wiki):
+    """F12-F18 (amendment 4); c is sorted by graduation time."""
+    t = c["t"].to_numpy(np.int64)
+    w_of = [words(a) | words(b) for a, b in zip(c["symbol"], c["token_name"])]
+    named = c["symbol"].notna() | c["token_name"].notna()
+    # F12 news of the day: the day before's 1,000 most-read Wikipedia articles
+    f12 = np.full(len(c), np.nan)
+    if wiki:
+        day_words = {}
+        for d, arts in wiki.items():
+            ws = set()
+            for a, _ in arts:
+                if a and ":" not in a and a != "Main_Page":
+                    ws |= words(a.replace("_", " "))
+            day_words[d] = ws
+        days = pd.to_datetime(c["t"], unit="ms", utc=True).dt.normalize() - pd.Timedelta(days=1)
+        for i, (d, ws) in enumerate(zip(days.dt.strftime("%Y-%m-%d"), w_of)):
+            if named.iat[i] and day_words.get(d):
+                f12[i] = 1.0 if ws & day_words[d] else 0.0
+    c["f_news"] = f12
+    # F13 theme heat: graduations of the 24 h before sharing a name word
+    idx = {}
+    for i, ws in enumerate(w_of):
+        for w in ws:
+            idx.setdefault(w, []).append(i)
+    f13 = np.full(len(c), np.nan)
+    for i, ws in enumerate(w_of):
+        if not named.iat[i]:
+            continue
+        prev = set()
+        for w in ws:
+            lst = idx[w]
+            k = np.searchsorted(lst, i)
+            lo = np.searchsorted(t[lst[:k]], t[i] - DAY) if k else 0
+            prev.update(lst[lo:k])
+        f13[i] = len(prev)
+    c["f_theme24"] = f13
+    # F14 fresh post: the X post's own time (snowflake id) before the coin's creation
+    hasl = c["src_links"].notna().to_numpy()
+    tw = c["tw"].fillna("").astype(str)
+    f14 = np.full(len(c), np.nan)
+    for i, (x, cr) in enumerate(zip(tw, c["created_ms"])):
+        if not hasl[i]:
+            continue
+        m = TWEET.search(x)
+        if not m:
+            f14[i] = 0.0
+            continue
+        if not np.isfinite(cr):
+            continue
+        age = cr - ((int(m.group(1)) >> 22) + 1288834974657)
+        f14[i] = 1.0 if age <= H else (2.0 if age <= DAY else 3.0)
+    c["f_post_age"] = f14
+    if "m_file" not in c:
+        for k in ("f_img_reused", "f_launch_other", "f_video", "f_desc_len"):
+            c[k] = np.nan
+        return
+    mf = c["m_file"].fillna(False).to_numpy(bool)
+    # F15 picture used by another graduation in the 7 days before
+    cid = c["m_image"].fillna("").astype(str).map(lambda x: (CIDRE.search(x).group(1) if CIDRE.search(x) else x.strip()))
+    f15 = np.full(len(c), np.nan)
+    seen = {}
+    for i, (x, ok) in enumerate(zip(cid, mf)):
+        if not ok:
+            continue
+        lst = seen.setdefault(x, []) if x else None
+        if lst is None:
+            f15[i] = 0.0
+            continue
+        f15[i] = 1.0 if lst and t[i] - t[lst[-1]] <= 7 * DAY else 0.0
+        lst.append(i)
+    c["f_img_reused"] = f15
+    # F16 launched on pump.fun's own page vs other tools
+    uri = c["m_uri"].fillna("").astype(str)
+    own = uri.str.contains("ipfs", case=False) & (c["m_createdOn"].fillna("").astype(str).str.strip().str.rstrip("/") == "https://pump.fun")
+    c["f_launch_other"] = np.where(mf, (~own).astype(float), np.nan)
+    # F17 video coin, F18 description length
+    c["f_video"] = np.where(mf, (c["m_video"].fillna("").astype(str).str.strip() != "").astype(float), np.nan)
+    c["f_desc_len"] = np.where(mf, c["m_desc_len"], np.nan)
 
 
 def creator_rocket(c, e5):
@@ -153,9 +255,18 @@ BUCKETS = {
     "f_grads24": None, "f_sol24": None,
     "f_nlinks": ([-0.5, 0.5, 1.5, 2.5, 3.5], ["0", "1", "2", "3"]),
     "f_xtype": ([-0.5, 0.5, 1.5, 2.5], ["none", "post", "profile/community"]),
+    "f_news": ([-0.5, 0.5, 1.5], ["no", "yes"]),
+    "f_theme24": ([-0.5, 0.5, 4.5, 19.5, np.inf], ["0", "1-4", "5-19", "20+"]),
+    "f_post_age": ([-0.5, 0.5, 1.5, 2.5, 3.5], ["no post", "up to 1 h", "1-24 h", "older"]),
+    "f_img_reused": ([-0.5, 0.5, 1.5], ["no", "yes"]),
+    "f_launch_other": ([-0.5, 0.5, 1.5], ["pump.fun", "other"]),
+    "f_video": ([-0.5, 0.5, 1.5], ["no", "yes"]),
+    "f_desc_len": ([-0.5, 0.5, 50.5, 200.5, np.inf], ["0", "1-50", "51-200", "over 200"]),
 }
 FACT_NO = {"f_creator_prior": "F1", "f_creator_rocket": "F2", "f_curve_min": "F3", "f_dup7": "F4", "f_cjk": "F5", "f_hour": "F6",
-           "f_weekend": "F7", "f_grads24": "F8", "f_sol24": "F9", "f_nlinks": "F10", "f_xtype": "F11"}
+           "f_weekend": "F7", "f_grads24": "F8", "f_sol24": "F9", "f_nlinks": "F10", "f_xtype": "F11", "f_news": "F12",
+           "f_theme24": "F13", "f_post_age": "F14", "f_img_reused": "F15", "f_launch_other": "F16", "f_video": "F17",
+           "f_desc_len": "F18"}
 
 
 def holm(ps, alpha=0.05):
@@ -204,7 +315,10 @@ def main(work, hist, market, meta_dir=None, chain_dir=None):
     cl = z["cl"]
     coins = pd.read_parquet(os.path.join(work, "coins.parquet"))
     ent = pd.read_parquet(os.path.join(work, "entries.parquet"))
-    c = launch_facts(coins, hist, meta_dir, chain_dir)
+    wiki = None
+    if chain_dir and os.path.exists(os.path.join(chain_dir, "wiki_top.json")):
+        wiki = json.load(open(os.path.join(chain_dir, "wiki_top.json")))
+    c = launch_facts(coins, hist, meta_dir, chain_dir, wiki)
     sources = {k: {w: c[c["w"] == w][k].fillna("none").value_counts().to_dict() for w in sorted(c["w"].unique())}
                       for k in ("src_names", "src_creator", "src_created", "src_links")}
     row_of = {p: i for i, p in enumerate(coins["pool"])}
@@ -386,7 +500,8 @@ def main(work, hist, market, meta_dir=None, chain_dir=None):
 
 
 MODEL_FEATS = ["f_creator_prior", "f_creator_rocket", "f_curve_min", "f_dup7", "f_cjk", "f_hour", "f_weekend", "f_grads24",
-               "f_sol24", "f_nlinks", "f_xtype"]
+               "f_sol24", "f_nlinks", "f_xtype", "f_news", "f_theme24", "f_post_age", "f_img_reused", "f_launch_other", "f_video",
+               "f_desc_len"]
 
 
 def part_c(E_all, av):

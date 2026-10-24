@@ -145,3 +145,21 @@ numbered contact sheets and sorted by hand into fixed groups before the key is o
 character or known meme / text, logo or symbol / object, scene or other / no picture. Reported: the share of each group among
 rockets and others, a chi-square test of the whole table and two-proportion tests per group with Holm. With 150 a side only large
 differences (about 12 points or more) can show; a picture group that "matters" here is a lead for a bigger test, not a found rule.
+
+## Amendment 5 (24 Oct, ~11:35 UTC, before any fact result was read): the pictures of all coins, not a sample
+
+The user asked (11:30 and 11:32 UTC) for the picture check on more coins. So every coin whose metadata file names a picture gets
+it read by an image model instead of only a hand-sorted sample (research/rockets/images.py, workflow rockets-images.yml, branch
+rocketsimages): the picture is downloaded from IPFS, and OpenAI's CLIP model (openai/clip-vit-base-patch32, free, run on GitHub's
+machines) scores it against six fixed descriptions. Added facts, tested exactly like F1-F18:
+
+| # | fact | buckets |
+|---|---|---|
+| F19 | what the picture shows: the best-scoring of "a photo of a real animal" / "a cartoon drawing of an animal" / "a photo of a real person" / "a cartoon drawing of a person or character" / "a logo or text or symbol" / "a photo of an object or a place" | those six |
+| F20 | animated picture (a GIF with more than one frame) | yes / no |
+| F21 | look-alike picture: a picture of another graduation of the 7 days before is nearly the same (64-bit average hash, at most 4 bits apart) | yes / no |
+| F22 | picture fits the name: how CLIP ranks the coin's own name ("a picture of <name>") against 20 other coins' names for this picture, 0 = worst, 1 = best | terciles of the fit windows |
+
+The hand-sorted sample of amendment 4 becomes a check of the model instead: 120 pictures drawn at random (seed 7, no outcome
+known or looked up), sorted by hand into the six groups before the model's groups are opened; reported as how often hand and
+model agree. All facts F1-F22 share one Holm family in part A and one Bonferroni count in part B.
