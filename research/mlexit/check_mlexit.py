@@ -479,6 +479,240 @@ def load(out, windows=None):
     return M, dict(C=C, H=Hh, L=L, start=start), F
 
 
+# --------------------------------------------------------------------------------------------------------- states, fits
+LGB = dict(objective="regression", learning_rate=0.05, num_leaves=63, min_data_in_leaf=2000, feature_fraction=0.7,
+           bagging_fraction=0.7, bagging_freq=1, lambda_l2=10.0, seed=SEED, num_threads=3, verbose=-1)
+UNIVERSES = ("W", "ALL")
+FAMILIES = ("A1", "A2", "B")
+MARGINS = (0.0, 0.03, 0.06, 0.10)
+CADS = (1, 3)                 # every five-minute candle, every third (15 min)
+
+
+def in_universe(M, u):
+    r = M["roles"]
+    return (r.str.contains("P") | r.str.contains("X")) if u == "W" else pd.Series(True, index=M.index)
+
+
+def nstates(M, base):
+    """States per entry: B0 keeps every stored state; v3 those before its own sale."""
+    return M["ns"].to_numpy() if base == "B0" else np.minimum(M["V3_k"].to_numpy(), M["ns"].to_numpy())
+
+
+def states(M, E, rows, base):
+    """-> (index into F, entry, candle) of every state of the given entries under the base rule"""
+    ns = nstates(M, base)[rows]
+    ent = np.repeat(rows, ns)
+    k = np.arange(ent.size) - np.repeat(np.r_[0, np.cumsum(ns)[:-1]], ns)
+    return E["start"][ent] + k, ent, k
+
+
+def label(M, E, ent, k, base):
+    m = M["B0_m"].to_numpy() if base == "B0" else M["V3_m"].to_numpy()
+    return m[ent] / E["C"][ent, k]
+
+
+def gtime(M):
+    return (M["te"] - M["E"] * MIN).to_numpy()
+
+
+def fit(F, idx, y, gt_state, objective="regression"):
+    """LightGBM with the fixed settings; early stop on the last 15 % of the training coins by graduation time."""
+    import lightgbm as lgb
+    cut = np.quantile(np.unique(gt_state), 0.85)
+    va = gt_state >= cut
+    p = dict(LGB, objective=objective)
+    if objective == "binary":
+        p["metric"] = "binary_logloss"
+    dtr = lgb.Dataset(F[idx[~va]], y[~va], free_raw_data=True)
+    dva = lgb.Dataset(F[idx[va]], y[va], reference=dtr, free_raw_data=True)
+    b = lgb.train(p, dtr, num_boost_round=1500, valid_sets=[dva], callbacks=[lgb.early_stopping(100, verbose=False)])
+    return b
+
+
+def predict(b, F, idx):
+    return b.predict(F[idx], num_iteration=b.best_iteration).astype(np.float64)
+
+
+def full_pred(nF, idx, p):
+    out = np.full(nF, np.nan)
+    out[idx] = p
+    return out
+
+
+def entries_of(E, rows):
+    return {k: E[k][rows] for k in ("C", "H", "L")} | {"start": E["start"][rows]}
+
+
+def policy(M, E, rows, pred_full, fam, m, cad):
+    """The ML policy on the given entries -> (mult, candle, why)"""
+    sub = entries_of(E, rows)
+    nb = np.stack(M["nb"].to_numpy()[rows])
+    sub["nT"] = (nb[:, HOURS.index(12)] if fam != "B" else nb[:, HOURS.index(6)]).astype(np.int64)
+    return run_policy(sub, pred_full, fam == "B", m, cad)
+
+
+def continuation(M, E, rows, pred_full, m, cad):
+    """A2's label: for every B0 state of the entries, what holding is worth when A1's policy (pred_full, m, cad) decides from the
+    next candle on, over the price now. -> (index into F, G)"""
+    out_i, out_g = [], []
+    nb = np.stack(M["nb"].to_numpy()[rows])
+    for q, e in enumerate(rows):
+        ns, nT, st = int(M["ns"].iat[e]), int(nb[q, HOURS.index(12)]), int(E["start"][e])
+        tau, mB = int(M["B0_k"].iat[e]), float(M["B0_m"].iat[e])
+        j = np.arange(ns)
+        p = pred_full[st:st + ns]
+        sell = j[((j + 1) % cad == 0) & (j < nT - 1) & (p < 1.0 - m)]
+        C = E["C"][e]
+        nxt = np.searchsorted(sell, j, side="right")             # the first sale after candle k
+        js = np.where(nxt < len(sell), sell[np.minimum(nxt, len(sell) - 1)], 10 ** 9)
+        val = np.where(js < tau, C[np.minimum(js, len(C) - 1)], mB)
+        out_i.append(st + j); out_g.append(val / C[:ns])
+    return np.concatenate(out_i), np.concatenate(out_g)
+
+
+def money_of(mult):
+    return X.to_money(np.asarray(mult, float))
+
+
+def judge(d, base=None):
+    lo5, lo, hi = X.boot(d)
+    return {"n": int(len(d)), "diff": round(float(np.mean(d)), 2), "lo5": round(lo5, 2), "ci95": [round(lo, 2), round(hi, 2)]}
+
+
+def trade_stats(mon, mult):
+    srt = np.sort(mon)[::-1]
+    return {"mean": round(float(mon.mean()), 2), "inProfit": round(100 * float((mon > 0).mean()), 1),
+            "x2": int((mult >= 2).sum()), "x3": int((mult >= 3).sum()), "lost20": int((mon <= -20).sum()),
+            "best2pct": round(float(srt[:max(1, len(srt) // 50)].sum()), 1)}
+
+
+def train_family(M, E, F, train_rows, fam, configs, log=print):
+    """Fits for one family on the training entries -> {(m, cad): predictor} (A1 and B: one model for all margins)."""
+    base = "V3" if fam == "B" else "B0"
+    idx, ent, k = states(M, E, train_rows, base)
+    y = label(M, E, ent, k, base)
+    gt = gtime(M)[ent]
+    b1 = fit(F, idx, y, gt)
+    log("  %s fit on %d states, %d trees" % (fam, len(idx), b1.best_iteration))
+    if fam != "A2":
+        return {c: b1 for c in configs}, b1
+    # A2: A1's predictions out of fold (4 folds by coin), A1's policy per (m, cad), the second model on its value
+    fold = np.array([zlib.crc32(pl.encode()) % 4 for pl in M["pool"].to_numpy()])
+    oof = np.full(len(F), np.nan)
+    for f in range(4):
+        tr = train_rows[fold[train_rows] != f]
+        te = train_rows[fold[train_rows] == f]
+        i2, e2, k2 = states(M, E, tr, base)
+        bf = fit(F, i2, label(M, E, e2, k2, base), gtime(M)[e2])
+        it, _, _ = states(M, E, te, base)
+        oof[it] = predict(bf, F, it)
+    out = {}
+    for c in configs:
+        m, cad = c
+        i3, g3 = continuation(M, E, train_rows, oof, m, cad)
+        gt3 = np.repeat(gtime(M)[train_rows], M["ns"].to_numpy()[train_rows])
+        b2 = fit(F, i3, g3, gt3)
+        log("  A2 m=%.2f cad=%d: second model %d trees" % (m, cad, b2.best_iteration))
+        out[c] = b2
+    return out, b1
+
+
+def evaluate(M, E, F, rows, fam, model, m, cad):
+    base = "V3" if fam == "B" else "B0"
+    idx, _, _ = states(M, E, rows, "B0")           # every stored state gets a prediction (the policy reads what it needs)
+    pf = full_pred(len(F), idx, predict(model, F, idx))
+    return policy(M, E, rows, pf, fam, m, cad)
+
+
+# --------------------------------------------------------------------------------------------------------- commands
+def cmd_check(out, *_):
+    """The rules against research/chartexit/result.json; the kernel against the plain replays; no feature looks ahead."""
+    M, E, F = load(out)
+    ref = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "chartexit", "result.json")))
+    P = M["roles"].str.contains("P").to_numpy()
+    res = {"P": {}, "ref": {}}
+    for w in WN:
+        s = P & (M["w"] == w).to_numpy()
+        res["P"][w] = {"n": int(s.sum()), "K": round(float(money_of(M["K_m"][s]).mean()), 2), "V3": round(float(money_of(M["V3_m"][s]).mean()), 2)}
+        res["ref"][w] = {"n": ref["coins"][w], "K": ref["low"]["K"][w], "V3": ref["low"]["live"]["byWindow"][w]["mean"]}
+    rows = np.nonzero(P)[0]
+    nan = np.full(len(F), np.nan)
+    a, ka, _ = policy(M, E, rows, nan, "B", 0.0, 1)
+    b, kb, _ = policy(M, E, rows, nan, "A1", 0.0, 1)
+    res["kernel_v3_mismatch"] = int((np.abs(a - M["V3_m"].to_numpy()[rows]) > 1e-6).sum() + (ka != M["V3_k"].to_numpy()[rows]).sum())
+    res["kernel_B0_mismatch"] = int((np.abs(b - M["B0_m"].to_numpy()[rows]) > 1e-6).sum() + (kb != M["B0_k"].to_numpy()[rows]).sum())
+    res["states"] = int(len(F))
+    if len(sys.argv) > 4:
+        res["nofuture"] = nofuture(sys.argv[3], sys.argv[4])
+    print(json.dumps(res, indent=1))
+    json.dump(res, open(os.path.join(out, "check.json"), "w"), indent=1)
+
+
+def nofuture(md, h2, ncoins=150):
+    """Changing every candle after candle i changes no number at candle i (coin_features), on coins of both sources."""
+    s = np.array(json.load(open(os.path.join(md, "market.json")))["SOLUSDT"], dtype=float)
+    X.SOL = (s[:, 0], s[:, 1])
+    mkt = Market(os.path.join(md, "market.json"))
+    rng = np.random.default_rng(SEED)
+    bad = tested = 0
+    for f in (sorted(glob.glob(os.path.join(h2, "bars_*.parquet")))[30], os.path.join(md, "bars_w2.parquet")):
+        b = pd.read_parquet(f)
+        pools = b["pool"].unique()
+        for pool in rng.choice(pools, size=min(ncoins, len(pools)), replace=False):
+            g = b[b["pool"] == pool].sort_values("t")
+            t0 = int(g["t"].iat[0]) // BAR * BAR
+            j = ((g["t"].to_numpy() - t0) // BAR).astype(int)
+            k = (j >= 0) & (j < 600)
+            j = j[k]
+            A = {q: np.full(600, np.nan) for q in "ohlc"}
+            for q in "ohlc":
+                A[q][j] = g[q].to_numpy()[k]
+            v = np.zeros(600); v[j] = np.nan_to_num(g["v"].to_numpy()[k])
+            has = np.isfinite(A["c"]) & (A["c"] > 0)
+            cf = pd.Series(np.where(has, A["c"], np.nan)).ffill().to_numpy()
+            if not has.any():
+                continue
+            pf = A["c"][int(np.argmax(has))]
+            full = coin_features(cf, A["h"], A["l"], A["o"], A["c"], has, v, pf, 85.0 * 2.069e8, t0, t0, mkt)
+            for i in rng.integers(72, 450, 3):
+                cut = {q: np.where(np.arange(600) <= i, A[q], rng.uniform(0.1, 9) * np.nanmean(A[q])) for q in "ohlc"}
+                hs2 = np.where(np.arange(600) <= i, has, True)
+                v2 = np.where(np.arange(600) <= i, v, 1e6)
+                cf2 = pd.Series(np.where(hs2, cut["c"], np.nan)).ffill().to_numpy()
+                part = coin_features(cf2, cut["h"], cut["l"], cut["o"], cut["c"], hs2, v2, pf, 85.0 * 2.069e8, t0, t0, mkt)
+                same = np.isclose(full[i], part[i], rtol=1e-5, atol=1e-6, equal_nan=True)
+                bad += int((~same).sum())
+                tested += 1
+    return {"tested": tested, "numbers_changed": bad}
+
+
+def cmd_choose(out):
+    M, E, F = load(out)
+    res = {"configs": []}
+    P = M["roles"].str.contains("P").to_numpy()
+    val = np.nonzero(P & (M["w"] == "w3").to_numpy())[0]
+    mV3 = money_of(M["V3_m"].to_numpy()[val]); mK = money_of(M["K_m"].to_numpy()[val])
+    res["w3"] = {"n": int(len(val)), "V3": round(float(mV3.mean()), 2), "K": round(float(mK.mean()), 2)}
+    configs = [(m, c) for m in MARGINS for c in CADS]
+    for u in UNIVERSES:
+        tr = np.nonzero(in_universe(M, u).to_numpy() & M["w"].isin(["w1", "w2"]).to_numpy())[0]
+        print(u, "training entries", len(tr), flush=True)
+        for fam in FAMILIES:
+            models, _ = train_family(M, E, F, tr, fam, configs, log=lambda s: print(s, flush=True))
+            for (m, cad) in configs:
+                mult, _, why = evaluate(M, E, F, val, fam, models[(m, cad)], m, cad)
+                mon = money_of(mult)
+                r = dict(universe=u, family=fam, m=m, cad=cad, mean=round(float(mon.mean()), 3), diffV3=round(float((mon - mV3).mean()), 3),
+                         diffK=round(float((mon - mK).mean()), 3), modelSells=int((why == 5).sum()))
+                res["configs"].append(r)
+                print(r, flush=True)
+    order = {"A1": 0, "A2": 1, "B": 2}
+    best = max(res["configs"], key=lambda r: (round(r["diffV3"], 6), -UNIVERSES.index(r["universe"]), -order[r["family"]], r["m"], r["cad"]))
+    res["chosen"] = best
+    json.dump(res, open(os.path.join(out, "choose.json"), "w"), indent=1)
+    print("chosen", best)
+
+
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
-    {"build": cmd_build}[cmd](*args)
+    {"build": cmd_build, "check": cmd_check, "choose": cmd_choose}[cmd](*args)
