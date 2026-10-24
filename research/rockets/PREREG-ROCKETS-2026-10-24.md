@@ -250,3 +250,53 @@ The user (12:11 UTC): "eine Regel sollte mindestens seit einem Monat halten". So
 
 The same bar applies to anything judged later, including the review of the live paper accounts. That review needs at least one
 month of live trades to count.
+
+## Amendment 8 (24 Oct, ~12:55 UTC, before any fact result was read): what the dataset check found, and what follows
+
+`launches.py verify` ran at 12:09-12:24 UTC (branch rocketsprobe, verify.json). Nothing about any fact was computed. It found:
+- **The corpus fails rule 3 of amendment 6.** Of our 4,777 graduations of its days, 3,935 are in it (82.4 %, rule: 95 %). It
+  misses whole days (18 Jun, 3 Jul, 12 Jul) and holds far fewer launches than usual on others (25 Jun, 2 Jul, 4 Jul). Its
+  half-hours that were running were complete (393 of 393 and 336 of 337 chain launches). As amendment 6 says, the corpus is
+  dropped and **w2 leaves universe L**.
+- **Pumpfun_v2 ends on 8 Oct, 03:30 UTC** (its newest file). It has no w5. Its count of our graduations (44,113 of 53,721) was
+  taken over 11 Aug - 21 Oct, which includes 13 days it does not cover, so rule 3 was not measured right. Its hour check found 0
+  chain launches in every hour: a bug of the check (the block read did not accept the newer transaction version, so the search
+  for a starting point found nothing in Sep and Oct; the corpus hours, in July, worked). So rules 1 and 3 are not yet decided.
+- **Names, tickers and metadata links agree** with the mint's own metadata on the chain in all rows that could be read (v2 200 of
+  200, corpus 198 of 198; one batch of 100 per dataset did not answer). **The creator agrees with the bonding curve's creator
+  field in 276 of 300 (v2) and 277 of 300 (corpus), 92 %.** Both datasets miss by the same amount, so the curve's field may have
+  been changed after the launch (pump.fun lets a creator hand over its fees). That is a guess until it is checked.
+
+What follows, all fixed before the next check runs:
+1. **verify2** (`launches.py verify2`) repeats the open checks with the bug fixed, for Pumpfun_v2 on its own launch days
+   10 Aug - 6 Oct, and for one more free dataset, **loopholetape/pumpfun-launches** (CC-BY-4.0, its `launches` subset of
+   27 Sep - 17 Oct, after its decoder fix), for w5:
+   - Rule 1, per dataset: in random half-hours (seed 7; 6 for v2 in 10 Aug - 6 Oct, 4 for loophole in 9-17 Oct) the chain's
+     launch transactions are read, and at least 95 % of the chain's launches (pooled over the half-hours) are in the dataset.
+     New, also at least 95 % of the dataset's rows in those half-hours are launches on the chain.
+   - Rule 2: 300 random rows each, against **their own launch transaction** (its CreateEvent: name, ticker, metadata link, creator;
+     v2 rows by their signature, loophole rows by the mint's oldest transaction where the mint has under 1,000). At least 98 %
+     the same. The curve's current creator is reported next to it. This replaces the curve's field for the creator, a change made
+     after seeing the 92 %, because the launch transaction is the chain's own record of who launched the coin.
+   - Rule 3: of our graduations of 11 Aug - 6 Oct (v2) and of 29 Sep - 17 Oct (loophole), at least 95 % are in it.
+   - Also reported: the two datasets on the days both cover (27 Sep - 6 Oct), launches in one and not the other, and whether the
+     creator and ticker agree.
+2. **Universe L** is then the launches of the datasets that pass, one row per mint (when both have a mint, its graduation
+   counts if any source has it). Launch days: w3 10 Aug - 7 Sep, w4 10 Sep - 6 Oct, w5 9 - 17 Oct (loophole's last day).
+   **Fit on w3, unseen w4 (the full month of amendment 7) and w5**, each reported on its own, as amendment 7 already says. A
+   window whose only dataset fails leaves universe L.
+3. **Mayhem-mode launches are left out of the tests** (both datasets mark them). pump.fun's own agent trades them, and a
+   mayhem curve can complete far below a real graduation (loophole's known issue KI-04), so "graduated" means something else for
+   them. They still count as history for the creator, ticker and crowding counts. Launches whose curve is quoted in another coin
+   than SOL stay in: a curve completes after the same rise whatever it is quoted in.
+4. **History.** The counting facts (L-F1, L-F1b, L-F4, L-F8, L-F13) count every launch of the datasets before the launch,
+   including days outside the windows. Pumpfun_v2 starts on 9 Aug, so in w3's first weeks the 30-day creator counts are cut
+   short; w4 has its full 30 days behind it.
+5. **Graduation of a loophole row**: its `graduated` is 1, or its curve is complete and not quoted in SOL (its KI-03), or the
+   mint is in our graduation list; the time is launch + `migrate_dt_s`, else our list's time. Rows its file leaves unresolved
+   (`graduated` and `curve_complete` empty) are left out of the tests.
+6. **Metadata facts (L-F10 to L-F18) only count where the metadata file was read.** The share read is reported for graduated
+   and for not graduated launches, per window. If the two differ by more than 5 points in a window, every metadata fact of that
+   window is marked "maybe biased by which files could be read" in the report, whatever its result.
+7. The metadata sample of 600,000 and the picture sub-sample of 150,000 are drawn (seed 7) from the test rows of universe L
+   (w3, w4, w5, mayhem left out), sorted by mint.

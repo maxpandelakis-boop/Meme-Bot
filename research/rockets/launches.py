@@ -9,6 +9,16 @@ month windows from the Solana chain, not only the ~72,000 that graduated, for th
   verify <work dir> <monthsdata dir> <monthsh2 dir>   the test of amendment 6 for the two datasets used (Slinky21's corpus for
                                        w2, Slinky21's Pumpfun_v2 for w3-w5): completeness against the chain's own launch list in
                                        random hours, 300 random rows against the chain, and how many of our graduations they hold
+  verify2 <work dir> <monthsdata dir> <monthsh2 dir>   amendment 8: Pumpfun_v2 again (half-hours of 10 Aug - 6 Oct with the
+                                       launch transactions read, rows against their own launch transaction, our graduations of
+                                       the days it covers) and loopholetape's launches for 9-17 Oct, and the two on the days both hold
+  build <work> <monthsdata> <monthsh2> <out dir>   universe L of amendment 6 from the two checked datasets: one row per launch
+                                       (L_<w>[_<part>].parquet: mint, curve, creator, name, ticker, metadata link, launch time,
+                                       graduated and when)
+  mshard <universe dir> <i> <n> <out.json.gz>   launches i, i+n, ... of the metadata sample (MSAMPLE, default 600,000, seed 7):
+                                       the metadata file (links, picture, video, description, createdOn) and the curve's
+                                       complete flag on the chain
+  mfinal <dir with shard files> <out dir> [<earlier lmeta.parquet>]   one lmeta.parquet
   sigs <out dir>                       every launch signature of the five windows (sigs_<w>.parquet: signature, slot, time, failed)
   shard <sig dir> <i> <n> <out.json.gz> launches i, i+n, ... of the random sample (SAMPLE launches, seed 7): the launch
                                        transaction, the curve account (graduated or not, read now) and the metadata file
@@ -109,7 +119,7 @@ def sig_near(rpc, ts, top):
     if s is None:
         return None, None
     for k in range(30):
-        b = rpc.call("getBlock", [s + k, {"transactionDetails": "signatures", "maxSupportedTransactionVersion": 0, "rewards": False}])
+        b = rpc.call("getBlock", [s + k, {"transactionDetails": "signatures", "maxSupportedTransactionVersion": 1, "rewards": False}])
         if b and b.get("signatures"):
             return b["signatures"][0], s + k
     return None, s
@@ -515,6 +525,387 @@ def cmd_verify(work, md, h2):
     json.dump(out, open(os.path.join(work, "verify.json"), "w"), indent=1, default=str)
 
 
+# ------------------------------------------------------------------------------------------------ verify2 (amendment 8)
+LOOP_FILES = "data/launches/%s.parquet"
+LOOP_COLS = ["mint", "creator", "t0", "name", "symbol", "uri", "mayhem", "quote_asset", "graduated", "migrate_dt_s",
+             "curve_complete"]
+
+
+def _days(a, b):
+    return [time.strftime("%Y-%m-%d", time.gmtime(t)) for t in range(_ts(a), _ts(b) + 1, 86400)]
+
+
+def read_loophole(work, days):
+    import pandas as pd
+    ds, have = DATASETS["loophole"], {f for f, _ in hf_files(DATASETS["loophole"])}
+    parts, missing = [], []
+    for day in days:
+        f = LOOP_FILES % day
+        if f not in have:
+            missing.append(day)
+            continue
+        dest = hf_get(ds, f, os.path.join(work, "loop", day + ".parquet"))
+        x = pd.read_parquet(dest)
+        parts.append(x[[c for c in LOOP_COLS if c in x.columns]])
+        os.remove(dest)
+    d = pd.concat(parts, ignore_index=True).drop_duplicates("mint") if parts else pd.DataFrame(columns=LOOP_COLS)
+    d["bt"] = pd.to_numeric(d["t0"], errors="coerce")
+    return d, missing
+
+
+def read_v2(work, lo, hi, cols):
+    import pandas as pd
+    ds = DATASETS["v2"]
+
+    def stamp(f):
+        x = f.rsplit("_", 1)[1][:8]
+        return _ts("%s-%s-%s" % (x[:4], x[4:6], x[6:8]))
+    parts = []
+    for f, _ in hf_files(ds):
+        if "/create/" in f and f.endswith(".parquet") and lo - 86400 <= stamp(f) <= hi + 86400:
+            dest = hf_get(ds, f, os.path.join(work, "v2", os.path.basename(f)))
+            parts.append(pd.read_parquet(dest, columns=cols))
+            os.remove(dest)
+    d = pd.concat(parts, ignore_index=True).drop_duplicates("signature")
+    d["bt"] = _secs(d["block_time"])
+    return d[(d["bt"] >= lo) & (d["bt"] < hi)]
+
+
+def launch_tx_of(rpc, mint):
+    """The launch transaction of a mint: the oldest signature of the mint account, when it has under 1,000 in all."""
+    page = rpc.call("getSignaturesForAddress", [mint, {"limit": 1000}])
+    if not page or len(page) >= 1000:
+        return None
+    return page[-1]["signature"]
+
+
+def launch_check(rpc, rows):
+    """Dataset rows (mint, name, symbol, uri, creator, and sig where the dataset has it) against their own launch transaction's
+    CreateEvent, and the curve account's current creator next to it."""
+    from meta_chain import parse_curve
+    out = {"rows": len(rows), "tx_found": 0}
+    for a in range(0, len(rows), 100):
+        part = rows[a:a + 100]
+        def cv(m):
+            try:
+                return curve_address(m)
+            except Exception:
+                return "11111111111111111111111111111111"
+        acc = rpc.call("getMultipleAccounts", [[cv(r["mint"]) for r in part], {"encoding": "base64"}]) or {}
+        curves = acc.get("value") or [None] * len(part)
+        for r, c in zip(part, curves):
+            sig = r.get("sig") or launch_tx_of(rpc, r["mint"])
+            tx = rpc.call("getTransaction", [sig, {"encoding": "json", "maxSupportedTransactionVersion": 1}]) if sig else None
+            p = parse_launch(tx)
+            if not p or p.get("mint") != r["mint"]:
+                continue
+            out["tx_found"] += 1
+            cc = parse_curve(c["data"][0]).get("curve_creator") if c and c.get("data") else None
+            for k, chain_v in (("name", p.get("name")), ("symbol", p.get("symbol")), ("uri", p.get("uri")),
+                               ("creator", p.get("creator"))):
+                if r.get(k) is None or chain_v is None:
+                    continue
+                o = out.setdefault(k + "_same", [0, 0])
+                o[1] += 1
+                o[0] += int(str(r[k]).strip() == str(chain_v).strip())
+            if cc and p.get("creator"):
+                o = out.setdefault("curve_creator_is_launch_creator", [0, 0])
+                o[1] += 1
+                o[0] += int(cc == p["creator"])
+                if r.get("creator") and cc != p["creator"]:
+                    o = out.setdefault("where_curve_differs_dataset_is_launch_creator", [0, 0])
+                    o[1] += 1
+                    o[0] += int(str(r["creator"]) == p["creator"])
+    return out
+
+
+def chain_halfhour(rpc, h, top, ds_sig=None, ds_mint=None, ds_rows=None):
+    """One half-hour of the chain's launches (successful transactions touching the mint authority, read and parsed) against a
+    dataset: chain launches found in it, and its rows of [h+60, h+1740) found on the chain."""
+    sigs, _ = chain_launches(rpc, h, h + 1800, top)
+    o = {"from": time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)), "chain_sigs": len(sigs)}
+    known = [x for x in sigs if ds_sig is not None and x in ds_sig]
+    rest = [x for x in sigs if not (ds_sig is not None and x in ds_sig)]
+    pool = concurrent.futures.ThreadPoolExecutor(8)
+    txs = list(pool.map(lambda x: rpc.call("getTransaction", [x, {"encoding": "json", "maxSupportedTransactionVersion": 1}]), rest))
+    pool.shutdown()
+    parsed = [(x, parse_launch(t)) for x, t in zip(rest, txs)]
+    o["read_failed"] = sum(1 for t in txs if t is None)
+    o["not_a_launch"] = sum(1 for (x, p), t in zip(parsed, txs) if t is not None and not p)
+    launches = [p["mint"] for x, p in parsed if p]
+    if ds_sig is not None:
+        o["chain_launches"] = len(known) + len(launches)
+        o["chain_in_dataset"] = len(known) + sum(m in ds_mint for m in launches)
+        inner = ds_rows[(ds_rows["bt"] >= h + 60) & (ds_rows["bt"] < h + 1740)]
+        sset = set(sigs)
+        o["dataset_rows"], o["dataset_rows_on_chain"] = len(inner), int(inner["signature"].isin(sset).sum())
+    else:
+        o["chain_launches"] = len(launches)
+        o["chain_in_dataset"] = sum(m in ds_mint for m in launches)
+        inner = ds_rows[(ds_rows["bt"] >= h + 60) & (ds_rows["bt"] < h + 1740)]
+        o["dataset_rows"], o["dataset_rows_on_chain"] = len(inner), int(inner["mint"].isin(set(launches)).sum())
+    log("half hour", o)
+    return o
+
+
+def _share(hs, a, b):
+    x, n = sum(h[a] for h in hs), sum(h[b] for h in hs)
+    return round(x / n, 4) if n else None
+
+
+def cmd_verify2(work, md, h2):
+    """Amendment 8: the checks of amendment 6 where verify could not make them (Pumpfun_v2's hours, the creator at launch, our
+    graduations of the days it covers), and the same checks for loopholetape's launches (9-17 Oct)."""
+    import numpy as np
+    os.makedirs(work, exist_ok=True)
+    k = os.environ.get("HK") or ""
+    rpc = rpc_only("https://mainnet.helius-rpc.com/?api-key=" + k, 0.12) if k else rpc_only(PUBLIC_RPC, 0.3)
+    top = rpc.call("getSlot", [])
+    grads = our_grads(md, h2)
+    out = {"our_graduations": len(grads)}
+    # ---- Pumpfun_v2: its own span is 10 Aug - 8 Oct 03:30 UTC (verify); launch days used 10 Aug - 6 Oct
+    lo, hi = _ts("2026-08-10"), _ts("2026-10-07")
+    v2 = read_v2(work, lo, hi, ["block_time", "signature", "mint", "creator", "token_name", "symbol", "uri", "is_mayhem_mode"])
+    o = out.setdefault("v2", {"rows": len(v2), "mayhem_rows": int(v2["is_mayhem_mode"].fillna(False).astype(bool).sum())})
+    rng = np.random.default_rng(7)
+    hh = sorted(rng.choice(np.arange(lo, hi, 1800), 6, replace=False).tolist())
+    sset, mset = set(v2["signature"]), set(v2["mint"])
+    o["halfhours"] = [chain_halfhour(rpc, h, top, sset, mset, v2) for h in hh]
+    o["chain_in_dataset_share"] = _share(o["halfhours"], "chain_in_dataset", "chain_launches")
+    o["dataset_on_chain_share"] = _share(o["halfhours"], "dataset_rows_on_chain", "dataset_rows")
+    sub = v2.iloc[rng.choice(len(v2), 300, replace=False)]
+    o["row_check"] = launch_check(rpc, [{"mint": r["mint"], "sig": r["signature"], "name": r["token_name"], "symbol": r["symbol"],
+                                         "uri": r["uri"], "creator": r["creator"]} for _, r in sub.iterrows()])
+    g = {x for x, t in grads.items() if _ts("2026-08-11") * 1000 <= t < _ts("2026-10-07") * 1000}
+    o["our_graduations_11aug_6oct"], o["of_them_in_dataset"] = len(g), len(g & mset)
+    log("v2", json.dumps(o)[:3000])
+    # ---- loopholetape's launches: 27 Sep - 17 Oct (its "launches" subset, after its decoder fix)
+    lp, missing = read_loophole(work, _days("2026-09-27", "2026-10-17"))
+    o = out.setdefault("loophole", {"rows": len(lp), "days_missing": missing,
+                                    "mayhem_rows": int(pd_num(lp["mayhem"]).fillna(0).astype(bool).sum()),
+                                    "quote": lp["quote_asset"].fillna("?").value_counts().head(6).to_dict()})
+    a, b = _ts("2026-10-09"), _ts("2026-10-18")
+    hh = sorted(rng.choice(np.arange(a, b, 1800), 4, replace=False).tolist())
+    lset = set(lp["mint"])
+    o["halfhours"] = [chain_halfhour(rpc, h, top, None, lset, lp) for h in hh]
+    o["chain_in_dataset_share"] = _share(o["halfhours"], "chain_in_dataset", "chain_launches")
+    o["dataset_on_chain_share"] = _share(o["halfhours"], "dataset_rows_on_chain", "dataset_rows")
+    w5 = lp[(lp["bt"] >= a) & (lp["bt"] < b)]
+    sub = w5.iloc[rng.choice(len(w5), 300, replace=False)]
+    o["row_check"] = launch_check(rpc, [{"mint": r["mint"], "name": r["name"], "symbol": r["symbol"], "uri": r["uri"],
+                                         "creator": r["creator"]} for _, r in sub.iterrows()])
+    g = {x for x, t in grads.items() if _ts("2026-09-29") * 1000 <= t < _ts("2026-10-18") * 1000}
+    o["our_graduations_29sep_17oct"], o["of_them_in_dataset"] = len(g), len(g & lset)
+    # ---- the two recorders on the days both cover (27 Sep - 6 Oct): same launches, same fields
+    a2, b2 = _ts("2026-09-27"), _ts("2026-10-07")
+    va, la = v2[(v2["bt"] >= a2 + 3600) & (v2["bt"] < b2 - 3600)], lp[(lp["bt"] >= a2 + 3600) & (lp["bt"] < b2 - 3600)]
+    j = va.merge(lp, on="mint", suffixes=("_v2", "_lp"))
+    o["overlap"] = {"v2_rows": len(va), "v2_in_loophole": int(va["mint"].isin(lset).sum()), "loophole_rows": len(la),
+                    "loophole_in_v2": int(la["mint"].isin(mset).sum()), "joined": len(j),
+                    "creator_same": int((j["creator_v2"].astype(str) == j["creator_lp"].astype(str)).sum()),
+                    "symbol_same": int((j["symbol_v2"].astype(str) == j["symbol_lp"].astype(str)).sum()),
+                    "time_diff_s_p50_p99": [round(float(x), 2) for x in np.nanquantile((j["bt_lp"] - j["bt_v2"]).abs(), [0.5, 0.99])]
+                    if len(j) else None}
+    pv, pl = [(d["bt"] // 86400).astype(int).value_counts() for d in (v2, lp)]
+    o["per_day_v2_vs_loophole"] = {time.strftime("%Y-%m-%d", time.gmtime(int(dd) * 86400)): [int(pv.get(dd, 0)), int(pl[dd])]
+                                   for dd in sorted(pl.index)}
+    log("loophole", json.dumps(o)[:3000])
+    json.dump(out, open(os.path.join(work, "verify2.json"), "w"), indent=1, default=str)
+
+
+def pd_num(x):
+    import pandas as pd
+    return pd.to_numeric(x, errors="coerce")
+
+
+# ------------------------------------------------------------------------------------------------ universe L (amendment 6)
+def _secs(x):
+    """A timestamp column (datetime of any unit, or numbers in s / ms / us) -> unix seconds as float, NaN where missing."""
+    import pandas as pd
+    if pd.api.types.is_datetime64_any_dtype(x):
+        return ((pd.to_datetime(x, utc=True) - pd.Timestamp("1970-01-01", tz="UTC")).dt.total_seconds() // 1).astype(float)
+    v = pd.to_numeric(x, errors="coerce").astype(float)
+    m = v.max()
+    return v / (1e6 if m > 1e14 else 1e3 if m > 1e11 else 1)
+
+
+L_DAYS = {"w3": ("2026-08-10", "2026-09-07"), "w4": ("2026-09-10", "2026-10-06"), "w5": ("2026-10-09", "2026-10-17")}
+# first and last launch day, both included (amendment 8: w2 left out, the corpus failed its check; w5 ends on loophole's last day)
+
+
+def cmd_build(work, md, h2, out):
+    """Universe L (amendments 6 and 8): every launch of the datasets that passed (SOURCES, default "v2,loophole"), one row per
+    mint. Rows in a window's launch days that are not mayhem mode get w = w3..w5; all other rows get w = "" and only serve as
+    history for the counting facts (creator, ticker, theme, crowding)."""
+    import pandas as pd
+    os.makedirs(out, exist_ok=True)
+    srcs = (os.environ.get("SOURCES") or "v2,loophole").split(",")
+    grads = our_grads(md, h2)
+    gser = pd.Series({m: t // 1000 for m, t in grads.items()}, dtype="int64")
+    parts, gtimes = [], []
+    if "v2" in srcs:
+        ds = DATASETS["v2"]
+
+        def day_of(f):
+            d = f.rsplit("_", 1)[1][:8]
+            return _ts("%s-%s-%s" % (d[:4], d[4:6], d[6:8]))
+        cre, gra = [], []
+        for f, _ in hf_files(ds):
+            if not f.endswith(".parquet") or day_of(f) < _ts("2026-08-09"):
+                continue
+            if "/create/" in f:
+                cols = ["block_time", "mint", "bonding_curve", "creator", "token_name", "symbol", "uri", "is_mayhem_mode"]
+                cre.append(pd.read_parquet(hf_get(ds, f, os.path.join(work, "tmp.parquet")), columns=cols))
+            elif "/graduate/" in f:
+                gra.append(pd.read_parquet(hf_get(ds, f, os.path.join(work, "tmp.parquet")), columns=["block_time", "mint"]))
+        c = pd.concat(cre, ignore_index=True).drop_duplicates("mint")
+        g = pd.concat(gra, ignore_index=True)
+        gtimes.append(pd.DataFrame({"mint": g["mint"], "gt": _secs(g["block_time"])}))
+        parts.append(pd.DataFrame({"mint": c["mint"], "curve": c["bonding_curve"], "creator": c["creator"], "name": c["token_name"],
+                                   "symbol": c["symbol"], "uri": c["uri"], "mayhem": c["is_mayhem_mode"].astype(float),
+                                   "t": _secs(c["block_time"]), "src": "v2", "unresolved": False}))
+        log("v2 creates", len(c), "graduate events", len(g), "files", len(cre), len(gra))
+    if "loophole" in srcs:
+        lp, missing = read_loophole(work, _days("2026-09-27", "2026-10-17"))
+        gr = pd_num(lp["graduated"])
+        cc = pd_num(lp["curve_complete"])
+        nonsol = lp["quote_asset"].fillna("").astype(str).str.lower().ne("sol") & lp["quote_asset"].notna()
+        done = (gr == 1) | (nonsol & (cc == 1))
+        unres = gr.isna() & cc.isna()
+        gtimes.append(pd.DataFrame({"mint": lp["mint"][done], "gt": (lp["bt"] + pd_num(lp["migrate_dt_s"]))[done]}))
+        gtimes.append(pd.DataFrame({"mint": lp["mint"][done], "gt": float("inf")}))       # graduated, time maybe unknown
+        parts.append(pd.DataFrame({"mint": lp["mint"], "curve": None, "creator": lp["creator"], "name": lp["name"],
+                                   "symbol": lp["symbol"], "uri": lp["uri"], "mayhem": pd_num(lp["mayhem"]).astype(float),
+                                   "t": lp["bt"], "src": "loophole", "unresolved": unres.to_numpy()}))
+        log("loophole launches", len(lp), "graduated", int(done.sum()), "unresolved", int(unres.sum()), "days missing", missing)
+    allx = pd.concat(parts, ignore_index=True)
+    allx = allx[allx["t"].notna() & allx["mint"].notna()]
+    unres = set(allx.loc[allx["unresolved"], "mint"]) - set(allx.loc[~allx["unresolved"], "mint"])
+    allx = allx.drop_duplicates("mint").drop(columns=["unresolved"])        # v2's row first where both have the mint
+    allx["t"] = allx["t"].astype("int64")
+    gt = pd.concat(gtimes, ignore_index=True) if gtimes else pd.DataFrame(columns=["mint", "gt"])
+    known = gt[gt["gt"] < float("inf")].groupby("mint")["gt"].min()
+    anyg = set(gt["mint"])
+    allx["grad_t_ds"] = allx["mint"].map(known)
+    allx["grad_t_ours"] = allx["mint"].map(gser).astype(float)
+    allx["grad_t"] = allx[["grad_t_ds", "grad_t_ours"]].min(axis=1)
+    g_any = allx["mint"].isin(anyg) | allx["grad_t_ours"].notna()
+    allx["graduated"] = g_any.astype(float).where(g_any | ~allx["mint"].isin(unres))
+    allx["w"] = ""
+    summary = {"sources": srcs, "rows_all": len(allx), "mayhem_all": int((allx["mayhem"] == 1).sum())}
+    for w, (a, b) in L_DAYS.items():
+        t0, t1 = _ts(a), _ts(b) + 86400
+        inday = (allx["t"] >= t0) & (allx["t"] < t1)
+        m = inday & (allx["mayhem"] != 1)
+        allx.loc[m, "w"] = w
+        d = allx[m]
+        gm = {x for x, t in grads.items() if t0 * 1000 + 86400000 <= t < t1 * 1000}
+        summary[w] = {"launches_in_days": int(inday.sum()), "mayhem_left_out": int((inday & (allx["mayhem"] == 1)).sum()),
+                      "test_rows": int(m.sum()), "by_source": d["src"].value_counts().to_dict(),
+                      "graduated": int((d["graduated"] == 1).sum()), "unresolved": int(d["graduated"].isna().sum()),
+                      "graduated_10min_plus": int(((d["grad_t"] - d["t"]) >= 600).sum()),
+                      "graduated_time_unknown": int(((d["graduated"] == 1) & d["grad_t"].isna()).sum()),
+                      "graduated_in_dataset": int(d["grad_t_ds"].notna().sum()),
+                      "graduated_in_our_list": int(d["grad_t_ours"].notna().sum()),
+                      "our_graduations_of_these_days": len(gm), "of_them_in_L": len(gm & set(allx.loc[inday, "mint"]))}
+        log(w, summary[w])
+    summary["history_rows"] = int((allx["w"] == "").sum())
+    allx = allx.sort_values("t").reset_index(drop=True)
+    k = max(1, -(-len(allx) // 400_000))
+    for j in range(k):
+        allx.iloc[j * len(allx) // k:(j + 1) * len(allx) // k].to_parquet(os.path.join(out, "L_%02d.parquet" % j), index=False,
+                                                                          compression="zstd")
+    summary["files"] = k
+    json.dump(summary, open(os.path.join(out, "summary.json"), "w"), indent=1)
+
+
+def load_universe(udir):
+    import pandas as pd
+    return pd.concat([pd.read_parquet(f) for f in sorted(glob.glob(os.path.join(udir, "L_*.parquet")))], ignore_index=True)
+
+
+def meta_sample(udir):
+    """The random 600,000 (seed 7) of universe L's window rows, drawn from the list sorted by mint."""
+    import numpy as np
+    d = load_universe(udir)
+    d = d[d["w"] != ""].sort_values("mint").reset_index(drop=True)
+    n = int(os.environ.get("MSAMPLE") or 600_000)
+    take = np.sort(np.random.default_rng(7).permutation(len(d))[:min(n, len(d))])
+    return d.iloc[take].reset_index(drop=True)
+
+
+def cmd_mshard(udir, i, n, out):
+    d = meta_sample(udir)
+    skip = set(json.load(open(os.environ["DONE"]))) if os.environ.get("DONE") and os.path.exists(os.environ["DONE"]) else set()
+    part = d.iloc[int(i)::int(n)]
+    part = part[~part["mint"].isin(skip)].reset_index(drop=True)
+    log("universe sample", len(d), "this shard", len(part), "already done", len(skip))
+    stop = time.time() + 60 * float(os.environ.get("SHARD_MINUTES", 300))
+    rpc = Spread()
+    fpool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("FILE_WORKERS") or 16))
+    res, files = {}, {}
+    for a in range(0, len(part), 100):
+        if time.time() > stop:
+            log("time budget used at", a, "of", len(part))
+            break
+        chunk = part.iloc[a:a + 100]
+        curves = [c if isinstance(c, str) and c else curve_address(m) for m, c in zip(chunk["mint"], chunk["curve"])]
+        acc = rpc.call("getMultipleAccounts", [curves, {"encoding": "base64"}])
+        vals = (acc or {}).get("value") if isinstance(acc, dict) else None
+        got = list(fpool.map(metadata_file, chunk["uri"].fillna("").astype(str)))
+        for k, (m, (j, st)) in enumerate(zip(chunk["mint"], got)):
+            r = {"mint": m, "file_status": st}
+            v = vals[k] if vals else None
+            if v and v.get("data"):
+                try:
+                    b = base64.b64decode(v["data"][0])
+                    r["complete"] = bool(b[48]) if len(b) > 48 else None
+                except Exception:
+                    pass
+            elif vals is not None:
+                r["curve_gone"] = True
+            files[st] = files.get(st, 0) + 1
+            if isinstance(j, dict):
+                r.update({"f_twitter": j.get("twitter"), "f_telegram": j.get("telegram"), "f_website": j.get("website"),
+                          "f_name": j.get("name"), "f_symbol": j.get("symbol"), "f_createdOn": j.get("createdOn"),
+                          "f_desc_len": len(str(j.get("description") or "")),
+                          "f_image": str(j.get("image") or "")[:200],
+                          "f_video": str(j.get("video") or j.get("animation_url") or j.get("video_uri") or "")[:200]})
+            res[m] = r
+        if a % 2000 == 0 or a + 100 >= len(part):
+            log(a + len(chunk), "of", len(part), "files", files, "complete", sum(1 for r in res.values() if r.get("complete")),
+                "rpc", rpc.codes)
+            tmp = out + ".tmp"
+            with gzip.open(tmp, "wt") as fh:
+                json.dump({"rows": res, "done": a + len(chunk), "planned": len(part)}, fh)
+            os.replace(tmp, out)
+    fpool.shutdown()
+    with gzip.open(out, "wt") as fh:
+        json.dump({"rows": res, "planned": len(part)}, fh)
+
+
+def cmd_mfinal(src, out, prev=None):
+    import pandas as pd
+    os.makedirs(out, exist_ok=True)
+    rows = []
+    for f in sorted(glob.glob(os.path.join(src, "**", "lmeta_*.json.gz"), recursive=True)):
+        rows += list(json.load(gzip.open(f, "rt"))["rows"].values())
+    d = pd.DataFrame(rows).drop_duplicates("mint")
+    if prev and os.path.exists(prev):
+        old = pd.read_parquet(prev)
+        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]))]], ignore_index=True)
+    for c in d.columns:
+        if d[c].dtype != object or c == "mint":
+            continue
+        v = d[c].dropna()
+        if len(v) and v.map(lambda x: isinstance(x, bool)).all():
+            d[c] = d[c].astype("boolean")
+        else:
+            d[c] = d[c].map(lambda x: None if x is None or (isinstance(x, float) and x != x) else (x if isinstance(x, str) else json.dumps(x)))
+    d.to_parquet(os.path.join(out, "lmeta.parquet"), index=False, compression="zstd")
+    log("rows", len(d), "files", d["file_status"].value_counts().to_dict(), "complete", int(d.get("complete", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()))
+
+
 # ------------------------------------------------------------------------------------------------ the fetch
 WINDOWS = (("w1", "2026-04-25", "2026-05-25"), ("w2", "2026-06-25", "2026-07-25"), ("w3", "2026-08-10", "2026-09-10"),
            ("w4", "2026-09-10", "2026-10-09"), ("w5", "2026-10-09", "2026-10-22"))      # as research/rockets/build_paths.py
@@ -709,5 +1100,6 @@ def cmd_final(src, out, prev=None):
 
 
 if __name__ == "__main__":
-    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "verify": cmd_verify, "sigs": cmd_sigs,
-     "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
+    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "verify": cmd_verify, "verify2": cmd_verify2,
+     "build": cmd_build,
+     "mshard": cmd_mshard, "mfinal": cmd_mfinal, "sigs": cmd_sigs, "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
