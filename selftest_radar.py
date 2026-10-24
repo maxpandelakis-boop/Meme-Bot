@@ -1522,7 +1522,9 @@ def checks(check, env_=None):
                 # check and the check at the pick: the crash gate and the $100k floor stay, the veto is off), and the Pick account's fresh start
                 # (FRESH_AT, 22 Oct, the user's go: paperSince moves to the rocket hunter's first round once, the rule stays, nothing is sold),
                 # and the live chart sale (LIVE_SELL_AT, 24 Oct, the user's go: the Pick's stop and take-profit on the minute's low and high,
-                # the 6-hour limit at 6 hours, the minute watch's sales booked; the rule and the account stay).
+                # the 6-hour limit at 6 hours, the minute watch's sales booked; the rule and the account stay), and the chart exit (CHART_*,
+                # 24 Oct, the user's go "Okay dann Bau das": the Pick sells by chart_hit, PAPER_RULE v3 restarts its account once, the fixed
+                # rule stays as HOLD_* for the shadow rule K, the Radar and the Learning Pick).
                 # Every changed stretch of memebot.py names one of them, and nothing else in it moved
                 import difflib, hashlib
                 hunks, cur = [], []
@@ -1538,6 +1540,7 @@ def checks(check, env_=None):
                 rev_k = ("GATES-2026-10-21",)
                 fresh_k = ("FRESH_AT", "paperRuleSince")
                 live_k = ("LIVE_SELL_AT", "live_sell_at", "hold_", "live", "**tag")
+                chart_k = ("CHART_", "is_chart", "chart_hit", "chart_level", "OLD_PAPER", "exit_word", "EXIT_WORDS", '"chart"', "chartExit")
                 txt = lambda h: "\n".join(h)
                 # the stretches that name only the window are pinned whole (the fingerprint of their removed and added lines, 21 Oct): any
                 # other edit inside them, or a new one, fails until it is authorized and the fingerprint renewed
@@ -1556,17 +1559,33 @@ def checks(check, env_=None):
                 fresh_ok = hashlib.sha256("\n".join(sorted(ln for h in fresh for ln in h)).encode("utf-8")).hexdigest() == \
                     "ea0098e247b28df9e0bd8885a93f125ff82b2492030c71b3b3c6055c310d6d8e" and M.FRESH_AT == 1792663680000
                 # the live chart sale's stretches, pinned the same way (24 Oct), its switch by value too
-                live = [h for h in hunks if any(k in txt(h) for k in live_k) and not any(k in txt(h) for k in old_k + win_k + veto_k + rev_k + fresh_k)]
+                live = [h for h in hunks if any(k in txt(h) for k in live_k) and not any(k in txt(h) for k in old_k + win_k + veto_k + rev_k + fresh_k + chart_k)]
                 live_ok = hashlib.sha256("\n".join(sorted(ln for h in live for ln in h)).encode("utf-8")).hexdigest() == \
-                    "07e9f586df67b86fd84e60c08175a24efb955348fe52080b72967897d701f177" and M.LIVE_SELL_AT == 1792846800000
+                    "cd84654a9b218d64e6b9936e80bbc31cb5e26a3c481eb62bedd8dc1410854c14" and M.LIVE_SELL_AT == 1792846800000
+                # the chart exit's stretches (24 Oct), pinned the same way, its levels by value too; the live chart sale's fingerprint above was
+                # renewed with it (stretches that carry both now count here)
+                chart = [h for h in hunks if any(k in txt(h) for k in chart_k) and not any(k in txt(h) for k in old_k + win_k + veto_k + rev_k + fresh_k)]
+                chart_ok = hashlib.sha256("\n".join(sorted(ln for h in chart for ln in h)).encode("utf-8")).hexdigest() == \
+                    "f8b1afbdf3313195fe02765e7c8b4dcdf3b60f50c30a327ffd4e65eafb343413" and (M.CHART_STOP, M.CHART_TRAIL, M.CHART_ARM, M.CHART_DROP, M.CHART_DROP_MIN) == (0.50, 0.15, 1.5, 0.15, 30)
+                v3 = M.PAPER_RULE == "v3: top 50 / chart exit: -50% floor, trail 15% from 1.5x, -15% in 30 min, 11x, 6h" and \
+                    M.OLD_PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h" and M.CHART_RULES == (M.PAPER_RULE,)
                 # the fingerprint sees the lines, not where they sit: the veto must also be a key of the 2h profile (not of its PRIOR)
                 # and its gate line must come before gates() returns
                 g_src = now_b.decode("utf-8").split("\ndef gates(", 1)[1].split("\n    return fails", 1)[0]
                 veto_at = "GATE_MAX_LIQMC" in M.PROFILES["2h"] and M.PROFILES["2h"]["GATE_MAX_LIQMC"] is None and M.PROFILES["2h"].get("GATE_CRASH") == {"chgH1": -10.0, "chgH6": -50.0, "chgH24": -70.0} and \
                     M.PROFILES["2h"].get("GATE_MC") == (100_000, 2_000_000) and "GATE_MAX_LIQMC" not in M.PROFILES["2h"].get("PRIOR", {}) and 'fails.append("liqmc")' in g_src
-                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k + veto_k + rev_k + fresh_k + live_k) for h in hunks) and win_ok and veto_ok and rev_ok
-                            and fresh_ok and live_ok and veto_at
-                            and not any(ln.startswith("-PAPER_RULE") for h in hunks for ln in h))
+                same.append(bool(hunks) and all(any(k in txt(h) for k in old_k + win_k + veto_k + rev_k + fresh_k + live_k + chart_k) for h in hunks) and win_ok and veto_ok
+                            and rev_ok and fresh_ok and live_ok and chart_ok and veto_at
+                            and all(ln == '-PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"    # state.json "paperRule": a run that finds another rule there restarts the account'
+                                    and v3 for h in hunks for ln in h if ln.startswith("-PAPER_RULE")))
+                continue
+            if f == "fetch.py" and p.returncode == 0 and p.stdout != now_b:
+                # the chart exit (24 Oct): a held position's candles are one-minute candles up to 16 hours (chart_hit reads every minute since
+                # the entry); that stretch alone, pinned
+                import difflib, hashlib
+                lines = [ln for ln in difflib.unified_diff(p.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0)
+                         if ln[:1] in "+-" and not ln.startswith(("+++", "---"))]
+                same.append(hashlib.sha256("\n".join(sorted(lines)).encode("utf-8")).hexdigest() == "9cdb5bba5df796485b90d70e28c16b6269e41075d8a417b3afcd624c991ce34d")
                 continue
             same.append(p.returncode == 0 and p.stdout == now_b)
         import ast
@@ -1580,7 +1599,7 @@ def checks(check, env_=None):
         own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak", "radar_paper"}
         std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
                                                               "sys", "tarfile", "time", "urllib", "zoneinfo"}
-        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto, the gate review, the Pick's fresh start and its live chart sale (%s%s); imports: %s" % (BASE, same, "; %s is not in this clone, run git fetch --unshallow" % BASE if no_base else "", sorted(mods - own)))
+        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto, the gate review, the Pick's fresh start, its live chart sale and its chart exit (fetch.py but for the chart exit's candles) (%s%s); imports: %s" % (BASE, same, "; %s is not in this clone, run git fetch --unshallow" % BASE if no_base else "", sorted(mods - own)))
 
         print("== launch radar R9: no secret in any file, branch, row or log line")
         from selftest import Rest, serve_app, PushSink, APP_SECRET

@@ -1,0 +1,688 @@
+{
+ "coins": {
+  "w1": 348,
+  "w2": 394,
+  "w3": 569,
+  "w4": 356,
+  "w5": 185
+ },
+ "variants": 8424,
+ "chartDriven": 8412,
+ "K": {
+  "stop": 0.3,
+  "trail": 0.0,
+  "arm": 0.0,
+  "lock": 0.0,
+  "stale_h": 0,
+  "stale_g": 0.0,
+  "fade": "none",
+  "T": 6
+ },
+ "Kcloses": {
+  "w1": -4.64,
+  "w2": -3.95,
+  "w3": -2.5,
+  "w4": -4.34,
+  "w5": -4.85
+ },
+ "low": {
+  "K": {
+   "w1": -6.17,
+   "w2": -5.13,
+   "w3": -2.81,
+   "w4": -5.33,
+   "w5": -6.47
+  },
+  "walk_WORST": [
+   {
+    "step": 2,
+    "fit": [
+     "w1"
+    ],
+    "test": "w2",
+    "j": 6485,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.15x, out on -15%% in 30 min, 11x / 12 h",
+    "fitScore": 2.69,
+    "n": 394,
+    "mean": -3.98,
+    "K": -5.13,
+    "diff": 1.15,
+    "lo5": -1.83,
+    "ci95": [
+     -2.47,
+     4.24
+    ],
+    "inProfit": 29.9
+   },
+   {
+    "step": 3,
+    "fit": [
+     "w1",
+     "w2"
+    ],
+    "test": "w3",
+    "j": 6502,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.15x, out at 3 h unless 1.2x seen, out on -15%% in 30 min, 11x / 6 h",
+    "fitScore": 2.68,
+    "n": 569,
+    "mean": -2.69,
+    "K": -2.81,
+    "diff": 0.13,
+    "lo5": -2.33,
+    "ci95": [
+     -2.9,
+     2.53
+    ],
+    "inProfit": 37.8
+   },
+   {
+    "step": 4,
+    "fit": [
+     "w1",
+     "w2",
+     "w3"
+    ],
+    "test": "w4",
+    "j": 6646,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.5x, out on -15%% in 30 min, 11x / 6 h",
+    "fitScore": 0.86,
+    "n": 356,
+    "mean": -3.17,
+    "K": -5.33,
+    "diff": 2.16,
+    "lo5": 0.73,
+    "ci95": [
+     0.46,
+     3.81
+    ],
+    "inProfit": 34.6
+   },
+   {
+    "step": 5,
+    "fit": [
+     "w1",
+     "w2",
+     "w3",
+     "w4"
+    ],
+    "test": "w5",
+    "j": 6646,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.5x, out on -15%% in 30 min, 11x / 6 h",
+    "fitScore": 0.86,
+    "n": 185,
+    "mean": -3.97,
+    "K": -6.47,
+    "diff": 2.5,
+    "lo5": 0.43,
+    "ci95": [
+     0.02,
+     4.85
+    ],
+    "inProfit": 40.5
+   }
+  ],
+  "walk_MEAN": [
+   {
+    "step": 2,
+    "fit": [
+     "w1"
+    ],
+    "test": "w2",
+    "j": 6485,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.15x, out on -15%% in 30 min, 11x / 12 h",
+    "fitScore": 2.69,
+    "n": 394,
+    "mean": -3.98,
+    "K": -5.13,
+    "diff": 1.15,
+    "lo5": -1.83,
+    "ci95": [
+     -2.47,
+     4.24
+    ],
+    "inProfit": 29.9
+   },
+   {
+    "step": 3,
+    "fit": [
+     "w1",
+     "w2"
+    ],
+    "test": "w3",
+    "j": 6564,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.3x, out on -15%% in 30 min, 11x / 3 h",
+    "fitScore": 2.79,
+    "n": 569,
+    "mean": -2.81,
+    "K": -2.81,
+    "diff": 0.0,
+    "lo5": -2.43,
+    "ci95": [
+     -3.01,
+     2.42
+    ],
+    "inProfit": 39.5
+   },
+   {
+    "step": 4,
+    "fit": [
+     "w1",
+     "w2",
+     "w3"
+    ],
+    "test": "w4",
+    "j": 6565,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.3x, out on -15%% in 30 min, 11x / 6 h",
+    "fitScore": 1.85,
+    "n": 356,
+    "mean": -3.36,
+    "K": -5.33,
+    "diff": 1.96,
+    "lo5": 0.55,
+    "ci95": [
+     0.28,
+     3.58
+    ],
+    "inProfit": 37.4
+   },
+   {
+    "step": 5,
+    "fit": [
+     "w1",
+     "w2",
+     "w3",
+     "w4"
+    ],
+    "test": "w5",
+    "j": 6583,
+    "rule": "stop -50%, trail 15% under the high once it reached 1.3x, out at 3 h unless 1.2x seen, out on -15%% in 30 min, 11x / 6 h",
+    "fitScore": 1.93,
+    "n": 185,
+    "mean": -2.63,
+    "K": -6.47,
+    "diff": 3.84,
+    "lo5": 1.41,
+    "ci95": [
+     0.95,
+     6.65
+    ],
+    "inProfit": 40.5
+   }
+  ],
+  "bar_WORST": {
+   "j": 6646,
+   "rule": "stop -50%, trail 15% under the high once it reached 1.5x, out on -15%% in 30 min, 11x / 6 h",
+   "fitScore": 0.86,
+   "w4": {
+    "n": 356,
+    "mean": -3.17,
+    "K": -5.33,
+    "diff": 2.16,
+    "lo5": 0.73,
+    "ci95": [
+     0.46,
+     3.81
+    ],
+    "inProfit": 34.6
+   },
+   "w5": {
+    "n": 185,
+    "mean": -3.97,
+    "K": -6.47,
+    "diff": 2.5,
+    "lo5": 0.43,
+    "ci95": [
+     0.02,
+     4.85
+    ],
+    "inProfit": 40.5
+   },
+   "holds": true
+  },
+  "bar_MEAN": {
+   "j": 6565,
+   "rule": "stop -50%, trail 15% under the high once it reached 1.3x, out on -15%% in 30 min, 11x / 6 h",
+   "fitScore": 1.85,
+   "w4": {
+    "n": 356,
+    "mean": -3.36,
+    "K": -5.33,
+    "diff": 1.96,
+    "lo5": 0.55,
+    "ci95": [
+     0.28,
+     3.58
+    ],
+    "inProfit": 37.4
+   },
+   "w5": {
+    "n": 185,
+    "mean": -4.02,
+    "K": -6.47,
+    "diff": 2.45,
+    "lo5": 0.33,
+    "ci95": [
+     -0.1,
+     4.83
+    ],
+    "inProfit": 44.9
+   },
+   "holds": true
+  },
+  "live": {
+   "j": 6646,
+   "rule": "stop -50%, trail 15% under the high once it reached 1.5x, out on -15%% in 30 min, 11x / 6 h",
+   "v": {
+    "stop": 0.5,
+    "trail": 0.15,
+    "arm": 1.5,
+    "lock": 0.0,
+    "stale_h": 0,
+    "stale_g": 0.0,
+    "fade": "drop",
+    "T": 6
+   },
+   "fitScore": 0.86,
+   "byWindow": {
+    "w1": {
+     "n": 348,
+     "mean": -4.22,
+     "K": -6.17,
+     "diff": 1.96,
+     "lo5": -1.31,
+     "ci95": [
+      -2.02,
+      4.99
+     ],
+     "inProfit": 27.6
+    },
+    "w2": {
+     "n": 394,
+     "mean": -2.34,
+     "K": -5.13,
+     "diff": 2.78,
+     "lo5": 0.85,
+     "ci95": [
+      0.47,
+      4.98
+     ],
+     "inProfit": 27.4
+    },
+    "w3": {
+     "n": 569,
+     "mean": -1.95,
+     "K": -2.81,
+     "diff": 0.86,
+     "lo5": -1.36,
+     "ci95": [
+      -1.86,
+      3.03
+     ],
+     "inProfit": 45.2
+    },
+    "w4": {
+     "n": 356,
+     "mean": -3.17,
+     "K": -5.33,
+     "diff": 2.16,
+     "lo5": 0.73,
+     "ci95": [
+      0.46,
+      3.81
+     ],
+     "inProfit": 34.6
+    },
+    "w5": {
+     "n": 185,
+     "mean": -3.97,
+     "K": -6.47,
+     "diff": 2.5,
+     "lo5": 0.43,
+     "ci95": [
+      0.02,
+      4.85
+     ],
+     "inProfit": 40.5
+    }
+   },
+   "all": {
+    "mean": -2.9,
+    "K": -4.78,
+    "diff": 1.89
+   }
+  },
+  "beatAllWindows": 493,
+  "bestPooledHindsight": "stop -50%, trail 15% under the high once it reached 1.3x, out at 3 h unless 1.2x seen, out on -15%% in 30 min, 11x / 6 h",
+  "share_pooled_better": 80.4
+ },
+ "level": {
+  "K": {
+   "w1": -4.4,
+   "w2": -3.54,
+   "w3": -1.7,
+   "w4": -4.11,
+   "w5": -5.58
+  },
+  "walk_WORST": [
+   {
+    "step": 2,
+    "fit": [
+     "w1"
+    ],
+    "test": "w2",
+    "j": 83,
+    "rule": "stop -20%, trail 15% under the high, 11x / 12 h",
+    "fitScore": 3.92,
+    "n": 394,
+    "mean": -1.31,
+    "K": -3.54,
+    "diff": 2.22,
+    "lo5": -0.7,
+    "ci95": [
+     -1.37,
+     5.23
+    ],
+    "inProfit": 32.2
+   },
+   {
+    "step": 3,
+    "fit": [
+     "w1",
+     "w2"
+    ],
+    "test": "w3",
+    "j": 82,
+    "rule": "stop -20%, trail 15% under the high, 11x / 6 h",
+    "fitScore": 3.61,
+    "n": 569,
+    "mean": -1.18,
+    "K": -1.7,
+    "diff": 0.52,
+    "lo5": -1.91,
+    "ci95": [
+     -2.48,
+     2.87
+    ],
+    "inProfit": 45.9
+   },
+   {
+    "step": 4,
+    "fit": [
+     "w1",
+     "w2",
+     "w3"
+    ],
+    "test": "w4",
+    "j": 2270,
+    "rule": "stop -30%, trail 15% under the high once it reached 1.15x, 11x / 12 h",
+    "fitScore": 1.06,
+    "n": 356,
+    "mean": -1.71,
+    "K": -4.11,
+    "diff": 2.4,
+    "lo5": 0.73,
+    "ci95": [
+     0.4,
+     4.41
+    ],
+    "inProfit": 46.1
+   },
+   {
+    "step": 5,
+    "fit": [
+     "w1",
+     "w2",
+     "w3",
+     "w4"
+    ],
+    "test": "w5",
+    "j": 2270,
+    "rule": "stop -30%, trail 15% under the high once it reached 1.15x, 11x / 12 h",
+    "fitScore": 1.06,
+    "n": 185,
+    "mean": -4.07,
+    "K": -5.58,
+    "diff": 1.51,
+    "lo5": -1.26,
+    "ci95": [
+     -1.83,
+     4.55
+    ],
+    "inProfit": 55.7
+   }
+  ],
+  "walk_MEAN": [
+   {
+    "step": 2,
+    "fit": [
+     "w1"
+    ],
+    "test": "w2",
+    "j": 83,
+    "rule": "stop -20%, trail 15% under the high, 11x / 12 h",
+    "fitScore": 3.92,
+    "n": 394,
+    "mean": -1.31,
+    "K": -3.54,
+    "diff": 2.22,
+    "lo5": -0.7,
+    "ci95": [
+     -1.37,
+     5.23
+    ],
+    "inProfit": 32.2
+   },
+   {
+    "step": 3,
+    "fit": [
+     "w1",
+     "w2"
+    ],
+    "test": "w3",
+    "j": 82,
+    "rule": "stop -20%, trail 15% under the high, 11x / 6 h",
+    "fitScore": 3.63,
+    "n": 569,
+    "mean": -1.18,
+    "K": -1.7,
+    "diff": 0.52,
+    "lo5": -1.91,
+    "ci95": [
+     -2.48,
+     2.87
+    ],
+    "inProfit": 45.9
+   },
+   {
+    "step": 4,
+    "fit": [
+     "w1",
+     "w2",
+     "w3"
+    ],
+    "test": "w4",
+    "j": 82,
+    "rule": "stop -20%, trail 15% under the high, 11x / 6 h",
+    "fitScore": 2.28,
+    "n": 356,
+    "mean": -1.2,
+    "K": -4.11,
+    "diff": 2.91,
+    "lo5": 1.35,
+    "ci95": [
+     1.02,
+     4.72
+    ],
+    "inProfit": 33.7
+   },
+   {
+    "step": 5,
+    "fit": [
+     "w1",
+     "w2",
+     "w3",
+     "w4"
+    ],
+    "test": "w5",
+    "j": 100,
+    "rule": "stop -20%, trail 15% under the high, out at 3 h unless 1.2x seen, 11x / 6 h",
+    "fitScore": 2.45,
+    "n": 185,
+    "mean": -1.31,
+    "K": -5.58,
+    "diff": 4.27,
+    "lo5": 1.7,
+    "ci95": [
+     1.17,
+     7.22
+    ],
+    "inProfit": 42.2
+   }
+  ],
+  "bar_WORST": {
+   "j": 2270,
+   "rule": "stop -30%, trail 15% under the high once it reached 1.15x, 11x / 12 h",
+   "fitScore": 1.06,
+   "w4": {
+    "n": 356,
+    "mean": -1.71,
+    "K": -4.11,
+    "diff": 2.4,
+    "lo5": 0.73,
+    "ci95": [
+     0.4,
+     4.41
+    ],
+    "inProfit": 46.1
+   },
+   "w5": {
+    "n": 185,
+    "mean": -4.07,
+    "K": -5.58,
+    "diff": 1.51,
+    "lo5": -1.26,
+    "ci95": [
+     -1.83,
+     4.55
+    ],
+    "inProfit": 55.7
+   },
+   "holds": true
+  },
+  "bar_MEAN": {
+   "j": 82,
+   "rule": "stop -20%, trail 15% under the high, 11x / 6 h",
+   "fitScore": 2.28,
+   "w4": {
+    "n": 356,
+    "mean": -1.2,
+    "K": -4.11,
+    "diff": 2.91,
+    "lo5": 1.35,
+    "ci95": [
+     1.02,
+     4.72
+    ],
+    "inProfit": 33.7
+   },
+   "w5": {
+    "n": 185,
+    "mean": -2.58,
+    "K": -5.58,
+    "diff": 3.0,
+    "lo5": 0.66,
+    "ci95": [
+     0.11,
+     5.57
+    ],
+    "inProfit": 43.8
+   },
+   "holds": true
+  },
+  "live": {
+   "j": 2270,
+   "rule": "stop -30%, trail 15% under the high once it reached 1.15x, 11x / 12 h",
+   "v": {
+    "stop": 0.3,
+    "trail": 0.15,
+    "arm": 1.15,
+    "lock": 0.0,
+    "stale_h": 0,
+    "stale_g": 0.0,
+    "fade": "none",
+    "T": 12
+   },
+   "fitScore": 1.06,
+   "byWindow": {
+    "w1": {
+     "n": 348,
+     "mean": -1.31,
+     "K": -4.4,
+     "diff": 3.09,
+     "lo5": -0.22,
+     "ci95": [
+      -1.04,
+      6.43
+     ],
+     "inProfit": 50.9
+    },
+    "w2": {
+     "n": 394,
+     "mean": -2.07,
+     "K": -3.54,
+     "diff": 1.47,
+     "lo5": -1.43,
+     "ci95": [
+      -2.09,
+      4.5
+     ],
+     "inProfit": 46.4
+    },
+    "w3": {
+     "n": 569,
+     "mean": -0.64,
+     "K": -1.7,
+     "diff": 1.06,
+     "lo5": -1.42,
+     "ci95": [
+      -1.98,
+      3.57
+     ],
+     "inProfit": 56.2
+    },
+    "w4": {
+     "n": 356,
+     "mean": -1.71,
+     "K": -4.11,
+     "diff": 2.4,
+     "lo5": 0.73,
+     "ci95": [
+      0.4,
+      4.41
+     ],
+     "inProfit": 46.1
+    },
+    "w5": {
+     "n": 185,
+     "mean": -4.07,
+     "K": -5.58,
+     "diff": 1.51,
+     "lo5": -1.26,
+     "ci95": [
+      -1.83,
+      4.55
+     ],
+     "inProfit": 55.7
+    }
+   },
+   "all": {
+    "mean": -1.62,
+    "K": -3.45,
+    "diff": 1.83
+   }
+  },
+  "beatAllWindows": 995,
+  "bestPooledHindsight": "stop -20%, trail 15% under the high, out at 3 h unless 1.2x seen, 11x / 6 h",
+  "share_pooled_better": 90.1
+ }
+}

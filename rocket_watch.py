@@ -15,7 +15,8 @@ BTC and SOL hourly candles come from Binance's public market-data mirror. The wa
 wallets with 5 or more graduated coins of Aug-Oct 2026 and how they did) is read only.
 Between two rounds, `watch` looks at the open positions only, every minute (rule A, a sell at once, the app's live row every look).
 From memebot.LIVE_SELL_AT on it also looks at the Pick account's open positions every minute (the scan's list, memebot.LIVE_OPEN_ROW in
-the app's live store): the Pick's own rule judged by memebot.hold_hit on the minute's low and high (a pool without candles on
+the app's live store): the Pick's own rule judged by memebot.chart_hit (the chart exit, since 24 Oct; memebot.hold_hit for a position
+of the fixed rule before it) on the minute's low and high (a pool without candles on
 DexScreener's price), the 6-hour limit at that minute's candle price (memebot.hold_x6); it buys and books nothing in the Pick account itself: its sales go to <dir>/pick_live.json, picklog/<UTC day>.jsonl and the live
 row memebot.LIVE_WATCH_ROW, and the next scan books each at its minute. No push for them (sells are silent).
 usage: python3 rocket_watch.py round --dir rk --radar radar-data-dir [--now ms] [--mock DIR]
@@ -268,6 +269,8 @@ def pick_merge(st, src, now):
             continue
         pid = str(r["id"])
         ids.add(pid)
+        if pid in st["sold"] and (st["sold"][pid].get("rule") == "chart") != M.is_chart(r):
+            st["sold"].pop(pid)       # a sale by the other rule (a watch of older code saw it): the next scan would not book it, look again
         if pid in st["sold"]:
             continue                  # sold on the live chart: the next scan books it
         w = st["pos"].setdefault(pid, {})
@@ -292,7 +295,9 @@ def check_pick(http, st, pairs, now):
     high at 11x, the stop first), else the 6-hour limit (memebot.hold_end) at that minute's candle price (memebot.hold_x6; without
     candles DexScreener's price now). A pool without candles (GeckoTerminal
     has none for some pools) is judged on DexScreener's price of the minute instead, as the scan judges it on its own price then. A sale is
-    kept for the next scan, which books it at its minute. Returns the sales."""
+    kept for the next scan, which books it at its minute. A position of the chart exit (memebot.is_chart: the Pick's rule since 24 Oct)
+    is judged by memebot.chart_hit on the candles since the entry instead (its stop, trail and drop, booked at chart_hit's price, "rule":
+    "chart"); without candles by its floor, 11x and its trail under the best DexScreener price seen ("dshi"). Returns the sales."""
     out = []
     if now < M.live_sell_at():
         return out
@@ -300,8 +305,9 @@ def check_pick(http, st, pairs, now):
         t0, entry = R.num(w.get("entryAt")) or R.num(w.get("t")), R.num(w.get("px"))
         if pid in st["sold"] or not t0 or not entry or not w.get("pair"):
             continue
+        chart = M.is_chart(w)
         cs = sorted(tuple(float(R.num(x) or 0.0) for x in r[:5]) for r in gt_candles(http, w["pair"], t0 - 60_000, now))
-        hc = M.hold_hit(cs, t0, R.num(w.get("chk")), R.num(w.get("cpx")))
+        hc = (M.chart_hit if chart else M.hold_hit)(cs, t0, R.num(w.get("chk")), R.num(w.get("cpx")))
         px = R.num((pick_pair(pairs.get(w.get("addr")), w["pair"]) or {}).get("priceUsd"))
         w["seen"] = now
         if hc["cpx"]:
@@ -312,19 +318,28 @@ def check_pick(http, st, pairs, now):
             w["now"] = round(cs[-1][4] / hc["cpx"], 4)
             w["hi"] = round(max([R.num(w.get("hi")) or 0.0] + [M.hold_wicks(c)[0] / hc["cpx"] for c in mid]), 4)
             w["lo"] = round(min([R.num(w.get("lo")) or 1e9] + [M.hold_wicks(c)[1] / hc["cpx"] for c in mid]), 4)
+            if chart and hc.get("lvl"):
+                w["lvl"] = hc["lvl"]
         end = M.hold_end(t0)
         x6 = M.hold_x6(cs, t0, hc["cpx"], True) if end and now >= end else None
+        floor = 1.0 - (M.CHART_STOP if chart else M.HOLD_STOP)
+        if chart and not hc["fresh"] and px:
+            w["dshi"] = round(max(R.num(w.get("dshi")) or 1.0, px / entry), 4)
         if hc["hit"]:
-            sale = {"at": int(hc["hit"]), "why": hc["why"], "mult": 1.0 + M.HOLD_TP if hc["why"] == "tp" else min(hc["mult"], 1.0 - M.HOLD_STOP)}
-        elif not hc["fresh"] and px and (px >= (1.0 + M.HOLD_TP) * entry or px <= (1.0 - M.HOLD_STOP) * entry):
+            sale = {"at": int(hc["hit"]), "why": hc["why"], "mult": hc["mult"] if chart else (1.0 + M.HOLD_TP if hc["why"] == "tp" else min(hc["mult"], floor))}
+        elif not hc["fresh"] and px and (px >= (1.0 + M.HOLD_TP) * entry or px <= floor * entry):
             # no candle came in: both levels on DexScreener's price of this minute (memebot.cmd_run's no-candle check, every minute)
             sale = {"at": int(now), "why": "tp" if px > entry else "stop", "mult": 1.0 + M.HOLD_TP if px > entry else px / entry}
+        elif chart and not hc["fresh"] and px and w["dshi"] >= M.CHART_ARM and px <= (1.0 - M.CHART_TRAIL) * w["dshi"] * entry:
+            sale = {"at": int(now), "why": "trail", "mult": px / entry}       # the trail on DexScreener's prices (a pool without candles)
         elif x6 or (end and now >= end and px):
             # at the minute of the limit at its candle's price (as the scan books it: a look can come a few minutes late, after a round);
             # a pool without candles at DexScreener's price now
             sale = {"at": int(end), "why": "time", "mult": x6} if x6 else {"at": int(now), "why": "time", "mult": px / entry}
         else:
             continue
+        if chart:
+            sale["rule"] = "chart"
         left = R.num(w.get("left")) or 1.0
         eur = M.pos_value(w, left, sale["mult"])
         sale.update(sym=w.get("sym"), t=int(now), eur=round(eur, 2), pnl=round(eur - (R.num(w.get("ticket")) or 0.0) * left, 2), entryAt=int(t0))
@@ -337,7 +352,7 @@ def check_pick(http, st, pairs, now):
 def pick_doc(st, now):
     """The live row memebot.LIVE_WATCH_ROW: the last look, each watched position (where its next look starts, cpx, now / high / low as
     multiples of cpx) and the sales the scan has not booked yet or booked within PICK_KEEP_MS. Public data only."""
-    keep = ("sym", "t", "entryAt", "chk", "cpx", "now", "hi", "lo", "seen")
+    keep = ("sym", "t", "entryAt", "chk", "cpx", "now", "hi", "lo", "lvl", "seen")
     return {"v": 1, "t": now, "since": M.live_sell_at(), "list": st.get("list"),
             "pos": {a: {k: w.get(k) for k in keep if k in w} for a, w in st["pos"].items() if a not in st["sold"]}, "sold": st["sold"]}
 

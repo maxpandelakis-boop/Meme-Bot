@@ -182,7 +182,9 @@ def lern_row(D, R):
         ('<small class="hm-since">%s</small>' % E(since)) if since else "", big, E(line))
 
 
-PICK_WHY = {"tp": "11x reached", "stop": "stop −30%", "time": "after 6 h", "rug": "coin gone", "reset": "restart", "manual": "by hand"}
+PICK_WHY = {"tp": "11x reached", "stop": "stop −30%", "trail": "trailing stop", "drop": "fell %d%% in %d min" % (round(100 * M.CHART_DROP), M.CHART_DROP_MIN),
+            "time": "after 6 h", "rug": "coin gone", "reset": "restart", "manual": "by hand"}    # trail and drop: the chart exit's own reasons
+PICK_STOP_CHART = "stop −%d%%" % round(100 * M.CHART_STOP)     # the chart exit's stop (its floor)
 PICK_SOLD = 5             # last sells in the Pick tab's account block
 
 
@@ -223,7 +225,8 @@ def pick_account(D, R):
         ex = [e for e in r.get("status") or [] if isinstance(e, dict)]
         why = str(ex[-1].get("why") or "") if ex else ""
         pct = num(r.get("pct"))
-        bits = [("%s%s%%" % ("+" if pct > 0 else "", de_num(100 * pct, 0))) if pct is not None else "", PICK_WHY.get(why, why),
+        bits = [("%s%s%%" % ("+" if pct > 0 else "", de_num(100 * pct, 0))) if pct is not None else "",
+                PICK_STOP_CHART if why == "stop" and M.is_chart(r.get("p")) else PICK_WHY.get(why, why),
                 when(R, num(r.get("exitT")), now) if num(r.get("exitT")) else ""]
         sold.append('<li class="%s"><b>%s</b><span>%s</span><em>%s</em></li>' % (
             tone(r.get("pnl")), E(str(r.get("sym") or "?")[:14]), E(" · ".join(x for x in bits if x)), E(de_eur(r.get("pnl"), True))))
@@ -232,11 +235,12 @@ def pick_account(D, R):
     cmp_ = ('<p class="pk-cmp">For comparison, Radar 🚀: <b class="%s">%s</b> · %d closed · %d open</p>' % (
         tone(rk["bal"]), E(de_eur(rk["bal"], True)), rk["closed"], rk["open"])) if rk else ""
     live_at = M.live_sell_at()
-    foot = ('<p class="pk-s">Sells at −30%%, at 11x or after 6 h (the rule is unchanged). %s The trades before the start (%d) are in the archive under '
-            '“Three paper traders”.</p>' % (E("%s %s it sells on the live chart: every minute, a dip to −30%% (the minute's low) or a jump to 11x (its high) sells "
-                                               "at that minute, the 6 h limit 6 h after the purchase." % ("Since" if now >= live_at else "From", R.local(live_at).strftime("%b %d, %H:%M"))
-                                             if hasattr(R, "local") else ""),
-                                           sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold")))
+    foot = ('<p class="pk-s">%s The trades before the start (%d) are in the archive under “Three paper traders”.</p>' % (
+        E(("Sells on the live chart, every minute (the chart exit, since Oct 24): %d%% under its highest price once it has reached %gx, on a fall of %d%% "
+           "within %d minutes, at −%d%%, at 11x or after 6 h, each at that minute. The fixed rule before it (−%d%%, 11x, 6 h) runs on as shadow rule K "
+           "on the same trades.") % (round(100 * M.CHART_TRAIL), M.CHART_ARM, round(100 * M.CHART_DROP), M.CHART_DROP_MIN, round(100 * M.CHART_STOP),
+                                    round(100 * M.HOLD_STOP)) if now >= live_at else "Sells at −30%, at 11x or after 6 h."),
+        sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold")))
     js = ("<script>%s</script>" % PK_LIVE_JS) if "data-pk-box" in op_html else ""
     return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>%s' % (head, acct, op_html, sold_html, foot, cmp_, PK_CSS, js)
 
@@ -260,7 +264,7 @@ PK_LIVE_JS = r"""
   var box=document.querySelector('[data-pk-box]');
   if(!box||!/^https:\/\/[^\s\/]+$/.test(url)||!key||!window.fetch)return;
   var ids;try{ids=JSON.parse(box.getAttribute('data-pk-open')||'[]');}catch(e){ids=[];}
-  var EVERY=45000,next=0,busy=false,MINUS='−',WHY={stop:'stop −30%',tp:'11x reached',time:'after 6 h'};
+  var EVERY=45000,next=0,busy=false,MINUS='−',WHY={stop:'stop',trail:'trailing stop',drop:'fast fall',tp:'11x reached',time:'after 6 h'};
   function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
   function de(v,d){var s=Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});return (v<0&&/[1-9]/.test(s)?MINUS:'')+s;}
   function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}

@@ -485,7 +485,8 @@ def candles(http, d, items):
         key = re.sub(r"[^A-Za-z0-9]", "", str(it.get("key") or int(hours)))
         if not pool or not since or not key or "api.geckoterminal.com" in http.dead:
             continue
-        agg = 1 if hours <= 3 else 15          # the 2 h horizon check is priced a little over 2 hours after the tip: one-minute candles still
+        agg = 1 if hours <= 3 or (key == "hold" and hours <= 16) else 15   # the 2 h horizon check is priced a little over 2 hours after the tip:
+        # one-minute candles still; a held position (the chart exit reads every minute since the entry, up to 6 h) one-minute candles up to 1000
         limit = min(1000, int((hours * 3600 + 900) / (60 * agg)) + 12)   # the request ends 15 minutes after the window: cover that too, or the window's first minutes are cut
         before = int(since / 1000 + hours * 3600 + 900)
         j = http.get(GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (pool, agg, limit, before))

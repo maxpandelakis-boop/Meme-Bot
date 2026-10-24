@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """selftest_livesell.py: the Pick account sells on the live chart from memebot.LIVE_SELL_AT on (the user's go of Oct 24). Fake money only:
-the fixtures are hand-made candles and docs, nothing is fetched.
+the fixtures are hand-made candles and docs, nothing is fetched. The positions here are the fixed rule's (memebot.OLD_PAPER_RULE, -30 % /
+11x / 6 h, the Pick's rule until its chart exit later on Oct 24); the chart exit has its own checks (selftest_chartexit.py).
 
   L1 memebot.hold_hit: before LIVE_SELL_AT a minute counts with its close (a wick sells nothing, as before); from it on the minute's low
      at 0.70x cpx is the stop (booked at that low), its high at 11x the take-profit, both in one minute the stop; a wick more than
@@ -101,7 +102,7 @@ def scan_dir(d, t, pos):
     for sub in ("db/memepos", "db/memeexit", "db/memebot", "candles"):
         os.makedirs(os.path.join(d, sub), exist_ok=True)
     for k, v in pos.items():
-        json.dump(dict(v, grp="hold", ticket=50.0, paper=M.PAPER_RULE, rule=M.RULE), open(os.path.join(d, "db", "memepos", k + ".json"), "w"))
+        json.dump(dict(v, grp="hold", ticket=50.0, paper=M.OLD_PAPER_RULE, rule=M.RULE), open(os.path.join(d, "db", "memepos", k + ".json"), "w"))
     json.dump({"paperRule": M.PAPER_RULE, "paperSince": t - 1, "paperRuleSince": t - 1}, open(os.path.join(d, "db", "memebot", "state.json"), "w"))
 
 
@@ -174,7 +175,7 @@ def l4(check):
         rk, mock = os.path.join(tmp, "rk"), os.path.join(tmp, "mock")
         os.makedirs(rk); os.makedirs(mock)
         row = lambda pid, a, pool, px: {"id": pid, "sym": pid.upper(), "addr": a, "pair": pool, "px": px, "t": T, "entryAt": T + 30 * MIN, "ticket": 50.0,
-                                        "grp": "hold", "paper": M.PAPER_RULE, "left": 1.0, "cpx": None, "chk": None}
+                                        "grp": "hold", "paper": M.OLD_PAPER_RULE, "left": 1.0, "cpx": None, "chk": None}
         json.dump({"v": 1, "t": T + H, "since": LIVE, "open": [row("pa", "A" * 44, "pA", 1.0), row("pb", "B" * 44, "pB", 2.0)]},
                   open(os.path.join(mock, "pickopen.json"), "w"))
         now = [T + 90 * MIN]
@@ -309,8 +310,9 @@ def l6(check):
     flows = {f: open(os.path.join(HERE, ".github", "workflows", f), encoding="utf-8").read() for f in os.listdir(os.path.join(HERE, ".github", "workflows"))}
     check(flows and not any("MEMEBOT_LIVE_SELL_AT" in t for t in flows.values()), "L6 no workflow sets MEMEBOT_LIVE_SELL_AT (the switch is memebot.LIVE_SELL_AT)")
     import datetime as dt
-    check(dt.datetime.fromtimestamp(M.LIVE_SELL_AT / 1000, dt.timezone.utc).minute == 0 and M.PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h"
-          and (M.HOLD_STOP, M.HOLD_TP, M.HOLD_MAX_H) == (0.30, 10.0, 6.0), "L6 the switch is on the hour; the rule itself (-30%, 11x, 6 h) and its key are unchanged")
+    check(dt.datetime.fromtimestamp(M.LIVE_SELL_AT / 1000, dt.timezone.utc).minute == 0 and M.OLD_PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h"
+          and (M.HOLD_STOP, M.HOLD_TP, M.HOLD_MAX_H) == (0.30, 10.0, 6.0), "L6 the switch is on the hour; the fixed rule itself (-30%, 11x, 6 h) and its key are "
+          "unchanged (the Pick's own rule since Oct 24 is the chart exit: selftest_chartexit)")
 
 
 def checks(check, skips=None):

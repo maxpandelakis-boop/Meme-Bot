@@ -85,7 +85,8 @@ MIN, H = 60_000, 3_600_000
 DOC = ("db", "memebot", "exitgrid.json")
 STOPS = (None, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70)      # None: no stop
 TARGETS = (2.0, 3.0, 5.0, 11.0, None)                  # multiples of the entry price; None: no target
-CURRENT = (M.HOLD_STOP, 1.0 + M.HOLD_TP)               # the rule that really runs: -30%, 11x
+CURRENT = (M.HOLD_STOP, 1.0 + M.HOLD_TP)               # the fixed rule (the Pick's until the chart exit of Oct 24): -30%, 11x
+FIXED_SINCE = 1791655866812                            # the fixed rule's own start (Oct 10, 18:11 UTC; state.json paperRuleSince until Oct 24)
 WINDOW_MS = int(M.HOLD_MAX_H * H)                      # the time exit: 6 hours after the entry
 MIN_HALF = 100           # trades a half needs before a rule can count as better (else "too few")
 SHOW_N = 3               # rules shown per group among those that beat the current one
@@ -563,11 +564,13 @@ def collect(d):
     """The trades of every group: {grp: (evidence list, closed trades in all, {why left out: n})} and the fill model. The paper
     groups are the closed positions of the account since the paper rule's start (memebot.in_account from paperRuleSince: the Pick's fresh
     start of Oct 22 kept the rule, so its trades before it still count here; all of the position sold); the radar
-    group is every settled radar account doc (closed or void)."""
+    group is every settled radar account doc (closed or void). Since the chart exit of Oct 24 (memebot.CHART_RULES) the Pick's trades of
+    the fixed rule only (memebot.OLD_PAPER_RULE, from its own start FIXED_SINCE on): the what-if is about that rule's trades."""
     ctx = P.context(d)
     out = {g: ([], 0, {}) for g in GROUPS}
     for pid, p in sorted(ctx["pos"].items()):
-        if not M.in_account(p, ctx.get("ruleSince") or ctx["since"]) or (num(p.get("_left")) or 0.0) > 1e-9:
+        since = FIXED_SINCE if p.get("paper") == M.OLD_PAPER_RULE else (ctx.get("ruleSince") or ctx["since"])
+        if M.is_chart(p) or not M.in_account(p, since) or (num(p.get("_left")) or 0.0) > 1e-9:
             continue
         evs, n_all, why = out[p["grp"]]
         ev, w = paper_evidence(ctx, pid, p)
