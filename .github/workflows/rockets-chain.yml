@@ -32,6 +32,12 @@ jobs:
           git fetch -q --depth 1 origin monthsdata && git archive FETCH_HEAD | tar -x -C md
           git fetch -q --depth 1 origin monthsh2 && git show FETCH_HEAD:meta_h2.parquet > h2/meta_h2.parquet
           python3 research/rockets/meta_fetch.py plan md h2 plan
+      - name: Probe on 24 coins (shows in this job's log within a minute or two)
+        env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python3 research/rockets/meta_chain.py shard plan/plan.json 0 3000 probe.json.gz
+          python3 -c "import gzip,json; d=json.load(gzip.open('probe.json.gz','rt'))['coins']; [print({k: (str(v)[:60] if k != 'curve_creator' else bool(v)) for k, v in r.items()}) for r in list(d.values())[:6]]"
       - uses: actions/upload-artifact@v4
         with: {name: plan, path: "plan/plan.json", retention-days: 5}
   shard:
