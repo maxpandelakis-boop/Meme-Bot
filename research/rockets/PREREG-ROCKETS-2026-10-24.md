@@ -101,3 +101,11 @@ itself. So every entry also needs a pool liquidity of at least $10,000 at the en
 reserves and the price, SOL/USD from Binance, as research/check_months.py). With it: E = 5 50,683 entries, 1,089 rockets (2.15 %);
 E = 30 28,279 entries, 423 rockets (1.5 %). The result of a shuffled-outcome null run (no information) was looked at to check the
 code; one run with the real outcomes and history2's facts only was made and deleted unread.
+
+## Amendment 2 (24 Oct, ~11:15 UTC, before any fact result was read)
+
+pump.fun's single-coin form answered 404 from GitHub's runners (run 1, 08:20-09:08 UTC), so run 1 got names and tickers only, from
+GeckoTerminal (85 % of the coins in every window, the same 99.2 % of the time as history2's tickers, and missing about as often for
+rockets and zeros). Run 2 found no form; run 3 (from 11:01 UTC) tries more forms and appears to be fetching. The reported result
+is the one run on whatever launch facts are on branch rocketsmeta when run 3 ends; no run with real outcomes is made before that.
+A fact counts as present in a window when at least 80 % of that window's entries have it (as in check_rockets.py).
