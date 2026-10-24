@@ -8,10 +8,11 @@ and under them the Learning Pick (lernpick.py, a self-learning shadow with its o
 pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells, the
 Radar for comparison), because the open Pick positions were only in the Archive. From memebot.LIVE_SELL_AT on (the Pick sells on the live
 chart) it carries one more line that PK_LIVE_JS fills from the app's live row memebot.LIVE_WATCH_ROW: what the minute watch sold of the
-positions this page still shows open, before the next scan books it.
+positions this page still shows open, before the next scan books it. sell_bot(D, R, opn) -> HTML: the same chart exit as a bot of its own
+on top of that block (the user could not find it on Oct 24): each open position's price now and its next move, filled live by SB_JS.
 section(D, R) -> HTML:
   - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
-    (3x and 10x) and the open positions
+    (3x and 10x) and the open positions; under them the sell bot's row (sell_bot_row: what it watches, a tap opens its card)
   - "Right now": the current pick with its look-alike forecast (forecast.py) and the rocket hunter's best candidates of its last
     round, each with how close its score is to the buy cut
   - when the next scan and the last radar round ran, and a short map of the other tabs
@@ -242,7 +243,10 @@ def pick_account(D, R):
                                     round(100 * M.HOLD_STOP)) if now >= live_at else "Sells at −30%, at 11x or after 6 h."),
         sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold")))
     js = ("<script>%s</script>" % PK_LIVE_JS) if "data-pk-box" in op_html else ""
-    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>%s' % (head, acct, op_html, sold_html, foot, cmp_, PK_CSS, js)
+    sb = sell_bot(D, R, opn)
+    if sb:
+        js += "<style>%s</style><script>%s</script>" % (SB_CSS, SB_JS)
+    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s%s</div><style>%s</style>%s' % (head, acct, sb, op_html, sold_html, foot, cmp_, PK_CSS, js)
 
 
 def pick_live(opn, now):
@@ -254,6 +258,161 @@ def pick_live(opn, now):
     return ('<div class="pk-st pk-lv" data-pk-box data-pk-open="%s" hidden><span class="k" data-pk-head hidden>Sold on the live chart since this page '
             'was built (booked at that minute, the next scan adds it to the balance)</span><ul class="pk-sold" data-pk-sold></ul>'
             '<small class="pk-s" data-pk-line></small></div>') % E(json.dumps(ids, separators=(",", ":")))
+
+
+# The sell bot: the Pick account's chart exit (memebot.chart_hit, run every minute by rocket_watch.py) shown as a bot of its own. The user
+# could not find it on Oct 24 ("einen Bot, der die Coins rauspickt und dann noch einen Bot, der automatisch guckt ... und verkauft"): the
+# position card showed only its floor and 11x, the rest sat in the grey line under it. Display only: the rule, the watch and the account
+# stay as they are. SB_JS writes the same words from the live row memebot.LIVE_WATCH_ROW (its "pos": now / hi / lvl over cpx).
+SB_WHY = {"trail": "profit lock", "drop": "fast fall", "stop": "emergency stop −%d%%" % round(100 * M.CHART_STOP), "tp": "11x reached",
+          "time": "after 6 h"}
+
+
+def sb_pct(x):
+    """A multiple of the entry price as a change: 1.41 -> +41%, 0.5 -> −50%."""
+    v = round(100 * (x - 1.0))
+    return ("+" if v > 0 else (MINUS if v < 0 else "")) + "%d%%" % abs(v)
+
+
+def sb_plan(R, entry, cpx, hi, lvl):
+    """The sell bot's next move for one position in words (SB_JS's plan() writes the same): before the trail is armed, where it arms;
+    after, the price it sells at. Prices over cpx (the rule's own basis), changes over the entry price (as the position card)."""
+    if not entry or not cpx:
+        return "Waiting for this coin's first minute candles."
+    k = cpx / entry
+    if hi and hi >= M.CHART_ARM and lvl:
+        return "Profit lock ON: sells if the price falls to %s (%s), %d%% under its best price %s (%s)." % (
+            R.fmt_px(lvl * cpx), sb_pct(lvl * k), round(100 * M.CHART_TRAIL), R.fmt_px(hi * cpx), sb_pct(hi * k))
+    return "Profit lock switches on at %s (%s), then it sells as soon as the price falls %d%% under its best price.%s" % (
+        R.fmt_px(M.CHART_ARM * cpx), sb_pct(M.CHART_ARM * k), round(100 * M.CHART_TRAIL), (" Best so far %s." % sb_pct(hi * k)) if hi else "")
+
+
+def sb_watch(D):
+    """The minute watch's row as the scan read it right before its run (pickwatch.json, bot.live_watch_in), {} without it."""
+    try:
+        doc = M.load_json(os.path.join(D.get("dir") or "", M.LIVE_WATCH_ROW + ".json"), None)
+        return doc if isinstance(doc, dict) else {}
+    except Exception:
+        return {}
+
+
+def sell_bot(D, R, opn):
+    """The Pick tab's sell bot card (id sell-bot, the Start row opens it): what it does in one line, each open chart-exit position with
+    its price now and its next move (sb_plan), the other ways out with the minute of the 6-hour limit, its last look. '' before the chart
+    exit (memebot.LIVE_SELL_AT)."""
+    now = D["now"]
+    if now < M.live_sell_at():
+        return ""
+    w = sb_watch(D)
+    rows = []
+    for r in opn:
+        p = r.get("p") or {}
+        if not M.is_chart(p):
+            continue
+        entry, ref = num(r.get("entry")), num(r.get("cpx")) or num(r.get("entry"))
+        t_buy = num(p.get("entryAt")) or num(p.get("t")) or now
+        hc = M.chart_hit(r.get("candles") or [], t_buy, None, ref) if ref else {}
+        last = num(r.get("last"))
+        end = M.hold_end(t_buy)
+        rows.append(('<div class="sb-pos" data-sb-pos="%s" data-sb-px="%s" data-sb-cpx="%s"><div class="sb-row"><b>%s</b><span class="sb-now %s" data-sb-now>%s</span></div>'
+                     '<p class="sb-plan" data-sb-plan>%s</p><small class="sb-also">Also sells on a fall of %d%% within %d minutes, at −%d%% (emergency stop), '
+                     'at 11x, and at the latest at %s (after 6 h).</small></div>') % (
+            E(p.get("_id") or r.get("id") or ""), E(repr(entry) if entry else ""), E(repr(ref) if ref else ""), E(str(p.get("sym") or "?")[:14]),
+            tone((last / entry - 1) if last and entry else None), E(("now %s" % sb_pct(last / entry)) if last and entry else "no price yet"),
+            E(sb_plan(R, entry, ref, hc.get("hi"), hc.get("lvl"))), round(100 * M.CHART_DROP), M.CHART_DROP_MIN, round(100 * M.CHART_STOP),
+            E(hhmm(R, end) if end else "–")))
+    t = num(w.get("t"))
+    body = "".join(rows) or ('<p class="sb-empty">Nothing to sell right now. It takes over every coin the Pick buys and watches it every minute.</p>')
+    return ('<div class="sb" id="sell-bot" data-sb><div class="sb-head"><span class="sb-ico" aria-hidden="true">🤖</span><div><h4>Sell bot</h4>'
+            '<small>sells the Pick account\'s coins on the live chart · looks every minute</small></div>'
+            '<span class="sb-look" data-sb-look>%s</span></div>%s</div>') % (E(("last look %s" % hhmm(R, t)) if t else "live"), body)
+
+
+def sell_bot_row(D, R):
+    """The sell bot on the Start tab: a slim row under the accounts (it has no account of its own: its sales are the Pick account's),
+    what it watches, its last look; a tap opens the Pick tab at its card. SB_JS (on the page with the Pick tab's card) keeps it live.
+    '' before the chart exit."""
+    if D["now"] < M.live_sell_at():
+        return ""
+    syms = [str((r.get("p") or {}).get("sym") or "?")[:14] for r in D.get("open") or []
+            if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold" and M.is_chart(r.get("p"))]
+    t = num(sb_watch(D).get("t"))
+    line = ("watching %s every minute" % ", ".join(syms)) if syms else "nothing to sell right now · takes over the next pick"
+    return ('<label class="hm-acc hm-lp hm-sb" for="tab-pick" data-go="pick" data-open="sell-bot">'
+            '<span class="hm-k"><span class="hm-dot"></span>SELL BOT 🤖<small>for the Pick account · sells on the live chart</small></span>'
+            '<span class="hm-lpf"><small class="hm-n" data-sb-sum>%s</small><span class="hm-go">Open ›</span></span></label>') % (
+        E(line + ((" · last look %s" % hhmm(R, t)) if t else "")))
+
+
+SB_JS = r"""
+(function(){
+  var root=document.documentElement,url=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),key=root.getAttribute('data-sb-key')||'';
+  var card=document.querySelector('[data-sb]');
+  if(!card||!/^https:\/\/[^\s\/]+$/.test(url)||!key||!window.fetch)return;
+  var EVERY=45000,next=0,busy=false,MINUS='−',ARM=""" + repr(M.CHART_ARM) + r""",TRAIL=""" + repr(M.CHART_TRAIL) + r""";
+  var WHY=""" + json.dumps(SB_WHY, ensure_ascii=False) + r""";
+  function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
+  function pct(x){var v=Math.round(100*(x-1));return (v>0?'+':(v<0?MINUS:''))+Math.abs(v)+'%';}
+  function px(p){if(!(p>0))return '–';if(p>=1)return '$'+p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    var d=-Math.floor(Math.log10(p))+3;return d>12?'$'+p.toPrecision(3):'$'+p.toFixed(d);}
+  function eur(v){var s=Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return (v>0.004?'+':(v<-0.004?MINUS:''))+s+' €';}
+  function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+  function plan(entry,cpx,hi,lvl){if(!entry||!cpx)return "Waiting for this coin's first minute candles.";var k=cpx/entry;
+    if(hi&&hi>=ARM&&lvl)return 'Profit lock ON: sells if the price falls to '+px(lvl*cpx)+' ('+pct(lvl*k)+'), '+Math.round(100*TRAIL)+'% under its best price '+px(hi*cpx)+' ('+pct(hi*k)+').';
+    return 'Profit lock switches on at '+px(ARM*cpx)+' ('+pct(ARM*k)+'), then it sells as soon as the price falls '+Math.round(100*TRAIL)+'% under its best price.'+(hi?' Best so far '+pct(hi*k)+'.':'');}
+  function apply(d){
+    var pos=d.pos&&typeof d.pos==='object'?d.pos:{},sold=d.sold&&typeof d.sold==='object'?d.sold:{},t=n(d.t),watched=[],gone=[];
+    [].forEach.call(card.querySelectorAll('[data-sb-pos]'),function(b){
+      var id=b.getAttribute('data-sb-pos'),w=pos[id],x=sold[id],entry=n(b.getAttribute('data-sb-px')),now=b.querySelector('[data-sb-now]'),pl=b.querySelector('[data-sb-plan]');
+      var sym=(b.querySelector('b')||{}).textContent||'?';
+      if(x&&typeof x==='object'&&n(x.at)){var v=n(x.pnl)||0;
+        if(now){now.textContent='sold '+(n(x.mult)?pct(n(x.mult)):'');now.className='sb-now '+(v>0.004?'good':(v<-0.004?'bad':''));}
+        if(pl)pl.textContent='Sold at '+hhmm(n(x.at))+' by the '+(WHY[x.why]||String(x.why||''))+': '+eur(v)+'. The next scan books it.';
+        var al=b.querySelector('.sb-also');if(al)al.setAttribute('hidden','');
+        gone.push(sym+' '+eur(v));return;}
+      if(!w||typeof w!=='object')return;
+      var cpx=n(w.cpx)||n(b.getAttribute('data-sb-cpx')),m=n(w.now);watched.push(sym);
+      if(now&&m&&cpx&&entry){var c=m*cpx/entry;now.textContent='now '+pct(c);now.className='sb-now '+(c>1.004?'good':(c<0.996?'bad':''));}
+      if(pl)pl.textContent=plan(entry,cpx,n(w.hi),n(w.lvl));
+    });
+    var lk=card.querySelector('[data-sb-look]');if(lk&&t)lk.textContent='last look '+hhmm(t);
+    [].forEach.call(document.querySelectorAll('[data-sb-sum]'),function(e){
+      var s=watched.length?'watching '+watched.join(', ')+' every minute':(gone.length?'sold '+gone.join(', '):'nothing to sell right now · takes over the next pick');
+      e.textContent=s+(t?' · last look '+hhmm(t):'');});
+  }
+  function want(){if(document.visibilityState==='hidden')return false;var a=document.getElementById('tab-pick'),b=document.getElementById('tab-home');
+    return (!a&&!b)||(a&&a.checked)||(b&&b.checked);}
+  function poll(){
+    if(busy||!want()||Date.now()<next)return;busy=true;next=Date.now()+EVERY;
+    var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort();},10000);
+    fetch(url+'/rest/v1/live?select=doc&id=eq.""" + M.LIVE_WATCH_ROW + r"""',{headers:{apikey:key,Accept:'application/json'},cache:'no-store',signal:ac?ac.signal:undefined})
+      .then(function(r){if(!r.ok)throw r.status;return r.json();})
+      .then(function(rows){var d=Array.isArray(rows)&&rows[0]&&rows[0].doc;if(d&&typeof d==='object')apply(d);})
+      .catch(function(){next=Date.now()+2*EVERY;})
+      .then(function(){clearTimeout(tm);busy=false;});
+  }
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){next=0;poll();}});
+  document.addEventListener('change',function(e){if(e.target&&(e.target.id==='tab-pick'||e.target.id==='tab-home'))poll();});
+  setInterval(poll,5000);poll();
+})();
+"""
+
+
+SB_CSS = r"""
+/* the sell bot (page_home.sell_bot): its own card in the Pick account block, a row on the Start tab */
+.sb { display:grid; gap:10px; padding:12px 14px; border-radius:14px; border:1px solid color-mix(in srgb,var(--good) 45%,var(--line));
+  background:linear-gradient(135deg, color-mix(in srgb,var(--good) 12%,transparent), transparent 70%), var(--surface); scroll-margin-top:70px }
+.sb-head { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:4px 10px }
+.sb-ico { font-size:24px; line-height:1 } .sb-head h4 { margin:0; font-size:17px } .sb-head small { font-size:var(--fs-xs); color:var(--fg2) }
+.sb-look { grid-column:2; justify-self:start; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; color:var(--good);
+  background:color-mix(in srgb,var(--good) 14%,transparent) }
+.sb-pos { display:grid; gap:4px; padding:10px 12px; border-radius:12px; background:color-mix(in srgb,var(--bg) 55%,transparent); border:1px solid var(--line) }
+.sb-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px } .sb-row b { font-size:16px }
+.sb-now { font-weight:600; font-variant-numeric:tabular-nums } .sb-now.good { color:var(--good) } .sb-now.bad { color:var(--bad) }
+.sb-plan { margin:0; font-size:var(--fs-s); color:var(--fg); overflow-wrap:anywhere } .sb-also { font-size:var(--fs-xs); color:var(--muted) }
+.sb-empty { margin:0; font-size:var(--fs-s); color:var(--fg2) } .sb [hidden] { display:none !important }
+.hm-sb .hm-dot { background:var(--good); box-shadow:0 0 10px var(--good) }
+"""
 
 
 # the Pick account's minute watch (memebot.LIVE_SELL_AT): the app's live row memebot.LIVE_WATCH_ROW, read while the Pick tab is open, every
@@ -402,6 +561,7 @@ def section(D, R):
     cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
              + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
     lp = lern_row(D, R)
+    sb = sell_bot_row(D, R)       # the Pick's sell bot (no account of its own), right under the accounts
     nav = [("pick", "Pick", "The pick, its safety check, hour by hour"), ("young", "Radar", "Rocket hunter and launch radar"),
            ("office", "Brain", "What the bot is thinking"), ("account", "Archive", "Research, old traders, all the data")]
     return ('<style>%s</style><section class="hm" data-home>'
@@ -409,7 +569,7 @@ def section(D, R):
             '<div class="hm-status">%s</div>'
             '<h2 class="hm-h">Right now</h2><div class="hm-nows">%s%s</div>'
             '<nav class="hm-nav">%s</nav></section><script>%s</script>') % (
-        CSS, "Three" if lp else "Two", cards, lp, "".join(status), pick_now(D, R), rocket_now(D, R, doc),
+        CSS, "Three" if lp else "Two", cards, sb + lp, "".join(status), pick_now(D, R), rocket_now(D, R, doc),
         "".join('<label for="tab-%s" data-go="%s"><b>%s</b><small>%s</small></label>' % (k, k, E(n), E(s)) for k, n, s in nav), JS)
 
 
