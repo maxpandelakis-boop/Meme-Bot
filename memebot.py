@@ -124,9 +124,26 @@ LIVE_WATCH_ROW = "pickwatch"   # ... and the minute watch's view of them: its la
 PAPER_FEE_PCT, PAPER_FEE_MIN = 0.01, 0.10   # paper positions pay 1%, at least 0.10, per trade; the tip record, the big test and the
                          # training keep FEE_PCT/FEE_MIN so their history stays comparable
 PAPER_GROUPS = ("hold", "young")
+# The chart exit (rule v3, the user's go of Sat 24 Oct 2026, "Okay dann Bau das"; research/PREREG-CHARTEXIT-2026-10-24.md and
+# research/chartexit/CHARTEXIT-2026-10-24.md: of 8,424 exits on 1,852 Pick-type coins of Apr-Oct, the one that lost least against the fixed
+# rule in its worst month; still a loss per trade in every month, only a smaller one). On each minute candle of the position's pool, over
+# cpx, in this order (chart_hit): the low at the stop level or under it sells (booked at that low, never above the level); the high at 11x
+# sells (exactly 11x); the high so far takes the minute's high and the trail arms once it reaches CHART_ARM; a close under the new level
+# sells at that close; a close CHART_DROP or more under the close CHART_DROP_MIN minutes before (cpx before then) sells at that close. The
+# stop level: 1 - CHART_STOP, raised to (1 - CHART_TRAIL) x the high so far once the trail is armed. The 6-hour limit as before (hold_end,
+# hold_x6). HOLD_STOP / HOLD_TP / HOLD_MAX_H stay the fixed rule (-30 % / 11x / 6 h): the shadow rule K, the Radar and the Learning Pick.
+CHART_STOP = 0.50        # the floor: -50 % on the minute's low
+CHART_TRAIL = 0.15       # the trailing stop: 15 % under the highest high since the entry ...
+CHART_ARM = 1.5          # ... once that high has reached 1.5 times cpx
+CHART_DROP = 0.15        # the drop: a minute's close 15 % or more under the close ...
+CHART_DROP_MIN = 30      # ... 30 minutes before
 # the paper account's identity key (state.json paperRule): never edit, not even a letter; the page's words come from PAPER_LABEL
-PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"    # state.json "paperRule": a run that finds another rule there restarts the account
-PAPER_LABEL = "sells at −%d%%, at %gx (+%s%%) or after %g h" % (round(100 * HOLD_STOP), 1 + HOLD_TP, "{:,}".format(round(100 * HOLD_TP)), HOLD_MAX_H)
+PAPER_RULE = "v3: top 50 / chart exit: -50% floor, trail 15% from 1.5x, -15% in 30 min, 11x, 6h"   # a run that finds another rule there restarts the account
+OLD_PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"     # the fixed rule's key (10-24 Oct 2026): its positions sell by hold_hit
+CHART_RULES = (PAPER_RULE,)     # the keys whose positions sell by chart_hit
+PAPER_LABEL = ("sells on the live chart: 15%% under its high once it has reached %gx, on a fall of 15%% within %d minutes, at −%d%%, at %gx or "
+               "after %g h" % (CHART_ARM, CHART_DROP_MIN, round(100 * CHART_STOP), 1 + HOLD_TP, HOLD_MAX_H))
+OLD_PAPER_LABEL = "sells at −%d%%, at %gx (+%s%%) or after %g h" % (round(100 * HOLD_STOP), 1 + HOLD_TP, "{:,}".format(round(100 * HOLD_TP)), HOLD_MAX_H)
 FRESH_AT = 1792663680000    # Thu 22 Oct 2026 10:08 UTC (12:08 Berlin), the rocket hunter's first round: the user restarted the Pick account
                             # to this moment so both accounts count from the same start. The rule stays (PAPER_RULE), nothing is sold for it:
                             # paperSince moves here once, a position bought before it runs on under the rule outside the account, and the
@@ -1964,8 +1981,8 @@ def candle_items(d, now):
     items = []
     chk = (load_json(os.path.join(d, "db", "memebot", "marks.json"), {}) or {}).get("chk") or {}
     for pid, p in positions(d).items():          # held coins: their candles since the last check, for the take-profit and the stop
-        if p.get("grp") in PAPER_GROUPS and p["_left"] > 1e-9 and p.get("pair"):
-            since = max(num(p.get("entryAt")) or num(p.get("t")) or 0, num(chk.get(pid)) or 0) - 60_000
+        if p.get("grp") in PAPER_GROUPS and p["_left"] > 1e-9 and p.get("pair"):    # (the chart exit: since the entry, chart_hit)
+            since = max(num(p.get("entryAt")) or num(p.get("t")) or 0, 0 if is_chart(p) else num(chk.get(pid)) or 0) - 60_000
             if now - since > 60_000:
                 items.append(((-1, False), {"pool": p["pair"], "since": since, "hours": round((now - since) / 3_600_000, 3), "key": "hold"}))
     for ci, coll in enumerate(("memerec", "memeyoung")):
@@ -2052,10 +2069,74 @@ def hold_x6(cands, t0, cpx=None, ended=False):
     return before[-1][4] / cpx if before else None
 
 
+def is_chart(p):
+    """Whether a paper position sells by the chart exit (chart_hit: bought under a key in CHART_RULES, on the live chart: from LIVE_SELL_AT
+    on) or by the fixed rule (hold_hit). Every position of the chart exit is bought after LIVE_SELL_AT; a selftest that pins
+    MEMEBOT_LIVE_SELL_AT into the future keeps the fixed rule's checks."""
+    return isinstance(p, dict) and p.get("paper") in CHART_RULES and (num(p.get("entryAt")) or num(p.get("t")) or 0) >= live_sell_at()
+
+
+def chart_level(hi, armed):
+    """The chart exit's stop level over cpx: the floor, or the trail under the high so far once it is armed."""
+    return max(1.0 - CHART_STOP, (1.0 - CHART_TRAIL) * hi) if armed else 1.0 - CHART_STOP
+
+
+def chart_hit(cands, t0, chk=None, cpx=None):
+    """The chart exit (CHART_STOP, CHART_TRAIL, CHART_ARM, CHART_DROP) of a paper position that entered at t0, on its pool's minute candles
+    (t, open, high, low, close, ...) from the entry on, over cpx (the first close at or after the entry minute, as hold_hit). The high so far,
+    the trail and the close 30 minutes before come from every candle since the entry; a sale only from the last check (chk) on (the minutes
+    looked at are not looked at again). Each minute in time order: the low (hold_wicks) at the level or under it is a "stop" (the floor) or
+    a "trail" (the armed trail), booked at that low, never above the level; the high at 11x (up to CANDLE_MAX_X) a "tp" at exactly 11x; then
+    the high so far takes the minute's high, and a close under the level that follows is a "trail" at that close; a close CHART_DROP or more
+    under the last close at least CHART_DROP_MIN minutes earlier (cpx while there is none) a "drop" at that close. A close over CANDLE_MAX_X
+    is a glitch: no sale, no new high. A candle from the 6-hour limit on (hold_end) sells nothing, the limit comes first (hold_x6). Pure:
+    the scan and the minute watch decide with it alike. -> hold_hit's dict, "mult" as booked (over cpx), plus "hi" (the high so far over
+    cpx) and "lvl" (the stop level now)"""
+    end = hold_end(t0)
+    cands = [c for c in cands if c[0] >= t0 - 60_000 and c[4] > 0]
+    since = max(t0 - 60_000, num(chk) or 0)
+    if not any(c[0] >= since for c in cands):
+        return {"hit": None, "why": None, "mult": None, "chk": chk, "cpx": cpx, "fresh": False, "hi": None, "lvl": None}
+    cpx = cpx or cands[0][4]
+    hi, armed, back, j = 1.0, False, None, 0
+
+    def hit(t, why, mult):
+        return {"hit": t, "why": why, "mult": mult, "chk": cands[-1][0] + 60_000, "cpx": cpx, "fresh": True, "hi": round(hi, 4),
+                "lvl": round(chart_level(hi, armed), 4)}
+
+    for c in cands:
+        if end is not None and c[0] >= end:
+            break
+        while j < len(cands) and cands[j][0] <= c[0] - CHART_DROP_MIN * 60_000:      # the last close at least 30 minutes before this one
+            if cands[j][4] / cpx <= CANDLE_MAX_X:
+                back = cands[j][4] / cpx
+            j += 1
+        x = c[4] / cpx
+        if x > CANDLE_MAX_X:
+            continue
+        h, lo = hold_wicks(c)
+        xh, xl = min(h / cpx, CANDLE_MAX_X), lo / cpx
+        look = c[0] >= since
+        lvl = chart_level(hi, armed)
+        if look and xl <= lvl:
+            return hit(c[0], "trail" if armed and lvl > 1.0 - CHART_STOP else "stop", min(xl, lvl))
+        if look and xh >= 1.0 + HOLD_TP:
+            return hit(c[0], "tp", 1.0 + HOLD_TP)
+        hi = max(hi, xh)
+        armed = armed or hi >= CHART_ARM
+        if look and armed and x <= chart_level(hi, armed):
+            return hit(c[0], "trail", x)
+        if look and x <= (1.0 - CHART_DROP) * (back or 1.0):
+            return hit(c[0], "drop", x)
+    return hit(None, None, None)
+
+
 def hold_check(d, p, chk=None, cpx=None):
     """hold_hit on the position's pool's minute candles (candles/<pool>_hold.txt) since the last check: closes only before LIVE_SELL_AT,
-    the minute's low and high from it on. -> hold_hit's dict"""
+    the minute's low and high from it on; chart_hit (the candles since the entry) for a position of the chart exit. -> their dict"""
     t0 = num(p.get("entryAt")) or num(p.get("t")) or 0
+    if is_chart(p):
+        return chart_hit(load_candles(d, str(p.get("pair") or ""), "hold"), t0, chk, cpx)
     return hold_hit(load_candles(d, str(p.get("pair") or ""), "hold"), t0, chk, cpx)
 
 
@@ -2063,7 +2144,8 @@ def live_watch(d):
     """The minute watch's view of the open paper positions (rocket_watch.py's LIVE_WATCH_ROW, which bot.py saves as pickwatch.json right
     before the run; from LIVE_SELL_AT on) -> ({pid: {"chk": where its next look starts, "cpx"}}, {pid: {"at", "why", "mult"}}): its
     sales from LIVE_SELL_AT on only, each a stop (booked at its low, never above the stop level), a take-profit (exactly 11x) or the
-    6-hour limit at a positive multiple of the entry price; ({}, {}) without it."""
+    6-hour limit at a positive multiple of the entry price; a sale of a chart-exit position (is_chart; "rule": "chart") also a "trail" or a
+    "drop" at its own price, a stop of it never above the floor (CHART_STOP); ({}, {}) without it."""
     doc = load_json(os.path.join(d, LIVE_WATCH_ROW + ".json"), None)
     seen, sold = {}, {}
     if not isinstance(doc, dict):
@@ -2073,8 +2155,12 @@ def live_watch(d):
             seen[str(pid)] = {"chk": num(w.get("chk")), "cpx": num(w.get("cpx")) if (num(w.get("cpx")) or 0) > 0 else None}
     for pid, x in (doc.get("sold") or {}).items() if isinstance(doc.get("sold"), dict) else ():
         at, mult, why = (num(x.get("at")), num(x.get("mult")), x.get("why")) if isinstance(x, dict) else (None, None, None)
-        if at and at >= live_sell_at() and mult and 0 < mult <= CANDLE_MAX_X and why in ("stop", "tp", "time"):
-            sold[str(pid)] = {"at": int(at), "why": why, "mult": 1.0 + HOLD_TP if why == "tp" else (min(mult, 1.0 - HOLD_STOP) if why == "stop" else mult)}
+        chart = isinstance(x, dict) and x.get("rule") == "chart"
+        if at and at >= live_sell_at() and mult and 0 < mult <= CANDLE_MAX_X and why in (("stop", "tp", "time", "trail", "drop") if chart else ("stop", "tp", "time")):
+            floor = 1.0 - (CHART_STOP if chart else HOLD_STOP)
+            sold[str(pid)] = {"at": int(at), "why": why, "mult": 1.0 + HOLD_TP if why == "tp" else (min(mult, floor) if why == "stop" else mult)}
+            if chart:
+                sold[str(pid)]["rule"] = "chart"
     return seen, sold
 
 
@@ -2676,11 +2762,16 @@ def snap_result(c, pairs):
 
 EXIT_WORDS = {"tp": "take-profit +%d%%" % round(100 * HOLD_TP), "stop": "stop-loss -%d%%" % round(100 * HOLD_STOP), "time": "%d-hour limit" % round(HOLD_MAX_H),
               "rug": "rug: the price or the liquidity is gone", "reset": "closed at the restart", "filters": "failed the filters",
-              "manual": "sold by hand"}
+              "manual": "sold by hand", "trail": "trailing stop: %d%% under its high" % round(100 * CHART_TRAIL),
+              "drop": "fell %d%% within %d minutes" % (round(100 * CHART_DROP), CHART_DROP_MIN)}
+CHART_STOP_WORD = "stop-loss -%d%%" % round(100 * CHART_STOP)
 
 
-def exit_word(why, grp):
-    """Why a sale happened, in words: a paper position's reasons are the paper rules; pick mode keeps its own words."""
+def exit_word(why, grp, chart=False):
+    """Why a sale happened, in words: a paper position's reasons are the paper rules (chart: the position sells by the chart exit, is_chart;
+    its stop is the floor); pick mode keeps its own words."""
+    if grp in PAPER_GROUPS and why == "stop" and chart:
+        return CHART_STOP_WORD
     return EXIT_WORDS.get(why, why) if grp in PAPER_GROUPS else why
 
 
@@ -2748,7 +2839,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         k = len(p["_exits"]) + 1 + sum(1 for x in exits_done if x["id"] == pid)
         emit("memeexit", "%s-%d" % (pid, k), dict({"pos": pid, "t": now, "px": px or 0, "frac": round(frac, 6), "why": why,
                                                    "eur": round(cash, 2), "grp": p.get("grp"), "rule": RULE}, **extra))
-        exits_done.append({"id": pid, "sym": p.get("sym"), "grp": p.get("grp"), "why": why, "frac": frac,
+        exits_done.append({"id": pid, "sym": p.get("sym"), "grp": p.get("grp"), "why": why, "frac": frac, "chartExit": is_chart(p),
                            "eur": round(cash, 2), "mult": (px / entry) if entry and px else 0, "ticket": ticket})
 
     # ---------- exits ----------
@@ -2784,16 +2875,17 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             # the minute watch first (LIVE_SELL_AT): what it sold on the live chart is sold at that minute, at its price; the minutes it
             # looked at are not looked at again
             seen, ls = live_pos.get(pid) or {}, live_sold.get(pid)
-            if ls and entry and ls["at"] >= (num(p.get("entryAt")) or num(p.get("t")) or 0) - 60_000:
+            if ls and entry and ls["at"] >= (num(p.get("entryAt")) or num(p.get("t")) or 0) - 60_000 and (ls.get("rule") == "chart") == is_chart(p):
                 sell(left, entry * ls["mult"], ls["why"], at=ls["at"], chart="live")
                 continue
             # the candles first: the first close (from LIVE_SELL_AT the low or the high) at +1000% or at -30% since the last check is a
-            # sale at that minute, whatever the price is now
+            # sale at that minute, whatever the price is now (a position of the chart exit: chart_hit's sale, at its own price)
             chk0 = max(num((marks.get("chk") or {}).get(pid)) or 0, num(seen.get("chk")) or 0) or None
             hc = hold_check(d, p, chk0, (marks.get("cpx") or {}).get(pid) or num(seen.get("cpx")))
             live = bool(hc["hit"] and hc["hit"] >= live_sell_at())
             if hc["hit"] and entry:
-                sell(left, entry * ((1.0 + HOLD_TP) if hc["why"] == "tp" else min(hc["mult"], 1.0 - HOLD_STOP)), hc["why"], at=int(hc["hit"]), **({"chart": "scan"} if live else {}))
+                booked = hc["mult"] if is_chart(p) else ((1.0 + HOLD_TP) if hc["why"] == "tp" else min(hc["mult"], 1.0 - HOLD_STOP))
+                sell(left, entry * booked, hc["why"], at=int(hc["hit"]), **({"chart": "scan"} if live else {}))
                 continue
             # the live 6-hour limit (LIVE_SELL_AT) once the candles reach it: sold at that minute's price, whenever this run comes
             x6 = hold_x6(load_candles(d, str(p.get("pair") or ""), "hold"), num(p.get("entryAt")) or num(p.get("t")) or 0, hc["cpx"], now >= end) if end else None
@@ -2823,7 +2915,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             tag = {"chart": "scan"} if now >= live_sell_at() else {}
             if not hc["fresh"] and mult >= 1.0 + HOLD_TP:
                 sell(left, entry * (1.0 + HOLD_TP), "tp", **tag)
-            elif not hc["fresh"] and mult <= 1.0 - HOLD_STOP:
+            elif not hc["fresh"] and mult <= 1.0 - (CHART_STOP if is_chart(p) else HOLD_STOP):
                 sell(left, price, "stop", **tag)
             elif (now >= end) if end else (age_d * 24 >= HOLD_MAX_H - TIP_SLACK_H):
                 sell(left, price, "time", **({"chart": "scan"} if end else {}))
@@ -3234,7 +3326,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                      % (eur_text(TOP_TICKET), eur_text(YOUNG_TICKET), round(100 * HOLD_TP), round(100 * HOLD_STOP), round(HOLD_MAX_H),
                         n_reset, "" if n_reset == 1 else "s", "was" if n_reset == 1 else "were"))
     if exits_done:
-        parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in BOT_GROUPS else "random", exit_word(x["why"], x["grp"]), x["eur"]) for x in exits_done) + ".")
+        parts.append("Sold: " + "; ".join("%s (%s, %s, %.2f back)" % (x["sym"], "bot" if x["grp"] in BOT_GROUPS else "random", exit_word(x["why"], x["grp"], x.get("chartExit")), x["eur"]) for x in exits_done) + ".")
     if rec_scored:
         parts.append("Track record: %d earlier tip%s priced again after %s: %s." % (len(rec_scored), "s" if len(rec_scored) > 1 else "", eval_text(),
                      ", ".join("%s %.2fx (%+.2f per 20)" % (o["sym"], o["mult"], o["eur"]) for o in rec_scored)))

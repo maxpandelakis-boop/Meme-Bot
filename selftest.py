@@ -510,7 +510,8 @@ def switch_checks(check):
     still = {pid: M.positions(dpost)[pid]["_left"] > 1e-9 for pid in old if old[pid]["grp"] == "young"}
     whys = {e.get("why") for e in ex2.values()}
     check(not any(e.get("why") == "reset" for e in ex2.values()) and st2.get("paperSince") == since and st2.get("paperRule") == M.PAPER_RULE
-          and M.PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h" and whys <= {"stop", "tp", "time", "rug"} and after == before + 1 and len(still) == 2,
+          and M.OLD_PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h" and M.PAPER_RULE in M.CHART_RULES and whys <= {"stop", "tp", "time", "rug"}
+          and after == before + 1 and len(still) == 2,
           "TR2 the continuing account: no reset, paperSince and paperRule unchanged, the open new launches open (%s) or sold by their rules (%s), %d -> %d positions"
           % (still, sorted(x for x in whys if x), before, after))
     shutil.rmtree(tmp, ignore_errors=True)
@@ -4009,6 +4010,8 @@ console.log(JSON.stringify(o));
     selftest_exits.checks(check, SKIPS)
     import selftest_shadow                      # the Pick's shadow rules and the evening report (shadow.py, page_shadow.py, daily.py, daily.yml)
     selftest_shadow.checks(check)
+    import selftest_chartexit                   # the Pick's chart exit: chart_hit, the scan, the minute watch, shadow X, the words (memebot.py, rocket_watch.py)
+    selftest_chartexit.checks(check)
     import selftest_lernpick                    # the Learning Pick: nightly brain with its exam, hourly buy, sales from minute candles (lernpick.py, page_lernpick.py)
     selftest_lernpick.checks(check)
     import selftest_traders                     # the three paper traders: T1, T2, the learning trader's frozen decisions (traders.py)

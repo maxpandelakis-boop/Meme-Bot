@@ -58,7 +58,7 @@ def exit_label(e, p=None):
     if w == "filters" and e.get("gates"):
         return "failed the filters (%s)" % ", ".join(GATE_SHORT.get(g, g) for g in e["gates"])
     if p.get("grp") in M.PAPER_GROUPS and p.get("paper"):
-        return re.sub(r" -(?=\d)", " " + MINUS, M.exit_word(w, p.get("grp")))
+        return re.sub(r" -(?=\d)", " " + MINUS, M.exit_word(w, p.get("grp"), M.is_chart(p)))
     if p.get("grp") == "hold" and w == "tp":
         return "take-profit +%d%%" % round(100 * (M.num(p.get("tp")) or 0.4))
     if p.get("grp") == "hold" and w == "time":
@@ -79,14 +79,20 @@ def group_tag(p):
 
 
 def hold_rule_text(now=None):
-    """How a paper position is sold, in full (the Open positions fold): memebot.PAPER_LABEL, the one wording of the rule on the page. From
-    memebot.LIVE_SELL_AT on the way it is carried out: on the live chart, every minute (the rule itself is the same)."""
+    """How a paper position is sold, in full (the Open positions fold): memebot.PAPER_LABEL, the one wording of the rule on the page, and how
+    it is carried out: the chart exit (memebot.chart_hit, since Oct 24) on the live chart, every minute; before memebot.LIVE_SELL_AT the
+    fixed rule's minute closes."""
     live = (now if now is not None else dt.datetime.now(dt.timezone.utc).timestamp() * 1000) >= M.live_sell_at()
-    how = ("on the live chart, looked at every minute since %s: as soon as a minute's high reaches %g times the entry price (booked at exactly "
-           "that level), as soon as a minute's low reaches %d%% of it or lower (booked at that low: a fill no better than the chart gave; both in "
-           "one minute count as the stop), %d hours after the purchase (at that minute's price), or when the price or the liquidity is gone (the pool "
-           "is gone). Each sale is booked at the minute it happened, the next scan shows it." % (
-               local(M.live_sell_at()).strftime("%b %d, %H:%M"), 1 + M.HOLD_TP, round(100 * (1 - M.HOLD_STOP)), round(M.HOLD_MAX_H))) if live else (
+    chart = ("on the live chart, looked at every minute: as soon as a minute's low reaches %d%% of the entry price or lower (the floor, booked at "
+             "that low); once a minute's high has reached %g times the entry price, as soon as a minute's low falls %d%% under the highest price so "
+             "far (the trailing stop, booked at that low; a minute that closes under that line right after a new high, at its close); as soon as a "
+             "minute closes %d%% or more under its close %d minutes before (at that close); as soon as a minute's high reaches %g times the entry "
+             "price (booked at exactly that level); %d hours after the purchase (at that minute's price); or when the price or the liquidity is gone "
+             "(the pool is gone). Each sale is booked at the minute it happened, the next scan shows it. The rule since Oct 24 (the fixed rule "
+             "before it, −%d%% / %gx / %d h, keeps running as a shadow rule on the same trades)." % (
+                 round(100 * (1 - M.CHART_STOP)), M.CHART_ARM, round(100 * M.CHART_TRAIL), round(100 * M.CHART_DROP), M.CHART_DROP_MIN, 1 + M.HOLD_TP,
+                 round(M.HOLD_MAX_H), round(100 * M.HOLD_STOP), 1 + M.HOLD_TP, round(M.HOLD_MAX_H)))
+    how = chart if live else (
           "at the first minute candle that closes at %g times the entry price (booked at exactly that level), at the first one that closes at "
           "%d%% of it or lower (booked at that close: a crash through the level fills worse, never better), at the first scan after about %d hours (at "
           "that scan's price), or when the price or the liquidity is gone (the pool is gone). A scan without new candles checks both levels on its own "
@@ -1649,21 +1655,25 @@ def checks_summary(rk):
     return "%d of %d passed" % (sum(1 for r in rows if r[0] == "ok"), len(rows)) + ((" · %s: %s" % (worst[1], worst[2].split(", ")[0])) if worst else "")
 
 
-def track_bar(mc, m, be, k=1.0):
+def track_bar(mc, m, be, k=1.0, floor=None, trail=None):
     """Where the price stands on the paper rule's fixed log scale: from the stop (0.7 times the candle entry price, the left end) to
     the take-profit (11 times it, the right end), the levels a sale is decided on. mc: the price now ÷ the candle entry price (cpx; the
     entry price itself while the pool has no candles), the dot; m: the price now ÷ the entry price, its label; be: break-even after
     both fees ÷ the entry price; k: cpx ÷ the entry price, which places the entry and break-even ticks. The end labels always name
     the rule's levels; break-even keeps a few pixels from the entry tick so it stays visible; the entry label shows only on a bar
-    wide enough to keep it clear of the stop label (CSS container query)."""
-    lo, hi = math.log(1.0 - M.HOLD_STOP), math.log(1.0 + M.HOLD_TP)
+    wide enough to keep it clear of the stop label (CSS container query). floor: the stop's multiple of cpx (the chart exit's -50 %; the
+    fixed rule's 0.7 without it); trail: the chart exit's armed trailing stop over cpx, a tick of its own."""
+    floor = floor or 1.0 - M.HOLD_STOP
+    lo, hi = math.log(floor), math.log(1.0 + M.HOLD_TP)
     P = lambda v: max(0.0, min(100.0, (math.log(max(v, 1e-9)) - lo) / (hi - lo) * 100))
     k = k or 1.0
     x_in, x_be = P(1.0 / k), P(be / k)
     cls = "good" if m is not None and m >= be else ("warn" if m is not None and m >= 1.0 else "bad")
     chg = lambda v: sgn("%+.1f%%" % (100 * (v - 1)))
-    stop_t, tp_t = sgn("-%d%%" % round(100 * M.HOLD_STOP)), "+%d%%" % round(100 * M.HOLD_TP)
+    stop_t, tp_t = sgn("-%d%%" % round(100 * (1.0 - floor))), "+%d%%" % round(100 * M.HOLD_TP)
     out = ['<div class="rail"></div>']
+    if trail and trail > floor:
+        out.append('<span class="tk st" style="left:%.1f%%" title="trailing stop"></span>' % P(trail))
     if mc is not None:
         a, b = sorted((x_in, P(mc)))
         out.append('<div class="fill %s" style="left:%.1f%%;width:%.1f%%"></div>' % (cls, a, max(b - a, 0.8)))
@@ -1744,8 +1754,12 @@ def hold_card(r, now):
     t0 = M.num(p.get("t")) or now                         # the time limit counts from the scan that bought it (memebot.py)
     t_buy = M.num(p.get("entryAt")) or t0
     ref = r.get("cpx") or entry                           # the take-profit and the stop are measured on the candles' own entry price
+    chart = M.is_chart(p)                                 # the chart exit (since Oct 24): its floor, and its trail once armed
+    floor = 1.0 - (M.CHART_STOP if chart else M.HOLD_STOP)
+    hc = M.chart_hit(r.get("candles") or [], t_buy, None, ref) if chart and ref else {}
+    trail = hc.get("lvl") if hc.get("hi") and hc["hi"] >= M.CHART_ARM else None
     tp_px = (1 + M.HOLD_TP) * ref if ref else None
-    stop_px = (1 - M.HOLD_STOP) * ref if ref else None
+    stop_px = floor * ref if ref else None
     k = ref / entry if ref and entry else 1.0
     be = be_mult(ticket, M.pos_fee(p)) or 1.0
     cls = "good" if (pnl or 0) > 0 else ("bad" if (pnl or 0) < 0 else "")
@@ -1753,9 +1767,12 @@ def hold_card(r, now):
     meta = ("price %s since the entry" % fmt_chg(mult) if mult is not None else "no price yet") + " · held %s of %dh" % (fmt_dur(held_h), round(M.HOLD_MAX_H))
     live = now >= M.live_sell_at()           # memebot.LIVE_SELL_AT: the live chart decides, every minute
     leg = ('<div class="tleg"><span>entry %s</span><span>now %s</span><span title="the price change at which this ticket comes back whole after the buy and the sell fee">'
-           'break-even %s</span><span>%s %s or lower</span><span>%s %s, booked at %s</span></div>') % (
+           'break-even %s</span><span>%s %s or lower</span>%s<span>%s %s, booked at %s</span></div>') % (
         fmt_px(entry), fmt_px(r["last"]) if r["last"] else "no price yet", sgn("%+.1f%%" % (100 * (be - 1))),
         "stop as soon as a minute's low touches" if live else "stop when a minute candle closes at", fmt_px(stop_px),
+        ("<span>%s</span>" % E(("trailing stop at %s (%d%% under the high so far)" % (fmt_px(trail * ref), round(100 * M.CHART_TRAIL))) if trail else (
+            "trailing stop from %s on (%d%% under the high), out on a fall of %d%% within %d min" % (
+                fmt_px(M.CHART_ARM * ref), round(100 * M.CHART_TRAIL), round(100 * M.CHART_DROP), M.CHART_DROP_MIN)))) if chart and ref else "",
         "sells as soon as a minute's high touches" if live else "sells when a minute candle closes at", fmt_px(tp_px),
         fmt_px((1 + M.HOLD_TP) * entry) if entry else "–")
     worth = ("worth %s if sold now, paid %s, after both fees" % (fmt_amt(r["value"]), fmt_eur(ticket))) if r["value"] is not None else "no price since the buy · paid %s" % fmt_eur(ticket)
@@ -1769,7 +1786,7 @@ def hold_card(r, now):
     return ('<details class="card pos hold"><summary><span class="who"><span class="sym">%s</span>%s <span class="chip">%s</span></span><span class="plv %s">%s</span>'
             '<span class="meta">%s</span>%s</summary><div class="body"><p class="worth">%s</p>%s%s%s<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></div></details>') % (
         E(p.get("sym")), name_html(p.get("sym"), p.get("name")), E(group_tag(p)), cls, fmt_amt(pnl, True) if pnl is not None else "–", E(meta),
-        track_bar(r["last"] / ref if r["last"] and ref else None, mult, be, k),
+        track_bar(r["last"] / ref if r["last"] and ref else None, mult, be, k, floor, trail),
         E(worth), leg, time_bar(t0, now, M.hold_end(t_buy)), spark(r.get("candles") or [], ref, tp_px), kv_html(kv),
         safety, ('<details class="more"><summary>Why the bot bought it</summary><p class="why">%s</p></details>' % E(why)) if why else "",
         links(p), E(p.get("addr")))

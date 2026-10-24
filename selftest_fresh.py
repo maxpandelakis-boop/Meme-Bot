@@ -45,8 +45,9 @@ def f1(check):
         shutil.rmtree(tmp, ignore_errors=True)
     xg = open(os.path.join(HERE, "exit_grid.py"), encoding="utf-8").read()
     check(ctx["since"] == M.FRESH_AT and ctx["ruleSince"] == OLD and ctx0["ruleSince"] == OLD == ctx0["since"]
-          and 'M.in_account(p, ctx.get("ruleSince") or ctx["since"])' in xg,
-          "F1 the exit replay keeps every trade of the rule (peak.context ruleSince = paperRuleSince, else paperSince)")
+          and 'since = FIXED_SINCE if p.get("paper") == M.OLD_PAPER_RULE else (ctx.get("ruleSince") or ctx["since"])' in xg and "M.in_account(p, since)" in xg,
+          "F1 the exit replay keeps every trade of the rule (peak.context ruleSince = paperRuleSince, else paperSince; the fixed rule's trades from its "
+          "own start since the chart exit of Oct 24)")
 
 
 def f2(check):

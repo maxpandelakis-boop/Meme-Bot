@@ -9,8 +9,11 @@ bought from SINCE on) is mirrored in four shadow accounts. Each sells the same c
 the same paper fees, by its own rule. After about two weeks the accounts say which rule did best on the same buys.
 
 The rules (RULES, fixed when the test started on SINCE; another rule would be a new test with its own start, never an edit):
-  K  the real rule replayed (-30 %, 11x, 6 h): the control. A shadow rule is compared with K (the same prices, the same method);
-     the real account's own result on the same buys stands beside it, so the gap between the replay and the real fills shows.
+  K  the fixed rule replayed (-30 %, 11x, 6 h; the Pick's own rule until the chart exit of 24 Oct): the control. A shadow rule is
+     compared with K (the same prices, the same method); the real account's own result on the same buys stands beside it.
+  X  the chart exit replayed (memebot.chart_hit: 15 % under the high once it reached 1.5x, -15 % in 30 minutes, -50 %, 11x, 6 h; the
+     Pick's own rule since 24 Oct, added then): X against K on the same buys is the review's question; the real account against X
+     shows the gap between the replay and the real fills.
   A  stop -20 %, target 3x, 6 h       the exit replay's best on the live Pick account (exit_grid.py on 95 trades to 22 Oct: -3.30 EUR
                                       per trade against -6.05 for the real rule replayed)
   B  no stop, target 2x, 12 h         the best on the training days of the longer-hold test (research/winlose/WINLOSE-2026-10-22.md,
@@ -65,11 +68,13 @@ STATES = ("ok", "none")    # settled: never asked again
 # id, the page's name and words, and the rule. stop: the fraction under cpx (None: no stop); target: the multiple (None: none); half: the
 # multiple at which half is sold; trail: the stop follows the best close at this fraction under it (it starts at 1 - trail); hours.
 RULES = (
-    {"id": "K", "name": "Real rule, replayed", "text": "stop −30%, target 11x, 6 h", "stop": 0.30, "target": 11.0, "hours": 6.0},
+    {"id": "K", "name": "Old fixed rule", "text": "stop −30%, target 11x, 6 h (the Pick's rule until Oct 24)", "stop": 0.30, "target": 11.0, "hours": 6.0},
     {"id": "A", "name": "Tight stop", "text": "stop −20%, target 3x, 6 h", "stop": 0.20, "target": 3.0, "hours": 6.0},
     {"id": "B", "name": "Longer, no stop", "text": "no stop, target 2x, 12 h", "stop": None, "target": 2.0, "hours": 12.0},
     {"id": "C", "name": "Half at 2x", "text": "half at 2x, rest −30% / 11x / 6 h", "stop": 0.30, "target": 11.0, "half": 2.0, "hours": 6.0},
     {"id": "D", "name": "Trailing stop", "text": "stop 30% under the best price, 6 h", "stop": 0.30, "target": None, "trail": 0.30, "hours": 6.0},
+    {"id": "X", "name": "Chart exit, replayed", "text": "the Pick's rule since Oct 24: 15% under the high from 1.5x, −15% in 30 min, −50%, 11x, 6 h",
+     "stop": M.CHART_STOP, "target": 1.0 + M.HOLD_TP, "chart": True, "hours": M.HOLD_MAX_H},
 )
 CONTROL = "K"
 assert (RULES[0]["stop"], RULES[0]["target"], RULES[0]["hours"]) == (M.HOLD_STOP, 1.0 + M.HOLD_TP, M.HOLD_MAX_H)   # K is the real rule
@@ -263,6 +268,12 @@ def replay(doc, rule):
         return None
     stop, target, half, trail = rule.get("stop"), rule.get("target"), rule.get("half"), rule.get("trail")
     left, best, sales = 1.0, 1.0, []
+    if rule.get("chart"):                      # the chart exit (memebot.chart_hit) on the same clean minutes, their low and high as above
+        hc = M.chart_hit([(t, x, hl[0], hl[1], x) for t, x, hl in atoms], entry, None, 1.0)
+        if hc["hit"]:
+            return {"sales": [[int(hc["hit"]), 1.0, hc["mult"], hc["why"]]], "why": hc["why"]}
+        stop = 1.0 - (hc["lvl"] or 1.0 - stop)      # a pool that died: DEAD_FILL of the level it stood at, as the stop rules
+        atoms = []                                  # no sale on the way: only the pool's death or the time limit below
 
     def level():
         if trail:
@@ -371,7 +382,7 @@ def summary(d, now=None, pos=None):
         if a["id"] != CONTROL and done:
             a["vsK"] = round(a["eur"] - k["eur"], 2)
     real = acct([x["real"] for x in done])
-    real.update(id="real", name="Real Pick account", text="stop −%d%%, target %gx, %g h · really booked" % (round(100 * M.HOLD_STOP), 1.0 + M.HOLD_TP, M.HOLD_MAX_H))
+    real.update(id="real", name="Real Pick account", text="the chart exit (rule X) · really booked")
     shadows = [a for a in accts if a["id"] != CONTROL]
     lead = max(shadows, key=lambda a: a["eur"]) if done else None     # the best shadow (the first of equals); ahead: better than K
     return {"v": V, "t": now, "since": SINCE, "ticket": ticket, "pathH": PATH_H, "n": len(done), "open": n_open, "out": n_out,

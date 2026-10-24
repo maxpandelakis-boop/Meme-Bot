@@ -2,7 +2,7 @@
 anything, and nothing here is advice. English words (the user's wish of Oct 22: the whole app in English).
 
 section(D, R) -> HTML: a fold under the hour grid. Its summary line says how many buys were compared and which shadow rule is ahead of
-the real rule replayed (K); inside:
+the old fixed rule replayed (K; the Pick's rule until the chart exit of Oct 24, X); inside:
   - one sentence on what this is: every real Pick buy runs again under four other sell rules (same coin, minute, 50 €, fees); the real
     Pick rule stays as it is
   - the accounts on the same buys: the real Pick account, K (the real rule replayed: the yardstick, same prices and method as the
@@ -22,7 +22,7 @@ import page_home as PH       # pure helpers: numbers (de_eur, de_num), tone
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 TRADES_SHOWN = 30
-WHY = {"tp": "target", "half": "half", "stop": "stop", "trail": "stop", "time": "time", "rug": "pool dead", "dead": "pool dead"}
+WHY = {"tp": "target", "half": "half", "stop": "stop", "trail": "trailing stop", "drop": "fast fall", "time": "time", "rug": "pool dead", "dead": "pool dead"}
 
 
 def num(v):
@@ -55,9 +55,9 @@ def head_line(S, R):
     k = next(a for a in S["accts"] if a["id"] == "K")
     bit = ""
     if lead and S["ahead"]:
-        bit = " · ahead: %s %s (%s € against the real rule)" % (lead["id"], lead["name"], short(lead["eur"] - k["eur"]))
+        bit = " · ahead: %s %s (%s € against K, the old fixed rule)" % (lead["id"], lead["name"], short(lead["eur"] - k["eur"]))
     elif lead:
-        bit = " · none better than the real rule"
+        bit = " · none better than K, the old fixed rule"
     return "%d buys compared%s" % (S["n"], bit)
 
 
@@ -94,7 +94,7 @@ def trades_table(S, R):
             body.append('<tr class="wait">%s%s<td colspan="%d" class="m">%s</td></tr>' % (coin, real, len(ids), E(what)))
     more = (' (the last %d of %d)' % (TRADES_SHOWN, len(S["trades"]))) if len(S["trades"]) > TRADES_SHOWN else ""
     return ('<details class="sh-tr"><summary>Every buy%s</summary><div class="sh-scroll"><table class="sh-t2"><thead>%s</thead><tbody>%s</tbody>'
-            '</table></div><small class="sh-m">€ after fees per buy · real = what the Pick account really got · K to D replayed</small></details>') % (
+            '</table></div><small class="sh-m">€ after fees per buy · real = what the Pick account really got · K to X replayed</small></details>') % (
         E(more), head, "".join(body))
 
 
@@ -113,11 +113,13 @@ def section(D, R):
         note.append("%d without minute candles (left out for every rule)" % S["out"])
     note.append("since %s" % when(R, S["since"]))
     few = ' After a few buys a lead means nothing yet; the comparison comes after about two weeks.' if S["n"] < 60 else ""
-    inner = ('<div class="sh"><p class="sh-lead">Every real Pick buy also runs here under four other sell rules: same coin, '
-             'same minute, same %s, same fees. The real Pick rule stays as it is. Paper money only.</p>'
+    inner = ('<div class="sh"><p class="sh-lead">Every real Pick buy also runs here under other sell rules: same coin, '
+             'same minute, same %s, same fees. The Pick itself sells by the chart exit since Oct 24 (X); K is the fixed rule it used before. '
+             'Paper money only.</p>'
              '<div class="sh-scroll"><table class="sh-t"><thead><tr><th>Rule</th><th>Result</th><th>per buy</th><th>in profit</th></tr></thead>'
              '<tbody>%s</tbody></table></div>'
-             '<p class="sh-m">K is the real rule, replayed on the same minute candles: A to D are measured against it. The results come '
+             '<p class="sh-m">K is the old fixed rule, replayed on the same minute candles: X (the chart exit, replayed the same way) and A to D '
+             'are measured against it. The results come '
              'about 12 hours after each buy (when the minute candles are in).%s</p><p class="sh-m">%s</p>%s</div>') % (
         E(("%g €" % S["ticket"]) if S["ticket"] == int(S["ticket"]) else PH.de_eur(S["ticket"])), "".join(rows), E(few), E(" · ".join(note)), trades_table(S, R))
     return ('<details class="fold sh-fold" id="schatten"><summary><span class="t">Shadow rules</span><span class="sum">%s</span></summary>%s</details>'
