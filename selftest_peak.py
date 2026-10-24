@@ -1109,6 +1109,7 @@ def main():
     # P3 buys new launches, which end at the real switch (16 Oct 2026): run on its own, put the switch after the fake clock as
     # selftest.py's main does (without it P3 has failed since that date)
     os.environ.setdefault("MEMEBOT_SWITCH_AT", str(S.T0 + 30 * 24 * S.H))
+    os.environ.setdefault("MEMEBOT_LIVE_SELL_AT", str(S.T0 + 30 * 24 * S.H))     # the live chart sale too, as selftest.py's main does
     peak_checks(check)
     print("\n%d checks failed" % len(fails) if fails else "\nALL PASS")
     sys.exit(1 if fails else 0)

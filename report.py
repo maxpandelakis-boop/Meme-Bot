@@ -78,17 +78,24 @@ def group_tag(p):
     return "%s · %s" % ("old rule" if not p.get("paper") else ("new launch" if p.get("grp") == "young" else "top pick"), fmt_eur(p.get("ticket")))
 
 
-def hold_rule_text():
-    """How a paper position is sold, in full (the Open positions fold): memebot.PAPER_LABEL, the one wording of the rule on the page."""
+def hold_rule_text(now=None):
+    """How a paper position is sold, in full (the Open positions fold): memebot.PAPER_LABEL, the one wording of the rule on the page. From
+    memebot.LIVE_SELL_AT on the way it is carried out: on the live chart, every minute (the rule itself is the same)."""
+    live = (now if now is not None else dt.datetime.now(dt.timezone.utc).timestamp() * 1000) >= M.live_sell_at()
+    how = ("on the live chart, looked at every minute since %s: as soon as a minute's high reaches %g times the entry price (booked at exactly "
+           "that level), as soon as a minute's low reaches %d%% of it or lower (booked at that low: a fill no better than the chart gave; both in "
+           "one minute count as the stop), %d hours after the purchase (at that minute's price), or when the price or the liquidity is gone (the pool "
+           "is gone). Each sale is booked at the minute it happened, the next scan shows it." % (
+               local(M.live_sell_at()).strftime("%b %d, %H:%M"), 1 + M.HOLD_TP, round(100 * (1 - M.HOLD_STOP)), round(M.HOLD_MAX_H))) if live else (
+          "at the first minute candle that closes at %g times the entry price (booked at exactly that level), at the first one that closes at "
+          "%d%% of it or lower (booked at that close: a crash through the level fills worse, never better), at the first scan after about %d hours (at "
+          "that scan's price), or when the price or the liquidity is gone (the pool is gone). A scan without new candles checks both levels on its own "
+          "price." % (1 + M.HOLD_TP, round(100 * (1 - M.HOLD_STOP)), round(M.HOLD_MAX_H)))
     return ("Fake money, no budget. Each scan's top pick is bought on paper for %s; the first %d new launches of each scan for %s each until %s, every coin "
             "the launch radar finds without traps for %s from then on. A coin that is held is not bought again. Each position %s, whichever comes first, "
-            "all of it: at the first minute candle that closes at %g times the entry price (booked at exactly that level), at the first one that closes at "
-            "%d%% of it or lower (booked at that close: a crash through the level fills worse, never better), at the first scan after about %d hours (at "
-            "that scan's price), or when the price or the liquidity is gone (the pool is gone). A scan without new candles checks both levels on its own "
-            "price. Failing a filter sells nothing. Paper fees: %g%% per trade, at least %s; the tip record keeps %g%%, at least %s." % (
+            "all of it: %s Failing a filter sells nothing. Paper fees: %g%% per trade, at least %s; the tip record keeps %g%%, at least %s." % (
                 fmt_eur(M.TOP_TICKET), M.YOUNG_BUY_N, fmt_eur(M.YOUNG_TICKET), local(M.switch_at()).strftime("%b %d, %H:%M"), fmt_eur(radar_ticket()),
-                M.PAPER_LABEL, 1 + M.HOLD_TP, round(100 * (1 - M.HOLD_STOP)), round(M.HOLD_MAX_H), 100 * M.PAPER_FEE_PCT, _eur(M.PAPER_FEE_MIN),
-                100 * M.FEE_PCT, _eur(M.FEE_MIN)))
+                M.PAPER_LABEL, how, 100 * M.PAPER_FEE_PCT, _eur(M.PAPER_FEE_MIN), 100 * M.FEE_PCT, _eur(M.FEE_MIN)))
 
 
 SRC = {"kw": "search “%s”", "gt": "GeckoTerminal %s", "pf": "pump.fun %s", "list": "DexScreener %s", "jup": "Jupiter %s", "gm": "GMGN %s"}
@@ -1672,10 +1679,12 @@ def track_bar(mc, m, be, k=1.0):
     return '<div class="track" role="img" aria-label="%s">%s</div>' % (E(aria), "".join(out))
 
 
-def time_bar(t_start, now):
+def time_bar(t_start, now, end=None):
+    """The 6-hour clock; end: the live limit (memebot.hold_end, from LIVE_SELL_AT on), when it sells at that minute."""
     held = max(0.0, (now - t_start) / 3_600_000)
-    return ('<div class="clock"><div class="bar"><span style="width:%.1f%%"></span></div><div class="cap"><span>held %s of %dh</span><span>sold at the first scan after about %s</span></div></div>' % (
-        100 * min(1.0, held / M.HOLD_MAX_H), fmt_dur(held), round(M.HOLD_MAX_H), fmt_dt(t_start + M.HOLD_MAX_H * 3_600_000, True)))
+    return ('<div class="clock"><div class="bar"><span style="width:%.1f%%"></span></div><div class="cap"><span>held %s of %dh</span><span>%s %s</span></div></div>' % (
+        100 * min(1.0, held / M.HOLD_MAX_H), fmt_dur(held), round(M.HOLD_MAX_H), "sold at" if end else "sold at the first scan after about",
+        fmt_dt(end or t_start + M.HOLD_MAX_H * 3_600_000, True)))
 
 
 def spark(cands, ref, tp_px, w=320, h=64):
@@ -1742,9 +1751,12 @@ def hold_card(r, now):
     cls = "good" if (pnl or 0) > 0 else ("bad" if (pnl or 0) < 0 else "")
     held_h = max(0.0, (now - t0) / 3_600_000)
     meta = ("price %s since the entry" % fmt_chg(mult) if mult is not None else "no price yet") + " · held %s of %dh" % (fmt_dur(held_h), round(M.HOLD_MAX_H))
+    live = now >= M.live_sell_at()           # memebot.LIVE_SELL_AT: the live chart decides, every minute
     leg = ('<div class="tleg"><span>entry %s</span><span>now %s</span><span title="the price change at which this ticket comes back whole after the buy and the sell fee">'
-           'break-even %s</span><span>stop when a minute candle closes at %s or lower</span><span>sells when a minute candle closes at %s, booked at %s</span></div>') % (
-        fmt_px(entry), fmt_px(r["last"]) if r["last"] else "no price yet", sgn("%+.1f%%" % (100 * (be - 1))), fmt_px(stop_px), fmt_px(tp_px),
+           'break-even %s</span><span>%s %s or lower</span><span>%s %s, booked at %s</span></div>') % (
+        fmt_px(entry), fmt_px(r["last"]) if r["last"] else "no price yet", sgn("%+.1f%%" % (100 * (be - 1))),
+        "stop as soon as a minute's low touches" if live else "stop when a minute candle closes at", fmt_px(stop_px),
+        "sells as soon as a minute's high touches" if live else "sells when a minute candle closes at", fmt_px(tp_px),
         fmt_px((1 + M.HOLD_TP) * entry) if entry else "–")
     worth = ("worth %s if sold now, paid %s, after both fees" % (fmt_amt(r["value"]), fmt_eur(ticket))) if r["value"] is not None else "no price since the buy · paid %s" % fmt_eur(ticket)
     kv = [("bought", fmt_dt(t_buy, True)), ("paid", fmt_eur(ticket)),
@@ -1758,7 +1770,7 @@ def hold_card(r, now):
             '<span class="meta">%s</span>%s</summary><div class="body"><p class="worth">%s</p>%s%s%s<div class="kv">%s</div>%s%s%s<div class="addr">%s</div></div></details>') % (
         E(p.get("sym")), name_html(p.get("sym"), p.get("name")), E(group_tag(p)), cls, fmt_amt(pnl, True) if pnl is not None else "–", E(meta),
         track_bar(r["last"] / ref if r["last"] and ref else None, mult, be, k),
-        E(worth), leg, time_bar(t0, now), spark(r.get("candles") or [], ref, tp_px), kv_html(kv),
+        E(worth), leg, time_bar(t0, now, M.hold_end(t_buy)), spark(r.get("candles") or [], ref, tp_px), kv_html(kv),
         safety, ('<details class="more"><summary>Why the bot bought it</summary><p class="why">%s</p></details>' % E(why)) if why else "",
         links(p), E(p.get("addr")))
 
@@ -3396,7 +3408,7 @@ def render(data, fragment=False):
     def bought():
         n_bot, n_rand = len(D["open_bot"]), len(D["open"]) - len(D["open_bot"])
         head = "%d open%s · %s per coin" % (n_bot, (" plus %d random control" % n_rand) if n_rand else "", fmt_amt(cash["ticket"]))
-        rule = '<details><summary>How a coin is sold</summary><p class="note">%s</p></details>' % (E(hold_rule_text()) if D.get("rec") else
+        rule = '<details><summary>How a coin is sold</summary><p class="note">%s</p></details>' % (E(hold_rule_text(D.get("now"))) if D.get("rec") else
                 "Half is sold at 2x (the rest if it falls back to the entry price); everything is sold at −50%, after 3 days, or when the price is gone.")
         if D["open"]:
             body = '<div class="cards">%s</div>' % "".join(hold_card(r, now) if r["p"].get("grp") in M.PAPER_GROUPS else position_card(r, now) for r in D["open"])

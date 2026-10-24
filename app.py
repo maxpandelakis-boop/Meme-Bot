@@ -331,6 +331,16 @@ def put_row(row_id, doc, track=None):
     call("POST", "live?on_conflict=id", {"id": row_id, "doc": doc}, prefer="resolution=merge-duplicates,return=minimal", track=track)
 
 
+def get_row(row_id):
+    """The doc of one row of table live, or None when there is no such row (a StoreError when the store does not answer). Row ids are
+    the bot's own names (letters only)."""
+    if not re.fullmatch(r"[a-z]{1,40}", str(row_id)):
+        raise StoreError("not a row name")
+    rows = call("GET", "live?select=doc&id=eq." + row_id)
+    doc = rows[0].get("doc") if isinstance(rows, list) and rows and isinstance(rows[0], dict) else None
+    return doc if isinstance(doc, dict) else None
+
+
 def _sig(x):
     return hashlib.sha1(json.dumps(x, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")).hexdigest()
 

@@ -6,7 +6,9 @@ The product has two parts, and this tab shows both at a glance:
   RADAR  the rocket hunter's own paper account (rocket_watch.py, 20 € a coin when its rocket score reaches the cut)
 and under them the Learning Pick (lernpick.py, a self-learning shadow with its own paper account) as a slim row whose tap opens its fold.
 pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells, the
-Radar for comparison), because the open Pick positions were only in the Archive.
+Radar for comparison), because the open Pick positions were only in the Archive. From memebot.LIVE_SELL_AT on (the Pick sells on the live
+chart) it carries one more line that PK_LIVE_JS fills from the app's live row memebot.LIVE_WATCH_ROW: what the minute watch sold of the
+positions this page still shows open, before the next scan books it.
 section(D, R) -> HTML:
   - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
     (3x and 10x) and the open positions
@@ -214,6 +216,7 @@ def pick_account(D, R):
     op_html = ('<div class="pk-st"><span class="k">Open positions (%d)%s</span><div class="holds">%s</div></div>' % (
         len(opn), (" · %d bought before the start, not counted" % before) if before else "", "".join(cards)) if opn else
         '<div class="pk-st"><span class="k">Open positions (0)</span><p class="pk-s">None right now. Every scan buys its pick on paper for %s.</p></div>' % E(ticket))
+    op_html += pick_live(opn, now)
     closed = sorted((r for r in b["rows"] if not r.get("open")), key=lambda r: -(num(r.get("exitT")) or num(r.get("t")) or 0))[:PICK_SOLD]
     sold = []
     for r in closed:
@@ -228,9 +231,68 @@ def pick_account(D, R):
     rk = rocket_book(rocket_doc(D))
     cmp_ = ('<p class="pk-cmp">For comparison, Radar 🚀: <b class="%s">%s</b> · %d closed · %d open</p>' % (
         tone(rk["bal"]), E(de_eur(rk["bal"], True)), rk["closed"], rk["open"])) if rk else ""
-    foot = ('<p class="pk-s">Sells at −30%%, at 11x or after 6 h (the rule is unchanged). The trades before the start (%d) are in the archive under '
-            '“Three paper traders”.</p>' % sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold"))
-    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>' % (head, acct, op_html, sold_html, foot, cmp_, PK_CSS)
+    live_at = M.live_sell_at()
+    foot = ('<p class="pk-s">Sells at −30%%, at 11x or after 6 h (the rule is unchanged). %s The trades before the start (%d) are in the archive under '
+            '“Three paper traders”.</p>' % (E("%s %s it sells on the live chart: every minute, a dip to −30%% (the minute's low) or a jump to 11x (its high) sells "
+                                               "at that minute, the 6 h limit 6 h after the purchase." % ("Since" if now >= live_at else "From", R.local(live_at).strftime("%b %d, %H:%M"))
+                                             if hasattr(R, "local") else ""),
+                                           sum(1 for r in (D.get("paper") or {}).get("old") or [] if isinstance(r, dict) and (r.get("p") or {}).get("grp") == "hold")))
+    js = ("<script>%s</script>" % PK_LIVE_JS) if "data-pk-box" in op_html else ""
+    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>%s' % (head, acct, op_html, sold_html, foot, cmp_, PK_CSS, js)
+
+
+def pick_live(opn, now):
+    """The minute watch's line under the open pick positions (memebot.LIVE_SELL_AT on): empty and hidden on the page; PK_LIVE_JS shows the
+    sales the watch saw of the positions listed here (data-pk-open: their ids), each at its minute, and when it looked last. '' before."""
+    if now < M.live_sell_at():
+        return ""
+    ids = [str((r.get("p") or {}).get("_id") or "") for r in opn if (r.get("p") or {}).get("_id")]
+    return ('<div class="pk-st pk-lv" data-pk-box data-pk-open="%s" hidden><span class="k" data-pk-head hidden>Sold on the live chart since this page '
+            'was built (booked at that minute, the next scan adds it to the balance)</span><ul class="pk-sold" data-pk-sold></ul>'
+            '<small class="pk-s" data-pk-line></small></div>') % E(json.dumps(ids, separators=(",", ":")))
+
+
+# the Pick account's minute watch (memebot.LIVE_SELL_AT): the app's live row memebot.LIVE_WATCH_ROW, read while the Pick tab is open, every
+# 45 s, the same way page_rocket.LIVE_JS reads the Radar's; text only (no HTML from the row)
+PK_LIVE_JS = r"""
+(function(){
+  var root=document.documentElement,url=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),key=root.getAttribute('data-sb-key')||'';
+  var box=document.querySelector('[data-pk-box]');
+  if(!box||!/^https:\/\/[^\s\/]+$/.test(url)||!key||!window.fetch)return;
+  var ids;try{ids=JSON.parse(box.getAttribute('data-pk-open')||'[]');}catch(e){ids=[];}
+  var EVERY=45000,next=0,busy=false,MINUS='−',WHY={stop:'stop −30%',tp:'11x reached',time:'after 6 h'};
+  function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
+  function de(v,d){var s=Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});return (v<0&&/[1-9]/.test(s)?MINUS:'')+s;}
+  function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function apply(d){
+    var sold=d.sold&&typeof d.sold==='object'?d.sold:{},pos=d.pos&&typeof d.pos==='object'?d.pos:{},u=box.querySelector('[data-pk-sold]'),rows=[];
+    ids.forEach(function(id){var x=sold[id];if(x&&typeof x==='object'&&n(x.at))rows.push(x);});
+    rows.sort(function(a,b){return n(b.at)-n(a.at);});
+    if(u){u.textContent='';rows.forEach(function(x){var v=n(x.pnl)||0,li=el('li',v>0.004?'good':(v<-0.004?'bad':''));
+      li.appendChild(el('b',null,String(x.sym||'?').slice(0,14)));
+      li.appendChild(el('span',null,['x'+de(n(x.mult)||0,2),WHY[x.why]||String(x.why||''),hhmm(n(x.at))].filter(Boolean).join(' · ')));
+      li.appendChild(el('em',null,(v>0.004?'+':'')+de(v,2)+' €'));u.appendChild(li);});}
+    var w=ids.filter(function(id){return pos[id]&&!sold[id];}).length,line=box.querySelector('[data-pk-line]');
+    if(line)line.textContent='Live chart · last look '+(n(d.t)?hhmm(n(d.t)):'–')+' · '+w+' of '+ids.length+' open position'+(ids.length===1?'':'s')+' watched every minute';
+    var hd=box.querySelector('[data-pk-head]');if(hd){if(rows.length)hd.removeAttribute('hidden');else hd.setAttribute('hidden','');}
+    if(rows.length||ids.length)box.removeAttribute('hidden');
+  }
+  function want(){if(document.visibilityState==='hidden')return false;var a=document.getElementById('tab-pick');return !a||!!a.checked;}
+  function poll(){
+    if(busy||!want()||Date.now()<next)return;busy=true;next=Date.now()+EVERY;
+    var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort();},10000);
+    fetch(url+'/rest/v1/live?select=doc&id=eq.""" + M.LIVE_WATCH_ROW + r"""',{headers:{apikey:key,Accept:'application/json'},cache:'no-store',signal:ac?ac.signal:undefined})
+      .then(function(r){if(!r.ok)throw r.status;return r.json();})
+      .then(function(rows){var d=Array.isArray(rows)&&rows[0]&&rows[0].doc;if(d&&typeof d==='object')apply(d);})
+      .catch(function(){next=Date.now()+2*EVERY;})
+      .then(function(){clearTimeout(tm);busy=false;});
+  }
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){next=0;poll();}});
+  document.addEventListener('change',function(e){if(e.target&&e.target.id==='tab-pick')poll();});
+  setInterval(poll,5000);poll();
+})();
+"""
 
 
 PK_CSS = r"""

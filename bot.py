@@ -373,6 +373,46 @@ def app_bg(name, *args):
         return None
 
 
+def live_watch_in(d):
+    """The minute watch's view of the open paper positions (memebot.LIVE_WATCH_ROW: rocket_watch.py writes it every minute from
+    memebot.LIVE_SELL_AT on) from the app's live store, saved as <d>/pickwatch.json for the run right after (memebot.live_watch books its
+    sales); the last cycle's file goes first, so a store that does not answer leaves none and the run's own candles decide by the same
+    rule. Nothing without the live store or before LIVE_SELL_AT; never raises."""
+    try:
+        import memebot as M
+        fn = os.path.join(d, M.LIVE_WATCH_ROW + ".json")
+        if os.path.exists(fn):
+            os.remove(fn)
+        A = app_mod()
+        if not A or time.time() * 1000 < M.live_sell_at():
+            return None
+        doc = A.get_row(M.LIVE_WATCH_ROW)
+        if isinstance(doc, dict):
+            with open(fn, "w", encoding="utf-8") as f:
+                json.dump(doc, f, separators=(",", ":"))
+            log("minute watch: %d sales not booked yet, %d positions watched (its last look %s)" % (
+                len(doc.get("sold") or {}), len(doc.get("pos") or {}), time.strftime("%H:%M UTC", time.gmtime((early_num(doc.get("t")) or 0) / 1000))))
+        return doc
+    except Exception as e:
+        log("minute watch not read (%s): this run's own candles decide" % type(e).__name__)
+        return None
+
+
+def live_open_out(d):
+    """The open paper positions as the run left them (db/memebot/pickopen.json, memebot.live_open) to the app's live store
+    (memebot.LIVE_OPEN_ROW), so the minute watch looks at a new buy from its next minute on. Nothing without the live store; never raises."""
+    try:
+        import memebot as M
+        A = app_mod()
+        doc = M.load_json(os.path.join(d, "db", "memebot", M.LIVE_OPEN_ROW + ".json"), None)
+        if A and isinstance(doc, dict):
+            A.put_row(M.LIVE_OPEN_ROW, doc)
+            return True
+    except Exception as e:
+        log("open positions not handed to the minute watch (%s): it keeps its last list" % type(e).__name__)
+    return False
+
+
 def early_set(t, doc):
     """This cycle's early list (doc of cycle t; None removes it) for both live views: it goes to live_put("young", doc), so live.json and
     the app's live store carry it from their next push or write on (the git push at once: the kick). A list of another cycle is
@@ -1185,11 +1225,15 @@ def cycle_steps(d, force=False, offline=False, mock="", now=None, push=False, re
             finish_bg(spot)
         spot = None
     o.begin("trader")
+    if not offline:
+        live_watch_in(d)     # what the minute watch sold on the live chart since the last scan: the run books it at its minute
     r = run(["memebot.py", "run", "--mode", "pick" if mode["pick"] else "check"] + extra, d, now)
     for x in re.split(r"(?<=\.)\s+(?=[A-Z])", str(r.get("note") or "") if isinstance(r, dict) else ""):
         o.line(x)            # the run's note, one sentence a line: what it picked, sold and learned
     n = apply_out(d)
     log("saved %d docs" % n)
+    if not offline:
+        live_open_out(d)     # this run's open paper positions (its new buy too) to the minute watch
     if isinstance(r, dict) and isinstance(r.get("weights"), dict):      # the next scan's spotter scores with these (it never trains itself)
         try:
             sys.path.insert(0, HERE)

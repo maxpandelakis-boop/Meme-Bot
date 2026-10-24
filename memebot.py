@@ -104,11 +104,23 @@ TOP_TICKET = 50.0        # fake units per top-pick position
 YOUNG_TICKET = 3.0       # fake units per new-launch position
 YOUNG_BUY_N = 5          # the first this many coins of the new-launches tab are bought (a held one is skipped, no digging deeper)
 HOLD_TP = 10.0           # take-profit +1000%: the first minute candle that CLOSES at 11x the candles' own entry price (cpx, so the gap to
-                         # DexScreener's price cannot fake a sale); booked at exactly 11x the entry price
+                         # DexScreener's price cannot fake a sale); booked at exactly 11x the entry price. From LIVE_SELL_AT on the minute's HIGH
 HOLD_STOP = 0.30         # stop-loss -30%: the first minute candle that closes at 0.70x cpx or below; booked at min(close/cpx, 0.70) x the
-                         # entry price (a crash through the level fills worse, never better). Without candles this run, both on the run's price
-HOLD_MAX_H = 6.0         # time: the first run after about 6 hours (from TIP_SLACK_H before) sells at that run's price. Rug (no price twice, liquidity under $1,000) stays
+                         # entry price (a crash through the level fills worse, never better). Without candles this run, both on the run's price.
+                         # From LIVE_SELL_AT on the minute's LOW, booked at that low
+HOLD_MAX_H = 6.0         # time: the first run after about 6 hours (from TIP_SLACK_H before) sells at that run's price; from LIVE_SELL_AT on
+                         # 6 hours after the entry, at that minute's price. Rug (no price twice, liquidity under $1,000) stays
 HOLD_COOL_H = 0.0        # no cooldown after a sale any more; failing a filter sells nothing any more either
+LIVE_SELL_AT = 1792846800000   # Sat 24 Oct 2026 13:00 UTC (15:00 Berlin): the paper account sells on the live chart from this minute on (the
+                         # user's go of Oct 24). The rule stays (PAPER_RULE: -30%, 11x, 6 h; nothing restarts), only how it is carried out moves:
+                         # a minute's LOW at 0.70x cpx or below is the stop (a wick counts, as on the Radar account; booked at that low, a fill no
+                         # better than the chart gave), its HIGH at 11x the take-profit (booked at exactly 11x), both in one minute the stop (the
+                         # safe side), and the 6-hour limit sells 6 hours after the entry, at that minute's price, not at the first scan after it.
+                         # rocket_watch.py looks at the open positions every minute (LIVE_OPEN_ROW in, LIVE_WATCH_ROW out) and the next scan books
+                         # what it saw at the minute it happened; minutes it did not see, the scan's own candles decide by the same rule (hold_hit).
+                         # Every sale after it carries "chart": "live" (seen by the minute watch) or "scan". Never edit after it has passed.
+LIVE_OPEN_ROW = "pickopen"     # the app's live store: the open paper positions as this scan leaves them (bot.py writes it after the run)
+LIVE_WATCH_ROW = "pickwatch"   # ... and the minute watch's view of them: its last look, each position's last minute seen, its sales
 PAPER_FEE_PCT, PAPER_FEE_MIN = 0.01, 0.10   # paper positions pay 1%, at least 0.10, per trade; the tip record, the big test and the
                          # training keep FEE_PCT/FEE_MIN so their history stays comparable
 PAPER_GROUPS = ("hold", "young")
@@ -1968,24 +1980,111 @@ def candle_items(d, now):
     return [it for _, it in items][:CANDLE_MAX_ITEMS]
 
 
-def hold_check(d, p, chk=None, cpx=None):
-    """The take-profit and the stop of a paper position on its pool's minute candles (candles/<pool>_hold.txt) since the last check:
-    closes only (a wick sells nothing), measured against GeckoTerminal's own price at the entry (cpx: the first close at or after the
-    entry minute), so the gap between DexScreener's entry price and the candles cannot fake a sale. The first close at 1 + HOLD_TP times
-    cpx or above (a close over CANDLE_MAX_X times is a glitch) is a take-profit, the first at 1 - HOLD_STOP or below a stop; whichever
-    comes first in time. -> {"hit": the minute it sold (ms) or None, "why": "tp" / "stop" / None, "mult": the close / cpx of the hit,
-    "chk": where the next check starts, "cpx": the candle entry price, "fresh": whether any candle since the last check came in}"""
-    t0 = num(p.get("entryAt")) or num(p.get("t")) or 0
-    cands = [c for c in load_candles(d, str(p.get("pair") or ""), "hold") if c[0] >= t0 - 60_000 and c[4] > 0]
+def live_sell_at():
+    """LIVE_SELL_AT, or the selftest's MEMEBOT_LIVE_SELL_AT (ms) when set; no workflow sets it (selftest_livesell checks)."""
+    v = os.environ.get("MEMEBOT_LIVE_SELL_AT")
+    try:
+        return int(v) if v else LIVE_SELL_AT
+    except ValueError:
+        return LIVE_SELL_AT
+
+
+def hold_wicks(c):
+    """A minute candle's (high, low) for the live chart (LIVE_SELL_AT): a wick more than CANDLE_WICK_X times beyond the candle's own close
+    is a thin-pool glitch and the close stands in (window_extremes' guard, candle by candle, so the minute watch and the scan see the
+    same); a high under the close or a low over it is the close."""
+    cl, hi, lo = c[4], num(c[2]), num(c[3])
+    return (hi if hi and cl <= hi <= CANDLE_WICK_X * cl else cl), (lo if lo and cl / CANDLE_WICK_X <= lo <= cl else cl)
+
+
+def hold_end(t0, live_at=None):
+    """When the 6-hour limit of a position that entered at t0 sells on the live chart (t0 + HOLD_MAX_H), or None when that moment comes
+    before LIVE_SELL_AT (then the first scan after about 6 hours sells, as before)."""
+    end = int(t0 + HOLD_MAX_H * 3_600_000)
+    return end if t0 and end >= (live_sell_at() if live_at is None else live_at) else None
+
+
+def hold_hit(cands, t0, chk=None, cpx=None, live_at=None):
+    """The take-profit and the stop of a paper position that entered at t0 on its pool's minute candles (t, open, high, low, close, ...),
+    from the last check (chk) on, measured against GeckoTerminal's own price at the entry (cpx: the first close at or after the entry
+    minute), so the gap between DexScreener's entry price and the candles cannot fake a sale. A candle before LIVE_SELL_AT counts with its
+    close only (a wick sells nothing): the first close at 1 + HOLD_TP times cpx or above (a close over CANDLE_MAX_X times is a glitch) is a
+    take-profit, the first at 1 - HOLD_STOP or below a stop. From LIVE_SELL_AT on the live chart decides (hold_wicks): the minute's low at
+    1 - HOLD_STOP or below is a stop (mult: that low), else its high (its close when the high is over CANDLE_MAX_X) at 1 + HOLD_TP or
+    above a take-profit; a candle from the live 6-hour limit on (hold_end) sells nothing, the limit comes first. Whichever comes first in
+    time. Pure: the scan (hold_check) and the minute watch (rocket_watch.py) decide with it alike. -> {"hit": the minute it sold (ms) or
+    None, "why": "tp" / "stop" / None, "mult": the close (low, high) / cpx of the hit, "chk": where the next check starts, "cpx": the
+    candle entry price, "fresh": whether any candle since the last check came in}"""
+    live_at = live_sell_at() if live_at is None else live_at
+    end = hold_end(t0, live_at)
+    cands = [c for c in cands if c[0] >= t0 - 60_000 and c[4] > 0]
     since = max(t0 - 60_000, num(chk) or 0)
     if not any(c[0] >= since for c in cands):
         return {"hit": None, "why": None, "mult": None, "chk": chk, "cpx": cpx, "fresh": False}
     cpx = cpx or cands[0][4]
     for c in cands:
+        if c[0] < since or (end is not None and c[0] >= end):
+            continue
+        if c[0] >= live_at:
+            hi, lo = hold_wicks(c)
+            xh = hi / cpx if hi / cpx <= CANDLE_MAX_X else c[4] / cpx
+            if lo / cpx <= 1.0 - HOLD_STOP:
+                return {"hit": c[0], "why": "stop", "mult": lo / cpx, "chk": cands[-1][0] + 60_000, "cpx": cpx, "fresh": True}
+            if 1.0 + HOLD_TP <= xh <= CANDLE_MAX_X:
+                return {"hit": c[0], "why": "tp", "mult": xh, "chk": cands[-1][0] + 60_000, "cpx": cpx, "fresh": True}
+            continue
         x = c[4] / cpx
-        if c[0] >= since and (1.0 + HOLD_TP <= x <= CANDLE_MAX_X or x <= 1.0 - HOLD_STOP):
+        if 1.0 + HOLD_TP <= x <= CANDLE_MAX_X or x <= 1.0 - HOLD_STOP:       # before LIVE_SELL_AT: the close alone
             return {"hit": c[0], "why": "tp" if x > 1 else "stop", "mult": x, "chk": cands[-1][0] + 60_000, "cpx": cpx, "fresh": True}
     return {"hit": None, "why": None, "mult": None, "chk": cands[-1][0] + 60_000, "cpx": cpx, "fresh": True}
+
+
+def hold_x6(cands, t0, cpx=None, ended=False):
+    """The price at the live 6-hour limit (hold_end) as a multiple of cpx: the last close of a candle that starts before it, or None (no
+    live limit, no candle before it, or the candles do not reach it: their last starts more than a minute before it, unless ended says
+    they were fetched after it; a minute without trades has no candle, the price stood)."""
+    end = hold_end(t0)
+    cands = [c for c in cands if c[0] >= t0 - 60_000 and c[4] > 0]
+    if end is None or not cands or (not ended and cands[-1][0] < end - 60_000):
+        return None
+    cpx = cpx or cands[0][4]
+    before = [c for c in cands if c[0] < end]
+    return before[-1][4] / cpx if before else None
+
+
+def hold_check(d, p, chk=None, cpx=None):
+    """hold_hit on the position's pool's minute candles (candles/<pool>_hold.txt) since the last check: closes only before LIVE_SELL_AT,
+    the minute's low and high from it on. -> hold_hit's dict"""
+    t0 = num(p.get("entryAt")) or num(p.get("t")) or 0
+    return hold_hit(load_candles(d, str(p.get("pair") or ""), "hold"), t0, chk, cpx)
+
+
+def live_watch(d):
+    """The minute watch's view of the open paper positions (rocket_watch.py's LIVE_WATCH_ROW, which bot.py saves as pickwatch.json right
+    before the run; from LIVE_SELL_AT on) -> ({pid: {"chk": where its next look starts, "cpx"}}, {pid: {"at", "why", "mult"}}): its
+    sales from LIVE_SELL_AT on only, each a stop (booked at its low, never above the stop level), a take-profit (exactly 11x) or the
+    6-hour limit at a positive multiple of the entry price; ({}, {}) without it."""
+    doc = load_json(os.path.join(d, LIVE_WATCH_ROW + ".json"), None)
+    seen, sold = {}, {}
+    if not isinstance(doc, dict):
+        return seen, sold
+    for pid, w in (doc.get("pos") or {}).items() if isinstance(doc.get("pos"), dict) else ():
+        if isinstance(w, dict):
+            seen[str(pid)] = {"chk": num(w.get("chk")), "cpx": num(w.get("cpx")) if (num(w.get("cpx")) or 0) > 0 else None}
+    for pid, x in (doc.get("sold") or {}).items() if isinstance(doc.get("sold"), dict) else ():
+        at, mult, why = (num(x.get("at")), num(x.get("mult")), x.get("why")) if isinstance(x, dict) else (None, None, None)
+        if at and at >= live_sell_at() and mult and 0 < mult <= CANDLE_MAX_X and why in ("stop", "tp", "time"):
+            sold[str(pid)] = {"at": int(at), "why": why, "mult": 1.0 + HOLD_TP if why == "tp" else (min(mult, 1.0 - HOLD_STOP) if why == "stop" else mult)}
+    return seen, sold
+
+
+def live_open(pos, marks, now):
+    """The open paper positions as this run leaves them, for the minute watch (LIVE_OPEN_ROW; it sells from LIVE_SELL_AT on): what it needs
+    to judge them by the rule and to price a sale, nothing else (public data: coins, pools, prices, fake-money tickets)."""
+    keep = ("sym", "addr", "pair", "px", "t", "entryAt", "ticket", "grp", "paper")
+    rows = [dict({k: p.get(k) for k in keep}, id=pid, left=round(p["_left"], 6), cpx=(marks.get("cpx") or {}).get(pid), chk=(marks.get("chk") or {}).get(pid))
+            for pid, p in sorted(pos.items()) if p.get("grp") in PAPER_GROUPS and p["_left"] > 1e-9 and p.get("pair") and num(p.get("px"))]
+    return {"v": 1, "t": now, "since": live_sell_at(), "open": rows}
 
 
 def load_candles(d, pool, key):
@@ -2663,6 +2762,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
         paper_since = FRESH_AT
     n_reset = 0
     new_marks = {"t": now, "px": {}, "liq": {}, "miss": {}, "chk": {}, "cpx": {}}
+    live_pos, live_sold = live_watch(d)       # the minute watch's view (LIVE_SELL_AT), as bot.py read it from the live store right before this run
     for pid, p in sorted(pos.items()):
         left = p["_left"]
         if left <= 1e-9:
@@ -2679,11 +2779,26 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             sell(left, price or num((marks.get("px") or {}).get(pid)) or 0.0, "reset"); n_reset += 1
             continue
         hc = {"fresh": False}
+        end = hold_end(num(p.get("entryAt")) or num(p.get("t")) or 0) if paper else None     # the live 6-hour limit (LIVE_SELL_AT), else None
         if paper:
-            # the candles first: the first close at +1000% or at -30% since the last check is a sale at that minute, whatever the price is now
-            hc = hold_check(d, p, (marks.get("chk") or {}).get(pid), (marks.get("cpx") or {}).get(pid))
+            # the minute watch first (LIVE_SELL_AT): what it sold on the live chart is sold at that minute, at its price; the minutes it
+            # looked at are not looked at again
+            seen, ls = live_pos.get(pid) or {}, live_sold.get(pid)
+            if ls and entry and ls["at"] >= (num(p.get("entryAt")) or num(p.get("t")) or 0) - 60_000:
+                sell(left, entry * ls["mult"], ls["why"], at=ls["at"], chart="live")
+                continue
+            # the candles first: the first close (from LIVE_SELL_AT the low or the high) at +1000% or at -30% since the last check is a
+            # sale at that minute, whatever the price is now
+            chk0 = max(num((marks.get("chk") or {}).get(pid)) or 0, num(seen.get("chk")) or 0) or None
+            hc = hold_check(d, p, chk0, (marks.get("cpx") or {}).get(pid) or num(seen.get("cpx")))
+            live = bool(hc["hit"] and hc["hit"] >= live_sell_at())
             if hc["hit"] and entry:
-                sell(left, entry * ((1.0 + HOLD_TP) if hc["why"] == "tp" else min(hc["mult"], 1.0 - HOLD_STOP)), hc["why"], at=hc["hit"])
+                sell(left, entry * ((1.0 + HOLD_TP) if hc["why"] == "tp" else min(hc["mult"], 1.0 - HOLD_STOP)), hc["why"], at=int(hc["hit"]), **({"chart": "scan"} if live else {}))
+                continue
+            # the live 6-hour limit (LIVE_SELL_AT) once the candles reach it: sold at that minute's price, whenever this run comes
+            x6 = hold_x6(load_candles(d, str(p.get("pair") or ""), "hold"), num(p.get("entryAt")) or num(p.get("t")) or 0, hc["cpx"], now >= end) if end else None
+            if x6 and entry:
+                sell(left, entry * x6, "time", at=end, chart="scan")
                 continue
             for k2 in ("chk", "cpx"):
                 if hc[k2]:
@@ -2703,12 +2818,15 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             # no candle came in this run: the take-profit and the stop are checked on the run's own price (no upper bound: CANDLE_MAX_X
             # guards against glitch candles only, and the sale is booked at 11x anyway); then the 6-hour limit, counted from TIP_SLACK_H
             # before it like the tip checks, so it sells at the first scan after about 6 hours (the hourly run 6 hours later may start early)
+            # (from LIVE_SELL_AT on the limit is the entry + 6 h, hold_end: when the candles did not reach it, the first run after it sells
+            # at its own price)
+            tag = {"chart": "scan"} if now >= live_sell_at() else {}
             if not hc["fresh"] and mult >= 1.0 + HOLD_TP:
-                sell(left, entry * (1.0 + HOLD_TP), "tp")
+                sell(left, entry * (1.0 + HOLD_TP), "tp", **tag)
             elif not hc["fresh"] and mult <= 1.0 - HOLD_STOP:
-                sell(left, price, "stop")
-            elif age_d * 24 >= HOLD_MAX_H - TIP_SLACK_H:
-                sell(left, price, "time")
+                sell(left, price, "stop", **tag)
+            elif (now >= end) if end else (age_d * 24 >= HOLD_MAX_H - TIP_SLACK_H):
+                sell(left, price, "time", **({"chart": "scan"} if end else {}))
             else:
                 new_marks["px"][pid] = price; new_marks["liq"][pid] = liq
             continue
@@ -3157,6 +3275,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                               "bigSnapT": now if snap_n else state.get("bigSnapT"), "bigSnapN": snap_n or state.get("bigSnapN"),
                               "weightsN": winfo["n"], "lastEarly": state.get("lastEarly"), "paperSince": paper_since, "paperRuleSince": rule_since, "paperRule": PAPER_RULE, "paper": acct})
     emit("memebot", "marks", new_marks)
+    emit("memebot", LIVE_OPEN_ROW, live_open(pos_after, new_marks, now))     # the minute watch's list (LIVE_SELL_AT): bot.py puts it in the live store
     emit("memecurve", run_id, curve_point(all_pos, all_ex, new_marks["px"], now, paper_since))
     emit("memeruns", run_id, {"t": now, "mode": mode, "rule": RULE, "scanned": len(rows), "passed": len(gated),
                               "flagged": flagged, "picks": picks_done, "exits": exits_done, "note": note})

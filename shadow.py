@@ -28,7 +28,10 @@ account alike ("none"); a buy whose 12 hours have not passed yet is open in ever
 The replay (replay(), pure): closes only, in time order, over cpx (the first close at or after the entry minute, as memebot books); a
 close on dust volume (under peak.DUST_VOL) or over memebot.CANDLE_MAX_X sells nothing and moves no trailing stop; the target is looked
 at first (exit_grid.replay's order), then the stop: a target sells what is left at exactly the target, a stop at min(close, level)
-(memebot's own booking), the half sale half at exactly 2x. At the time limit what is left goes at the lower of the last clean close and
+(memebot's own booking), the half sale half at exactly 2x. A buy from memebot.LIVE_SELL_AT on (the Pick sells on the live chart since
+then) is replayed the way the Pick now sells, every rule alike: each minute's low and high (the path's "w", memebot.hold_wicks) instead
+of its close, the stop first (at that low, never above its level), then the target and the half sale on the high (its close when the
+high is over CANDLE_MAX_X); the trailing stop still follows the best close. At the time limit what is left goes at the lower of the last clean close and
 the last close by then (peak's value at 6 h), at the target when that is at or above it. A pool that died sells what is left at 0 without
 a stop or after a rug exit (no price to sell into), else at half the stop level (exit_grid's default fill for a dead pool). Every sale
 pays the paper fees on the position itself (memebot.pos_value), so K and the real account differ only where the replay's prices do.
@@ -159,7 +162,7 @@ def book(ctx, pid, p, status, rows, old, now):
             if r.get("state") == "ok":
                 path = P.path_of(rows, entry, end, r, "pos", "hold", pid)
                 if path and path.get("c"):
-                    return dict(doc, state="ok", cpx=path["cpx"], dead=path["dead"], c=path["c"])
+                    return dict(doc, state="ok", cpx=path["cpx"], dead=path["dead"], c=path["c"], w=wicks(rows, entry, end, path["cpx"]))
             if r.get("state") == "unit":
                 return dict(doc, state="none", why="candles in another unit than the paid price")
         status = "empty"                       # no candles, or none that reach back to the entry
@@ -171,6 +174,17 @@ def book(ctx, pid, p, status, rows, old, now):
     if late:                                   # failed requests only (5xx, timeouts) for days: left out
         return dict(doc, state="none", why="GeckoTerminal gave no answer for %d hours" % GIVE_UP_H)
     return None
+
+
+def wicks(rows, entry, end, cpx):
+    """The path's minute highs and lows over cpx (memebot.hold_wicks: a wick more than CANDLE_WICK_X beyond its close is the close), row for
+    row as peak.path_of's "c": [[seconds after the entry, high, low], ...]. The replay sells on them for a buy from LIVE_SELL_AT on."""
+    out = []
+    for c in P._rows(rows):
+        if c[0] >= entry - MIN and c[0] + MIN <= end:
+            hi, lo = M.hold_wicks(c)
+            out.append([int((c[0] - entry) // 1000), P.sig(hi / cpx), P.sig(lo / cpx)])
+    return out
 
 
 def run(d, now, deadline_s=90.0, mock=None):
@@ -224,6 +238,10 @@ def replay(doc, rule):
     horizon = entry + int(rule["hours"] * H)
     dead = doc.get("dead") if isinstance(doc.get("dead"), dict) else None
     dead_at = num(dead.get("at")) if dead else None
+    wk = None                                  # the live chart (memebot.LIVE_SELL_AT): {seconds: (high, low)} over cpx
+    if entry >= M.live_sell_at() and isinstance(doc.get("w"), list):
+        wk = {int(num(r[0])): (num(r[1]), num(r[2])) for r in doc["w"] if isinstance(r, (list, tuple)) and len(r) >= 3 and num(r[0]) is not None
+              and (num(r[1]) or 0) > 0 and (num(r[2]) or 0) > 0}
     atoms, clean, anyv = [], [], []
     for row in doc["c"]:
         if not isinstance(row, (list, tuple)) or len(row) < 2 or num(row[0]) is None or not num(row[1]) or num(row[1]) <= 0:
@@ -238,7 +256,8 @@ def replay(doc, rule):
             if ok:
                 clean.append(x)
         if ok:
-            atoms.append((t, x))
+            hl = wk.get(int(num(row[0]))) if wk is not None else None
+            atoms.append((t, x, (max(hl[0], x), min(hl[1], x)) if hl else (x, x)))
     died = dead_at is not None and dead_at <= horizon
     if not died and not clean:
         return None
@@ -250,7 +269,21 @@ def replay(doc, rule):
             return best * (1.0 - trail)
         return (1.0 - stop) if stop is not None else None
 
-    for t, x in atoms:
+    for t, x, (hi, lo) in atoms:
+        if wk is not None:                     # the live chart: the low first (the safe side), then the high
+            L, hx = level(), hi if hi <= M.CANDLE_MAX_X else x
+            if L is not None and lo <= L:
+                sales.append([t, left, min(lo, L), "trail" if trail else "stop"])
+                return {"sales": sales, "why": sales[-1][3]}
+            if target is not None and target <= hx <= M.CANDLE_MAX_X:
+                sales.append([t, left, target, "tp"])
+                return {"sales": sales, "why": "tp"}
+            if half and left > 0.5 and half <= hx <= M.CANDLE_MAX_X:
+                sales.append([t, 0.5, half, "half"])
+                left = 0.5
+            if x <= M.CANDLE_MAX_X:
+                best = max(best, x)
+            continue
         if x > M.CANDLE_MAX_X:                 # a glitch close: no sale, no new best
             continue
         L = level()
