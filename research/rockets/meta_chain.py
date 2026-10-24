@@ -3,7 +3,7 @@ five month windows straight from the Solana chain and the coin's own metadata fi
 (research/rockets/meta_fetch.py), which answers little from GitHub's runners.
 
   shard <plan.json> <i> <n> <out.json.gz>   mints i, i+n, ...; the file is rewritten every 200 mints
-  final <dir with shard files> <out dir>    one chain.parquet
+  final <dir with shard files> <out dir> [<earlier chain.parquet>]   one chain.parquet (an earlier run's rows kept)
   wiki  <first day> <last day> <out.json>   the 1,000 most-read English Wikipedia articles of each day (a "news of the day" list)
 
 Per mint:
@@ -322,7 +322,8 @@ def cmd_wiki(day0, day1, out):
     log("days", len(res), "with articles", sum(1 for v in res.values() if v))
 
 
-def cmd_final(src, out):
+def cmd_final(src, out, prev=None):
+    """One chain.parquet from the shard files, plus the rows of an earlier run (prev) for the coins this run left out."""
     import pandas as pd
     os.makedirs(out, exist_ok=True)
     rows = []
@@ -332,6 +333,10 @@ def cmd_final(src, out):
     for c in d.columns:
         if d[c].dtype == object and c != "mint":
             d[c] = d[c].map(lambda x: None if x is None else (x if isinstance(x, str) else json.dumps(x)))
+    if prev and os.path.exists(prev):
+        old = pd.read_parquet(prev)
+        log("earlier run", len(old), "this run", len(d))
+        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]))]], ignore_index=True)
     d.to_parquet(os.path.join(out, "chain.parquet"), index=False)
     log("coins", len(d), {c: int(d[c].notna().sum()) for c in d.columns})
 
