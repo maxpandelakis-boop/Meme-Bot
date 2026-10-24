@@ -11,7 +11,8 @@
   h2 <history2 bars dir> <coins.parquet> <SOLUSDT.jsonl> <out dir>   the history2 one-minute SOL bars (artifact "bars" of
                                          history-build run 39668736908, 10 Aug-8 Oct) as the same five-minute USD candles
 
-Candles: pool, t (ms, start of the 5-minute bar, clock-aligned), o, h, l, c (USD per token), v (USD). A bar without a trade is
+Run 1 (23 Oct, 19:48-01:14 UTC) fetched 20,041 of 25,754 pools at about 3,700 calls an hour; a second run (a push of this
+file) fetches the rest. Candles: pool, t (ms, start of the 5-minute bar, clock-aligned), o, h, l, c (USD per token), v (USD). A bar without a trade is
 missing, as on GeckoTerminal. Env GT_GAP = seconds between GeckoTerminal calls, SHARD_MINUTES = a shard stops after this long."""
 import collections, datetime as dt, glob, gzip, json, os, random, sys, time, urllib.error, urllib.request
 
