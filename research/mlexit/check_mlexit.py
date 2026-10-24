@@ -564,7 +564,7 @@ def continuation(M, E, rows, pred_full, m, cad):
         sell = j[((j + 1) % cad == 0) & (j < nT - 1) & (p < 1.0 - m)]
         C = E["C"][e]
         nxt = np.searchsorted(sell, j, side="right")             # the first sale after candle k
-        js = np.where(nxt < len(sell), sell[np.minimum(nxt, len(sell) - 1)], 10 ** 9)
+        js = np.where(nxt < len(sell), sell[np.minimum(nxt, len(sell) - 1)], 10 ** 9) if len(sell) else np.full(ns, 10 ** 9)
         val = np.where(js < tau, C[np.minimum(js, len(C) - 1)], mB)
         out_i.append(st + j); out_g.append(val / C[:ns])
     return np.concatenate(out_i), np.concatenate(out_g)
@@ -713,6 +713,112 @@ def cmd_choose(out):
     print("chosen", best)
 
 
+def value_diag(M, E, F, model, rows, base):
+    """How well a value model predicts what holding is worth, out of sample: R2, rank correlation, deciles."""
+    from scipy.stats import spearmanr
+    idx, ent, k = states(M, E, rows, base)
+    y = label(M, E, ent, k, base)
+    p = predict(model, F, idx)
+    q = pd.qcut(p, 10, labels=False, duplicates="drop")
+    dec = pd.DataFrame({"q": q, "p": p, "y": y}).groupby("q").agg(pred=("p", "mean"), real=("y", "mean"), n=("y", "size"))
+    return {"states": int(len(y)), "R2": round(float(1 - ((y - p) ** 2).sum() / ((y - y.mean()) ** 2).sum()), 4),
+            "spearman": round(float(spearmanr(p, y).statistic), 4), "realMean": round(float(y.mean()), 4),
+            "deciles": [{k2: round(float(v), 4) if k2 != "n" else int(v) for k2, v in r.items()} for r in dec.to_dict("records")]}
+
+
+def updown_states(M, E, rows):
+    idx, ent, k = states(M, E, rows, "B0")
+    ok = k + 6 < NB
+    idx, ent, k = idx[ok], ent[ok], k[ok]
+    now, later = E["C"][ent, k], E["C"][ent, k + 6]
+    return idx, (later < now).astype(float), later != now, ent
+
+
+def cmd_test(out):
+    from sklearn.metrics import roc_auc_score
+    M, E, F = load(out)
+    ch = json.load(open(os.path.join(out, "choose.json")))["chosen"]
+    u, fam, m, cad = ch["universe"], ch["family"], ch["m"], ch["cad"]
+    res = {"chosen": ch}
+    P = M["roles"].str.contains("P").to_numpy()
+    W1 = M["roles"].str.contains("W1").to_numpy()
+    inU = in_universe(M, u).to_numpy()
+    wv = M["w"].to_numpy()
+    mV3_all, mK_all = money_of(M["V3_m"].to_numpy()), money_of(M["K_m"].to_numpy())
+
+    def report(rows, mult, why):
+        mon = money_of(mult)
+        return {"n": int(len(rows)), "model": trade_stats(mon, mult), "V3": trade_stats(mV3_all[rows], M["V3_m"].to_numpy()[rows]),
+                "K": trade_stats(mK_all[rows], M["K_m"].to_numpy()[rows]), "vsV3": judge(mon - mV3_all[rows]), "vsK": judge(mon - mK_all[rows]),
+                "why": {n: int((why == i).sum()) for i, n in enumerate(("time", "floor", "tp", "trail", "drop", "model"))}}
+
+    def run(train_w, test_sets, tag):
+        tr = np.nonzero(inU & np.isin(wv, train_w))[0]
+        models, b1 = train_family(M, E, F, tr, fam, [(m, cad)], log=lambda s: print(tag, s, flush=True))
+        out_ = {}
+        for name, rows in test_sets.items():
+            mult, _, why = evaluate(M, E, F, rows, fam, models[(m, cad)], m, cad)
+            out_[name] = report(rows, mult, why)
+            print(tag, name, out_[name]["vsV3"], out_[name]["model"]["mean"], flush=True)
+        return out_, models[(m, cad)], b1, tr
+
+    sets = {"w4_P": np.nonzero(P & (wv == "w4"))[0], "w5_P": np.nonzero(P & (wv == "w5"))[0],
+            "w4_W": np.nonzero(W1 & (wv == "w4"))[0], "w5_W": np.nonzero(W1 & (wv == "w5"))[0]}
+    main, model, b1, tr = run(["w1", "w2", "w3"], sets, "fit w1-w3")
+    res["test"] = main
+    a, b = main["w4_P"]["vsV3"], main["w5_P"]["vsV3"]
+    res["holds"] = bool(a["diff"] > 0 and a["lo5"] > 0 and b["diff"] >= 0)
+    res["profitable_w4_w5"] = [main["w4_P"]["model"]["mean"] > 0, main["w5_P"]["model"]["mean"] > 0]
+    wf, _, _, _ = run(["w1", "w2", "w3", "w4"], {"w5_P": sets["w5_P"]}, "fit w1-w4")
+    res["walk_w5"] = wf["w5_P"]
+    # diagnostics: the value models and the up/down classifier, fitted on w1-w3, judged on w4
+    base = "V3" if fam == "B" else "B0"
+    other = "B0" if base == "V3" else "V3"
+    i2, e2, k2 = states(M, E, tr, other)
+    b_other = fit(F, i2, label(M, E, e2, k2, other), gtime(M)[e2])
+    vm = {base: b1, other: b_other}
+    res["value_fit"] = {bs: {"w4_P": value_diag(M, E, F, vm[bs], sets["w4_P"], bs), "w4_W": value_diag(M, E, F, vm[bs], sets["w4_W"], bs)}
+                        for bs in ("B0", "V3")}
+    it, yt, _, _ = updown_states(M, E, tr)
+    _, ent_t, k_t = states(M, E, tr, "B0")              # the classifier's states (as updown_states) and their coins' times
+    gt_t = gtime(M)[ent_t][k_t + 6 < NB]
+    bc = fit(F, it, yt, gt_t, "binary")
+    ud = {}
+    for name in ("w4_P", "w4_W"):
+        iv, yv, moved, _ = updown_states(M, E, sets[name])
+        pv = predict(bc, F, iv)
+        ud[name] = {"states": int(len(yv)), "baseDown": round(float(yv.mean()), 4), "acc": round(float(((pv >= 0.5) == (yv == 1)).mean()), 4),
+                    "accAlwaysUp": round(float((yv == 0).mean()), 4), "auc": round(float(roc_auc_score(yv, pv)), 4),
+                    "movedShare": round(float(moved.mean()), 4), "aucMoved": round(float(roc_auc_score(yv[moved], pv[moved])), 4),
+                    "accMoved": round(float(((pv[moved] >= 0.5) == (yv[moved] == 1)).mean()), 4)}
+    res["updown30"] = ud
+    # the hindsight bound (nobody can do this): every w4 P coin sold at the highest high of its first 6 / 12 h
+    rows = sets["w4_P"]
+    nb = np.stack(M["nb"].to_numpy()[rows])
+    hb = {}
+    for h in (6, 12):
+        n_ = nb[:, HOURS.index(h)]
+        mx = np.array([E["H"][r, :n_[q]].max() for q, r in enumerate(rows)])
+        hb["%dh" % h] = round(float(money_of(np.minimum(mx, 11.0)).mean()), 2)
+    res["hindsight_w4_P"] = hb
+    # the placebo: the same family and settings, the value shuffled among states at the same candle
+    fam1 = "B" if fam == "B" else "A1"
+    idx, ent, k = states(M, E, tr, base)
+    y = label(M, E, ent, k, base)
+    rng = np.random.default_rng(SEED)
+    ys = y.copy()
+    for kv in np.unique(k):
+        s_ = np.nonzero(k == kv)[0]
+        ys[s_] = y[rng.permutation(s_)]
+    bp = fit(F, idx, ys, gtime(M)[ent])
+    mult, _, why = evaluate(M, E, F, sets["w4_P"], fam1, bp, m, cad)
+    res["placebo_w4_P"] = report(sets["w4_P"], mult, why)
+    imp = pd.Series(b1.feature_importance("gain"), index=FEATS).sort_values(ascending=False)
+    res["top_features"] = {k3: round(float(v / imp.sum()), 4) for k3, v in imp.head(15).items()}
+    json.dump(res, open(os.path.join(out, "result.json"), "w"), indent=1, default=float)
+    print(json.dumps({k3: res[k3] for k3 in ("chosen", "holds", "profitable_w4_w5", "hindsight_w4_P", "updown30")}, indent=1, default=float))
+
+
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
-    {"build": cmd_build, "check": cmd_check, "choose": cmd_choose}[cmd](*args)
+    {"build": cmd_build, "check": cmd_check, "choose": cmd_choose, "test": cmd_test}[cmd](*args)
