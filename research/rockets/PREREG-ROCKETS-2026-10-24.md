@@ -163,3 +163,76 @@ machines) scores it against six fixed descriptions. Added facts, tested exactly 
 The hand-sorted sample of amendment 4 becomes a check of the model instead: 120 pictures drawn at random (seed 7, no outcome
 known or looked up), sorted by hand into the six groups before the model's groups are opened; reported as how often hand and
 model agree. All facts F1-F22 share one Holm family in part A and one Bonferroni count in part B.
+
+## Amendment 6 (24 Oct, ~12:20 UTC, before any fact result was read): every launch, not only the graduations
+
+The user asked (11:30-11:35 UTC) for as many coins as possible ("500000+ am besten"). The five windows hold about 72,000
+graduations, which is all of them, and only those have the price candles the money test needs. But pump.fun launches far more
+coins than graduate: the chain shows 28,000-36,000 launches a day (probe of 24 Oct, research/rockets/launches.py), about 4
+million in the windows. So a second universe is added for the launch facts only. There is no money test on it.
+
+**Universe L.** pump.fun launches created in w2, w3, w4 or w5, leaving out each window's last 2 days (a coin needs time to
+graduate). The sources are two free datasets on HuggingFace:
+- w2 days (25 Jun to 13 Jul, without 3-4 Jul, the dataset's outage) come from Slinky21/Pumpfun_Memecoin_Corpus, tokens.parquet,
+  MIT license, 798,430 launches from 5 Jun to 14 Jul.
+- w3-w5 days (10 Aug to 19 Oct) come from Slinky21/Pumpfun_v2_dataset, the create events, CC-BY-4.0, read by its author's own
+  node.
+
+w1 has no free dataset, and reading its launch transactions on the chain runs at about 5 a second, so w1 is left out of
+universe L. Fit windows w2 + w3, unseen windows w4 + w5.
+
+Each dataset is used only if it passes all of these before any fact is computed (`launches.py verify`, result on branch
+rocketsprobe):
+1. In random hours (seed 7), at least 95 % of the chain's own launches (successful transactions signed by pump.fun's mint
+   authority) are in the dataset.
+2. Of 300 random rows checked against the chain, at least 98 % have the same name, ticker and creator, where the chain has them.
+3. At least 95 % of our graduations of its days are in it.
+
+A dataset that fails is dropped, its window leaves universe L, and the report says so.
+
+**Outcome L1, graduated.** The dataset's own graduation record (v2 graduate events, the corpus's graduated_at) or our
+graduation list. From the curve's start price a graduation is about a 15x, so L1 means "went 10x or more from its first price".
+For the metadata sample below, the curve account's complete flag is also read from the chain, and any disagreement is reported.
+
+**Outcome L2, took off later (could still be bought).** Graduated at least 10 minutes after the launch. Launches that graduated
+within 10 minutes are left out of L2: these are bundled, instant curves that nobody but the launcher could buy cheaply. All
+launches that did not graduate are the negatives.
+
+**Facts.** Each is known at the launch and its buckets are fixed now.
+- From the dataset rows, for every launch:
+  - L-F1: the creator's earlier launches in the 30 days before (0 / 1-2 / 3-20 / over 20).
+  - L-F1b: the creator's earlier graduations in the 30 days before (0 / 1-2 / 3+).
+  - L-F4: a launch of the 7 days before with the same ticker graduated (yes / no).
+  - L-F5: CJK script.
+  - L-F6: hour of the launch, UTC.
+  - L-F7: weekend.
+  - L-F8: launches in the hour before (terciles of the fit windows).
+  - L-F9: SOL/USD change over the 24 h before (terciles of the fit windows).
+  - L-F13: theme heat, meaning graduations of the 24 h before that share a name word.
+  - Counts are made inside universe L. The corpus may miss some launches, so in w2 the counts can come out low; that biases
+    towards finding nothing, not towards a false find.
+- From the metadata file on IPFS, for a random 600,000 launches of universe L (seed 7):
+  - L-F10, L-F11: links and X link type.
+  - L-F12: news of the day.
+  - L-F14: fresh post.
+  - L-F15: picture already used by a graduation of the 7 days before.
+  - L-F16: launched on pump.fun's own page.
+  - L-F17: video.
+  - L-F18: description length.
+  - All buckets as F10-F18.
+- From the picture, for a random 150,000 of those (seed 7): L-F19 to L-F22, as F19-F22.
+
+**Test.**
+- Part A as before: the favoured bucket is picked on w2 + w3 among buckets with at least 200 launches, then a one-sided z test
+  on w4 + w5. This is done for L1 and L2, with Holm over all L-facts × {L1, L2}.
+- The sample is so large that tiny differences pass, so a launch fact only "matters" if it passes Holm AND its rate ratio on
+  the unseen windows has a 95 % interval (bootstrap over days) with a lower end of at least 1.25.
+- Part C: the LightGBM of Part C, with the same settings, on all L-facts of the metadata sample. It is trained on w2 + w3 and
+  judged on w4 + w5 by AUC (95 % interval, bootstrap over days) and by the L2 rate of its top 1 / 2 / 5 %.
+
+**No money test on universe L.** A buy on the bonding curve before graduation cannot be simulated from our candles. A launch
+fact that matters is a lead only. The money test stays on the graduations, where F1-F22 are already registered, and nothing new
+is picked for it from universe L.
+
+Not used: Dune, Flipside and Bitquery (they need an account and key), pump.fun's API (it answers 404/403/530 from GitHub's
+runners), and the paid datasets (pumpdata.fun, Gumroad).
