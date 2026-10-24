@@ -236,3 +236,17 @@ is picked for it from universe L.
 
 Not used: Dune, Flipside and Bitquery (they need an account and key), pump.fun's API (it answers 404/403/530 from GitHub's
 runners), and the paid datasets (pumpdata.fun, Gumroad).
+
+## Amendment 7 (24 Oct, ~12:20 UTC, before any fact result was read): a rule must hold for at least one month
+
+The user (12:11 UTC): "eine Regel sollte mindestens seit einem Monat halten". So, in addition to everything above:
+- **Part B and Part C money cuts.** A candidate only holds if it also passes every Part B criterion on w4 alone. w4 is 10 Sep to
+  8 Oct, a full unseen month: at least 40 trades, mean after allowance above 0, Bonferroni bootstrap bound above 0, above 0
+  without its best trade. Its mean after allowance on w5 alone (9-21 Oct) must not be below 0.
+- **Part A, and the "matters" test of universe L.** A fact only counts if it passes on w4 alone as well: the same one-sided
+  test, Holm over the same family.
+- **Reporting.** w4 and w5 are always reported separately next to w4 + w5.
+- **Facts fit on w3 and judged on w4.** w4 is already the full month.
+
+The same bar applies to anything judged later, including the review of the live paper accounts. That review needs at least one
+month of live trades to count.
