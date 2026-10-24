@@ -1,0 +1,312 @@
+{
+ "gap_s": 0.5,
+ "timeout_s": 12.0,
+ "failed_before": {
+  "links": 300,
+  "ipfs_links": 234,
+  "other_links": 66,
+  "by_gateway": {
+   "ipfs.io": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "429": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "dweb.link": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "w3s.link": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "gateway.pinata.cloud": {
+    "ok": 80,
+    "of": 234,
+    "codes": {
+     "400": 1,
+     "429": 153,
+     "ok": 80
+    }
+   },
+   "pump.mypinata.cloud": {
+    "ok": 145,
+    "of": 234,
+    "codes": {
+     "400": 2,
+     "403": 87,
+     "ok": 145
+    }
+   },
+   "cf-ipfs.com": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "URLError": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "4everland.io": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "TimeoutError": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "nftstorage.link": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "429": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "ipfs.filebase.io": {
+    "ok": 232,
+    "of": 234,
+    "codes": {
+     "400": 2,
+     "ok": 232
+    }
+   },
+   "trustless-gateway.link": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "flk-ipfs.xyz": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "URLError": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "ipfs.cyou": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "URLError": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "dget.top": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "storry.tv": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "502": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "subdomain dweb.link": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "subdomain w3s.link": {
+    "ok": 0,
+    "of": 234,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 209
+    }
+   },
+   "own host (not IPFS)": {
+    "ok": 0,
+    "of": 66,
+    "codes": {
+     "404": 25,
+     "skipped (25 failures first)": 41
+    }
+   }
+  },
+  "ipfs_any_gateway_ok": 232,
+  "other_hosts": {
+   "metadata.j7tracker.io": 56,
+   "md.sdfgsdfsdf.uk": 4,
+   "fast-ipfs.com": 4,
+   "j7m.io": 1,
+   "meta.mwmwmwmwmwmwmwmwmw.uk": 1
+  }
+ },
+ "worked_before": {
+  "links": 100,
+  "ipfs_links": 65,
+  "other_links": 35,
+  "by_gateway": {
+   "ipfs.io": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "429": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "dweb.link": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "w3s.link": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "gateway.pinata.cloud": {
+    "ok": 56,
+    "of": 65,
+    "codes": {
+     "429": 9,
+     "ok": 56
+    }
+   },
+   "pump.mypinata.cloud": {
+    "ok": 49,
+    "of": 65,
+    "codes": {
+     "403": 16,
+     "ok": 49
+    }
+   },
+   "cf-ipfs.com": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "URLError": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "4everland.io": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "TimeoutError": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "nftstorage.link": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "429": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "ipfs.filebase.io": {
+    "ok": 65,
+    "of": 65,
+    "codes": {
+     "ok": 65
+    }
+   },
+   "trustless-gateway.link": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "flk-ipfs.xyz": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "URLError": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "ipfs.cyou": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "URLError": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "dget.top": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "storry.tv": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "502": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "subdomain dweb.link": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "subdomain w3s.link": {
+    "ok": 0,
+    "of": 65,
+    "codes": {
+     "403": 25,
+     "skipped (25 failures first)": 40
+    }
+   },
+   "own host (not IPFS)": {
+    "ok": 34,
+    "of": 35,
+    "codes": {
+     "404": 1,
+     "ok": 34
+    }
+   }
+  },
+  "ipfs_any_gateway_ok": 65,
+  "other_hosts": {
+   "meta.uxento.io": 14,
+   "m.rapidlaunch.io": 6,
+   "metadata.j7tracker.io": 3,
+   "ipfs.launchblitz.ai": 2,
+   "www.agencypad.fun": 2,
+   "usepaid.app": 2,
+   "gateway.irys.xyz": 2,
+   "pub-bda59288cad84ea4ae5be07c9829d3e5.r2.dev": 1,
+   "metadata.rapidlaunch.io": 1,
+   "api.vortexdeployer.com": 1
+  }
+ }
+}
