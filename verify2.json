@@ -1,0 +1,286 @@
+{
+ "our_graduations": 71978,
+ "v2": {
+  "rows": 2103810,
+  "mayhem_rows": 499786,
+  "halfhours": [
+   {
+    "from": "2026-09-12 12:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 412,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-09-15 04:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 487,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-09-18 15:00",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 769,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-09-23 23:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 905,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-10-01 00:00",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 971,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-10-03 16:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 1162,
+    "dataset_rows_on_chain": 0
+   }
+  ],
+  "chain_in_dataset_share": null,
+  "dataset_on_chain_share": 0.0,
+  "row_check": {
+   "rows": 300,
+   "tx_found": 292,
+   "name_same": [
+    292,
+    292
+   ],
+   "symbol_same": [
+    292,
+    292
+   ],
+   "uri_same": [
+    292,
+    292
+   ],
+   "creator_same": [
+    292,
+    292
+   ],
+   "curve_creator_is_launch_creator": [
+    268,
+    292
+   ],
+   "where_curve_differs_dataset_is_launch_creator": [
+    24,
+    24
+   ]
+  },
+  "our_graduations_11aug_6oct": 44323,
+  "of_them_in_dataset": 42945
+ },
+ "loophole": {
+  "rows": 998943,
+  "days_missing": [],
+  "mayhem_rows": 259075,
+  "quote": {
+   "sol": 852184,
+   "other": 94604,
+   "stock": 40728,
+   "usdc": 11417,
+   "?": 10
+  },
+  "halfhours": [
+   {
+    "from": "2026-10-10 07:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 592,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-10-10 20:00",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 1331,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-10-12 09:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 746,
+    "dataset_rows_on_chain": 0
+   },
+   {
+    "from": "2026-10-12 23:30",
+    "chain_sigs": 0,
+    "read_failed": 0,
+    "not_a_launch": 0,
+    "chain_launches": 0,
+    "chain_in_dataset": 0,
+    "dataset_rows": 676,
+    "dataset_rows_on_chain": 0
+   }
+  ],
+  "chain_in_dataset_share": null,
+  "dataset_on_chain_share": 0.0,
+  "row_check": {
+   "rows": 300,
+   "tx_found": 247,
+   "name_same": [
+    247,
+    247
+   ],
+   "symbol_same": [
+    247,
+    247
+   ],
+   "uri_same": [
+    247,
+    247
+   ],
+   "creator_same": [
+    208,
+    247
+   ],
+   "curve_creator_is_launch_creator": [
+    226,
+    247
+   ],
+   "where_curve_differs_dataset_is_launch_creator": [
+    19,
+    21
+   ]
+  },
+  "our_graduations_29sep_17oct": 15241,
+  "of_them_in_dataset": 14997,
+  "overlap": {
+   "v2_rows": 471066,
+   "v2_in_loophole": 465774,
+   "loophole_rows": 470762,
+   "loophole_in_v2": 465774,
+   "joined": 465774,
+   "creator_same": 406221,
+   "symbol_same": 465737,
+   "time_diff_s_p50_p99": [
+    1.25,
+    76.24
+   ]
+  },
+  "per_day_v2_vs_loophole": {
+   "2026-09-27": [
+    38021,
+    37908
+   ],
+   "2026-09-28": [
+    42088,
+    42266
+   ],
+   "2026-09-29": [
+    42732,
+    43327
+   ],
+   "2026-09-30": [
+    48221,
+    49042
+   ],
+   "2026-10-01": [
+    49806,
+    50350
+   ],
+   "2026-10-02": [
+    47581,
+    46645
+   ],
+   "2026-10-03": [
+    50553,
+    52123
+   ],
+   "2026-10-04": [
+    51015,
+    50688
+   ],
+   "2026-10-05": [
+    51354,
+    49337
+   ],
+   "2026-10-06": [
+    53861,
+    53155
+   ],
+   "2026-10-07": [
+    0,
+    55702
+   ],
+   "2026-10-08": [
+    0,
+    55476
+   ],
+   "2026-10-09": [
+    0,
+    47021
+   ],
+   "2026-10-10": [
+    0,
+    48417
+   ],
+   "2026-10-11": [
+    0,
+    42618
+   ],
+   "2026-10-12": [
+    0,
+    49568
+   ],
+   "2026-10-13": [
+    0,
+    42638
+   ],
+   "2026-10-14": [
+    0,
+    41600
+   ],
+   "2026-10-15": [
+    0,
+    46421
+   ],
+   "2026-10-16": [
+    0,
+    49822
+   ],
+   "2026-10-17": [
+    0,
+    44819
+   ]
+  }
+ }
+}
