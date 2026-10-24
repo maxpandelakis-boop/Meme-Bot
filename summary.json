@@ -1,0 +1,55 @@
+{
+ "sources": [
+  "v2"
+ ],
+ "rows_all": 2209323,
+ "mayhem_all": 523304,
+ "w3": {
+  "launches_in_days": 1028029,
+  "mayhem_left_out": 206314,
+  "test_rows": 821715,
+  "by_source": {
+   "v2": 821715
+  },
+  "graduated": 20324,
+  "unresolved": 0,
+  "graduated_10min_plus": 3582,
+  "graduated_time_unknown": 0,
+  "graduated_in_dataset": 20313,
+  "graduated_in_our_list": 20324,
+  "our_graduations_of_these_days": 20681,
+  "of_them_in_L": 19660
+ },
+ "w4": {
+  "launches_in_days": 1017243,
+  "mayhem_left_out": 277836,
+  "test_rows": 739407,
+  "by_source": {
+   "v2": 739407
+  },
+  "graduated": 22244,
+  "unresolved": 0,
+  "graduated_10min_plus": 3230,
+  "graduated_time_unknown": 0,
+  "graduated_in_dataset": 22219,
+  "graduated_in_our_list": 21822,
+  "our_graduations_of_these_days": 21521,
+  "of_them_in_L": 21175
+ },
+ "w5": {
+  "launches_in_days": 0,
+  "mayhem_left_out": 0,
+  "test_rows": 0,
+  "by_source": {},
+  "graduated": 0,
+  "unresolved": 0,
+  "graduated_10min_plus": 0,
+  "graduated_time_unknown": 0,
+  "graduated_in_dataset": 0,
+  "graduated_in_our_list": 0,
+  "our_graduations_of_these_days": 5683,
+  "of_them_in_L": 0
+ },
+ "history_rows": 648201,
+ "files": 6
+}

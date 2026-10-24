@@ -1,0 +1,1 @@
+Universe L of the rocket study (amendments 6 and 8): every pump.fun launch of w3-w4 (10 Aug - 6 Oct 2026) from Slinky21/Pumpfun_v2_dataset (CC-BY-4.0, "Data provided by [Slink21]. Pumpfun Solana Dataset (2026)"), with our graduation list. Made by research/rockets/launches.py build. Fake money only.
