@@ -109,3 +109,13 @@ GeckoTerminal (85 % of the coins in every window, the same 99.2 % of the time as
 rockets and zeros). Run 2 found no form; run 3 (from 11:01 UTC) tries more forms and appears to be fetching. The reported result
 is the one run on whatever launch facts are on branch rocketsmeta when run 3 ends; no run with real outcomes is made before that.
 A fact counts as present in a window when at least 80 % of that window's entries have it (as in check_rockets.py).
+
+## Amendment 3 (24 Oct, ~11:25 UTC, before any fact result was read)
+
+The user asked (11:16 UTC) not to rely on pump.fun alone. A second source reads the launch facts from the chain
+(research/rockets/meta_chain.py, branch rocketschain): name and ticker from the mint's own Token-2022 metadata (or a Metaplex
+account), the creator wallet stored in pump.fun's bonding-curve account, the creation time from that account's oldest transaction
+(for coins without history2's creation time; left empty for curves with more than 8,000 transactions), and the X / Telegram /
+website links from the metadata file on IPFS. Each fact is taken from the first source that has it, in this order: history2,
+the chain, pump.fun's API, GeckoTerminal (names only). The report says which source gave what. The reported run waits for both
+fetches.
