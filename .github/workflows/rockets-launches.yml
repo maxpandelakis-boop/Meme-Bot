@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
       - env:
           HK: ${{ secrets.HELIUS_API_KEY }}
-        run: python3 research/rockets/launches.py probe probe.json
+        run: python3 research/rockets/launches.py probe2 probe.json
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: launches-probe, path: probe.json, retention-days: 5}
