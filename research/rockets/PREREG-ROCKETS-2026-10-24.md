@@ -328,3 +328,15 @@ Mayhem-mode launches are history only (amendment 8). There is no w5 in universe 
 18 Sep 15:00 (839 of 965), a day on which the dataset is known to be short. 4,706 of its 4,706 rows in those half-hours are
 launches on the chain. So **universe L = Pumpfun_v2: 10 Aug - 7 Sep (fit, w3) and 10 Sep - 6 Oct (unseen, w4)**, mayhem
 launches as history only. Build: `launches.py build` with SOURCES=v2 (rockets-luniverse.yml, branch rocketslaunches).
+
+## Amendment 10 (24 Oct, ~13:15 UTC, before any fact result was read): universe L as built, and one interim look
+
+Universe L (branch rocketslaunches, summary.json): 2,209,323 launches in all; test rows (not mayhem) **w3 821,715** (20,324
+graduated, 3,582 of them at least 10 minutes after the launch) and **w4 739,407** (22,244 graduated, 3,230 after 10 minutes);
+206,314 and 277,836 mayhem launches left out; 648,201 more rows as history. Of our graduations of these days, 19,660 of 20,681
+(w3) and 21,175 of 21,521 (w4) are in it.
+
+The user asked for results per stage. So Part A is run once now on the facts that need no metadata file (L-F1, L-F1b, L-F4 to
+L-F9, L-F13), after a shuffled-outcome run as a code check, and reported as an **interim** result. The final verdict on universe
+L is the later run with all L-facts in one Holm family (its p-value bar is stricter, so an interim pass can still fail there).
+After this interim look nothing in the plan, the buckets or the code changes except bug fixes, and any bug fix is reported.
