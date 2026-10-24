@@ -14,6 +14,10 @@ One round:
 BTC and SOL hourly candles come from Binance's public market-data mirror. The wallet memory (rocket_memory.json.gz on rocket-data:
 wallets with 5 or more graduated coins of Aug-Oct 2026 and how they did) is read only.
 Between two rounds, `watch` looks at the open positions only, every minute (rule A, a sell at once, the app's live row every look).
+From memebot.LIVE_SELL_AT on it also looks at the Pick account's open positions every minute (the scan's list, memebot.LIVE_OPEN_ROW in
+the app's live store): the Pick's own rule judged by memebot.hold_hit on the minute's low and high, the 6-hour limit at DexScreener's
+price; it buys and books nothing in the Pick account itself: its sales go to <dir>/pick_live.json, picklog/<UTC day>.jsonl and the live
+row memebot.LIVE_WATCH_ROW, and the next scan books each at its minute. No push for them (sells are silent).
 usage: python3 rocket_watch.py round --dir rk --radar radar-data-dir [--now ms] [--mock DIR]
        python3 rocket_watch.py watch --dir rk --until unix-seconds
   --mock DIR reads every answer from DIR (selftest_rocket): ds.json, gt_<pool>_ohlcv.json, gt_<pool>_trades.json, binance_<SYM>.json
@@ -24,6 +28,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import rocket as R
+import memebot as M      # read only: the Pick account's rule (hold_hit, hold_end, pos_value) and its live-store row names
 
 DS = "https://api.dexscreener.com/tokens/v1/solana/"
 GT = "https://api.geckoterminal.com/api/v2/networks/solana/pools/"
@@ -34,6 +39,9 @@ GT_GAP = 2.2              # s between GeckoTerminal calls (its public limit is a
 DS_GAP = 0.6
 CHART_N = 150            # points of a position's price line (chart_add)
 WATCH_S = 60              # s between two looks at the open positions between rounds (watch)
+PICK_FILE = "pick_live.json"   # the Pick account's minute watch (memebot.LIVE_SELL_AT): the positions it watches and its sales
+PICK_LOG = "picklog"      # ... and every sale it saw, one line each (picklog/<UTC day>.jsonl), for the review
+PICK_KEEP_MS = 24 * 3_600_000   # a sale stays in the view this long after the scan stopped listing its position (it booked it)
 UA = {"User-Agent": "memebot rocket hunter (fake money only)", "Accept": "application/json"}
 H = 3_600_000
 
@@ -218,50 +226,198 @@ def check_open(http, book, pairs, now):
     return closed
 
 
+def pick_list(mock=None):
+    """The Pick account's open positions as the last scan left them (memebot.live_open: the live store's row memebot.LIVE_OPEN_ROW; with
+    mock, <mock>/pickopen.json), or None when they cannot be read (then the watch keeps its own list)."""
+    if mock:
+        try:
+            doc = json.load(open(os.path.join(mock, M.LIVE_OPEN_ROW + ".json")))
+        except (OSError, ValueError):
+            return None
+        return doc if isinstance(doc, dict) else None
+    try:
+        import app
+        return app.get_row(M.LIVE_OPEN_ROW) if app.enabled() else None
+    except Exception as e:
+        log("  the Pick's open positions not read: %s" % type(e).__name__)
+        return None
+
+
+def pick_load(d):
+    """<dir>/pick_live.json: {"pos": {pid: the position as the scan listed it, plus "chk" (where the next look starts), "cpx", "now",
+    "lo", "hi" (multiples of cpx), "seen"}, "sold": {pid: {"at", "why", "mult" (over the entry price, as booked), "eur", "pnl", ...}}}."""
+    try:
+        st = json.load(open(os.path.join(d, PICK_FILE)))
+    except (OSError, ValueError):
+        st = {}
+    st = st if isinstance(st, dict) else {}
+    for k in ("pos", "sold"):
+        st[k] = {str(a): v for a, v in (st.get(k) or {}).items() if isinstance(v, dict)} if isinstance(st.get(k), dict) else {}
+    return st
+
+
+def pick_merge(st, src, now):
+    """The scan's list (src) into the watch: a position it lists and the watch has not sold is watched (with the scan's candle entry price
+    and last checked minute when it has them); one it no longer lists the scan has booked: it leaves the watch, and the watch's sale of
+    it stays PICK_KEEP_MS for the app. No list (None): the watch keeps its own."""
+    if not isinstance(src, dict) or not isinstance(src.get("open"), list):
+        return
+    ids = set()
+    for r in src["open"]:
+        if not isinstance(r, dict) or not r.get("id") or not r.get("pair") or not R.num(r.get("px")):
+            continue
+        pid = str(r["id"])
+        ids.add(pid)
+        if pid in st["sold"]:
+            continue                  # sold on the live chart: the next scan books it
+        w = st["pos"].setdefault(pid, {})
+        w.update({k: r.get(k) for k in ("sym", "addr", "pair", "px", "t", "entryAt", "ticket", "grp", "paper", "left")})
+        if (R.num(r.get("cpx")) or 0) > 0:
+            w["cpx"] = R.num(r["cpx"])
+        if (R.num(r.get("chk")) or 0) > (R.num(w.get("chk")) or 0):
+            w["chk"] = R.num(r["chk"])
+    for pid in [a for a in st["pos"] if a not in ids]:
+        st["pos"].pop(pid)
+    for pid, x in list(st["sold"].items()):
+        if pid in ids:
+            x.pop("booked", None)
+        elif now - x.setdefault("booked", now) > PICK_KEEP_MS:
+            st["sold"].pop(pid)
+    st["list"] = R.num(src.get("t"))
+
+
+def check_pick(http, st, pairs, now):
+    """One look at the Pick account's open positions on the live chart (from memebot.LIVE_SELL_AT on): GeckoTerminal's minute candles
+    since the entry, memebot.hold_hit from where the last look ended (the Pick's own rule as the scan judges it: the low at -30%, the
+    high at 11x, the stop first), else the 6-hour limit (memebot.hold_end) at DexScreener's price now. A sale is kept for the next scan,
+    which books it at its minute. Returns the sales."""
+    out = []
+    if now < M.live_sell_at():
+        return out
+    for pid, w in sorted(st["pos"].items()):
+        t0, entry = R.num(w.get("entryAt")) or R.num(w.get("t")), R.num(w.get("px"))
+        if pid in st["sold"] or not t0 or not entry or not w.get("pair"):
+            continue
+        cs = sorted(tuple(float(R.num(x) or 0.0) for x in r[:5]) for r in gt_candles(http, w["pair"], t0 - 60_000, now))
+        hc = M.hold_hit(cs, t0, R.num(w.get("chk")), R.num(w.get("cpx")))
+        px = R.num((pick_pair(pairs.get(w.get("addr")), w["pair"]) or {}).get("priceUsd"))
+        w["seen"] = now
+        if hc["cpx"]:
+            w["cpx"] = hc["cpx"]
+        if hc["fresh"]:
+            w["chk"] = cs[-1][0]       # the last minute may still run: the next look starts with it again
+            mid = [c for c in cs if c[0] >= t0 - 60_000]
+            w["now"] = round(cs[-1][4] / hc["cpx"], 4)
+            w["hi"] = round(max([R.num(w.get("hi")) or 0.0] + [M.hold_wicks(c)[0] / hc["cpx"] for c in mid]), 4)
+            w["lo"] = round(min([R.num(w.get("lo")) or 1e9] + [M.hold_wicks(c)[1] / hc["cpx"] for c in mid]), 4)
+        end = M.hold_end(t0)
+        if hc["hit"]:
+            sale = {"at": int(hc["hit"]), "why": hc["why"], "mult": 1.0 + M.HOLD_TP if hc["why"] == "tp" else min(hc["mult"], 1.0 - M.HOLD_STOP)}
+        elif end and now >= end and px:
+            sale = {"at": int(now), "why": "time", "mult": px / entry}
+        else:
+            continue
+        left = R.num(w.get("left")) or 1.0
+        eur = M.pos_value(w, left, sale["mult"])
+        sale.update(sym=w.get("sym"), t=int(now), eur=round(eur, 2), pnl=round(eur - (R.num(w.get("ticket")) or 0.0) * left, 2), entryAt=int(t0))
+        st["sold"][pid] = sale
+        out.append(dict(sale, id=pid))
+        log("  Pick sell on the live chart %s x%.2f (%s) %+.2f" % (w.get("sym"), sale["mult"], sale["why"], sale["pnl"]))
+    return out
+
+
+def pick_doc(st, now):
+    """The live row memebot.LIVE_WATCH_ROW: the last look, each watched position (where its next look starts, cpx, now / high / low as
+    multiples of cpx) and the sales the scan has not booked yet or booked within PICK_KEEP_MS. Public data only."""
+    keep = ("sym", "t", "entryAt", "chk", "cpx", "now", "hi", "lo", "seen")
+    return {"v": 1, "t": now, "since": M.live_sell_at(), "list": st.get("list"),
+            "pos": {a: {k: w.get(k) for k in keep if k in w} for a, w in st["pos"].items() if a not in st["sold"]}, "sold": st["sold"]}
+
+
+def pick_save(d, st, sold, now, mock=None):
+    """The Pick watch's state to <dir>/pick_live.json (whole or not at all), its new sales to picklog/<UTC day>.jsonl and its view to the
+    live row memebot.LIVE_WATCH_ROW (the app's Pick tab and the next scan read it; never in a mocked look)."""
+    fn = os.path.join(d, PICK_FILE)
+    with open(fn + ".tmp", "w") as fh:
+        json.dump(st, fh, separators=(",", ":"))
+    os.replace(fn + ".tmp", fn)
+    if sold:
+        os.makedirs(os.path.join(d, PICK_LOG), exist_ok=True)
+        day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
+        with open(os.path.join(d, PICK_LOG, day + ".jsonl"), "a") as fh:
+            for r in sold:
+                fh.write(json.dumps(r, separators=(",", ":")) + "\n")
+    if not mock:
+        try:
+            import app
+            if app.enabled():
+                app.put_row(M.LIVE_WATCH_ROW, pick_doc(st, now))
+        except Exception as e:
+            log("  the Pick watch's live row failed: %s" % type(e).__name__)
+
+
 def watch(d, until, mock=None, clock=None, sleep=time.sleep, every=WATCH_S):
     """Between two rounds: every `every` seconds until `until` (ms), only the open positions: DexScreener's price and GeckoTerminal's
     candles since the last look, rule A (the same rule as the round; the candles cover the minutes between two looks, so how often it
     looks changes when a sell is seen, not what it books). A sell goes to rocket.json, the day's log, one push and the live row at
-    once; the live row is refreshed every look, so the app's open positions move every minute. Nothing to watch: it returns at once.
-    Scoring and buying stay in the 15-minute round (the model was trained on 15-minute steps; 24 coins need 48 GeckoTerminal calls)."""
+    once; the live row is refreshed every look, so the app's open positions move every minute. From memebot.LIVE_SELL_AT on the Pick
+    account's open positions too (pick_list, check_pick, pick_save: the Pick's own rule, its sales for the next scan to book, no push).
+    Nothing to watch in either account: it returns at once. Scoring and buying stay in the 15-minute round (the model was trained on
+    15-minute steps; 24 coins need 48 GeckoTerminal calls)."""
     clock = clock or (lambda: time.time() * 1000)
     fn = os.path.join(d, "rocket.json")
-    looks = sells = 0
+    looks = sells = picks = 0
     while True:
         try:
             state = json.load(open(fn))
         except (OSError, ValueError):
-            return {"looks": looks, "sold": sells, "why": "no state"}
-        book = R.Book(state.get("book"))
-        if not book.open:
-            return {"looks": looks, "sold": sells, "why": "nothing open"}
+            state = None
+        book = R.Book((state or {}).get("book"))
         now = clock()
+        pk = pick_load(d) if now >= M.live_sell_at() else None
+        if pk is not None:
+            pick_merge(pk, pick_list(mock), now)
+        pk_open = bool(pk) and any(a not in pk["sold"] for a in pk["pos"])
+        if not book.open and not pk_open:
+            if pk is not None and (pk["pos"] or pk["sold"] or os.path.exists(os.path.join(d, PICK_FILE))):
+                pick_save(d, pk, [], now, mock)          # the list the scan left (a booked sale, nothing open any more) for the app
+            out = {"looks": looks, "sold": sells, "why": "no state" if state is None else "nothing open"}
+            return dict(out, pick=picks) if picks else out
         if now >= until:
-            return {"looks": looks, "sold": sells, "why": "time"}
+            out = {"looks": looks, "sold": sells, "why": "time"}
+            return dict(out, pick=picks) if picks else out
         http = Http(mock)
-        closed = check_open(http, book, ds_pairs(http, sorted(book.open)), now)
+        addrs = set(book.open) | ({w.get("addr") for w in pk["pos"].values() if w.get("addr")} if pk_open else set())
+        pairs = ds_pairs(http, sorted(addrs))
+        had = bool(book.open)
+        closed = check_open(http, book, pairs, now) if had else []
         looks += 1
         sells += len(closed)
-        slim(book)
-        state["book"] = book.doc()
-        with open(fn + ".tmp", "w") as fh:
-            json.dump(state, fh, separators=(",", ":"))
-        os.replace(fn + ".tmp", fn)
-        if closed:
-            os.makedirs(os.path.join(d, "log"), exist_ok=True)
-            day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
-            with open(os.path.join(d, "log", day + ".jsonl"), "a") as fh:
-                for r in closed:
-                    fh.write(json.dumps(dict(r, closed=True), separators=(",", ":")) + "\n")
-        if not mock:
-            try:
-                import app
-                if closed:
-                    app.notify_rocket([], book.summary(), closed)
-                if app.enabled():
-                    app.put_row("rocket", live_doc(book, now, state.get("cut"), state.get("top") or [], closed))
-            except Exception as e:
-                log("  push or live row failed: %s" % type(e).__name__)
+        if had and state is not None:
+            slim(book)
+            state["book"] = book.doc()
+            with open(fn + ".tmp", "w") as fh:
+                json.dump(state, fh, separators=(",", ":"))
+            os.replace(fn + ".tmp", fn)
+            if closed:
+                os.makedirs(os.path.join(d, "log"), exist_ok=True)
+                day = dt.datetime.fromtimestamp(now / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
+                with open(os.path.join(d, "log", day + ".jsonl"), "a") as fh:
+                    for r in closed:
+                        fh.write(json.dumps(dict(r, closed=True), separators=(",", ":")) + "\n")
+            if not mock:
+                try:
+                    import app
+                    if closed:
+                        app.notify_rocket([], book.summary(), closed)
+                    if app.enabled():
+                        app.put_row("rocket", live_doc(book, now, state.get("cut"), state.get("top") or [], closed))
+                except Exception as e:
+                    log("  push or live row failed: %s" % type(e).__name__)
+        if pk_open:
+            sold = check_pick(http, pk, pairs, now)
+            picks += len(sold)
+            pick_save(d, pk, sold, now, mock)
         wait = min(every * 1000, until - clock()) / 1000
         if wait > 0:
             sleep(wait)

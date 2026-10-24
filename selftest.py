@@ -2035,7 +2035,7 @@ def app_tests(check, mock, url):
     has_crypto = importlib.util.find_spec("cryptography") is not None
     # MEMEBOT_SWITCH_AT stays (main sets it 30 days after the fake clock): without it these subprocesses would use the real switch,
     # which is in the past from Oct 16, and their pages would lose the new launches these checks are about
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k in ("MEMEBOT_SWITCH_AT", "MEMEBOT_PUSH_ALL")}
+    base = {k: v for k, v in os.environ.items() if not k.startswith(("SUPABASE_", "MEMEBOT_")) or k in ("MEMEBOT_SWITCH_AT", "MEMEBOT_LIVE_SELL_AT", "MEMEBOT_PUSH_ALL")}
     base.update(PYTHONUTF8="1", MEMEBOT_PAUSE="0")
     env_app = dict(base, SUPABASE_URL=sb, SUPABASE_SECRET_KEY=APP_SECRET, MEMEBOT_PUSH_YOUNG="1")   # the scan's "new coins" push is off unless
     # MEMEBOT_PUSH_YOUNG=1 (selftest_scanside S4 checks the default); these checks test it switched on, exactly as before
@@ -2801,6 +2801,9 @@ def main():
     # the switch (memebot.switch_at) lies 30 days after the fake clock: every existing check keeps the behaviour before it (the new
     # launches); the checks after it pass switch= (pure functions) or an env with MEMEBOT_SWITCH_AT in the past (subprocesses)
     os.environ.setdefault("MEMEBOT_SWITCH_AT", str(T0 + 30 * 24 * H))
+    # the live chart sale (memebot.LIVE_SELL_AT) lies 30 days after the fake clock too: these checks keep the closes and the first scan after
+    # 6 hours they were written for; selftest_livesell checks the live chart on its own clock
+    os.environ.setdefault("MEMEBOT_LIVE_SELL_AT", str(T0 + 30 * 24 * H))
     mock = Mock()
     srv = serve(mock)
     url = "http://127.0.0.1:%d" % srv.server_address[1]
@@ -4020,6 +4023,8 @@ console.log(JSON.stringify(o));
     selftest_brain.checks(check, SKIPS)
     import selftest_fresh                       # the Pick account's fresh start of Oct 22 and its block on the Pick tab (memebot.FRESH_AT, page_home.pick_account)
     selftest_fresh.checks(check, SKIPS)
+    import selftest_livesell                    # the Pick account sells on the live chart from Oct 24 (memebot.LIVE_SELL_AT, rocket_watch.py's minute watch)
+    selftest_livesell.checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:

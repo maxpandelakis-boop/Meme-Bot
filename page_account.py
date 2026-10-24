@@ -296,7 +296,7 @@ def _load(d, now, pos, px, since):
         pk = docs.get(pid)
         rows.append({"id": pid, "p": p, "sym": str(p.get("sym") or "?"), "name": p.get("name"), "grp": p.get("grp"), "ticket": ticket, "entry": entry,
                      "t": num(p.get("t")) or 0, "tBuy": t_buy, "end": end, "open": not closed, "back": round(back, 2), "value": value,
-                     "pnl": round(pnl, 2), "pct": pct, "exitT": num(exits[-1].get("t")) if closed and exits else None,
+                     "pnl": round(pnl, 2), "pct": pct, "exitT": (num(exits[-1].get("at")) or num(exits[-1].get("t"))) if closed and exits else None,
                      "status": [e for e in exits], "pk": pk, "windowOpen": now < end + SETTLE_MS})
         feed.append({"t": t_buy, "k": "buy", "id": pid, "sym": str(p.get("sym") or "?"), "grp": p.get("grp"), "ticket": ticket})
         for e in exits:
