@@ -64,6 +64,9 @@ def launch_facts(coins, hist, meta_dir, chain_dir=None, wiki=None):
 
     if chain_dir and os.path.exists(os.path.join(chain_dir, "chain.parquet")):
         ch = pd.read_parquet(os.path.join(chain_dir, "chain.parquet")).drop_duplicates("mint").set_index("mint")
+        for col in ch.columns:          # meta_chain.py final of 24 Oct wrote missing values as the text "NaN"
+            if not pd.api.types.is_numeric_dtype(ch[col]):
+                ch[col] = ch[col].where(~ch[col].isin(["NaN", "None", "null"]), None)
         ch = ch.reindex(columns=sorted(set(ch.columns) | {"name", "symbol", "curve_creator", "created_s", "curve_sigs", "f_twitter",
                                                           "f_telegram", "f_website", "f_name", "uri", "f_createdOn", "f_image",
                                                           "f_video", "f_desc_len"}))

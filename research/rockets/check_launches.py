@@ -170,6 +170,8 @@ def sample_facts(d, lmeta_dir, chain_dir):
     if chain_dir and os.path.exists(os.path.join(chain_dir, "chain.parquet")):
         ch = pd.read_parquet(os.path.join(chain_dir, "chain.parquet"), columns=["mint", "f_image"])
         for m, x in zip(ch["mint"], ch["f_image"].fillna("").astype(str)):
+            if x in ("NaN", "None", "null"):            # meta_chain.py final of 24 Oct wrote missing values as text
+                continue
             c = CIDRE.search(x).group(1) if CIDRE.search(x) else x.strip()
             if c and m in gt.index and pd.notna(gt.get(m)):
                 gpic.setdefault(c, []).append(gt.get(m))
