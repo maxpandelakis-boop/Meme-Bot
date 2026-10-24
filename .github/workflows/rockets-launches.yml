@@ -1,0 +1,29 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendment 6): every pump.fun launch of the five
+# month windows from the Solana chain (research/rockets/launches.py), for the user's ask to compare as many coins as possible.
+# Step 1: a probe of what the free sources give. Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or
+# saved. Touches no bot branch and no paper account. Started by a push of this file or launches.py on this branch, or by hand.
+name: rockets-launches
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-launches.yml, research/rockets/launches.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rockets-launches
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+        run: python3 research/rockets/launches.py probe probe.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: launches-probe, path: probe.json, retention-days: 5}
