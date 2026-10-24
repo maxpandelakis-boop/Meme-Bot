@@ -2,13 +2,10 @@
 # creation time, X / Telegram / website links set at launch) of every pump.fun graduation of the five month windows, from
 # pump.fun's public coin data, GeckoTerminal names where pump.fun gives nothing -> branch "rocketsmeta".
 # Nothing is bought; no key or secret beyond the run's own token is used. Touches no bot branch and no paper account.
-# Started by a push of this file or research/rockets/meta_fetch.py on this branch, or by hand. Run 1 (24 Oct) got GeckoTerminal
+# Started by hand only (it was started by pushes until 24 Oct). Run 1 (24 Oct) got GeckoTerminal
 # names only (pump.fun's coin form answered 404); run 2 probes other pump.fun forms and keeps run 1's names for the rest.
 name: rockets-meta
-on:
-  push:
-    branches: [claude/project-thread-5blkl3]
-    paths: [.github/workflows/rockets-meta.yml, research/rockets/meta_fetch.py]
+on:                                 # by hand only since 24 Oct: pump.fun's API answers nothing useful from GitHub's runners
   workflow_dispatch:
 permissions:
   contents: write
@@ -40,6 +37,7 @@ jobs:
     timeout-minutes: 345
     strategy:
       fail-fast: false
+      max-parallel: 3                # the account has few runners: more than 3 research jobs at once hold up the bots' own scans
       matrix:
         i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     env:

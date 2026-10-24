@@ -6,6 +6,9 @@ month windows from the Solana chain, not only the ~72,000 that graduated, for th
                                        launch transactions the first probe could not read (error -32015, a newer version)
   probe3 <work dir> <grad mints.json>  the three free launch datasets up close: their documents, file coverage by day, one file
                                        of each read, 100 random rows of each checked against the chain, overlap with our graduations
+  verify <work dir> <monthsdata dir> <monthsh2 dir>   the test of amendment 6 for the two datasets used (Slinky21's corpus for
+                                       w2, Slinky21's Pumpfun_v2 for w3-w5): completeness against the chain's own launch list in
+                                       random hours, 300 random rows against the chain, and how many of our graduations they hold
   sigs <out dir>                       every launch signature of the five windows (sigs_<w>.parquet: signature, slot, time, failed)
   shard <sig dir> <i> <n> <out.json.gz> launches i, i+n, ... of the random sample (SAMPLE launches, seed 7): the launch
                                        transaction, the curve account (graduated or not, read now) and the metadata file
@@ -394,6 +397,124 @@ def cmd_probe3(work, grads_path):
     json.dump(out, open(os.path.join(work, "probe3.json"), "w"), indent=1, default=str)
 
 
+def our_grads(md, h2):
+    """Our graduations (start SOL side >= 10, inside the windows): mint -> graduation time (ms), as meta_fetch.py's plan."""
+    import pandas as pd
+    lo_hi = [(_ts(a) * 1000, _ts(b) * 1000) for _, a, b in WINDOWS]
+    rows = pd.read_parquet(os.path.join(h2, "meta_h2.parquet"))[["mint", "t", "sol0"]].to_dict("records")
+    for f in sorted(glob.glob(os.path.join(md, "meta_w*.json"))):
+        rows += [{"mint": r["mint"], "t": r["t"], "sol0": r["sol0"]} for r in json.load(open(f))]
+    return {r["mint"]: int(r["t"]) for r in rows if r["sol0"] >= 10 and any(a <= int(r["t"]) < b for a, b in lo_hi)}
+
+
+def chain_launches(rpc, t0, t1, top, read_tx=False):
+    """The chain's own list of pump.fun launches between t0 and t1 (unix s): successful signatures, and with read_tx the mints."""
+    before, _ = sig_near(rpc, t1, top)
+    sigs = []
+    while before:
+        page = rpc.call("getSignaturesForAddress", [MINT_AUTHORITY, {"limit": 1000, "before": before}])
+        if not page:
+            break
+        sigs += [(x["signature"], x.get("blockTime")) for x in page if x.get("err") is None and x.get("blockTime")]
+        before = page[-1]["signature"]
+        if (page[-1].get("blockTime") or t1) < t0:
+            break
+    sigs = [s for s, bt in sigs if t0 <= bt < t1]
+    mints = None
+    if read_tx:
+        pool = concurrent.futures.ThreadPoolExecutor(8)
+        txs = list(pool.map(lambda x: rpc.call("getTransaction", [x, {"encoding": "json", "maxSupportedTransactionVersion": 1}]), sigs))
+        pool.shutdown()
+        mints = [p["mint"] for p in (parse_launch(t) for t in txs) if p]
+    return sigs, mints
+
+
+def cmd_verify(work, md, h2):
+    import numpy as np, pandas as pd
+    os.makedirs(work, exist_ok=True)
+    k = os.environ.get("HK") or ""
+    rpc = rpc_only("https://mainnet.helius-rpc.com/?api-key=" + k, 0.12) if k else rpc_only(PUBLIC_RPC, 0.3)
+    top = rpc.call("getSlot", [])
+    grads = our_grads(md, h2)
+    rng = np.random.default_rng(7)
+    out = {"our_graduations": len(grads)}
+    # ---- Slinky21's Pumpfun_v2: create events, 10 Aug onwards
+    ds = DATASETS["v2"]
+    files = hf_files(ds)
+    cr = sorted(f for f, _ in files if "/create/" in f and f.endswith(".parquet"))
+    def stamp(f):                      # create_20260928T152442.parquet -> that day
+        d = f.rsplit("_", 1)[1][:8]
+        return _ts("%s-%s-%s" % (d[:4], d[4:6], d[6:8]))
+
+    lo, hi = _ts("2026-08-10"), _ts("2026-10-22")
+    keep = [f for f in cr if lo - 86400 <= stamp(f) <= hi + 86400]
+    o = out.setdefault("v2", {"create_files": len(cr), "files_used": len(keep), "first": keep[0] if keep else None,
+                              "last": keep[-1] if keep else None})
+    parts = []
+    for f in keep:
+        try:
+            d = pd.read_parquet(hf_get(ds, f, os.path.join(work, "v2", os.path.basename(f))),
+                                columns=["block_time", "signature", "mint", "creator", "tx_signer", "token_name", "symbol", "uri"])
+            parts.append(d)
+            os.remove(os.path.join(work, "v2", os.path.basename(f)))
+        except Exception as e:
+            o.setdefault("errors", []).append("%s %s" % (f, type(e).__name__))
+    v2 = pd.concat(parts, ignore_index=True).drop_duplicates("signature")
+    v2["bt"] = v2["block_time"].astype("int64") // 10**6
+    v2 = v2[(v2["bt"] >= lo) & (v2["bt"] < hi)]
+    days = pd.to_datetime(v2["bt"], unit="s", utc=True).dt.strftime("%Y-%m-%d").value_counts().sort_index()
+    o["rows"], o["per_day"] = len(v2), days.to_dict()
+    o["days_under_20000"] = [d for d, n in days.items() if n < 20000]
+    v2.to_parquet(os.path.join(work, "v2_creates.parquet"), index=False)
+    hours = sorted(rng.choice(np.arange(lo, hi - 2 * 86400, 3600), 3, replace=False).tolist())
+    o["hours"] = []
+    sset = set(v2["signature"])
+    for h in hours:
+        sigs, _ = chain_launches(rpc, h, h + 3600, top)
+        ds_h = set(v2[(v2["bt"] >= h) & (v2["bt"] < h + 3600)]["signature"])
+        o["hours"].append({"hour": time.strftime("%Y-%m-%d %H:00", time.gmtime(h)), "chain": len(sigs),
+                           "chain_in_dataset": sum(x in sset for x in sigs), "dataset": len(ds_h),
+                           "dataset_in_chain": len(ds_h & set(sigs))})
+        log("v2 hour", o["hours"][-1])
+    sub = v2.iloc[rng.choice(len(v2), 300, replace=False)]
+    o["chain_check"] = chain_check(rpc, [{"mint": r["mint"], "name": r["token_name"], "symbol": r["symbol"], "uri": r["uri"],
+                                          "creator": r["creator"]} for _, r in sub.iterrows()])
+    m = set(v2["mint"])
+    g = {x: t for x, t in grads.items() if lo * 1000 + 86400000 <= t < (hi - 86400) * 1000}
+    o["our_graduations_in_days"], o["of_them_in_dataset"] = len(g), sum(x in m for x in g)
+    log("v2", json.dumps({k2: v for k2, v in o.items() if k2 != "per_day"}))
+    # ---- Slinky21's corpus: tokens of 5 Jun - 14 Jul
+    ds = DATASETS["corpus"]
+    t = pd.read_parquet(hf_get(ds, "tokens.parquet", os.path.join(work, "corpus", "tokens.parquet")),
+                        columns=["mint", "detected_at", "name", "symbol", "uri", "creator", "graduated_at", "seconds_to_graduation",
+                                 "initial_buy_sol", "is_mayhem_mode"])
+    t["bt"] = t["detected_at"].astype("int64") // 10**6
+    o = out.setdefault("corpus", {"rows": len(t), "from": str(t["detected_at"].min()), "to": str(t["detected_at"].max())})
+    days = pd.to_datetime(t["bt"], unit="s", utc=True).dt.strftime("%Y-%m-%d").value_counts().sort_index()
+    o["per_day"] = days.to_dict()
+    t.to_parquet(os.path.join(work, "corpus_tokens.parquet"), index=False)
+    a, b = _ts("2026-06-26"), _ts("2026-07-13")
+    cand = [x for x in np.arange(a, b, 1800) if not (_ts("2026-07-03") - 3600 <= x < _ts("2026-07-04") + 3600)]
+    o["halfhours"] = []
+    mset = set(t["mint"])
+    for h in sorted(rng.choice(cand, 2, replace=False).tolist()):
+        sigs, mints = chain_launches(rpc, h, h + 1800, top, read_tx=True)
+        o["halfhours"].append({"from": time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)), "chain": len(sigs),
+                               "chain_read": len(mints or []), "chain_in_dataset": sum(x in mset for x in (mints or []))})
+        log("corpus half hour", o["halfhours"][-1])
+    sub = t.iloc[rng.choice(len(t), 300, replace=False)]
+    o["chain_check"] = chain_check(rpc, [{"mint": r["mint"], "name": r["name"], "symbol": r["symbol"], "uri": r["uri"],
+                                          "creator": r["creator"]} for _, r in sub.iterrows()])
+    lo2, hi2 = _ts("2026-06-25"), _ts("2026-07-14")
+    g = {x: tt for x, tt in grads.items() if lo2 * 1000 + 86400000 <= tt < hi2 * 1000 and not
+         (_ts("2026-07-03") * 1000 <= tt < _ts("2026-07-05") * 1000)}
+    o["our_graduations_in_days"], o["of_them_in_dataset"] = len(g), sum(x in mset for x in g)
+    gr = t[t["graduated_at"].notna()]
+    o["dataset_graduated"], o["dataset_graduated_in_our_list"] = len(gr), int(gr["mint"].isin(set(grads)).sum())
+    log("corpus", json.dumps({k2: v for k2, v in o.items() if k2 != "per_day"}))
+    json.dump(out, open(os.path.join(work, "verify.json"), "w"), indent=1, default=str)
+
+
 # ------------------------------------------------------------------------------------------------ the fetch
 WINDOWS = (("w1", "2026-04-25", "2026-05-25"), ("w2", "2026-06-25", "2026-07-25"), ("w3", "2026-08-10", "2026-09-10"),
            ("w4", "2026-09-10", "2026-10-09"), ("w5", "2026-10-09", "2026-10-22"))      # as research/rockets/build_paths.py
@@ -588,5 +709,5 @@ def cmd_final(src, out, prev=None):
 
 
 if __name__ == "__main__":
-    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "sigs": cmd_sigs, "shard": cmd_shard,
-     "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
+    {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "verify": cmd_verify, "sigs": cmd_sigs,
+     "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])

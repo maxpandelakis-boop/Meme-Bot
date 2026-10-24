@@ -1,8 +1,10 @@
 # Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendment 6): every pump.fun launch of the five
 # month windows, not only the graduations (research/rockets/launches.py), for the user's ask to compare as many coins as possible.
-# Now: probe 3, the three free launch datasets on HuggingFace checked against the chain before any use. Nothing is bought.
-# HELIUS_API_KEY is only passed to the script, never printed or saved. Touches no bot branch and no paper account.
-# Started by a push of this file or launches.py on this branch, or by hand. One job at a time (the account has few runners).
+# Now: the test of amendment 6 for the two free launch datasets (Slinky21's Memecoin Corpus for w2, Slinky21's Pumpfun_v2 for
+# w3-w5): complete against the chain's own launch list in random hours, rows the same as on the chain, our graduations in them.
+# Result -> branch "rocketsprobe" (verify.json). Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or
+# saved. Touches no bot branch and no paper account. Started by a push of this file or launches.py on this branch, or by hand.
+# One job at a time (the account has few runners).
 name: rockets-launches
 on:
   push:
@@ -10,14 +12,14 @@ on:
     paths: [.github/workflows/rockets-launches.yml, research/rockets/launches.py]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: rockets-launches
   cancel-in-progress: true
 jobs:
-  probe:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,10 +31,16 @@ jobs:
           mkdir -p md h2
           git fetch -q --depth 1 origin monthsdata && git archive FETCH_HEAD | tar -x -C md
           git fetch -q --depth 1 origin monthsh2 && git show FETCH_HEAD:meta_h2.parquet > h2/meta_h2.parquet
-          python3 research/rockets/meta_fetch.py plan md h2 plan
       - env:
           HK: ${{ secrets.HELIUS_API_KEY }}
-        run: python3 research/rockets/launches.py probe3 work plan/plan.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: {name: launches-probe3, path: work/probe3.json, retention-days: 5}
+        run: python3 research/rockets/launches.py verify work md h2
+      - if: always()
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p out && cp work/verify.json out/ 2>/dev/null || true
+          printf 'Checks of the free pump.fun launch datasets against the chain (research/rockets/launches.py verify). Fake money only.\n' > out/README.md
+          cd out && git init -q && git checkout -q -b rocketsprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketsprobe $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketsprobe
