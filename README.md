@@ -1,0 +1,1 @@
+Five-minute GeckoTerminal candles (USD) of the first 48 hours of the pump.fun graduations of 25 Apr-24 May, 25 Jun-24 Jul and 9-21 Oct 2026 (start SOL side >= 10; graduation lists from Helius, branch callsdata), made by research/months_fetch.py; meta_*.json lists every planned pool, market.json SOL/BTC by hour (Binance). Fake money only.
