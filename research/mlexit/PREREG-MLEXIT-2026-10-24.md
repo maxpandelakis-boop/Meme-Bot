@@ -111,3 +111,20 @@ yes in the project chat. If it fails: the report says plainly why (how little of
 rule stays v3.
 
 Compute: in this container only (4 cores); no GitHub Actions runner is used, so the live scans are not touched.
+
+## Amendment 1 (25 Oct, 00:05 UTC; after counting entries, before any label, model or result was looked at)
+
+The W universe holds only 5,439 coins over all five windows (3,669 in w1-w3): most graduations fall under 50k market cap within
+six hours. The user asked for as many coins as possible ("Nimm so viel du kannst"). So the training universe becomes a choice
+of the validation step, with two options:
+
+- W: as above (whole hours 6-24 h, market cap 50k-5M, liquidity >= 10k, 24 h volume >= 5k; the P entry and up to 3 random W
+  entries per coin).
+- ALL: every coin of the training windows that is still tradeable an hour or more after graduation: whole hours 1-24 h, market
+  cap 30k-10M, liquidity >= 8k, at least one trade in the hour before; per coin the P entry, the W entries above and up to 3
+  further random ALL entries (seed 7). About 10,900 coins in w1-w3 (16,000 over all windows) instead of 3,669; the minutes since
+  graduation are one of the numbers, so the model can tell young from old coins.
+
+Graduations that never come back to 30k market cap after the first hour are not tradeable for the Pick and are left out.
+The choice step now has 2 x 24 = 48 configurations (ties: W before ALL). The test buys (P, and W for the second test) do not
+change.
