@@ -619,33 +619,31 @@ def launch_check(rpc, rows):
     return out
 
 
-def chain_back(rpc, spans):
-    """The mint authority's successful signatures inside the given [a, b) spans, paged back from the newest one (no start point
-    search: verify and verify2 found none in Sep and Oct). Returns {span start: [signatures]}."""
-    out = {a: [] for a, _ in spans}
-    lo = min(a for a, _ in spans)
-    before, pages, t_last = None, 0, None
-    while True:
-        opt = {"limit": 1000}
-        if before:
-            opt["before"] = before
+def sig_page(rpc, opt, tries=6):
+    for k in range(tries):
         page = rpc.call("getSignaturesForAddress", [MINT_AUTHORITY, opt])
+        if page:
+            return page
+        time.sleep(2 ** k)
+    log("sig_page: nothing after", tries, "tries, rpc codes", rpc.codes)
+    return None
+
+
+def chain_from(rpc, h, anchor):
+    """The mint authority's successful signatures in [h, h + 1800), paged back from anchor (a launch signature of the dataset
+    just after the half-hour; the chain's own list is then read back from there, so the dataset only gives the start)."""
+    sigs, before, pages = [], anchor, 0
+    while before:
+        page = sig_page(rpc, {"limit": 1000, "before": before})
         if not page:
-            log("chain_back: empty page after", pages, "pages, last time", t_last)
-            break
+            return None
         pages += 1
-        for x in page:
-            bt = x.get("blockTime")
-            if x.get("err") is None and bt:
-                for a, b in spans:
-                    if a <= bt < b:
-                        out[a].append(x["signature"])
-        before, t_last = page[-1]["signature"], page[-1].get("blockTime")
-        if pages % 200 == 0:
-            log("chain_back", pages, "pages, at", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t_last or 0)))
-        if t_last and t_last < lo:
+        sigs += [x["signature"] for x in page if x.get("err") is None and x.get("blockTime") and h <= x["blockTime"] < h + 1800]
+        before = page[-1]["signature"]
+        if (page[-1].get("blockTime") or h) < h:
             break
-    return out
+    log("chain_from", time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)), pages, "pages", len(sigs), "signatures")
+    return sigs
 
 
 def chain_halfhour(rpc, h, top, ds_sig=None, ds_mint=None, ds_rows=None, sigs=None):
@@ -745,7 +743,7 @@ def cmd_verify2(work, md, h2):
 
 def cmd_verify3(work, md, h2):
     """Amendment 9: rule 1 of amendment 6 for Pumpfun_v2, in the same 6 half-hours as verify2 (seed 7), with the chain's list
-    read back from its newest signature."""
+    read back from a dataset launch just after each half-hour."""
     import numpy as np
     os.makedirs(work, exist_ok=True)
     k = os.environ.get("HK") or ""
@@ -755,9 +753,14 @@ def cmd_verify3(work, md, h2):
     hh = sorted(rng.choice(np.arange(lo, hi, 1800), 6, replace=False).tolist())
     log("half-hours", [time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)) for h in hh])
     v2 = read_v2(work, min(hh) - 86400, max(hh) + 86400, ["block_time", "signature", "mint"])
-    sigs = chain_back(rpc, [(h, h + 1800) for h in hh])
+    v2 = v2.sort_values("bt")
+    sigs = {}
+    for h in hh:
+        after = v2[v2["bt"] >= h + 1805]
+        sigs[h] = chain_from(rpc, h, after["signature"].iloc[0]) if len(after) else None
     sset, mset = set(v2["signature"]), set(v2["mint"])
-    o = {"halfhours": [chain_halfhour(rpc, h, None, sset, mset, v2, sigs=sigs[h]) for h in hh]}
+    o = {"halfhours": [chain_halfhour(rpc, h, None, sset, mset, v2, sigs=sigs[h]) for h in hh if sigs[h] is not None],
+         "halfhours_not_read": [time.strftime("%Y-%m-%d %H:%M", time.gmtime(h)) for h in hh if sigs[h] is None]}
     o["chain_in_dataset_share"] = _share(o["halfhours"], "chain_in_dataset", "chain_launches")
     o["dataset_on_chain_share"] = _share(o["halfhours"], "dataset_rows_on_chain", "dataset_rows")
     log("v2", json.dumps(o)[:3000])

@@ -314,9 +314,11 @@ What follows, all fixed before the next check runs:
   creator for only 87.2 % of them. As amendment 6 says, loophole is dropped and **w5 leaves universe L**. Its rule 3 would have
   passed (14,997 of 15,241, 98.4 %).
 - **Rule 1 is still not measured**: the chain's list came back empty in every half-hour again (the search for a starting point
-  still finds nothing in Sep and Oct). `launches.py verify3` reads the chain's list back from its newest signature instead,
+  still finds nothing in Sep and Oct). `launches.py verify3` reads the chain's list back from a dataset launch just after each
+  half-hour instead (the dataset only gives the starting point; every signature of the half-hour then comes from the chain),
   in the same 6 half-hours (seed 7: 12 Sep 12:30, 15 Sep 04:30, 18 Sep 15:00, 23 Sep 23:30, 1 Oct 00:00, 3 Oct 16:30 UTC),
-  with the same two 95 % bars. If Pumpfun_v2 fails it, universe L is empty and the report says so.
+  with the same two 95 % bars. If Pumpfun_v2 fails it, universe L is empty and the report says so. (First try, 13:04 UTC:
+  paging back from the chain's newest signature got an empty answer after 15 hours of history, so no half-hour was read.)
 
 So universe L is Pumpfun_v2 alone: **fit w3 (10 Aug - 7 Sep), unseen w4 (10 Sep - 6 Oct)**, the full month of amendment 7.
 Mayhem-mode launches are history only (amendment 8). There is no w5 in universe L; w5 stays in the graduation study.
