@@ -15,6 +15,8 @@ the fixtures are hand-made candles and docs, nothing is fetched.
      a sale the watch of older code made by the fixed rule is dropped and the position looked at again
   C6 shadow: K is the fixed rule, X the chart exit replayed on the same clean minutes (chart_hit)
   C7 the words: the rule text, the position card's trailing stop, the stop's words by rule; the constants and the key
+  C8 the sell bot (page_home.sell_bot, the user could not find the chart exit in the app on Oct 24): its card on the Pick tab (the trail
+     armed or where it arms, the 6-hour minute), its row on the Start tab, nothing before the live chart or for a fixed-rule position
 
   python3 selftest_chartexit.py      -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
 """
@@ -316,6 +318,36 @@ def c7(check):
           "C7 the key v3 and the chart exit's levels as tested (-50 %, 15 % from 1.5x, -15 % in 30 min); the fixed rule's constants unchanged")
 
 
+def c8(check):
+    import memebot as M, report as R, page_home as PH
+    print("== chart exit C8: the sell bot, its card and its Start row")
+    with live_at(LIVE):
+        t0, now = LIVE + H, LIVE + H + 10 * MIN
+        cands = [(t0 + i * MIN, 1.0, 1.01, 0.99, 1.0) for i in range(0, 5)] + [(t0 + 5 * MIN, 1.7, 1.8, 1.6, 1.7)]
+        p = {"_id": "p1", "sym": "AAA", "grp": "hold", "ticket": 50.0, "px": 1.0, "t": t0, "entryAt": t0, "paper": M.PAPER_RULE, "addr": "A" * 44, "pair": "pA"}
+        r = {"id": "p1", "p": p, "entry": 1.0, "last": 1.7, "candles": cands, "cpx": 1.0}
+        armed = PH.sell_bot({"now": now, "dir": ""}, R, [r])
+        waiting = PH.sell_bot({"now": now, "dir": ""}, R, [dict(r, candles=cands[:5], last=1.0)])
+        empty = PH.sell_bot({"now": now, "dir": ""}, R, [])
+        fixed = PH.sell_bot({"now": now, "dir": ""}, R, [dict(r, p=dict(p, paper=M.OLD_PAPER_RULE))])
+        row = PH.sell_bot_row({"now": now, "dir": "", "open": [r]}, R)
+        before = PH.sell_bot({"now": LIVE - H, "dir": ""}, R, [r]) + PH.sell_bot_row({"now": LIVE - H, "dir": "", "open": [r]}, R)
+        end = PH.hhmm(R, t0 + 6 * H)
+    check('id="sell-bot"' in armed and 'data-sb-pos="p1"' in armed and "now +70%" in armed
+          and "Profit lock ON: sells if the price falls to $1.53 (+53%), 15% under its best price $1.80 (+80%)." in armed
+          and "at the latest at %s (after 6 h)" % end in armed,
+          "C8 an armed trail: the card names the price it sells at, 15% under the best price, and the 6-hour minute")
+    check("Profit lock switches on at $1.50 (+50%)" in waiting and "Best so far +1%." in waiting and "Profit lock ON" not in waiting,
+          "C8 before 1.5x: where the trail arms, the best price so far")
+    check("Nothing to sell right now" in empty and "data-sb-pos" not in empty and "data-sb-pos" not in fixed and before == "",
+          "C8 no position, a fixed-rule position: an empty card; before the live chart neither card nor row")
+    check('data-open="sell-bot"' in row and "SELL BOT" in row and "watching AAA every minute" in row and "for the Pick account" in row,
+          "C8 the Start row: what it watches, a tap opens its card")
+    home = open(os.path.join(HERE, "page_home.py"), encoding="utf-8").read()
+    check("eq.%s'" % M.LIVE_WATCH_ROW in PH.SB_JS and "innerHTML" not in PH.SB_JS and "sb = sell_bot(D, R, opn)" in home and "sb + lp" in home,
+          "C8 the live script reads the watch's row, text only; the card sits in the Pick account block, the row under the accounts")
+
+
 def checks(check, skips=None):
     c1(check)
     c2(check)
@@ -324,6 +356,7 @@ def checks(check, skips=None):
     c5(check)
     c6(check)
     c7(check)
+    c8(check)
 
 
 def main():
