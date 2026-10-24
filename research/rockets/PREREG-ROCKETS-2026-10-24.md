@@ -93,7 +93,7 @@ Say so plainly, and name what it would take: data that costs money or a login (b
 RPC credits, X engagement from the paid X API, Telegram calls with the user's own key, wallet labels from Nansen/Arkham-type
 services).
 
-## Amendment 1 (24 Oct, ~08:40 UTC, before any fact result was read)
+## Amendment 1 (24 Oct, ~08:30 UTC, before any fact result was read)
 
 Checking the rocket list (no split by any fact) showed "rockets" of 400x to 5,800x from a market cap of $1,400-7,700: pools that
 were sold down to well under 1 SOL, where a buy of a few hundred dollars makes a 10x and a 20 EUR ticket would move the price
