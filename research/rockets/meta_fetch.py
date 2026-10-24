@@ -9,12 +9,13 @@ cap, replies, last trade) are not kept. Where pump.fun gives nothing, GeckoTermi
 Nothing is bought, no wallet, key or secret is used."""
 import glob, gzip, json, os, sys, time, urllib.error, urllib.request
 
-# Run 1 (24 Oct 08:20 UTC): /coins/<mint> on v3 answered 404 for every coin and the old host 530, so run 2 first tries these forms
-# on a few coins and keeps the first one that answers with the coin.
-PF = ("https://frontend-api-v3.pump.fun/coins/%s?sync=true", "https://frontend-api-v3.pump.fun/coins/%s",
-      "https://frontend-api-v3.pump.fun/coins?searchTerm=%s&limit=5&offset=0&includeNsfw=true",
-      "https://frontend-api-v3.pump.fun/coins/search?searchTerm=%s&limit=5&offset=0&includeNsfw=true",
-      "https://frontend-api-v2.pump.fun/coins/%s", "https://advanced-api-v2.pump.fun/coins/%s")
+# Run 1 (24 Oct 08:20 UTC): /coins/<mint> on v3 answered 404 for every coin and the old host 530. Run 2 (10:53): v3 /coins/<mint>
+# (with or without sync) 404, /coins/search 404, v2 403, advanced-api-v2 530; only the list form with searchTerm answered (200) but
+# without the coin. Run 3 logs what that list holds and tries a few more forms; the first that answers with the coin is kept.
+PF = ("https://frontend-api-v3.pump.fun/coins?searchTerm=%s&limit=5&offset=0&includeNsfw=true",
+      "https://frontend-api-v3.pump.fun/coins?searchTerm=%s&limit=5&offset=0&includeNsfw=true&sort=market_cap&order=DESC",
+      "https://frontend-api-v3.pump.fun/coins-v2/%s", "https://frontend-api-v3.pump.fun/coins/%s/details",
+      "https://frontend-api-v3.pump.fun/coins/batch?mints=%s", "https://frontend-api-v3.pump.fun/v1/coins/%s")
 GT = "https://api.geckoterminal.com/api/v2/networks/solana/tokens/multi/%s"
 KEEP = ("mint", "name", "symbol", "creator", "created_timestamp", "twitter", "telegram", "website", "king_of_the_hill_timestamp",
         "nsfw", "show_name", "image_uri", "video_uri", "is_banned", "hidden", "metadata_uri")
@@ -94,6 +95,8 @@ def cmd_shard(plan, i, n, out):
         for m in mints[:4]:
             code, j = get(tpl % m, gap)
             c = coin_of(j, m)
+            if c is None and code == 200:
+                log("probe body", type(j).__name__, json.dumps(j)[:400])
             got.append(code if c is None else "coin")
             if c is not None:
                 log("probe", tpl, "->", sorted(c.keys())[:40])
