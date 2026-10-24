@@ -5,11 +5,16 @@ cap, replies, last trade) are not kept. Where pump.fun gives nothing, GeckoTermi
 
   plan  <monthsdata dir> <monthsh2 dir> <out dir>      the mints, start SOL side >= 10, in the five windows
   shard <plan.json> <i> <n> <out.json.gz>              mints i, i+n, ...; the file is rewritten every 200 mints
-  final <dir with shard files> <out dir>               one meta.parquet
+  final <dir with shard files> <out dir> [<old dir>]   one meta.parquet (an older one's rows kept for mints not fetched now)
 Nothing is bought, no wallet, key or secret is used."""
 import glob, gzip, json, os, sys, time, urllib.error, urllib.request
 
-PF = ("https://frontend-api-v3.pump.fun/coins/%s", "https://frontend-api.pump.fun/coins/%s")
+# Run 1 (24 Oct 08:20 UTC): /coins/<mint> on v3 answered 404 for every coin and the old host 530, so run 2 first tries these forms
+# on a few coins and keeps the first one that answers with the coin.
+PF = ("https://frontend-api-v3.pump.fun/coins/%s?sync=true", "https://frontend-api-v3.pump.fun/coins/%s",
+      "https://frontend-api-v3.pump.fun/coins?searchTerm=%s&limit=5&offset=0&includeNsfw=true",
+      "https://frontend-api-v3.pump.fun/coins/search?searchTerm=%s&limit=5&offset=0&includeNsfw=true",
+      "https://frontend-api-v2.pump.fun/coins/%s", "https://advanced-api-v2.pump.fun/coins/%s")
 GT = "https://api.geckoterminal.com/api/v2/networks/solana/tokens/multi/%s"
 KEEP = ("mint", "name", "symbol", "creator", "created_timestamp", "twitter", "telegram", "website", "king_of_the_hill_timestamp",
         "nsfw", "show_name", "image_uri", "video_uri", "is_banned", "hidden", "metadata_uri")
@@ -68,25 +73,50 @@ def save(out, res, k, n):
     os.replace(tmp, out)
 
 
+def coin_of(j, m):
+    if isinstance(j, dict) and j.get("mint") == m:
+        return j
+    items = j if isinstance(j, list) else (j.get("coins") or j.get("data") or []) if isinstance(j, dict) else []
+    for it in items if isinstance(items, list) else []:
+        if isinstance(it, dict) and it.get("mint") == m:
+            return it
+    return None
+
+
 def cmd_shard(plan, i, n, out):
     mints = json.load(open(plan))["mints"][int(i)::int(n)]
     gap = float(os.environ.get("PF_GAP") or 0.8)
     stop = time.time() + 60 * float(os.environ.get("SHARD_MINUTES", 300))
-    res, codes, src, fails = {}, {}, 0, 0
+    res, codes, fails = {}, {}, 0
+    src = None
+    for t, tpl in enumerate(PF):
+        got = []
+        for m in mints[:4]:
+            code, j = get(tpl % m, gap)
+            c = coin_of(j, m)
+            got.append(code if c is None else "coin")
+            if c is not None:
+                log("probe", tpl, "->", sorted(c.keys())[:40])
+        log("probe", tpl, got)
+        if "coin" in got:
+            src = t
+            break
+    if src is None:
+        log("no pump.fun form answers with the coin from here; nothing fetched")
+        save(out, res, 0, len(mints))
+        return
     for k, m in enumerate(mints):
         if time.time() > stop:
             log("time budget used at", k, "of", len(mints))
             break
         code, j = get(PF[src] % m, gap)
         codes[str(code)] = codes.get(str(code), 0) + 1
-        if isinstance(j, dict) and j.get("mint"):
-            res[m] = {key: j.get(key) for key in KEEP}
+        c = coin_of(j, m)
+        if c is not None:
+            res[m] = {key: c.get(key) for key in KEEP}
             fails = 0
         else:
             fails += 1
-            if fails >= 25 and not res and src + 1 < len(PF):
-                src, fails = src + 1, 0
-                log("switching pump.fun source to", PF[src])
         if k < 3 or k % 200 == 199:
             log(k + 1, "of", len(mints), "got", len(res), codes)
             save(out, res, k + 1, len(mints))
@@ -94,7 +124,7 @@ def cmd_shard(plan, i, n, out):
             log("pump.fun answers nothing from here; stopping the pump.fun part at", k + 1)
             break
     # names for the rest from GeckoTerminal, 30 per call
-    rest = [m for m in mints if m not in res]
+    rest = [m for m in mints if m not in res] if not os.environ.get("SKIP_GT") else []
     gt = 0
     for a in range(0, len(rest), 30):
         if time.time() > stop + 1800:
@@ -109,13 +139,17 @@ def cmd_shard(plan, i, n, out):
     save(out, res, len(mints), len(mints))
 
 
-def cmd_final(src, out):
+def cmd_final(src, out, old=None):
+    """Joins the shards; rows of an older meta.parquet (old dir) are kept for mints this run did not get."""
     import pandas as pd
     os.makedirs(out, exist_ok=True)
     rows = []
     for f in sorted(glob.glob(os.path.join(src, "**", "*.json.gz"), recursive=True)):
         rows += list(json.load(gzip.open(f, "rt"))["coins"].values())
-    d = pd.DataFrame(rows).drop_duplicates("mint")
+    d = pd.DataFrame(rows)
+    if old and os.path.exists(os.path.join(old, "meta.parquet")):
+        d = pd.concat([d, pd.read_parquet(os.path.join(old, "meta.parquet"))], ignore_index=True)
+    d = d.drop_duplicates("mint", keep="first")
     for c in d.columns:
         if d[c].dtype == object and c not in ("mint",):
             d[c] = d[c].map(lambda x: None if x is None else (x if isinstance(x, str) else json.dumps(x)))
