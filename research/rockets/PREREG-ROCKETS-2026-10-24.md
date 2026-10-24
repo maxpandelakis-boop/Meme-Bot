@@ -119,3 +119,29 @@ account), the creator wallet stored in pump.fun's bonding-curve account, the cre
 website links from the metadata file on IPFS. Each fact is taken from the first source that has it, in this order: history2,
 the chain, pump.fun's API, GeckoTerminal (names only). The report says which source gave what. The reported run waits for both
 fetches.
+
+## Amendment 4 (24 Oct, ~11:35 UTC, before any fact result was read): media and the coin's picture
+
+The user asked (11:27 and 11:28 UTC) to take media into account and to check whether the pictures matter ("sind ja Meme Coins").
+Added facts, each known at the entry, buckets fixed now, tested exactly like F1-F11 (parts A-C, same split, same Holm and
+Bonferroni over all facts together):
+
+| # | fact | buckets |
+|---|---|---|
+| F12 | news of the day: a word of the name or ticker (4+ letters, upper/lower case ignored) is a word of one of the 1,000 most-read English Wikipedia articles of the day before the graduation (Wikimedia's free pageview API; Main_Page, Special: and the like left out) | yes / no |
+| F13 | theme heat: graduations in the 24 hours before whose name shares such a word with this coin's name | 0 / 1-4 / 5-19 / 20+ |
+| F14 | fresh post: the X link is a post (status), and the post's own time stamp (in its id) is at most 1 h / 1-24 h / older than 24 h before the coin's creation | no post / up to 1 h / 1-24 h / older |
+| F15 | the coin's picture was already used: the same image file (same IPFS content id) is the picture of another graduation of the 7 days before | yes / no |
+| F16 | how it was launched: the metadata file sits on IPFS and says createdOn pump.fun (pump.fun's own page) / anything else (launch and sniper tools, own hosts) | pump.fun / other |
+| F17 | video coin: the metadata file has a video or animation link | yes / no |
+| F18 | description length (characters) | 0 / 1-50 / 51-200 / over 200 |
+
+Historic X mention counts, likes or follower numbers at launch need the paid X API (or LunarCrush's paid plan); they are not
+tested, and today's counts would be hindsight. Google Trends has no free API reachable from here.
+
+What the picture shows (blind sample, description only, not part of parts A-C): from the unseen windows w4 + w5, 150 rockets at
+E = 5 and 150 other coins of the same windows (random, seed 7), pictures fetched from IPFS, shuffled, shown without any label as
+numbered contact sheets and sorted by hand into fixed groups before the key is opened: animal / person (photo) / drawn or cartoon
+character or known meme / text, logo or symbol / object, scene or other / no picture. Reported: the share of each group among
+rockets and others, a chi-square test of the whole table and two-proportion tests per group with Holm. With 150 a side only large
+differences (about 12 points or more) can show; a picture group that "matters" here is a lead for a bigger test, not a found rule.
