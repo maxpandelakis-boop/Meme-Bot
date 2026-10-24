@@ -2,14 +2,11 @@
 # month windows, not only the graduations (research/rockets/launches.py), for the user's ask to compare as many coins as possible.
 # Now: verify3 of amendment 9: Pumpfun_v2 against the chain's own launch list in the 6 half-hours of verify2, the list read
 # back from its newest signature. Result -> branch "rocketsprobe" (verify3.json next to verify.json and verify2.json). Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or
-# saved. Touches no bot branch and no paper account. Started by a push of this file or launches.py on this branch, or by hand.
+# saved. Touches no bot branch and no paper account. Started by hand (verify3 is done).
 # One job at a time (the account has few runners).
 name: rockets-launches
 on:
-  push:
-    branches: [claude/project-thread-5blkl3]
-    paths: [.github/workflows/rockets-launches.yml, research/rockets/launches.py]
-  workflow_dispatch:
+  workflow_dispatch:              # by hand only since verify3 passed: launches.py is shared with rockets-lmeta.yml
 permissions:
   contents: write
 concurrency:

@@ -125,6 +125,9 @@ def http(url, body=None, gap=0.2, tries=3, timeout=30):
     return code, None
 
 
+DROP_AFTER = int(os.environ.get("DROP_AFTER") or 10)
+
+
 class Rpc:
     def __init__(self):
         k = os.environ.get("HK") or ""
@@ -137,6 +140,8 @@ class Rpc:
                 self.urls.append((self.helius, 0.12))
         self.urls.append((PUBLIC_RPC, 0.35))
         self.codes = {}
+        self.miss = 0           # Helius answers in a row that were rate limits (429): after DROP_AFTER of them it is left out
+
 
     def call_url(self, url, method, params, gap=0.2):
         st, raw = http(url, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}, gap=gap)
@@ -151,10 +156,17 @@ class Rpc:
         return st, j.get("result")
 
     def call(self, method, params):
-        for url, gap in self.urls:
+        for url, gap in list(self.urls):
             st, res = self.call_url(url, method, params, gap)
             key = ("helius " if "helius" in url else "public ") + str(st)
             self.codes[key] = self.codes.get(key, 0) + 1
+            if "helius" in url and len(self.urls) > 1:
+                self.miss = getattr(self, "miss", 0) + 1 if st == 429 else 0
+                if self.miss >= DROP_AFTER:          # the key's limit is used up: each call would wait 23 s for nothing
+                    with _glock:
+                        if len(self.urls) > 1 and "helius" in self.urls[0][0]:
+                            self.urls = self.urls[1:]
+                            log("helius rpc left out after %d rate-limit answers in a row; public RPC only" % DROP_AFTER)
             if res is not None:
                 return res
         return None

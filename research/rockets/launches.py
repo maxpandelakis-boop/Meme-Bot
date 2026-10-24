@@ -30,7 +30,7 @@ own first buy. Nothing is bought. HK (the Helius key) is only passed to the scri
 import base64, concurrent.futures, glob, gzip, hashlib, itertools, json, os, sys, threading, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from meta_chain import PUMP, PUBLIC_RPC, Rpc, b58e, curve_address, http, log, metadata_file, pda  # noqa: E402
+from meta_chain import DROP_AFTER, PUMP, PUBLIC_RPC, Rpc, b58e, curve_address, http, log, metadata_file, pda  # noqa: E402
 
 MINT_AUTHORITY = pda([b"mint-authority"], PUMP)
 EV_CREATE = hashlib.sha256(b"event:CreateEvent").digest()[:8]
@@ -984,13 +984,23 @@ class Spread:
         self.urls.append((PUBLIC_RPC, float(os.environ.get("PGAP") or 0.26)))
         self.rpcs = [rpc_only(u, g) for u, g in self.urls]
         self._k = itertools.count()
+        self.miss = 0
         log("rpc", ["helius" if "helius" in u else "public" for u, _ in self.urls])
 
     def call(self, method, params):
         k = next(self._k)
-        for j in range(len(self.rpcs)):
-            r = self.rpcs[(k + j) % len(self.rpcs)]
+        rpcs = list(self.rpcs)
+        for j in range(len(rpcs)):
+            r = rpcs[(k + j) % len(rpcs)]
+            n0 = r.codes.get("helius 429", 0)
             v = r.call(method, params)
+            if r is not rpcs[-1] and len(self.rpcs) > 1:     # Helius: left out after DROP_AFTER rate limits in a row
+                hit = r.codes.get("helius 429", 0) > n0
+                self.miss = self.miss + 1 if hit and v is None else 0
+                if self.miss >= DROP_AFTER and r in self.rpcs:
+                    self.rpcs = [x for x in self.rpcs if x is not r]
+                    self.urls = self.urls[-1:]
+                    log("helius rpc left out after %d rate-limit answers in a row; public RPC only" % DROP_AFTER)
             if v is not None:
                 return v
         return None
