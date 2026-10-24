@@ -12,7 +12,7 @@ the fixtures are hand-made candles and docs, nothing is fetched.
      own candles ("chart": "scan"), sells at the live 6-hour limit at that minute's price, keeps the rule (no restart), and leaves the
      open positions for the watch (db/memebot/pickopen.json)
   L4 rocket_watch.watch looks at the Pick's open positions every minute from LIVE_SELL_AT on (the scan's list), sells on the low, keeps
-     the sale for the scan (pick_live.json, picklog), sells at the 6-hour limit at DexScreener's price, drops what the scan booked;
+     the sale for the scan (pick_live.json, picklog), sells at the 6-hour limit at its minute's candle price, drops what the scan booked;
      a pool without candles is judged on DexScreener's price of the minute; before LIVE_SELL_AT it does nothing for the Pick
   L5 shadow.replay: a buy from LIVE_SELL_AT on is replayed on the minute's low and high (the path's "w"), every rule alike; an older one
      on closes as before
@@ -200,13 +200,15 @@ def l4(check):
             # 6 hours after the entry: the next look sells at DexScreener's price; the scan has booked pa meanwhile (no longer listed)
             json.dump({"v": 1, "t": T + 2 * H, "since": LIVE, "open": [row("pb", "B" * 44, "pB", 2.0)]}, open(os.path.join(mock, "pickopen.json"), "w"))
             now[0] = T + 30 * MIN + 6 * H + 20_000
-            json.dump(gt([(T + i * MIN, 2.0, 2.02, 1.96, 2.0) for i in range(30, 391)]), open(os.path.join(mock, "gt_pB_ohlcv.json"), "w"))
+            now[0] += 3 * MIN                # the first look after the limit comes a few minutes late (a round ran)
+            json.dump(gt([(T + i * MIN, 2.0, 2.02, 1.96, 2.2 if i == 389 else 2.0) for i in range(30, 394)]), open(os.path.join(mock, "gt_pB_ohlcv.json"), "w"))
             out2 = RW.watch(rk, now[0] + 2 * MIN, mock, clock=lambda: now[0], sleep=sleep)
             st2 = json.load(open(os.path.join(rk, RW.PICK_FILE)))
             sb = st2["sold"].get("pb") or {}
-            check(out2.get("pick") == 1 and sb.get("why") == "time" and abs(sb["mult"] - 1.2) < 1e-9 and (st2["sold"].get("pa") or {}).get("booked")
-                  and list(st2["pos"]) == ["pb"] and RW.pick_doc(st2, now[0])["pos"] == {},
-                  "L4 the 6-hour limit sells at the price of that minute; a sale the scan booked stays in the view a day, marked booked (%s)" % out2)
+            check(out2.get("pick") == 1 and sb.get("why") == "time" and sb.get("at") == T + 30 * MIN + 6 * H and abs(sb["mult"] - 1.1) < 1e-9
+                  and (st2["sold"].get("pa") or {}).get("booked") and list(st2["pos"]) == ["pb"] and RW.pick_doc(st2, now[0])["pos"] == {},
+                  "L4 the 6-hour limit sells at its minute at that minute's candle price (1.1x, not DexScreener's 1.2x of the late look); a sale "
+                  "the scan booked stays in the view a day, marked booked (%s)" % out2)
             # pools GeckoTerminal has no candles for: the stop and the take-profit on DexScreener's price of that minute (as the scan
             # judges them on its own price then); one in between stays open
             rk2, mock2 = os.path.join(tmp, "rk2"), os.path.join(tmp, "mock2")
