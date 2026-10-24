@@ -13,7 +13,7 @@ the fixtures are hand-made candles and docs, nothing is fetched.
      open positions for the watch (db/memebot/pickopen.json)
   L4 rocket_watch.watch looks at the Pick's open positions every minute from LIVE_SELL_AT on (the scan's list), sells on the low, keeps
      the sale for the scan (pick_live.json, picklog), sells at the 6-hour limit at DexScreener's price, drops what the scan booked;
-     before LIVE_SELL_AT it does nothing for the Pick
+     a pool without candles is judged on DexScreener's price of the minute; before LIVE_SELL_AT it does nothing for the Pick
   L5 shadow.replay: a buy from LIVE_SELL_AT on is replayed on the minute's low and high (the path's "w"), every rule alike; an older one
      on closes as before
   L6 the page: the rule's words (live chart, every minute) and the Pick tab's live line with its script after LIVE_SELL_AT, the old words
@@ -207,6 +207,25 @@ def l4(check):
             check(out2.get("pick") == 1 and sb.get("why") == "time" and abs(sb["mult"] - 1.2) < 1e-9 and (st2["sold"].get("pa") or {}).get("booked")
                   and list(st2["pos"]) == ["pb"] and RW.pick_doc(st2, now[0])["pos"] == {},
                   "L4 the 6-hour limit sells at the price of that minute; a sale the scan booked stays in the view a day, marked booked (%s)" % out2)
+            # pools GeckoTerminal has no candles for: the stop and the take-profit on DexScreener's price of that minute (as the scan
+            # judges them on its own price then); one in between stays open
+            rk2, mock2 = os.path.join(tmp, "rk2"), os.path.join(tmp, "mock2")
+            os.makedirs(rk2); os.makedirs(mock2)
+            json.dump({"v": 1, "t": T + H, "since": LIVE, "open": [row("pc", "C" * 44, "pC", 1.0), row("pd", "D" * 44, "pD", 1.0), row("pe", "E" * 44, "pE", 1.0)]},
+                      open(os.path.join(mock2, "pickopen.json"), "w"))
+            json.dump([{"baseToken": {"address": a * 44}, "pairAddress": "p" + a, "priceUsd": v} for a, v in (("C", "0.65"), ("D", "11.5"), ("E", "0.8"))],
+                      open(os.path.join(mock2, "ds.json"), "w"))
+            n5 = [T + 2 * H]
+
+            def sleep5(x):
+                n5[0] += x * 1000
+            out5 = RW.watch(rk2, T + 2 * H + 30_000, mock2, clock=lambda: n5[0], sleep=sleep5)
+            st5 = json.load(open(os.path.join(rk2, RW.PICK_FILE)))
+            sc, sd = st5["sold"].get("pc") or {}, st5["sold"].get("pd") or {}
+            check(out5.get("pick") == 2 and sc.get("why") == "stop" and sc.get("at") == T + 2 * H and abs(sc["mult"] - 0.65) < 1e-9
+                  and sd.get("why") == "tp" and sd.get("mult") == 1.0 + M.HOLD_TP and "pe" not in st5["sold"] and RW.pick_doc(st5, n5[0])["pos"].keys() == {"pe"},
+                  "L4 a pool without candles: DexScreener's price of the minute at 0.65x is a stop at that price, at 11.5x a take-profit at 11x, "
+                  "0.8x stays open (%s)" % out5)
             out3 = RW.watch(rk, now[0] + 2 * MIN, os.path.join(tmp, "none"), clock=lambda: now[0], sleep=sleep)
         with live_at(LIVE + 100 * H):
             os.remove(os.path.join(rk, RW.PICK_FILE))

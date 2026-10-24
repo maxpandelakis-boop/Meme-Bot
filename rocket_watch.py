@@ -15,8 +15,8 @@ BTC and SOL hourly candles come from Binance's public market-data mirror. The wa
 wallets with 5 or more graduated coins of Aug-Oct 2026 and how they did) is read only.
 Between two rounds, `watch` looks at the open positions only, every minute (rule A, a sell at once, the app's live row every look).
 From memebot.LIVE_SELL_AT on it also looks at the Pick account's open positions every minute (the scan's list, memebot.LIVE_OPEN_ROW in
-the app's live store): the Pick's own rule judged by memebot.hold_hit on the minute's low and high, the 6-hour limit at DexScreener's
-price; it buys and books nothing in the Pick account itself: its sales go to <dir>/pick_live.json, picklog/<UTC day>.jsonl and the live
+the app's live store): the Pick's own rule judged by memebot.hold_hit on the minute's low and high (a pool without candles on
+DexScreener's price), the 6-hour limit at DexScreener's price; it buys and books nothing in the Pick account itself: its sales go to <dir>/pick_live.json, picklog/<UTC day>.jsonl and the live
 row memebot.LIVE_WATCH_ROW, and the next scan books each at its minute. No push for them (sells are silent).
 usage: python3 rocket_watch.py round --dir rk --radar radar-data-dir [--now ms] [--mock DIR]
        python3 rocket_watch.py watch --dir rk --until unix-seconds
@@ -289,8 +289,9 @@ def pick_merge(st, src, now):
 def check_pick(http, st, pairs, now):
     """One look at the Pick account's open positions on the live chart (from memebot.LIVE_SELL_AT on): GeckoTerminal's minute candles
     since the entry, memebot.hold_hit from where the last look ended (the Pick's own rule as the scan judges it: the low at -30%, the
-    high at 11x, the stop first), else the 6-hour limit (memebot.hold_end) at DexScreener's price now. A sale is kept for the next scan,
-    which books it at its minute. Returns the sales."""
+    high at 11x, the stop first), else the 6-hour limit (memebot.hold_end) at DexScreener's price now. A pool without candles (GeckoTerminal
+    has none for some pools) is judged on DexScreener's price of the minute instead, as the scan judges it on its own price then. A sale is
+    kept for the next scan, which books it at its minute. Returns the sales."""
     out = []
     if now < M.live_sell_at():
         return out
@@ -313,6 +314,9 @@ def check_pick(http, st, pairs, now):
         end = M.hold_end(t0)
         if hc["hit"]:
             sale = {"at": int(hc["hit"]), "why": hc["why"], "mult": 1.0 + M.HOLD_TP if hc["why"] == "tp" else min(hc["mult"], 1.0 - M.HOLD_STOP)}
+        elif not hc["fresh"] and px and (px >= (1.0 + M.HOLD_TP) * entry or px <= (1.0 - M.HOLD_STOP) * entry):
+            # no candle came in: both levels on DexScreener's price of this minute (memebot.cmd_run's no-candle check, every minute)
+            sale = {"at": int(now), "why": "tp" if px > entry else "stop", "mult": 1.0 + M.HOLD_TP if px > entry else px / entry}
         elif end and now >= end and px:
             sale = {"at": int(now), "why": "time", "mult": px / entry}
         else:
