@@ -322,3 +322,9 @@ What follows, all fixed before the next check runs:
 
 So universe L is Pumpfun_v2 alone: **fit w3 (10 Aug - 7 Sep), unseen w4 (10 Sep - 6 Oct)**, the full month of amendment 7.
 Mayhem-mode launches are history only (amendment 8). There is no w5 in universe L; w5 stays in the graduation study.
+
+**verify3 result (13:08 UTC, verify3.json):** Pumpfun_v2 passes rule 1. Of the chain's 5,159 launches in the 6 half-hours,
+5,033 are in it (97.6 %; 11 more signatures could not be read, counting them as missing gives 97.3 %). The weakest half-hour is
+18 Sep 15:00 (839 of 965), a day on which the dataset is known to be short. 4,706 of its 4,706 rows in those half-hours are
+launches on the chain. So **universe L = Pumpfun_v2: 10 Aug - 7 Sep (fit, w3) and 10 Sep - 6 Oct (unseen, w4)**, mayhem
+launches as history only. Build: `launches.py build` with SOURCES=v2 (rockets-luniverse.yml, branch rocketslaunches).
