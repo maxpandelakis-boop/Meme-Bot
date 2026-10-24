@@ -1,0 +1,3719 @@
+{
+ "rules": 222,
+ "families": {
+  "P": {
+   "rows": 13771,
+   "coins": {
+    "w1": 348,
+    "w2": 394,
+    "w3": 569,
+    "w4": 356,
+    "w5": 185
+   },
+   "steps": {
+    "w2": {
+     "fit": [
+      "w1"
+     ],
+     "test": "w2",
+     "filters": 2245,
+     "combos": 393828,
+     "eligible": 393828,
+     "MEAN": {
+      "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+      "rule": "no stop / 11x / 24 h",
+      "fitScore": 26.49,
+      "test": {
+       "n": 17,
+       "mean": -25.33,
+       "meanAfterAllowance": -26.08,
+       "lowerBound": -40.17,
+       "pBoot": 0.9998,
+       "totalWithoutBest": -502.7,
+       "inProfit": 5.9,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 35,
+        "mean": 26.49,
+        "total": 927.1,
+        "inProfit": 45.7
+       },
+       "w2": {
+        "n": 17,
+        "mean": -25.33,
+        "total": -430.6,
+        "inProfit": 5.9
+       },
+       "w3": {
+        "n": 43,
+        "mean": -21.02,
+        "total": -904.0,
+        "inProfit": 14.0
+       },
+       "w4": {
+        "n": 46,
+        "mean": -3.1,
+        "total": -142.7,
+        "inProfit": 26.1
+       },
+       "w5": {
+        "n": 8,
+        "mean": -10.16,
+        "total": -81.3,
+        "inProfit": 37.5
+       }
+      }
+     },
+     "WORST": {
+      "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+      "rule": "no stop / 11x / 24 h",
+      "fitScore": 26.49,
+      "test": {
+       "n": 17,
+       "mean": -25.33,
+       "meanAfterAllowance": -26.08,
+       "lowerBound": -40.17,
+       "pBoot": 0.9998,
+       "totalWithoutBest": -502.7,
+       "inProfit": 5.9,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 35,
+        "mean": 26.49,
+        "total": 927.1,
+        "inProfit": 45.7
+       },
+       "w2": {
+        "n": 17,
+        "mean": -25.33,
+        "total": -430.6,
+        "inProfit": 5.9
+       },
+       "w3": {
+        "n": 43,
+        "mean": -21.02,
+        "total": -904.0,
+        "inProfit": 14.0
+       },
+       "w4": {
+        "n": 46,
+        "mean": -3.1,
+        "total": -142.7,
+        "inProfit": 26.1
+       },
+       "w5": {
+        "n": 8,
+        "mean": -10.16,
+        "total": -81.3,
+        "inProfit": 37.5
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "no stop / 11x / 24 h",
+       "fit": 26.49,
+       "testN": 17,
+       "testMean": -25.33,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "-70% / 11x / 24 h",
+       "fit": 26.47,
+       "testN": 17,
+       "testMean": -23.89,
+       "p": 0.99975
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "no stop / no target / 24 h",
+       "fit": 19.12,
+       "testN": 17,
+       "testMean": -25.33,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "-70% / no target / 24 h",
+       "fit": 19.1,
+       "testN": 17,
+       "testMean": -23.89,
+       "p": 0.99975
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "-30% / 11x / 24 h",
+       "fit": 18.85,
+       "testN": 17,
+       "testMean": -15.01,
+       "p": 0.995
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "-20% / 11x / 24 h",
+       "fit": 18.79,
+       "testN": 17,
+       "testMean": -14.05,
+       "p": 1.0
+      },
+      {
+       "filter": "hath >= 11.42 and vola1h >= 0.07513",
+       "rule": "-20% / 11x / 24 h",
+       "fit": 18.46,
+       "testN": 73,
+       "testMean": 1.41,
+       "p": 0.5105
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "trailing 50% / 24 h",
+       "fit": 18.1,
+       "testN": 17,
+       "testMean": -14.17,
+       "p": 0.974
+      },
+      {
+       "filter": "lmc <= 5.07 and ddath <= -0.4887",
+       "rule": "no stop / no target / 24 h",
+       "fit": 17.94,
+       "testN": 48,
+       "testMean": -21.96,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.07 and ddath <= -0.4887",
+       "rule": "-70% / no target / 24 h",
+       "fit": 17.94,
+       "testN": 48,
+       "testMean": -20.14,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.07 and ddath <= -0.4887",
+       "rule": "no stop / 11x / 24 h",
+       "fit": 17.91,
+       "testN": 48,
+       "testMean": -21.96,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.07 and ddath <= -0.4887",
+       "rule": "-70% / 11x / 24 h",
+       "fit": 17.91,
+       "testN": 48,
+       "testMean": -20.14,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 0.0896 and lvol1 <= 3.493",
+       "rule": "-20% / 3x / 24 h",
+       "fit": 17.62,
+       "testN": 43,
+       "testMean": -1.79,
+       "p": 0.7035
+      },
+      {
+       "filter": "r1h >= 0.0896 and lvol1 <= 3.493",
+       "rule": "-30% / 3x / 24 h",
+       "fit": 17.02,
+       "testN": 43,
+       "testMean": -2.59,
+       "p": 0.74775
+      },
+      {
+       "filter": "liqmc >= 0.2284 and ddath <= -0.4887",
+       "rule": "-50% / 11x / 24 h",
+       "fit": 16.92,
+       "testN": 17,
+       "testMean": -21.96,
+       "p": 0.99925
+      },
+      {
+       "filter": "hath >= 11.42 and vola1h >= 0.07513",
+       "rule": "-30% / 11x / 24 h",
+       "fit": 16.62,
+       "testN": 73,
+       "testMean": -2.61,
+       "p": 0.70075
+      },
+      {
+       "filter": "volmc <= 1.337 and mlast <= 2.383",
+       "rule": "-30% / 3x / 24 h",
+       "fit": 16.05,
+       "testN": 35,
+       "testMean": -5.01,
+       "p": 0.7845
+      },
+      {
+       "filter": "liqmc >= 0.2284 and vola1h <= 0.01935",
+       "rule": "-30% / 11x / 24 h",
+       "fit": 16.05,
+       "testN": 11,
+       "testMean": -17.7,
+       "p": 0.97675
+      },
+      {
+       "filter": "hath >= 11.42 and up1h <= 0.4167",
+       "rule": "-20% / 11x / 24 h",
+       "fit": 15.97,
+       "testN": 105,
+       "testMean": -7.15,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.337 and mlast <= 2.383",
+       "rule": "no stop / 3x / 24 h",
+       "fit": 15.96,
+       "testN": 35,
+       "testMean": -7.21,
+       "p": 0.81975
+      }
+     ],
+     "top20PositiveOnTest": 1,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "volmc <= 1.337 and hath >= 8.417",
+      "rule": "-10% / no target / 6 h",
+      "coins": 48,
+      "mean": 53.95
+     }
+    },
+    "w3": {
+     "fit": [
+      "w1",
+      "w2"
+     ],
+     "test": "w3",
+     "filters": 2245,
+     "combos": 378510,
+     "eligible": 378510,
+     "MEAN": {
+      "filter": "ddath >= -0.2357 and mlast <= 1.333",
+      "rule": "trailing 50% / 24 h",
+      "fitScore": 25.23,
+      "test": {
+       "n": 98,
+       "mean": -15.99,
+       "meanAfterAllowance": -16.74,
+       "lowerBound": -27.29,
+       "pBoot": 0.9998,
+       "totalWithoutBest": -1823.4,
+       "inProfit": 34.7,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 37,
+        "mean": -6.68,
+        "total": -247.0,
+        "inProfit": 21.6
+       },
+       "w2": {
+        "n": 37,
+        "mean": 57.13,
+        "total": 2113.9,
+        "inProfit": 24.3
+       },
+       "w3": {
+        "n": 98,
+        "mean": -15.99,
+        "total": -1567.0,
+        "inProfit": 34.7
+       },
+       "w4": {
+        "n": 43,
+        "mean": -14.17,
+        "total": -609.2,
+        "inProfit": 34.9
+       },
+       "w5": {
+        "n": 26,
+        "mean": -15.32,
+        "total": -398.4,
+        "inProfit": 30.8
+       }
+      }
+     },
+     "WORST": {
+      "filter": "r24h <= 2.388 and mlast >= 4.733",
+      "rule": "-30% / 5x / 12 h",
+      "fitScore": 9.25,
+      "test": {
+       "n": 100,
+       "mean": 0.62,
+       "meanAfterAllowance": -0.13,
+       "lowerBound": -8.42,
+       "pBoot": 0.5315,
+       "totalWithoutBest": -176.4,
+       "inProfit": 32.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 41,
+        "mean": 9.25,
+        "total": 379.0,
+        "inProfit": 51.2
+       },
+       "w2": {
+        "n": 48,
+        "mean": 19.77,
+        "total": 948.9,
+        "inProfit": 47.9
+       },
+       "w3": {
+        "n": 100,
+        "mean": 0.62,
+        "total": 62.5,
+        "inProfit": 32.0
+       },
+       "w4": {
+        "n": 63,
+        "mean": -10.09,
+        "total": -635.9,
+        "inProfit": 11.1
+       },
+       "w5": {
+        "n": 26,
+        "mean": -4.55,
+        "total": -118.3,
+        "inProfit": 30.8
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "ddath >= -0.2357 and mlast <= 1.333",
+       "rule": "trailing 50% / 24 h",
+       "fit": 25.23,
+       "testN": 98,
+       "testMean": -15.99,
+       "p": 0.9995
+      },
+      {
+       "filter": "ddath >= -0.2357 and mlast <= 1.333",
+       "rule": "-30% / no target / 24 h",
+       "fit": 24.84,
+       "testN": 98,
+       "testMean": -14.8,
+       "p": 0.9995
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.004059",
+       "rule": "-10% / no target / 12 h",
+       "fit": 24.22,
+       "testN": 48,
+       "testMean": -4.52,
+       "p": 0.968
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.004059",
+       "rule": "-20% / no target / 12 h",
+       "fit": 23.95,
+       "testN": 48,
+       "testMean": -3.41,
+       "p": 0.893
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.004059",
+       "rule": "-30% / no target / 12 h",
+       "fit": 23.25,
+       "testN": 48,
+       "testMean": -0.16,
+       "p": 0.6
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.004059",
+       "rule": "-50% / no target / 12 h",
+       "fit": 22.31,
+       "testN": 48,
+       "testMean": -0.63,
+       "p": 0.6325
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.004059",
+       "rule": "-70% / no target / 12 h",
+       "fit": 21.88,
+       "testN": 48,
+       "testMean": -0.93,
+       "p": 0.64925
+      },
+      {
+       "filter": "ddath <= -0.4601 and vola1h <= 0.02284",
+       "rule": "-10% / no target / 6 h",
+       "fit": 21.68,
+       "testN": 87,
+       "testMean": -2.32,
+       "p": 0.90025
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.004059",
+       "rule": "no stop / no target / 12 h",
+       "fit": 21.63,
+       "testN": 48,
+       "testMean": -0.61,
+       "p": 0.62475
+      },
+      {
+       "filter": "ddath <= -0.4601 and vola1h <= 0.02284",
+       "rule": "-20% / no target / 6 h",
+       "fit": 21.58,
+       "testN": 87,
+       "testMean": -1.35,
+       "p": 0.81275
+      },
+      {
+       "filter": "ddath >= -0.2357 and mlast <= 1.333",
+       "rule": "-50% / no target / 24 h",
+       "fit": 21.36,
+       "testN": 98,
+       "testMean": -16.41,
+       "p": 0.99975
+      },
+      {
+       "filter": "volmc <= 1.595 and r6h <= -0.00638",
+       "rule": "no stop / no target / 6 h",
+       "fit": 21.33,
+       "testN": 121,
+       "testMean": 1.55,
+       "p": 0.3675
+      },
+      {
+       "filter": "volmc <= 1.595 and r6h <= -0.00638",
+       "rule": "-50% / no target / 6 h",
+       "fit": 21.2,
+       "testN": 121,
+       "testMean": 1.24,
+       "p": 0.41925
+      },
+      {
+       "filter": "ddath <= -0.4601 and vola1h <= 0.02284",
+       "rule": "-30% / no target / 6 h",
+       "fit": 21.13,
+       "testN": 87,
+       "testMean": 0.01,
+       "p": 0.61825
+      },
+      {
+       "filter": "volmc <= 1.595 and r6h <= -0.00638",
+       "rule": "-70% / no target / 6 h",
+       "fit": 20.84,
+       "testN": 121,
+       "testMean": 1.58,
+       "p": 0.364
+      },
+      {
+       "filter": "ddath <= -0.4601 and vola1h <= 0.02284",
+       "rule": "-50% / no target / 6 h",
+       "fit": 19.96,
+       "testN": 87,
+       "testMean": -0.96,
+       "p": 0.72575
+      },
+      {
+       "filter": "r6h <= -0.1157 and vola1h <= 0.02284",
+       "rule": "-10% / no target / 6 h",
+       "fit": 19.95,
+       "testN": 78,
+       "testMean": -0.24,
+       "p": 0.69675
+      },
+      {
+       "filter": "r6h <= -0.1157 and vola1h <= 0.02284",
+       "rule": "-20% / no target / 6 h",
+       "fit": 19.94,
+       "testN": 78,
+       "testMean": -0.45,
+       "p": 0.71025
+      },
+      {
+       "filter": "r6h <= -0.1157 and lvol1 <= 3.58",
+       "rule": "-10% / no target / 6 h",
+       "fit": 19.64,
+       "testN": 68,
+       "testMean": 1.11,
+       "p": 0.45325
+      },
+      {
+       "filter": "volmc <= 1.595 and r6h <= -0.00638",
+       "rule": "-30% / no target / 6 h",
+       "fit": 19.59,
+       "testN": 121,
+       "testMean": 1.62,
+       "p": 0.353
+      }
+     ],
+     "top20PositiveOnTest": 6,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "r5 >= 0.009818 and r24h >= 7.836",
+      "rule": "-70% / 11x / 6 h",
+      "coins": 41,
+      "mean": 16.11
+     }
+    },
+    "w4": {
+     "fit": [
+      "w1",
+      "w2",
+      "w3"
+     ],
+     "test": "w4",
+     "filters": 2245,
+     "combos": 293706,
+     "eligible": 293706,
+     "MEAN": {
+      "filter": "age_h <= 10 and vol1s <= 0.005187",
+      "rule": "-30% / no target / 12 h",
+      "fitScore": 12.25,
+      "test": {
+       "n": 53,
+       "mean": -7.92,
+       "meanAfterAllowance": -8.67,
+       "lowerBound": -16.02,
+       "pBoot": 1.0,
+       "totalWithoutBest": -484.4,
+       "inProfit": 11.3,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 30,
+        "mean": 0.65,
+        "total": 19.6,
+        "inProfit": 43.3
+       },
+       "w2": {
+        "n": 48,
+        "mean": 32.27,
+        "total": 1549.0,
+        "inProfit": 39.6
+       },
+       "w3": {
+        "n": 54,
+        "mean": 0.9,
+        "total": 48.5,
+        "inProfit": 27.8
+       },
+       "w4": {
+        "n": 53,
+        "mean": -7.92,
+        "total": -420.0,
+        "inProfit": 11.3
+       },
+       "w5": {
+        "n": 19,
+        "mean": -15.26,
+        "total": -290.0,
+        "inProfit": 26.3
+       }
+      }
+     },
+     "WORST": {
+      "filter": "mlast >= 4.717 and up1h >= 0.5833",
+      "rule": "-20% / 5x / 12 h",
+      "fitScore": 4.35,
+      "test": {
+       "n": 21,
+       "mean": -18.83,
+       "meanAfterAllowance": -19.58,
+       "lowerBound": -31.29,
+       "pBoot": 1.0,
+       "totalWithoutBest": -414.8,
+       "inProfit": 9.5,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 52,
+        "mean": 4.61,
+        "total": 239.8,
+        "inProfit": 51.9
+       },
+       "w2": {
+        "n": 57,
+        "mean": 4.35,
+        "total": 248.1,
+        "inProfit": 36.8
+       },
+       "w3": {
+        "n": 47,
+        "mean": 5.36,
+        "total": 251.7,
+        "inProfit": 46.8
+       },
+       "w4": {
+        "n": 21,
+        "mean": -18.83,
+        "total": -395.4,
+        "inProfit": 9.5
+       },
+       "w5": {
+        "n": 25,
+        "mean": -9.85,
+        "total": -246.3,
+        "inProfit": 32.0
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "-30% / no target / 12 h",
+       "fit": 12.25,
+       "testN": 53,
+       "testMean": -7.92,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "-10% / no target / 12 h",
+       "fit": 11.65,
+       "testN": 53,
+       "testMean": -7.39,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "-20% / no target / 12 h",
+       "fit": 11.46,
+       "testN": 53,
+       "testMean": -6.76,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "-50% / no target / 12 h",
+       "fit": 11.36,
+       "testN": 53,
+       "testMean": -3.17,
+       "p": 0.776
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "-70% / no target / 12 h",
+       "fit": 10.86,
+       "testN": 53,
+       "testMean": -3.14,
+       "p": 0.77575
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "no stop / no target / 12 h",
+       "fit": 10.73,
+       "testN": 53,
+       "testMean": -3.23,
+       "p": 0.77925
+      },
+      {
+       "filter": "r6h <= -0.04811 and lvol1 <= 3.473",
+       "rule": "-10% / no target / 6 h",
+       "fit": 9.12,
+       "testN": 52,
+       "testMean": -1.3,
+       "p": 0.864
+      },
+      {
+       "filter": "mlast >= 4.717 and up1h >= 0.6667",
+       "rule": "-70% / no target / 12 h",
+       "fit": 8.88,
+       "testN": 15,
+       "testMean": -26.93,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s <= 0.005187 and r6h >= 0.1633",
+       "rule": "-30% / no target / 12 h",
+       "fit": 8.85,
+       "testN": 32,
+       "testMean": -2.35,
+       "p": 0.688
+      },
+      {
+       "filter": "vol1s <= 0.005187 and r6h >= 0.1633",
+       "rule": "-10% / no target / 12 h",
+       "fit": 8.85,
+       "testN": 32,
+       "testMean": -8.44,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s <= 0.005187 and r6h >= 0.1633",
+       "rule": "-20% / no target / 12 h",
+       "fit": 8.72,
+       "testN": 32,
+       "testMean": -0.76,
+       "p": 0.63
+      },
+      {
+       "filter": "mlast >= 4.717 and up1h >= 0.6667",
+       "rule": "-70% / 11x / 12 h",
+       "fit": 8.68,
+       "testN": 15,
+       "testMean": -26.93,
+       "p": 1.0
+      },
+      {
+       "filter": "r6h <= -0.04811 and lvol1 <= 3.473",
+       "rule": "-20% / no target / 6 h",
+       "fit": 8.64,
+       "testN": 52,
+       "testMean": -2.42,
+       "p": 0.934
+      },
+      {
+       "filter": "r6h <= -0.04811 and lvol1 <= 3.473",
+       "rule": "-30% / no target / 6 h",
+       "fit": 8.62,
+       "testN": 52,
+       "testMean": -2.86,
+       "p": 0.95125
+      },
+      {
+       "filter": "mlast >= 4.717 and up1h >= 0.6667",
+       "rule": "no stop / no target / 12 h",
+       "fit": 8.57,
+       "testN": 15,
+       "testMean": -27.81,
+       "p": 1.0
+      },
+      {
+       "filter": "mlast >= 4.717 and up1h >= 0.6667",
+       "rule": "-50% / no target / 12 h",
+       "fit": 8.57,
+       "testN": 15,
+       "testMean": -24.81,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 10 and vol1s <= 0.005187",
+       "rule": "-30% / no target / 6 h",
+       "fit": 8.56,
+       "testN": 53,
+       "testMean": -6.32,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 12 and vol1s <= 0.005187",
+       "rule": "-30% / no target / 12 h",
+       "fit": 8.53,
+       "testN": 64,
+       "testMean": -8.48,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 12 and vol1s <= 0.005187",
+       "rule": "-10% / no target / 12 h",
+       "fit": 8.4,
+       "testN": 64,
+       "testMean": -7.6,
+       "p": 1.0
+      },
+      {
+       "filter": "mlast >= 4.717 and up1h >= 0.6667",
+       "rule": "no stop / 11x / 12 h",
+       "fit": 8.37,
+       "testN": 15,
+       "testMean": -27.81,
+       "p": 1.0
+      }
+     ],
+     "top20PositiveOnTest": 0,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "volmc >= 2.723 and mlast >= 3.95",
+      "rule": "no stop / 11x / 12 h",
+      "coins": 40,
+      "mean": 22.59
+     }
+    },
+    "w5": {
+     "fit": [
+      "w1",
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "test": "w5",
+     "filters": 2245,
+     "combos": 279276,
+     "eligible": 279276,
+     "MEAN": {
+      "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+      "rule": "no stop / no target / 12 h",
+      "fitScore": 7.15,
+      "test": {
+       "n": 17,
+       "mean": -1.17,
+       "meanAfterAllowance": -1.92,
+       "lowerBound": -19.61,
+       "pBoot": 0.6267,
+       "totalWithoutBest": -118.8,
+       "inProfit": 35.3,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 34,
+        "mean": 3.85,
+        "total": 130.8,
+        "inProfit": 50.0
+       },
+       "w2": {
+        "n": 44,
+        "mean": 32.32,
+        "total": 1422.1,
+        "inProfit": 31.8
+       },
+       "w3": {
+        "n": 60,
+        "mean": -3.94,
+        "total": -236.5,
+        "inProfit": 40.0
+       },
+       "w4": {
+        "n": 30,
+        "mean": -3.86,
+        "total": -115.9,
+        "inProfit": 23.3
+       },
+       "w5": {
+        "n": 17,
+        "mean": -1.17,
+        "total": -20.0,
+        "inProfit": 35.3
+       }
+      }
+     },
+     "WORST": {
+      "filter": "vol1s <= 0.01115 and up1h >= 0.6667",
+      "rule": "-20% / 11x / 6 h",
+      "fitScore": 2.07,
+      "test": {
+       "n": 34,
+       "mean": 0.04,
+       "meanAfterAllowance": -0.71,
+       "lowerBound": -11.82,
+       "pBoot": 0.5967,
+       "totalWithoutBest": -168.2,
+       "inProfit": 38.2,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 56,
+        "mean": 2.07,
+        "total": 116.1,
+        "inProfit": 44.6
+       },
+       "w2": {
+        "n": 91,
+        "mean": 2.97,
+        "total": 270.6,
+        "inProfit": 35.2
+       },
+       "w3": {
+        "n": 52,
+        "mean": 3.29,
+        "total": 171.3,
+        "inProfit": 42.3
+       },
+       "w4": {
+        "n": 30,
+        "mean": 11.05,
+        "total": 331.6,
+        "inProfit": 63.3
+       },
+       "w5": {
+        "n": 34,
+        "mean": 0.04,
+        "total": 1.3,
+        "inProfit": 38.2
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+       "rule": "no stop / no target / 12 h",
+       "fit": 7.15,
+       "testN": 17,
+       "testMean": -1.17,
+       "p": 0.6355
+      },
+      {
+       "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+       "rule": "-50% / no target / 12 h",
+       "fit": 7.01,
+       "testN": 17,
+       "testMean": -2.4,
+       "p": 0.69075
+      },
+      {
+       "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+       "rule": "-70% / no target / 12 h",
+       "fit": 6.78,
+       "testN": 17,
+       "testMean": -3.02,
+       "p": 0.71375
+      },
+      {
+       "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+       "rule": "-20% / no target / 12 h",
+       "fit": 6.47,
+       "testN": 17,
+       "testMean": -0.04,
+       "p": 0.5805
+      },
+      {
+       "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+       "rule": "-30% / no target / 12 h",
+       "fit": 6.28,
+       "testN": 17,
+       "testMean": -3.0,
+       "p": 0.71725
+      },
+      {
+       "filter": "vol1s <= 0.003691 and up1h <= 0.4",
+       "rule": "-10% / no target / 12 h",
+       "fit": 6.06,
+       "testN": 18,
+       "testMean": -7.75,
+       "p": 0.99
+      },
+      {
+       "filter": "vol1s <= 0.003691 and up1h <= 0.4",
+       "rule": "-70% / no target / 12 h",
+       "fit": 5.56,
+       "testN": 18,
+       "testMean": -4.5,
+       "p": 0.73875
+      },
+      {
+       "filter": "r6h >= 0.3175 and lvol1 <= 3.445",
+       "rule": "-10% / no target / 12 h",
+       "fit": 5.55,
+       "testN": 17,
+       "testMean": 0.15,
+       "p": 0.56925
+      },
+      {
+       "filter": "vol1s <= 0.003691 and up1h <= 0.4",
+       "rule": "-20% / no target / 12 h",
+       "fit": 5.45,
+       "testN": 18,
+       "testMean": -2.33,
+       "p": 0.67575
+      },
+      {
+       "filter": "vol1s <= 0.01115 and r6h <= -0.0362",
+       "rule": "-70% / no target / 6 h",
+       "fit": 5.44,
+       "testN": 36,
+       "testMean": -7.03,
+       "p": 0.92125
+      },
+      {
+       "filter": "lvol1 <= 3.445 and up1h <= 0.4",
+       "rule": "-30% / no target / 12 h",
+       "fit": 5.4,
+       "testN": 21,
+       "testMean": -4.87,
+       "p": 0.7875
+      },
+      {
+       "filter": "vol1s <= 0.01115 and r6h <= -0.0362",
+       "rule": "no stop / no target / 6 h",
+       "fit": 5.38,
+       "testN": 36,
+       "testMean": -5.95,
+       "p": 0.89525
+      },
+      {
+       "filter": "vol1s <= 0.01115 and r6h <= -0.0362",
+       "rule": "-50% / no target / 6 h",
+       "fit": 5.35,
+       "testN": 36,
+       "testMean": -7.51,
+       "p": 0.9325
+      },
+      {
+       "filter": "vol1s <= 0.003691 and up1h <= 0.4",
+       "rule": "no stop / no target / 12 h",
+       "fit": 5.34,
+       "testN": 18,
+       "testMean": -4.87,
+       "p": 0.74775
+      },
+      {
+       "filter": "vol1s <= 0.003691 and up1h <= 0.4167",
+       "rule": "-10% / no target / 12 h",
+       "fit": 5.11,
+       "testN": 19,
+       "testMean": -8.8,
+       "p": 0.999
+      },
+      {
+       "filter": "vol1s <= 0.01115 and r6h <= -0.0362",
+       "rule": "-30% / no target / 6 h",
+       "fit": 5.08,
+       "testN": 36,
+       "testMean": -5.56,
+       "p": 0.8905
+      },
+      {
+       "filter": "hath <= 0.25 and vola1h >= 0.05868",
+       "rule": "-20% / no target / 24 h",
+       "fit": 5.08,
+       "testN": 15,
+       "testMean": 17.25,
+       "p": 0.353
+      },
+      {
+       "filter": "vol1s <= 0.003691 and up1h <= 0.4",
+       "rule": "-30% / no target / 12 h",
+       "fit": 5.0,
+       "testN": 18,
+       "testMean": -3.23,
+       "p": 0.7115
+      },
+      {
+       "filter": "vol1s <= 0.01115 and r6h <= -0.0362",
+       "rule": "-20% / no target / 6 h",
+       "fit": 4.97,
+       "testN": 36,
+       "testMean": -2.92,
+       "p": 0.80175
+      },
+      {
+       "filter": "age_h <= 12 and vol1s <= 0.003691",
+       "rule": "-10% / no target / 12 h",
+       "fit": 4.89,
+       "testN": 18,
+       "testMean": -11.31,
+       "p": 0.99425
+      }
+     ],
+     "top20PositiveOnTest": 2,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "hath <= 1.917 and vola1h >= 0.03863",
+      "rule": "-20% / no target / 24 h",
+      "coins": 44,
+      "mean": 25.95
+     }
+    }
+   }
+  },
+  "U": {
+   "rows": 136210,
+   "coins": {
+    "w1": 1704,
+    "w2": 2126,
+    "w3": 5953,
+    "w4": 4916,
+    "w5": 1797
+   },
+   "steps": {
+    "w2": {
+     "fit": [
+      "w1"
+     ],
+     "test": "w2",
+     "filters": 2245,
+     "combos": 484404,
+     "eligible": 484404,
+     "MEAN": {
+      "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+      "rule": "trailing 50% / 12 h",
+      "fitScore": 60.08,
+      "test": {
+       "n": 229,
+       "mean": -40.82,
+       "meanAfterAllowance": -41.57,
+       "lowerBound": -46.18,
+       "pBoot": 1.0,
+       "totalWithoutBest": -9753.6,
+       "inProfit": 7.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 42,
+        "mean": 60.08,
+        "total": 2523.4,
+        "inProfit": 47.6
+       },
+       "w2": {
+        "n": 229,
+        "mean": -40.82,
+        "total": -9348.4,
+        "inProfit": 7.0
+       },
+       "w3": {
+        "n": 3477,
+        "mean": -27.33,
+        "total": -95025.0,
+        "inProfit": 26.6
+       },
+       "w4": {
+        "n": 2730,
+        "mean": -21.55,
+        "total": -58825.6,
+        "inProfit": 36.7
+       },
+       "w5": {
+        "n": 825,
+        "mean": -16.72,
+        "total": -13791.5,
+        "inProfit": 47.3
+       }
+      }
+     },
+     "WORST": {
+      "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+      "rule": "trailing 50% / 12 h",
+      "fitScore": 60.08,
+      "test": {
+       "n": 229,
+       "mean": -40.82,
+       "meanAfterAllowance": -41.57,
+       "lowerBound": -46.18,
+       "pBoot": 1.0,
+       "totalWithoutBest": -9753.6,
+       "inProfit": 7.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 42,
+        "mean": 60.08,
+        "total": 2523.4,
+        "inProfit": 47.6
+       },
+       "w2": {
+        "n": 229,
+        "mean": -40.82,
+        "total": -9348.4,
+        "inProfit": 7.0
+       },
+       "w3": {
+        "n": 3477,
+        "mean": -27.33,
+        "total": -95025.0,
+        "inProfit": 26.6
+       },
+       "w4": {
+        "n": 2730,
+        "mean": -21.55,
+        "total": -58825.6,
+        "inProfit": 36.7
+       },
+       "w5": {
+        "n": 825,
+        "mean": -16.72,
+        "total": -13791.5,
+        "inProfit": 47.3
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "trailing 50% / 12 h",
+       "fit": 60.08,
+       "testN": 229,
+       "testMean": -40.82,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-10% / no target / 24 h",
+       "fit": 60.07,
+       "testN": 44,
+       "testMean": -2.43,
+       "p": 0.70825
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-20% / no target / 24 h",
+       "fit": 60.0,
+       "testN": 44,
+       "testMean": 65.32,
+       "p": 0.09575
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-70% / no target / 24 h",
+       "fit": 59.45,
+       "testN": 44,
+       "testMean": 80.92,
+       "p": 0.023
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "trailing 50% / 24 h",
+       "fit": 59.24,
+       "testN": 44,
+       "testMean": 53.07,
+       "p": 0.01375
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-30% / no target / 24 h",
+       "fit": 58.97,
+       "testN": 44,
+       "testMean": 64.63,
+       "p": 0.10375
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "no stop / no target / 24 h",
+       "fit": 58.74,
+       "testN": 44,
+       "testMean": 79.73,
+       "p": 0.02775
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-50% / no target / 24 h",
+       "fit": 55.39,
+       "testN": 44,
+       "testMean": 81.66,
+       "p": 0.019
+      },
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "trailing 50% / 24 h",
+       "fit": 50.49,
+       "testN": 229,
+       "testMean": -42.66,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "no stop / no target / 12 h",
+       "fit": 43.43,
+       "testN": 44,
+       "testMean": 53.97,
+       "p": 0.06125
+      },
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "-10% / no target / 12 h",
+       "fit": 43.14,
+       "testN": 229,
+       "testMean": -41.98,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-30% / no target / 12 h",
+       "fit": 42.08,
+       "testN": 44,
+       "testMean": 52.07,
+       "p": 0.079
+      },
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "-20% / no target / 12 h",
+       "fit": 42.03,
+       "testN": 229,
+       "testMean": -42.54,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-70% / no target / 12 h",
+       "fit": 41.42,
+       "testN": 44,
+       "testMean": 54.63,
+       "p": 0.05325
+      },
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "-30% / no target / 12 h",
+       "fit": 41.39,
+       "testN": 229,
+       "testMean": -42.2,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-20% / no target / 12 h",
+       "fit": 40.59,
+       "testN": 44,
+       "testMean": 51.81,
+       "p": 0.083
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-50% / no target / 12 h",
+       "fit": 40.14,
+       "testN": 44,
+       "testMean": 55.36,
+       "p": 0.04425
+      },
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "-50% / no target / 12 h",
+       "fit": 39.97,
+       "testN": 229,
+       "testMean": -42.98,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and vola1h <= 0.03695",
+       "rule": "-70% / no target / 12 h",
+       "fit": 38.4,
+       "testN": 229,
+       "testMean": -43.64,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+       "rule": "-10% / no target / 12 h",
+       "fit": 38.01,
+       "testN": 44,
+       "testMean": 0.71,
+       "p": 0.53
+      }
+     ],
+     "top20PositiveOnTest": 12,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "vol1s >= 0.2311 and lvol1 <= 4.207",
+      "rule": "-50% / no target / 24 h",
+      "coins": 44,
+      "mean": 81.66
+     }
+    },
+    "w3": {
+     "fit": [
+      "w1",
+      "w2"
+     ],
+     "test": "w3",
+     "filters": 2245,
+     "combos": 481296,
+     "eligible": 481296,
+     "MEAN": {
+      "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+      "rule": "-20% / no target / 24 h",
+      "fitScore": 50.25,
+      "test": {
+       "n": 1399,
+       "mean": -27.7,
+       "meanAfterAllowance": -28.45,
+       "lowerBound": -31.55,
+       "pBoot": 1.0,
+       "totalWithoutBest": -40501.5,
+       "inProfit": 25.7,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 45,
+        "mean": 72.66,
+        "total": 3269.6,
+        "inProfit": 26.7
+       },
+       "w2": {
+        "n": 31,
+        "mean": 17.72,
+        "total": 549.3,
+        "inProfit": 35.5
+       },
+       "w3": {
+        "n": 1399,
+        "mean": -27.7,
+        "total": -38747.0,
+        "inProfit": 25.7
+       },
+       "w4": {
+        "n": 1063,
+        "mean": -20.0,
+        "total": -21255.4,
+        "inProfit": 40.3
+       },
+       "w5": {
+        "n": 21,
+        "mean": -15.29,
+        "total": -321.1,
+        "inProfit": 33.3
+       }
+      }
+     },
+     "WORST": {
+      "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+      "rule": "-30% / no target / 24 h",
+      "fitScore": 18.05,
+      "test": {
+       "n": 1399,
+       "mean": -27.91,
+       "meanAfterAllowance": -28.66,
+       "lowerBound": -31.74,
+       "pBoot": 1.0,
+       "totalWithoutBest": -40797.6,
+       "inProfit": 26.1,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 45,
+        "mean": 72.09,
+        "total": 3244.1,
+        "inProfit": 35.6
+       },
+       "w2": {
+        "n": 31,
+        "mean": 18.05,
+        "total": 559.7,
+        "inProfit": 38.7
+       },
+       "w3": {
+        "n": 1399,
+        "mean": -27.91,
+        "total": -39043.1,
+        "inProfit": 26.1
+       },
+       "w4": {
+        "n": 1063,
+        "mean": -20.28,
+        "total": -21555.6,
+        "inProfit": 40.4
+       },
+       "w5": {
+        "n": 21,
+        "mean": -16.66,
+        "total": -349.9,
+        "inProfit": 33.3
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-20% / no target / 24 h",
+       "fit": 50.25,
+       "testN": 1399,
+       "testMean": -27.7,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-30% / no target / 24 h",
+       "fit": 50.05,
+       "testN": 1399,
+       "testMean": -27.91,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-70% / no target / 24 h",
+       "fit": 49.74,
+       "testN": 1399,
+       "testMean": -28.33,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "no stop / no target / 24 h",
+       "fit": 49.09,
+       "testN": 1399,
+       "testMean": -28.55,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-10% / no target / 24 h",
+       "fit": 48.35,
+       "testN": 1399,
+       "testMean": -27.48,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-50% / no target / 24 h",
+       "fit": 47.25,
+       "testN": 1399,
+       "testMean": -28.23,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "trailing 50% / 24 h",
+       "fit": 44.75,
+       "testN": 1399,
+       "testMean": -27.49,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "no stop / no target / 12 h",
+       "fit": 35.82,
+       "testN": 1399,
+       "testMean": -21.21,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-30% / no target / 12 h",
+       "fit": 34.98,
+       "testN": 1399,
+       "testMean": -20.86,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-20% / no target / 12 h",
+       "fit": 34.8,
+       "testN": 1399,
+       "testMean": -20.93,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-70% / no target / 12 h",
+       "fit": 34.27,
+       "testN": 1399,
+       "testMean": -21.08,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-50% / no target / 12 h",
+       "fit": 33.39,
+       "testN": 1399,
+       "testMean": -21.0,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "trailing 50% / 12 h",
+       "fit": 31.54,
+       "testN": 1399,
+       "testMean": -20.81,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "-10% / no target / 12 h",
+       "fit": 30.42,
+       "testN": 1399,
+       "testMean": -20.75,
+       "p": 1.0
+      },
+      {
+       "filter": "vol1s >= 0.2429 and lvol1 <= 4.152",
+       "rule": "half at 2x, rest no stop / 24 h",
+       "fit": 26.0,
+       "testN": 1399,
+       "testMean": -24.3,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h >= 14 and vol1s >= 0.2429",
+       "rule": "trailing 50% / 24 h",
+       "fit": 20.97,
+       "testN": 112,
+       "testMean": -21.93,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.311 and hath >= 7.25",
+       "rule": "-50% / no target / 6 h",
+       "fit": 20.51,
+       "testN": 355,
+       "testMean": -6.09,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.311 and hath >= 7.25",
+       "rule": "no stop / no target / 6 h",
+       "fit": 20.27,
+       "testN": 355,
+       "testMean": -6.54,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.311 and hath >= 7.25",
+       "rule": "-70% / no target / 6 h",
+       "fit": 20.26,
+       "testN": 355,
+       "testMean": -6.35,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.311 and hath >= 7.25",
+       "rule": "-20% / no target / 6 h",
+       "fit": 20.06,
+       "testN": 355,
+       "testMean": -5.85,
+       "p": 1.0
+      }
+     ],
+     "top20PositiveOnTest": 0,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "r6h <= -0.1423 and ddath >= -0.2945",
+      "rule": "trailing 20% / 6 h",
+      "coins": 61,
+      "mean": 51.88
+     }
+    },
+    "w4": {
+     "fit": [
+      "w1",
+      "w2",
+      "w3"
+     ],
+     "test": "w4",
+     "filters": 2245,
+     "combos": 382728,
+     "eligible": 382728,
+     "MEAN": {
+      "filter": "lmc <= 5.163 and ddath >= -0.01032",
+      "rule": "-10% / no target / 24 h",
+      "fitScore": 17.94,
+      "test": {
+       "n": 30,
+       "mean": -3.49,
+       "meanAfterAllowance": -4.24,
+       "lowerBound": -20.02,
+       "pBoot": 0.7571,
+       "totalWithoutBest": -236.3,
+       "inProfit": 20.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 92,
+        "mean": 33.17,
+        "total": 3052.1,
+        "inProfit": 18.5
+       },
+       "w2": {
+        "n": 49,
+        "mean": 8.64,
+        "total": 423.4,
+        "inProfit": 10.2
+       },
+       "w3": {
+        "n": 41,
+        "mean": -5.12,
+        "total": -209.8,
+        "inProfit": 12.2
+       },
+       "w4": {
+        "n": 30,
+        "mean": -3.49,
+        "total": -104.7,
+        "inProfit": 20.0
+       },
+       "w5": {
+        "n": 14,
+        "mean": -13.1,
+        "total": -183.4,
+        "inProfit": 0.0
+       }
+      }
+     },
+     "WORST": {
+      "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+      "rule": "no stop / no target / 24 h",
+      "fitScore": 2.13,
+      "test": {
+       "n": 50,
+       "mean": 8.57,
+       "meanAfterAllowance": 7.82,
+       "lowerBound": -25.68,
+       "pBoot": 0.3772,
+       "totalWithoutBest": -436.6,
+       "inProfit": 38.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 93,
+        "mean": 27.86,
+        "total": 2590.8,
+        "inProfit": 35.5
+       },
+       "w2": {
+        "n": 43,
+        "mean": 6.58,
+        "total": 282.9,
+        "inProfit": 23.3
+       },
+       "w3": {
+        "n": 45,
+        "mean": 2.13,
+        "total": 96.1,
+        "inProfit": 37.8
+       },
+       "w4": {
+        "n": 50,
+        "mean": 8.57,
+        "total": 428.4,
+        "inProfit": 38.0
+       },
+       "w5": {
+        "n": 14,
+        "mean": -27.97,
+        "total": -391.6,
+        "inProfit": 7.1
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "-10% / no target / 24 h",
+       "fit": 17.94,
+       "testN": 30,
+       "testMean": -3.49,
+       "p": 0.75625
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "-10% / no target / 24 h",
+       "fit": 17.93,
+       "testN": 50,
+       "testMean": 8.7,
+       "p": 0.36725
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "-20% / no target / 24 h",
+       "fit": 17.67,
+       "testN": 50,
+       "testMean": 7.41,
+       "p": 0.3925
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "trailing 50% / 24 h",
+       "fit": 16.74,
+       "testN": 50,
+       "testMean": 9.18,
+       "p": 0.36025
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "no stop / no target / 24 h",
+       "fit": 16.41,
+       "testN": 50,
+       "testMean": 8.57,
+       "p": 0.3785
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "-20% / no target / 24 h",
+       "fit": 15.87,
+       "testN": 30,
+       "testMean": -5.14,
+       "p": 0.79875
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "-50% / no target / 24 h",
+       "fit": 15.29,
+       "testN": 50,
+       "testMean": 5.63,
+       "p": 0.43075
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "-30% / no target / 24 h",
+       "fit": 15.25,
+       "testN": 50,
+       "testMean": 4.04,
+       "p": 0.4645
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "-70% / no target / 24 h",
+       "fit": 15.04,
+       "testN": 50,
+       "testMean": 4.5,
+       "p": 0.4595
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "no stop / no target / 24 h",
+       "fit": 14.9,
+       "testN": 30,
+       "testMean": 1.38,
+       "p": 0.475
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "trailing 50% / 24 h",
+       "fit": 13.93,
+       "testN": 30,
+       "testMean": -5.76,
+       "p": 0.8015
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "-30% / no target / 24 h",
+       "fit": 13.67,
+       "testN": 30,
+       "testMean": -9.2,
+       "p": 0.8955
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "-50% / no target / 24 h",
+       "fit": 13.6,
+       "testN": 30,
+       "testMean": -4.89,
+       "p": 0.7365
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "-70% / no target / 24 h",
+       "fit": 13.52,
+       "testN": 30,
+       "testMean": -6.45,
+       "p": 0.7885
+      },
+      {
+       "filter": "liqmc >= 0.2535 and vola1h <= 0.007176",
+       "rule": "trailing 50% / 24 h",
+       "fit": 7.82,
+       "testN": 75,
+       "testMean": -9.95,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 4.965 and vola1h <= 0.007176",
+       "rule": "-10% / no target / 24 h",
+       "fit": 7.69,
+       "testN": 52,
+       "testMean": -6.3,
+       "p": 0.9985
+      },
+      {
+       "filter": "liqmc >= 0.2535 and vola1h <= 0.007176",
+       "rule": "-10% / no target / 24 h",
+       "fit": 7.51,
+       "testN": 75,
+       "testMean": -7.25,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 4.965 and vola1h <= 0.007176",
+       "rule": "trailing 50% / 24 h",
+       "fit": 7.51,
+       "testN": 52,
+       "testMean": -6.61,
+       "p": 0.9945
+      },
+      {
+       "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+       "rule": "half at 2x, rest no stop / 24 h",
+       "fit": 6.59,
+       "testN": 50,
+       "testMean": 8.9,
+       "p": 0.2295
+      },
+      {
+       "filter": "lmc <= 5.163 and ddath >= -0.01032",
+       "rule": "-10% / no target / 12 h",
+       "fit": 5.98,
+       "testN": 30,
+       "testMean": 3.55,
+       "p": 0.28
+      }
+     ],
+     "top20PositiveOnTest": 10,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "liqmc >= 0.2009 and ddath >= -0.01032",
+      "rule": "-10% / 3x / 24 h",
+      "coins": 50,
+      "mean": 17.62
+     }
+    },
+    "w5": {
+     "fit": [
+      "w1",
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "test": "w5",
+     "filters": 2245,
+     "combos": 369852,
+     "eligible": 369852,
+     "MEAN": {
+      "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+      "rule": "trailing 50% / 24 h",
+      "fitScore": 22.8,
+      "test": {
+       "n": 9,
+       "mean": 9.14,
+       "meanAfterAllowance": 8.39,
+       "lowerBound": -28.6,
+       "pBoot": 0.3669,
+       "totalWithoutBest": -93.8,
+       "inProfit": 33.3,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 72,
+        "mean": 44.7,
+        "total": 3218.2,
+        "inProfit": 41.7
+       },
+       "w2": {
+        "n": 34,
+        "mean": 23.66,
+        "total": 804.4,
+        "inProfit": 38.2
+       },
+       "w3": {
+        "n": 36,
+        "mean": 3.17,
+        "total": 114.1,
+        "inProfit": 27.8
+       },
+       "w4": {
+        "n": 30,
+        "mean": -7.16,
+        "total": -214.7,
+        "inProfit": 33.3
+       },
+       "w5": {
+        "n": 9,
+        "mean": 9.14,
+        "total": 82.2,
+        "inProfit": 33.3
+       }
+      }
+     },
+     "WORST": {
+      "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+      "rule": "no stop / 3x / 24 h",
+      "fitScore": -0.28,
+      "test": {
+       "n": 9,
+       "mean": 5.66,
+       "meanAfterAllowance": 4.91,
+       "lowerBound": -41.34,
+       "pBoot": 0.4068,
+       "totalWithoutBest": -52.1,
+       "inProfit": 44.4,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 72,
+        "mean": 2.49,
+        "total": 179.3,
+        "inProfit": 44.4
+       },
+       "w2": {
+        "n": 34,
+        "mean": 14.66,
+        "total": 498.4,
+        "inProfit": 50.0
+       },
+       "w3": {
+        "n": 36,
+        "mean": -0.28,
+        "total": -10.1,
+        "inProfit": 41.7
+       },
+       "w4": {
+        "n": 30,
+        "mean": 1.8,
+        "total": 54.0,
+        "inProfit": 43.3
+       },
+       "w5": {
+        "n": 9,
+        "mean": 5.66,
+        "total": 50.9,
+        "inProfit": 44.4
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "trailing 50% / 24 h",
+       "fit": 22.8,
+       "testN": 9,
+       "testMean": 9.14,
+       "p": 0.36925
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "no stop / no target / 24 h",
+       "fit": 22.12,
+       "testN": 9,
+       "testMean": 11.85,
+       "p": 0.385
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "-20% / no target / 24 h",
+       "fit": 21.94,
+       "testN": 9,
+       "testMean": 18.74,
+       "p": 0.34625
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "-70% / no target / 24 h",
+       "fit": 20.86,
+       "testN": 9,
+       "testMean": 15.03,
+       "p": 0.3495
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "-50% / no target / 24 h",
+       "fit": 20.75,
+       "testN": 9,
+       "testMean": 17.45,
+       "p": 0.33625
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "-10% / no target / 24 h",
+       "fit": 19.92,
+       "testN": 9,
+       "testMean": 26.36,
+       "p": 0.31525
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "-30% / no target / 24 h",
+       "fit": 19.8,
+       "testN": 9,
+       "testMean": 20.6,
+       "p": 0.32475
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "-20% / no target / 24 h",
+       "fit": 13.24,
+       "testN": 13,
+       "testMean": 5.06,
+       "p": 0.41875
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.004337",
+       "rule": "-20% / no target / 24 h",
+       "fit": 12.51,
+       "testN": 13,
+       "testMean": 5.06,
+       "p": 0.41875
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "trailing 50% / 24 h",
+       "fit": 12.41,
+       "testN": 13,
+       "testMean": -3.69,
+       "p": 0.6475
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "-10% / no target / 24 h",
+       "fit": 12.14,
+       "testN": 13,
+       "testMean": 10.55,
+       "p": 0.361
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.004337",
+       "rule": "trailing 50% / 24 h",
+       "fit": 11.9,
+       "testN": 13,
+       "testMean": -3.69,
+       "p": 0.6475
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "no stop / no target / 24 h",
+       "fit": 11.89,
+       "testN": 13,
+       "testMean": -5.24,
+       "p": 0.666
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.0001335",
+       "rule": "half at 2x, rest no stop / 24 h",
+       "fit": 11.75,
+       "testN": 9,
+       "testMean": 3.31,
+       "p": 0.48325
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.004337",
+       "rule": "-10% / no target / 24 h",
+       "fit": 11.24,
+       "testN": 13,
+       "testMean": 10.55,
+       "p": 0.361
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "-30% / no target / 24 h",
+       "fit": 10.97,
+       "testN": 13,
+       "testMean": 5.34,
+       "p": 0.4395
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "-50% / no target / 24 h",
+       "fit": 10.86,
+       "testN": 13,
+       "testMean": 1.19,
+       "p": 0.53725
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.004337",
+       "rule": "no stop / no target / 24 h",
+       "fit": 10.85,
+       "testN": 13,
+       "testMean": -5.24,
+       "p": 0.666
+      },
+      {
+       "filter": "lmc <= 5.309 and ddath >= -0.004337",
+       "rule": "-70% / no target / 24 h",
+       "fit": 10.79,
+       "testN": 13,
+       "testMean": -3.15,
+       "p": 0.6405
+      },
+      {
+       "filter": "liqmc >= 0.1744 and ddath >= -0.004337",
+       "rule": "-30% / no target / 24 h",
+       "fit": 10.25,
+       "testN": 13,
+       "testMean": 5.34,
+       "p": 0.4395
+      }
+     ],
+     "top20PositiveOnTest": 15,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "r1h >= 0.1826 and r24h <= 0.1854",
+      "rule": "trailing 50% / 24 h",
+      "coins": 44,
+      "mean": 52.49
+     }
+    }
+   }
+  },
+  "R": {
+   "rows": 68302,
+   "coins": {
+    "w1": 1347,
+    "w2": 1631,
+    "w3": 3511,
+    "w4": 4122,
+    "w5": 1909
+   },
+   "steps": {
+    "w2": {
+     "fit": [
+      "w1"
+     ],
+     "test": "w2",
+     "filters": 2245,
+     "combos": 475968,
+     "eligible": 475968,
+     "MEAN": {
+      "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+      "rule": "-10% / no target / 24 h",
+      "fitScore": 38.96,
+      "test": {
+       "n": 30,
+       "mean": -4.58,
+       "meanAfterAllowance": -5.18,
+       "lowerBound": -9.15,
+       "pBoot": 1.0,
+       "totalWithoutBest": -168.2,
+       "inProfit": 20.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 31,
+        "mean": 38.96,
+        "total": 1207.6,
+        "inProfit": 16.1
+       },
+       "w2": {
+        "n": 30,
+        "mean": -4.58,
+        "total": -137.3,
+        "inProfit": 20.0
+       },
+       "w3": {
+        "n": 1213,
+        "mean": -12.8,
+        "total": -15532.2,
+        "inProfit": 22.3
+       },
+       "w4": {
+        "n": 1186,
+        "mean": -15.66,
+        "total": -18575.3,
+        "inProfit": 15.8
+       },
+       "w5": {
+        "n": 40,
+        "mean": -13.84,
+        "total": -553.7,
+        "inProfit": 10.0
+       }
+      }
+     },
+     "WORST": {
+      "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+      "rule": "-10% / no target / 24 h",
+      "fitScore": 38.96,
+      "test": {
+       "n": 30,
+       "mean": -4.58,
+       "meanAfterAllowance": -5.18,
+       "lowerBound": -9.15,
+       "pBoot": 1.0,
+       "totalWithoutBest": -168.2,
+       "inProfit": 20.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 31,
+        "mean": 38.96,
+        "total": 1207.6,
+        "inProfit": 16.1
+       },
+       "w2": {
+        "n": 30,
+        "mean": -4.58,
+        "total": -137.3,
+        "inProfit": 20.0
+       },
+       "w3": {
+        "n": 1213,
+        "mean": -12.8,
+        "total": -15532.2,
+        "inProfit": 22.3
+       },
+       "w4": {
+        "n": 1186,
+        "mean": -15.66,
+        "total": -18575.3,
+        "inProfit": 15.8
+       },
+       "w5": {
+        "n": 40,
+        "mean": -13.84,
+        "total": -553.7,
+        "inProfit": 10.0
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-10% / no target / 24 h",
+       "fit": 38.96,
+       "testN": 30,
+       "testMean": -4.58,
+       "p": 0.99975
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-20% / no target / 24 h",
+       "fit": 38.1,
+       "testN": 30,
+       "testMean": -0.96,
+       "p": 0.68625
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-30% / no target / 24 h",
+       "fit": 37.6,
+       "testN": 30,
+       "testMean": -0.3,
+       "p": 0.61975
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "trailing 50% / 24 h",
+       "fit": 37.17,
+       "testN": 30,
+       "testMean": 1.38,
+       "p": 0.4595
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-50% / no target / 24 h",
+       "fit": 36.27,
+       "testN": 30,
+       "testMean": 5.67,
+       "p": 0.29325
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-70% / no target / 24 h",
+       "fit": 35.73,
+       "testN": 30,
+       "testMean": 5.83,
+       "p": 0.28525
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "no stop / no target / 24 h",
+       "fit": 35.52,
+       "testN": 30,
+       "testMean": 5.35,
+       "p": 0.31075
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-10% / no target / 12 h",
+       "fit": 25.69,
+       "testN": 30,
+       "testMean": -3.03,
+       "p": 0.9955
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-20% / no target / 12 h",
+       "fit": 24.74,
+       "testN": 30,
+       "testMean": -1.24,
+       "p": 0.765
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "trailing 50% / 12 h",
+       "fit": 24.01,
+       "testN": 30,
+       "testMean": 2.82,
+       "p": 0.27825
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-30% / no target / 12 h",
+       "fit": 23.93,
+       "testN": 30,
+       "testMean": -0.61,
+       "p": 0.68375
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-50% / no target / 12 h",
+       "fit": 23.03,
+       "testN": 30,
+       "testMean": 1.16,
+       "p": 0.4485
+      },
+      {
+       "filter": "age_h >= 6.5 and r1h >= 1.285",
+       "rule": "trailing 50% / 24 h",
+       "fit": 22.97,
+       "testN": 79,
+       "testMean": -3.12,
+       "p": 0.81325
+      },
+      {
+       "filter": "age_h >= 6.5 and r1h >= 1.285",
+       "rule": "-10% / no target / 24 h",
+       "fit": 22.36,
+       "testN": 79,
+       "testMean": -5.75,
+       "p": 0.99625
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "no stop / no target / 12 h",
+       "fit": 22.21,
+       "testN": 30,
+       "testMean": 0.79,
+       "p": 0.4885
+      },
+      {
+       "filter": "vol1s >= 0.348 and lvol1 <= 4.456",
+       "rule": "-70% / no target / 12 h",
+       "fit": 22.04,
+       "testN": 30,
+       "testMean": 1.07,
+       "p": 0.45975
+      },
+      {
+       "filter": "age_h >= 6.5 and r1h >= 1.285",
+       "rule": "-20% / no target / 24 h",
+       "fit": 21.81,
+       "testN": 79,
+       "testMean": -7.14,
+       "p": 0.99925
+      },
+      {
+       "filter": "age_h >= 6.5 and r1h >= 1.285",
+       "rule": "-30% / no target / 24 h",
+       "fit": 20.72,
+       "testN": 79,
+       "testMean": -6.98,
+       "p": 0.998
+      },
+      {
+       "filter": "r1h >= 0.5233 and lvol1 <= 4.456",
+       "rule": "-10% / no target / 24 h",
+       "fit": 18.79,
+       "testN": 137,
+       "testMean": 3.59,
+       "p": 0.374
+      },
+      {
+       "filter": "r1h >= 1.285 and lvol1 <= 4.792",
+       "rule": "-10% / no target / 24 h",
+       "fit": 18.73,
+       "testN": 152,
+       "testMean": -6.1,
+       "p": 0.99975
+      }
+     ],
+     "top20PositiveOnTest": 9,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "liqmc >= 0.2215 and volmc <= 1.645",
+      "rule": "no stop / no target / 24 h",
+      "coins": 91,
+      "mean": 30.4
+     }
+    },
+    "w3": {
+     "fit": [
+      "w1",
+      "w2"
+     ],
+     "test": "w3",
+     "filters": 2250,
+     "combos": 472638,
+     "eligible": 472638,
+     "MEAN": {
+      "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+      "rule": "-50% / no target / 24 h",
+      "fitScore": 23.31,
+      "test": {
+       "n": 147,
+       "mean": -11.67,
+       "meanAfterAllowance": -12.27,
+       "lowerBound": -16.93,
+       "pBoot": 0.9998,
+       "totalWithoutBest": -2127.1,
+       "inProfit": 12.2,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 36,
+        "mean": 29.24,
+        "total": 1052.7,
+        "inProfit": 27.8
+       },
+       "w2": {
+        "n": 114,
+        "mean": 21.44,
+        "total": 2443.7,
+        "inProfit": 20.2
+       },
+       "w3": {
+        "n": 147,
+        "mean": -11.67,
+        "total": -1715.8,
+        "inProfit": 12.2
+       },
+       "w4": {
+        "n": 518,
+        "mean": -19.36,
+        "total": -10030.2,
+        "inProfit": 1.5
+       },
+       "w5": {
+        "n": 273,
+        "mean": -17.84,
+        "total": -4869.3,
+        "inProfit": 4.4
+       }
+      }
+     },
+     "WORST": {
+      "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+      "rule": "-50% / no target / 24 h",
+      "fitScore": 21.44,
+      "test": {
+       "n": 147,
+       "mean": -11.67,
+       "meanAfterAllowance": -12.27,
+       "lowerBound": -16.93,
+       "pBoot": 0.9998,
+       "totalWithoutBest": -2127.1,
+       "inProfit": 12.2,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 36,
+        "mean": 29.24,
+        "total": 1052.7,
+        "inProfit": 27.8
+       },
+       "w2": {
+        "n": 114,
+        "mean": 21.44,
+        "total": 2443.7,
+        "inProfit": 20.2
+       },
+       "w3": {
+        "n": 147,
+        "mean": -11.67,
+        "total": -1715.8,
+        "inProfit": 12.2
+       },
+       "w4": {
+        "n": 518,
+        "mean": -19.36,
+        "total": -10030.2,
+        "inProfit": 1.5
+       },
+       "w5": {
+        "n": 273,
+        "mean": -17.84,
+        "total": -4869.3,
+        "inProfit": 4.4
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "-50% / no target / 24 h",
+       "fit": 23.31,
+       "testN": 147,
+       "testMean": -11.67,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "no stop / no target / 24 h",
+       "fit": 22.68,
+       "testN": 147,
+       "testMean": -12.44,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "-70% / no target / 24 h",
+       "fit": 22.54,
+       "testN": 147,
+       "testMean": -12.07,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "-30% / no target / 24 h",
+       "fit": 21.66,
+       "testN": 147,
+       "testMean": -11.0,
+       "p": 0.99975
+      },
+      {
+       "filter": "vola1h >= 0.2047 and lvol1 <= 4.721",
+       "rule": "-50% / no target / 24 h",
+       "fit": 16.09,
+       "testN": 49,
+       "testMean": -1.45,
+       "p": 0.67025
+      },
+      {
+       "filter": "vola1h >= 0.2047 and lvol1 <= 4.721",
+       "rule": "no stop / no target / 24 h",
+       "fit": 15.76,
+       "testN": 49,
+       "testMean": -3.11,
+       "p": 0.7285
+      },
+      {
+       "filter": "vola1h >= 0.2047 and lvol1 <= 4.721",
+       "rule": "-70% / no target / 24 h",
+       "fit": 15.62,
+       "testN": 49,
+       "testMean": -2.75,
+       "p": 0.7125
+      },
+      {
+       "filter": "vola1h >= 0.2047 and lvol1 <= 4.721",
+       "rule": "-30% / no target / 24 h",
+       "fit": 12.62,
+       "testN": 49,
+       "testMean": -0.37,
+       "p": 0.6215
+      },
+      {
+       "filter": "age_h <= 1.5 and lvol1 <= 4.721",
+       "rule": "-30% / no target / 24 h",
+       "fit": 12.24,
+       "testN": 758,
+       "testMean": -12.4,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 1.5 and lvol1 <= 4.721",
+       "rule": "-50% / no target / 24 h",
+       "fit": 11.72,
+       "testN": 758,
+       "testMean": -12.72,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 1.5 and lvol1 <= 4.721",
+       "rule": "no stop / no target / 24 h",
+       "fit": 11.0,
+       "testN": 758,
+       "testMean": -13.04,
+       "p": 1.0
+      },
+      {
+       "filter": "age_h <= 1.5 and lvol1 <= 4.721",
+       "rule": "-70% / no target / 24 h",
+       "fit": 10.99,
+       "testN": 758,
+       "testMean": -12.89,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "no stop / no target / 12 h",
+       "fit": 9.73,
+       "testN": 147,
+       "testMean": -12.66,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "-50% / no target / 12 h",
+       "fit": 8.75,
+       "testN": 147,
+       "testMean": -12.17,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.068 and hath >= 2.083",
+       "rule": "-70% / no target / 12 h",
+       "fit": 8.69,
+       "testN": 279,
+       "testMean": -2.62,
+       "p": 0.99875
+      },
+      {
+       "filter": "volmc <= 1.068 and hath >= 2.083",
+       "rule": "no stop / no target / 12 h",
+       "fit": 8.61,
+       "testN": 279,
+       "testMean": -2.79,
+       "p": 0.9995
+      },
+      {
+       "filter": "volmc <= 1.068 and hath >= 4",
+       "rule": "no stop / no target / 12 h",
+       "fit": 8.38,
+       "testN": 155,
+       "testMean": -4.04,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 1.462 and lvol1 <= 4.721",
+       "rule": "half at 2x, rest no stop / 24 h",
+       "fit": 8.34,
+       "testN": 147,
+       "testMean": -9.98,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.068 and hath >= 4",
+       "rule": "-70% / no target / 12 h",
+       "fit": 8.31,
+       "testN": 155,
+       "testMean": -3.93,
+       "p": 1.0
+      },
+      {
+       "filter": "volmc <= 1.068 and vola1h <= 0.04959",
+       "rule": "-50% / no target / 12 h",
+       "fit": 8.3,
+       "testN": 1744,
+       "testMean": -9.48,
+       "p": 1.0
+      }
+     ],
+     "top20PositiveOnTest": 0,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "r1h >= 0.5967 and r6h <= 0.3025",
+      "rule": "-70% / no target / 6 h",
+      "coins": 50,
+      "mean": 18.42
+     },
+     "classifierRuleK": {
+      "top 0.25%": {
+       "w1": {
+        "n": 0
+       },
+       "w2": {
+        "n": 0
+       },
+       "w3": {
+        "n": 2,
+        "mean": -11.06,
+        "total": -22.1,
+        "inProfit": 0.0
+       }
+      },
+      "top 0.5%": {
+       "w1": {
+        "n": 0
+       },
+       "w2": {
+        "n": 1,
+        "mean": -20.52,
+        "total": -20.5,
+        "inProfit": 0.0
+       },
+       "w3": {
+        "n": 6,
+        "mean": -2.2,
+        "total": -13.2,
+        "inProfit": 16.7
+       }
+      },
+      "top 1%": {
+       "w1": {
+        "n": 10,
+        "mean": -9.45,
+        "total": -94.5,
+        "inProfit": 10.0
+       },
+       "w2": {
+        "n": 47,
+        "mean": -4.28,
+        "total": -201.2,
+        "inProfit": 12.8
+       },
+       "w3": {
+        "n": 41,
+        "mean": -9.43,
+        "total": -386.5,
+        "inProfit": 4.9
+       }
+      },
+      "top 2%": {
+       "w1": {
+        "n": 90,
+        "mean": -4.71,
+        "total": -423.5,
+        "inProfit": 12.2
+       },
+       "w2": {
+        "n": 128,
+        "mean": -4.58,
+        "total": -586.6,
+        "inProfit": 10.9
+       },
+       "w3": {
+        "n": 111,
+        "mean": -8.03,
+        "total": -891.8,
+        "inProfit": 4.5
+       }
+      },
+      "top 5%": {
+       "w1": {
+        "n": 221,
+        "mean": -3.54,
+        "total": -781.5,
+        "inProfit": 14.9
+       },
+       "w2": {
+        "n": 336,
+        "mean": -5.23,
+        "total": -1755.6,
+        "inProfit": 10.1
+       },
+       "w3": {
+        "n": 307,
+        "mean": -6.53,
+        "total": -2004.3,
+        "inProfit": 6.5
+       }
+      }
+     }
+    },
+    "w4": {
+     "fit": [
+      "w1",
+      "w2",
+      "w3"
+     ],
+     "test": "w4",
+     "filters": 2250,
+     "combos": 378732,
+     "eligible": 378732,
+     "MEAN": {
+      "filter": "lmc <= 5.331 and ddath >= -0.0037",
+      "rule": "trailing 50% / 24 h",
+      "fitScore": 6.86,
+      "test": {
+       "n": 57,
+       "mean": -2.47,
+       "meanAfterAllowance": -3.07,
+       "lowerBound": -13.53,
+       "pBoot": 0.7355,
+       "totalWithoutBest": -455.6,
+       "inProfit": 21.1,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 54,
+        "mean": 22.49,
+        "total": 1214.5,
+        "inProfit": 38.9
+       },
+       "w2": {
+        "n": 53,
+        "mean": 0.72,
+        "total": 38.4,
+        "inProfit": 26.4
+       },
+       "w3": {
+        "n": 41,
+        "mean": -5.78,
+        "total": -237.0,
+        "inProfit": 9.8
+       },
+       "w4": {
+        "n": 57,
+        "mean": -2.47,
+        "total": -140.6,
+        "inProfit": 21.1
+       },
+       "w5": {
+        "n": 16,
+        "mean": -6.55,
+        "total": -104.9,
+        "inProfit": 12.5
+       }
+      }
+     },
+     "WORST": {
+      "filter": "liqmc >= 0.1962 and lvol1 <= 3.834",
+      "rule": "trailing 50% / 24 h",
+      "fitScore": 0.84,
+      "test": {
+       "n": 76,
+       "mean": -4.68,
+       "meanAfterAllowance": -5.28,
+       "lowerBound": -9.19,
+       "pBoot": 0.9982,
+       "totalWithoutBest": -483.3,
+       "inProfit": 15.8,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 72,
+        "mean": 11.06,
+        "total": 796.3,
+        "inProfit": 37.5
+       },
+       "w2": {
+        "n": 78,
+        "mean": 0.84,
+        "total": 65.3,
+        "inProfit": 20.5
+       },
+       "w3": {
+        "n": 99,
+        "mean": 0.98,
+        "total": 97.4,
+        "inProfit": 21.2
+       },
+       "w4": {
+        "n": 76,
+        "mean": -4.68,
+        "total": -355.9,
+        "inProfit": 15.8
+       },
+       "w5": {
+        "n": 31,
+        "mean": -7.48,
+        "total": -231.8,
+        "inProfit": 16.1
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "lmc <= 5.331 and ddath >= -0.0037",
+       "rule": "trailing 50% / 24 h",
+       "fit": 6.86,
+       "testN": 57,
+       "testMean": -2.47,
+       "p": 0.73325
+      },
+      {
+       "filter": "liqmc >= 0.1653 and ddath >= -0.0037",
+       "rule": "trailing 50% / 24 h",
+       "fit": 4.71,
+       "testN": 74,
+       "testMean": -2.14,
+       "p": 0.7185
+      },
+      {
+       "filter": "lmc <= 5.331 and ddath >= -0.0037",
+       "rule": "-20% / no target / 24 h",
+       "fit": 4.25,
+       "testN": 57,
+       "testMean": -2.46,
+       "p": 0.734
+      },
+      {
+       "filter": "lmc <= 5.331 and ddath >= -0.0037",
+       "rule": "no stop / no target / 24 h",
+       "fit": 4.21,
+       "testN": 57,
+       "testMean": -5.9,
+       "p": 0.87125
+      },
+      {
+       "filter": "lmc <= 5.331 and ddath >= -0.0037",
+       "rule": "-50% / no target / 24 h",
+       "fit": 4.06,
+       "testN": 57,
+       "testMean": -5.3,
+       "p": 0.85275
+      },
+      {
+       "filter": "lmc <= 5.331 and ddath >= -0.0037",
+       "rule": "-70% / no target / 24 h",
+       "fit": 3.97,
+       "testN": 57,
+       "testMean": -6.23,
+       "p": 0.883
+      },
+      {
+       "filter": "liqmc >= 0.1962 and lvol1 <= 3.834",
+       "rule": "trailing 50% / 24 h",
+       "fit": 3.85,
+       "testN": 76,
+       "testMean": -4.68,
+       "p": 0.99775
+      },
+      {
+       "filter": "lmc <= 5.331 and ddath >= -0.0037",
+       "rule": "-30% / no target / 24 h",
+       "fit": 3.76,
+       "testN": 57,
+       "testMean": -3.53,
+       "p": 0.786
+      },
+      {
+       "filter": "age_h >= 9 and r6h >= 3.675",
+       "rule": "-70% / no target / 12 h",
+       "fit": 3.43,
+       "testN": 19,
+       "testMean": 7.53,
+       "p": 0.1175
+      },
+      {
+       "filter": "liqmc >= 0.1962 and lvol1 <= 3.834",
+       "rule": "-10% / no target / 24 h",
+       "fit": 3.4,
+       "testN": 76,
+       "testMean": -5.0,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1962 and lvol1 <= 3.834",
+       "rule": "-20% / no target / 24 h",
+       "fit": 3.39,
+       "testN": 76,
+       "testMean": -5.99,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1653 and ddath >= -0.0037",
+       "rule": "-20% / no target / 24 h",
+       "fit": 3.38,
+       "testN": 74,
+       "testMean": -2.09,
+       "p": 0.71775
+      },
+      {
+       "filter": "age_h >= 9 and r6h >= 3.675",
+       "rule": "-10% / no target / 24 h",
+       "fit": 3.12,
+       "testN": 19,
+       "testMean": -0.88,
+       "p": 0.7215
+      },
+      {
+       "filter": "age_h >= 9 and r6h >= 3.675",
+       "rule": "trailing 50% / 24 h",
+       "fit": 3.04,
+       "testN": 19,
+       "testMean": -0.82,
+       "p": 0.727
+      },
+      {
+       "filter": "age_h >= 9 and r6h >= 3.675",
+       "rule": "no stop / no target / 12 h",
+       "fit": 3.01,
+       "testN": 19,
+       "testMean": 7.48,
+       "p": 0.1195
+      },
+      {
+       "filter": "liqmc >= 0.1962 and lvol1 <= 3.834",
+       "rule": "no stop / no target / 24 h",
+       "fit": 2.92,
+       "testN": 76,
+       "testMean": -7.95,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1962 and lvol1 <= 3.834",
+       "rule": "-30% / no target / 24 h",
+       "fit": 2.89,
+       "testN": 76,
+       "testMean": -6.04,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1653 and ddath >= -0.0037",
+       "rule": "-30% / no target / 24 h",
+       "fit": 2.88,
+       "testN": 74,
+       "testMean": -2.91,
+       "p": 0.7675
+      },
+      {
+       "filter": "age_h >= 9 and r6h >= 3.675",
+       "rule": "-20% / no target / 24 h",
+       "fit": 2.88,
+       "testN": 19,
+       "testMean": -1.7,
+       "p": 0.78375
+      },
+      {
+       "filter": "liqmc >= 0.1962 and lvol1 <= 3.907",
+       "rule": "trailing 50% / 24 h",
+       "fit": 2.79,
+       "testN": 90,
+       "testMean": -5.07,
+       "p": 1.0
+      }
+     ],
+     "top20PositiveOnTest": 2,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "r1h >= 0.3068 and r6h <= 0.06971",
+      "rule": "-10% / no target / 24 h",
+      "coins": 86,
+      "mean": 30.84
+     },
+     "classifierRuleK": {
+      "top 0.25%": {
+       "w1": {
+        "n": 0
+       },
+       "w2": {
+        "n": 1,
+        "mean": 5.53,
+        "total": 5.5,
+        "inProfit": 100.0
+       },
+       "w3": {
+        "n": 2,
+        "mean": -11.06,
+        "total": -22.1,
+        "inProfit": 0.0
+       },
+       "w4": {
+        "n": 1,
+        "mean": 8.96,
+        "total": 9.0,
+        "inProfit": 100.0
+       }
+      },
+      "top 0.5%": {
+       "w1": {
+        "n": 17,
+        "mean": -2.96,
+        "total": -50.4,
+        "inProfit": 29.4
+       },
+       "w2": {
+        "n": 26,
+        "mean": -1.14,
+        "total": -29.5,
+        "inProfit": 15.4
+       },
+       "w3": {
+        "n": 6,
+        "mean": -2.2,
+        "total": -13.2,
+        "inProfit": 16.7
+       },
+       "w4": {
+        "n": 14,
+        "mean": -10.49,
+        "total": -146.8,
+        "inProfit": 14.3
+       }
+      },
+      "top 1%": {
+       "w1": {
+        "n": 76,
+        "mean": -4.55,
+        "total": -346.1,
+        "inProfit": 18.4
+       },
+       "w2": {
+        "n": 86,
+        "mean": -4.46,
+        "total": -384.0,
+        "inProfit": 16.3
+       },
+       "w3": {
+        "n": 41,
+        "mean": -9.43,
+        "total": -386.5,
+        "inProfit": 4.9
+       },
+       "w4": {
+        "n": 58,
+        "mean": -11.28,
+        "total": -654.4,
+        "inProfit": 5.2
+       }
+      },
+      "top 2%": {
+       "w1": {
+        "n": 152,
+        "mean": -5.16,
+        "total": -784.4,
+        "inProfit": 18.4
+       },
+       "w2": {
+        "n": 191,
+        "mean": -3.96,
+        "total": -756.2,
+        "inProfit": 15.2
+       },
+       "w3": {
+        "n": 111,
+        "mean": -8.03,
+        "total": -891.8,
+        "inProfit": 4.5
+       },
+       "w4": {
+        "n": 141,
+        "mean": -7.96,
+        "total": -1123.0,
+        "inProfit": 9.2
+       }
+      },
+      "top 5%": {
+       "w1": {
+        "n": 397,
+        "mean": -4.11,
+        "total": -1633.0,
+        "inProfit": 16.9
+       },
+       "w2": {
+        "n": 476,
+        "mean": -5.08,
+        "total": -2419.3,
+        "inProfit": 12.6
+       },
+       "w3": {
+        "n": 307,
+        "mean": -6.53,
+        "total": -2004.3,
+        "inProfit": 6.5
+       },
+       "w4": {
+        "n": 404,
+        "mean": -6.49,
+        "total": -2620.1,
+        "inProfit": 8.9
+       }
+      }
+     }
+    },
+    "w5": {
+     "fit": [
+      "w1",
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "test": "w5",
+     "filters": 2250,
+     "combos": 370962,
+     "eligible": 370962,
+     "MEAN": {
+      "filter": "lmc <= 5.403 and ddath >= -0.001577",
+      "rule": "trailing 50% / 24 h",
+      "fitScore": 5.49,
+      "test": {
+       "n": 21,
+       "mean": -6.92,
+       "meanAfterAllowance": -7.52,
+       "lowerBound": -16.28,
+       "pBoot": 0.9503,
+       "totalWithoutBest": -222.7,
+       "inProfit": 19.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 53,
+        "mean": 23.47,
+        "total": 1244.0,
+        "inProfit": 39.6
+       },
+       "w2": {
+        "n": 48,
+        "mean": 1.02,
+        "total": 49.1,
+        "inProfit": 27.1
+       },
+       "w3": {
+        "n": 49,
+        "mean": -5.0,
+        "total": -244.8,
+        "inProfit": 12.2
+       },
+       "w4": {
+        "n": 51,
+        "mean": 1.09,
+        "total": 55.5,
+        "inProfit": 23.5
+       },
+       "w5": {
+        "n": 21,
+        "mean": -6.92,
+        "total": -145.3,
+        "inProfit": 19.0
+       }
+      }
+     },
+     "WORST": {
+      "filter": "r5 <= -0.01548 and lvol1 <= 3.859",
+      "rule": "-10% / 3x / 6 h",
+      "fitScore": -1.43,
+      "test": {
+       "n": 25,
+       "mean": -3.4,
+       "meanAfterAllowance": -4.0,
+       "lowerBound": -5.83,
+       "pBoot": 1.0,
+       "totalWithoutBest": -104.0,
+       "inProfit": 16.0,
+       "holds": false
+      },
+      "perWindow": {
+       "w1": {
+        "n": 33,
+        "mean": -1.43,
+        "total": -47.3,
+        "inProfit": 27.3
+       },
+       "w2": {
+        "n": 76,
+        "mean": -0.46,
+        "total": -34.9,
+        "inProfit": 21.1
+       },
+       "w3": {
+        "n": 207,
+        "mean": -0.88,
+        "total": -181.3,
+        "inProfit": 30.4
+       },
+       "w4": {
+        "n": 77,
+        "mean": -1.02,
+        "total": -78.9,
+        "inProfit": 31.2
+       },
+       "w5": {
+        "n": 25,
+        "mean": -3.4,
+        "total": -85.1,
+        "inProfit": 16.0
+       }
+      }
+     },
+     "top20": [
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "trailing 50% / 24 h",
+       "fit": 5.49,
+       "testN": 21,
+       "testMean": -6.92,
+       "p": 0.94675
+      },
+      {
+       "filter": "liqmc >= 0.1573 and ddath >= -0.001577",
+       "rule": "trailing 50% / 24 h",
+       "fit": 4.13,
+       "testN": 21,
+       "testMean": -6.92,
+       "p": 0.94675
+      },
+      {
+       "filter": "liqmc >= 0.1945 and ddath >= -0.01462",
+       "rule": "-20% / no target / 24 h",
+       "fit": 3.2,
+       "testN": 14,
+       "testMean": -8.29,
+       "p": 0.99625
+      },
+      {
+       "filter": "r1h >= 0.3136 and r6h <= 0.06695",
+       "rule": "-10% / no target / 24 h",
+       "fit": 3.05,
+       "testN": 32,
+       "testMean": -4.57,
+       "p": 0.99975
+      },
+      {
+       "filter": "liqmc >= 0.1945 and ddath >= -0.01462",
+       "rule": "-10% / no target / 24 h",
+       "fit": 2.84,
+       "testN": 14,
+       "testMean": -10.67,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "-20% / no target / 24 h",
+       "fit": 2.79,
+       "testN": 21,
+       "testMean": -9.17,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1573 and ddath >= -0.001577",
+       "rule": "-30% / no target / 24 h",
+       "fit": 2.65,
+       "testN": 21,
+       "testMean": -8.8,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1573 and ddath >= -0.001577",
+       "rule": "-50% / no target / 24 h",
+       "fit": 2.42,
+       "testN": 21,
+       "testMean": -11.53,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "-30% / no target / 24 h",
+       "fit": 2.35,
+       "testN": 21,
+       "testMean": -8.8,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 0.3136 and r6h <= 0.06695",
+       "rule": "-20% / no target / 24 h",
+       "fit": 2.29,
+       "testN": 32,
+       "testMean": -6.11,
+       "p": 0.99975
+      },
+      {
+       "filter": "liqmc >= 0.1573 and ddath >= -0.001577",
+       "rule": "no stop / no target / 24 h",
+       "fit": 2.24,
+       "testN": 21,
+       "testMean": -12.43,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "-50% / no target / 24 h",
+       "fit": 2.22,
+       "testN": 21,
+       "testMean": -11.53,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 0.3136 and r6h <= 0.1477",
+       "rule": "-10% / no target / 24 h",
+       "fit": 2.18,
+       "testN": 42,
+       "testMean": 17.42,
+       "p": 0.348
+      },
+      {
+       "filter": "liqmc >= 0.1945 and ddath >= -0.01462",
+       "rule": "trailing 50% / 24 h",
+       "fit": 2.18,
+       "testN": 14,
+       "testMean": -7.67,
+       "p": 0.9185
+      },
+      {
+       "filter": "liqmc >= 0.1945 and ddath >= -0.01462",
+       "rule": "-30% / no target / 24 h",
+       "fit": 2.16,
+       "testN": 14,
+       "testMean": -8.94,
+       "p": 0.9955
+      },
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "no stop / no target / 24 h",
+       "fit": 2.08,
+       "testN": 21,
+       "testMean": -12.43,
+       "p": 1.0
+      },
+      {
+       "filter": "liqmc >= 0.1573 and ddath >= -0.001577",
+       "rule": "-70% / no target / 24 h",
+       "fit": 2.06,
+       "testN": 21,
+       "testMean": -11.83,
+       "p": 1.0
+      },
+      {
+       "filter": "r1h >= 0.3136 and r6h <= 0.06695",
+       "rule": "trailing 50% / 24 h",
+       "fit": 2.05,
+       "testN": 32,
+       "testMean": -8.07,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "-70% / no target / 24 h",
+       "fit": 1.86,
+       "testN": 21,
+       "testMean": -11.83,
+       "p": 1.0
+      },
+      {
+       "filter": "lmc <= 5.403 and ddath >= -0.001577",
+       "rule": "trailing 50% / 12 h",
+       "fit": 1.61,
+       "testN": 21,
+       "testMean": -1.66,
+       "p": 0.71125
+      }
+     ],
+     "top20PositiveOnTest": 1,
+     "holmSurvivors": 0,
+     "hindsight": {
+      "filter": "r1h >= 0.3136 and r6h <= 0.1477",
+      "rule": "-10% / no target / 24 h",
+      "coins": 42,
+      "mean": 17.42
+     },
+     "classifierRuleK": {
+      "top 0.25%": {
+       "w1": {
+        "n": 7,
+        "mean": -3.28,
+        "total": -22.9,
+        "inProfit": 28.6
+       },
+       "w2": {
+        "n": 6,
+        "mean": -4.53,
+        "total": -27.2,
+        "inProfit": 33.3
+       },
+       "w3": {
+        "n": 4,
+        "mean": -11.53,
+        "total": -46.1,
+        "inProfit": 0.0
+       },
+       "w4": {
+        "n": 1,
+        "mean": 8.96,
+        "total": 9.0,
+        "inProfit": 100.0
+       },
+       "w5": {
+        "n": 3,
+        "mean": -8.82,
+        "total": -26.5,
+        "inProfit": 33.3
+       }
+      },
+      "top 0.5%": {
+       "w1": {
+        "n": 39,
+        "mean": -4.48,
+        "total": -174.8,
+        "inProfit": 17.9
+       },
+       "w2": {
+        "n": 28,
+        "mean": -6.39,
+        "total": -179.1,
+        "inProfit": 17.9
+       },
+       "w3": {
+        "n": 26,
+        "mean": -9.54,
+        "total": -248.1,
+        "inProfit": 7.7
+       },
+       "w4": {
+        "n": 14,
+        "mean": -10.49,
+        "total": -146.8,
+        "inProfit": 14.3
+       },
+       "w5": {
+        "n": 11,
+        "mean": -7.04,
+        "total": -77.4,
+        "inProfit": 18.2
+       }
+      },
+      "top 1%": {
+       "w1": {
+        "n": 94,
+        "mean": -5.03,
+        "total": -472.8,
+        "inProfit": 17.0
+       },
+       "w2": {
+        "n": 76,
+        "mean": -0.41,
+        "total": -31.1,
+        "inProfit": 19.7
+       },
+       "w3": {
+        "n": 72,
+        "mean": -8.77,
+        "total": -631.5,
+        "inProfit": 6.9
+       },
+       "w4": {
+        "n": 58,
+        "mean": -11.28,
+        "total": -654.4,
+        "inProfit": 5.2
+       },
+       "w5": {
+        "n": 50,
+        "mean": -11.39,
+        "total": -569.7,
+        "inProfit": 6.0
+       }
+      },
+      "top 2%": {
+       "w1": {
+        "n": 211,
+        "mean": -3.45,
+        "total": -728.3,
+        "inProfit": 18.0
+       },
+       "w2": {
+        "n": 162,
+        "mean": -3.27,
+        "total": -529.2,
+        "inProfit": 16.0
+       },
+       "w3": {
+        "n": 157,
+        "mean": -7.84,
+        "total": -1230.9,
+        "inProfit": 7.0
+       },
+       "w4": {
+        "n": 141,
+        "mean": -7.96,
+        "total": -1123.0,
+        "inProfit": 9.2
+       },
+       "w5": {
+        "n": 108,
+        "mean": -10.43,
+        "total": -1126.2,
+        "inProfit": 6.5
+       }
+      },
+      "top 5%": {
+       "w1": {
+        "n": 503,
+        "mean": -5.61,
+        "total": -2822.4,
+        "inProfit": 14.5
+       },
+       "w2": {
+        "n": 399,
+        "mean": -4.21,
+        "total": -1680.4,
+        "inProfit": 13.3
+       },
+       "w3": {
+        "n": 446,
+        "mean": -7.37,
+        "total": -3287.6,
+        "inProfit": 6.3
+       },
+       "w4": {
+        "n": 404,
+        "mean": -6.49,
+        "total": -2620.1,
+        "inProfit": 8.9
+       },
+       "w5": {
+        "n": 295,
+        "mean": -9.48,
+        "total": -2796.7,
+        "inProfit": 6.8
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

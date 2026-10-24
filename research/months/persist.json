@@ -1,0 +1,128 @@
+{
+ "P": {
+  "baseK": {
+   "w1": {
+    "n": 348,
+    "mean": -4.64,
+    "total": -1613.4,
+    "inProfit": 31.6
+   },
+   "w2": {
+    "n": 394,
+    "mean": -3.95,
+    "total": -1558.1,
+    "inProfit": 27.7
+   },
+   "w3": {
+    "n": 569,
+    "mean": -2.5,
+    "total": -1421.1,
+    "inProfit": 45.7
+   },
+   "w4": {
+    "n": 356,
+    "mean": -4.34,
+    "total": -1546.0,
+    "inProfit": 34.3
+   },
+   "w5": {
+    "n": 185,
+    "mean": -4.85,
+    "total": -897.3,
+    "inProfit": 39.5
+   }
+  },
+  "combos": 262626,
+  "fitPositive": 0.8,
+  "testPositive": 8.9,
+  "testPositiveIfFitPositive": 21.5,
+  "testPositiveIfFitNegative": 8.8,
+  "testMeanTop1pctFit": -3.14,
+  "testMeanAll": -5.3,
+  "rankCorr": 0.584
+ },
+ "U": {
+  "baseK": {
+   "w1": {
+    "n": 1704,
+    "mean": -10.83,
+    "total": -18446.4,
+    "inProfit": 15.9
+   },
+   "w2": {
+    "n": 2126,
+    "mean": -13.08,
+    "total": -27800.5,
+    "inProfit": 13.1
+   },
+   "w3": {
+    "n": 5953,
+    "mean": -17.57,
+    "total": -104603.2,
+    "inProfit": 29.0
+   },
+   "w4": {
+    "n": 4916,
+    "mean": -16.93,
+    "total": -83227.3,
+    "inProfit": 32.3
+   },
+   "w5": {
+    "n": 1797,
+    "mean": -17.84,
+    "total": -32067.4,
+    "inProfit": 30.6
+   }
+  },
+  "combos": 368298,
+  "fitPositive": 0.0,
+  "testPositive": 0.5,
+  "testPositiveIfFitPositive": 40.0,
+  "testPositiveIfFitNegative": 0.5,
+  "testMeanTop1pctFit": -1.91,
+  "testMeanAll": -11.1,
+  "rankCorr": 0.849
+ },
+ "R": {
+  "baseK": {
+   "w1": {
+    "n": 1347,
+    "mean": -5.49,
+    "total": -7397.8,
+    "inProfit": 13.7
+   },
+   "w2": {
+    "n": 1631,
+    "mean": -5.54,
+    "total": -9033.9,
+    "inProfit": 11.6
+   },
+   "w3": {
+    "n": 3511,
+    "mean": -8.8,
+    "total": -30900.7,
+    "inProfit": 13.8
+   },
+   "w4": {
+    "n": 4122,
+    "mean": -12.01,
+    "total": -49498.4,
+    "inProfit": 8.2
+   },
+   "w5": {
+    "n": 1909,
+    "mean": -12.97,
+    "total": -24750.5,
+    "inProfit": 6.4
+   }
+  },
+  "combos": 366300,
+  "fitPositive": 0.0,
+  "testPositive": 0.2,
+  "testPositiveIfFitPositive": 10.7,
+  "testPositiveIfFitNegative": 0.2,
+  "testMeanTop1pctFit": -2.64,
+  "testMeanAll": -6.82,
+  "rankCorr": 0.863
+ }
+}
