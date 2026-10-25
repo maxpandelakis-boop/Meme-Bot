@@ -11,6 +11,7 @@ five month windows straight from the Solana chain and the coin's own metadata fi
   final <dir with shard files> <out dir> [<earlier chain.parquet>]   one chain.parquet (an earlier run's rows kept, their file
                                             fields filled from the files output where it read one)
   wiki  <first day> <last day> <out.json>   the 1,000 most-read English Wikipedia articles of each day (a "news of the day" list)
+  wikifill <wiki_top.json>                  the days that list could not get (rate limit) asked again, slowly
 
 Per mint:
   - name, ticker and the link to the metadata file: from the mint account's own metadata (Token-2022 coins, pump.fun's newer
@@ -423,6 +424,27 @@ def cmd_wiki(day0, day1, out):
     log("days", len(res), "with articles", sum(1 for v in res.values() if v))
 
 
+def cmd_wikifill(path):
+    """Ask again, slowly, for the days the wiki command got no list for (Wikimedia answered 429), and rewrite the file."""
+    res = json.load(open(path))
+    empty = sorted(d for d, v in res.items() if not v)
+    for d in empty:
+        arts = []
+        for k in range(5):
+            st, raw = http(WIKI % d.replace("-", "/"), gap=2.0)
+            try:
+                arts = json.loads(raw)["items"][0]["articles"] if raw else []
+            except Exception:
+                arts = []
+            if arts:
+                break
+            time.sleep(20 * (k + 1))
+        res[d] = [[a.get("article"), a.get("views")] for a in arts]
+        log(d, st, len(arts))
+    json.dump(res, open(path, "w"))
+    log("days", len(res), "with articles", sum(1 for v in res.values() if v), "asked again", len(empty))
+
+
 def cmd_final(src, out, prev=None):
     """One chain.parquet from the shard files, plus the rows of an earlier run (prev) for the coins this run left out."""
     import pandas as pd
@@ -466,4 +488,4 @@ def cmd_final(src, out, prev=None):
 
 
 if __name__ == "__main__":
-    {"shard": cmd_shard, "replan": cmd_replan, "files": cmd_files, "final": cmd_final, "wiki": cmd_wiki}[sys.argv[1]](*sys.argv[2:])
+    {"shard": cmd_shard, "replan": cmd_replan, "files": cmd_files, "final": cmd_final, "wiki": cmd_wiki, "wikifill": cmd_wikifill}[sys.argv[1]](*sys.argv[2:])
