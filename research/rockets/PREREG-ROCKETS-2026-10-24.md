@@ -373,3 +373,25 @@ ipfs.filebase.io answered 429 when two processes on one machine asked it more th
 RPC rate-limited 52 % of the curve-history calls (6,630 coins with sig_error, most of them in w1, w2 and w5). One more pass
 (meta_chain.py replan) asks again for those coins and for every file still unread, at half the pace. The 80 % rule is applied
 to whatever that pass gives; nothing else changes.
+
+## Amendment 12 (25 Oct, ~04:05 UTC, before the graduation study's real run): the graduation data as it stands
+
+No outcome has been looked at for any media or picture fact. The data the real run of check_rockets.py uses:
+- branch rocketschain (chain run 8, 24 Oct 22:48 UTC, wiki list filled 25 Oct 03:36 UTC): all 71,978 graduations; 63,032
+  metadata files read (87.6 %); the Wikipedia list has 179 of 182 days (6, 8 and 10 Oct stay empty after slow retries).
+- branch rocketsimages (25 Oct 03:10 UTC): 60,382 of the 63,003 picture links read by CLIP (95.8 %; 1,528 answered 404, 840
+  answered 403).
+- hand check (amendment 5): 117 of the 120 sample pictures could be read; sorted by hand into the six groups first (the list's
+  SHA-256 a9e108d2...dab was noted before CLIP's groups were opened), then compared: **CLIP agrees on 82 of 117 (70.1 %,
+  Cohen's kappa 0.59)**; on photo / drawing / logo alone 78.6 %. CLIP's most common miss: drawn characters (Pepe, cartoon
+  people) called "a photo of a real person" (8 of 20). F19 is tested as planned; the report states this agreement next to it.
+- share of the E5 entries ($10k pools) that have each fact, per window (w1 / w2 / w3 / w4 / w5): links, X type, picture reused,
+  other launchpad, video, description 81.2 / 83.7 / 87.6 / 93.5 / 98.4 %; fresh X post 80.7 / 78.8 / 87.2 / 93.5 / 93.8 %;
+  news of the day 100 / 100 / 100 / 95.5 / 81.7 %; the picture facts F19-F22 79.9 / 82.9 / 81.7 / 88.8 / 95.8 %. By the
+  plan's rule, a fact under 80 % in w1 or w2 is fit on w3 and tested on w4 and w5 (F14, F19-F22); all others use w1-w3 and
+  w4 + w5.
+- four shuffled-outcome runs on exactly this data (NULL = 21, 22, 23, 24): no fact counts in part A, nothing holds in part B,
+  part C's unseen AUC 0.47-0.53.
+
+The real run follows now, once; after it nothing in the plan, buckets or code changes except bug fixes, and any bug fix is
+reported.
