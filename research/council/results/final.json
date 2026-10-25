@@ -1,0 +1,1670 @@
+{
+ "candidates": {
+  "A chosen": {
+   "w4": {
+    "buys": 356,
+    "held": 0,
+    "rule": -3.17,
+    "council": -3.17,
+    "vsRule": {
+     "n": 356,
+     "diff": 0.0,
+     "lo5": 0.0,
+     "ci95": [
+      0.0,
+      0.0
+     ],
+     "p": 1.0
+    },
+    "vsRule_level": 0.0,
+    "vsRule_noOutage": {
+     "n": 287,
+     "diff": 0.0
+    },
+    "plans": {
+     "H1": 0,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 0,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 0,
+     "RS": 0
+    },
+    "heldEnded": {
+     "x2+": 0,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": null,
+     "heldWon": 0
+    },
+    "missed": {
+     "bestPlan5x+": 9,
+     "bestPlan10x+": 5
+    },
+    "profit": {
+     "n": 356,
+     "meanAfterCost": -3.92,
+     "lo1": -6.15,
+     "withoutBest": -4.28,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 185,
+    "held": 1,
+    "rule": -3.97,
+    "council": -3.97,
+    "vsRule": {
+     "n": 185,
+     "diff": -0.0,
+     "lo5": -0.0,
+     "ci95": [
+      -0.0,
+      0.0
+     ],
+     "p": 1.0
+    },
+    "vsRule_level": -0.0,
+    "vsRule_noOutage": {
+     "n": 185,
+     "diff": -0.0
+    },
+    "plans": {
+     "H1": 0,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 1,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 0,
+     "RS": 0
+    },
+    "heldEnded": {
+     "x2+": 0,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": -0.0,
+     "heldWon": 0
+    },
+    "missed": {
+     "bestPlan5x+": 3,
+     "bestPlan10x+": 3
+    },
+    "profit": {
+     "n": 185,
+     "meanAfterCost": -4.72,
+     "lo1": -7.6,
+     "withoutBest": -4.96,
+     "holds": false
+    }
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  },
+  "A majority2": {
+   "w4": {
+    "buys": 356,
+    "held": 1,
+    "rule": -3.17,
+    "council": -3.1,
+    "vsRule": {
+     "n": 356,
+     "diff": 0.075,
+     "lo5": 0.0,
+     "ci95": [
+      0.0,
+      0.226
+     ],
+     "p": 0.3686
+    },
+    "vsRule_level": 0.075,
+    "vsRule_noOutage": {
+     "n": 287,
+     "diff": 0.093
+    },
+    "plans": {
+     "H1": 0,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 0,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 1,
+     "RS": 0
+    },
+    "heldEnded": {
+     "x2+": 1,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": 26.83,
+     "heldWon": 1
+    },
+    "missed": {
+     "bestPlan5x+": 9,
+     "bestPlan10x+": 5
+    },
+    "profit": {
+     "n": 356,
+     "meanAfterCost": -3.85,
+     "lo1": -6.08,
+     "withoutBest": -4.2,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 185,
+    "held": 2,
+    "rule": -3.97,
+    "council": -3.97,
+    "vsRule": {
+     "n": 185,
+     "diff": -0.0,
+     "lo5": -0.0,
+     "ci95": [
+      -0.0,
+      0.0
+     ],
+     "p": 0.7673
+    },
+    "vsRule_level": -0.0,
+    "vsRule_noOutage": {
+     "n": 185,
+     "diff": -0.0
+    },
+    "plans": {
+     "H1": 0,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 0,
+     "HE": 0,
+     "HN": 0,
+     "TR": 1,
+     "BE": 1,
+     "RS": 0
+    },
+    "heldEnded": {
+     "x2+": 0,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": -0.0,
+     "heldWon": 1
+    },
+    "missed": {
+     "bestPlan5x+": 3,
+     "bestPlan10x+": 3
+    },
+    "profit": {
+     "n": 185,
+     "meanAfterCost": -4.72,
+     "lo1": -7.6,
+     "withoutBest": -4.96,
+     "holds": false
+    }
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  },
+  "A chair0": {
+   "w4": {
+    "buys": 356,
+    "held": 109,
+    "rule": -3.17,
+    "council": -2.98,
+    "vsRule": {
+     "n": 356,
+     "diff": 0.19,
+     "lo5": -1.287,
+     "ci95": [
+      -1.512,
+      2.334
+     ],
+     "p": 0.45775
+    },
+    "vsRule_level": -0.445,
+    "vsRule_noOutage": {
+     "n": 287,
+     "diff": -0.738
+    },
+    "plans": {
+     "H1": 37,
+     "H3": 8,
+     "H6": 5,
+     "H12": 8,
+     "H24": 4,
+     "HE": 1,
+     "HN": 24,
+     "TR": 1,
+     "BE": 8,
+     "RS": 13
+    },
+    "heldEnded": {
+     "x2+": 3,
+     "x5+": 2,
+     "x10+": 0,
+     "gainPerHold": 0.62,
+     "heldWon": 56
+    },
+    "missed": {
+     "bestPlan5x+": 6,
+     "bestPlan10x+": 4
+    },
+    "profit": {
+     "n": 356,
+     "meanAfterCost": -3.73,
+     "lo1": -6.86,
+     "withoutBest": -4.51,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 185,
+    "held": 52,
+    "rule": -3.97,
+    "council": -2.17,
+    "vsRule": {
+     "n": 185,
+     "diff": 1.801,
+     "lo5": -2.533,
+     "ci95": [
+      -2.859,
+      9.639
+     ],
+     "p": 0.36445
+    },
+    "vsRule_level": 1.344,
+    "vsRule_noOutage": {
+     "n": 185,
+     "diff": 1.801
+    },
+    "plans": {
+     "H1": 14,
+     "H3": 4,
+     "H6": 3,
+     "H12": 2,
+     "H24": 0,
+     "HE": 0,
+     "HN": 16,
+     "TR": 6,
+     "BE": 5,
+     "RS": 2
+    },
+    "heldEnded": {
+     "x2+": 2,
+     "x5+": 1,
+     "x10+": 1,
+     "gainPerHold": 6.41,
+     "heldWon": 25
+    },
+    "missed": {
+     "bestPlan5x+": 1,
+     "bestPlan10x+": 1
+    },
+    "profit": {
+     "n": 185,
+     "meanAfterCost": -2.92,
+     "lo1": -9.1,
+     "withoutBest": -6.39,
+     "holds": false
+    }
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  },
+  "B chosen": {
+   "w4": {
+    "buys": 1942,
+    "held": 1006,
+    "rule": -9.5,
+    "council": -8.92,
+    "vsRule": {
+     "n": 1942,
+     "diff": 0.587,
+     "lo5": 0.134,
+     "ci95": [
+      0.05,
+      1.149
+     ],
+     "p": 0.01525
+    },
+    "vsRule_level": -1.467,
+    "vsRule_noOutage": {
+     "n": 1546,
+     "diff": 0.582
+    },
+    "plans": {
+     "H1": 53,
+     "H3": 1,
+     "H6": 1,
+     "H12": 2,
+     "H24": 0,
+     "HE": 1,
+     "HN": 0,
+     "TR": 0,
+     "BE": 127,
+     "RS": 821
+    },
+    "heldEnded": {
+     "x2+": 7,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": 1.13,
+     "heldWon": 433
+    },
+    "missed": {
+     "bestPlan5x+": 38,
+     "bestPlan10x+": 19
+    },
+    "profit": {
+     "n": 1942,
+     "meanAfterCost": -9.67,
+     "lo1": -11.29,
+     "withoutBest": -9.75,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 914,
+    "held": 488,
+    "rule": -10.45,
+    "council": -9.82,
+    "vsRule": {
+     "n": 914,
+     "diff": 0.632,
+     "lo5": 0.007,
+     "ci95": [
+      -0.1,
+      1.455
+     ],
+     "p": 0.04805
+    },
+    "vsRule_level": -1.394,
+    "vsRule_noOutage": {
+     "n": 914,
+     "diff": 0.632
+    },
+    "plans": {
+     "H1": 29,
+     "H3": 0,
+     "H6": 1,
+     "H12": 1,
+     "H24": 0,
+     "HE": 0,
+     "HN": 1,
+     "TR": 1,
+     "BE": 79,
+     "RS": 376
+    },
+    "heldEnded": {
+     "x2+": 2,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": 1.18,
+     "heldWon": 246
+    },
+    "missed": {
+     "bestPlan5x+": 16,
+     "bestPlan10x+": 8
+    },
+    "profit": {
+     "n": 914,
+     "meanAfterCost": -10.57,
+     "lo1": -12.92,
+     "withoutBest": -10.77,
+     "holds": false
+    }
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  },
+  "B majority2": {
+   "w4": {
+    "buys": 1942,
+    "held": 23,
+    "rule": -9.5,
+    "council": -9.44,
+    "vsRule": {
+     "n": 1942,
+     "diff": 0.06,
+     "lo5": -0.009,
+     "ci95": [
+      -0.015,
+      0.186
+     ],
+     "p": 0.126
+    },
+    "vsRule_level": 0.058,
+    "vsRule_noOutage": {
+     "n": 1546,
+     "diff": 0.084
+    },
+    "plans": {
+     "H1": 11,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 0,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 5,
+     "RS": 7
+    },
+    "heldEnded": {
+     "x2+": 1,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": 5.04,
+     "heldWon": 10
+    },
+    "missed": {
+     "bestPlan5x+": 57,
+     "bestPlan10x+": 31
+    },
+    "profit": {
+     "n": 1942,
+     "meanAfterCost": -10.19,
+     "lo1": -11.71,
+     "withoutBest": -10.24,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 914,
+    "held": 10,
+    "rule": -10.45,
+    "council": -10.43,
+    "vsRule": {
+     "n": 914,
+     "diff": 0.021,
+     "lo5": 0.001,
+     "ci95": [
+      0.0,
+      0.059
+     ],
+     "p": 0.02255
+    },
+    "vsRule_level": 0.015,
+    "vsRule_noOutage": {
+     "n": 914,
+     "diff": 0.021
+    },
+    "plans": {
+     "H1": 4,
+     "H3": 1,
+     "H6": 0,
+     "H12": 0,
+     "H24": 0,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 2,
+     "RS": 3
+    },
+    "heldEnded": {
+     "x2+": 0,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": 1.91,
+     "heldWon": 5
+    },
+    "missed": {
+     "bestPlan5x+": 24,
+     "bestPlan10x+": 12
+    },
+    "profit": {
+     "n": 914,
+     "meanAfterCost": -11.18,
+     "lo1": -13.39,
+     "withoutBest": -11.24,
+     "holds": false
+    }
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  },
+  "B chair0": {
+   "w4": {
+    "buys": 1942,
+    "held": 1507,
+    "rule": -9.5,
+    "council": -8.57,
+    "vsRule": {
+     "n": 1942,
+     "diff": 0.934,
+     "lo5": -0.064,
+     "ci95": [
+      -0.246,
+      2.228
+     ],
+     "p": 0.0631
+    },
+    "vsRule_level": -1.353,
+    "vsRule_noOutage": {
+     "n": 1546,
+     "diff": 0.828
+    },
+    "plans": {
+     "H1": 115,
+     "H3": 10,
+     "H6": 34,
+     "H12": 54,
+     "H24": 8,
+     "HE": 14,
+     "HN": 58,
+     "TR": 1,
+     "BE": 167,
+     "RS": 1046
+    },
+    "heldEnded": {
+     "x2+": 59,
+     "x5+": 4,
+     "x10+": 2,
+     "gainPerHold": 1.2,
+     "heldWon": 680
+    },
+    "missed": {
+     "bestPlan5x+": 24,
+     "bestPlan10x+": 10
+    },
+    "profit": {
+     "n": 1942,
+     "meanAfterCost": -9.32,
+     "lo1": -11.35,
+     "withoutBest": -9.61,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 914,
+    "held": 676,
+    "rule": -10.45,
+    "council": -8.62,
+    "vsRule": {
+     "n": 914,
+     "diff": 1.836,
+     "lo5": 0.802,
+     "ci95": [
+      0.629,
+      3.143
+     ],
+     "p": 0.00095
+    },
+    "vsRule_level": -0.752,
+    "vsRule_noOutage": {
+     "n": 914,
+     "diff": 1.836
+    },
+    "plans": {
+     "H1": 106,
+     "H3": 23,
+     "H6": 11,
+     "H12": 6,
+     "H24": 8,
+     "HE": 4,
+     "HN": 36,
+     "TR": 1,
+     "BE": 59,
+     "RS": 422
+    },
+    "heldEnded": {
+     "x2+": 15,
+     "x5+": 1,
+     "x10+": 0,
+     "gainPerHold": 2.48,
+     "heldWon": 356
+    },
+    "missed": {
+     "bestPlan5x+": 11,
+     "bestPlan10x+": 5
+    },
+    "profit": {
+     "n": 914,
+     "meanAfterCost": -9.37,
+     "lo1": -11.98,
+     "withoutBest": -9.59,
+     "holds": false
+    }
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  },
+  "A jury": {
+   "w4": {
+    "buys": 356,
+    "held": 24,
+    "rule": -3.17,
+    "council": -3.24,
+    "vsRule": {
+     "n": 356,
+     "diff": -0.064,
+     "lo5": -0.222,
+     "ci95": [
+      -0.255,
+      0.122
+     ],
+     "p": 0.75475
+    },
+    "vsRule_level": -0.112,
+    "vsRule_noOutage": {
+     "n": 287,
+     "diff": -0.023
+    },
+    "plans": {
+     "H1": 1,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 17,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 0,
+     "RS": 6
+    },
+    "heldEnded": {
+     "x2+": 0,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": -0.95,
+     "heldWon": 10
+    },
+    "missed": {
+     "bestPlan5x+": 9,
+     "bestPlan10x+": 5
+    },
+    "profit": {
+     "n": 356,
+     "meanAfterCost": -3.99,
+     "lo1": -6.21,
+     "withoutBest": -4.34,
+     "holds": false
+    }
+   },
+   "w5": {
+    "buys": 185,
+    "held": 14,
+    "rule": -3.97,
+    "council": -4.25,
+    "vsRule": {
+     "n": 185,
+     "diff": -0.281,
+     "lo5": -0.554,
+     "ci95": [
+      -0.62,
+      -0.044
+     ],
+     "p": 0.9986
+    },
+    "vsRule_level": -0.587,
+    "vsRule_noOutage": {
+     "n": 185,
+     "diff": -0.281
+    },
+    "plans": {
+     "H1": 2,
+     "H3": 0,
+     "H6": 0,
+     "H12": 0,
+     "H24": 8,
+     "HE": 0,
+     "HN": 0,
+     "TR": 0,
+     "BE": 0,
+     "RS": 4
+    },
+    "heldEnded": {
+     "x2+": 0,
+     "x5+": 0,
+     "x10+": 0,
+     "gainPerHold": -3.72,
+     "heldWon": 3
+    },
+    "missed": {
+     "bestPlan5x+": 2,
+     "bestPlan10x+": 2
+    },
+    "profit": {
+     "n": 185,
+     "meanAfterCost": -5.0,
+     "lo1": -7.81,
+     "withoutBest": -5.24,
+     "holds": false
+    }
+   },
+   "cases": {
+    "n": 54,
+    "held": 38,
+    "gainOnCases": -74.87,
+    "anyPlanBeatsSelling": 38,
+    "r1HoldVotes": 378,
+    "r2HoldVotes": 376,
+    "aucBestPlan": 0.75,
+    "aucCouncilPlan": 0.572
+   },
+   "holmSurvives": false,
+   "holds": false,
+   "profitable": false
+  }
+ },
+ "juryDetail": {
+  "1": {
+   "votes": [
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "2": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 0
+  },
+  "3": {
+   "votes": [
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "4": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 3
+  },
+  "5": {
+   "votes": [
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "6": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "BE",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "7": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H24",
+    "H24",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "8": {
+   "votes": [
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 9
+  },
+  "9": {
+   "votes": [
+    "H1",
+    "H1",
+    "SELL",
+    "SELL",
+    "H1",
+    "SELL",
+    "H1",
+    "H1",
+    "H1",
+    "H1"
+   ],
+   "r1holds": 5
+  },
+  "10": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H24",
+    "H24",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "11": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "12": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "SELL",
+    "SELL",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 6
+  },
+  "13": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "14": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "15": {
+   "votes": [
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "16": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "H1",
+    "SELL",
+    "H1"
+   ],
+   "r1holds": 4
+  },
+  "17": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 0
+  },
+  "18": {
+   "votes": [
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 9
+  },
+  "19": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 0
+  },
+  "20": {
+   "votes": [
+    "RS",
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "21": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 0
+  },
+  "22": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H24",
+    "H24",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "23": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H1",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "24": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 2
+  },
+  "25": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "26": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H24",
+    "H24",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "27": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 2
+  },
+  "28": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H24",
+    "H24",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "29": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 0
+  },
+  "30": {
+   "votes": [
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "31": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "32": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "33": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "34": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "35": {
+   "votes": [
+    "H1",
+    "H1",
+    "SELL",
+    "SELL",
+    "H1",
+    "SELL",
+    "H1",
+    "SELL",
+    "H1",
+    "H1"
+   ],
+   "r1holds": 5
+  },
+  "36": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "37": {
+   "votes": [
+    "H1",
+    "H3",
+    "SELL",
+    "H1",
+    "H1",
+    "H3",
+    "H3",
+    "H3",
+    "RS",
+    "H1"
+   ],
+   "r1holds": 8
+  },
+  "38": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "39": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "RS",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "RS",
+    "RS",
+    "SELL"
+   ],
+   "r1holds": 4
+  },
+  "40": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "RS",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "41": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "RS",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "42": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "RS",
+    "SELL",
+    "SELL",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 4
+  },
+  "43": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "44": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 1
+  },
+  "45": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 1
+  },
+  "46": {
+   "votes": [
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "47": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H24",
+    "H24",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "48": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 1
+  },
+  "49": {
+   "votes": [
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL",
+    "SELL"
+   ],
+   "r1holds": 0
+  },
+  "50": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "51": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "52": {
+   "votes": [
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS",
+    "RS",
+    "RS",
+    "SELL",
+    "RS",
+    "RS"
+   ],
+   "r1holds": 8
+  },
+  "53": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "H3",
+    "H24"
+   ],
+   "r1holds": 10
+  },
+  "54": {
+   "votes": [
+    "H24",
+    "H24",
+    "BE",
+    "H3",
+    "H3",
+    "H3",
+    "H24",
+    "H24",
+    "BE",
+    "H24"
+   ],
+   "r1holds": 10
+  }
+ },
+ "anyHolds": false,
+ "wf": {
+  "A chosen": {
+   "w5_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   }
+  },
+  "A majority2": {
+   "w5_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   }
+  },
+  "A chair0": {
+   "w5_test": {
+    "held": 49,
+    "diff": 2.178,
+    "p": 0.35755
+   }
+  },
+  "B chosen": {
+   "w5_test": {
+    "held": 332,
+    "diff": 1.006,
+    "p": 0.0
+   }
+  },
+  "B majority2": {
+   "w5_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   }
+  },
+  "B chair0": {
+   "w5_test": {
+    "held": 759,
+    "diff": 2.517,
+    "p": 0.0008
+   }
+  }
+ },
+ "placebo": {
+  "A majority1": {
+   "w4_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   },
+   "w5_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   }
+  },
+  "A chosen": {
+   "w4_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   },
+   "w5_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   }
+  },
+  "B majority1": {
+   "w4_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   },
+   "w5_test": {
+    "held": 0,
+    "diff": 0.0,
+    "p": 1.0
+   }
+  },
+  "B chosen": {
+   "w4_test": {
+    "held": 80,
+    "diff": 0.083,
+    "p": 0.20655
+   },
+   "w5_test": {
+    "held": 17,
+    "diff": 0.196,
+    "p": 0.0099
+   }
+  }
+ }
+}

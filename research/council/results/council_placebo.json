@@ -1,0 +1,893 @@
+{
+ "step": "placebo",
+ "frames": {
+  "A": {
+   "chosen": [
+    "R1",
+    0.5
+   ],
+   "cands": {
+    "majority1": {
+     "w4_test": {
+      "buys": 356,
+      "held": 0,
+      "rule": -3.17,
+      "council": -3.17,
+      "vsRule": {
+       "n": 356,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 287,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 9,
+       "bestPlan10x+": 5
+      },
+      "profit": {
+       "n": 356,
+       "meanAfterCost": -3.92,
+       "lo1": -6.15,
+       "withoutBest": -4.28,
+       "holds": false
+      }
+     },
+     "w4_wide": {
+      "buys": 1507,
+      "held": 0,
+      "rule": -4.05,
+      "council": -4.05,
+      "vsRule": {
+       "n": 1507,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 1225,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 29,
+       "bestPlan10x+": 17
+      }
+     },
+     "w5_test": {
+      "buys": 185,
+      "held": 0,
+      "rule": -3.97,
+      "council": -3.97,
+      "vsRule": {
+       "n": 185,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 185,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 3,
+       "bestPlan10x+": 3
+      },
+      "profit": {
+       "n": 185,
+       "meanAfterCost": -4.72,
+       "lo1": -7.6,
+       "withoutBest": -4.96,
+       "holds": false
+      }
+     },
+     "w5_wide": {
+      "buys": 657,
+      "held": 0,
+      "rule": -3.72,
+      "council": -3.72,
+      "vsRule": {
+       "n": 657,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 657,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 14,
+       "bestPlan10x+": 8
+      }
+     }
+    },
+    "chosen": {
+     "w4_test": {
+      "buys": 356,
+      "held": 0,
+      "rule": -3.17,
+      "council": -3.17,
+      "vsRule": {
+       "n": 356,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 287,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 9,
+       "bestPlan10x+": 5
+      },
+      "profit": {
+       "n": 356,
+       "meanAfterCost": -3.92,
+       "lo1": -6.15,
+       "withoutBest": -4.28,
+       "holds": false
+      }
+     },
+     "w4_wide": {
+      "buys": 1507,
+      "held": 0,
+      "rule": -4.05,
+      "council": -4.05,
+      "vsRule": {
+       "n": 1507,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 1225,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 29,
+       "bestPlan10x+": 17
+      }
+     },
+     "w5_test": {
+      "buys": 185,
+      "held": 0,
+      "rule": -3.97,
+      "council": -3.97,
+      "vsRule": {
+       "n": 185,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 185,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 3,
+       "bestPlan10x+": 3
+      },
+      "profit": {
+       "n": 185,
+       "meanAfterCost": -4.72,
+       "lo1": -7.6,
+       "withoutBest": -4.96,
+       "holds": false
+      }
+     },
+     "w5_wide": {
+      "buys": 657,
+      "held": 0,
+      "rule": -3.72,
+      "council": -3.72,
+      "vsRule": {
+       "n": 657,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 657,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 14,
+       "bestPlan10x+": 8
+      }
+     }
+    }
+   },
+   "all": {
+    "R1 0.2 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.2 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.35 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.35 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.5 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.5 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.65 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.65 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.8 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.8 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    }
+   }
+  },
+  "B": {
+   "chosen": [
+    "R1",
+    0.2
+   ],
+   "cands": {
+    "majority1": {
+     "w4_test": {
+      "buys": 1942,
+      "held": 0,
+      "rule": -9.5,
+      "council": -9.5,
+      "vsRule": {
+       "n": 1942,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 1546,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 59,
+       "bestPlan10x+": 32
+      },
+      "profit": {
+       "n": 1942,
+       "meanAfterCost": -10.25,
+       "lo1": -11.78,
+       "withoutBest": -10.28,
+       "holds": false
+      }
+     },
+     "w4_wide": {
+      "buys": 1942,
+      "held": 0,
+      "rule": -9.5,
+      "council": -9.5,
+      "vsRule": {
+       "n": 1942,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 1546,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 59,
+       "bestPlan10x+": 32
+      }
+     },
+     "w5_test": {
+      "buys": 914,
+      "held": 0,
+      "rule": -10.45,
+      "council": -10.45,
+      "vsRule": {
+       "n": 914,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 914,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 25,
+       "bestPlan10x+": 13
+      },
+      "profit": {
+       "n": 914,
+       "meanAfterCost": -11.2,
+       "lo1": -13.41,
+       "withoutBest": -11.27,
+       "holds": false
+      }
+     },
+     "w5_wide": {
+      "buys": 914,
+      "held": 0,
+      "rule": -10.45,
+      "council": -10.45,
+      "vsRule": {
+       "n": 914,
+       "diff": 0.0,
+       "lo5": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "p": 1.0
+      },
+      "vsRule_level": 0.0,
+      "vsRule_noOutage": {
+       "n": 914,
+       "diff": 0.0
+      },
+      "plans": {
+       "H1": 0,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 0
+      },
+      "heldEnded": {
+       "x2+": 0,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": null,
+       "heldWon": 0
+      },
+      "missed": {
+       "bestPlan5x+": 25,
+       "bestPlan10x+": 13
+      }
+     }
+    },
+    "chosen": {
+     "w4_test": {
+      "buys": 1942,
+      "held": 80,
+      "rule": -9.5,
+      "council": -9.42,
+      "vsRule": {
+       "n": 1942,
+       "diff": 0.083,
+       "lo5": -0.068,
+       "ci95": [
+        -0.092,
+        0.299
+       ],
+       "p": 0.20655
+      },
+      "vsRule_level": 0.029,
+      "vsRule_noOutage": {
+       "n": 1546,
+       "diff": 0.086
+      },
+      "plans": {
+       "H1": 19,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 61
+      },
+      "heldEnded": {
+       "x2+": 2,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": 2.01,
+       "heldWon": 30
+      },
+      "missed": {
+       "bestPlan5x+": 58,
+       "bestPlan10x+": 31
+      },
+      "profit": {
+       "n": 1942,
+       "meanAfterCost": -10.17,
+       "lo1": -11.7,
+       "withoutBest": -10.23,
+       "holds": false
+      }
+     },
+     "w4_wide": {
+      "buys": 1942,
+      "held": 80,
+      "rule": -9.5,
+      "council": -9.42,
+      "vsRule": {
+       "n": 1942,
+       "diff": 0.083,
+       "lo5": -0.068,
+       "ci95": [
+        -0.092,
+        0.299
+       ],
+       "p": 0.20655
+      },
+      "vsRule_level": 0.029,
+      "vsRule_noOutage": {
+       "n": 1546,
+       "diff": 0.086
+      },
+      "plans": {
+       "H1": 19,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 61
+      },
+      "heldEnded": {
+       "x2+": 2,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": 2.01,
+       "heldWon": 30
+      },
+      "missed": {
+       "bestPlan5x+": 58,
+       "bestPlan10x+": 31
+      }
+     },
+     "w5_test": {
+      "buys": 914,
+      "held": 17,
+      "rule": -10.45,
+      "council": -10.26,
+      "vsRule": {
+       "n": 914,
+       "diff": 0.196,
+       "lo5": 0.044,
+       "ci95": [
+        0.023,
+        0.42
+       ],
+       "p": 0.0099
+      },
+      "vsRule_level": 0.171,
+      "vsRule_noOutage": {
+       "n": 914,
+       "diff": 0.196
+      },
+      "plans": {
+       "H1": 4,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 13
+      },
+      "heldEnded": {
+       "x2+": 1,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": 10.52,
+       "heldWon": 10
+      },
+      "missed": {
+       "bestPlan5x+": 25,
+       "bestPlan10x+": 13
+      },
+      "profit": {
+       "n": 914,
+       "meanAfterCost": -11.01,
+       "lo1": -13.22,
+       "withoutBest": -11.08,
+       "holds": false
+      }
+     },
+     "w5_wide": {
+      "buys": 914,
+      "held": 17,
+      "rule": -10.45,
+      "council": -10.26,
+      "vsRule": {
+       "n": 914,
+       "diff": 0.196,
+       "lo5": 0.044,
+       "ci95": [
+        0.023,
+        0.42
+       ],
+       "p": 0.0099
+      },
+      "vsRule_level": 0.171,
+      "vsRule_noOutage": {
+       "n": 914,
+       "diff": 0.196
+      },
+      "plans": {
+       "H1": 4,
+       "H3": 0,
+       "H6": 0,
+       "H12": 0,
+       "H24": 0,
+       "HE": 0,
+       "HN": 0,
+       "TR": 0,
+       "BE": 0,
+       "RS": 13
+      },
+      "heldEnded": {
+       "x2+": 1,
+       "x5+": 0,
+       "x10+": 0,
+       "gainPerHold": 10.52,
+       "heldWon": 10
+      },
+      "missed": {
+       "bestPlan5x+": 25,
+       "bestPlan10x+": 13
+      }
+     }
+    }
+   },
+   "all": {
+    "R1 0.2 w4": {
+     "held": 80,
+     "diff": 0.083,
+     "p": 0.20655
+    },
+    "R1 0.2 w5": {
+     "held": 17,
+     "diff": 0.196,
+     "p": 0.0099
+    },
+    "R1 0.35 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.35 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.5 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.5 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.65 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.65 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.8 w4": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    },
+    "R1 0.8 w5": {
+     "held": 0,
+     "diff": 0.0,
+     "p": 1.0
+    }
+   }
+  }
+ }
+}
