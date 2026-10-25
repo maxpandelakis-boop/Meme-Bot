@@ -1,6 +1,6 @@
 # Pre-registration: the Radar model without its market inputs (research only)
 
-Written 25 Oct 2026 around 23:00 UTC, before the variant is run. Nothing in the bot changes; the live model (rocket_model.json,
+Written 25 Oct 2026 around 22:50 UTC, before the variant is run. Nothing in the bot changes; the live model (rocket_model.json,
 cut top 0.5 %) stays.
 
 Why: in the live model the four market inputs btc_24h, btc_1h, sol_24h, sol_1h are 4 of the 7 most used split features (about 16 %
