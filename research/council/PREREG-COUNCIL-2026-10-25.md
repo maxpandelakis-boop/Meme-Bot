@@ -154,3 +154,11 @@ live rule (a shadow sells nothing). A live sell-rule change needs the user's exp
 Pick account); a live jury would need an API key as a repository secret. If nothing holds, the report says so plainly.
 
 Compute: this container only (4 cores, at most 3 worker processes); no GitHub Actions runner, the live scans are not touched.
+
+## Amendment 1 (25 Oct, 23:20 UTC; while writing the council code, before any event, outcome or model was computed)
+
+The LightGBM and ridge targets are clipped to [-250, +250] EUR instead of [-60, +250]: a lower clip at -60 would hide most of the
+loss of holding after a high sale (for example a trailing sale at 5x that falls back), which would bias the checkers towards
+holding. The nearest-neighbour checker (V9) and the base-rate checker (V10) use the gain as it is (no clip), as written. In round 2
+the base-rate checker (V10), which has no numbers to fit, adds the round-1 vote share s1 as a fourth cell key in three buckets
+(< 0.2, 0.2-0.5, >= 0.5); the nearest-neighbour checker adds the two numbers, standardised, to its twelve.
