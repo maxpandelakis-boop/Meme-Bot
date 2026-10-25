@@ -1,0 +1,1197 @@
+{
+ "coins": {
+  "P": {
+   "w1": 348,
+   "w2": 394,
+   "w3": 569,
+   "w4": 356,
+   "w5": 185
+  },
+  "LP": {
+   "w1": 1718,
+   "w2": 1893,
+   "w3": 2280,
+   "w4": 1942,
+   "w5": 914
+  },
+  "R": {
+   "w1": 1277,
+   "w2": 1493,
+   "w3": 1890,
+   "w4": 3201,
+   "w5": 1743
+  }
+ },
+ "checkAgainstChartexit": {
+  "w1": {
+   "n": 348,
+   "nCX": 348,
+   "K": -6.17,
+   "K_CX": -6.17,
+   "chart": -4.22,
+   "chart_here": -4.22,
+   "chart_CX": -4.22
+  },
+  "w2": {
+   "n": 394,
+   "nCX": 394,
+   "K": -5.13,
+   "K_CX": -5.13,
+   "chart": -2.34,
+   "chart_here": -2.34,
+   "chart_CX": -2.34
+  },
+  "w3": {
+   "n": 569,
+   "nCX": 569,
+   "K": -2.81,
+   "K_CX": -2.81,
+   "chart": -1.95,
+   "chart_here": -1.95,
+   "chart_CX": -1.95
+  },
+  "w4": {
+   "n": 356,
+   "nCX": 356,
+   "K": -5.33,
+   "K_CX": -5.33,
+   "chart": -3.17,
+   "chart_here": -3.17,
+   "chart_CX": -3.17
+  },
+  "w5": {
+   "n": 185,
+   "nCX": 185,
+   "K": -6.47,
+   "K_CX": -6.47,
+   "chart": -3.97,
+   "chart_here": -3.97,
+   "chart_CX": -3.97
+  }
+ },
+ "monkey": {
+  "w1": {
+   "median": 9.52,
+   "p10": 8.74,
+   "p90": 9.93,
+   "meanPct": -18.91,
+   "plannedBuys": 666,
+   "hours": 673
+  },
+  "w2": {
+   "median": 9.49,
+   "p10": 8.64,
+   "p90": 9.87,
+   "meanPct": -21.33,
+   "plannedBuys": 685,
+   "hours": 689
+  },
+  "w3": {
+   "median": 9.17,
+   "p10": 8.0,
+   "p90": 9.77,
+   "meanPct": -18.26,
+   "plannedBuys": 655,
+   "hours": 661
+  },
+  "w4": {
+   "median": 8.89,
+   "p10": 7.55,
+   "p90": 9.81,
+   "meanPct": -39.57,
+   "plannedBuys": 623,
+   "hours": 623
+  },
+  "w5": {
+   "median": 9.44,
+   "p10": 8.43,
+   "p90": 9.89,
+   "meanPct": -15.04,
+   "plannedBuys": 301,
+   "hours": 302
+  },
+  "train": 9.39
+ },
+ "test": {
+  "winner": "flip",
+  "w4end": 39.51,
+  "aboveStart": false,
+  "beatsMonkey": true,
+  "bar": {
+   "n": 257,
+   "meanAfterCosts": -5.03,
+   "lower1pct": -6.81,
+   "sumWithoutBest": -1370.6,
+   "holds": false
+  },
+  "top3": {
+   "flip": {
+    "train": 1,
+    "w4": 1,
+    "w5": 1
+   },
+   "sellbot": {
+    "train": 2,
+    "w4": 2,
+    "w5": 2
+   },
+   "A": {
+    "train": 3,
+    "w4": 4,
+    "w5": 3
+   }
+  },
+  "spearman_w4": 0.94,
+  "spearman_w5": 0.94,
+  "bestOnW4": "flip",
+  "holds": false,
+  "spearman_meanPct_w4": 0.85,
+  "spearman_meanPct_w5": 0.82
+ },
+ "bots": {
+  "flip": {
+   "name": "Schnell-Verkäufer",
+   "text": "Pick-Filter; verkauft nach 5–10 Minuten",
+   "family": "P",
+   "w1": {
+    "end": 50.39,
+    "trades": 271,
+    "inProfit": 30.3,
+    "meanPct": -2.45,
+    "bestPct": 64.6,
+    "worstPct": -58.0,
+    "medianPct": -2.37,
+    "stake5": 71.35,
+    "stake20": 24.37,
+    "bar": {
+     "n": 271,
+     "meanAfterCosts": -3.95,
+     "lower1pct": -5.64,
+     "sumWithoutBest": -1134.7,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 41.29,
+    "trades": 301,
+    "inProfit": 31.2,
+    "meanPct": -2.83,
+    "bestPct": 61.5,
+    "worstPct": -97.8,
+    "medianPct": -2.38,
+    "stake5": 64.79,
+    "stake20": 15.93,
+    "bar": {
+     "n": 301,
+     "meanAfterCosts": -4.33,
+     "lower1pct": -6.27,
+     "sumWithoutBest": -1363.1,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 41.9,
+    "trades": 332,
+    "inProfit": 24.1,
+    "meanPct": -2.57,
+    "bestPct": 33.9,
+    "worstPct": -98.5,
+    "medianPct": -1.85,
+    "stake5": 64.98,
+    "stake20": 17.0,
+    "bar": {
+     "n": 332,
+     "meanAfterCosts": -4.07,
+     "lower1pct": -5.31,
+     "sumWithoutBest": -1385.1,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 39.51,
+    "trades": 257,
+    "inProfit": 23.0,
+    "meanPct": -3.53,
+    "bestPct": 78.9,
+    "worstPct": -96.8,
+    "medianPct": -2.07,
+    "stake5": 63.19,
+    "stake20": 14.96,
+    "bar": {
+     "n": 257,
+     "meanAfterCosts": -5.03,
+     "lower1pct": -6.81,
+     "sumWithoutBest": -1370.6,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 95.2,
+    "trades": 137,
+    "inProfit": 25.5,
+    "meanPct": -0.32,
+    "bestPct": 51.3,
+    "worstPct": -37.2,
+    "medianPct": -1.87,
+    "stake5": 97.7,
+    "stake20": 89.66,
+    "bar": {
+     "n": 137,
+     "meanAfterCosts": -1.82,
+     "lower1pct": -3.52,
+     "sumWithoutBest": -299.0,
+     "holds": false
+    }
+   },
+   "train": 44.53,
+   "trainMeanPct": -2.62,
+   "rankTrain": 1,
+   "rank_w4": 1,
+   "rank_w5": 1
+  },
+  "sellbot": {
+   "name": "Sell bot (Pick heute)",
+   "text": "Pick-Filter; verkauft nach dem Chart (−50 %, 11x, 15 % unter dem Hoch ab 1,5x, −15 % in 30 Min, 6 h)",
+   "family": "P",
+   "w1": {
+    "end": 9.94,
+    "trades": 238,
+    "brokeAfterDays": 26.9,
+    "inProfit": 25.2,
+    "meanPct": -9.19,
+    "bestPct": 76.0,
+    "worstPct": -99.7,
+    "medianPct": -15.81,
+    "stake5": 25.78,
+    "stake20": 4.65,
+    "bar": {
+     "n": 238,
+     "meanAfterCosts": -10.69,
+     "lower1pct": -14.82,
+     "sumWithoutBest": -2619.8,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 10.68,
+    "trades": 301,
+    "inProfit": 27.2,
+    "meanPct": -6.98,
+    "bestPct": 163.6,
+    "worstPct": -99.9,
+    "medianPct": -16.37,
+    "stake5": 33.83,
+    "stake20": 4.92,
+    "bar": {
+     "n": 301,
+     "meanAfterCosts": -8.48,
+     "lower1pct": -12.44,
+     "sumWithoutBest": -2713.1,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 24.89,
+    "trades": 332,
+    "inProfit": 44.3,
+    "meanPct": -3.66,
+    "bestPct": 180.2,
+    "worstPct": -99.9,
+    "medianPct": -2.46,
+    "stake5": 52.11,
+    "stake20": 4.48,
+    "bar": {
+     "n": 332,
+     "meanAfterCosts": -5.16,
+     "lower1pct": -9.21,
+     "sumWithoutBest": -1891.6,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 17.5,
+    "trades": 257,
+    "inProfit": 35.8,
+    "meanPct": -5.78,
+    "bestPct": 245.5,
+    "worstPct": -99.9,
+    "medianPct": -4.95,
+    "stake5": 44.56,
+    "stake20": 4.31,
+    "bar": {
+     "n": 257,
+     "meanAfterCosts": -7.28,
+     "lower1pct": -12.77,
+     "sumWithoutBest": -2113.8,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 31.8,
+    "trades": 137,
+    "inProfit": 43.1,
+    "meanPct": -7.72,
+    "bestPct": 72.4,
+    "worstPct": -99.8,
+    "medianPct": -1.99,
+    "stake5": 57.69,
+    "stake20": 8.38,
+    "bar": {
+     "n": 137,
+     "meanAfterCosts": -9.22,
+     "lower1pct": -15.74,
+     "sumWithoutBest": -1334.3,
+     "holds": false
+    }
+   },
+   "train": 15.17,
+   "trainMeanPct": -6.61,
+   "rankTrain": 2,
+   "rank_w4": 2,
+   "rank_w5": 2
+  },
+  "A": {
+   "name": "Schatten A",
+   "text": "Pick-Filter; Stopp −20 %, Ziel 3x, 6 h",
+   "family": "P",
+   "w1": {
+    "end": 9.97,
+    "trades": 158,
+    "brokeAfterDays": 18.6,
+    "inProfit": 19.0,
+    "meanPct": -13.36,
+    "bestPct": 194.0,
+    "worstPct": -99.7,
+    "medianPct": -23.96,
+    "stake5": 19.28,
+    "stake20": 4.9,
+    "bar": {
+     "n": 158,
+     "meanAfterCosts": -14.86,
+     "lower1pct": -22.22,
+     "sumWithoutBest": -2540.8,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 9.89,
+    "trades": 197,
+    "brokeAfterDays": 17.3,
+    "inProfit": 18.3,
+    "meanPct": -10.74,
+    "bestPct": 194.0,
+    "worstPct": -99.5,
+    "medianPct": -24.21,
+    "stake5": 19.6,
+    "stake20": 4.77,
+    "bar": {
+     "n": 197,
+     "meanAfterCosts": -12.24,
+     "lower1pct": -20.07,
+     "sumWithoutBest": -2604.7,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.98,
+    "trades": 326,
+    "brokeAfterDays": 30.6,
+    "inProfit": 40.2,
+    "meanPct": -6.17,
+    "bestPct": 194.0,
+    "worstPct": -99.9,
+    "medianPct": -7.27,
+    "stake5": 31.46,
+    "stake20": 3.92,
+    "bar": {
+     "n": 326,
+     "meanAfterCosts": -7.67,
+     "lower1pct": -13.08,
+     "sumWithoutBest": -2691.7,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 9.63,
+    "trades": 241,
+    "brokeAfterDays": 27.2,
+    "inProfit": 32.0,
+    "meanPct": -8.76,
+    "bestPct": 194.0,
+    "worstPct": -99.9,
+    "medianPct": -21.9,
+    "stake5": 30.32,
+    "stake20": 4.52,
+    "bar": {
+     "n": 241,
+     "meanAfterCosts": -10.26,
+     "lower1pct": -16.83,
+     "sumWithoutBest": -2666.2,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 25.18,
+    "trades": 137,
+    "inProfit": 37.2,
+    "meanPct": -8.61,
+    "bestPct": 194.0,
+    "worstPct": -99.8,
+    "medianPct": -5.46,
+    "stake5": 52.71,
+    "stake20": 4.91,
+    "bar": {
+     "n": 137,
+     "meanAfterCosts": -10.11,
+     "lower1pct": -18.37,
+     "sumWithoutBest": -1577.9,
+     "holds": false
+    }
+   },
+   "train": 9.95,
+   "trainMeanPct": -10.09,
+   "rankTrain": 3,
+   "rank_w4": 4,
+   "rank_w5": 3
+  },
+  "C": {
+   "name": "Schatten C",
+   "text": "Pick-Filter; die Hälfte bei 2x, Rest −30 % / 11x / 6 h",
+   "family": "P",
+   "w1": {
+    "end": 9.96,
+    "trades": 132,
+    "brokeAfterDays": 16.6,
+    "inProfit": 25.8,
+    "meanPct": -16.13,
+    "bestPct": 116.0,
+    "worstPct": -99.7,
+    "medianPct": -33.16,
+    "stake5": 19.85,
+    "stake20": 4.74,
+    "bar": {
+     "n": 132,
+     "meanAfterCosts": -17.63,
+     "lower1pct": -25.99,
+     "sumWithoutBest": -2441.9,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 9.77,
+    "trades": 172,
+    "brokeAfterDays": 14.2,
+    "inProfit": 26.7,
+    "meanPct": -12.29,
+    "bestPct": 248.1,
+    "worstPct": -99.4,
+    "medianPct": -32.45,
+    "stake5": 19.38,
+    "stake20": 4.52,
+    "bar": {
+     "n": 172,
+     "meanAfterCosts": -13.79,
+     "lower1pct": -22.36,
+     "sumWithoutBest": -2619.3,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.95,
+    "trades": 235,
+    "brokeAfterDays": 17.9,
+    "inProfit": 43.4,
+    "meanPct": -8.93,
+    "bestPct": 180.2,
+    "worstPct": -99.9,
+    "medianPct": -3.69,
+    "stake5": 20.67,
+    "stake20": 4.78,
+    "bar": {
+     "n": 235,
+     "meanAfterCosts": -10.43,
+     "lower1pct": -16.78,
+     "sumWithoutBest": -2630.2,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 9.49,
+    "trades": 249,
+    "brokeAfterDays": 27.2,
+    "inProfit": 38.2,
+    "meanPct": -8.2,
+    "bestPct": 264.8,
+    "worstPct": -99.9,
+    "medianPct": -8.9,
+    "stake5": 32.92,
+    "stake20": 3.45,
+    "bar": {
+     "n": 249,
+     "meanAfterCosts": -9.7,
+     "lower1pct": -16.71,
+     "sumWithoutBest": -2679.5,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 22.5,
+    "trades": 137,
+    "inProfit": 40.1,
+    "meanPct": -9.69,
+    "bestPct": 184.7,
+    "worstPct": -99.8,
+    "medianPct": -3.6,
+    "stake5": 49.42,
+    "stake20": 4.17,
+    "bar": {
+     "n": 137,
+     "meanAfterCosts": -11.19,
+     "lower1pct": -19.98,
+     "sumWithoutBest": -1716.7,
+     "holds": false
+    }
+   },
+   "train": 9.89,
+   "trainMeanPct": -12.45,
+   "rankTrain": 4,
+   "rank_w4": 5,
+   "rank_w5": 4
+  },
+  "LP": {
+   "name": "Lern-Pick-Regel",
+   "text": "Lern-Pick-Auswahl (ohne Gehirn); Stopp −20 %, Ziel 2x, 2 h",
+   "family": "LP",
+   "w1": {
+    "end": 9.73,
+    "trades": 110,
+    "brokeAfterDays": 5.1,
+    "inProfit": 23.6,
+    "meanPct": -19.65,
+    "bestPct": 96.0,
+    "worstPct": -99.8,
+    "medianPct": -30.18,
+    "stake5": 19.77,
+    "stake20": 5.0,
+    "bar": {
+     "n": 110,
+     "meanAfterCosts": -21.15,
+     "lower1pct": -32.68,
+     "sumWithoutBest": -2420.9,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 9.56,
+    "trades": 191,
+    "brokeAfterDays": 8.9,
+    "inProfit": 25.7,
+    "meanPct": -10.6,
+    "bestPct": 96.0,
+    "worstPct": -99.1,
+    "medianPct": -25.8,
+    "stake5": 19.5,
+    "stake20": 4.53,
+    "bar": {
+     "n": 191,
+     "meanAfterCosts": -12.1,
+     "lower1pct": -21.47,
+     "sumWithoutBest": -2405.8,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.8,
+    "trades": 85,
+    "brokeAfterDays": 4.3,
+    "inProfit": 17.6,
+    "meanPct": -25.41,
+    "bestPct": 96.0,
+    "worstPct": -99.9,
+    "medianPct": -30.08,
+    "stake5": 19.95,
+    "stake20": 4.33,
+    "bar": {
+     "n": 85,
+     "meanAfterCosts": -26.91,
+     "lower1pct": -39.34,
+     "sumWithoutBest": -2381.6,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 9.71,
+    "trades": 70,
+    "brokeAfterDays": 3.7,
+    "inProfit": 21.4,
+    "meanPct": -31.06,
+    "bestPct": 96.0,
+    "worstPct": -99.5,
+    "medianPct": -36.73,
+    "stake5": 19.82,
+    "stake20": 4.45,
+    "bar": {
+     "n": 70,
+     "meanAfterCosts": -32.56,
+     "lower1pct": -47.86,
+     "sumWithoutBest": -2373.8,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 9.86,
+    "trades": 76,
+    "brokeAfterDays": 3.4,
+    "inProfit": 18.4,
+    "meanPct": -28.71,
+    "bestPct": 96.0,
+    "worstPct": -99.7,
+    "medianPct": -29.54,
+    "stake5": 19.66,
+    "stake20": 4.5,
+    "bar": {
+     "n": 76,
+     "meanAfterCosts": -30.21,
+     "lower1pct": -43.62,
+     "sumWithoutBest": -2390.2,
+     "holds": false
+    }
+   },
+   "train": 9.7,
+   "trainMeanPct": -18.55,
+   "rankTrain": 5,
+   "rank_w4": 3,
+   "rank_w5": 7
+  },
+  "K": {
+   "name": "Alte Pick-Regel (K)",
+   "text": "Pick-Filter; Stopp −30 %, Ziel 11x, 6 h",
+   "family": "P",
+   "w1": {
+    "end": 9.7,
+    "trades": 115,
+    "brokeAfterDays": 14.9,
+    "inProfit": 25.2,
+    "meanPct": -19.13,
+    "bestPct": 136.0,
+    "worstPct": -99.7,
+    "medianPct": -33.41,
+    "stake5": 19.48,
+    "stake20": 4.81,
+    "bar": {
+     "n": 115,
+     "meanAfterCosts": -20.63,
+     "lower1pct": -29.39,
+     "sumWithoutBest": -2506.9,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 9.37,
+    "trades": 156,
+    "brokeAfterDays": 13.1,
+    "inProfit": 22.4,
+    "meanPct": -13.52,
+    "bestPct": 400.2,
+    "worstPct": -99.4,
+    "medianPct": -32.6,
+    "stake5": 19.71,
+    "stake20": 3.58,
+    "bar": {
+     "n": 156,
+     "meanAfterCosts": -15.02,
+     "lower1pct": -25.14,
+     "sumWithoutBest": -2741.7,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.93,
+    "trades": 217,
+    "brokeAfterDays": 17.0,
+    "inProfit": 43.3,
+    "meanPct": -9.58,
+    "bestPct": 264.4,
+    "worstPct": -99.9,
+    "medianPct": -3.69,
+    "stake5": 19.63,
+    "stake20": 4.51,
+    "bar": {
+     "n": 217,
+     "meanAfterCosts": -11.08,
+     "lower1pct": -18.02,
+     "sumWithoutBest": -2667.0,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 9.48,
+    "trades": 226,
+    "brokeAfterDays": 26.2,
+    "inProfit": 35.4,
+    "meanPct": -8.78,
+    "bestPct": 433.5,
+    "worstPct": -99.9,
+    "medianPct": -15.54,
+    "stake5": 25.73,
+    "stake20": 4.73,
+    "bar": {
+     "n": 226,
+     "meanAfterCosts": -10.28,
+     "lower1pct": -18.23,
+     "sumWithoutBest": -2755.7,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 21.79,
+    "trades": 137,
+    "inProfit": 40.1,
+    "meanPct": -9.72,
+    "bestPct": 273.3,
+    "worstPct": -99.8,
+    "medianPct": -3.6,
+    "stake5": 48.92,
+    "stake20": 4.85,
+    "bar": {
+     "n": 137,
+     "meanAfterCosts": -11.22,
+     "lower1pct": -20.42,
+     "sumWithoutBest": -1809.1,
+     "holds": false
+    }
+   },
+   "train": 9.67,
+   "trainMeanPct": -14.08,
+   "rankTrain": 6,
+   "rank_w4": 6,
+   "rank_w5": 5
+  },
+  "rocket": {
+   "name": "Raketenjäger",
+   "text": "junge Coins (30 Min–18 h), +50 % in 1 h mit viel Volumen; −30 % / 11x / 6 h",
+   "family": "R",
+   "w1": {
+    "end": 9.23,
+    "trades": 40,
+    "brokeAfterDays": 2.1,
+    "inProfit": 2.5,
+    "meanPct": -55.05,
+    "bestPct": 105.7,
+    "worstPct": -99.0,
+    "medianPct": -48.45,
+    "stake5": 19.32,
+    "stake20": 3.96,
+    "bar": {
+     "n": 40,
+     "meanAfterCosts": -56.55,
+     "lower1pct": -68.72,
+     "sumWithoutBest": -2366.1,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 9.75,
+    "trades": 113,
+    "brokeAfterDays": 5.5,
+    "inProfit": 15.0,
+    "meanPct": -15.26,
+    "bestPct": 978.1,
+    "worstPct": -99.4,
+    "medianPct": -42.86,
+    "stake5": 18.68,
+    "stake20": 4.75,
+    "bar": {
+     "n": 113,
+     "meanAfterCosts": -16.76,
+     "lower1pct": -45.2,
+     "sumWithoutBest": -2870.8,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.68,
+    "trades": 55,
+    "brokeAfterDays": 3.0,
+    "inProfit": 7.3,
+    "meanPct": -33.76,
+    "bestPct": 655.7,
+    "worstPct": -100.0,
+    "medianPct": -46.66,
+    "stake5": 19.0,
+    "stake20": 4.27,
+    "bar": {
+     "n": 55,
+     "meanAfterCosts": -35.26,
+     "lower1pct": -63.3,
+     "sumWithoutBest": -2593.4,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 9.02,
+    "trades": 34,
+    "brokeAfterDays": 1.6,
+    "inProfit": 2.9,
+    "meanPct": -67.24,
+    "bestPct": 220.1,
+    "worstPct": -100.0,
+    "medianPct": -97.12,
+    "stake5": 19.61,
+    "stake20": 4.08,
+    "bar": {
+     "n": 34,
+     "meanAfterCosts": -68.74,
+     "lower1pct": -85.99,
+     "sumWithoutBest": -2556.0,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 9.37,
+    "trades": 40,
+    "brokeAfterDays": 1.7,
+    "inProfit": 5.0,
+    "meanPct": -51.41,
+    "bestPct": 978.1,
+    "worstPct": -99.8,
+    "medianPct": -94.63,
+    "stake5": 19.67,
+    "stake20": 4.72,
+    "bar": {
+     "n": 40,
+     "meanAfterCosts": -52.91,
+     "lower1pct": -87.53,
+     "sumWithoutBest": -3093.0,
+     "holds": false
+    }
+   },
+   "train": 9.55,
+   "trainMeanPct": -34.69,
+   "rankTrain": 7,
+   "rank_w4": 8,
+   "rank_w5": 8
+  },
+  "D": {
+   "name": "Schatten D",
+   "text": "Pick-Filter; Stopp 30 % unter dem besten Kurs, 6 h",
+   "family": "P",
+   "w1": {
+    "end": 9.56,
+    "trades": 123,
+    "brokeAfterDays": 15.5,
+    "inProfit": 22.0,
+    "meanPct": -18.14,
+    "bestPct": 136.0,
+    "worstPct": -99.7,
+    "medianPct": -26.92,
+    "stake5": 19.43,
+    "stake20": 4.88,
+    "bar": {
+     "n": 123,
+     "meanAfterCosts": -19.64,
+     "lower1pct": -26.22,
+     "sumWithoutBest": -2550.4,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 8.98,
+    "trades": 150,
+    "brokeAfterDays": 12.4,
+    "inProfit": 22.0,
+    "meanPct": -15.1,
+    "bestPct": 212.8,
+    "worstPct": -99.4,
+    "medianPct": -22.77,
+    "stake5": 19.87,
+    "stake20": 4.07,
+    "bar": {
+     "n": 150,
+     "meanAfterCosts": -16.6,
+     "lower1pct": -23.56,
+     "sumWithoutBest": -2701.1,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.37,
+    "trades": 198,
+    "brokeAfterDays": 15.7,
+    "inProfit": 41.9,
+    "meanPct": -11.14,
+    "bestPct": 264.4,
+    "worstPct": -99.9,
+    "medianPct": -5.42,
+    "stake5": 19.23,
+    "stake20": 4.24,
+    "bar": {
+     "n": 198,
+     "meanAfterCosts": -12.64,
+     "lower1pct": -18.87,
+     "sumWithoutBest": -2765.9,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 9.48,
+    "trades": 226,
+    "brokeAfterDays": 26.2,
+    "inProfit": 37.2,
+    "meanPct": -9.26,
+    "bestPct": 245.5,
+    "worstPct": -99.9,
+    "medianPct": -8.55,
+    "stake5": 26.34,
+    "stake20": 4.94,
+    "bar": {
+     "n": 226,
+     "meanAfterCosts": -10.76,
+     "lower1pct": -16.98,
+     "sumWithoutBest": -2676.8,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 20.53,
+    "trades": 137,
+    "inProfit": 40.9,
+    "meanPct": -10.68,
+    "bestPct": 142.2,
+    "worstPct": -99.8,
+    "medianPct": -3.15,
+    "stake5": 46.72,
+    "stake20": 4.4,
+    "bar": {
+     "n": 137,
+     "meanAfterCosts": -12.18,
+     "lower1pct": -19.59,
+     "sumWithoutBest": -1810.0,
+     "holds": false
+    }
+   },
+   "train": 9.3,
+   "trainMeanPct": -14.79,
+   "rankTrain": 8,
+   "rank_w4": 7,
+   "rank_w5": 6
+  },
+  "B": {
+   "name": "Schatten B",
+   "text": "Pick-Filter; kein Stopp, Ziel 2x, 12 h",
+   "family": "P",
+   "w1": {
+    "end": 7.56,
+    "trades": 249,
+    "brokeAfterDays": 28.0,
+    "inProfit": 39.4,
+    "meanPct": -6.67,
+    "bestPct": 96.0,
+    "worstPct": -99.8,
+    "medianPct": -14.82,
+    "stake5": 29.23,
+    "stake20": 4.32,
+    "bar": {
+     "n": 249,
+     "meanAfterCosts": -8.17,
+     "lower1pct": -18.42,
+     "sumWithoutBest": -2129.0,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 6.73,
+    "trades": 156,
+    "brokeAfterDays": 13.4,
+    "inProfit": 35.9,
+    "meanPct": -12.02,
+    "bestPct": 96.0,
+    "worstPct": -99.6,
+    "medianPct": -30.39,
+    "stake5": 18.04,
+    "stake20": 1.42,
+    "bar": {
+     "n": 156,
+     "meanAfterCosts": -13.52,
+     "lower1pct": -26.34,
+     "sumWithoutBest": -2202.9,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 9.3,
+    "trades": 305,
+    "brokeAfterDays": 24.6,
+    "inProfit": 49.2,
+    "meanPct": -5.56,
+    "bestPct": 96.0,
+    "worstPct": -99.9,
+    "medianPct": -1.03,
+    "stake5": 28.54,
+    "stake20": 3.8,
+    "bar": {
+     "n": 305,
+     "meanAfterCosts": -7.06,
+     "lower1pct": -15.26,
+     "sumWithoutBest": -2247.1,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 8.61,
+    "trades": 124,
+    "brokeAfterDays": 16.9,
+    "inProfit": 36.3,
+    "meanPct": -16.08,
+    "bestPct": 96.0,
+    "worstPct": -99.9,
+    "medianPct": -17.83,
+    "stake5": 17.36,
+    "stake20": 2.7,
+    "bar": {
+     "n": 124,
+     "meanAfterCosts": -17.58,
+     "lower1pct": -31.72,
+     "sumWithoutBest": -2273.9,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 6.61,
+    "trades": 56,
+    "brokeAfterDays": 5.2,
+    "inProfit": 30.4,
+    "meanPct": -35.14,
+    "bestPct": 96.0,
+    "worstPct": -99.9,
+    "medianPct": -36.39,
+    "stake5": 21.21,
+    "stake20": 2.68,
+    "bar": {
+     "n": 56,
+     "meanAfterCosts": -36.64,
+     "lower1pct": -54.53,
+     "sumWithoutBest": -2146.3,
+     "holds": false
+    }
+   },
+   "train": 7.86,
+   "trainMeanPct": -8.08,
+   "rankTrain": 9,
+   "rank_w4": 9,
+   "rank_w5": 9
+  },
+  "hold": {
+   "name": "Diamantenhand",
+   "text": "Pick-Filter; kein Stopp, kein Ziel, verkauft nach 24 h",
+   "family": "P",
+   "w1": {
+    "end": 6.55,
+    "trades": 50,
+    "brokeAfterDays": 8.0,
+    "inProfit": 22.0,
+    "meanPct": -42.6,
+    "bestPct": 138.9,
+    "worstPct": -99.6,
+    "medianPct": -66.9,
+    "stake5": 14.86,
+    "stake20": 3.68,
+    "bar": {
+     "n": 50,
+     "meanAfterCosts": -44.1,
+     "lower1pct": -63.16,
+     "sumWithoutBest": -2342.6,
+     "holds": false
+    }
+   },
+   "w2": {
+    "end": 5.34,
+    "trades": 51,
+    "brokeAfterDays": 6.9,
+    "inProfit": 21.6,
+    "meanPct": -38.49,
+    "bestPct": 137.6,
+    "worstPct": -99.5,
+    "medianPct": -51.92,
+    "stake5": 16.31,
+    "stake20": 1.77,
+    "bar": {
+     "n": 51,
+     "meanAfterCosts": -39.99,
+     "lower1pct": -59.22,
+     "sumWithoutBest": -2175.8,
+     "holds": false
+    }
+   },
+   "w3": {
+    "end": 5.75,
+    "trades": 88,
+    "brokeAfterDays": 11.4,
+    "inProfit": 33.0,
+    "meanPct": -25.5,
+    "bestPct": 367.2,
+    "worstPct": -99.9,
+    "medianPct": -45.67,
+    "stake5": 14.69,
+    "stake20": 1.96,
+    "bar": {
+     "n": 88,
+     "meanAfterCosts": -27.0,
+     "lower1pct": -46.19,
+     "sumWithoutBest": -2741.5,
+     "holds": false
+    }
+   },
+   "w4": {
+    "end": 4.48,
+    "trades": 49,
+    "brokeAfterDays": 7.7,
+    "inProfit": 28.6,
+    "meanPct": -42.35,
+    "bestPct": 145.9,
+    "worstPct": -99.9,
+    "medianPct": -65.41,
+    "stake5": 13.06,
+    "stake20": 2.13,
+    "bar": {
+     "n": 49,
+     "meanAfterCosts": -43.85,
+     "lower1pct": -65.05,
+     "sumWithoutBest": -2292.9,
+     "holds": false
+    }
+   },
+   "w5": {
+    "end": 6.03,
+    "trades": 30,
+    "brokeAfterDays": 4.4,
+    "inProfit": 16.7,
+    "meanPct": -54.94,
+    "bestPct": 135.9,
+    "worstPct": -99.9,
+    "medianPct": -95.27,
+    "stake5": 10.62,
+    "stake20": 1.78,
+    "bar": {
+     "n": 30,
+     "meanAfterCosts": -56.44,
+     "lower1pct": -80.28,
+     "sumWithoutBest": -1827.5,
+     "holds": false
+    }
+   },
+   "train": 5.88,
+   "trainMeanPct": -35.53,
+   "rankTrain": 10,
+   "rank_w4": 10,
+   "rank_w5": 10
+  }
+ },
+ "anyAboveStart": {
+  "w1": [],
+  "w2": [],
+  "w3": [],
+  "w4": [],
+  "w5": []
+ }
+}
