@@ -253,8 +253,12 @@ def l5(check, skips, h):
 
 
 def checks(check, skips=None):
+    import memebot as M
     skips = skips if skips is not None else []
     tmp = tempfile.mkdtemp(prefix="mb-live-")
+    # the real switch to the live chart (selftest.py's main pins MEMEBOT_LIVE_SELL_AT a month ahead for its fixed-rule checks)
+    old = os.environ.get("MEMEBOT_LIVE_SELL_AT")
+    os.environ["MEMEBOT_LIVE_SELL_AT"] = str(M.LIVE_SELL_AT)
     try:
         D, book, S = fixture(tmp)
         l1(check, D, book, S)
@@ -264,6 +268,10 @@ def checks(check, skips=None):
         l5(check, skips, h)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        if old is None:
+            os.environ.pop("MEMEBOT_LIVE_SELL_AT", None)
+        else:
+            os.environ["MEMEBOT_LIVE_SELL_AT"] = old
 
 
 def main():
