@@ -1,0 +1,44 @@
+# Radar probe (fake money only; research/winlose/radar_probe.py): four looks, 15 minutes apart, at what the live rocket hunter feeds its
+# model (DexScreener, GeckoTerminal candles, last 300 trades and pool info, the radar's record, the numbers and the score) -> branch
+# "radarprobe". It books nothing, reads radar-data and rocket-data only, never writes a bot branch or the Radar account. One job.
+# Started by a push of this file on this branch (edit the run note), or by hand. Run note: first run 25 Oct.
+name: radar-probe
+on:
+  push:
+    branches: [claude/project-thread-ia7yxj]
+    paths: [.github/workflows/radar-probe.yml]
+  workflow_dispatch:
+permissions:
+  contents: write                    # the radarprobe branch only
+concurrency:
+  group: radar-probe
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Four looks, 15 minutes apart
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch rocket-data "$REPO_URL" rk
+          if git ls-remote --exit-code --heads "$REPO_URL" radarprobe >/dev/null; then
+            git clone -q --depth 1 --branch radarprobe "$REPO_URL" out
+          else
+            mkdir out && git -C out init -q && git -C out checkout -q -b radarprobe
+          fi
+          start=$(date +%s)
+          for i in 0 1 2 3; do
+            wait=$((start + i * 900 - $(date +%s))); [ "$wait" -gt 0 ] && sleep "$wait"
+            rm -rf rd && git clone -q --depth 1 --branch radar-data "$REPO_URL" rd
+            stamp=$(date -u +%Y-%m-%dT%H%MZ)
+            env -u REPO_URL timeout 800 python3 research/winlose/radar_probe.py rd rk "out/probe_$stamp.json.gz" 30 || echo "look $i failed"
+            (cd out && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "radar probe $stamp" \
+              && git push -q "$REPO_URL" HEAD:radarprobe) || echo "nothing to save"
+          done
