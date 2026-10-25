@@ -2,14 +2,11 @@
 # OpenAI's CLIP model (research/rockets/images.py): what it shows (six fixed groups), animated or not, a look-alike hash, and
 # whether it fits the coin's name -> branch "rocketsimages". The picture links come from branch rocketschain (rockets-chain.yml).
 # Nothing is bought; no key or secret beyond the run's own token is used. Touches no bot branch and no paper account.
-# Started by a push of this file or images.py on this branch, or by hand. A probe on about 60 pictures runs first.
+# Started by hand only. A probe on about 60 pictures runs first.
 # Run note: first run 24 Oct, after chain run 8 (63,032 metadata files read).
 name: rockets-images
 on:
-  push:
-    branches: [claude/project-thread-5blkl3]
-    paths: [.github/workflows/rockets-images.yml, research/rockets/images.py]
-  workflow_dispatch:
+  workflow_dispatch:              # by hand only since the graduation run of 25 Oct: images.py is shared with rockets-limages.yml
 permissions:
   contents: write
   actions: read

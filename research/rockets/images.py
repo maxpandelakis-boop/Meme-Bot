@@ -2,7 +2,9 @@
 read by OpenAI's CLIP model (openai/clip-vit-base-patch32) on GitHub's machines.
 
   shard <chain.parquet> <i> <n> <out.parquet> [<thumb dir>]   coins i, i+n, ... of those whose metadata file names a picture
-  final <dir with shard files> <out dir>                       one images.parquet (+ the thumbnails of the hand check)
+  final <dir with shard files> <out dir> [<earlier images.parquet>]   one images.parquet (+ the hand check's thumbnails); an
+                                                               earlier run's rows kept for the coins this run left out
+Env DONE = a JSON list of mints an earlier run already read (left out).
 
 Per picture: the file type, whether it is animated (a GIF with more than one frame), a 64-bit average hash (look-alikes), CLIP's
 scores for six fixed descriptions (GROUPS) and the best one, and how CLIP ranks the coin's own name against 20 other coins' names
@@ -54,9 +56,10 @@ def picture(url):
     m = CID.search(url or "")
     if m:
         with _g:
-            k = _k[0] if os.environ.get("GW_ROTATE") != "0" else 0      # GW_ROTATE=0: the probe's best gateway first
+            k = _k[0]
             _k[0] += 1
-        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(min(3, len(GATEWAYS)))]
+        from meta_chain import gateway_order                          # GW_ROTATE as for the metadata files
+        urls = [g % m.group(1) for g in gateway_order(k)][:3]
     else:
         urls = [url] if (url or "").startswith("http") else []
     st = "nourl"
@@ -99,7 +102,12 @@ def cmd_shard(chain_path, i, n, out, thumbs=None):
     nm = d["f_name"].fillna(d["name"]) if "name" in d else d["f_name"]
     d["f_name"] = nm
     names_all = nm.fillna("").astype(str).tolist()
-    part = d.iloc[int(i)::int(n)].reset_index(drop=True)
+    part = d.iloc[int(i)::int(n)]
+    if os.environ.get("DONE") and os.path.exists(os.environ["DONE"]):
+        done = set(json.load(open(os.environ["DONE"])))
+        log("left out (read by an earlier run)", int(part["mint"].isin(done).sum()))
+        part = part[~part["mint"].isin(done)]
+    part = part.reset_index(drop=True)
     sample = {m: k for k, m in enumerate(sample_mints(chain_path))}
     if thumbs:
         os.makedirs(thumbs, exist_ok=True)
@@ -114,12 +122,15 @@ def cmd_shard(chain_path, i, n, out, thumbs=None):
     pool = concurrent.futures.ThreadPoolExecutor(int(os.environ.get("WORKERS") or 16))
     rows, codes = [], {}
     B = 64
+    fetch_chunk = lambda a: [pool.submit(picture, u) for u in part["f_image"].iloc[a:a + B].astype(str)]
+    nxt = fetch_chunk(0)
     for a in range(0, len(part), B):
         if time.time() > stop:
             log("time budget used at", a, "of", len(part))
             break
         chunk = part.iloc[a:a + B]
-        got = list(pool.map(picture, chunk["f_image"].astype(str)))
+        got = [f.result() for f in nxt]
+        nxt = fetch_chunk(a + B)            # the next pictures download while CLIP reads these
         imgs, recs = [], []
         for (_, r), (b, st) in zip(chunk.iterrows(), got):
             rec = {"mint": r["mint"], "img_ok": False, "status": st}
@@ -172,11 +183,14 @@ def cmd_shard(chain_path, i, n, out, thumbs=None):
     log("done", len(rows), "pictures", sum(r["img_ok"] for r in rows), codes)
 
 
-def cmd_final(src, out):
+def cmd_final(src, out, prev=None):
     import pandas as pd, shutil
     os.makedirs(out, exist_ok=True)
     fs = sorted(glob.glob(os.path.join(src, "**", "img_*.parquet"), recursive=True))
     d = pd.concat([pd.read_parquet(f) for f in fs], ignore_index=True).drop_duplicates("mint")
+    if prev and os.path.exists(prev):
+        old = pd.read_parquet(prev)
+        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]))]], ignore_index=True)
     d.to_parquet(os.path.join(out, "images.parquet"), index=False)
     th = sorted(glob.glob(os.path.join(src, "**", "thumbs", "*.jpg"), recursive=True))
     os.makedirs(os.path.join(out, "handcheck"), exist_ok=True)

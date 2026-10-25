@@ -1,0 +1,114 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendments 5, 6 and 8): the pictures of a random
+# 150,000 (seed 7) of the 600,000 launches of universe L whose metadata files were fetched (branch rocketslmeta), read by
+# OpenAI's CLIP model (research/rockets/images.py): what each shows, animated or not, a look-alike hash, whether it fits the
+# name -> branch "rocketslimages". 3 jobs at most (the account has few runners). A later run goes on where an earlier one
+# stopped (pictures read, or gone for good, are left out; the others are asked again). Nothing is bought; no key or secret
+# beyond the run's own token. Touches no bot branch and no paper account. Started by hand only until branch rocketslmeta is
+# complete (its 3 jobs run first), then by a push of this file on this branch (edit the run note), or by hand.
+# Run note: not run yet.
+name: rockets-limages
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rockets-limages
+  cancel-in-progress: true
+env:
+  # gateways from the probe of 24 Oct (gateways.json on rocketsprobe, amendment 11): ipfs.filebase.io first, ipfs.io rate-limits
+  GATEWAYS: "https://ipfs.filebase.io/ipfs/%s,https://pump.mypinata.cloud/ipfs/%s,https://gateway.pinata.cloud/ipfs/%s"
+  GW_ROTATE: "2"                 # ipfs.filebase.io and pump.mypinata.cloud take turns first, each paced on its own
+  GW_GAP: "0.45"                 # ipfs.filebase.io answered 429 above about 2.5 requests a second from one machine
+  FILE_TRIES: "3"
+  PIP_DEPS: pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4 pillow==11.0.0 transformers==4.46.3
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          mkdir -p u lm plan
+          git fetch -q --depth 1 origin rocketslaunches && git archive FETCH_HEAD | tar -x -C u
+          git fetch -q --depth 1 origin rocketslmeta && git show FETCH_HEAD:lmeta.parquet > lm/lmeta.parquet
+          if git fetch -q --depth 1 origin rocketslimages 2>/dev/null; then git show FETCH_HEAD:images.parquet > plan/prev.parquet; fi
+          python3 - <<'PY'
+          import glob, json, os, numpy as np, pandas as pd
+          lm = pd.read_parquet("lm/lmeta.parquet").drop_duplicates("mint")
+          print("metadata rows", len(lm), "files read", int(lm["file_status"].eq("ok").sum()))
+          lm = lm[lm["file_status"].eq("ok")].sort_values("mint").reset_index(drop=True)     # files read (amendment 8)
+          take = np.sort(np.random.default_rng(7).permutation(len(lm))[:min(150_000, len(lm))])
+          s = lm.iloc[take][["mint", "f_image", "f_name"]].copy()
+          u = pd.concat([pd.read_parquet(f, columns=["mint", "name"]) for f in sorted(glob.glob("u/L_*.parquet"))])
+          s["name"] = s["mint"].map(u.drop_duplicates("mint").set_index("mint")["name"])
+          s.to_parquet("lpics.parquet", index=False)
+          print("files read", len(lm), "picture sample", len(s), "with a picture link", int(s["f_image"].fillna("").astype(str).str.len().gt(0).sum()))
+          done = []
+          if os.path.exists("plan/prev.parquet"):    # read, or gone for good (no link, too big, 404/410, not a picture)
+              p = pd.read_parquet("plan/prev.parquet")
+              st = p["status"].astype(str)
+              ok = p["img_ok"].fillna(False).astype(bool) | st.isin(["nourl", "big", "404", "410"]) | st.str.startswith("bad:")
+              done = sorted(p.loc[ok, "mint"])
+              print("earlier run", len(p), "done", len(done), "asked again", int((~ok).sum()), st[~ok].value_counts().head(8).to_dict())
+          json.dump(done, open("plan/done.json", "w"))
+          PY
+          cp lpics.parquet plan/
+      - uses: actions/upload-artifact@v4
+        with: {name: "lpics", path: "plan/*", retention-days: 5}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      max-parallel: 3                # the account has few runners: more than 3 research jobs at once hold up the bots' own scans
+      matrix:
+        i: [0, 1, 2]
+    env:
+      SHARD_MINUTES: "320"
+      WORKERS: "16"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m pip install --quiet torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --quiet $PIP_DEPS
+      - uses: actions/download-artifact@v4
+        with: {name: lpics, path: plan}
+      - env:
+          DONE: plan/done.json
+        run: python3 research/rockets/images.py shard plan/lpics.parquet ${{ matrix.i }} 3 img_${{ matrix.i }}.parquet
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "limg-${{ matrix.i }}", path: "img_*.parquet", retention-days: 5, if-no-files-found: warn}
+  final:
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "limg-*", merge-multiple: true, path: src}
+      - uses: actions/download-artifact@v4
+        with: {name: lpics, path: plan}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          python3 research/rockets/images.py final src out plan/prev.parquet
+          rm -rf out/handcheck
+          printf 'What the pictures of a random 150,000 pump.fun launches of 10 Aug-6 Oct 2026 (universe L of the rocket study) show, read by OpenAI CLIP (openai/clip-vit-base-patch32), made by research/rockets/images.py. Launch list from Slinky21/Pumpfun_v2_dataset (CC-BY-4.0, "Data provided by [Slink21]. Pumpfun Solana Dataset (2026)"). Fake money only.\n' > out/README.md
+          cd out && du -sh .
+          git init -q && git checkout -q -b rocketslimages && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketslimages $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketslimages
