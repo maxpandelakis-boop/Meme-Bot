@@ -160,7 +160,8 @@ def acct_card(key, title, sub, b, empty, live=False, since=""):
 
 def lern_row(D, R):
     """The Learning Pick (lernpick.py, a self-learning shadow with its own paper account) as a slim row under the two accounts: its balance
-    the way the Pick card counts it (sold trades plus the open ones at the last scan price), the sold trades' result as the fold's summary
+    the way the Pick card counts it (sold trades plus the open ones at the last scan price, or at the sale their rule already made on the
+    scan prices: lernpick.rule_on_marks; until Oct 25 a coin stopped out in its first hour counted at 14x here), the sold trades' result as the fold's summary
     line says it, how many open, since its first buy. A tap opens the Pick tab with its fold open (the user could not find it at the foot
     of the Pick tab, Oct 23). '' without the module or when it cannot be read."""
     try:

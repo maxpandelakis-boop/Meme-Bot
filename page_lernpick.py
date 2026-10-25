@@ -8,7 +8,8 @@ learned last night; inside:
   - three tiles since its first buy: the Learning Pick, the Pick and the Radar (sold trades: result, per trade, how many in profit)
   - the brain: when it was trained, which brain buys and which rule sells (and since when), last night's exams in one line each, what the
     buy brain looks for now (its strongest inputs in words), the brains waiting for their exam
-  - the trades (open ones with the last scan's price, sold ones with their result), newest first, at most TRADES_SHOWN
+  - the trades, newest first, at most TRADES_SHOWN, right under the tiles: buy price and time, sell price, time and why (or the price now
+    for an open one, or the sale its rule already made on the scan prices, marked ≈), the result in euro
   - every exam so far in a fold (replayed ones marked), and what it learns from
 D: report.py's page data (D["dir"], D["now"]); R: report itself (local times, factor names). Reads lernpick.summary only; every chain
 string is escaped. Static HTML and CSS, no script.
@@ -22,7 +23,7 @@ import memebot as M
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 MINUS = "−"
-TRADES_SHOWN = 30
+TRADES_SHOWN = 150
 EXAMS_SHOWN = 40
 WHY = {"tp": "target", "half": "half at target", "stop": "stop", "trail": "trailing stop", "time": "time limit", "rug": "pool dead",
        "dead": "pool dead", "noprice": "no price (counted as lost)"}
@@ -175,24 +176,71 @@ def brain_box(S, R):
     return '<div class="lp-brain">%s</div>' % "".join(rows)
 
 
+def px_text(R, v):
+    try:
+        return R.fmt_px(v)
+    except Exception:
+        return "–" if not num(v) else "$%.3g" % num(v)
+
+
+def sold_mult(p):
+    """What a sold trade got per coin, as a multiple of its buy price (its sales weighted by their share; one sale for every grid rule)."""
+    s = [x for x in p.get("sales") or [] if isinstance(x, list) and len(x) >= 3 and num(x[1]) and num(x[2]) is not None]
+    f = sum(num(x[1]) for x in s)
+    return sum(num(x[1]) * num(x[2]) for x in s) / f if f > 0 else num(p.get("top"))
+
+
+def trade_row(p, R, rule_now):
+    """One trade: the coin and when it was bought; the buy price and the sell price (or the price now) with the multiple, when and why
+    it sold; the result in euro after the paper fees. An open trade that its rule already ended on the scan prices shows that sale
+    (marked ≈) and the price now after it."""
+    px0 = num(p.get("px"))
+    rid = (p.get("rule") or {}).get("id")
+    note = (" · rule: %s" % rule_text(p.get("rule"))) if rid and rid != rule_now else ""
+    coin = '<td><b>%s</b><small>bought %s%s%s</small></td>' % (
+        E(p.get("sym")), E(when(R, p.get("t"), "%b %d, %H:%M")), E(" · same coin as the Pick" if p.get("samePick") else ""), E(note))
+    if p.get("state") == "sold":
+        m = sold_mult(p)
+        out = px_text(R, px0 * m) if px0 and m is not None else "–"
+        how = "%.2fx · sold %s · %s" % (m or 0.0, when(R, p.get("out"), "%b %d, %H:%M"), WHY.get(p.get("why"), p.get("why") or ""))
+        mid = '<td><span class="lp-px">%s → %s</span><small>%s</small></td>' % (E(px_text(R, px0)), E(out), E(how))
+        res = '<td class="n %s">%s</td>' % (tone(p.get("eur")), E(eur(p.get("eur"))))
+        return "<tr>%s%s%s</tr>" % (coin, mid, res)
+    g, now = p.get("_ended"), p.get("_now")
+    if g:
+        out = px_text(R, px0 * num(g["mult"])) if px0 else "–"
+        how = "≈ %.2fx · its rule sold it about %s · %s" % (num(g["mult"]) or 0.0, when(R, g.get("t"), "%b %d, %H:%M"), WHY.get(g.get("why"), g.get("why") or ""))
+        if now and abs(now - (num(g["mult"]) or 0.0)) > 0.1 * max(num(g["mult"]) or 0.0, 0.1):
+            how += " · now %.2fx (after its sale)" % now
+        mid = '<td><span class="lp-px">%s → ≈ %s</span><small>%s</small></td>' % (E(px_text(R, px0)), E(out), E(how))
+        res = '<td class="n %s">≈ %s<small>booked soon</small></td>' % (tone(g.get("eur")), E(eur(g.get("eur"))))
+        return '<tr class="lp-open">%s%s%s</tr>' % (coin, mid, res)
+    end = (num(p.get("t")) or 0) + int((num((p.get("rule") or {}).get("hours")) or 0) * 3_600_000)
+    if now and px0:
+        mid = '<td><span class="lp-px">%s → now %s</span><small>%.2fx at the last scan · its rule ends %s</small></td>' % (
+            E(px_text(R, px0)), E(px_text(R, px0 * now)), now, E(when(R, end, "%b %d, %H:%M")))
+    else:
+        mid = '<td><span class="lp-px">%s</span><small>no price this scan · its rule ends %s</small></td>' % (E(px_text(R, px0)), E(when(R, end, "%b %d, %H:%M")))
+    return '<tr class="lp-open">%s%s<td class="n">open</td></tr>' % (coin, mid)
+
+
 def trades_table(S, R):
     rows = S["trades"][:TRADES_SHOWN]
     if not rows:
         return ""
-    body = []
-    for p in rows:
-        coin = '<td><b>%s</b><small>%s%s</small></td>' % (E(p.get("sym")), E(when(R, p.get("t"), "%b %d %H:%M")), E(" · same coin as the Pick" if p.get("samePick") else ""))
-        rule = '<td><small>%s</small></td>' % E(rule_text(p.get("rule")))
-        if p.get("state") == "sold":
-            res = '<td class="n %s">%s<small>%s</small></td>' % (tone(p.get("eur")), E(eur(p.get("eur"))), E(WHY.get(p.get("why"), p.get("why") or "")))
-        else:
-            now = p.get("_now")
-            res = '<td class="n">open<small>%s</small></td>' % E(("now %.2fx" % now) if now else "no price this scan")
-        body.append("<tr>%s%s%s</tr>" % (coin, rule, res))
+    ids = [(p.get("rule") or {}).get("id") for p in rows]
+    rule_now = max(set(ids), key=ids.count) if ids else None
+    body = "".join(trade_row(p, R, rule_now) for p in rows)
+    me = S["me"]
     more = (" (the last %d of %d)" % (TRADES_SHOWN, len(S["trades"]))) if len(S["trades"]) > TRADES_SHOWN else ""
-    return ('<details class="lp-tr" open><summary>Its trades%s</summary><div class="lp-scroll"><table class="lp-t"><thead><tr><th>Coin</th><th>Sell rule</th>'
-            '<th>Result</th></tr></thead><tbody>%s</tbody></table></div><small class="lp-m">Sold in hindsight from minute candles once 6 hours have passed '
-            '(its rule replayed on them), so a result shows about 6 to 7 hours after the buy. After paper fees.</small></details>') % (E(more), "".join(body))
+    rule = next((p.get("rule") for p in rows if (p.get("rule") or {}).get("id") == rule_now), None)
+    return ('<details class="lp-tr" id="learning-pick-trades" open><summary>Its trades: %d open, %d sold%s</summary>'
+            '<p class="lp-m">Sells with %s. Prices in US dollars per coin, results in euro after the paper fees.</p>'
+            '<div class="lp-scroll"><table class="lp-t"><thead><tr><th>Coin</th><th>Buy → sell price</th><th>Result</th></tr></thead><tbody>%s</tbody></table></div>'
+            '<small class="lp-m">A sale is booked from the minute candles about 6 to 7 hours after the buy. Until then, an open trade that its rule '
+            'already ended on the hourly scan prices shows that sale with ≈ (an estimate; the minute candles can differ a little) and is counted '
+            'that way in the balance, not at the price it reached later.</small></details>') % (
+        me["open"], me["sold"], E(more), E(rule_text(rule)), body)
 
 
 def exams_table(S, R):
@@ -242,7 +290,7 @@ def section(D, R):
     inner = ('<div class="lp"><p class="lp-lead">A second Pick with its own paper account (fake money). Every night it retrains on everything '
              'seen so far, and a new brain takes over only when it beats the current one on days neither of them has seen. It never changes '
              'the Pick or the Radar and sends no push. It would only replace the real Pick if it holds up for weeks and you say yes.</p>'
-             '%s%s%s%s%s</div>') % (tiles, brain_box(S, R), trades_table(S, R), exams_table(S, R), learns_from(S))
+             '%s%s%s%s%s</div>') % (tiles, trades_table(S, R), brain_box(S, R), exams_table(S, R), learns_from(S))
     return ('<details class="fold lp-fold" id="learning-pick"><summary><span class="t">Learning Pick</span><span class="sum">%s</span></summary>%s</details>'
             '<style>%s</style>') % (E(head_line(S, R)), inner, CSS)
 
@@ -270,6 +318,7 @@ CSS = r"""
 .lp-t td { padding:6px; border-bottom:1px solid var(--line2); vertical-align:top } .lp-t td b { font-weight:600 }
 .lp-t td small { display:block; font-size:11px; color:var(--muted) }
 .lp-t td.n, .lp-t th:last-child { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap }
+.lp-t .lp-px { font-variant-numeric:tabular-nums; overflow-wrap:anywhere } .lp-t tr.lp-open td { background:color-mix(in srgb,var(--accent) 6%,transparent) }
 .lp-t2 th:not(:first-child) { text-align:right } .lp-t2 td { padding:6px 4px } .lp-t2 { font-size:11.5px }
 .lp-t .good { color:var(--good) } .lp-t .bad { color:var(--bad) } .lp-t tr.won td { background:color-mix(in srgb,var(--good) 8%,transparent) }
 .lp-m { margin:0; font-size:11px; color:var(--muted) }
