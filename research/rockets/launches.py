@@ -955,6 +955,9 @@ def cmd_mfinal(src, out, prev=None):
     rows = []
     for f in sorted(glob.glob(os.path.join(src, "**", "lmeta_*.json.gz"), recursive=True)):
         rows += list(json.load(gzip.open(f, "rt"))["rows"].values())
+    # a lone UTF-16 surrogate (a broken emoji in some metadata files' names) cannot be written as UTF-8: replaced by "?"
+    utf8 = lambda x: x.encode("utf-8", "replace").decode("utf-8") if isinstance(x, str) else x
+    rows = [{k: utf8(v) for k, v in r.items()} for r in rows]
     d = pd.DataFrame(rows).drop_duplicates("mint")
     if prev and os.path.exists(prev):
         old = pd.read_parquet(prev).drop_duplicates("mint")
