@@ -129,3 +129,9 @@ yes (a Pick sell-rule change restarts the Pick account); a live committee would 
 checker holds, the report says so plainly and nothing is built.
 
 Compute: this container only (4 cores, at most 3 worker processes); no GitHub Actions runner, so the live scans are not touched.
+
+## Amendment 1 (25 Oct, 20:55 UTC; while writing the build, before any data was built or looked at)
+
+The recorder-outage filter of w3/w4 (history2) checks the hour before the buy to 6 h after it, as before. Question 1 and the
+24-h labels (C1, C2, Z) also look at 6-24 h after the buy, where an outage would freeze the price; buys of w3/w4 with an outage
+of 10 minutes or more in that span are left out of the 24-h numbers and labels (flag gap24). The 6-h money is unaffected.
