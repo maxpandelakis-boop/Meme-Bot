@@ -5,7 +5,8 @@
 # stopped (pictures read, or gone for good, are left out; the others are asked again). Nothing is bought; no key or secret
 # beyond the run's own token. Touches no bot branch and no paper account. Started by a push of this file on this branch (edit
 # the run note), or by hand.
-# Run note: first run 25 Oct, after rocketslmeta was complete (600,000 asked, 418,118 metadata files read).
+# Run note: first run 25 Oct, after rocketslmeta was complete (600,000 asked, 418,118 metadata files read). Run 2 on 26 Oct goes
+# on with the 31,485 not reached in run 1's time budget and asks again for 922 that hit rate limits or errors.
 name: rockets-limages
 on:
   push:
