@@ -156,7 +156,7 @@ def sample_facts(d, lmeta_dir, chain_dir):
         if not m:
             f14[i] = 0.0
             continue
-        age = tms[i] - ((int(m.group(1)) >> 22) + 1288834974657)
+        age = float(tms[i]) - ((int(m.group(1)) >> 22) + 1288834974657)     # float as check_rockets.py (malformed ids)
         f14[i] = 1.0 if age <= 3_600_000 else (2.0 if age <= 86_400_000 else 3.0)
     d["f_post_age"] = f14
     img = get("f_image")
