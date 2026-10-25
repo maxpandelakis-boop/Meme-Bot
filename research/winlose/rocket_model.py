@@ -33,6 +33,10 @@ G["dow"] = pd.to_datetime(G["ts"], unit="ms").dt.dayofweek
 EXTRA = [c for c in (os.environ.get("EXTRA") or "").split(",") if c]
 assert not (EXTRA and "--export" in sys.argv)
 NUM = NUM + EXTRA
+# DROP=btc_1h,... leaves columns out for a variant test (research/radarmkt/PREREG-RADARMKT-2026-10-25.md); never with --export
+DROP = [c for c in (os.environ.get("DROP") or "").split(",") if c]
+assert not (DROP and "--export" in sys.argv)
+NUM = [c for c in NUM if c not in DROP]
 P = dict(n_estimators=300, learning_rate=0.03, num_leaves=15, min_child_samples=50, subsample=0.8, subsample_freq=1,
          colsample_bytree=0.7, reg_lambda=5.0, verbose=-1, random_state=int(os.environ.get("SEED") or 7))
 DAY = 86_400_000
@@ -95,7 +99,7 @@ if "--export" not in sys.argv:
         print("  weeks:", {w: (s["coins"], s["avg"]) for w, s in r["weeks"].items()})
         print("  fees 0.5/1/2%%: %s %s %s" % (r["fee0.005"].get("avg"), r["fee0.01"].get("avg"), r["fee0.02"].get("avg")), " late 15/30 min:", r["late15"].get("avg"), r["late30"].get("avg"))
         print("  sim:", sim)
-    json.dump(res, open(os.path.join(S, "rocket_stress%s.json" % ("_" + "+".join(EXTRA) if EXTRA else "")), "w"), default=float)
+    json.dump(res, open(os.path.join(S, "rocket_stress%s%s_s%s.json" % ("_" + "+".join(EXTRA) if EXTRA else "", "_no_" + "+".join(DROP) if DROP else "", os.environ.get("SEED") or 7)), "w"), default=float)
 else:
     m = lgb.LGBMClassifier(**P).fit(G[NUM], G["rocket"])
     s = m.predict_proba(G[NUM])[:, 1]
