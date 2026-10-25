@@ -1,0 +1,530 @@
+Round 2. Cases where round 1 was not unanimous: 48 of 54. For each: the other nine reviewers' round-1 votes.
+Your own round-1 votes on the other cases stand.
+
+CASE 1 (your round 1: RS, p_hold 0.52)
+  chart reader: RS, p_hold 0.50, Volume breakout to 2x; sale is a wick low, trend intact
+  volume and flow reader: RS, p_hold 0.45, Huge volume spike, active two-way flow; fresh bot fits trail_low
+  sceptic: SELL, p_hold 0.40, Trail_low base rates negative except tiny RS edge; lock 1.53x.
+  risk manager: SELL, p_hold 0.40, Spike top then deep dump candle; lock +53 % profit.
+  momentum trader: RS, p_hold 0.50, Volume explosion, sale at wick low; fresh bot keeps upside.
+  dip buyer: RS, p_hold 0.50, Blow-off wick on huge volume; candle-low exit, fresh bot better
+  rocket hunter: RS, p_hold 0.50, Volume explosion, doubled; RS keeps upside with tight exit
+  clock and age analyst: RS, p_hold 0.46, 7h coin, neutral SOL/BTC, trail_low favors fresh Sell bot
+  devil's advocate: RS, p_hold 0.45, Majority sells; trail_low base favors RS; heavy volume momentum.
+
+CASE 3 (your round 1: RS, p_hold 0.55)
+  chart reader: RS, p_hold 0.50, Steady higher highs with rising volume; sale is a deep wick
+  volume and flow reader: RS, p_hold 0.50, Volume surging into breakout, deep liquidity, big turnover
+  sceptic: SELL, p_hold 0.35, Profit locked at 1.29x; trail_low holds lose on base rates.
+  risk manager: RS, p_hold 0.46, Liquid grind-up with volume; RS caps downside, base +1.9.
+  momentum trader: RS, p_hold 0.55, New highs on rising volume; wick sale, let fresh bot trail.
+  dip buyer: RS, p_hold 0.50, Strong uptrend, 8M volume; sharp wick sold at candle low
+  rocket hunter: RS, p_hold 0.50, Big runner with heavy volume; fresh RS rides continuation
+  clock and age analyst: SELL, p_hold 0.38, SOL falling 1h, 6h, 24h and BTC down; take 1.29
+  devil's advocate: RS, p_hold 0.45, Steady climb with rising volume; RS best on trail_low.
+
+CASE 4 (your round 1: H1, p_hold 0.60)
+  chart reader: SELL, p_hold 0.40, Topped at 1.58, lower highs, volume dried, swing low broken
+  volume and flow reader: SELL, p_hold 0.40, Volume dried to hundreds per candle; no buyers behind drift
+  sceptic: SELL, p_hold 0.30, Volume fading, real pullback; base rates say take 1.37x.
+  risk manager: SELL, p_hold 0.40, Thin slow trend fading; lock +37 %, gap risk.
+  momentum trader: SELL, p_hold 0.38, Slow grind, volume dried up, lower highs; trend fading.
+  dip buyer: SELL, p_hold 0.40, Slow fade, volume dried to hundreds; no buyers for bounce
+  rocket hunter: SELL, p_hold 0.30, Slow thin-volume grind, fading; no rocket signs
+  clock and age analyst: RS, p_hold 0.47, SOL 6h recovering, wick sale below last close 1.46
+  devil's advocate: RS, p_hold 0.42, Fading, thin volume, but RS still positive on trail_low.
+
+CASE 5 (your round 1: RS, p_hold 0.50)
+  chart reader: RS, p_hold 0.45, V-recovery then spike; wick sale, RS limits further downside
+  volume and flow reader: RS, p_hold 0.45, Heavy volume on thin pool, wild wick; fresh bot keeps upside
+  sceptic: SELL, p_hold 0.40, 36% crash in five minutes after pump; take the profit.
+  risk manager: SELL, p_hold 0.40, Extreme spike-and-dump volatility; lock +17 %, downside large.
+  momentum trader: RS, p_hold 0.50, V-recovery with surging volume; sale at wick low, stay in.
+  dip buyer: RS, p_hold 0.50, Violent wick on strong V-recovery coin; buyers still active
+  rocket hunter: RS, p_hold 0.45, Fell then spiked on volume; RS for possible continuation
+  clock and age analyst: RS, p_hold 0.45, Young 8h coin, wild first candle, market only mildly soft
+  devil's advocate: RS, p_hold 0.42, Violent wick reversal; fresh RS limits damage, keeps upside.
+
+CASE 6 (your round 1: BE, p_hold 0.25)
+  chart reader: H3, p_hold 0.30, Rug to 0.005; selling yields almost nothing, holding free option
+  volume and flow reader: H24, p_hold 0.40, Rug at 0.005 after organic flow; holding costs nothing
+  sceptic: BE, p_hold 0.15, Sale worth cents, fee eats it; floor holds gain on base.
+  risk manager: H3, p_hold 0.38, Sold at 0.005: nothing left to lose, floor base +3.0.
+  momentum trader: H3, p_hold 0.25, Rug-level sale worth cents; active coin, free recovery option.
+  dip buyer: H3, p_hold 0.30, Rug to 0.005; almost nothing left to lose, bounce lottery
+  rocket hunter: H24, p_hold 0.25, Rugged to 0.005; holding costs cents, small rebound chance
+  clock and age analyst: H24, p_hold 0.33, Rugged to 0.005; holding costs cents, small recovery chance
+  devil's advocate: H24, p_hold 0.30, Rugged to dust; holding is a nearly free option.
+
+CASE 7 (your round 1: H3, p_hold 0.28)
+  chart reader: H3, p_hold 0.20, Dead flat then rug; small proceeds, cheap lottery ticket
+  volume and flow reader: H24, p_hold 0.30, Zero trades, serial creator; rugged to 0.044, little to lose
+  sceptic: BE, p_hold 0.12, Serial creator, dead coin; but sale worth 2 EUR, free option.
+  risk manager: H3, p_hold 0.37, Floor at 0.044: downside about 1 EUR, rare rebound pays.
+  momentum trader: H24, p_hold 0.15, Dead coin, sale worth about two euros; cheap lottery.
+  dip buyer: H24, p_hold 0.20, Zero-volume rug at 0.044; tiny stake, wait for any print
+  rocket hunter: H24, p_hold 0.15, Serial creator rug; sale worth cents, free lottery ticket
+  clock and age analyst: H24, p_hold 0.33, Serial creator rug at 0.044; strong BTC/SOL, cheap option
+  devil's advocate: H24, p_hold 0.30, Dust after rug; floor-case holds positive in base rates.
+
+CASE 8 (your round 1: RS, p_hold 0.60)
+  chart reader: RS, p_hold 0.50, Breakout from long flat base on huge volume; wick sale
+  volume and flow reader: RS, p_hold 0.50, Volume exploded 500x from dormant; new flow regime, tiny cap
+  sceptic: SELL, p_hold 0.40, Dormant coin one-off pump; real pullback, bank 1.82x.
+  risk manager: RS, p_hold 0.50, Fresh breakout, huge volume, shallow dip; RS limits giveback.
+  momentum trader: RS, p_hold 0.60, Fresh breakout, huge volume, sale barely below close; ride it.
+  dip buyer: RS, p_hold 0.55, Fresh breakout on surging volume; first 15% pullback is buyable
+  rocket hunter: TR, p_hold 0.35, Dormant coin woke with 500x volume; classic rocket start
+  clock and age analyst: RS, p_hold 0.50, Breakout with huge volume, BTC +5 % day supports holding
+  devil's advocate: RS, p_hold 0.40, Against hold-majority: dormant pump fades; still RS beats HN/H12.
+
+CASE 9 (your round 1: SELL, p_hold 0.48)
+  chart reader: H1, p_hold 0.50, Staircase uptrend intact at highs; short hold costs little
+  volume and flow reader: H1, p_hold 0.50, Sporadic buys stepping price up, no sellers; one cheap hour
+  sceptic: SELL, p_hold 0.35, Time sales: holds lose on base rates; thin staircase volume.
+  risk manager: SELL, p_hold 0.35, Thin staircase coin; time-sale holds lose on base.
+  momentum trader: H1, p_hold 0.50, Staircase of higher highs, still at top; short hold only.
+  dip buyer: SELL, p_hold 0.40, Thin staircase up, time exit; no dip, nothing to buy
+  rocket hunter: SELL, p_hold 0.40, Illiquid step-up, almost no volume; no launch fuel
+  clock and age analyst: H1, p_hold 0.50, Older coin stair-stepping up, flat calm market, short hold
+  devil's advocate: H1, p_hold 0.50, Staircase holding highs; H1 only positive time plan.
+
+CASE 10 (your round 1: H3, p_hold 0.25)
+  chart reader: H3, p_hold 0.20, Flat dead pool rugged to 0.001; sale worth nothing
+  volume and flow reader: H24, p_hold 0.35, Zero-volume coin rugged to 0.001; sale worthless, free option
+  sceptic: BE, p_hold 0.18, Stale zero-volume coin; sale worth cents, holding costs nothing.
+  risk manager: H3, p_hold 0.35, Sale at 0.001 worth nothing after fee; free option.
+  momentum trader: H24, p_hold 0.15, Never-traded coin crashed; sale worth cents, holding costs nothing.
+  dip buyer: H24, p_hold 0.20, Dead coin rugged to 0.001; selling worth less than fee
+  rocket hunter: H24, p_hold 0.15, Dead at 0.001; holding risks nothing, floor base rate positive
+  clock and age analyst: H24, p_hold 0.30, Rug at 0.001; sale worth less than fee, hold free
+  devil's advocate: H24, p_hold 0.32, Sale at 0.001 nets nothing after fee; hold the lottery.
+
+CASE 11 (your round 1: BE, p_hold 0.25)
+  chart reader: H3, p_hold 0.20, Bot-ramped chart rugged; proceeds near zero, hold is free
+  volume and flow reader: H24, p_hold 0.30, Scripted ladder volume then rug; sale worthless, free option
+  sceptic: BE, p_hold 0.10, Likely factory rug; sale worth cents, hold is free option.
+  risk manager: H3, p_hold 0.35, Rugged at 0.003; holding risks cents, floor base positive.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding is a free option.
+  dip buyer: H3, p_hold 0.20, Bot-smooth coin rugged; sale near zero, holding costs nothing
+  rocket hunter: H24, p_hold 0.20, Bot-climb rug to 0.003; holding is a free option
+  clock and age analyst: H24, p_hold 0.30, Scripted 6h coin rugged to 0.003; holding risks only cents
+  devil's advocate: H24, p_hold 0.30, Scripted rug, dust left; holding costs pennies, base positive.
+
+CASE 12 (your round 1: RS, p_hold 0.60)
+  chart reader: SELL, p_hold 0.40, Double top at old 1.77 high, violent rejection candle
+  volume and flow reader: RS, p_hold 0.45, Volume held after spike, liquid enough; fresh bot fits
+  sceptic: SELL, p_hold 0.40, Deep wick after pump; RS edge too small to trust.
+  risk manager: SELL, p_hold 0.40, Rejected at old high, -25 % candle; lock +30 %.
+  momentum trader: RS, p_hold 0.48, Strong rally, sharp wick; momentum intact, fresh bot protects.
+  dip buyer: RS, p_hold 0.50, Deep wick after strong rebound with volume; likely snaps back
+  rocket hunter: SELL, p_hold 0.40, Rejected at prior high after fading day; double top
+  clock and age analyst: RS, p_hold 0.44, 17h survivor pumping on volume; SOL soft, fresh bot limits
+  devil's advocate: RS, p_hold 0.42, Rejected at old highs, but RS positive on trail_low.
+
+CASE 13 (your round 1: RS, p_hold 0.25)
+  chart reader: H3, p_hold 0.30, Organic chart then crash to 0.004; nothing left to protect
+  volume and flow reader: H24, p_hold 0.40, Organic volume before rug at 0.004; holding nearly free
+  sceptic: BE, p_hold 0.15, Sale at 0.004 worth cents; floor base rates favour holding.
+  risk manager: H3, p_hold 0.37, Floor 0.004; downside cents, upside if print reverts.
+  momentum trader: H3, p_hold 0.25, Active coin rugged to cents; selling gains nothing, hold option.
+  dip buyer: H3, p_hold 0.30, Organic coin rugged to 0.004; tiny stake, bounce lottery
+  rocket hunter: H24, p_hold 0.25, Organic volume before rug; holding costs only cents
+  clock and age analyst: H24, p_hold 0.32, Rugged to 0.004 despite weak SOL; downside is cents
+  devil's advocate: H24, p_hold 0.30, Rugged to dust; free option, floor holds positive historically.
+
+CASE 14 (your round 1: H3, p_hold 0.30)
+  chart reader: H3, p_hold 0.25, Thin chart rugged to 0.027; tiny proceeds, keep the option
+  volume and flow reader: H24, p_hold 0.35, Thin flow, rugged to 0.027; little left, floor base positive
+  sceptic: BE, p_hold 0.12, Dev-dump pattern; recovery unlikely but sale nearly worthless.
+  risk manager: H3, p_hold 0.38, Floor 0.027; risk about 1 EUR, floor holds positive.
+  momentum trader: H3, p_hold 0.20, Sale worth about one euro; tiny downside, small upside.
+  dip buyer: H3, p_hold 0.25, Rugged to 0.027; sale worth about one euro, hold cheaply
+  rocket hunter: H24, p_hold 0.25, Rug to 0.027; little left to lose, rebound option
+  clock and age analyst: H24, p_hold 0.33, Rug at 0.027 on 7h coin; free lottery ticket
+  devil's advocate: H24, p_hold 0.30, Dust remains; floor-case holds positive in base rates.
+
+CASE 15 (your round 1: RS, p_hold 0.50)
+  chart reader: RS, p_hold 0.50, Broke prior highs on 90k volume; sale is a wick low
+  volume and flow reader: RS, p_hold 0.50, Volume jumped 20x into breakout; turnover supports continuation
+  sceptic: SELL, p_hold 0.35, Vertical pump to 2x, now dumping; bank 1.76x.
+  risk manager: RS, p_hold 0.48, Volume breakout, shallow pullback; RS exits fast if dumps.
+  momentum trader: RS, p_hold 0.55, Breakout above prior highs on huge volume; sale near close.
+  dip buyer: RS, p_hold 0.50, Breakout on 90k volume; shallow wick, buyers still there
+  rocket hunter: RS, p_hold 0.50, Dip then volume breakout to 2x; RS rides further run
+  clock and age analyst: SELL, p_hold 0.38, SOL -4.7 % and BTC -3 % day; lock 1.76
+  devil's advocate: RS, p_hold 0.45, Breakout on big volume; RS keeps upside with tight exits.
+
+CASE 16 (your round 1: SELL, p_hold 0.42)
+  chart reader: H1, p_hold 0.50, Gentle uptrend, sideways near highs; one hour costs little
+  volume and flow reader: SELL, p_hold 0.40, Thin sporadic volume, last hour mostly zeros; flow fading
+  sceptic: SELL, p_hold 0.30, Time sale in profit; base rates punish longer holds.
+  risk manager: SELL, p_hold 0.38, Time sale in profit; base says holding loses.
+  momentum trader: H1, p_hold 0.48, Turned up on a volume spike; one more hour is cheap.
+  dip buyer: SELL, p_hold 0.40, Slow thin drift up, time exit; no oversold setup
+  rocket hunter: SELL, p_hold 0.35, Weak sporadic volume, sideways at 1.16; nothing rocket-like
+  clock and age analyst: H1, p_hold 0.50, 28h-old calm coin, BTC +2 %, one more hour cheap
+  devil's advocate: H1, p_hold 0.50, Bounce off 1.05 with volume; H1 mildly positive on time.
+
+CASE 18 (your round 1: RS, p_hold 0.58)
+  chart reader: RS, p_hold 0.50, Strong rally 0.86 to 1.67 on rising volume; wick sale
+  volume and flow reader: RS, p_hold 0.50, Very high turnover, volume rising into the high
+  sceptic: SELL, p_hold 0.40, Trail_low: only RS marginally positive; take 1.40x.
+  risk manager: RS, p_hold 0.46, Strong liquid trend, rising volume; RS keeps losses small.
+  momentum trader: RS, p_hold 0.52, New highs on rising volume; wick sale, fresh bot trails.
+  dip buyer: RS, p_hold 0.50, Strong 9M-volume coin, deep wick below stop; fresh bot
+  rocket hunter: RS, p_hold 0.45, Huge 24h volume runner bounced from dip; RS continuation
+  clock and age analyst: RS, p_hold 0.50, Huge volume 10h coin, SOL and BTC positive
+  devil's advocate: RS, p_hold 0.48, Rising volume uptrend; RS is the trail_low winner.
+
+CASE 20 (your round 1: RS, p_hold 0.55)
+  chart reader: RS, p_hold 0.42, Violent spike, wick sale above buy; RS caps the retrace
+  volume and flow reader: RS, p_hold 0.45, Big volume on thin pool, violent wick; fresh bot keeps option
+  sceptic: SELL, p_hold 0.45, Huge wick, chaotic; RS edge not significant, take profit.
+  risk manager: SELL, p_hold 0.40, Wild spike-dump, thin; gap risk outweighs bounce.
+  momentum trader: RS, p_hold 0.48, Huge volume candle, sale at wick; fresh bot keeps upside.
+  dip buyer: RS, p_hold 0.45, Wild pump wick, volume surge; fresh bot limits damage
+  rocket hunter: RS, p_hold 0.45, Wild volume spike from dip; RS keeps upside cheaply
+  clock and age analyst: RS, p_hold 0.47, Volatile first candle, neutral BTC; fresh bot caps risk
+  devil's advocate: RS, p_hold 0.45, Wild pump-dump; RS small risk, catches second leg.
+
+CASE 22 (your round 1: H1, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Zero-volume coin rugged to 0.003; sale worth nothing
+  volume and flow reader: H24, p_hold 0.30, Zero trades ever, rugged to 0.003; sale worthless, hold free
+  sceptic: BE, p_hold 0.18, Stale price, sale worth cents; holding is a free option.
+  risk manager: H3, p_hold 0.35, Floor 0.003 on dead coin; holding costs nothing.
+  momentum trader: H24, p_hold 0.15, Never-traded coin rugged; sale worth cents, free option.
+  dip buyer: H24, p_hold 0.20, Zero-volume rug to 0.003; sale below fee, nothing to lose
+  rocket hunter: H24, p_hold 0.15, Dead coin at 0.003; selling yields nothing anyway
+  clock and age analyst: H24, p_hold 0.30, Zero-trade coin rugged to 0.003; hold costs nothing
+  devil's advocate: H24, p_hold 0.30, Zero-volume rug to dust; nothing to lose holding.
+
+CASE 23 (your round 1: H1, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot-volume ramp rugged; proceeds near zero, hold is free
+  volume and flow reader: H24, p_hold 0.30, Wash-like constant volume then rug; sale worthless, hold free
+  sceptic: BE, p_hold 0.10, Factory wash volume, likely rug; sale worthless anyway.
+  risk manager: H3, p_hold 0.36, Floor 0.003; downside cents, floor base positive.
+  momentum trader: H3, p_hold 0.20, Rising coin rugged to cents; holding costs almost nothing.
+  dip buyer: H3, p_hold 0.25, Bot-steady coin rugged to 0.003; tiny stake, free lottery
+  rocket hunter: H24, p_hold 0.20, Wash-volume coin rugged; holding costs only cents
+  clock and age analyst: H24, p_hold 0.32, 19h coin rugged to 0.003; tiny downside, some upside
+  devil's advocate: H24, p_hold 0.30, Scripted rug dust; holding free, base rate positive.
+
+CASE 24 (your round 1: H1, p_hold 0.53)
+  chart reader: SELL, p_hold 0.40, Illiquid spikes keep fading; latest jump likely fades too
+  volume and flow reader: SELL, p_hold 0.40, One lone buy lifted price; flow otherwise near zero
+  sceptic: SELL, p_hold 0.30, Illiquid jumps; time-sale holds lose on base rates.
+  risk manager: SELL, p_hold 0.35, Thin jump on one trade; time-sale holds lose.
+  momentum trader: H1, p_hold 0.48, Fresh jump on volume to a new high; brief hold.
+  dip buyer: SELL, p_hold 0.40, Thin coin, time exit after spike; no dip to buy
+  rocket hunter: SELL, p_hold 0.40, Illiquid spike on dead volume; take 1.19
+  clock and age analyst: SELL, p_hold 0.40, Illiquid spiky 12h coin, SOL and BTC slightly down
+  devil's advocate: SELL, p_hold 0.40, Thin spike on no socials usually fades; take profit.
+
+CASE 25 (your round 1: H1, p_hold 0.25)
+  chart reader: H3, p_hold 0.25, Downtrend then rug to 0.016; little to lose holding
+  volume and flow reader: H24, p_hold 0.35, Thin flow, rugged to 0.016; sale nearly worthless
+  sceptic: BE, p_hold 0.15, Sale worth under one euro; floor holds positive on base.
+  risk manager: H3, p_hold 0.38, Floor 0.016; under 1 EUR at risk, free option.
+  momentum trader: H3, p_hold 0.20, Sale worth under one euro; holding risks only cents.
+  dip buyer: H3, p_hold 0.30, Rug to 0.016; under one euro at stake, bounce chance
+  rocket hunter: H24, p_hold 0.25, Rug to 0.016; tiny downside, rebound option
+  clock and age analyst: H24, p_hold 0.33, Rug at 0.016 twenty minutes in; holding is free
+  devil's advocate: H24, p_hold 0.30, Dust after crash; holding risks under one euro.
+
+CASE 26 (your round 1: BE, p_hold 0.35)
+  chart reader: H3, p_hold 0.20, Flat dead coin rugged to 0.004; holding costs nothing
+  volume and flow reader: H24, p_hold 0.35, No flow, rugged to 0.004; sale worthless, free option
+  sceptic: BE, p_hold 0.20, Stale coin, sale worth cents; free option to hold.
+  risk manager: H3, p_hold 0.36, Floor 0.004; nothing left to protect, hold cheaply.
+  momentum trader: H24, p_hold 0.15, Dead coin rugged; sale worth cents, holding nearly free.
+  dip buyer: H24, p_hold 0.20, Illiquid rug to 0.004; sale worthless, wait for any print
+  rocket hunter: H24, p_hold 0.15, Dead at 0.004; holding costs nothing
+  clock and age analyst: H24, p_hold 0.32, Serial creator rug at 0.004; option value only
+  devil's advocate: H24, p_hold 0.30, Against hold-majority: rugs rarely revive; still free option, hold.
+
+CASE 27 (your round 1: SELL, p_hold 0.45)
+  chart reader: H1, p_hold 0.50, Staircase higher, holding top of range; brief hold fine
+  volume and flow reader: SELL, p_hold 0.40, Volume near zero for hours; no demand to push higher
+  sceptic: SELL, p_hold 0.30, Illiquid staircase; time-sale base rates negative beyond H1.
+  risk manager: SELL, p_hold 0.35, Illiquid staircase; take +22 %, holding base negative.
+  momentum trader: SELL, p_hold 0.45, Flat at the high with zero volume; no real momentum.
+  dip buyer: SELL, p_hold 0.40, Thin step-up coin, time exit; no oversold signal
+  rocket hunter: SELL, p_hold 0.35, Illiquid flat at 1.22; no volume to launch
+  clock and age analyst: H1, p_hold 0.52, Stair-step rise, SOL and BTC up on all windows
+  devil's advocate: SELL, p_hold 0.42, Illiquid static at high; no buyers, time holds lose.
+
+CASE 28 (your round 1: H3, p_hold 0.25)
+  chart reader: H3, p_hold 0.20, Dead drifting coin rugged to 0.004; sale worth nothing
+  volume and flow reader: H24, p_hold 0.35, No flow, rugged to 0.004; holding costs almost nothing
+  sceptic: BE, p_hold 0.15, No socials, dead; but sale worth cents, holding nearly free.
+  risk manager: H3, p_hold 0.36, Floor 0.004 on dead coin; zero downside.
+  momentum trader: H24, p_hold 0.15, Dead coin, sale worth cents; nothing to lose holding.
+  dip buyer: H24, p_hold 0.20, Near-zero volume rug; selling yields almost nothing
+  rocket hunter: H24, p_hold 0.15, Dead at 0.004; free option to hold
+  clock and age analyst: H24, p_hold 0.30, Rugged at 0.004; selling gains almost nothing after fee
+  devil's advocate: H24, p_hold 0.30, Against hold-majority: dust stays dust; but downside is pennies.
+
+CASE 30 (your round 1: RS, p_hold 0.52)
+  chart reader: RS, p_hold 0.45, High-volume breakout from dip; wick sale, RS keeps upside
+  volume and flow reader: RS, p_hold 0.50, Volume tripled into 134K candle, deep liquidity; fresh bot fits
+  sceptic: SELL, p_hold 0.40, Pump wick sale at 1.21x; trail_low holds mostly lose.
+  risk manager: SELL, p_hold 0.42, Upper-wick rejection then dump; lock +21 %.
+  momentum trader: RS, p_hold 0.55, Volume-driven breakout, 133k candle; wick sale, let it run.
+  dip buyer: RS, p_hold 0.50, 134k-volume breakout, deep wick below stop; strong coin
+  rocket hunter: RS, p_hold 0.45, Large cap, volume burst after dip; RS for continuation
+  clock and age analyst: RS, p_hold 0.44, Big volume 9h coin, SOL 1h up, wick sale
+  devil's advocate: RS, p_hold 0.45, Huge volume breakout then crash; RS positive on trail_low.
+
+CASE 31 (your round 1: RS, p_hold 0.35)
+  chart reader: H3, p_hold 0.25, Crash to 0.022 right after buy; tiny proceeds
+  volume and flow reader: H24, p_hold 0.40, Organic flow before rug at 0.022; small stake, floor base positive
+  sceptic: BE, p_hold 0.15, Sale at 0.022 is one euro; asymmetry favours holding.
+  risk manager: H3, p_hold 0.38, Floor 0.022; about 1 EUR at risk, base positive.
+  momentum trader: H3, p_hold 0.25, Active coin, sale worth one euro; free recovery option.
+  dip buyer: H3, p_hold 0.30, Active coin rugged to 0.022; small stake, dead-cat bounce chance
+  rocket hunter: H24, p_hold 0.25, Rug to 0.022 after active trading; free option
+  clock and age analyst: H24, p_hold 0.35, Rug at 0.022, BTC +4.6 % day; cheap option
+  devil's advocate: H24, p_hold 0.30, Dumped to dust in 20 min; hold the cheap option.
+
+CASE 32 (your round 1: H3, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot-volume coin rugged to 0.002; hold is free
+  volume and flow reader: H24, p_hold 0.30, Scripted constant volume then rug to 0.002; hold is free
+  sceptic: BE, p_hold 0.10, Factory rug at 0.002; selling yields nothing after fee.
+  risk manager: H3, p_hold 0.35, Scripted coin rugged to 0.002; hold costs nothing.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.002; sale below fee
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.002; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Scripted coin rugged to 0.002; holding risks cents
+  devil's advocate: H24, p_hold 0.32, Sale nets about zero after fee; holding cannot hurt.
+
+CASE 33 (your round 1: H3, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot ramp rugged to 0.001; selling yields nothing
+  volume and flow reader: H24, p_hold 0.30, Scripted constant volume then rug to 0.001; hold is free
+  sceptic: BE, p_hold 0.10, Factory rug at 0.001; fee exceeds sale, hold is free.
+  risk manager: H3, p_hold 0.35, Sale at 0.001 worthless after fee; free option.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.001; selling worth nothing
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.001; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Scripted coin rugged to 0.001; sale worth below fee
+  devil's advocate: H24, p_hold 0.32, 0.001 sale worthless after fee; hold for tail.
+
+CASE 34 (your round 1: H3, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot ramp rugged to 0.001; selling yields nothing
+  volume and flow reader: H24, p_hold 0.30, Scripted constant volume then rug to 0.001; hold is free
+  sceptic: BE, p_hold 0.10, Rug at 0.001; sale worth less than fee.
+  risk manager: H3, p_hold 0.35, Sale at 0.001 worthless after fee; free option.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.001; nothing left to protect
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.001; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Rugged to 0.001; nothing left to protect
+  devil's advocate: H24, p_hold 0.32, 0.001 sale worthless after fee; hold for tail.
+
+CASE 35 (your round 1: H1, p_hold 0.53)
+  chart reader: H1, p_hold 0.50, Recovered 0.81 to 1.20, consolidating near highs
+  volume and flow reader: SELL, p_hold 0.40, Rally volume faded to near zero last hour; thin pool
+  sceptic: SELL, p_hold 0.35, Late recovery to 1.18x; time-sale holds negative on base.
+  risk manager: SELL, p_hold 0.38, Thin rebound stalled; time-sale holds lose on base.
+  momentum trader: H1, p_hold 0.50, Strong rebound from 0.81 on volume, consolidating; short hold.
+  dip buyer: SELL, p_hold 0.42, Dip already bounced to 1.18; time exit, take it
+  rocket hunter: H1, p_hold 0.50, Fell to 0.81 then turned up with volume; short hold
+  clock and age analyst: SELL, p_hold 0.40, SOL and BTC down on all windows; take 1.18
+  devil's advocate: H1, p_hold 0.50, Recovered 0.81 to 1.19; H1 mildly positive on time.
+
+CASE 36 (your round 1: RS, p_hold 0.30)
+  chart reader: H3, p_hold 0.20, Bot-smooth ramp rugged to 0.020; little to protect
+  volume and flow reader: H24, p_hold 0.30, Ladder volume then rug to 0.020; little left to lose
+  sceptic: BE, p_hold 0.10, Wash-volume rug; sale worth one euro, tiny downside.
+  risk manager: H3, p_hold 0.37, Floor 0.020; about 1 EUR at risk, floor holds positive.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth one euro, tiny downside.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.02; one euro at stake
+  rocket hunter: H24, p_hold 0.20, Smooth climb rugged to 0.02; holding costs cents
+  clock and age analyst: H24, p_hold 0.33, Rug at 0.020, SOL up 2 %; hold is free
+  devil's advocate: H24, p_hold 0.30, Scripted rug, two cents left; holding costs nothing.
+
+CASE 37 (your round 1: RS, p_hold 0.42)
+  chart reader: H1, p_hold 0.45, Dump to 0.227, not zero; quick dead-cat bounce likely
+  volume and flow reader: H3, p_hold 0.40, Partial dump to 0.227, pool likely intact; bounce chance
+  sceptic: SELL, p_hold 0.30, Floor at 0.227 is 11 EUR; dumped coins rarely recover.
+  risk manager: H1, p_hold 0.50, Crash to 0.227 at candle low; short bounce, 0.6p cap.
+  momentum trader: SELL, p_hold 0.35, Crashed 77 percent in one candle; dump momentum, bank eleven euros.
+  dip buyer: H3, p_hold 0.40, 77% one-candle crash, real volume; partial bounce plausible
+  rocket hunter: H3, p_hold 0.40, Crashed to 0.23 with liquidity left; dead-cat bounce chance
+  clock and age analyst: H3, p_hold 0.40, Real dump to 0.227 on 20h coin; short bounce chance
+  devil's advocate: H1, p_hold 0.45, Holder dump, not full rug; quick dead-cat bounce plausible.
+
+CASE 38 (your round 1: H3, p_hold 0.30)
+  chart reader: H3, p_hold 0.25, Slow bleed then crash to 0.023; cheap option
+  volume and flow reader: H24, p_hold 0.40, Organic flow, rugged to 0.023; small stake, hold is cheap
+  sceptic: BE, p_hold 0.15, Sale worth one euro; floor base rates favour holding.
+  risk manager: H3, p_hold 0.38, Floor 0.023; about 1 EUR at risk, floor holds positive.
+  momentum trader: H3, p_hold 0.20, Falling coin rugged; sale worth one euro, cheap option.
+  dip buyer: H3, p_hold 0.30, Rugged to 0.023 after slow bleed; tiny stake, hold
+  rocket hunter: H24, p_hold 0.25, Rug to 0.023 in strong market; free rebound option
+  clock and age analyst: H24, p_hold 0.35, Rug at 0.023 in very strong SOL day
+  devil's advocate: H24, p_hold 0.30, Dust after crash; floor-case holds paid in training.
+
+CASE 39 (your round 1: RS, p_hold 0.45)
+  chart reader: SELL, p_hold 0.35, Lower highs from 1.63 peak, sale breaks the slide
+  volume and flow reader: SELL, p_hold 0.40, Thin volume fading after peak; sellers outlast buyers
+  sceptic: SELL, p_hold 0.35, Illiquid pump fading from 1.60; take 1.19x.
+  risk manager: SELL, p_hold 0.38, Thin fading trend then dump; lock +19 %.
+  momentum trader: SELL, p_hold 0.42, Lower highs, thin volume after second leg; fading.
+  dip buyer: RS, p_hold 0.42, Deep wick in thin coin; candle-low exit, fresh bot
+  rocket hunter: SELL, p_hold 0.35, Spike fading on thin volume; momentum gone
+  clock and age analyst: RS, p_hold 0.48, SOL +5.8 % day and +3.7 % 6h; fresh bot
+  devil's advocate: RS, p_hold 0.40, Thin fading staircase; RS still best trail_low plan.
+
+CASE 40 (your round 1: RS, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot-volume ramp rugged to 0.002; hold is free
+  volume and flow reader: H24, p_hold 0.30, Bot volume switched on then rug to 0.002; hold free
+  sceptic: BE, p_hold 0.10, Factory rug at 0.002; sale worth cents after fee.
+  risk manager: H3, p_hold 0.35, Floor 0.002; selling yields nothing, hold for free.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.002; sale below fee
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.002; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Scripted coin rugged to 0.002; holding costs cents
+  devil's advocate: H24, p_hold 0.32, Sale nets about zero after fee; hold for rare revival.
+
+CASE 41 (your round 1: RS, p_hold 0.30)
+  chart reader: H3, p_hold 0.25, Healthy chart then crash to 0.015; nothing to protect
+  volume and flow reader: H24, p_hold 0.40, Real flow before rug at 0.015; holding costs little
+  sceptic: BE, p_hold 0.15, Crash to 0.015; sale under one euro, holding nearly free.
+  risk manager: H3, p_hold 0.38, Floor 0.015; under 1 EUR at risk.
+  momentum trader: H3, p_hold 0.25, Rising active coin rugged; sale under one euro, hold option.
+  dip buyer: H3, p_hold 0.30, Active coin rugged to 0.015; under one euro at risk
+  rocket hunter: H24, p_hold 0.25, Active coin rugged to 0.015; holding costs cents
+  clock and age analyst: H24, p_hold 0.30, Rug at 0.015; weak SOL but downside is cents
+  devil's advocate: H24, p_hold 0.30, Dust remains; floor-case holds positive historically.
+
+CASE 42 (your round 1: RS, p_hold 0.55)
+  chart reader: SELL, p_hold 0.40, Spike fading, lower highs, sale breaks recent lows
+  volume and flow reader: RS, p_hold 0.45, Volume doubled on breakout and stayed high; fresh bot fits
+  sceptic: SELL, p_hold 0.35, Pump candle reversing; trail_low holds lose on base.
+  risk manager: SELL, p_hold 0.42, Post-spike stall, weak market; lock +27 %.
+  momentum trader: SELL, p_hold 0.45, Single spike then lower highs, volume falling; fading.
+  dip buyer: RS, p_hold 0.45, Breakout holding above base; wick sold at candle low
+  rocket hunter: SELL, p_hold 0.40, Late spike fading, market weak; no sustained rocket fuel
+  clock and age analyst: SELL, p_hold 0.38, SOL -3.7 % and BTC -3.2 % day; lock 1.27
+  devil's advocate: RS, p_hold 0.42, Late breakout fading; RS positive on trail_low.
+
+CASE 43 (your round 1: BE, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot ramp rugged to 0.001; selling yields nothing
+  volume and flow reader: H24, p_hold 0.30, Constant scripted volume then rug to 0.001; hold free
+  sceptic: BE, p_hold 0.10, Factory rug at 0.001; fee exceeds sale proceeds.
+  risk manager: H3, p_hold 0.35, Sale at 0.001 worthless after fee; free option.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.001; selling worth nothing
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.001; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Scripted coin rugged to 0.001; sale below fee
+  devil's advocate: H24, p_hold 0.32, 0.001 sale worthless after fee; hold.
+
+CASE 44 (your round 1: SELL, p_hold 0.40)
+  chart reader: SELL, p_hold 0.35, Sharp breakdown from 1.33, SOL falling; momentum gone
+  volume and flow reader: SELL, p_hold 0.35, Volume rising on the drop, SOL falling; sellers in control
+  sceptic: SELL, p_hold 0.30, Drop sale, SOL falling; every plan negative on drop base.
+  risk manager: SELL, p_hold 0.38, Market dumping, drop sale; base says holding loses.
+  momentum trader: SELL, p_hold 0.35, Rally failed, falling on volume, SOL weak; fading.
+  dip buyer: H1, p_hold 0.45, Sharp drop on high-turnover coin to prior support; quick bounce
+  rocket hunter: SELL, p_hold 0.30, SOL dumping, coin fading; lock the small profit
+  clock and age analyst: SELL, p_hold 0.28, SOL -2.6 % hour, -7.7 % day; drop exit right
+  devil's advocate: SELL, p_hold 0.38, Drop sale, SOL falling; drop-case holds all negative.
+
+CASE 45 (your round 1: H3, p_hold 0.55)
+  chart reader: SELL, p_hold 0.40, Illiquid, rolled over from 1.13, SOL dipping
+  volume and flow reader: SELL, p_hold 0.40, Sporadic thin volume, SOL dropping; no flow to carry it
+  sceptic: SELL, p_hold 0.30, Illiquid; time-sale holds negative on base rates.
+  risk manager: SELL, p_hold 0.33, Illiquid staircase; take +9 %, base negative.
+  momentum trader: SELL, p_hold 0.42, Choppy, slipping, SOL down; no momentum left.
+  dip buyer: SELL, p_hold 0.40, Thin slow drift, time exit; no dip
+  rocket hunter: SELL, p_hold 0.35, Illiquid drift at 1.09; no rocket fuel
+  clock and age analyst: SELL, p_hold 0.40, SOL -1.8 % last hour; illiquid coin, take 1.09
+  devil's advocate: SELL, p_hold 0.42, Illiquid, no socials, SOL dipping; time holds lose.
+
+CASE 46 (your round 1: RS, p_hold 0.58)
+  chart reader: RS, p_hold 0.50, Strong rally to 1.84 on rising volume; trend intact
+  volume and flow reader: RS, p_hold 0.50, Volume surging to 18K on small cap; strong flow
+  sceptic: SELL, p_hold 0.35, Real 15% pullback after pump; bank 1.60x.
+  risk manager: RS, p_hold 0.45, Rising trend with volume, shallow dip; RS caps loss.
+  momentum trader: RS, p_hold 0.55, Breakout to new highs on rising volume; sale near close.
+  dip buyer: RS, p_hold 0.50, Strong rally, first pullback at stop; buyers active
+  rocket hunter: RS, p_hold 0.50, Dip then strong volume run to 1.9x; RS rides
+  clock and age analyst: SELL, p_hold 0.38, SOL falling 6h and 24h, BTC down; lock 1.60
+  devil's advocate: RS, p_hold 0.48, Clean momentum breakout; RS keeps upside, exits on drop.
+
+CASE 47 (your round 1: H3, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Zero-volume coin rugged to 0.004; sale worth nothing
+  volume and flow reader: H24, p_hold 0.30, Zero trades, rugged to 0.004; sale worthless, hold free
+  sceptic: BE, p_hold 0.18, Stale zero-volume coin; sale worth cents, hold free.
+  risk manager: H3, p_hold 0.35, Dead coin floor 0.004; zero downside to hold.
+  momentum trader: H24, p_hold 0.15, Never-traded coin rugged; sale worth cents, free option.
+  dip buyer: H24, p_hold 0.20, Zero-volume rug to 0.004; sale worth less than fee
+  rocket hunter: H24, p_hold 0.15, Dead at 0.004; holding costs nothing
+  clock and age analyst: H24, p_hold 0.30, Zero-trade coin rugged to 0.004; free option
+  devil's advocate: H24, p_hold 0.30, Zero-volume rug to dust; holding is nearly free.
+
+CASE 48 (your round 1: SELL, p_hold 0.42)
+  chart reader: SELL, p_hold 0.30, Steady downtrend accelerating on rising volume
+  volume and flow reader: SELL, p_hold 0.30, Steady decline on rising sell volume; drop base rate negative
+  sceptic: SELL, p_hold 0.30, Steady decline accelerating on volume; drop base rates negative.
+  risk manager: SELL, p_hold 0.38, Steady bleed on rising volume; cut loss now.
+  momentum trader: SELL, p_hold 0.30, Accelerating decline on rising volume; clear fade.
+  dip buyer: H1, p_hold 0.45, Capitulation candle on 2.4M-volume coin; bounce chance in hour
+  rocket hunter: SELL, p_hold 0.30, Steady decline on rising sell volume; no bounce signs
+  clock and age analyst: SELL, p_hold 0.33, Steady decline with rising sell volume; drop exits pay
+  devil's advocate: SELL, p_hold 0.35, Steady distribution on rising volume; drop holds negative.
+
+CASE 50 (your round 1: RS, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot-volume coin rugged to 0.001; hold is free
+  volume and flow reader: H24, p_hold 0.30, Constant scripted volume then rug to 0.001; hold free
+  sceptic: BE, p_hold 0.10, Factory rug at 0.001; selling earns nothing after fee.
+  risk manager: H3, p_hold 0.35, Sale at 0.001 worthless after fee; free option.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.001; selling worth nothing
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.001; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Scripted coin rugged to 0.001; holding risks cents
+  devil's advocate: H24, p_hold 0.32, 0.001 sale worthless after fee; hold.
+
+CASE 51 (your round 1: BE, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot-volume coin rugged to 0.003; hold is free
+  volume and flow reader: H24, p_hold 0.30, Constant scripted volume then rug to 0.003; hold free
+  sceptic: BE, p_hold 0.10, Factory twin rug; sale worth cents, hold is free.
+  risk manager: H3, p_hold 0.35, Floor 0.003; holding risks cents only.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.003; sale below fee
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.003; nothing left to lose
+  clock and age analyst: H24, p_hold 0.32, Rugged to 0.003; SOL up, cheap lottery ticket
+  devil's advocate: H24, p_hold 0.30, Scripted rug dust; holding costs pennies.
+
+CASE 52 (your round 1: RS, p_hold 0.55)
+  chart reader: RS, p_hold 0.50, Clean rally to 1.80 on rising volume; wick sale
+  volume and flow reader: RS, p_hold 0.50, Heavy steady volume rising into the high, liquid pool
+  sceptic: SELL, p_hold 0.35, Profit 1.43x after pump; trail_low holds lose on base.
+  risk manager: RS, p_hold 0.47, Steady liquid uptrend; RS keeps downside small.
+  momentum trader: RS, p_hold 0.57, Rising volume into new highs; sale at wick, ride trend.
+  dip buyer: RS, p_hold 0.50, Rising volume uptrend, deep wick; strong coin, fresh bot
+  rocket hunter: RS, p_hold 0.45, Steady strong-volume uptrend; RS keeps continuation chance
+  clock and age analyst: SELL, p_hold 0.37, SOL -5.4 % day, BTC -2.7 %; lock 1.43
+  devil's advocate: RS, p_hold 0.47, Strong steady volume uptrend; RS positive on trail_low.
+
+CASE 53 (your round 1: RS, p_hold 0.20)
+  chart reader: H3, p_hold 0.20, Bot-volume coin rugged to 0.005; hold is free
+  volume and flow reader: H24, p_hold 0.30, Constant scripted volume then rug to 0.005; hold free
+  sceptic: BE, p_hold 0.10, Factory rug at 0.005; sale nearly worthless after fee.
+  risk manager: H3, p_hold 0.35, Floor 0.005; holding risks cents only.
+  momentum trader: H3, p_hold 0.15, Bot-volume rug; sale worth cents, holding nearly free.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.005; tiny stake, free lottery
+  rocket hunter: H24, p_hold 0.15, Bot climb rugged to 0.005; nothing left to lose
+  clock and age analyst: H24, p_hold 0.30, Scripted coin rugged to 0.005; downside only cents
+  devil's advocate: H24, p_hold 0.30, Scripted rug dust; free option, base positive.
+
+CASE 54 (your round 1: BE, p_hold 0.28)
+  chart reader: H3, p_hold 0.20, Rugged to 0.031 after bot-like chart; small proceeds
+  volume and flow reader: H24, p_hold 0.35, Scripted-looking flow, rug to 0.031; small stake, hold
+  sceptic: BE, p_hold 0.12, Crash to 0.031; tiny downside, floor base rates positive.
+  risk manager: H3, p_hold 0.38, Floor 0.031; about 1.5 EUR at risk, floor holds positive.
+  momentum trader: H3, p_hold 0.15, Bot-like volume rug; sale worth 1.5 euros, cheap option.
+  dip buyer: H3, p_hold 0.20, Bot coin rugged to 0.031; small stake, hold
+  rocket hunter: H24, p_hold 0.20, Rug to 0.031; tiny downside, rebound option
+  clock and age analyst: H24, p_hold 0.34, Rug at 0.031, BTC +6.7 % day; free option
+  devil's advocate: H24, p_hold 0.30, Three cents left; holding risks little, base positive.
