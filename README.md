@@ -696,6 +696,14 @@ Office), the Agent office and the New launches list (until the switch) live with
 when the new coins are listed (about five minutes into the scan) and when the pick is made. Fake money only: nothing is bought
 for real, and no notification is a trade. In a normal browser tab the page looks and works as before.
 
+The Start tab's live panel (`page_live.py`, since 25 Oct 2026) shows the four bots at work: PICK BOT (the hourly scan), SELL BOT 🤖
+(the Pick account's chart exit, a look every minute), RADAR 🚀 (the Radar account's round every 15 minutes) and LEARNING PICK (the
+shadow account, trained every night), each with what it did last, a clock to its next move and its open coins with their change since
+the buy; under them a feed of the last day's buys, sells, rounds and scans, newest first. While Start is in front it reads the versions
+of the live rows `pickwatch` and `rocket` every 10 seconds (a few bytes) and a row only when its version moved (about once a minute
+while a coin is open), so new sales and rounds slide in without a reload; a lane turns amber ("late") only when the live store answers
+and that bot's last move is far overdue. Display only: no rule, pick or account changes.
+
 Until the switch the Radar tab shows the launch spotter's early list under the radar, in all its states, above the scored list, and its badge
 on the tab bar counts the coins of that list while the list is shown (otherwise there is no badge). The "new coins"
 notification goes out once a scan, when the first early list with coins is out: "9 new coins listed", "The newest is 4 min old.

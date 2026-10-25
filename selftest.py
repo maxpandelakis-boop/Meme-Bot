@@ -4028,6 +4028,8 @@ console.log(JSON.stringify(o));
     selftest_fresh.checks(check, SKIPS)
     import selftest_livesell                    # the Pick account sells on the live chart from Oct 24 (memebot.LIVE_SELL_AT, rocket_watch.py's minute watch)
     selftest_livesell.checks(check, SKIPS)
+    import selftest_live                        # the Start tab's live panel: the bots' lanes with their clocks and the feed (page_live.py)
+    selftest_live.checks(check, SKIPS)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:
