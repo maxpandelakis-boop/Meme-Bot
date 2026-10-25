@@ -1,0 +1,1 @@
+Launch facts from the Solana chain and the metadata files (IPFS) of the pump.fun graduations of the five month windows (25 Apr-21 Oct 2026, start SOL side >= 10), made by research/rockets/meta_chain.py. Fake money only.
