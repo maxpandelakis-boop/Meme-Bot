@@ -1,6 +1,6 @@
 # Pre-registration: two Pick buy filters, judged on the real Pick buys of 26 Oct - 22 Nov 2026
 
-Written 25 Oct 2026 around 23:15 UTC, before any of the judged buys exist. Research only: the bot, the Pick account and its rule
+Written 25 Oct 2026 around 22:45 UTC, before any of the judged buys exist. Research only: the bot, the Pick account and its rule
 stay as they are. Nothing is switched on from this test without the user's yes.
 
 ## Why
