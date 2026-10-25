@@ -1,0 +1,1 @@
+What the pictures of the pump.fun graduations of 25 Apr-21 Oct 2026 show, read by OpenAI CLIP (openai/clip-vit-base-patch32), made by research/rockets/images.py; handcheck/ = the 120 numbered pictures of the hand check. Fake money only.
