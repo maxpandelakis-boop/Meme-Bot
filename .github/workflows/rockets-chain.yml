@@ -5,13 +5,10 @@
 # goes on with the coins an earlier one did not reach and asks again for the metadata files it could not read (gateways from the
 # probe of rockets-gateways.yml).
 # Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or saved; without it the public Solana RPC is used.
-# Touches no bot branch and no paper account. Started by a push of this file or meta_chain.py on this branch, or by hand.
+# Touches no bot branch and no paper account. Started by hand.
 name: rockets-chain
 on:
-  push:
-    branches: [claude/project-thread-5blkl3]
-    paths: [.github/workflows/rockets-chain.yml, research/rockets/meta_chain.py]
-  workflow_dispatch:
+  workflow_dispatch:              # by hand only since run 8 (24 Oct): meta_chain.py is shared with rockets-lmeta.yml
 permissions:
   contents: write
   actions: read

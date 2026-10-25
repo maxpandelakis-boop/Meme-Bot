@@ -201,20 +201,29 @@ CID = re.compile(r"(?:/ipfs/|^ipfs://)([A-Za-z0-9]+)")      # also the bare ipfs
 _gw = [0]
 
 
+def gateway_order(k):
+    """The gateways for the k-th file. GW_ROTATE unset: start at gateway k and go round (the load spread over all of them);
+    GW_ROTATE=0: always the order of GATEWAYS (the probe's best first); GW_ROTATE=r: start at one of the first r in turn,
+    then the others in GATEWAYS order (two paced gateways share the files, each with its own limit)."""
+    rot = os.environ.get("GW_ROTATE")
+    if not rot:
+        return [GATEWAYS[(k + j) % len(GATEWAYS)] for j in range(len(GATEWAYS))]
+    first = GATEWAYS[k % int(rot)] if int(rot) > 0 else GATEWAYS[0]
+    return [first] + [g for g in GATEWAYS if g != first]
+
+
 def metadata_file(uri):
-    """The metadata JSON: an IPFS file over FILE_TRIES gateways (default 2) taken in turn (the load spread over all of them;
-    GW_ROTATE=0: always in the order of GATEWAYS, the probe's best first), anything else from its own link (FILE_TRIES tries,
-    a pause between them, none after an answer that will not change such as 404)."""
+    """The metadata JSON: an IPFS file over FILE_TRIES gateways (default 2; see gateway_order), anything else from its own link
+    (FILE_TRIES tries, a pause between them, none after an answer that will not change such as 404)."""
     if not uri:
         return None, "nouri"
     m = CID.search(uri)
     if m:
-        k = _gw[0] if os.environ.get("GW_ROTATE") != "0" else 0
+        urls = [g % m.group(1) for g in gateway_order(_gw[0])][:TRIES]
         _gw[0] += 1
-        urls = [GATEWAYS[(k + j) % len(GATEWAYS)] % m.group(1) for j in range(min(TRIES, len(GATEWAYS)))]
     else:
         urls = [uri] * TRIES
-    last = None
+    last, sts = None, []
     for t, u in enumerate(urls):
         if not u.startswith("http"):
             continue
@@ -229,7 +238,18 @@ def metadata_file(uri):
                 return json.loads(raw), "ok"
             except Exception:
                 last = "badjson"
-    return None, str(last)
+        sts.append(str(last))
+    return None, ("|".join(sts) if m and sts else str(last))     # IPFS: every gateway's answer, e.g. "404|403|429"
+
+
+GONE = {"400", "401", "403", "404", "410", "badjson", "nouri", "None"}
+
+
+def file_gone(st):
+    """True when a failed file will not come later: a gateway said 404 or 410 (not in the IPFS network), or every answer
+    was one that does not change. False for rate limits, timeouts and server errors, which a later run asks again."""
+    parts = str(st).split("|")
+    return st == "ok" or "404" in parts or "410" in parts or all(p in GONE for p in parts)
 
 
 TRIES = int(os.environ.get("FILE_TRIES") or 2)

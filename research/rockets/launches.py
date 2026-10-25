@@ -938,6 +938,17 @@ def cmd_mshard(udir, i, n, out):
         json.dump({"rows": res, "planned": len(part)}, fh)
 
 
+def cmd_mdone(prev, out):
+    """The launches an earlier run finished (file read, or gone for good); the others are asked again (rate limits)."""
+    import pandas as pd
+    from meta_chain import file_gone
+    d = pd.read_parquet(prev)
+    done = d["file_status"].map(file_gone)
+    json.dump(sorted(d.loc[done, "mint"]), open(out, "w"))
+    log("earlier run", len(d), "done", int(done.sum()), "asked again", int((~done).sum()),
+        "their answers", d.loc[~done, "file_status"].value_counts().head(8).to_dict())
+
+
 def cmd_mfinal(src, out, prev=None):
     import pandas as pd
     os.makedirs(out, exist_ok=True)
@@ -946,8 +957,10 @@ def cmd_mfinal(src, out, prev=None):
         rows += list(json.load(gzip.open(f, "rt"))["rows"].values())
     d = pd.DataFrame(rows).drop_duplicates("mint")
     if prev and os.path.exists(prev):
-        old = pd.read_parquet(prev)
-        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]))]], ignore_index=True)
+        old = pd.read_parquet(prev).drop_duplicates("mint")
+        if len(d):                     # launches asked again: what this run did not get is kept from the earlier run
+            d = d.set_index("mint").combine_first(old.set_index("mint").loc[lambda o: o.index.isin(d["mint"])]).reset_index()
+        d = pd.concat([d, old[~old["mint"].isin(set(d["mint"]) if len(d) else set())]], ignore_index=True)
     for c in d.columns:
         if d[c].dtype != object or c == "mint":
             continue
@@ -1166,4 +1179,4 @@ def cmd_final(src, out, prev=None):
 if __name__ == "__main__":
     {"probe": cmd_probe, "probe2": cmd_probe2, "probe3": cmd_probe3, "verify": cmd_verify, "verify2": cmd_verify2, "verify3": cmd_verify3,
      "build": cmd_build,
-     "mshard": cmd_mshard, "mfinal": cmd_mfinal, "sigs": cmd_sigs, "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
+     "mshard": cmd_mshard, "mdone": cmd_mdone, "mfinal": cmd_mfinal, "sigs": cmd_sigs, "shard": cmd_shard, "final": cmd_final}[sys.argv[1]](*sys.argv[2:])
