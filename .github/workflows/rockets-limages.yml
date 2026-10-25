@@ -3,11 +3,14 @@
 # OpenAI's CLIP model (research/rockets/images.py): what each shows, animated or not, a look-alike hash, whether it fits the
 # name -> branch "rocketslimages". 3 jobs at most (the account has few runners). A later run goes on where an earlier one
 # stopped (pictures read, or gone for good, are left out; the others are asked again). Nothing is bought; no key or secret
-# beyond the run's own token. Touches no bot branch and no paper account. Started by hand only until branch rocketslmeta is
-# complete (its 3 jobs run first), then by a push of this file on this branch (edit the run note), or by hand.
-# Run note: not run yet.
+# beyond the run's own token. Touches no bot branch and no paper account. Started by a push of this file on this branch (edit
+# the run note), or by hand.
+# Run note: first run 25 Oct, after rocketslmeta was complete (600,000 asked, 418,118 metadata files read).
 name: rockets-limages
 on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-limages.yml]
   workflow_dispatch:
 permissions:
   contents: write
