@@ -4,7 +4,8 @@ live agiert"). Fake money only: nothing here buys, sells, signs or sends anythin
 Two parts, in the words of the Start cards (the user mixes up the accounts, so every line names its bot and its account):
   lanes  one row per bot: PICK BOT (buys one coin a scan for the Pick account), SELL BOT 🤖 (sells the Pick account's coins on the live
          chart, a look every minute), RADAR 🚀 (the Radar account's rocket hunter, a round every 15 minutes) and LEARNING PICK (the shadow
-         account, a buy with each scan, trains every night). Each says what its bot did last, counts down to its next move with a bar that
+         account, a buy with each scan, trains every night) and ROCKET SEEKER 🔭 (a test bot with its own account, page_seeker.py: a look
+         every minute; its lane shows the state of the scan's seeker.json, no live row). Each says what its bot did last, counts down to its next move with a bar that
          fills up, and shows its open coins with their change since the buy as chips. A move overdue by far turns the lane amber ("late").
   feed   the last day's events of all four, newest first: buys, sells, Radar rounds and scans, each with its time, its bot, the coin and
          the result in €; the first FEED_SHOWN in view, the rest behind "Show all".
@@ -35,12 +36,14 @@ LOOK_MS = 60_000          # the sell bot looks every minute (rocket_watch.WATCH_
 ROUND_MS = 15 * 60_000    # the Radar round every 15 minutes (rocket.yml)
 LATE = {"scan": 45 * 60_000, "look": 15 * 60_000, "round": 35 * 60_000}  # overdue by this much: the lane turns amber (the sell bot pauses
 PAUSE_MS = 150_000        # during a Radar round and between two runs of rocket.yml, a few minutes: "pause", not "late")
-WHO = {"pick": "PICK BOT", "sell": "SELL BOT 🤖", "acct": "PICK ACCOUNT", "radar": "RADAR 🚀", "lp": "LEARNING PICK", "scan": "SCAN"}
+WHO = {"pick": "PICK BOT", "sell": "SELL BOT 🤖", "acct": "PICK ACCOUNT", "radar": "RADAR 🚀", "lp": "LEARNING PICK", "rs": "ROCKET SEEKER 🔭", "scan": "SCAN"}
 RK_WHY = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone"}      # page_rocket.WHY
 try:
     from page_brain import NAMES as AGENTS          # the scan's helpers by name (Scouts, Deep search, Prices ...) for the running scan's line
 except Exception:
     AGENTS = {}
+RS_WHY = {"floor": "fell to half", "trail": "40% under its best", "24h": "after 24 h"}     # page_seeker.WHY
+RS_TICKET = 20.0
 LP_WHY = {"tp": "target", "half": "half at target", "stop": "stop", "trail": "trailing stop", "time": "time limit", "rug": "pool dead"}
 
 
@@ -74,6 +77,14 @@ def next_night(now):
     return t if t > now else t + 24 * H
 
 
+def seeker_doc(D):
+    try:
+        import page_seeker as PSK
+        return PSK.doc(D)
+    except Exception:
+        return None
+
+
 def lp_summary(D):
     try:
         import lernpick as L
@@ -101,9 +112,9 @@ def ev(k, t, who, html_text, eur=None, dim=False):
     return {"k": k, "t": int(t), "who": who, "h": html_text, "eur": eur, "dim": dim}
 
 
-def events(D, R, doc=None, S=None):
+def events(D, R, doc=None, S=None, sd=None):
     """The feed: [{k (a key LV_JS knows it by), t, who, h (escaped HTML), eur, dim}], newest first, FEED_H hours, FEED_MAX at most.
-    doc: rocket.json, S: the Learning Pick's summary (read here when not given)."""
+    doc: rocket.json, S: the Learning Pick's summary (read here when not given), sd: the Rocket seeker's seeker.json (page_seeker.doc)."""
     now = D["now"]
     doc = doc if doc is not None else PH.rocket_doc(D)
     since = now - FEED_H * H
@@ -160,6 +171,18 @@ def events(D, R, doc=None, S=None):
                 m = 1 + (num(p.get("eur")) or 0) / (num(S.get("ticket")) or 50)
                 out.append(ev("lsell:%s" % p.get("pid"), num(p["out"]), "lp", "sold <b>%s</b> · %s · %s" % (E(sym(p.get("sym"))), E(LP_WHY.get(why, why)), E(pct(m))),
                               num(p.get("eur"))))
+    sd = sd if sd is not None else seeker_doc(D)
+    if sd:
+        bk = sd.get("book") or {}
+        for p in list((bk.get("open") or {}).values()) + list(bk.get("closed") or []):
+            if not isinstance(p, dict):
+                continue
+            if (num(p.get("t")) or 0) >= since:
+                out.append(ev("sbuy:%s" % p.get("addr"), num(p["t"]), "rs", "bought <b>%s</b> for its test account · 30 min after launch" % E(sym(p.get("sym"))),
+                              PH.de_eur(RS_TICKET).replace(".00", "")))
+            if num(p.get("out")) and num(p["out"]) >= since:
+                out.append(ev("ssell:%s" % p.get("addr"), num(p["out"]), "rs", "sold <b>%s</b> · %s · %s" % (
+                    E(sym(p.get("sym"))), E(RS_WHY.get(str(p.get("why") or ""), str(p.get("why") or ""))), E(pct(p.get("mult")))), num(p.get("eur"))))
     for r in D.get("runs") or []:
         t = num((r or {}).get("t")) if isinstance(r, dict) else None
         if not t or t < since:
@@ -211,7 +234,7 @@ def chips(items):
 
 # a tap on a lane opens where its bot lives (the four tiles that repeated the tab bar did that before Oct 25): page_home.JS switches the
 # tab (in the installed app through its own bar) and, with data-open, scrolls to that card or opens that fold
-GO = {"pick": ("pick", ""), "sell": ("pick", "sell-bot"), "radar": ("young", ""), "lp": ("pick", "learning-pick")}
+GO = {"pick": ("pick", ""), "sell": ("pick", "sell-bot"), "radar": ("young", ""), "lp": ("pick", "learning-pick"), "rs": ("pick", "rocket-seeker")}
 
 
 def lane(key, ico, name, sub, cdk, cd, bar, say, chips_html="", late=False):
@@ -242,7 +265,9 @@ def share(now, t0, t1):
 # Pick: its own bot, a test with fake money of its own)
 ROLE = {"pick": "Two bots trade for it: the Pick bot buys, the Sell bot sells.",
         "radar": "The Radar bot buys only coins that look like rockets, so most days it buys nothing.",
-        "lp": "A test bot with money of its own. It never trades for the two accounts above."}
+        "lp": "A test bot with money of its own. It never trades for the two accounts above.",
+        "rs": "A test bot with money of its own: it checks every new coin 30 minutes after its launch and buys the rocket-like ones. "
+              "It never trades for the accounts above."}
 
 
 def acct(key, name, role, bal, line, spark_html, lanes_html, attrs=""):
@@ -251,8 +276,8 @@ def acct(key, name, role, bal, line, spark_html, lanes_html, attrs=""):
             '<div class="lv-lanes">%s</div></div>') % (key, attrs, E(name), bal, E(role), spark_html, line, lanes_html)
 
 
-def accounts(D, R, doc, S, lanes):
-    """The three boxes (pick, radar, lp), each with the lanes of its bots; a box without its data keeps its lanes and a dash."""
+def accounts(D, R, doc, S, lanes, sd=None):
+    """The boxes (pick, radar, lp, rs), each with the lanes of its bots; a box without its data keeps its lanes and a dash."""
     now = D["now"]
     out = []
     b = PH.pick_book(D)
@@ -291,6 +316,22 @@ def accounts(D, R, doc, S, lanes):
         bal, line = '<b class="lv-ab">–</b>', "waiting for its first buy · %s per buy" % E(ltk)
     if S or lanes.get("lp"):
         out.append(acct("lp", "Learning Pick", ROLE["lp"], bal, line, "", lanes.get("lp", "")))
+    try:
+        import page_seeker as PSK
+        n = PSK.numbers(sd)
+    except Exception:
+        n = None
+    stk = PH.de_eur(RS_TICKET).replace(".00", "")
+    if n and (n["closed"] or n["open"]):
+        ss = PH.since_words(R, n.get("since"))
+        bal = '<b class="lv-ab %s">%s</b>' % (PH.tone(n["bal"]), E(PH.de_eur(n["bal"], True)))
+        line = "%s%d sold · %d open · %d reached 10x · %s per buy" % (E(ss + " · ") if ss else "", n["closed"], n["open"], n["x10"], E(stk))
+        sp = PH.spark(n["pts"], PH.tone(n["pts"][-1] if n["pts"] else 0)) if len(n["pts"]) >= 2 else ""
+    else:
+        bal, sp = '<b class="lv-ab">–</b>', ""
+        line = ("checked %d coins, no buy yet · %s per buy" % (n["checked"], E(stk))) if n else "starts with its first look · %s per buy" % E(stk)
+    if sd or lanes.get("rs"):
+        out.append(acct("rs", "Rocket seeker 🔭", ROLE["rs"], bal, line, sp, lanes.get("rs", "")))
     return "".join(out)
 
 
@@ -359,7 +400,23 @@ def section(D, R):
         lp_say = "Picks its own coin with each scan and sells by its own rule. %d open right now." % int(me.get("open") or 0)
         lanes["lp"] = (lane("lp", "🧠", "LEARNING PICK", "picks by what it learned", "next training",
                           left(nn - now), share(now, nn - 24 * H, nn), lp_say, chips(lp_items)))
-    feed = events(D, R, doc, S)
+    # ROCKET SEEKER: its last look (once a minute, seeker.yml), the coins it checked in the hour before, its open coins
+    sd = seeker_doc(D)
+    if sd:
+        sk_t = num(sd.get("t")) or 0
+        bk = sd.get("book") or {}
+        cut = num(sd.get("cut")) or 0
+        hour = [r for r in sd.get("recent") or [] if isinstance(r, dict) and num(r.get("score")) is not None and (num(r.get("t")) or 0) >= sk_t - H]
+        best = max(hour, key=lambda r: num(r["score"])) if hour else None
+        say = "Last look %s: %d coin%s checked in the hour before%s. %d open." % (
+            E(hm(R, sk_t)), len(hour), "" if len(hour) == 1 else "s",
+            (", best <b>%s</b> at %d%% of its buy line" % (E(sym(best.get("sym"))), round(100 * num(best["score"]) / cut))) if best and cut else "",
+            len(bk.get("open") or {}))
+        rs_items = [(p.get("sym"), num(p.get("now")) or num(p.get("last")), "s:" + str(a), "change since the buy, at its last look")
+                    for a, p in (bk.get("open") or {}).items() if isinstance(p, dict)]
+        lanes["rs"] = lane("rs", "🔭", "ROCKET SEEKER", "checks each new coin 30 min after launch", "looks", "every minute",
+                           100.0 if now - sk_t < LATE["look"] else 0.0, say, chips(rs_items), late=now - sk_t > LATE["round"])
+    feed = events(D, R, doc, S, sd)
     known = [e["k"] for e in feed]
     data = {"now": now, "scanT": scan_t, "nextScan": nxt, "look": look, "liveAt": live_at, "rkT": rk_t, "cut": cut, "rkSig": rk_sig((doc or {}).get("top")),
             "lpNext": next_night(now), "pick": pick, "radar": radar, "keys": known, "late": LATE, "pause": PAUSE_MS, "lookMs": LOOK_MS, "roundMs": ROUND_MS, "ux": M.UNIT_X, "every": POLL_S * 1000,
@@ -373,7 +430,7 @@ def section(D, R):
     return ('<section class="lv" id="live" data-lv="%s"><div class="lv-head"><span class="lv-badge" data-lv-badge><i></i>LIVE</span>'
             '<time class="lv-clock" data-lv-clock>%s</time><div class="lv-ht"><h3>Your bots</h3><small data-lv-src>as of the last scan %s · fake money</small></div>'
             '</div><div class="lv-accts">%s</div>%s</section><style>%s</style><script>%s</script>') % (
-        E(json.dumps(data, separators=(",", ":"))), E(hm(R, now)), E(hm(R, scan_t) if scan_t else "–"), accounts(D, R, doc, S, lanes), feed_html, LV_CSS, LV_JS)
+        E(json.dumps(data, separators=(",", ":"))), E(hm(R, now)), E(hm(R, scan_t) if scan_t else "–"), accounts(D, R, doc, S, lanes, sd), feed_html, LV_CSS, LV_JS)
 
 
 LV_JS = r"""
@@ -493,7 +550,7 @@ LV_JS = r"""
 
 LV_CSS = r"""
 /* the live panel (page_live.py) on the Start tab: three account boxes, each with its bots' lanes and a clock each, then the feed; a dark stage like the brain's */
-.lv { --lv-pick:var(--accent); --lv-sell:var(--good); --lv-radar:var(--nn2); --lv-lp:var(--nn1); --lv-scan:var(--muted);
+.lv { --lv-pick:var(--accent); --lv-sell:var(--good); --lv-radar:var(--nn2); --lv-lp:var(--nn1); --lv-rs:var(--warn); --lv-scan:var(--muted);
   position:relative; display:grid; gap:12px; padding:14px; border-radius:18px; overflow:hidden; border:1px solid var(--line); scroll-margin-top:70px;
   background:radial-gradient(110% 70% at 100% 0%, color-mix(in srgb,var(--nn2) 14%,transparent), transparent 60%),
              radial-gradient(90% 60% at 0% 100%, color-mix(in srgb,var(--nn1) 9%,transparent), transparent 60%), var(--surface) }
@@ -510,7 +567,7 @@ LV_CSS = r"""
 .lv-accts { display:grid; gap:12px }
 .lv-acct { --a:var(--lv-pick); display:grid; gap:6px; padding:12px; border-radius:16px; min-width:0;
   background:linear-gradient(180deg,color-mix(in srgb,var(--a) 9%,transparent),transparent 70%); border:1px solid color-mix(in srgb,var(--a) 30%,var(--line)) }
-.lv-a-radar { --a:var(--lv-radar) } .lv-a-lp { --a:var(--lv-lp) }
+.lv-a-radar { --a:var(--lv-radar) } .lv-a-lp { --a:var(--lv-lp) } .lv-a-rs { --a:var(--lv-rs) }
 .lv-ah { display:flex; align-items:baseline; justify-content:space-between; gap:10px }
 .lv-an { font-size:17px; font-weight:600; letter-spacing:-.01em }
 .lv-ab { font-size:clamp(20px,6vw,28px); font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; white-space:nowrap }
@@ -523,7 +580,7 @@ LV_CSS = r"""
   background:color-mix(in srgb,var(--bg) 55%,transparent); border:1px solid color-mix(in srgb,var(--c) 26%,var(--line)); transition:border-color .2s, background .2s }
 .lv-lane:hover, .lv-lane:active { border-color:color-mix(in srgb,var(--c) 60%,var(--line)); background:color-mix(in srgb,var(--c) 7%,color-mix(in srgb,var(--bg) 55%,transparent)) }
 .lv-gt { color:var(--muted); font-weight:400 }
-.lv-pick { --c:var(--lv-pick) } .lv-sell { --c:var(--lv-sell) } .lv-radar { --c:var(--lv-radar) } .lv-lp { --c:var(--lv-lp) }
+.lv-pick { --c:var(--lv-pick) } .lv-sell { --c:var(--lv-sell) } .lv-radar { --c:var(--lv-radar) } .lv-lp { --c:var(--lv-lp) } .lv-rs { --c:var(--lv-rs) }
 .lv-top { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px }
 .lv-ico { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-size:18px; background:color-mix(in srgb,var(--c) 16%,transparent) }
 .lv-nm { display:grid; min-width:0 } .lv-nm b { font-size:13px; letter-spacing:.06em; color:var(--c) }
@@ -555,7 +612,7 @@ LV_CSS = r"""
 .lv-who { font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--w,var(--muted)); margin-right:2px }
 .lv-amt { font-style:normal; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--fg2) }
 .lv-amt.good { color:var(--good) } .lv-amt.bad { color:var(--bad) }
-.lv-w-pick, .lv-w-acct { --w:var(--lv-pick) } .lv-w-sell { --w:var(--lv-sell) } .lv-w-radar { --w:var(--lv-radar) } .lv-w-lp { --w:var(--lv-lp) } .lv-w-scan { --w:var(--lv-scan) }
+.lv-w-pick, .lv-w-acct { --w:var(--lv-pick) } .lv-w-sell { --w:var(--lv-sell) } .lv-w-radar { --w:var(--lv-radar) } .lv-w-lp { --w:var(--lv-lp) } .lv-w-rs { --w:var(--lv-rs) } .lv-w-scan { --w:var(--lv-scan) }
 .lv-dim > p { color:var(--muted) } .lv-dim > p b { color:var(--fg2) }
 .lv-new { animation:lv-in .7s cubic-bezier(.2,.8,.2,1), lv-glow 6s ease-out }
 .lv-none { font-size:var(--fs-s); color:var(--muted); padding:6px 0 }

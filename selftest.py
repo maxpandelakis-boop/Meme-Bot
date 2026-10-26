@@ -4032,6 +4032,8 @@ console.log(JSON.stringify(o));
     selftest_live.checks(check, SKIPS)
     import selftest_gtunit                      # a pool's candles are its own coin's price, not its partner coin's (memebot.UNIT_X; LAUNCH, Oct 26)
     selftest_gtunit.checks(check)
+    import selftest_seeker                      # the Rocket seeker 🔭: a test bot with its own paper account (seeker.py, seeker_watch.py, page_seeker.py, seeker.yml)
+    selftest_seeker.checks(check)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:
