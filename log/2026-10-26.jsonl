@@ -178,3 +178,6 @@
 {"t":1793030460764,"addr":"5vfZrcFDdm4B1FnDrFq9Bek5FNNkxWqnxcVncMZwz4F3","sym":"APEBAMA","age":31.0,"why":"liquidity","liq":3237}
 {"t":1793030460764,"addr":"EEF4au54pLjPmCWbXJPomtkpkDh3fNd6eRGrKyyfpump","sym":"Ginnan","age":30.8,"score":0.0206,"px":0.0001764,"liq":34780,"p0":0.0001976643790654187,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.9189,"c_peak":1.5355,"c_vol":5.4372,"c_act":1.0,"c_r5":-0.126,"c_r15":0.4736,"c_mc":5.2959}}
 {"t":1793030460764,"addr":"XY2iTTRyc8hz4pWJVBS5LBqExEsVCRzsxQe7oiEpump","sym":"AMAZON","age":30.3,"score":0.00375,"px":0.0001628,"liq":32532,"p0":0.00015867877832915998,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":-1.0904,"c_peak":6.6342,"c_vol":4.9208,"c_act":1.0,"c_r5":0.3561,"c_r15":-1.6354,"c_mc":5.2005}}
+{"t":1793030700808,"addr":"Bta3PXcvJEi5dNsXfUZDxvYeSG1vszBK1cqz6giQpump","sym":"RiceGum","age":30.3,"why":"liquidity","liq":3346}
+{"t":1793030700808,"addr":"75bEFwtANwX3X3P4GPzV18Szn14QhsohMFgZ5jqcynU4","sym":".AiTown","age":30.3,"why":"liquidity","liq":0}
+{"t":1793030760768,"addr":"FhcwwP2sFW4hZtwwBFXExBueEyiJwTcV3B7DDb6eBAGS","sym":"QFCLIP","age":31.0,"why":"liquidity","liq":0}
