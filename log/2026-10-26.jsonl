@@ -254,3 +254,5 @@
 {"t":1793036580936,"addr":"EXpWsM4B7rDTqiJy49QscEj6wTovWcFT6N24NHL9pump","sym":"re/tard","age":31.0,"score":0.03571,"px":5.107e-05,"liq":17905,"p0":4.4443133254882045e-05,"bars":6,"buy":false,"f":{"f_curve_min":5.5333,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.2422,"c_peak":2.7455,"c_vol":5.55,"c_act":1.0,"c_r5":-0.2091,"c_r15":-0.4182,"c_mc":4.6478}}
 {"t":1793036657501,"addr":"3My3UFmTdugQU6Meh4oUZ3YPHthvgXWooT3RCpAKpump","sym":"UTI","age":31.0,"why":"liquidity","liq":2761}
 {"t":1793036820527,"addr":"4qkfrzmDxkphz1vc8ZL7fjeSZkki81SF79fUoBsspump","sym":"BARRON","age":30.6,"why":"liquidity","liq":1816}
+{"t":1793037060413,"addr":"DAB7T1S2v8gZtzKwg4GQ1QUX46sDxwiepYnzgo7cpump","sym":"MoonCoin","age":30.4,"why":"liquidity","liq":1991}
+{"t":1793037121196,"addr":"2N9kMjihLiyi5VGQZR85fogdcN4oyrTPXjft5DmYEK1W","sym":"X","age":31.0,"why":"liquidity","liq":1912}
