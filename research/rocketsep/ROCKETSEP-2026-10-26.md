@@ -2,7 +2,8 @@
 
 Fake money only. Research only: nothing here is switched on, no bot, account or rule changes. The plan and the bar were pushed
 before any outcome was split by the new facts (research/rocketsep/PREREG-ROCKETSEP-2026-10-26.md, commit 94c4dec; amendment 1
-in 66958ab). Result files: research/rocketsep/results/. All money is per 50-EUR buy, after the paper fees; "after cost" also
+in 66958ab). Result files: research/rocketsep/results/. German report for the user:
+https://claude.ai/artifact/DH7QnMg7reJTKizLJrMQH2. All money is per 50-EUR buy, after the paper fees; "after cost" also
 takes off the 0.75 EUR real-cost allowance.
 
 ## Verdict
@@ -118,8 +119,8 @@ alone, round 2 after reading all round-1 votes and reasons; BUY = 6 of 10.
 | 1 | 5 | -3.63 | 0 | 0.54 | 0.62 |
 | 2 | 3 | +5.68 | 0 | 0.54 | 0.61 |
 
-Round 2 bought cases 14 (+45.13), 93 (-9.58, nine of ten votes) and 97 (-16.26). The three rockets on the cards got 0, 0 and
-1 vote. Fewer than 10 buys: fails. The rule's 60 picks on the cards: -3.91 per trade; the 60 random: -13.17.
+Round 2 bought cases 14 (+45.13), 93 (-9.58, nine of ten votes) and 97 (-16.26). The three rockets on the cards got no vote in
+round 2 (one between them in round 1). Fewer than 10 buys: fails. The rule's 60 picks on the cards: -3.91 per trade; the 60 random: -13.17.
 
 Amendment 1: the first cards showed one five-minute close from after the buy. Five reviewers pointed it out; those answers were
 set aside unscored (jury/invalid_lookahead/), the cards were rebuilt and round 1 was run again with all ten.
