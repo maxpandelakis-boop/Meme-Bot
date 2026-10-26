@@ -186,3 +186,9 @@
 {"t":1793030940640,"addr":"DcDL91eWFVKwzCGtjYReeZEjebZzUSLTDYUVPcJFpump","sym":"GTA 6","age":31.0,"why":"liquidity","liq":1918}
 {"t":1793031120799,"addr":"8gRMKKFCZN2a7ZN8V1TAEZtb2sG7zW5nSEKmEVuWpump","sym":"BEAST","age":30.8,"score":0.00189,"px":0.0008593,"liq":76772,"p0":0.000819329716498663,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.9181,"c_peak":1.0122,"c_vol":4.7657,"c_act":1.0,"c_r5":0.1286,"c_r15":0.47,"c_mc":5.9135}}
 {"t":1793031120799,"addr":"J7WVsFQ3kMGDH8aUVnvjPdFaC18NaCm9xzGM5E8pump","sym":"NVIDIA","age":30.0,"why":"liquidity","liq":870}
+{"t":1793031421008,"addr":"5h1qS8HfC753J9wiRARCnUX38WdWu14PC264FwGTpump","sym":"X","age":31.0,"why":"liquidity","liq":1942}
+{"t":1793031481457,"addr":"HdkYmi9RbiuTQK6BLuqfPqmXwKzDqPPBJEUvoQ2bkAoe","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":0}
+{"t":1793031481457,"addr":"2YYzGp6eU6FvAkf8oud5JXqLiVcWeKxhhQbTw1cUpump","sym":"Speed","age":30.1,"score":0.00145,"px":0.0007424,"liq":71194,"p0":0.000699061590039642,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.5547,"c_peak":1.0135,"c_vol":4.7555,"c_act":1.0,"c_r5":0.0599,"c_r15":0.2571,"c_mc":5.8445}}
+{"t":1793031540372,"addr":"B2uzRXTATe3TV7N7wdWb9hUtNVrcHq8jEph3K2yxBAGS","sym":"MAPSAT","age":31.0,"why":"liquidity","liq":0}
+{"t":1793031660504,"addr":"eq4t3NZq554qLXY85Ms7C2PSaasArHm2gUSCwEipump","sym":"BMW","age":30.7,"why":"liquidity","liq":1835}
+{"t":1793031660504,"addr":"32uX9F657Z3pQtbhfKVt1Cd3QdFGxwjKENWLW6tGpump","sym":"Maggie","age":30.2,"why":"liquidity","liq":1993}
