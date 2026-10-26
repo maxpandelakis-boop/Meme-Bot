@@ -27,6 +27,7 @@ if HERE not in sys.path:
 PY = sys.executable
 BASE = "80e7fe0"
 MID = "981b2d5"                   # memebot.py and fetch.py as the chart exit left them (PR #47): R8 pins the stretches before it against BASE, after it against MID
+UNIT = "97b5e70"                  # memebot.py as the coin's own candles left it (PR #56): R8 pins the stretches after it (a sale seen late) against it
 T0 = 1791892800000                # 2026-10-13 12:00 UTC (14:00 Berlin): the fake clock's start
 MIN = 60_000
 H = 3_600_000
@@ -1515,18 +1516,33 @@ def checks(check, env_=None):
             p = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (BASE, f)], capture_output=True)
             no_base = p.returncode != 0      # a shallow clone lacks BASE: every file reads as changed then (git fetch --unshallow)
             now_b = open(os.path.join(HERE, f), "rb").read()
+            import difflib, hashlib
+
+            def stretches(a, b):
+                out, cur = [], []
+                for ln in difflib.unified_diff(a.decode("utf-8").splitlines(), b.decode("utf-8").splitlines(), lineterm="", n=0):
+                    if ln.startswith("@@"):
+                        cur = []
+                        out.append(cur)
+                    elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
+                        cur.append(ln)
+                return out
+            lq = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (UNIT, f)], capture_output=True) if f == "memebot.py" else None
+            if lq is not None and lq.returncode == 0 and lq.stdout != now_b:
+                # a sale seen late (LATE_MS, noticed, 26 Oct, the user's "ja": the Sell bot books one it saw more than 3 minutes after its
+                # minute at the last close then, not at that minute's price; the rule's levels stay): every stretch changed since UNIT
+                # names it, pinned whole; the checks below read the file as at UNIT
+                l_hunks = stretches(lq.stdout, now_b)
+                late_k = ("LATE_MS", "noticed", "late")
+                same.append(all(any(k in "\n".join(h) for k in late_k) for h in l_hunks) and M.LATE_MS == 180_000
+                            and hashlib.sha256("\n".join(sorted(ln for h in l_hunks for ln in h)).encode("utf-8")).hexdigest()
+                            == "dbd9a7d6f15edfa216985330cdc38ced6e7b1f148fb0a4ef186919071d12ec04")
+                now_b = lq.stdout
             q = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (MID, f)], capture_output=True) if f != "radar.py" else None
             if q is not None and q.returncode == 0 and q.stdout != now_b:
                 # the coin's own candles (UNIT_X, 26 Oct: LAUNCH "+8427%" on the Sell bot card was its StonkFun pool's other coin; a data fix,
                 # the rules stay): every stretch changed since MID names it, pinned whole; the checks below read the file as at MID
-                import difflib, hashlib
-                u_hunks, cur = [], []
-                for ln in difflib.unified_diff(q.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
-                    if ln.startswith("@@"):
-                        cur = []
-                        u_hunks.append(cur)
-                    elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
-                        cur.append(ln)
+                u_hunks = stretches(q.stdout, now_b)
                 unit_k = ("UNIT_X", "unit_ok", "unit_off", "hold_candles", "GT_SIDES", "token=%s")
                 same.append(all(any(k in "\n".join(h) for k in unit_k) for h in u_hunks) and M.UNIT_X == 5.0 and M.GT_SIDES == ("base", "quote")
                             and hashlib.sha256("\n".join(sorted(ln for h in u_hunks for ln in h)).encode("utf-8")).hexdigest()
@@ -1617,7 +1633,7 @@ def checks(check, env_=None):
         own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak", "radar_paper"}
         std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
                                                               "sys", "tarfile", "time", "urllib", "zoneinfo"}
-        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto, the gate review, the Pick's fresh start, its live chart sale and its chart exit (fetch.py but for the chart exit's candles), since %s only the coin's own candles (UNIT_X) (%s%s); imports: %s" % (BASE, MID, same, "; %s is not in this clone, run git fetch --unshallow" % BASE if no_base else "", sorted(mods - own)))
+        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto, the gate review, the Pick's fresh start, its live chart sale and its chart exit (fetch.py but for the chart exit's candles), since %s only the coin's own candles (UNIT_X), since %s only a sale seen late (LATE_MS) (%s%s); imports: %s" % (BASE, MID, UNIT, same, "; %s is not in this clone, run git fetch --unshallow" % BASE if no_base else "", sorted(mods - own)))
 
         print("== launch radar R9: no secret in any file, branch, row or log line")
         from selftest import Rest, serve_app, PushSink, APP_SECRET

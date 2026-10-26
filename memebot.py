@@ -137,6 +137,10 @@ CHART_TRAIL = 0.15       # the trailing stop: 15 % under the highest high since 
 CHART_ARM = 1.5          # ... once that high has reached 1.5 times cpx
 CHART_DROP = 0.15        # the drop: a minute's close 15 % or more under the close ...
 CHART_DROP_MIN = 30      # ... 30 minutes before
+LATE_MS = 180_000        # a sale seen more than 3 minutes after its minute began (that minute, a look a minute and GeckoTerminal's delay)
+                         # with a newer candle there was seen late (the Sell bot is blind while a Radar round runs, the scan looks hourly):
+                         # booked at the last close when it was seen, not at the earlier minute's price (noticed; the user's go of Mon
+                         # 26 Oct 2026: Chop's trail of 12:49 UTC was booked at 1.04x, seen at 12:57 at 0.31x). The rule's levels stay
 # the paper account's identity key (state.json paperRule): never edit, not even a letter; the page's words come from PAPER_LABEL
 PAPER_RULE = "v3: top 50 / chart exit: -50% floor, trail 15% from 1.5x, -15% in 30 min, 11x, 6h"   # a run that finds another rule there restarts the account
 OLD_PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"     # the fixed rule's key (10-24 Oct 2026): its positions sell by hold_hit
@@ -2161,6 +2165,16 @@ def chart_hit(cands, t0, chk=None, cpx=None):
     return hit(None, None, None)
 
 
+def noticed(at, mult, cands, cpx, now):
+    """A sale at minute `at` at `mult` (over cpx) as booked when it was seen at `now` (ms): seen more than LATE_MS after `at` with a candle
+    of a later minute (at + 1 minute or later, up to now; a close over CANDLE_MAX_X is a glitch) at that last candle's close and minute,
+    else as it is. Pure: the scan and the minute watch book alike. -> (at, mult, late)"""
+    if not at or not mult or not cpx or now - at <= LATE_MS:
+        return at, mult, False
+    new = [c for c in cands if at + 60_000 <= c[0] <= now and c[4] > 0 and c[4] / cpx <= CANDLE_MAX_X]
+    return (int(new[-1][0]), new[-1][4] / cpx, True) if new else (at, mult, False)
+
+
 def hold_check(d, p, chk=None, cpx=None):
     """hold_hit on the position's pool's minute candles (hold_candles) since the last check: closes only before LIVE_SELL_AT, the minute's
     low and high from it on; chart_hit (the candles since the entry) for a position of the chart exit. A cpx of the pool's other coin
@@ -2178,7 +2192,8 @@ def live_watch(d):
     before the run; from LIVE_SELL_AT on) -> ({pid: {"chk": where its next look starts, "cpx"}}, {pid: {"at", "why", "mult"}}): its
     sales from LIVE_SELL_AT on only, each a stop (booked at its low, never above the stop level), a take-profit (exactly 11x) or the
     6-hour limit at a positive multiple of the entry price; a sale of a chart-exit position (is_chart; "rule": "chart") also a "trail" or a
-    "drop" at its own price, a stop of it never above the floor (CHART_STOP); ({}, {}) without it."""
+    "drop" at its own price, a stop of it never above the floor (CHART_STOP); a sale it saw late ("late": noticed) at the price when it
+    was seen, with the rule's minute ("hitAt"); ({}, {}) without it."""
     doc = load_json(os.path.join(d, LIVE_WATCH_ROW + ".json"), None)
     seen, sold = {}, {}
     if not isinstance(doc, dict):
@@ -2191,7 +2206,10 @@ def live_watch(d):
         chart = isinstance(x, dict) and x.get("rule") == "chart"
         if at and at >= live_sell_at() and mult and 0 < mult <= CANDLE_MAX_X and why in (("stop", "tp", "time", "trail", "drop") if chart else ("stop", "tp", "time")):
             floor = 1.0 - (CHART_STOP if chart else HOLD_STOP)
-            sold[str(pid)] = {"at": int(at), "why": why, "mult": 1.0 + HOLD_TP if why == "tp" else (min(mult, floor) if why == "stop" else mult)}
+            late = x.get("late") is True
+            sold[str(pid)] = {"at": int(at), "why": why, "mult": mult if late else (1.0 + HOLD_TP if why == "tp" else (min(mult, floor) if why == "stop" else mult))}
+            if late:
+                sold[str(pid)].update(late=True, hitAt=int(num(x.get("hitAt")) or at))
             if chart:
                 sold[str(pid)]["rule"] = "chart"
     return seen, sold
@@ -2909,21 +2927,27 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
             # looked at are not looked at again
             seen, ls = live_pos.get(pid) or {}, live_sold.get(pid)
             if ls and entry and ls["at"] >= (num(p.get("entryAt")) or num(p.get("t")) or 0) - 60_000 and (ls.get("rule") == "chart") == is_chart(p):
-                sell(left, entry * ls["mult"], ls["why"], at=ls["at"], chart="live")
+                sell(left, entry * ls["mult"], ls["why"], at=ls["at"], chart="live", **({"late": True, "hitAt": ls["hitAt"]} if ls.get("late") else {}))
                 continue
             # the candles first: the first close (from LIVE_SELL_AT the low or the high) at +1000% or at -30% since the last check is a
-            # sale at that minute, whatever the price is now (a position of the chart exit: chart_hit's sale, at its own price)
+            # sale at that minute (a position of the chart exit: chart_hit's sale, at its own price); from LIVE_SELL_AT on one this run
+            # sees late (noticed) at the last close it has, at that minute
             chk0 = max(num((marks.get("chk") or {}).get(pid)) or 0, num(seen.get("chk")) or 0) or None
             hc = hold_check(d, p, chk0, (marks.get("cpx") or {}).get(pid) or num(seen.get("cpx")))
             live = bool(hc["hit"] and hc["hit"] >= live_sell_at())
             if hc["hit"] and entry:
                 booked = hc["mult"] if is_chart(p) else ((1.0 + HOLD_TP) if hc["why"] == "tp" else min(hc["mult"], 1.0 - HOLD_STOP))
-                sell(left, entry * booked, hc["why"], at=int(hc["hit"]), **({"chart": "scan"} if live else {}))
+                at, booked, late = noticed(int(hc["hit"]), booked, hold_candles(d, p), hc["cpx"], now) if live else (int(hc["hit"]), booked, False)
+                sell(left, entry * booked, hc["why"], at=at, **({"chart": "scan"} if live else {}), **({"late": True, "hitAt": int(hc["hit"])} if late else {}))
                 continue
-            # the live 6-hour limit (LIVE_SELL_AT) once the candles reach it: sold at that minute's price, whenever this run comes
-            x6 = hold_x6(hold_candles(d, p), num(p.get("entryAt")) or num(p.get("t")) or 0, hc["cpx"], now >= end) if end else None
+            # the live 6-hour limit (LIVE_SELL_AT) once the candles reach it: sold at that minute's price, or at the last close this run
+            # has when it comes more than LATE_MS after it (noticed)
+            cs6 = hold_candles(d, p) if end else []
+            x6 = hold_x6(cs6, num(p.get("entryAt")) or num(p.get("t")) or 0, hc["cpx"], now >= end) if end else None
             if x6 and entry:
-                sell(left, entry * x6, "time", at=end, chart="scan")
+                cpx6 = hc["cpx"] or next((c[4] for c in cs6 if c[0] >= (num(p.get("entryAt")) or num(p.get("t")) or 0) - 60_000 and c[4] > 0), None)
+                at, x6b, late = noticed(end, x6, cs6, cpx6, now)
+                sell(left, entry * x6b, "time", at=at, chart="scan", **({"late": True, "hitAt": end} if late else {}))
                 continue
             for k2 in ("chk", "cpx"):
                 if hc[k2]:

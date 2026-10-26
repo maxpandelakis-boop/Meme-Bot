@@ -317,7 +317,9 @@ def check_pick(http, st, pairs, now):
     has none for some pools) is judged on DexScreener's price of the minute instead, as the scan judges it on its own price then. A sale is
     kept for the next scan, which books it at its minute. A position of the chart exit (memebot.is_chart: the Pick's rule since 24 Oct)
     is judged by memebot.chart_hit on the candles since the entry instead (its stop, trail and drop, booked at chart_hit's price, "rule":
-    "chart"); without candles by its floor, 11x and its trail under the best DexScreener price seen ("dshi"). Returns the sales."""
+    "chart"); without candles by its floor, 11x and its trail under the best DexScreener price seen ("dshi"). A sale seen more than
+    memebot.LATE_MS after its minute (memebot.noticed: the watch is blind while a round runs) is booked at the last close it has now, at
+    that minute ("late", the rule's minute in "hitAt"). Returns the sales."""
     out = []
     if now < M.live_sell_at():
         return out
@@ -345,6 +347,7 @@ def check_pick(http, st, pairs, now):
         floor = 1.0 - (M.CHART_STOP if chart else M.HOLD_STOP)
         if chart and not hc["fresh"] and px:
             w["dshi"] = round(max(R.num(w.get("dshi")) or 1.0, px / entry), 4)
+        cpx = hc["cpx"] or next((c[4] for c in cs if c[0] >= t0 - 60_000 and c[4] > 0), None)
         if hc["hit"]:
             sale = {"at": int(hc["hit"]), "why": hc["why"], "mult": hc["mult"] if chart else (1.0 + M.HOLD_TP if hc["why"] == "tp" else min(hc["mult"], floor))}
         elif not hc["fresh"] and px and (px >= (1.0 + M.HOLD_TP) * entry or px <= floor * entry):
@@ -353,11 +356,15 @@ def check_pick(http, st, pairs, now):
         elif chart and not hc["fresh"] and px and w["dshi"] >= M.CHART_ARM and px <= (1.0 - M.CHART_TRAIL) * w["dshi"] * entry:
             sale = {"at": int(now), "why": "trail", "mult": px / entry}       # the trail on DexScreener's prices (a pool without candles)
         elif x6 or (end and now >= end and px):
-            # at the minute of the limit at its candle's price (as the scan books it: a look can come a few minutes late, after a round);
-            # a pool without candles at DexScreener's price now
+            # at the minute of the limit at its candle's price (as the scan books it; a look that comes late, after a round, at the price
+            # then: noticed below); a pool without candles at DexScreener's price now
             sale = {"at": int(end), "why": "time", "mult": x6} if x6 else {"at": int(now), "why": "time", "mult": px / entry}
         else:
             continue
+        # seen more than memebot.LATE_MS after its minute (the watch is blind while a round runs): booked at the last close it has now
+        at, mult, late = M.noticed(sale["at"], sale["mult"], cs, cpx, now)
+        if late:
+            sale.update(at=at, mult=mult, late=True, hitAt=sale["at"])
         if chart:
             sale["rule"] = "chart"
         left = R.num(w.get("left")) or 1.0
@@ -365,7 +372,7 @@ def check_pick(http, st, pairs, now):
         sale.update(sym=w.get("sym"), t=int(now), eur=round(eur, 2), pnl=round(eur - (R.num(w.get("ticket")) or 0.0) * left, 2), entryAt=int(t0))
         st["sold"][pid] = sale
         out.append(dict(sale, id=pid))
-        log("  Pick sell on the live chart %s x%.2f (%s) %+.2f" % (w.get("sym"), sale["mult"], sale["why"], sale["pnl"]))
+        log("  Pick sell on the live chart %s x%.2f (%s%s) %+.2f" % (w.get("sym"), sale["mult"], sale["why"], ", seen late: at the price now" if late else "", sale["pnl"]))
     return out
 
 
