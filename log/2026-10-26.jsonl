@@ -300,3 +300,7 @@
 {"t":1793041020228,"addr":"BEGt58ELcKNLYkbYjBEpZqnRFCT6Kfvd3wHjAB5Tpump","sym":"SOB","age":43.1,"why":"no candles"}
 {"t":1793041081199,"addr":"uDjtM5MrwnKX3g598HQ6CGXW8aA2b2VDBHyAKW7pump","sym":"Google","age":30.6,"why":"liquidity","liq":1868}
 {"t":1793041081199,"addr":"GXdtgrPdia3u5zBpE2ZeWXDNqAMxxvyzC3TAbfrLpump","sym":"NODF","age":30.1,"score":0.00514,"px":0.1463,"liq":1015554,"p0":0.14649418154621574,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":1.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.0033,"c_peak":1.0031,"c_vol":5.7031,"c_act":1.0,"c_r5":0.0006,"c_r15":-0.0026,"c_mc":8.1658}}
+{"t":1793041681119,"addr":"2jBsqNJuDLk8pfNinMFQdw2FiZuMe4VsFJsNv6PYpump","sym":"Rockstar","age":30.7,"why":"liquidity","liq":1845}
+{"t":1793041681119,"addr":"GWv73HtLEib3jjnpQirN5YxS2c1AjWgPC3X73s8DTJLK","sym":"XPLACE","age":30.3,"why":"liquidity","liq":6103}
+{"t":1793041740914,"addr":"2i4jRH8iy445KqH2YZtzijnC1vz92aoFwPPU3AXm2fhy","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":0}
+{"t":1793041740914,"addr":"4KKCgrd7bm76SCX7RvCNqXb1RasUqzAyyDKtV8uMyxnJ","sym":"x/place","age":30.4,"why":"liquidity","liq":5132}
