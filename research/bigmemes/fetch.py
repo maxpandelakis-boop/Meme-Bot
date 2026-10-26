@@ -14,6 +14,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
@@ -75,7 +76,8 @@ def coingecko():
 def s3_list(prefix, dirs=True):
     out, marker = [], ""
     while True:
-        b = get(f"{S3}?delimiter=/&prefix={prefix}&marker={marker}", raw=True)
+        q = urllib.parse.quote
+        b = get(f"{S3}?delimiter=/&prefix={q(prefix)}&marker={q(marker)}", raw=True)
         if b is None:
             break
         x = b.decode()
@@ -154,7 +156,7 @@ def klines(sym, out):
             if k.endswith(".zip") and re.search(r"-2026-10-(\d\d)\.zip$", k) and int(k[-6:-4]) <= LAST_DAY]
     rows, bad = {}, []
     for k in files + days:
-        b = get(f"{DATA}/{k}", raw=True)
+        b = get(f"{DATA}/{urllib.parse.quote(k)}", raw=True)    # pairs with Chinese names need the escaping
         if b is None:
             bad.append(k)
             continue
