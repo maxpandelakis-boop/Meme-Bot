@@ -414,7 +414,7 @@ def section(D, R):
             len(bk.get("open") or {}))
         rs_items = [(p.get("sym"), num(p.get("now")) or num(p.get("last")), "s:" + str(a), "change since the buy, at its last look")
                     for a, p in (bk.get("open") or {}).items() if isinstance(p, dict)]
-        lanes["rs"] = lane("rs", "🔭", "ROCKET SEEKER 🔭", "checks each new coin 30 min after launch", "looks", "every minute",
+        lanes["rs"] = lane("rs", "🔭", "ROCKET SEEKER", "checks each new coin 30 min after launch", "looks", "every minute",
                            100.0 if now - sk_t < LATE["look"] else 0.0, say, chips(rs_items), late=now - sk_t > LATE["round"])
     feed = events(D, R, doc, S, sd)
     known = [e["k"] for e in feed]
