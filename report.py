@@ -2042,6 +2042,14 @@ def shadow_block(D):
     return '<section>%s</section>' % PSH.section(D, sys.modules[__name__])
 
 
+def tests_block(inner):
+    """The foot of the Pick tab: the shadow rules and the Learning Pick under one heading that says they are tests (Oct 26: the user wants
+    the app "logisch und organisiert"; the Learning Pick's fold read like a part of the Pick account)."""
+    if not inner:
+        return ""
+    return section("Tests on the side", "Other sell rules and the Learning Pick, each with fake money of its own. They never buy or sell for the Pick account.", inner)
+
+
 def lernpick_block(D):
     """The Learning Pick (page_lernpick.py, fake money: a self-learning shadow bot with its own paper account; the Pick and the Radar are
     untouched) under the shadow rules on the Pick tab. Nothing without the module."""
@@ -3511,7 +3519,7 @@ def render(data, fragment=False):
         details = fold("Research", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = (strip_html + (safe("pick account", lambda: PH.pick_account(D, sys.modules[__name__])) if PH else "")
                      + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
-                     + safe("shadow rules", lambda: shadow_block(D)) + safe("learning pick", lambda: lernpick_block(D)))
+                     + tests_block(safe("shadow rules", lambda: shadow_block(D)) + safe("learning pick", lambda: lernpick_block(D))))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
         # the launch radar's old paper positions (10 € on every coin without traps) left the Radar tab on Oct 23: their account is off since Oct 22

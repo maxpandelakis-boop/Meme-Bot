@@ -355,7 +355,16 @@ def _lp7(check, tmp):
     check('for="tab-pick" data-go="pick" data-open="learning-pick"' in r1 and "LEARNING PICK" in r1 and 'class="hm-bal' in r1
           and "2 sold %s · 1 open" % PH.de_eur(S["me"]["closedPnl"], True) in r1 and "waiting for its first training" in r0 and "lp = lern_row(D, R)" in home and '"Three" if lp else "Two"' in home
           and "getElementById(l.getAttribute('data-open')" in home,
-          "LP7 the Start tab: a Learning Pick row under the two accounts (balance, the sold trades' result, open), a tap opens the Pick tab with the fold open")
+          "LP7 the Start tab without its live panel: a Learning Pick row under the two accounts (balance, the sold trades' result, open), a tap opens the Pick tab with the fold open")
+    import page_live as PLV
+    with _no_numpy():
+        D1 = {"dir": d, "now": T0 + 30 * DAY}
+        S1 = PLV.lp_summary(D1)
+        box = PLV.accounts(D1, R, None, S1, {"lp": "<i>lane</i>"})
+    lp_box = box[box.find('lv-acct lv-a-lp"'):]
+    check(lp_box and "<b class=\"lv-an\">Learning Pick</b>" in lp_box and PH.de_eur(S1["me"]["pnl"], True) in lp_box and "<i>lane</i>" in lp_box
+          and "%d sold %s · %d open" % (S1["me"]["sold"], PH.de_eur(S1["me"]["closedPnl"], True), S1["me"]["open"]) in lp_box,
+          "LP7 the Start tab (since Oct 26): the Learning Pick's own box in the live panel with its balance, the sold trades' result, open, and its bot's lane")
     src = open(os.path.join(HERE, "lernpick.py"), encoding="utf-8").read() + open(os.path.join(HERE, "page_lernpick.py"), encoding="utf-8").read()
     check("import app" not in src and "notify" not in src and "live_put" not in src and "webpush" not in src,
           "LP7 no push: the Learning Pick never imports the app's sender")
@@ -419,6 +428,9 @@ def _lp9(check, tmp):
     with _no_numpy():
         h = PL.section({"dir": d, "now": t + 5 * HOUR + MIN}, R)
         row = PH.lern_row({"dir": d, "now": t + 5 * HOUR + MIN}, R)
+        import page_live as PLV
+        D9 = {"dir": d, "now": t + 5 * HOUR + MIN}
+        row += PLV.accounts(D9, R, None, PLV.lp_summary(D9), {})
     trs = h.split("<tr")
     lt = next(x for x in trs if "LAUNCH" in x)
     up = next(x for x in trs if ">UP<" in x)

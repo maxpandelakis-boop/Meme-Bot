@@ -14,7 +14,7 @@ R8 the minute watch between rounds; R9 rocket.yml's round step as written, on a 
 each followed by a save, the watch until the next round and a save, the radar's records fetched again before each later round,
 rocket_watch.py always without the token, a failed round neither stops the others nor ends the run green.
 """
-import json, math, os, random, shutil, sys, tempfile
+import json, math, os, random, re, shutil, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -229,7 +229,10 @@ def r4():
         doc["top"][0]["sym"] = "<img src=x onerror=alert(1)>"
         json.dump(doc, open(os.path.join(tmp, "page", "db", "memebot", "rocket.json"), "w"))
         h = PK.section({"dir": os.path.join(tmp, "page")})
-        check("rocket hunter" in h and "Pick account" in h and "Radar account 🚀" in h and "<img" not in h and "&lt;img" in h and "<script" not in h, "R5 the block shows both accounts, escaped, no script")
+        check("rocket hunter" in h and "Pick account" not in h and "Radar account 🚀" in h and "<img" not in h and "&lt;img" in h and "<script" not in h,
+              "R5 the block shows the Radar account only (the Pick account 'for comparison' left it on Oct 26: each account once), escaped, no script")
+        check(re.search(r"<span data-rk-round>Last round [^<]* radar coins watched, \d+ scored\. </span>", h) and "data-rk-round" in PK.LIVE_JS
+              and "'Last round '+hhmm(t)" in PK.LIVE_JS, "R5 the round's line: the page's round, its time replaced live by a newer round's")
         js = PK.LIVE_JS
         check(all(k in h for k in ("data-rk-box", "data-rk-bal", 'data-rk-st="open"', "data-rk-op", "data-rk-sold", 'data-rk-cands="rk"', "data-rk-live"))
               and "id=eq.rocket" in js and "apikey:key" in js and "innerHTML" not in js and "Authorization" not in js and "tab-young" in js,

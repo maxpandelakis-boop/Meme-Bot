@@ -1067,14 +1067,17 @@ def tab_label():
 def block(D, mid=""):
     """The Radar tab's radar (until the switch the full scan's new launches follow it): a heading and the pane, mid (HTML) inside; the Radar tab
     passes none since Oct 23 (the old paper positions are in the archive)."""
-    return ('<section class="rsec"><div class="sec-head"><h2>Launch radar <span class="h2s">pools under 10 min</span></h2></div>%s</section>' % pane(D, mid))
+    # Oct 26: the heading says how this list belongs to the Radar account above it (the user mixes the two up): its records are the coins
+    # the Radar bot's rounds check (rocket_watch.py), it has no account of its own
+    return ('<section class="rsec"><div class="sec-head"><h2>Launch radar <span class="h2s">new pools under 10 min · the coins the Radar bot 🚀 checks · '
+            'no account of its own</span></h2></div>%s</section>' % pane(D, mid))
 
 
 # ------------------------------------------------------------------------------------------------------------------ styles
 CSS = r"""
 /* the launch radar (page_radar.py) on top of the Radar tab; the trap-check line, the verdict chip and the detail view (also on the full
    scan's new launches and the pick); the "no good coin" banner. Page tokens only, so light and dark both work. */
-.rsec .sec-head h2 .h2s { font-size:var(--fs-s); font-weight:400; color:var(--muted); margin-left:4px; white-space:nowrap }
+.rsec .sec-head h2 .h2s { font-size:var(--fs-s); font-weight:400; color:var(--muted); display:block; margin:2px 0 0; white-space:normal; line-height:1.35 }
 .tabbar .cnt.good { background:color-mix(in srgb,var(--good-mark) 18%,var(--surface)); color:var(--good) }
 .tsum .tbuy { flex:1 1 100%; color:var(--muted); font-size:var(--fs-s) }
 .tline { display:flex; flex-wrap:nowrap; gap:4px; min-width:0; max-width:100%; overflow:hidden; flex:1 1 100%; contain:inline-size }   /* its chips never widen a table column */

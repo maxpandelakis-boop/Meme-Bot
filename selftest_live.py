@@ -7,13 +7,18 @@ Fake money only: the fixtures are hand-made docs, nothing is fetched; the browse
      the Radar's round with its best coin and its share of the buy line, the scans; coin names escaped
   L2 what a scan did (page_live.scan_words): bought, picked a coin the Pick account already holds, picked without a buy, no coin
   L3 the lanes (page_live.section): PICK BOT, SELL BOT 🤖, RADAR 🚀, LEARNING PICK, each with its clock; the open coins as chips with
-     their change since the buy; the page alone never says "late" (its rocket.json is as old as the scan); the data for the script
-  L4 where it sits: on the Start tab under the accounts, before "Right now"; the old status lines and the tiles that repeated the tab
-     bar are gone; the script reads the two live rows (versions first, a row only when it moved) while Start is in front, text only;
-     the Pick tab's rule text sits behind "How it sells"
+     their change since the buy; the page alone never says "late" (its rocket.json is as old as the scan); the data for the script;
+     the three account boxes (Oct 26): Pick account with the Pick bot and the Sell bot, Radar account 🚀 with the Radar bot and the
+     hooks page_rocket.LIVE_JS fills, Learning Pick with its bot, each with its money and its counts
+  L4 the Start tab is the panel (Oct 26): no account cards above it and no "Right now" under it, each bot once; without the panel the
+     account cards come back and say so; the old status lines and the tiles that repeated the tab bar are gone; the script reads the two
+     live rows (versions first, a row only when it moved) while Start is in front, text only; the Pick tab's rule text sits behind
+     "How it sells"
   L5 in a browser (Playwright; skipped without it): the live rows move the chips, a sale of the sell bot and a new Radar round slide into
      the feed once, the LIVE badge lights up, a look 20 minutes old turns the sell bot's lane amber, no script error, nothing wider than
      the phone; a running scan in the PICK BOT lane with its pick; a tap on a lane opens its bot's tab
+  L6 the Pick tab (Oct 26): each open position's card carries its id; in a browser a position the sell bot sold since the page was
+     built is marked sold on its card (minute, why, change, result) and the open count drops; no Radar "for comparison" there
 
   python3 selftest_live.py      -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
   selftest.main: checks(check, SKIPS) after the live sell checks
@@ -52,7 +57,7 @@ def fixture(tmp):
                    "summary": {"trades": 1, "open": 1, "eur": -6.0, "openEur": 5.0}}}
     json.dump(rk, open(os.path.join(tmp, "db", "memebot", "rocket.json"), "w"))
     json.dump({"v": 1, "t": NOW - 30_000, "pos": {"pA": {"sym": "AAA", "cpx": 1.0, "now": 1.2}}, "sold": {}}, open(os.path.join(tmp, M.LIVE_WATCH_ROW + ".json"), "w"))
-    S = {"ticket": 50.0, "me": {"open": 1, "sold": 1, "closedPnl": -10.8},
+    S = {"ticket": 50.0, "since": NOW - 30 * H, "me": {"n": 2, "open": 1, "sold": 1, "closedPnl": -10.8, "pnl": -15.8},
          "trades": [{"pid": "l1", "sym": "LPOPEN", "t": NOW - 30 * MIN, "state": "open", "_now": 0.9},
                     {"pid": "l2", "sym": "LPSOLD", "t": NOW - 8 * H, "out": NOW - 7 * H, "state": "sold", "eur": -10.8, "why": "stop"}]}
     runs = [{"t": NOW - 80 * MIN, "scanned": 11640, "passed": 1, "picks": [{"sym": "AAA", "addr": "AddrA", "bought": 50.0, "tier": "strong"}]},
@@ -136,7 +141,7 @@ def l3(check, D, book, S):
     check('data-lv-lane="sell" for="tab-pick" data-go="pick" data-open="sell-bot"' in h and 'data-lv-lane="radar" for="tab-young" data-go="young">' in h
           and 'data-lv-lane="lp" for="tab-pick" data-go="pick" data-open="learning-pick"' in h, "L3 a tap on a lane opens its bot: the sell bot's card, the Radar tab, the Learning Pick's fold")
     cds = dict(zip(lanes, re.findall(r"<b data-lv-cd>([^<]*)</b>", h)))
-    check(re.match(r"^in \d+:\d\d$", cds.get("pick", "")) and cds.get("sell") == "in 0:30" and cds.get("radar") == "every 15 min" and re.match(r"^in \d+ h \d\d min$", cds.get("lp", "")),
+    check(re.match(r"^in \d+:\d\d$", cds.get("pick", "")) and cds.get("sell") == "in 0:30" and cds.get("radar") == "every 15 min" and re.match(r"^in \d+h \d\dm$", cds.get("lp", "")),
           "L3 the clocks: next scan, next look, the Radar's rhythm (its round is 3 h old on the page), next training (%s)" % cds)
     check("lv-late" not in h.split("<style>")[0] and "late" not in cds.values(), "L3 the page alone never says late")
     chips = re.findall(r'data-lv-chip="([^"]+)"[^>]*><b>([^<]*)</b><i>([^<]*)</i>', h)
@@ -147,6 +152,20 @@ def l3(check, D, book, S):
     check(data["keys"] == [html.unescape(k) for k in feed] and data["pick"]["pA"]["px"] == 1.0 and data["rkSig"] == "RkTopA:2960|RkTopA:500" and data["row"] == "pickwatch",
           "L3 the script's data: the feed's keys, the Pick positions' buy prices, the round's signature")
     check('data-lv-more hidden>Show all (' in h if len(feed) <= PL.FEED_SHOWN else 'data-lv-more>Show all (%d)' % len(feed) in h, "L3 'Show all' only with more than %d lines" % PL.FEED_SHOWN)
+    boxes = re.findall(r'<div class="lv-acct lv-a-(\w+)"[^>]*><div class="lv-ah"><b class="lv-an">([^<]*)</b><b class="lv-ab ?(\w*)"[^>]*>([^<]*)</b>', h)
+    parts = {k: h[h.find('lv-acct lv-a-%s"' % k):] for k in ("pick", "radar", "lp")}
+    inside = {k: re.findall(r'data-lv-lane="(\w+)"', v[:v.find('<div class="lv-acct', 10) if '<div class="lv-acct' in v[10:] else v.find('class="lv-feed"')]) for k, v in parts.items()}
+    check([(b[0], b[1]) for b in boxes] == [("pick", "Pick account"), ("radar", "Radar account 🚀"), ("lp", "Learning Pick")]
+          and [text(b[3]) for b in boxes] == ["+21.77 €", "−1.00 €", "−15.80 €"] and [b[2] for b in boxes] == ["good", "bad", "bad"]
+          and inside == {"pick": ["pick", "sell"], "radar": ["radar"], "lp": ["lp"]},
+          "L3 one box per account with its money and its bots: Pick account (Pick bot, Sell bot), Radar account 🚀 (Radar bot), Learning Pick (%s, %s)" % (boxes, inside))
+    check("3 sold · 6.7 of 10 in profit · <span data-lv-popen>1</span> open · 50 € per buy" in h.replace("\xa0", " "),
+          "L3 the Pick account's counts, its open count for the script")
+    rk = parts["radar"][:parts["radar"].find('<div class="lv-lanes">')]
+    check('data-rk-box data-rk-t="%d"' % (NOW - 3 * H) in rk and "data-rk-bal" in rk and all('data-rk-st="%s"' % k in rk for k in ("closed", "win", "open")),
+          "L3 the Radar account's box carries the hooks page_rocket.LIVE_JS fills from the live row (balance, sold, in profit, open)")
+    check("1 sold −10.80 € · 1 open · 50 € per buy" in text(parts["lp"][:parts["lp"].find('<div class="lv-lanes">')]),
+          "L3 the Learning Pick's box: its sold trades' result and its open ones")
     return h
 
 
@@ -155,8 +174,17 @@ def l4(check, D, book, S):
     print("== live L4: on the Start tab")
     with Patch(book, S):
         h = PH.section(D, R)
-    i, j, k = h.find('class="hm-hero"'), h.find('id="live"'), h.find("Right now")
-    check(0 < i < j < k, "L4 the panel sits under the accounts, before Right now")
+        old, PL.section = PL.section, lambda D, R: 1 / 0
+        try:
+            h0 = PH.section(D, R)
+        finally:
+            PL.section = old
+    body = re.sub(r"<(style|script)>.*?</\1>", "", h, flags=re.S)
+    check('id="live"' in body and 'class="hm-hero"' not in body and "Right now" not in body and "SELL BOT 🤖 for the Pick account" not in body and "hm-acc" not in body
+          and all(h.count('data-lv-lane="%s"' % k) == 1 for k in ("pick", "sell", "radar", "lp")),
+          "L4 the Start tab is the panel: no account cards above it, no 'Right now' under it, each bot once")
+    check('id="live"' not in h0 and 'class="hm-hero"' in h0 and "Pick account" in h0 and "Radar account 🚀" in h0 and "The live view could not be built this time (ZeroDivisionError)" in h0,
+          "L4 without the panel the account cards come back and say why")
     check("hm-nav" not in h and "hm-status" not in h and "Pick scan last" not in h, "L4 the old status lines and the tiles that repeated the tab bar are gone")
     js = PL.LV_JS
     check("select=id,ver&id=in.('+D.row+',rocket)" in js and "select=id,ver,doc&id=in.('+due.join(',')+')" in js and "innerHTML" not in js
@@ -233,6 +261,7 @@ def l5(check, skips, h):
               "L5 a sale of the sell bot and a new Radar round slide in at the top, the name as text (%s)" % {k: s2[k] for k in ("keys", "first", "news", "sell", "radar")})
         pg.wait_for_timeout(1200)
         check(pg.evaluate(st)["keys"].count("sell:pA") == 1, "L5 an event comes once")
+        check(pg.evaluate("document.querySelector('[data-lv-popen]').textContent") == "0", "L5 the Pick account's open count follows the sell bot's sale (1 -> 0)")
         rows[M.LIVE_WATCH_ROW] = (3, {"v": 1, "t": now - 20 * MIN, "pos": {"pA": {"sym": "AAA", "cpx": 1.0, "now": 1.1}}, "sold": {}})
         pg.wait_for_timeout(1500)
         s3 = pg.evaluate(st)
@@ -256,6 +285,52 @@ def l5(check, skips, h):
     check(not errs, "L5 no script errors (%s)" % errs[:3])
 
 
+def l6(check, skips, D, book, S):
+    """The Pick tab's open positions when the sell bot has sold one since the page was built (PK_LIVE_JS)."""
+    import memebot as M, page_home as PH, report as R
+    print("== live L6: a sold position on the Pick tab")
+    with Patch(book, S):
+        h = PH.pick_account(D, R)
+    check('<div class="pk-card" data-pk-card="pA">' in h and "Open positions (<span data-pk-n>1</span>)" in h and 'data-pk-box data-pk-open="[&quot;pA&quot;]" hidden' in h
+          and "For comparison" not in h and "Sold on the live chart since" not in h,
+          "L6 each open position's card carries its id for the script; no Radar 'for comparison', no second list of the live sales")
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        skips.append("the sold mark's browser check (no Playwright)")
+        return
+    page = ('<div class="pk"><span>Open positions (<span data-pk-n>2</span>)</span>'
+            '<div class="pk-card" data-pk-card="pA"><details><summary>AAA</summary></details></div><div class="pk-card" data-pk-card="pB"><details><summary>BBB</summary></details></div>'
+            '%s</div><style>%s</style><script>%s</script>') % (PH.pick_live([{"p": {"_id": "pA"}}, {"p": {"_id": "pB"}}], max(D["now"], M.live_sell_at())), PH.PK_CSS, PH.PK_LIVE_JS)
+    exe = os.environ.get("MEMEBOT_CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)
+    errs = []
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(**({"executable_path": exe} if exe else {}))
+        ctx = br.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark")
+        doc = {"v": 1, "t": NOW, "pos": {"pB": {"sym": "BBB", "now": 1.1}}, "sold": {"pA": {"at": NOW - 5 * MIN, "why": "drop", "mult": 0.89, "sym": "AAA", "pnl": -6.24}}}
+
+        def handler(route):
+            u = route.request.url
+            if u.startswith("https://page.test/"):
+                return route.fulfill(status=200, body=page_for(page), headers={"Content-Type": "text/html; charset=utf-8"})
+            if u.startswith("https://demo.supabase.co/rest/v1/live?") and "id=eq." + M.LIVE_WATCH_ROW in u:
+                return route.fulfill(status=200, body=json.dumps([{"doc": doc}]), headers={"Content-Type": "application/json"})
+            route.abort()
+        ctx.route("**/*", handler)
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: errs.append(str(e)))
+        pg.goto("https://page.test/")
+        pg.evaluate("(function(){var t=document.getElementById('tab-pick');t.checked=true;t.dispatchEvent(new Event('change',{bubbles:true}));})()")
+        pg.wait_for_timeout(1500)
+        got = pg.evaluate("""(function(){var a=document.querySelector('[data-pk-card="pA"]'),b=document.querySelector('[data-pk-card="pB"]');
+          return {a:a.classList.contains('pk-gone'),b:b.classList.contains('pk-gone'),note:(a.querySelector('.pk-gone-note')||{}).textContent||'',
+          tone:(a.querySelector('.pk-gone-note')||{}).className||'',bnote:!!b.querySelector('.pk-gone-note'),n:document.querySelector('[data-pk-n]').textContent};})()""")
+        br.close()
+    check(got["a"] and not got["b"] and not got["bnote"] and got["n"] == "1" and "bad" in got["tone"]
+          and re.match(r"^Sold at \d\d:\d\d by the Sell bot · fast fall · −11% · −6\.24 € · the next scan books it$", got["note"].replace("\xa0", " ")) and not errs,
+          "L6 in a browser: the sold position's card is marked sold with its minute, why, change and result, the other stays, the open count drops (%s %s)" % (got, errs))
+
+
 def checks(check, skips=None):
     import memebot as M
     skips = skips if skips is not None else []
@@ -270,6 +345,7 @@ def checks(check, skips=None):
         h = l3(check, D, book, S)
         l4(check, D, book, S)
         l5(check, skips, h)
+        l6(check, skips, D, book, S)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         if old is None:
