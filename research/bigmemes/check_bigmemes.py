@@ -433,7 +433,9 @@ def bench_basket(w, cost, fill, cal, tm, rng):
         eq = new
     mr = month_returns(r, cal)
     idx = np.isin(cal.pm, tm)
-    return summary(mr, r[idx], [], tm, rng)
+    out = summary(mr, r[idx], [], tm, rng)
+    out["by_month"] = {Cal.s(m): mr[m] for m in tm}
+    return out
 
 
 def bench_hold(c, cal, tm):
@@ -442,7 +444,7 @@ def bench_hold(c, cal, tm):
     mr = month_returns(r, cal)
     x = [mr[m] for m in tm]
     return dict(mean_month=float(np.mean(x)), total=float(np.prod(1 + np.array(x)) - 1),
-                max_dd=max_dd(r[np.isin(cal.pm, tm)]), worst_month=float(min(x)))
+                max_dd=max_dd(r[np.isin(cal.pm, tm)]), worst_month=float(min(x)), by_month={Cal.s(m): mr[m] for m in tm})
 
 
 def main():
