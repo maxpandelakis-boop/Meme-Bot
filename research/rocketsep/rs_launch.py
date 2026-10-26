@@ -13,6 +13,7 @@ import numpy as np, pandas as pd
 MIN, H, DAY, BAR = 60_000, 3_600_000, 86_400_000, 300_000
 CJK = re.compile(r"[぀-ヿ㐀-䶿一-鿿가-힯ｦ-ﾟ]")
 TWEET = re.compile(r"/status(?:es)?/\d{6,}")
+GROUPS = ["animal_photo", "animal_drawn", "person_photo", "character_drawn", "text_logo", "object_scene"]
 
 
 def count_before(key, t, ev_key, ev_t, span):
@@ -52,7 +53,8 @@ def rockets_after_grad(dd):
     return out
 
 
-def main(dd, od):
+def build(dd):
+    """the w3/w4 launch table with its facts and outcomes"""
     L = pd.concat([pd.read_parquet(f) for f in sorted(glob.glob(os.path.join(dd, "rocketslaunches", "L_*.parquet")))], ignore_index=True)
     L = L.drop_duplicates("mint").reset_index(drop=True)
     L["t"] = L["t"].astype(np.int64) * 1000
@@ -89,8 +91,7 @@ def main(dd, od):
     T["m_video"] = np.where(read, (j(lm["f_video"]).fillna("").astype(str).str.strip() != "").astype(float), np.nan)
     im = pd.read_parquet(os.path.join(dd, "rocketslimages", "images.parquet")).drop_duplicates("mint")
     im = im[im["img_ok"].fillna(False).astype(bool)].set_index("mint")
-    groups = ["animal_photo", "animal_drawn", "person_photo", "character_drawn", "text_logo", "object_scene"]
-    T["i_group"] = T["mint"].map(im["group"].map({g: k for k, g in enumerate(groups)})).astype(float)
+    T["i_group"] = T["mint"].map(im["group"].map({g: k for k, g in enumerate(GROUPS)})).astype(float)
     T["i_animated"] = T["mint"].map(im["animated"].map(lambda x: float(bool(x)) if x is not None else np.nan)).astype(float)
     rk = rockets_after_grad(dd)
     gr = T["graduated"].fillna(0).to_numpy() > 0
@@ -98,6 +99,13 @@ def main(dd, od):
     T["has_path"] = np.isfinite(hi)
     T["full_rocket"] = gr & (hi >= 10)
     T["grad"] = gr
+    return T
+
+
+def main(dd, od):
+    T = build(dd)
+    gr = T["grad"].to_numpy()
+    read = T["m_links"].notna().to_numpy()
     res = {"launches": {w: int((T["w"] == w).sum()) for w in ("w3", "w4")},
            "graduated": {w: int((gr & (T["w"] == w).to_numpy()).sum()) for w in ("w3", "w4")},
            "graduated_with_path": {w: int((gr & T["has_path"].to_numpy() & (T["w"] == w).to_numpy()).sum()) for w in ("w3", "w4")},
@@ -117,7 +125,7 @@ def main(dd, od):
          "m_xtype": ([-0.5, 0.5, 1.5, 2.5], ["none", "post", "profile/community"]),
          "m_desc_len": ([-0.5, 0.5, 50.5, 200.5, np.inf], ["0", "1-50", "51-200", "over 200"]),
          "m_video": ([-0.5, 0.5, 1.5], ["no", "yes"]),
-         "i_group": ([-0.5 + k for k in range(7)], groups),
+         "i_group": ([-0.5 + k for k in range(7)], GROUPS),
          "i_animated": ([-0.5, 0.5, 1.5], ["no", "yes"])}
     for f, (cuts, labs) in B.items():
         x = T[f].to_numpy(float)

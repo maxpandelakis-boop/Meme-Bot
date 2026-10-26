@@ -166,3 +166,17 @@ pairs by rules and showed the opposite; it was corrected before this report.)
 
 Nothing is changed in the bots. The ceiling says the hold side cannot pay at the Pick's prices even with a perfect separator; the
 buy side needs a 5-30x rocket enrichment and gets 2-5x. The 22 Nov live review stays the next decision point.
+
+## Follow-up (26 Oct, after the user's "prüfe mehr bis du was findest")
+
+No new search over the same months. Two things instead:
+
+1. The 12 Pick rule-plan pairs that were positive in all three periods are frozen with their cut values
+   (NOV-RULES-2026-10-26.json, rs_nov.py) and pre-registered for the unseen month 22 Oct-21 Nov (PREREG-NOV-2026-10-26.md).
+   Together they were positive in every past window (+0.30 to +6.25 per trade, 55-173 trades), but their 1 % bound is -6 to -9 in
+   every window; at their spread a single month passes the bar only with a mean near +10.
+2. Exploration (rs_curve_feas.py, results/curve_feas.json): could the launch model's top picks be bought on the bonding curve? Of
+   its top 0.1 % of w4 launches (739), 216 graduated (29 %, base 3 %), but 123 of those within the first minute (gone before an
+   outsider can buy). 93 graduated after a minute or more: 12.6 % of the picks against 0.94 % of all launches (13x); 56 after five
+   minutes or more (7.6 % vs 0.63 %). Top 1 %: 409 of 7,394 after a minute or more (5.5 %, 6x). Whether that can be bought cheaply
+   enough is unknown: we have no curve trades, so no buy price. That is the one new data source with a large ratio behind it.
