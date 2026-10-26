@@ -371,3 +371,4 @@
 {"t":1793048220065,"addr":"DypFu254ijMoc58qiD721mD4nrtYMrXwTYX3eoXXpump","sym":"idea","age":30.5,"score":0.01409,"px":4.28e-05,"liq":16075,"p0":4.728208352371352e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.24,"c_peak":2.8237,"c_vol":5.4753,"c_act":1.0,"c_r5":-0.0383,"c_r15":-0.1758,"c_mc":4.6747}}
 {"t":1793048340146,"addr":"FieDBxbB3ub88sQtk1RUQ6u3VgYWyPxt8S2o31dDpump","sym":"LL","age":30.0,"why":"liquidity","liq":2693}
 {"t":1793048460555,"addr":"7zdxG9FcyqokHycwYQ7FBdsqewvauEjsfph5JvWDpump","sym":"BUNK","age":30.6,"why":"liquidity","liq":2012}
+{"t":1793048880510,"addr":"5EW3LXh5NYXHmH8X7kAG8iRm9x7Wwz2s6TCHjyFMpump","sym":"BILLBOARD","age":43.6,"why":"no candles"}
