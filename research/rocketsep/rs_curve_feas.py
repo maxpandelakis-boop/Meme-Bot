@@ -17,7 +17,8 @@ FEATS = ["creator_launches30", "creator_grads30", "launches_1h", "cjk", "hour", 
          "m_xtype", "m_desc_len", "m_video", "i_group", "i_animated"]
 
 
-def main(dd, od):
+def scores(dd):
+    """the launch table, minutes from the launch to the graduation, the w4 mask and the fixed model's w4 scores"""
     import lightgbm as lgb
     T = RL.build(dd)
     gt = T["grad_t"].astype(float).to_numpy()
@@ -34,6 +35,12 @@ def main(dd, od):
     bst = lgb.train(prm, lgb.Dataset(Xf[tr], y[tr].astype(float)), 1000, valid_sets=[lgb.Dataset(Xf[va], y[va].astype(float))],
                     callbacks=[lgb.early_stopping(100, verbose=False)])
     p = bst.predict(Xf[w4], num_iteration=bst.best_iteration)
+    return T, gt, cmin, w4, p, bst
+
+
+def main(dd, od):
+    T, gt, cmin, w4, p, bst = scores(dd)
+    y = T["full_rocket"].to_numpy()
     g4, y4, c4 = T["grad"].to_numpy()[w4], y[w4], cmin[w4]
     o = np.argsort(-p)
     res = {"w4_launches": int(w4.sum()), "trees": int(bst.best_iteration), "groups": {}}

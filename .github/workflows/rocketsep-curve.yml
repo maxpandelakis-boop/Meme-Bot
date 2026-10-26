@@ -1,0 +1,62 @@
+# Bonding-curve prices of the launch model's top picks (fake money only; research/rocketsep/PREREG-CURVE-2026-10-26.md).
+# research/rocketsep/rs_curve.py reads GeckoTerminal's public one-minute candles (no API key; only the last job uses the repository
+# token, to push the data branch): first a probe on 30 coins outside the lists, then the 7,394 top-1 % launches of 10 Sep-6 Oct in
+# three shards (the top 0.1 % first). Nothing is bought.
+# The candles go to the data branch "rocketscurve". Runs only on a push of this file or curve_run.txt on this branch, three runners
+# at most at a time, and does not touch the live scan.
+name: rocketsep-curve
+on:
+  push:
+    branches: [claude/project-thread-a2l8qm]
+    paths: [.github/workflows/rocketsep-curve.yml, research/rocketsep/curve_run.txt]
+permissions:
+  contents: write
+concurrency:
+  group: rocketsep-curve
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/rocketsep/rs_curve.py probe research/rocketsep/curve_probe.csv probe.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: probe, path: probe.json, retention-days: 3}
+  shard:
+    needs: probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        i: [0, 1, 2]
+    env:
+      GT_GAP: "2.2"
+      BUDGET_S: "19000"
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/rocketsep/rs_curve.py fetch research/rocketsep/curve_targets.csv ${{ matrix.i }} 3 shard_${{ matrix.i }}.json.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "shard-${{ matrix.i }}", path: "shard_*.json.gz", retention-days: 3}
+  final:
+    needs: [probe, shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: "shard-*", merge-multiple: true, path: out}
+        continue-on-error: true
+      - uses: actions/download-artifact@v4
+        with: {name: probe, path: out}
+        continue-on-error: true
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p out && cd out && ls -la && git init -q && git checkout -q -b rocketscurve && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "curve candles of the launch model's top picks" \
+            && git push -q --force "$URL" rocketscurve
