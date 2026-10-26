@@ -10,3 +10,4 @@
 {"at":1793024880000,"why":"drop","mult":0.8564440943746263,"rule":"chart","sym":"s/acc","t":1793024984509,"eur":41.97,"pnl":-8.03,"entryAt":1793021000653,"id":"2026-10-26T130110-h-sacc-7rTNgV"}
 {"at":1793035980000,"why":"drop","mult":0.6713554406837977,"rule":"chart","sym":"Hellcat","t":1793036208689,"eur":32.9,"pnl":-17.1,"entryAt":1793034522464,"id":"2026-10-26T164802-h-Hellcat-CsovxR"}
 {"at":1793039880000,"why":"drop","mult":0.8739630583160005,"rule":"chart","sym":"s/acc","t":1793040030150,"eur":42.83,"pnl":-7.17,"entryAt":1793031317268,"id":"2026-10-26T155149-h-sacc-7rTNgV"}
+{"at":1793049481346,"why":"time","mult":1.4443190477258048,"rule":"chart","sym":"LoL Esports","t":1793049585427,"eur":70.78,"pnl":20.78,"entryAt":1793027881346,"id":"2026-10-26T145551-h-LoLEsports-CaMxPg"}
