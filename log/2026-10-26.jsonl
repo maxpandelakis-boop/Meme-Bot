@@ -96,3 +96,7 @@
 {"t":1793022300345,"addr":"MuS7RFYZQpChxAewvy7j5zwaMY9yTyr713rSVfKpump","sym":"ANT","age":30.1,"score":0.00669,"px":0.02449,"liq":415828,"p0":0.024439343775518076,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":1.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.0322,"c_peak":1.0012,"c_vol":5.3008,"c_act":1.0,"c_r5":0.0077,"c_r15":0.0126,"c_mc":7.3881}}
 {"t":1793022601340,"addr":"9cyL9ZYwWNtnyFi8PnkVgpujpNx1WRAax8wjVLefpump","sym":"BARRON","age":31.0,"why":"liquidity","liq":1831}
 {"t":1793022720678,"addr":"B7MZaeP7MUERananhP14hw8Vri2U3rYncBwVHw8P367Q","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":931}
+{"t":1793022841357,"addr":"B3kDyG4nHLozetZZ1TFAsZsEMoZHbLaUEDEuF2Rspump","sym":"SWENEE","age":30.7,"why":"liquidity","liq":1866}
+{"t":1793022841357,"addr":"8XT1dc6A5HQwu1eWx7SGTfyaAr1wzy8qAxHFt23UEvHg","sym":".AiTown","age":30.6,"why":"liquidity","liq":0}
+{"t":1793023020803,"addr":"8E7qVCuLA6qSmEfbJsrNrQmv7iHLSDbb2vFniHipump","sym":"Robinhood","age":30.3,"why":"liquidity","liq":1826}
+{"t":1793023080753,"addr":"Ha9cG2TaNbBoS9Y7WRvQjqSjWpEUCjuwgpdPCohUmoon","sym":"MISDPOT","age":30.5,"why":"liquidity","liq":0}
