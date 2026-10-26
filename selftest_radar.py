@@ -1534,9 +1534,9 @@ def checks(check, env_=None):
                 # names it, pinned whole; the checks below read the file as at UNIT
                 l_hunks = stretches(lq.stdout, now_b)
                 late_k = ("LATE_MS", "noticed", "late")
-                same.append(all(any(k in "\n".join(h) for k in late_k) for h in l_hunks) and M.LATE_MS == 180_000
+                same.append(all(any(k in "\n".join(h) for k in late_k) for h in l_hunks) and M.LATE_MS == 60_000
                             and hashlib.sha256("\n".join(sorted(ln for h in l_hunks for ln in h)).encode("utf-8")).hexdigest()
-                            == "dbd9a7d6f15edfa216985330cdc38ced6e7b1f148fb0a4ef186919071d12ec04")
+                            == "466bfc4e1aae368337c1d1b2e18194b33e900d631c4897d5ff1b9e42ae1f4842")
                 now_b = lq.stdout
             q = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (MID, f)], capture_output=True) if f != "radar.py" else None
             if q is not None and q.returncode == 0 and q.stdout != now_b:

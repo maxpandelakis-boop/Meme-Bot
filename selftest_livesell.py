@@ -20,8 +20,9 @@ the fixtures are hand-made candles and docs, nothing is fetched. The positions h
   L6 the page: the rule's words (live chart, every minute) and the Pick tab's live line with its script after LIVE_SELL_AT, the old words
      before; bot.py reads the watch's row before the run and hands the open positions over after it; no workflow sets
      MEMEBOT_LIVE_SELL_AT
-  L7 a sale seen more than memebot.LATE_MS after its minute (the watch is blind while a Radar round runs, the scan looks hourly) is booked
-     at the last close when it was seen, at that minute (memebot.noticed; the user's "ja" of 26 Oct): the watch, live_watch and the scan
+  L7 a sale seen after its minute was over, with a newer candle there (memebot.LATE_MS; the watch is blind while a Radar round runs, the
+     scan looks hourly), is booked at the last close when it was seen, at that minute (memebot.noticed; the user's "ja" of 26 Oct): the
+     watch, live_watch and the scan
 
   python3 selftest_livesell.py      -> PASS/FAIL per check, "ALL PASS" at the end, exit code 1 on any failure
 """
@@ -147,10 +148,10 @@ def l3(check):
         scan_dir(d4, T, {"p2": {"addr": "B" * 44, "sym": "BBB", "pair": "poolB", "t": T, "entryAt": T + 30 * MIN, "px": 2.0}})
         json.dump({"v": 1, "t": T + 96 * MIN, "pos": {"p2": {"chk": T + 80 * MIN, "cpx": 2.0}}, "sold": {}}, open(os.path.join(d4, "pickwatch.json"), "w"))
         open(os.path.join(d4, "candles", "poolB_hold.txt"), "w").write(rows(2.0, (75, 95)))
-        p, out4 = run_scan(d4, T + 97 * MIN, LIVE)
+        p, out4 = run_scan(d4, T + 95 * MIN + 40_000, LIVE)
         e2b = out4.get("memeexit__p2-1") or {}
         check(p.returncode == 0 and e2b.get("why") == "stop" and e2b.get("at") == T + 95 * MIN and abs(e2b["px"] - 1.2) < 1e-9 and "late" not in e2b,
-              "L3 the same dip seen 2 minutes after it (within LATE_MS): the scan's own stop at that minute's low (%s)" % e2b)
+              "L3 the same dip seen within its minute (no newer candle yet): the scan's own stop at that minute's low (%s)" % e2b)
         check([r["id"] for r in po.get("open") or []] == ["p3"] and po.get("since") == LIVE and (po["open"][0].get("cpx") == 3.0) and st.get("paperRule") == M.PAPER_RULE
               and st.get("paperSince") == T - 1 and not any((x.get("why") == "reset") for k, x in out.items() if k.startswith("memeexit")),
               "L3 the open position stays for the watch (pickopen: id, cpx), the rule and the account's start unchanged, nothing reset")
@@ -160,10 +161,11 @@ def l3(check):
         open(os.path.join(d2, "candles", "poolD_hold.txt"), "w").write(
             "\n".join("%d|1|1.3|1.0|%s|500" % (T + i * MIN, (1.0 if i < 60 else 1.25) if i < 390 else 0.2) for i in range(30, 420)) + "\n")
         shutil.copytree(d2, d2 + "late")
-        p, out = run_scan(d2, T + 30 * MIN + 6 * H + 2 * MIN, LIVE)
+        p, out = run_scan(d2, T + 30 * MIN + 6 * H + 40_000, LIVE)
         e4 = out.get("memeexit__p4-1") or {}
         check(p.returncode == 0 and e4.get("why") == "time" and e4.get("at") == T + 30 * MIN + 6 * H and abs(e4["px"] - 1.25) < 1e-9 and e4.get("chart") == "scan"
-              and "late" not in e4, "L3 the 6-hour limit sells 6 hours after the entry at that minute's price, a crash after it does not count (%s)" % e4)
+              and "late" not in e4, "L3 the 6-hour limit sells 6 hours after the entry at that minute's price, a crash after it does not count "
+              "when the scan sees it within that minute (%s)" % e4)
         p, out = run_scan(d2 + "late", T + 7 * H, LIVE)
         e4l = out.get("memeexit__p4-1") or {}
         check(p.returncode == 0 and e4l.get("why") == "time" and e4l.get("at") == T + 419 * MIN and abs(e4l["px"] - 0.2) < 1e-9 and e4l.get("late") is True
@@ -199,7 +201,7 @@ def l4(check):
         now = [T + 90 * MIN]
         json.dump([{"baseToken": {"address": "A" * 44}, "pairAddress": "pA", "priceUsd": "1.1"}, {"baseToken": {"address": "B" * 44}, "pairAddress": "pB", "priceUsd": "2.4"}],
                   open(os.path.join(mock, "ds.json"), "w"))
-        json.dump(gt([(T + i * MIN, 1.0, 1.02, 0.66 if i == 88 else 0.98, 1.0) for i in range(30, 91)]), open(os.path.join(mock, "gt_pA_ohlcv.json"), "w"))
+        json.dump(gt([(T + i * MIN, 1.0, 1.02, 0.66 if i == 88 else 0.98, 1.0) for i in range(30, 89)]), open(os.path.join(mock, "gt_pA_ohlcv.json"), "w"))
         json.dump(gt([(T + i * MIN, 2.0, 2.02, 1.96, 2.0) for i in range(30, 91)]), open(os.path.join(mock, "gt_pB_ohlcv.json"), "w"))
 
         def sleep(x):
@@ -218,8 +220,7 @@ def l4(check):
                   "L4 the other one is watched on: its candle entry price, where the next look starts, its price now (%s)" % pb)
             # 6 hours after the entry: the next look sells at DexScreener's price; the scan has booked pa meanwhile (no longer listed)
             json.dump({"v": 1, "t": T + 2 * H, "since": LIVE, "open": [row("pb", "B" * 44, "pB", 2.0)]}, open(os.path.join(mock, "pickopen.json"), "w"))
-            now[0] = T + 30 * MIN + 6 * H + 20_000
-            now[0] += 2 * MIN                # the first look after the limit comes two minutes late (within memebot.LATE_MS)
+            now[0] = T + 30 * MIN + 6 * H + 20_000      # the first look after the limit comes within its first minute
             json.dump(gt([(T + i * MIN, 2.0, 2.02, 1.96, 2.2 if i == 389 else 2.0) for i in range(30, 394)]), open(os.path.join(mock, "gt_pB_ohlcv.json"), "w"))
             out2 = RW.watch(rk, now[0] + 2 * MIN, mock, clock=lambda: now[0], sleep=sleep)
             st2 = json.load(open(os.path.join(rk, RW.PICK_FILE)))
@@ -338,11 +339,13 @@ def l7(check):
     print("== live sell L7: a sale seen late is booked at the price when it was seen")
     T = LIVE + H
     cs = [cnd(T + i * MIN, 1.0 if i < 10 else 0.4, lo=0.3 if i == 10 else None) for i in range(20)] + [cnd(T + 20 * MIN, 50.0)]
-    a, b = M.noticed(T + 10 * MIN, 0.3, cs, 1.0, T + 13 * MIN), M.noticed(T + 10 * MIN, 0.3, cs, 1.0, T + 15 * MIN + 30_000)
+    a, b = M.noticed(T + 10 * MIN, 0.3, cs, 1.0, T + 10 * MIN + 50_000), M.noticed(T + 10 * MIN, 0.3, cs, 1.0, T + 15 * MIN + 30_000)
     c, e = M.noticed(T + 19 * MIN, 0.4, cs, 1.0, T + 30 * MIN), M.noticed(T + 10 * MIN, 0.3, cs[:11], 1.0, T + 30 * MIN)
-    check(a == (T + 10 * MIN, 0.3, False) and b == (T + 15 * MIN, 0.4, True) and c == (T + 19 * MIN, 0.4, False) and e == (T + 10 * MIN, 0.3, False)
-          and M.LATE_MS == 3 * MIN, "L7 noticed: seen within 3 minutes as it is; later at the last close up to then, at its minute; a glitch "
-          "candle (50x) and no newer candle (GeckoTerminal's delay) leave it as it is (%s)" % [a, b, c, e])
+    b2 = M.noticed(T + 10 * MIN, 0.3, cs, 1.0, T + 11 * MIN + 30_000)
+    check(a == (T + 10 * MIN, 0.3, False) and b == (T + 15 * MIN, 0.4, True) and b2 == (T + 11 * MIN, 0.4, True) and c == (T + 19 * MIN, 0.4, False)
+          and e == (T + 10 * MIN, 0.3, False) and M.LATE_MS == MIN, "L7 noticed: seen within its minute as it is; after it at the last close "
+          "up to then, at its minute (one minute later already); a glitch candle (50x) and no newer candle (GeckoTerminal's delay) leave it as "
+          "it is (%s)" % [a, b, b2, c, e])
     tmp = tempfile.mkdtemp(prefix="mb-live-")
     try:
         json.dump({"v": 1, "t": LIVE + H, "pos": {}, "sold": {

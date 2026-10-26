@@ -13,7 +13,7 @@ the fixtures are hand-made candles and docs, nothing is fetched.
      not; the candles of a chart position are asked for from its entry
   C5 rocket_watch.watch judges a chart position by chart_hit and marks its sale; a pool without candles trails on DexScreener's price;
      a sale the watch of older code made by the fixed rule is dropped and the position looked at again; a sale it sees more than
-     memebot.LATE_MS after its minute is booked at the last close then (memebot.noticed, the user's "ja" of 26 Oct)
+     memebot.LATE_MS after its minute (a newer candle there) is booked at the last close then (memebot.noticed, the user's "ja" of 26 Oct)
   C6 shadow: K is the fixed rule, X the chart exit replayed on the same clean minutes (chart_hit)
   C7 the words: the rule text, the position card's trailing stop, the stop's words by rule; the constants and the key
   C8 the sell bot (page_home.sell_bot, the user could not find the chart exit in the app on Oct 24): its card on the Pick tab (the trail
@@ -240,7 +240,7 @@ def c5(check):
         json.dump([{"baseToken": {"address": "A" * 44}, "pairAddress": "pA", "priceUsd": "1.5"}, {"baseToken": {"address": "B" * 44}, "pairAddress": "pB", "priceUsd": "2.0"}],
                   open(os.path.join(mock, "ds.json"), "w"))
         px = lambda i: 1.0 if i < 40 else (2.0 if i < 88 else 1.6)
-        json.dump(gt([(T + i * MIN, px(i), px(i) * 1.01, px(i) * 0.99, px(i)) for i in range(29, 91)]), open(os.path.join(mock, "gt_pA_ohlcv.json"), "w"))
+        json.dump(gt([(T + i * MIN, px(i), px(i) * 1.01, px(i) * 0.99, px(i)) for i in range(29, 89)]), open(os.path.join(mock, "gt_pA_ohlcv.json"), "w"))
         json.dump(gt([(T + i * MIN, 2.0, 2.02, 1.96, 2.0) for i in range(29, 91)]), open(os.path.join(mock, "gt_pB_ohlcv.json"), "w"))
         json.dump({"pos": {}, "sold": {"pb": {"at": T + 60 * MIN, "why": "stop", "mult": 0.69}}}, open(os.path.join(rk, RW.PICK_FILE), "w"))
         now = [T + 90 * MIN]
@@ -253,7 +253,7 @@ def c5(check):
         sa, pb = st["sold"].get("pa") or {}, st["pos"].get("pb") or {}
         check(out.get("pick") == 1 and sa.get("why") == "trail" and sa.get("at") == T + 88 * MIN and abs(sa["mult"] - 1.6 * 0.99) < 1e-9 and sa.get("rule") == "chart"
               and "late" not in sa and "pb" not in st["sold"] and pb.get("lvl") == 0.5 and RW.pick_doc(st, now[0])["pos"]["pb"].get("lvl") == 0.5,
-              "C5 a chart position falls from 2x to 1.6x, seen 2 minutes later: a trail at that minute's low, marked chart; the fixed-rule stop an older watch kept for the "
+              "C5 a chart position falls from 2x to 1.6x, its minute the newest candle when seen: a trail at that minute's low, marked chart; the fixed-rule stop an older watch kept for the "
               "other is dropped and it is watched again, its level in the view (%s; %s)" % (sa, pb))
         rk2, mock2 = os.path.join(tmp, "rk2"), os.path.join(tmp, "mock2")
         os.makedirs(rk2); os.makedirs(mock2)

@@ -137,10 +137,10 @@ CHART_TRAIL = 0.15       # the trailing stop: 15 % under the highest high since 
 CHART_ARM = 1.5          # ... once that high has reached 1.5 times cpx
 CHART_DROP = 0.15        # the drop: a minute's close 15 % or more under the close ...
 CHART_DROP_MIN = 30      # ... 30 minutes before
-LATE_MS = 180_000        # a sale seen more than 3 minutes after its minute began (that minute, a look a minute and GeckoTerminal's delay)
-                         # with a newer candle there was seen late (the Sell bot is blind while a Radar round runs, the scan looks hourly):
-                         # booked at the last close when it was seen, not at the earlier minute's price (noticed; the user's go of Mon
-                         # 26 Oct 2026: Chop's trail of 12:49 UTC was booked at 1.04x, seen at 12:57 at 0.31x). The rule's levels stay
+LATE_MS = 60_000         # a sale seen after its minute was over, with a candle of a newer minute there, was seen late (the Sell bot is blind
+                         # while a Radar round runs, the scan looks hourly): booked at the last close when it was seen, not at the earlier
+                         # minute's price (noticed; the user's go of Mon 26 Oct 2026: Chop's trail of 12:49 UTC was booked at 1.04x, seen at
+                         # 12:57 at 0.31x; s/acc's drop of 18:38 UTC at 0.87x, seen 2.5 minutes later at 0.29x). The rule's levels stay
 # the paper account's identity key (state.json paperRule): never edit, not even a letter; the page's words come from PAPER_LABEL
 PAPER_RULE = "v3: top 50 / chart exit: -50% floor, trail 15% from 1.5x, -15% in 30 min, 11x, 6h"   # a run that finds another rule there restarts the account
 OLD_PAPER_RULE = "v2: top 50 / young 3 / +1000% / -30% / 6h"     # the fixed rule's key (10-24 Oct 2026): its positions sell by hold_hit
