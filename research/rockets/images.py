@@ -158,7 +158,9 @@ def cmd_shard(chain_path, i, n, out, thumbs=None):
             own = [str(x) for x in chunk.loc[[r["img_ok"] for r in recs], "f_name"].fillna("").astype(str)]
             others = [[names_all[k] for k in rng.choice(len(names_all), 20)] for _ in imgs]
             with torch.no_grad():
-                px = proc(images=imgs, return_tensors="pt")
+                # channels_last told, not guessed: a picture 1 or 3 pixels high was read as channels-first and stopped the
+                # run (launch pictures, 25 Oct); for every other picture the result is the same
+                px = proc.image_processor(images=imgs, return_tensors="pt", input_data_format="channels_last")
                 fi = model.get_image_features(**px)
                 fi = fi / fi.norm(dim=-1, keepdim=True)
                 pr = (100 * fi @ tg.T).softmax(dim=-1).numpy()
