@@ -1,0 +1,1 @@
+What the pictures of a random 150,000 pump.fun launches of 10 Aug-6 Oct 2026 (universe L of the rocket study) show, read by OpenAI CLIP (openai/clip-vit-base-patch32), made by research/rockets/images.py. Launch list from Slinky21/Pumpfun_v2_dataset (CC-BY-4.0, "Data provided by [Slink21]. Pumpfun Solana Dataset (2026)"). Fake money only.
