@@ -453,3 +453,7 @@
 {"t":1793058120856,"addr":"71rwFk4oSBcwjgNTwacM7LkX9uW4e8q314YMVj1PKVH","sym":"NOMO","age":30.1,"why":"liquidity","liq":0}
 {"t":1793058180124,"addr":"FdBEsLzCN3mHUcFVDCH9SisexM2c3rByTvm4tFWQpump","sym":"ELON2028","age":31.0,"score":0.00952,"px":6.004e-05,"liq":21474,"p0":6.941689841812009e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1333,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-1.5009,"c_peak":4.7061,"c_vol":6.2139,"c_act":1.0,"c_r5":0.3173,"c_r15":-0.2975,"c_mc":4.8415}}
 {"t":1793058180124,"addr":"7aGAb9jrgm36ZLRMLnH9jSaNV6RrjtM3No9SWCHNpump","sym":"MUSK2028","age":30.1,"score":0.04361,"px":7.487e-05,"liq":25120,"p0":8.285972117809294e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.2167,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.3386,"c_peak":5.5229,"c_vol":6.3076,"c_act":1.0,"c_r5":-1.044,"c_r15":-0.908,"c_mc":4.9183}}
+{"t":1793058300629,"addr":"FeiVAVWku2dVE7DzsqEo3stV694YQMJeqqtbaQTDpump","sym":"Musk2028","age":30.8,"why":"liquidity","liq":6883}
+{"t":1793058480983,"addr":"ANeQMF6n8V8a4kyKq4ArPiD6LNMM3xMYSEE1rMnqpump","sym":"Riot Games","age":30.7,"why":"liquidity","liq":1805}
+{"t":1793058480983,"addr":"7XAwBBrbGzr7i6E9p4tBUiD9s1eFFPCMpP4oHA58pump","sym":"Autonomy","age":30.2,"why":"liquidity","liq":3496}
+{"t":1793058540295,"addr":"UcpE4dpfUsZ8T5iCkuoNMwJupB2n7YjzAmFy4rTpump","sym":"YouTube","age":30.8,"why":"liquidity","liq":1838}
