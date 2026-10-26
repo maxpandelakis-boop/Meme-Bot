@@ -26,6 +26,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 PY = sys.executable
 BASE = "80e7fe0"
+MID = "981b2d5"                   # memebot.py and fetch.py as the chart exit left them (PR #47): R8 pins the stretches before it against BASE, after it against MID
 T0 = 1791892800000                # 2026-10-13 12:00 UTC (14:00 Berlin): the fake clock's start
 MIN = 60_000
 H = 3_600_000
@@ -1514,6 +1515,23 @@ def checks(check, env_=None):
             p = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (BASE, f)], capture_output=True)
             no_base = p.returncode != 0      # a shallow clone lacks BASE: every file reads as changed then (git fetch --unshallow)
             now_b = open(os.path.join(HERE, f), "rb").read()
+            q = subprocess.run(["git", "-C", HERE, "show", "%s:%s" % (MID, f)], capture_output=True) if f != "radar.py" else None
+            if q is not None and q.returncode == 0 and q.stdout != now_b:
+                # the coin's own candles (UNIT_X, 26 Oct: LAUNCH "+8427%" on the Sell bot card was its StonkFun pool's other coin; a data fix,
+                # the rules stay): every stretch changed since MID names it, pinned whole; the checks below read the file as at MID
+                import difflib, hashlib
+                u_hunks, cur = [], []
+                for ln in difflib.unified_diff(q.stdout.decode("utf-8").splitlines(), now_b.decode("utf-8").splitlines(), lineterm="", n=0):
+                    if ln.startswith("@@"):
+                        cur = []
+                        u_hunks.append(cur)
+                    elif ln[:1] in "+-" and not ln.startswith(("+++", "---")):
+                        cur.append(ln)
+                unit_k = ("UNIT_X", "unit_ok", "unit_off", "hold_candles", "GT_SIDES", "token=%s")
+                same.append(all(any(k in "\n".join(h) for k in unit_k) for h in u_hunks) and M.UNIT_X == 5.0 and M.GT_SIDES == ("base", "quote")
+                            and hashlib.sha256("\n".join(sorted(ln for h in u_hunks for ln in h)).encode("utf-8")).hexdigest()
+                            == {"memebot.py": "13f712519059c7f65951e5247f545153a9f411fa5bd92558b2c567ce024263e6", "fetch.py": "f74b8c7f6c8c01e20cfbc2e17a39ddff365a081ff3739ad5fabc6de0fc915921"}[f])
+                now_b = q.stdout
             if f == "memebot.py" and p.returncode == 0 and p.stdout != now_b:
                 # the four changes since: the switch (memebot.switch_at, the new launches end; PAPER_RULE as it was), the big test read
                 # lazily (DocDir, 16 Oct, the user's go: only how memesnap and memesnapres are loaded), the training window
@@ -1599,7 +1617,7 @@ def checks(check, env_=None):
         own = {"memebot", "fetch", "radar", "radar_src", "app", "traps", "peak", "radar_paper"}
         std = set(getattr(sys, "stdlib_module_names", ())) or {"argparse", "datetime", "glob", "gzip", "importlib", "io", "json", "math", "os", "re", "shutil", "subprocess",
                                                               "sys", "tarfile", "time", "urllib", "zoneinfo"}
-        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto, the gate review, the Pick's fresh start, its live chart sale and its chart exit (fetch.py but for the chart exit's candles) (%s%s); imports: %s" % (BASE, same, "; %s is not in this clone, run git fetch --unshallow" % BASE if no_base else "", sorted(mods - own)))
+        check(all(same) and mods - own <= std, "fetch.py and radar.py are byte for byte as at %s, memebot.py too but for the switch, the lazy big test, the training window, the liquidity-share veto, the gate review, the Pick's fresh start, its live chart sale and its chart exit (fetch.py but for the chart exit's candles), since %s only the coin's own candles (UNIT_X) (%s%s); imports: %s" % (BASE, MID, same, "; %s is not in this clone, run git fetch --unshallow" % BASE if no_base else "", sorted(mods - own)))
 
         print("== launch radar R9: no secret in any file, branch, row or log line")
         from selftest import Rest, serve_app, PushSink, APP_SECRET

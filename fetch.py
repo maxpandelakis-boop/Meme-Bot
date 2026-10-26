@@ -28,6 +28,7 @@ Usage:
 import argparse, html, math, email.utils, glob, json, os, re, shutil, sys, threading, time, urllib.error, urllib.parse, urllib.request, datetime as dt
 import xml.etree.ElementTree as ET
 import concurrent.futures
+import memebot as M      # read only: UNIT_X, GT_SIDES, unit_ok (whose coin a pool's candles are)
 
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,48}$")
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 memebot-paper/1.0"
@@ -489,11 +490,16 @@ def candles(http, d, items):
         # one-minute candles still; a held position (the chart exit reads every minute since the entry, up to 6 h) one-minute candles up to 1000
         limit = min(1000, int((hours * 3600 + 900) / (60 * agg)) + 12)   # the request ends 15 minutes after the window: cover that too, or the window's first minutes are cut
         before = int(since / 1000 + hours * 3600 + 900)
-        j = http.get(GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (pool, agg, limit, before))
-        rows = []
-        for c in (((j or {}).get("data") or {}).get("attributes") or {}).get("ohlcv_list") or [] if isinstance(j, dict) else []:
-            if isinstance(c, list) and len(c) >= 5 and num(c[0]) and num(c[0]) * 1000 >= since - 60_000:
-                rows.append(row(int(num(c[0]) * 1000), num(c[1]), num(c[2]), num(c[3]), num(c[4]), num(c[5]) if len(c) > 5 else None))
+        for side in M.GT_SIDES:       # the pool's base token first; when that is the other coin (memebot.UNIT_X), its quote token
+            j = http.get(GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=%s" % (pool, agg, limit, before, side))
+            got = [(int(num(c[0]) * 1000), num(c[1]), num(c[2]), num(c[3]), num(c[4]), num(c[5]) if len(c) > 5 else None)
+                   for c in (((((j or {}).get("data") or {}).get("attributes") or {}).get("ohlcv_list") or []) if isinstance(j, dict) else [])
+                   if isinstance(c, list) and len(c) >= 5 and num(c[0]) and num(c[0]) * 1000 >= since - 60_000]
+            if not got or M.unit_ok(got, num(it.get("t")), num(it.get("px"))):
+                break
+            http.log("  candles of %s: token=%s is another coin's price" % (pool, side))
+            got = []
+        rows = [row(*c) for c in got]
         if rows:
             os.makedirs(os.path.join(d, "candles"), exist_ok=True)
             with open(os.path.join(d, "candles", "%s_%s.txt" % (pool, key)), "w", encoding="utf-8") as f:

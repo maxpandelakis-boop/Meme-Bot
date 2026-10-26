@@ -237,6 +237,10 @@ def l5(check, skips, h):
         pg.wait_for_timeout(1500)
         s3 = pg.evaluate(st)
         check(s3["sell"]["late"] and s3["sell"]["cd"] == "late" and s3["sw"] <= 390, "L5 a look 20 minutes old with the store answering: amber, 'late'; nothing wider than 390 px (%s)" % s3["sell"])
+        rows[M.LIVE_WATCH_ROW] = (4, {"v": 1, "t": now, "pos": {"pA": {"sym": "AAA", "cpx": 85.0, "now": 1.2}}, "sold": {}})
+        pg.wait_for_timeout(1500)
+        s4 = pg.evaluate(st)
+        check(s4["sell"]["chips"] == ["AAA…"], "L5 candles of the pool's other coin (cpx 85x the buy price, memebot.UNIT_X): the chip shows '…', no made-up change (%s)" % s4["sell"]["chips"])
         scan = pg.evaluate("""(function(){function ev(d){window.dispatchEvent(new CustomEvent('memebot-live',{detail:d}));}
           var l=document.querySelector('[data-lv-lane="pick"]');
           ev({state:'live',status:{t:Date.now()-5*60000,agents:[{id:'scouts',status:'done'},{id:'deep',status:'running',lines:['a','412 of 900 coins']}],pick:{sym:'NEWPICK'}}});

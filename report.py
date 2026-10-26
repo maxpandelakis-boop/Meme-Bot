@@ -376,11 +376,12 @@ def collect(d, now):
         cands = []
         if p.get("grp") in M.PAPER_GROUPS and not closed and p.get("pair"):     # the held coin's minute candles since the entry (the run that renders the page has them)
             t_in = M.num(p.get("entryAt")) or M.num(p.get("t")) or 0
-            cands = [c for c in M.load_candles(d, str(p["pair"]), "hold") if c[0] >= t_in - 60_000 and c[4] > 0]
+            cands = [c for c in M.hold_candles(d, p) if c[0] >= t_in - 60_000 and c[4] > 0]     # none of the pool's other coin (UNIT_X)
+        c_px = M.num(cpx.get(pid)) if not M.unit_off(cpx.get(pid), entry) else None
         rows.append({"id": pid, "p": p, "ticket": ticket, "entry": entry, "back": back, "last": last, "value": value, "closed": closed, "half": half,
                      "pnl": pnl, "status": status, "kind": kind, "mult": (last / entry) if last and entry else None, "sold_at": sold_at,
                      "liq_now": M.num(liq_now.get(pid)), "exit_t": M.num(exits[-1].get("t")) if closed and exits else None, "bot": p.get("grp") in M.BOT_GROUPS,
-                     "candles": cands, "cpx": M.num(cpx.get(pid)) or (cands[0][4] if cands else None)})
+                     "candles": cands, "cpx": c_px or (cands[0][4] if cands else None)})
     rows.sort(key=lambda r: -(M.num(r["p"].get("t")) or 0))
     open_rows = [r for r in rows if not r["closed"]]
     closed_rows = [r for r in rows if r["closed"]]

@@ -114,12 +114,13 @@ def pick_pair(pairs, pool):
     return max(pairs or [{}], key=lambda p: R.num((p.get("liquidity") or {}).get("usd")) or 0) if pairs else None
 
 
-def gt_candles(http, pool, since_ms, now):
-    """One-minute candles from since_ms to now (two pages when it is more than 1000 minutes)."""
+def gt_candles(http, pool, since_ms, now, side="base"):
+    """One-minute candles from since_ms to now (two pages when it is more than 1000 minutes); side: the pool's token they price (base,
+    or quote for a pool whose base token is the other coin: memebot.UNIT_X)."""
     out, before = [], int(now // 1000)
     for _ in range(2):
-        j = http.get(GT + "%s/ohlcv/minute?aggregate=1&limit=1000&currency=usd&token=base&before_timestamp=%d" % (pool, before),
-                     "gt_%s_ohlcv" % pool, GT_GAP)
+        j = http.get(GT + "%s/ohlcv/minute?aggregate=1&limit=1000&currency=usd&token=%s&before_timestamp=%d" % (pool, side, before),
+                     "gt_%s_ohlcv" % pool + ("" if side == "base" else "_" + side), GT_GAP)
         rows = (((j or {}).get("data") or {}).get("attributes") or {}).get("ohlcv_list") or [] if isinstance(j, dict) else []
         rows = [[r[0] * 1000] + list(r[1:6]) for r in rows if isinstance(r, list) and len(r) >= 6]
         out += rows
@@ -275,7 +276,7 @@ def pick_merge(st, src, now):
             continue                  # sold on the live chart: the next scan books it
         w = st["pos"].setdefault(pid, {})
         w.update({k: r.get(k) for k in ("sym", "addr", "pair", "px", "t", "entryAt", "ticket", "grp", "paper", "left")})
-        if (R.num(r.get("cpx")) or 0) > 0:
+        if (R.num(r.get("cpx")) or 0) > 0 and not M.unit_off(r["cpx"], r.get("px")):
             w["cpx"] = R.num(r["cpx"])
         if (R.num(r.get("chk")) or 0) > (R.num(w.get("chk")) or 0):
             w["chk"] = R.num(r["chk"])
@@ -287,6 +288,25 @@ def pick_merge(st, src, now):
         elif now - x.setdefault("booked", now) > PICK_KEEP_MS:
             st["sold"].pop(pid)
     st["list"] = R.num(src.get("t"))
+
+
+def pick_candles(http, w, t0, entry, now):
+    """A watched Pick position's minute candles since its entry, sorted: of the pool's side that prices its own coin (memebot.unit_ok
+    against the entry price; w["tok"] remembers it), none when neither side does (then it is judged as a pool without candles). A cpx,
+    last checked minute and high, low and level of the other coin's candles (watched before UNIT_X) are dropped: its own start over."""
+    if M.unit_off(w.get("cpx"), entry):
+        for k in ("cpx", "chk", "now", "hi", "lo", "lvl"):
+            w.pop(k, None)
+        log("  %s: the candles watched so far were another coin's, starting over on its own" % w.get("sym"))
+    first = w.get("tok") if w.get("tok") in M.GT_SIDES else "base"
+    for side in [first] + [x for x in M.GT_SIDES if x != first]:
+        cs = sorted(tuple(float(R.num(x) or 0.0) for x in r[:5]) for r in gt_candles(http, w["pair"], t0 - 60_000, now, side))
+        if not cs or M.unit_ok(cs, R.num(w.get("t")) or t0, entry):
+            if cs:
+                w["tok"] = side
+            return cs
+    w.pop("tok", None)
+    return []
 
 
 def check_pick(http, st, pairs, now):
@@ -306,7 +326,7 @@ def check_pick(http, st, pairs, now):
         if pid in st["sold"] or not t0 or not entry or not w.get("pair"):
             continue
         chart = M.is_chart(w)
-        cs = sorted(tuple(float(R.num(x) or 0.0) for x in r[:5]) for r in gt_candles(http, w["pair"], t0 - 60_000, now))
+        cs = pick_candles(http, w, t0, entry, now)
         hc = (M.chart_hit if chart else M.hold_hit)(cs, t0, R.num(w.get("chk")), R.num(w.get("cpx")))
         px = R.num((pick_pair(pairs.get(w.get("addr")), w["pair"]) or {}).get("priceUsd"))
         w["seen"] = now

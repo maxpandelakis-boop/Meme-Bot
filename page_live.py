@@ -305,7 +305,7 @@ def section(D, R):
     feed = events(D, R, doc, S)
     known = [e["k"] for e in feed]
     data = {"now": now, "scanT": scan_t, "nextScan": nxt, "look": look, "liveAt": live_at, "rkT": rk_t, "cut": cut, "rkSig": rk_sig((doc or {}).get("top")),
-            "lpNext": next_night(now), "pick": pick, "radar": radar, "keys": known, "late": LATE, "pause": PAUSE_MS, "lookMs": LOOK_MS, "roundMs": ROUND_MS, "every": POLL_S * 1000,
+            "lpNext": next_night(now), "pick": pick, "radar": radar, "keys": known, "late": LATE, "pause": PAUSE_MS, "lookMs": LOOK_MS, "roundMs": ROUND_MS, "ux": M.UNIT_X, "every": POLL_S * 1000,
             "row": M.LIVE_WATCH_ROW, "tk": PH.de_eur(M.TOP_TICKET).replace(".00", ""), "rtk": PH.de_eur(M.TICKET).replace(".00", "")}
     lis = "".join(ev_li(R, e, now) for e in feed)
     more = len(feed) - FEED_SHOWN
@@ -370,7 +370,8 @@ LV_JS = r"""
   function pickwatch(d){var pos=d.pos&&typeof d.pos==='object'?d.pos:{},sold=d.sold&&typeof d.sold==='object'?d.sold:{},t=n(d.t),items=[];
     if(t)st.look=t;
     Object.keys(pos).forEach(function(id){var w=pos[id];if(!w||typeof w!=='object'||sold[id])return;var P=(D.pick||{})[id]||{},cpx=n(w.cpx)||n(P.cpx),m=n(w.now),entry=n(P.px);
-      var x=m&&cpx&&entry?m*cpx/entry:(m||null);items.push({k:'p:'+id,label:w.sym||P.sym,m:x});
+      var off=cpx&&entry&&(cpx/entry>D.ux||cpx/entry<1/D.ux);     // the pool's other coin (memebot.UNIT_X): no chart of its own yet, '…'
+      var x=off?null:(m&&cpx&&entry?m*cpx/entry:(m||null));items.push({k:'p:'+id,label:w.sym||P.sym,m:x});
       var tb=n(w.entryAt)||n(w.t);if(!(D.pick||{})[id]&&tb)add('buy:'+id,tb,'pick',['bought ',{b:sym(w.sym)},' for the Pick account'],D.tk,'',false);});
     Object.keys(sold).forEach(function(id){var x=sold[id];if(!x||typeof x!=='object'||!n(x.at))return;var v=n(x.pnl)||0;
       add('sell:'+id,n(x.at),'sell',['sold ',{b:sym(x.sym||((D.pick||{})[id]||{}).sym)},' · '+(SBW[x.why]||String(x.why||''))+(n(x.mult)?' · '+pct(n(x.mult)):'')],eur(v),tone(v),false);});

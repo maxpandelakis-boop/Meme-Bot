@@ -4030,6 +4030,8 @@ console.log(JSON.stringify(o));
     selftest_livesell.checks(check, SKIPS)
     import selftest_live                        # the Start tab's live panel: the bots' lanes with their clocks and the feed (page_live.py)
     selftest_live.checks(check, SKIPS)
+    import selftest_gtunit                      # a pool's candles are its own coin's price, not its partner coin's (memebot.UNIT_X; LAUNCH, Oct 26)
+    selftest_gtunit.checks(check)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:

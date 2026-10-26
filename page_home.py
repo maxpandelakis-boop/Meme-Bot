@@ -280,7 +280,7 @@ def sb_pct(x):
 def sb_plan(R, entry, cpx, hi, lvl):
     """The sell bot's next move for one position in words (SB_JS's plan() writes the same): before the trail is armed, where it arms;
     after, the price it sells at. Prices over cpx (the rule's own basis), changes over the entry price (as the position card)."""
-    if not entry or not cpx:
+    if not entry or not cpx or M.unit_off(cpx, entry):
         return "Waiting for this coin's first minute candles."
     k = cpx / entry
     if hi and hi >= M.CHART_ARM and lvl:
@@ -352,7 +352,7 @@ SB_JS = r"""
   var root=document.documentElement,url=String(root.getAttribute('data-sb-url')||'').replace(/\/+$/,''),key=root.getAttribute('data-sb-key')||'';
   var card=document.querySelector('[data-sb]');
   if(!card||!/^https:\/\/[^\s\/]+$/.test(url)||!key||!window.fetch)return;
-  var EVERY=45000,next=0,busy=false,MINUS='−',ARM=""" + repr(M.CHART_ARM) + r""",TRAIL=""" + repr(M.CHART_TRAIL) + r""";
+  var EVERY=45000,next=0,busy=false,MINUS='−',ARM=""" + repr(M.CHART_ARM) + r""",TRAIL=""" + repr(M.CHART_TRAIL) + r""",UX=""" + repr(M.UNIT_X) + r""";
   var WHY=""" + json.dumps(SB_WHY, ensure_ascii=False) + r""";
   function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
   function pct(x){var v=Math.round(100*(x-1));return (v>0?'+':(v<0?MINUS:''))+Math.abs(v)+'%';}
@@ -375,6 +375,7 @@ SB_JS = r"""
         gone.push(sym+' '+eur(v));return;}
       if(!w||typeof w!=='object')return;
       var cpx=n(w.cpx)||n(b.getAttribute('data-sb-cpx')),m=n(w.now);watched.push(sym);
+      if(cpx&&entry&&(cpx/entry>UX||cpx/entry<1/UX))cpx=null;     // the pool's other coin (memebot.UNIT_X): no chart of its own yet
       if(now&&m&&cpx&&entry){var c=m*cpx/entry;now.textContent='now '+pct(c);now.className='sb-now '+(c>1.004?'good':(c<0.996?'bad':''));}
       if(pl)pl.textContent=plan(entry,cpx,n(w.hi),n(w.lvl));
     });
