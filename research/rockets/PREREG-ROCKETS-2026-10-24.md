@@ -1,0 +1,428 @@
+# Pre-registration: what do the 10x coins depend on? (24 Oct 2026, fake money only, research only)
+
+Written before any outcome was split by any of the facts below. Seen before writing: the number of graduations, rockets and
+zeros per window and entry minute (no split), and the spread of the launch facts in history2 (no outcome). Nothing found here is
+built into the Pick, the Radar or the Learning Pick; that needs the user's own yes.
+
+## The question
+
+The user (24 Oct, 08:10 UTC): keep going until it is clear what the rockets depend on. Meant: which facts, known at the moment one
+could still buy, separate the coins that go 10x from the ones that go to zero, and is any of them good enough to buy on.
+
+## What is already done and is not repeated
+
+Chart and activity rules (213k grid, ~1.5 million rules over five windows, PR #42), the Radar's model with wallet memory (wallets
+with earlier 3x wins), earlier entry at 5-20 minutes, 134 exit rules, the AI exit, smart wallets and KOL copying, dev/holder
+factors (RugCheck, Jupiter, creator sold), social signals the bot logs, pump.fun comments, 18 call-group variants. All failed.
+This study only uses facts none of those used at scale: who launched the coin and how, what it is called, and when.
+
+## Data
+
+Every pump.fun graduation with a start SOL side of 10 or more in the five windows of PR #42: w1 25 Apr-24 May, w2 25 Jun-24 Jul
+(GeckoTerminal candles), w3 10 Aug-9 Sep, w4 10 Sep-8 Oct (history2, from every swap), w5 9-21 Oct (GeckoTerminal). Five-minute
+USD candles of the first 48 hours (branches monthsdata, monthsh2). Launch facts: history2's create records (ticker, name, creator,
+creation time) for w3/w4; pump.fun's public coin data for all windows (research/rockets/meta_fetch.py, branch rocketsmeta), if it
+answers from GitHub's runners.
+
+## Entries and outcomes
+
+- Entry at E = 5 and E = 30 minutes after the graduation, at the close of the last five-minute candle closed before then; one
+  entry per coin and E. Coins without a trade before the entry are left out. In w3/w4 an entry whose hour before or six hours
+  after touches a recorder outage of 10 minutes or more is left out (as PR #42).
+- rocket = a five-minute close at 10x the entry price or more within 24 hours. zero = the close 24 hours after the entry at 0.1x
+  or less. Closes only, no wicks.
+- Money: a 20 EUR paper ticket with the Radar's paper fees (0.81 EUR in, 0.5 % but at least 0.81 EUR out), on five-minute
+  closes, three sell rules fixed now: S1 no stop / 10x / 24 h (wait for the rocket), S2 -50 % / 10x / 24 h, S3 -30 % / 11x / 6 h
+  (the bots' rule K). A stop fills at the close that crosses it or the stop price, whichever is lower; a target at the target.
+  Cost allowance 0.60 EUR per trade (3 points at 20 EUR, PREREG-REVIEW-2026-11-04.md).
+
+## The facts tested (each known at the entry, buckets fixed now)
+
+| # | fact | buckets |
+|---|---|---|
+| F1 | creator's earlier graduations (same creator wallet, in our data, within the 30 days before) | 0 / 1-2 / 3-9 / 10+ |
+| F2 | creator had an earlier rocket (an earlier graduation, at least 24 h 5 min before, that was a rocket at E = 5) | yes / no |
+| F3 | bonding curve time: minutes from creation to graduation | up to 1 / 1-10 / 10-60 / 60-360 / over 360 |
+| F4 | copycat ticker: earlier graduations with the same ticker (upper case, trimmed) in the 7 days before | 0 / 1-2 / 3-9 / 10+ |
+| F5 | ticker or name in Chinese, Japanese or Korean script | yes / no |
+| F6 | hour of the graduation, UTC | 0-6 / 6-12 / 12-18 / 18-24 |
+| F7 | weekend (Saturday or Sunday, UTC) | yes / no |
+| F8 | crowding: graduations in the 24 hours before | terciles of the fit windows |
+| F9 | SOL/USD change over the 24 hours before the entry (Binance hourly closes) | terciles of the fit windows |
+| F10 | links set at launch (pump.fun data: X, Telegram, website) | 0 / 1 / 2 / 3 links |
+| F11 | the X link points to a single post (status) / a profile or community / none | three groups |
+
+F1-F4 count only graduations inside the five windows, so creators and tickers active in the missing months are undercounted at the
+start of w1, w2 and w3. F10/F11 only if pump.fun answers; F1-F5 for w1/w2/w5 only from pump.fun as well.
+
+## Split
+
+Fit windows w1, w2, w3; unseen windows w4 + w5 (10 Sep-21 Oct). A fact only available in w3/w4(/w5) is fit on
+w3 and judged on w4 (+ w5 where available). Nothing from w4/w5 is used to choose a bucket, a cut, a sell rule or a model.
+
+## Part A: does the fact move the odds of a rocket?
+
+For each fact and E: on the fit windows the bucket with the highest rocket rate among buckets with at least 200 entries is the
+favoured bucket. On the unseen windows its rocket rate is compared with all other entries (one-sided two-proportion z test in the
+direction found on the fit windows). Holm over all fact x E pairs at 5 %. The same for the zero rate (favoured = lowest zero rate).
+A fact "explains rockets" only if it passes Holm on the unseen windows; its size is reported as the rate ratio with a 95 % interval
+(bootstrap over days).
+
+## Part B: can one make money with it?
+
+For each fact and E: on the fit windows the bucket x sell rule with the highest mean per trade (at least 200 entries) is the
+candidate. On the unseen windows it holds only if all of: at least 40 trades; mean after the 0.60 EUR allowance above 0; the 1 %
+one-sided bootstrap lower bound (20,000 draws over trades), divided by the number of candidates (Bonferroni), above 0; still above
+0 without its single best trade.
+
+## Part C: all facts together
+
+A LightGBM classifier (fixed settings: 200 trees, learning rate 0.05, 31 leaves, minimum 50 rows per leaf, seed 7) on all facts of
+F1-F11 that exist in the windows used, trained on the fit windows to predict a rocket, separately for E = 5 and E = 30. Reported:
+the AUC on the unseen windows (does it explain rockets at all), and the money of its top 1 %, 2 % and 5 % on the unseen windows
+(cuts from the fit windows' score distribution) under S1-S3, judged by the Part B test with Bonferroni over the 18 candidates.
+
+## Also reported (description, no test)
+
+Every rocket at E = 5 and E = 30 as a list (window, time, ticker, market cap at entry, peak multiple, minutes to 10x, lowest point
+before, close after 24 h), and how the rockets differ from the other coins on the facts above.
+
+## If nothing holds
+
+Say so plainly, and name what it would take: data that costs money or a login (bundle and sniper detection per launch from paid
+RPC credits, X engagement from the paid X API, Telegram calls with the user's own key, wallet labels from Nansen/Arkham-type
+services).
+
+## Amendment 1 (24 Oct, ~08:30 UTC, before any fact result was read)
+
+Checking the rocket list (no split by any fact) showed "rockets" of 400x to 5,800x from a market cap of $1,400-7,700: pools that
+were sold down to well under 1 SOL, where a buy of a few hundred dollars makes a 10x and a 20 EUR ticket would move the price
+itself. So every entry also needs a pool liquidity of at least $10,000 at the entry (two times the SOL side, from the start
+reserves and the price, SOL/USD from Binance, as research/check_months.py). With it: E = 5 50,683 entries, 1,089 rockets (2.15 %);
+E = 30 28,279 entries, 423 rockets (1.5 %). The result of a shuffled-outcome null run (no information) was looked at to check the
+code; one run with the real outcomes and history2's facts only was made and deleted unread.
+
+## Amendment 2 (24 Oct, ~11:15 UTC, before any fact result was read)
+
+pump.fun's single-coin form answered 404 from GitHub's runners (run 1, 08:20-09:08 UTC), so run 1 got names and tickers only, from
+GeckoTerminal (85 % of the coins in every window, the same 99.2 % of the time as history2's tickers, and missing about as often for
+rockets and zeros). Run 2 found no form; run 3 (from 11:01 UTC) tries more forms and appears to be fetching. The reported result
+is the one run on whatever launch facts are on branch rocketsmeta when run 3 ends; no run with real outcomes is made before that.
+A fact counts as present in a window when at least 80 % of that window's entries have it (as in check_rockets.py).
+
+## Amendment 3 (24 Oct, ~11:25 UTC, before any fact result was read)
+
+The user asked (11:16 UTC) not to rely on pump.fun alone. A second source reads the launch facts from the chain
+(research/rockets/meta_chain.py, branch rocketschain): name and ticker from the mint's own Token-2022 metadata (or a Metaplex
+account), the creator wallet stored in pump.fun's bonding-curve account, the creation time from that account's oldest transaction
+(for coins without history2's creation time; left empty for curves with more than 8,000 transactions), and the X / Telegram /
+website links from the metadata file on IPFS. Each fact is taken from the first source that has it, in this order: history2,
+the chain, pump.fun's API, GeckoTerminal (names only). The report says which source gave what. The reported run waits for both
+fetches.
+
+## Amendment 4 (24 Oct, ~11:35 UTC, before any fact result was read): media and the coin's picture
+
+The user asked (11:27 and 11:28 UTC) to take media into account and to check whether the pictures matter ("sind ja Meme Coins").
+Added facts, each known at the entry, buckets fixed now, tested exactly like F1-F11 (parts A-C, same split, same Holm and
+Bonferroni over all facts together):
+
+| # | fact | buckets |
+|---|---|---|
+| F12 | news of the day: a word of the name or ticker (4+ letters, upper/lower case ignored) is a word of one of the 1,000 most-read English Wikipedia articles of the day before the graduation (Wikimedia's free pageview API; Main_Page, Special: and the like left out) | yes / no |
+| F13 | theme heat: graduations in the 24 hours before whose name shares such a word with this coin's name | 0 / 1-4 / 5-19 / 20+ |
+| F14 | fresh post: the X link is a post (status), and the post's own time stamp (in its id) is at most 1 h / 1-24 h / older than 24 h before the coin's creation | no post / up to 1 h / 1-24 h / older |
+| F15 | the coin's picture was already used: the same image file (same IPFS content id) is the picture of another graduation of the 7 days before | yes / no |
+| F16 | how it was launched: the metadata file sits on IPFS and says createdOn pump.fun (pump.fun's own page) / anything else (launch and sniper tools, own hosts) | pump.fun / other |
+| F17 | video coin: the metadata file has a video or animation link | yes / no |
+| F18 | description length (characters) | 0 / 1-50 / 51-200 / over 200 |
+
+Historic X mention counts, likes or follower numbers at launch need the paid X API (or LunarCrush's paid plan); they are not
+tested, and today's counts would be hindsight. Google Trends has no free API reachable from here.
+
+What the picture shows (blind sample, description only, not part of parts A-C): from the unseen windows w4 + w5, 150 rockets at
+E = 5 and 150 other coins of the same windows (random, seed 7), pictures fetched from IPFS, shuffled, shown without any label as
+numbered contact sheets and sorted by hand into fixed groups before the key is opened: animal / person (photo) / drawn or cartoon
+character or known meme / text, logo or symbol / object, scene or other / no picture. Reported: the share of each group among
+rockets and others, a chi-square test of the whole table and two-proportion tests per group with Holm. With 150 a side only large
+differences (about 12 points or more) can show; a picture group that "matters" here is a lead for a bigger test, not a found rule.
+
+## Amendment 5 (24 Oct, ~11:35 UTC, before any fact result was read): the pictures of all coins, not a sample
+
+The user asked (11:30 and 11:32 UTC) for the picture check on more coins. So every coin whose metadata file names a picture gets
+it read by an image model instead of only a hand-sorted sample (research/rockets/images.py, workflow rockets-images.yml, branch
+rocketsimages): the picture is downloaded from IPFS, and OpenAI's CLIP model (openai/clip-vit-base-patch32, free, run on GitHub's
+machines) scores it against six fixed descriptions. Added facts, tested exactly like F1-F18:
+
+| # | fact | buckets |
+|---|---|---|
+| F19 | what the picture shows: the best-scoring of "a photo of a real animal" / "a cartoon drawing of an animal" / "a photo of a real person" / "a cartoon drawing of a person or character" / "a logo or text or symbol" / "a photo of an object or a place" | those six |
+| F20 | animated picture (a GIF with more than one frame) | yes / no |
+| F21 | look-alike picture: a picture of another graduation of the 7 days before is nearly the same (64-bit average hash, at most 4 bits apart) | yes / no |
+| F22 | picture fits the name: how CLIP ranks the coin's own name ("a picture of <name>") against 20 other coins' names for this picture, 0 = worst, 1 = best | terciles of the fit windows |
+
+The hand-sorted sample of amendment 4 becomes a check of the model instead: 120 pictures drawn at random (seed 7, no outcome
+known or looked up), sorted by hand into the six groups before the model's groups are opened; reported as how often hand and
+model agree. All facts F1-F22 share one Holm family in part A and one Bonferroni count in part B.
+
+## Amendment 6 (24 Oct, ~12:20 UTC, before any fact result was read): every launch, not only the graduations
+
+The user asked (11:30-11:35 UTC) for as many coins as possible ("500000+ am besten"). The five windows hold about 72,000
+graduations, which is all of them, and only those have the price candles the money test needs. But pump.fun launches far more
+coins than graduate: the chain shows 28,000-36,000 launches a day (probe of 24 Oct, research/rockets/launches.py), about 4
+million in the windows. So a second universe is added for the launch facts only. There is no money test on it.
+
+**Universe L.** pump.fun launches created in w2, w3, w4 or w5, leaving out each window's last 2 days (a coin needs time to
+graduate). The sources are two free datasets on HuggingFace:
+- w2 days (25 Jun to 13 Jul, without 3-4 Jul, the dataset's outage) come from Slinky21/Pumpfun_Memecoin_Corpus, tokens.parquet,
+  MIT license, 798,430 launches from 5 Jun to 14 Jul.
+- w3-w5 days (10 Aug to 19 Oct) come from Slinky21/Pumpfun_v2_dataset, the create events, CC-BY-4.0, read by its author's own
+  node.
+
+w1 has no free dataset, and reading its launch transactions on the chain runs at about 5 a second, so w1 is left out of
+universe L. Fit windows w2 + w3, unseen windows w4 + w5.
+
+Each dataset is used only if it passes all of these before any fact is computed (`launches.py verify`, result on branch
+rocketsprobe):
+1. In random hours (seed 7), at least 95 % of the chain's own launches (successful transactions signed by pump.fun's mint
+   authority) are in the dataset.
+2. Of 300 random rows checked against the chain, at least 98 % have the same name, ticker and creator, where the chain has them.
+3. At least 95 % of our graduations of its days are in it.
+
+A dataset that fails is dropped, its window leaves universe L, and the report says so.
+
+**Outcome L1, graduated.** The dataset's own graduation record (v2 graduate events, the corpus's graduated_at) or our
+graduation list. From the curve's start price a graduation is about a 15x, so L1 means "went 10x or more from its first price".
+For the metadata sample below, the curve account's complete flag is also read from the chain, and any disagreement is reported.
+
+**Outcome L2, took off later (could still be bought).** Graduated at least 10 minutes after the launch. Launches that graduated
+within 10 minutes are left out of L2: these are bundled, instant curves that nobody but the launcher could buy cheaply. All
+launches that did not graduate are the negatives.
+
+**Facts.** Each is known at the launch and its buckets are fixed now.
+- From the dataset rows, for every launch:
+  - L-F1: the creator's earlier launches in the 30 days before (0 / 1-2 / 3-20 / over 20).
+  - L-F1b: the creator's earlier graduations in the 30 days before (0 / 1-2 / 3+).
+  - L-F4: a launch of the 7 days before with the same ticker graduated (yes / no).
+  - L-F5: CJK script.
+  - L-F6: hour of the launch, UTC.
+  - L-F7: weekend.
+  - L-F8: launches in the hour before (terciles of the fit windows).
+  - L-F9: SOL/USD change over the 24 h before (terciles of the fit windows).
+  - L-F13: theme heat, meaning graduations of the 24 h before that share a name word.
+  - Counts are made inside universe L. The corpus may miss some launches, so in w2 the counts can come out low; that biases
+    towards finding nothing, not towards a false find.
+- From the metadata file on IPFS, for a random 600,000 launches of universe L (seed 7):
+  - L-F10, L-F11: links and X link type.
+  - L-F12: news of the day.
+  - L-F14: fresh post.
+  - L-F15: picture already used by a graduation of the 7 days before.
+  - L-F16: launched on pump.fun's own page.
+  - L-F17: video.
+  - L-F18: description length.
+  - All buckets as F10-F18.
+- From the picture, for a random 150,000 of those (seed 7): L-F19 to L-F22, as F19-F22.
+
+**Test.**
+- Part A as before: the favoured bucket is picked on w2 + w3 among buckets with at least 200 launches, then a one-sided z test
+  on w4 + w5. This is done for L1 and L2, with Holm over all L-facts × {L1, L2}.
+- The sample is so large that tiny differences pass, so a launch fact only "matters" if it passes Holm AND its rate ratio on
+  the unseen windows has a 95 % interval (bootstrap over days) with a lower end of at least 1.25.
+- Part C: the LightGBM of Part C, with the same settings, on all L-facts of the metadata sample. It is trained on w2 + w3 and
+  judged on w4 + w5 by AUC (95 % interval, bootstrap over days) and by the L2 rate of its top 1 / 2 / 5 %.
+
+**No money test on universe L.** A buy on the bonding curve before graduation cannot be simulated from our candles. A launch
+fact that matters is a lead only. The money test stays on the graduations, where F1-F22 are already registered, and nothing new
+is picked for it from universe L.
+
+Not used: Dune, Flipside and Bitquery (they need an account and key), pump.fun's API (it answers 404/403/530 from GitHub's
+runners), and the paid datasets (pumpdata.fun, Gumroad).
+
+## Amendment 7 (24 Oct, ~12:20 UTC, before any fact result was read): a rule must hold for at least one month
+
+The user (12:11 UTC): "eine Regel sollte mindestens seit einem Monat halten". So, in addition to everything above:
+- **Part B and Part C money cuts.** A candidate only holds if it also passes every Part B criterion on w4 alone. w4 is 10 Sep to
+  8 Oct, a full unseen month: at least 40 trades, mean after allowance above 0, Bonferroni bootstrap bound above 0, above 0
+  without its best trade. Its mean after allowance on w5 alone (9-21 Oct) must not be below 0.
+- **Part A, and the "matters" test of universe L.** A fact only counts if it passes on w4 alone as well: the same one-sided
+  test, Holm over the same family.
+- **Reporting.** w4 and w5 are always reported separately next to w4 + w5.
+- **Facts fit on w3 and judged on w4.** w4 is already the full month.
+
+The same bar applies to anything judged later, including the review of the live paper accounts. That review needs at least one
+month of live trades to count.
+
+## Amendment 8 (24 Oct, ~12:55 UTC, before any fact result was read): what the dataset check found, and what follows
+
+`launches.py verify` ran at 12:09-12:24 UTC (branch rocketsprobe, verify.json). Nothing about any fact was computed. It found:
+- **The corpus fails rule 3 of amendment 6.** Of our 4,777 graduations of its days, 3,935 are in it (82.4 %, rule: 95 %). It
+  misses whole days (18 Jun, 3 Jul, 12 Jul) and holds far fewer launches than usual on others (25 Jun, 2 Jul, 4 Jul). Its
+  half-hours that were running were complete (393 of 393 and 336 of 337 chain launches). As amendment 6 says, the corpus is
+  dropped and **w2 leaves universe L**.
+- **Pumpfun_v2 ends on 8 Oct, 03:30 UTC** (its newest file). It has no w5. Its count of our graduations (44,113 of 53,721) was
+  taken over 11 Aug - 21 Oct, which includes 13 days it does not cover, so rule 3 was not measured right. Its hour check found 0
+  chain launches in every hour: a bug of the check (the block read did not accept the newer transaction version, so the search
+  for a starting point found nothing in Sep and Oct; the corpus hours, in July, worked). So rules 1 and 3 are not yet decided.
+- **Names, tickers and metadata links agree** with the mint's own metadata on the chain in all rows that could be read (v2 200 of
+  200, corpus 198 of 198; one batch of 100 per dataset did not answer). **The creator agrees with the bonding curve's creator
+  field in 276 of 300 (v2) and 277 of 300 (corpus), 92 %.** Both datasets miss by the same amount, so the curve's field may have
+  been changed after the launch (pump.fun lets a creator hand over its fees). That is a guess until it is checked.
+
+What follows, all fixed before the next check runs:
+1. **verify2** (`launches.py verify2`) repeats the open checks with the bug fixed, for Pumpfun_v2 on its own launch days
+   10 Aug - 6 Oct, and for one more free dataset, **loopholetape/pumpfun-launches** (CC-BY-4.0, its `launches` subset of
+   27 Sep - 17 Oct, after its decoder fix), for w5:
+   - Rule 1, per dataset: in random half-hours (seed 7; 6 for v2 in 10 Aug - 6 Oct, 4 for loophole in 9-17 Oct) the chain's
+     launch transactions are read, and at least 95 % of the chain's launches (pooled over the half-hours) are in the dataset.
+     New, also at least 95 % of the dataset's rows in those half-hours are launches on the chain.
+   - Rule 2: 300 random rows each, against **their own launch transaction** (its CreateEvent: name, ticker, metadata link, creator;
+     v2 rows by their signature, loophole rows by the mint's oldest transaction where the mint has under 1,000). At least 98 %
+     the same. The curve's current creator is reported next to it. This replaces the curve's field for the creator, a change made
+     after seeing the 92 %, because the launch transaction is the chain's own record of who launched the coin.
+   - Rule 3: of our graduations of 11 Aug - 6 Oct (v2) and of 29 Sep - 17 Oct (loophole), at least 95 % are in it.
+   - Also reported: the two datasets on the days both cover (27 Sep - 6 Oct), launches in one and not the other, and whether the
+     creator and ticker agree.
+2. **Universe L** is then the launches of the datasets that pass, one row per mint (when both have a mint, its graduation
+   counts if any source has it). Launch days: w3 10 Aug - 7 Sep, w4 10 Sep - 6 Oct, w5 9 - 17 Oct (loophole's last day).
+   **Fit on w3, unseen w4 (the full month of amendment 7) and w5**, each reported on its own, as amendment 7 already says. A
+   window whose only dataset fails leaves universe L.
+3. **Mayhem-mode launches are left out of the tests** (both datasets mark them). pump.fun's own agent trades them, and a
+   mayhem curve can complete far below a real graduation (loophole's known issue KI-04), so "graduated" means something else for
+   them. They still count as history for the creator, ticker and crowding counts. Launches whose curve is quoted in another coin
+   than SOL stay in: a curve completes after the same rise whatever it is quoted in.
+4. **History.** The counting facts (L-F1, L-F1b, L-F4, L-F8, L-F13) count every launch of the datasets before the launch,
+   including days outside the windows. Pumpfun_v2 starts on 9 Aug, so in w3's first weeks the 30-day creator counts are cut
+   short; w4 has its full 30 days behind it.
+5. **Graduation of a loophole row**: its `graduated` is 1, or its curve is complete and not quoted in SOL (its KI-03), or the
+   mint is in our graduation list; the time is launch + `migrate_dt_s`, else our list's time. Rows its file leaves unresolved
+   (`graduated` and `curve_complete` empty) are left out of the tests.
+6. **Metadata facts (L-F10 to L-F18) only count where the metadata file was read.** The share read is reported for graduated
+   and for not graduated launches, per window. If the two differ by more than 5 points in a window, every metadata fact of that
+   window is marked "maybe biased by which files could be read" in the report, whatever its result.
+7. The metadata sample of 600,000 and the picture sub-sample of 150,000 are drawn (seed 7) from the test rows of universe L
+   (w3, w4, w5, mayhem left out), sorted by mint.
+
+## Amendment 9 (24 Oct, ~13:10 UTC, before any fact result was read): verify2's result
+
+`launches.py verify2` ran at 12:34-13:00 UTC (verify2.json on branch rocketsprobe). Nothing about any fact was computed.
+- **Pumpfun_v2, rule 2: passes.** 292 of 300 rows found their launch transaction; name, ticker, metadata link and creator are
+  the same in 292 of 292. The curve's current creator field is the launch creator in only 268 of 292; in the 24 others the
+  dataset has the launch creator (24 of 24). So the curve field changes after some launches, and the dataset is right.
+- **Pumpfun_v2, rule 3: passes.** 42,945 of our 44,323 graduations of 11 Aug - 6 Oct are in it (96.9 %).
+- **loopholetape, rule 2: fails.** 247 of 300 rows found their launch transaction; name, ticker and metadata link agree in 247 of
+  247, but the creator only in 208 of 247 (84.2 %, rule: 98 %). On the days both datasets hold (27 Sep - 6 Oct) the two have
+  the same launches (465,774 of 471,066 v2 rows are in loophole, 465,774 of 470,762 loophole rows are in v2), but the same
+  creator for only 87.2 % of them. As amendment 6 says, loophole is dropped and **w5 leaves universe L**. Its rule 3 would have
+  passed (14,997 of 15,241, 98.4 %).
+- **Rule 1 is still not measured**: the chain's list came back empty in every half-hour again (the search for a starting point
+  still finds nothing in Sep and Oct). `launches.py verify3` reads the chain's list back from a dataset launch just after each
+  half-hour instead (the dataset only gives the starting point; every signature of the half-hour then comes from the chain),
+  in the same 6 half-hours (seed 7: 12 Sep 12:30, 15 Sep 04:30, 18 Sep 15:00, 23 Sep 23:30, 1 Oct 00:00, 3 Oct 16:30 UTC),
+  with the same two 95 % bars. If Pumpfun_v2 fails it, universe L is empty and the report says so. (First try, 13:04 UTC:
+  paging back from the chain's newest signature got an empty answer after 15 hours of history, so no half-hour was read.)
+
+So universe L is Pumpfun_v2 alone: **fit w3 (10 Aug - 7 Sep), unseen w4 (10 Sep - 6 Oct)**, the full month of amendment 7.
+Mayhem-mode launches are history only (amendment 8). There is no w5 in universe L; w5 stays in the graduation study.
+
+**verify3 result (13:08 UTC, verify3.json):** Pumpfun_v2 passes rule 1. Of the chain's 5,159 launches in the 6 half-hours,
+5,033 are in it (97.6 %; 11 more signatures could not be read, counting them as missing gives 97.3 %). The weakest half-hour is
+18 Sep 15:00 (839 of 965), a day on which the dataset is known to be short. 4,706 of its 4,706 rows in those half-hours are
+launches on the chain. So **universe L = Pumpfun_v2: 10 Aug - 7 Sep (fit, w3) and 10 Sep - 6 Oct (unseen, w4)**, mayhem
+launches as history only. Build: `launches.py build` with SOURCES=v2 (rockets-luniverse.yml, branch rocketslaunches).
+
+## Amendment 10 (24 Oct, ~13:15 UTC, before any fact result was read): universe L as built, and one interim look
+
+Universe L (branch rocketslaunches, summary.json): 2,209,323 launches in all; test rows (not mayhem) **w3 821,715** (20,324
+graduated, 3,582 of them at least 10 minutes after the launch) and **w4 739,407** (22,244 graduated, 3,230 after 10 minutes);
+206,314 and 277,836 mayhem launches left out; 648,201 more rows as history. Of our graduations of these days, 19,660 of 20,681
+(w3) and 21,175 of 21,521 (w4) are in it.
+
+The user asked for results per stage. So Part A is run once now on the facts that need no metadata file (L-F1, L-F1b, L-F4 to
+L-F9, L-F13), after a shuffled-outcome run as a code check, and reported as an **interim** result. The final verdict on universe
+L is the later run with all L-facts in one Holm family (its p-value bar is stricter, so an interim pass can still fail there).
+After this interim look nothing in the plan, the buckets or the code changes except bug fixes, and any bug fix is reported.
+
+## Amendment 11 (24 Oct, ~17:25 UTC, before any media or picture fact result was read): reading the metadata files again
+
+The chain run of 24 Oct (rockets-chain.yml, branch rocketschain, 17:04 UTC) reached 48,300 of the 71,978 graduations before
+its time budget ran out, and read the metadata file of only 18,607 of them (38.5 %; ipfs.io links 34.7 %). It also wrote
+missing values as the text "NaN", which made every coin look as if it had a file; this bug is fixed in commit 10801c2 (the
+readers treat that text as empty), before any fact was computed on it. Under the 80 % rule of the plan, the media facts
+(F10-F18) and the picture facts (F19-F22) could not have been tested on that data.
+
+A probe (research/rockets/gateways.py, rockets-gateways.yml; gateways.json on branch rocketsprobe, 17:25 UTC) asked 16 IPFS
+gateways from GitHub's machines for 300 links that had failed and 100 that had worked (seed 7, no outcome used):
+**ipfs.filebase.io served 297 of the 299 IPFS links** (232 of 234 that had failed), pump.mypinata.cloud 194 (403 for the rest),
+gateway.pinata.cloud 136 (429, rate limit), and ipfs.io answered every request with 429: the reason for the low read rate. The
+other 12 gateways served none. Of the links that are not IPFS, metadata.j7tracker.io answered 404 for all 56 that had failed:
+that host has deleted those files, and no free source has them.
+
+So, with no change to any fact, bucket or test:
+- every metadata file not read yet is asked for again (meta_chain.py files), from ipfs.filebase.io first, then
+  pump.mypinata.cloud and gateway.pinata.cloud, and so are the bare ipfs:// links the first run skipped; the 23,678
+  graduations not reached yet are read the same way (chain run 6). The pictures (images.py) and universe L's metadata files
+  (launches.py mshard) use the same gateways.
+- metadata.j7tracker.io held 17-19 % of the w1 and w2 links, so the media and picture facts may stay below 80 % in w1 and w2.
+  The plan's own rule then applies: such a fact is fit on w3 alone and tested on w4 and w5 (as for the facts known only in
+  w3 and w4). The report gives the coverage per window.
+- The Helius key answered only 429 from about 14:19 UTC; the code then uses the public Solana RPC, which is slower but reads
+  the same data.
+
+**Chain run 7 (19:44 UTC, still no outcome used):** every one of the 71,978 graduations has a chain row now, and 58,043
+metadata files are read (80.6 %). Share of the E5 entries with a file: w1 76.3 %, w2 77.2 %, w3 78.3 %, w4 82.9 %, w5 87.4 %.
+ipfs.filebase.io answered 429 when two processes on one machine asked it more than about 2.5 times a second, and the public
+RPC rate-limited 52 % of the curve-history calls (6,630 coins with sig_error, most of them in w1, w2 and w5). One more pass
+(meta_chain.py replan) asks again for those coins and for every file still unread, at half the pace. The 80 % rule is applied
+to whatever that pass gives; nothing else changes.
+
+## Amendment 12 (25 Oct, ~04:05 UTC, before the graduation study's real run): the graduation data as it stands
+
+No outcome has been looked at for any media or picture fact. The data the real run of check_rockets.py uses:
+- branch rocketschain (chain run 8, 24 Oct 22:48 UTC, wiki list filled 25 Oct 03:36 UTC): all 71,978 graduations; 63,032
+  metadata files read (87.6 %); the Wikipedia list has 179 of 182 days (6, 8 and 10 Oct stay empty after slow retries).
+- branch rocketsimages (25 Oct 03:10 UTC): 60,382 of the 63,003 picture links read by CLIP (95.8 %; 1,528 answered 404, 840
+  answered 403).
+- hand check (amendment 5): 117 of the 120 sample pictures could be read; sorted by hand into the six groups first (the list's
+  SHA-256 a9e108d2...dab was noted before CLIP's groups were opened), then compared: **CLIP agrees on 82 of 117 (70.1 %,
+  Cohen's kappa 0.59)**; on photo / drawing / logo alone 78.6 %. CLIP's most common miss: drawn characters (Pepe, cartoon
+  people) called "a photo of a real person" (8 of 20). F19 is tested as planned; the report states this agreement next to it.
+- share of the E5 entries ($10k pools) that have each fact, per window (w1 / w2 / w3 / w4 / w5): links, X type, picture reused,
+  other launchpad, video, description 81.2 / 83.7 / 87.6 / 93.5 / 98.4 %; fresh X post 80.7 / 78.8 / 87.2 / 93.5 / 93.8 %;
+  news of the day 100 / 100 / 100 / 95.5 / 81.7 %; the picture facts F19-F22 79.9 / 82.9 / 81.7 / 88.8 / 95.8 %. By the
+  plan's rule, a fact under 80 % in w1 or w2 is fit on w3 and tested on w4 and w5 (F14, F19-F22); all others use w1-w3 and
+  w4 + w5.
+- four shuffled-outcome runs on exactly this data (NULL = 21, 22, 23, 24): no fact counts in part A, nothing holds in part B,
+  part C's unseen AUC 0.47-0.53.
+
+The real run follows now, once; after it nothing in the plan, buckets or code changes except bug fixes, and any bug fix is
+reported.
+
+## Amendment 13 (26 Oct, ~03:20 UTC, before universe L's final run): the launch data as it stands
+
+No outcome has been looked at for any metadata or picture fact of universe L; only shuffled-outcome code checks ran on it. The
+data the real run of check_launches.py uses:
+- branch rocketslaunches (amendment 10): w3 821,715 and w4 739,407 test launches, unchanged.
+- branch rocketslmeta (25 Oct 18:20 UTC; rockets-lmeta.yml runs 1-3, run 2's merge redone by rockets-lmeta-final.yml): the
+  metadata sample of 600,000 (seed 7; w3 315,926, w4 284,074). **418,118 files read (w3 62.0 %, w4 78.3 %).** 173,732 answered
+  404: 26.9 % of the sample's metadata links point to metadata.j7tracker.io (w3 33.2 %, w4 19.9 %), a launch tool that has
+  deleted 99.5 % of them, and no free source has those files. 7,413 still failed after three passes (4,697 answered 400 by
+  both IPFS gateways; the rest are hosts that time out or are down). As amendment 8 rule 6 says, the metadata facts count only
+  where the file was read, the share read is reported for graduated and not graduated launches per window, and a gap of more
+  than 5 points marks that window's metadata facts "maybe biased by which files could be read".
+- branch rocketslimages (26 Oct 02:53 UTC, rockets-limages.yml runs 1-2): the picture sample of 150,000 (seed 7), drawn from the 418,118 files read; 149,942 name a
+  picture. **146,901 pictures read by CLIP** (98.0 % of the links; 1,374 answered 404, 728 answered 403, 305 were not a readable picture, 202 were over 4 MB, 432 timed out, hit server errors or were empty).
+- Bug fixes since amendment 10, made before any real result of these facts:
+  1. check_launches.py computed the X post's age (L-F14) in 64-bit integers and stopped on post ids too large to be real (223
+     of 90,460 X post links in the first 290,700 files). It now uses floats, as check_rockets.py always did, so both studies
+     treat such ids alike: an id that decodes to a date after the launch counts as "up to 1 h", one before 2020 as "older". In
+     the graduation study 35 of 17,367 X post links are of this kind; that result is not changed.
+  2. launches.py mfinal stopped on a metadata name holding half of an emoji (a lone UTF-16 surrogate); such characters are now
+     "?". This only touches the file's own name, which images.py uses for the name fit (L-F22).
+  3. images.py stopped on a picture 1 pixel high (CLIP's processor guessed its colour layout from the shape); the layout is
+     now given. For every other picture the input is the same.
+- Shuffled-outcome code checks: NULL = 31 (the first 290,700 metadata files, no pictures), 32 (the same with made-up pictures),
+  40 (all metadata, the first 116,103 pictures): no fact passes Holm, part C's unseen AUC 0.49-0.50. On exactly the data
+  above, NULL = 41, 42, 43, 44: no fact passes Holm, part C's unseen AUC 0.50-0.51 (results/L_final_null_2026-10-26.json).
+
+The real run follows now, once: all L-facts (L-F1, L-F1b, L-F4 to L-F22) x {L1, L2} in one Holm family, fit w3, unseen month
+w4, with the "matters" bar of amendment 6 (Holm on w4 and a day-bootstrap ratio interval starting at 1.25 or more); part C on
+the metadata sample. After it nothing in the plan, buckets or code changes except bug fixes, and any bug fix is reported.

@@ -1,0 +1,36 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): which IPFS gateways serve the coins' metadata
+# files from GitHub's machines (research/rockets/gateways.py probe): 300 links that failed in the chain run of 24 Oct and 100
+# that worked, asked of 16 gateways one request at a time -> gateways.json on branch "rocketsprobe" (next to the files already
+# there). One job. Nothing is bought; no key or secret beyond the run's own token. Touches no bot branch and no paper account.
+# Started by a push of this file or gateways.py on this branch, or by hand.
+name: rockets-gateways
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-gateways.yml, research/rockets/gateways.py]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rockets-gateways
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git fetch -q --depth 1 origin rocketschain && git show FETCH_HEAD:chain.parquet > chain.parquet
+          python3 research/rockets/gateways.py probe chain.parquet gateways.json
+          mkdir -p out && (git fetch -q --depth 1 origin rocketsprobe && git archive FETCH_HEAD | tar -x -C out || true)
+          cp gateways.json out/
+          cd out && git init -q && git checkout -q -b rocketsprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketsprobe $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketsprobe

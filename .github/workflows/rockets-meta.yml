@@ -1,0 +1,81 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): the launch facts (name, ticker, creator wallet,
+# creation time, X / Telegram / website links set at launch) of every pump.fun graduation of the five month windows, from
+# pump.fun's public coin data, GeckoTerminal names where pump.fun gives nothing -> branch "rocketsmeta".
+# Nothing is bought; no key or secret beyond the run's own token is used. Touches no bot branch and no paper account.
+# Started by hand only (it was started by pushes until 24 Oct). Run 1 (24 Oct) got GeckoTerminal
+# names only (pump.fun's coin form answered 404); run 2 probes other pump.fun forms and keeps run 1's names for the rest.
+name: rockets-meta
+on:                                 # by hand only since 24 Oct: pump.fun's API answers nothing useful from GitHub's runners
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: rockets-meta
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          mkdir -p md h2
+          git fetch -q --depth 1 origin monthsdata && git archive FETCH_HEAD | tar -x -C md
+          git fetch -q --depth 1 origin monthsh2 && git show FETCH_HEAD:meta_h2.parquet > h2/meta_h2.parquet
+          python3 research/rockets/meta_fetch.py plan md h2 plan
+      - uses: actions/upload-artifact@v4
+        with: {name: plan, path: "plan/plan.json", retention-days: 5}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      max-parallel: 3                # the account has few runners: more than 3 research jobs at once hold up the bots' own scans
+      matrix:
+        i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    env:
+      PF_GAP: "1.0"
+      GT_GAP: "2.2"
+      SKIP_GT: "1"
+      SHARD_MINUTES: "290"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with: {name: plan}
+      - run: python3 research/rockets/meta_fetch.py shard plan.json ${{ matrix.i }} 10 meta_${{ matrix.i }}.json.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "meta-${{ matrix.i }}", path: "meta_*.json.gz", retention-days: 5}
+  final:
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "meta-*", merge-multiple: true, path: src}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p old
+          if git fetch -q --depth 1 origin rocketsmeta; then git archive FETCH_HEAD | tar -x -C old; fi
+          python3 research/rockets/meta_fetch.py final src out old
+          printf 'Launch facts (pump.fun public coin data; GeckoTerminal names as fallback) of the pump.fun graduations of the five month windows (25 Apr-21 Oct 2026, start SOL side >= 10), made by research/rockets/meta_fetch.py. Fake money only.\n' > out/README.md
+          cd out && du -sh .
+          git init -q && git checkout -q -b rocketsmeta && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketsmeta $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketsmeta

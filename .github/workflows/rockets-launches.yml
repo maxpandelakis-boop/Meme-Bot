@@ -1,0 +1,43 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendment 6): every pump.fun launch of the five
+# month windows, not only the graduations (research/rockets/launches.py), for the user's ask to compare as many coins as possible.
+# Now: verify3 of amendment 9: Pumpfun_v2 against the chain's own launch list in the 6 half-hours of verify2, the list read
+# back from its newest signature. Result -> branch "rocketsprobe" (verify3.json next to verify.json and verify2.json). Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or
+# saved. Touches no bot branch and no paper account. Started by hand (verify3 is done).
+# One job at a time (the account has few runners).
+name: rockets-launches
+on:
+  workflow_dispatch:              # by hand only since verify3 passed: launches.py is shared with rockets-lmeta.yml
+permissions:
+  contents: write
+concurrency:
+  group: rockets-launches
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          mkdir -p md h2
+          git fetch -q --depth 1 origin monthsdata && git archive FETCH_HEAD | tar -x -C md
+          git fetch -q --depth 1 origin monthsh2 && git show FETCH_HEAD:meta_h2.parquet > h2/meta_h2.parquet
+      - env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+        run: python3 research/rockets/launches.py verify3 work md h2
+      - if: always()
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p out && (git fetch -q --depth 1 origin rocketsprobe && git archive FETCH_HEAD | tar -x -C out || true)
+          cp work/verify3.json out/ 2>/dev/null || true
+          printf 'Checks of the free pump.fun launch datasets against the chain (research/rockets/launches.py verify). Fake money only.\n' > out/README.md
+          cd out && git init -q && git checkout -q -b rocketsprobe && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketsprobe $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketsprobe

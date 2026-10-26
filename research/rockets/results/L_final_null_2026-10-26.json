@@ -1,0 +1,72 @@
+{
+ "NULL=31": {
+  "data": "first 290,700 metadata files, no pictures",
+  "partA_records": 32,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.499,
+   "L2": 0.5
+  }
+ },
+ "NULL=32": {
+  "data": "first 290,700 metadata files, made-up pictures",
+  "partA_records": 38,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.502,
+   "L2": 0.489
+  }
+ },
+ "NULL=40": {
+  "data": "all metadata, first 116,103 pictures",
+  "partA_records": 40,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.498,
+   "L2": 0.497
+  }
+ },
+ "NULL=41": {
+  "data": "final data (amendment 13)",
+  "partA_records": 40,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.498,
+   "L2": 0.5
+  }
+ },
+ "NULL=42": {
+  "data": "final data (amendment 13)",
+  "partA_records": 40,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.505,
+   "L2": 0.51
+  }
+ },
+ "NULL=43": {
+  "data": "final data (amendment 13)",
+  "partA_records": 40,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.502,
+   "L2": 0.503
+  }
+ },
+ "NULL=44": {
+  "data": "final data (amendment 13)",
+  "partA_records": 40,
+  "holm_unseen": [],
+  "matters": 0,
+  "partC_unseen_auc": {
+   "L1": 0.502,
+   "L2": 0.503
+  }
+ }
+}

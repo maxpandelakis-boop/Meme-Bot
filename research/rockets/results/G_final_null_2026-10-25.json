@@ -1,0 +1,61 @@
+{
+ "what": "shuffled-outcome runs (NULL seed) on the final graduation data, amendment 12",
+ "runs": {
+  "21": {
+   "partA_counts": 0,
+   "partB_holds": 0,
+   "partC_unseen_auc": [
+    [
+     5,
+     0.506
+    ],
+    [
+     30,
+     0.476
+    ]
+   ]
+  },
+  "22": {
+   "partA_counts": 0,
+   "partB_holds": 0,
+   "partC_unseen_auc": [
+    [
+     5,
+     0.491
+    ],
+    [
+     30,
+     0.525
+    ]
+   ]
+  },
+  "23": {
+   "partA_counts": 0,
+   "partB_holds": 0,
+   "partC_unseen_auc": [
+    [
+     5,
+     0.494
+    ],
+    [
+     30,
+     0.47
+    ]
+   ]
+  },
+  "24": {
+   "partA_counts": 0,
+   "partB_holds": 0,
+   "partC_unseen_auc": [
+    [
+     5,
+     0.5
+    ],
+    [
+     30,
+     0.515
+    ]
+   ]
+  }
+ }
+}

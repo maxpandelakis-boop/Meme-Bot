@@ -1,0 +1,115 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): the launch facts of every pump.fun graduation of
+# the five month windows from the Solana chain and the coin's own metadata file (research/rockets/meta_chain.py): name, ticker,
+# creator wallet (pump.fun's bonding-curve account), creation time (the metadata account's first transaction), the X / Telegram /
+# website links of the metadata file -> branch "rocketschain". A second source next to pump.fun's API (rockets-meta.yml). A later run
+# goes on with the coins an earlier one did not reach and asks again for the metadata files it could not read (gateways from the
+# probe of rockets-gateways.yml).
+# Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or saved; without it the public Solana RPC is used.
+# Touches no bot branch and no paper account. Started by hand.
+name: rockets-chain
+on:
+  workflow_dispatch:              # by hand only since run 8 (24 Oct): meta_chain.py is shared with rockets-lmeta.yml
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: rockets-chain
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          mkdir -p md h2
+          git fetch -q --depth 1 origin monthsdata && git archive FETCH_HEAD | tar -x -C md
+          git fetch -q --depth 1 origin monthsh2 && git show FETCH_HEAD:meta_h2.parquet > h2/meta_h2.parquet
+          python3 research/rockets/meta_fetch.py plan md h2 plan
+          git fetch -q --depth 1 origin history2 && git show FETCH_HEAD:coins.parquet > coins.parquet
+          python3 -c "import json, pandas as pd; c = pd.read_parquet('coins.parquet'); have = set(c[c['created_ms'].notna()]['mint']); m = json.load(open('plan/plan.json'))['mints']; json.dump([x for x in m if x not in have], open('plan/need.json', 'w')); print('need creation time', sum(x not in have for x in m))"
+          # a later run goes on where the last one stopped: coins already on branch rocketschain are left out
+          if git fetch -q --depth 1 origin rocketschain 2>/dev/null; then
+            git show FETCH_HEAD:chain.parquet > plan/prev.parquet
+            # and the coins whose curve history failed (public RPC rate limits) are asked again; unread files go to "files"
+            python3 research/rockets/meta_chain.py replan plan plan/prev.parquet
+          fi
+          [ -f plan/refetch.json ] || echo '[]' > plan/refetch.json
+          [ -f plan/nofile.json ] || echo '[]' > plan/nofile.json
+      - name: Probe on 24 coins (shows in this job's log within a minute or two)
+        env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python3 research/rockets/meta_chain.py shard plan/plan.json 0 3000 probe.json.gz
+          python3 -c "import gzip,json; d=json.load(gzip.open('probe.json.gz','rt'))['coins']; [print({k: (str(v)[:60] if k != 'curve_creator' else bool(v)) for k, v in r.items()}) for r in list(d.values())[:8]]"
+      - uses: actions/upload-artifact@v4
+        with: {name: plan, path: "plan/*", retention-days: 5}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 3                # the account has few runners: more than 3 research jobs at once hold up the bots' own scans
+      matrix:
+        i: [0, 1, 2]
+    env:
+      SHARD_MINUTES: "300"
+      FILE_MINUTES: "300"
+      WORKERS: "8"
+      FILE_WORKERS: "16"
+      # the probe of 24 Oct (gateways.json on rocketsprobe): ipfs.filebase.io 297 of 299, pump.mypinata.cloud 194, gateway.pinata.cloud
+      # 136 (429s); ipfs.io answered every request with 429, the reason the run of 24 Oct read only 38.5 % of the files
+      GATEWAYS: "https://ipfs.filebase.io/ipfs/%s,https://pump.mypinata.cloud/ipfs/%s,https://gateway.pinata.cloud/ipfs/%s"
+      GW_ROTATE: "0"
+      GW_GAP: "0.8"                  # two processes per machine: ipfs.filebase.io answered 429 above ~2.5 requests a second
+      PGAP: "1.0"                    # public RPC: 52 % rate limits at 0.35 s with 16 workers on 24 Oct
+      FILE_TRIES: "3"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with: {name: plan}
+      - env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+          NEED: need.json
+          NOFILE: nofile.json
+        run: |
+          python3 research/rockets/meta_chain.py files refetch.json ${{ matrix.i }} 3 files_${{ matrix.i }}.json.gz &
+          python3 research/rockets/meta_chain.py shard plan.json ${{ matrix.i }} 3 chain_${{ matrix.i }}.json.gz
+          wait
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "chain-${{ matrix.i }}", path: "*_${{ matrix.i }}.json.gz", retention-days: 5}
+  final:
+    needs: [shard]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "chain-*", merge-multiple: true, path: src}
+      - uses: actions/download-artifact@v4
+        with: {name: plan, path: plan}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          python3 research/rockets/meta_chain.py wiki 2026-04-23 2026-10-21 src/wiki_top.json
+          python3 research/rockets/meta_chain.py final src out plan/prev.parquet
+          cp src/wiki_top.json out/ || true
+          printf 'Launch facts from the Solana chain and the metadata files (IPFS) of the pump.fun graduations of the five month windows (25 Apr-21 Oct 2026, start SOL side >= 10), made by research/rockets/meta_chain.py. Fake money only.\n' > out/README.md
+          cd out && du -sh .
+          git init -q && git checkout -q -b rocketschain && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketschain $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketschain

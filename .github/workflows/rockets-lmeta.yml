@@ -1,0 +1,98 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendments 6 and 8): the metadata files (IPFS)
+# and the curve's complete flag of a random 600,000 launches of universe L (seed 7; branch rocketslaunches) -> branch
+# "rocketslmeta" (research/rockets/launches.py mshard / mfinal). 3 jobs at most (the account has few runners). A later run goes
+# on where an earlier one stopped. Nothing is bought. HELIUS_API_KEY is only passed to the script, never printed or saved.
+# Touches no bot branch and no paper account. Started by a push of this file on this branch (edit the run note), or by hand.
+# Run note: first run 24 Oct.
+name: rockets-lmeta
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-lmeta.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rockets-lmeta
+  cancel-in-progress: true
+env:
+  # gateways from the probe of 24 Oct (gateways.json on rocketsprobe, amendment 11): ipfs.filebase.io first, ipfs.io rate-limits
+  GATEWAYS: "https://ipfs.filebase.io/ipfs/%s,https://pump.mypinata.cloud/ipfs/%s,https://gateway.pinata.cloud/ipfs/%s"
+  GW_ROTATE: "2"                 # ipfs.filebase.io and pump.mypinata.cloud take turns first, each paced on its own
+  GW_GAP: "0.45"                 # ipfs.filebase.io answered 429 above about 2.5 requests a second from one machine
+  FILE_TRIES: "3"
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          mkdir -p u plan
+          git fetch -q --depth 1 origin rocketslaunches && git archive FETCH_HEAD | tar -x -C u
+          echo '[]' > plan/done.json
+          if git fetch -q --depth 1 origin rocketslmeta 2>/dev/null; then
+            git show FETCH_HEAD:lmeta.parquet > plan/prev.parquet
+            python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+            python3 research/rockets/launches.py mdone plan/prev.parquet plan/done.json
+          fi
+          ls -la u plan
+      - uses: actions/upload-artifact@v4
+        with: {name: universe, path: "u/*.parquet", retention-days: 5}
+      - uses: actions/upload-artifact@v4
+        with: {name: lplan, path: "plan/*", retention-days: 5}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      max-parallel: 3                # the account has few runners: more than 3 research jobs at once hold up the bots' own scans
+      matrix:
+        i: [0, 1, 2]
+    env:
+      SHARD_MINUTES: "320"
+      FILE_WORKERS: "16"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {name: universe, path: u}
+      - uses: actions/download-artifact@v4
+        with: {name: lplan, path: plan}
+      - env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+          DONE: plan/done.json
+        run: python3 research/rockets/launches.py mshard u ${{ matrix.i }} 3 lmeta_${{ matrix.i }}.json.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "lmeta-${{ matrix.i }}", path: "lmeta_*.json.gz", retention-days: 5}
+  final:
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "lmeta-*", merge-multiple: true, path: src}
+      - uses: actions/download-artifact@v4
+        with: {name: lplan, path: plan}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          python3 research/rockets/launches.py mfinal src out plan/prev.parquet
+          printf 'Metadata files (IPFS) and the curve complete flag of a random 600,000 launches of universe L (amendment 6), made by research/rockets/launches.py mshard. Fake money only.\n' > out/README.md
+          cd out && du -sh . && git init -q && git checkout -q -b rocketslmeta && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketslmeta $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketslmeta
