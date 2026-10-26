@@ -180,3 +180,20 @@ No new search over the same months. Two things instead:
    outsider can buy). 93 graduated after a minute or more: 12.6 % of the picks against 0.94 % of all launches (13x); 56 after five
    minutes or more (7.6 % vs 0.63 %). Top 1 %: 409 of 7,394 after a minute or more (5.5 %, 6x). Whether that can be bought cheaply
    enough is unknown: we have no curve trades, so no buy price. That is the one new data source with a large ratio behind it.
+3. The curve-buy test of that lead (pre-registered in PREREG-CURVE-2026-10-26.md before any curve price was fetched; rs_curve.py;
+   GeckoTerminal one-minute curve candles in SOL, branch rocketscurve; results/curve_top01.json). **It fails.**
+   - Data: 714 of the 739 picks have curve candles (graduated 208 of 216 = 96.3 %, never graduated 506 of 523 = 96.7 %, so the
+     source is fair to both). 134 graduated before the entry minute, 7 were nearly full at the entry, 25 had no candles: 573 buys.
+   - Primary plan (buy in the first minute starting 60 s after the launch at the larger of open and close, stop at half, sell on the
+     curve at 90 % of its completion price, else 24 h; 1.25 % fee each way and the 0.75 EUR allowance): 573 trades, -3.90 EUR per
+     trade, total -2,234, 1 % bound -7.44, without the best trade -2,715. Both halves of the month negative (-4.38, -3.42).
+   - Every other sale is negative too: sold the minute before completion -6.05, at the final curve price -4.86, no stop -5.15,
+     stop 0.7 -4.63, stop 0.5 with a 2x take -4.97, entry at the candle high -4.92.
+   - Why: the 53 buys that graduated while held made +3,191 EUR (+60 each), the other 520 lost 5,425 (-10.43 each). The coins that
+     went on to graduate were already at a median 7.0x the curve's start price one to two minutes after the launch (quartiles
+     4.6x-9.9x), so selling near completion (13.2x the start) gave only about 2x. The picks that were still near the start price at
+     the entry (281 within 1.2x) had no graduation at all. The model's signal is real, but it is visible in the first minute's
+     buying too, and by the time an outsider can act that buying has taken the gain.
+   - By entry price (exploration): within 1.2x of the start 281 trades -3.26 each; 1.2-2x 47 trades +1.29 (small, not a rule);
+     2-4x 93, -3.38; 4-8x 106, -5.54; above 8x 46, -10.37.
+   - The top 1 % (secondary, reported only) is still being fetched; it will be added here.
