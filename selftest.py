@@ -4028,6 +4028,8 @@ console.log(JSON.stringify(o));
     selftest_fresh.checks(check, SKIPS)
     import selftest_livesell                    # the Pick account sells on the live chart from Oct 24 (memebot.LIVE_SELL_AT, rocket_watch.py's minute watch)
     selftest_livesell.checks(check, SKIPS)
+    import selftest_gtunit                      # a pool's candles are its own coin's price, not its partner coin's (memebot.UNIT_X; LAUNCH, Oct 26)
+    selftest_gtunit.checks(check)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:

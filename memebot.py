@@ -1874,7 +1874,13 @@ def settled(res, hours):
 
 CANDLE_MAX_X = 30.0  # a peak over this many times the entry price inside a window is not believed (two glitches in the first night were 4,121x and 22,310x)
 CANDLE_WICK_X = 5.0  # a candle high more than this many times above the window's best close (or a low that far below its worst close) is a wick glitch: the close stands in
-TAKE_PROFIT = 0.5   # the first take-profit question (kept in the data as "tp"): what 20 made when sold at +50% as soon as a candle HIGH hit it
+UNIT_X = 5.0        # GeckoTerminal's candles (token=base) are the price of the pool's base token, and in some pools that is the other coin: the
+                    # StonkFun pools of LAUNCH and MEMEMAN (Oct 2026) gave its partner coin, about $0.13 and flat, while the coin itself was at
+                    # $0.0002-0.0015 and went 14x. Candles more than UNIT_X times off DexScreener's price of the coin are not its chart (the
+                    # coins' own moves between the scan's price and the entry stayed under 2.5x in 776 buys); the pool's other side is asked
+                    # (token=quote), and when that is off too the coin is judged as a pool without candles
+GT_SIDES = ("base", "quote")
+TAKE_PROFIT = 0.5  # the first take-profit question (kept in the data as "tp"): what 20 made when sold at +50% as soon as a candle HIGH hit it
 TP_LEVELS = (0.10, 0.20, 0.30, 0.50)   # paper take-profit: every result with candles is also scored as if sold the first minute a candle CLOSED this far above the entry
 TP_RULE = 0.20                         # the page's headline among them; the other levels stand next to it, so the record shows which one works
 PATH_MAX = 160      # candles kept per window with each result ("path"), so exit rules (take profit, stop loss, trailing stops) can be replayed later
@@ -1984,7 +1990,8 @@ def candle_items(d, now):
         if p.get("grp") in PAPER_GROUPS and p["_left"] > 1e-9 and p.get("pair"):    # (the chart exit: since the entry, chart_hit)
             since = max(num(p.get("entryAt")) or num(p.get("t")) or 0, 0 if is_chart(p) else num(chk.get(pid)) or 0) - 60_000
             if now - since > 60_000:
-                items.append(((-1, False), {"pool": p["pair"], "since": since, "hours": round((now - since) / 3_600_000, 3), "key": "hold"}))
+                items.append(((-1, False), {"pool": p["pair"], "since": since, "hours": round((now - since) / 3_600_000, 3), "key": "hold",
+                                            "px": num(p.get("px")), "t": num(p.get("t")) or num(p.get("entryAt"))}))   # its price then: whose candles (UNIT_X)
     for ci, coll in enumerate(("memerec", "memeyoung")):
         for doc in load_docs(d, coll).values():
             t0 = num(doc.get("t")) if isinstance(doc, dict) else None
@@ -1992,7 +1999,8 @@ def candle_items(d, now):
                 continue
             for key, hours, _ in tip_due(doc, now):
                 span = round((now - t0) / 3_600_000, 3) if key == "out" else hours
-                items += [((ci, key == "out"), {"pool": p.get("pair"), "since": t0, "hours": span, "key": key}) for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]
+                items += [((ci, key == "out"), {"pool": p.get("pair"), "since": t0, "hours": span, "key": key, "px": num(p.get("px")), "t": t0})
+                          for p in (doc.get("picks") or []) if isinstance(p, dict) and p.get("pair")]       # px, t: whose candles (UNIT_X)
     items.sort(key=lambda x: x[0])
     return [it for _, it in items][:CANDLE_MAX_ITEMS]
 
@@ -2004,6 +2012,28 @@ def live_sell_at():
         return int(v) if v else LIVE_SELL_AT
     except ValueError:
         return LIVE_SELL_AT
+
+
+def unit_off(x, px):
+    """Whether a candle price x and DexScreener's price px of the same coin are more than UNIT_X times apart (UNIT_X: candles of the
+    pool's other coin); False when either is missing."""
+    x, px = num(x), num(px)
+    return bool(x and px and x > 0 and px > 0 and not 1.0 / UNIT_X <= x / px <= UNIT_X)
+
+
+def unit_ok(cands, t, px):
+    """Whether minute candles [(ms, open, high, low, close, ...), ...] are the coin's own price: the close of the candle nearest t (when
+    DexScreener priced it px) within UNIT_X times px. True without candles or px (nothing to compare)."""
+    rows = [c for c in cands or () if num(c[4]) and num(c[0]) is not None]
+    if not rows or not num(px) or not num(t):
+        return True
+    return not unit_off(min(rows, key=lambda c: abs(num(c[0]) - num(t)))[4], px)
+
+
+def hold_candles(d, p):
+    """The position's minute candles (candles/<pool>_hold.txt), none when they are not its coin's price (unit_ok against its entry price)."""
+    cs = load_candles(d, str(p.get("pair") or ""), "hold")
+    return cs if unit_ok(cs, num(p.get("t")) or num(p.get("entryAt")), num(p.get("px"))) else []
 
 
 def hold_wicks(c):
@@ -2132,12 +2162,15 @@ def chart_hit(cands, t0, chk=None, cpx=None):
 
 
 def hold_check(d, p, chk=None, cpx=None):
-    """hold_hit on the position's pool's minute candles (candles/<pool>_hold.txt) since the last check: closes only before LIVE_SELL_AT,
-    the minute's low and high from it on; chart_hit (the candles since the entry) for a position of the chart exit. -> their dict"""
+    """hold_hit on the position's pool's minute candles (hold_candles) since the last check: closes only before LIVE_SELL_AT, the minute's
+    low and high from it on; chart_hit (the candles since the entry) for a position of the chart exit. A cpx of the pool's other coin
+    (unit_off: marked before UNIT_X) is not used, nor its last checked minute: the coin's own candles start over. -> their dict"""
     t0 = num(p.get("entryAt")) or num(p.get("t")) or 0
+    if unit_off(cpx, p.get("px")):
+        chk, cpx = None, None
     if is_chart(p):
-        return chart_hit(load_candles(d, str(p.get("pair") or ""), "hold"), t0, chk, cpx)
-    return hold_hit(load_candles(d, str(p.get("pair") or ""), "hold"), t0, chk, cpx)
+        return chart_hit(hold_candles(d, p), t0, chk, cpx)
+    return hold_hit(hold_candles(d, p), t0, chk, cpx)
 
 
 def live_watch(d):
@@ -2888,7 +2921,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                 sell(left, entry * booked, hc["why"], at=int(hc["hit"]), **({"chart": "scan"} if live else {}))
                 continue
             # the live 6-hour limit (LIVE_SELL_AT) once the candles reach it: sold at that minute's price, whenever this run comes
-            x6 = hold_x6(load_candles(d, str(p.get("pair") or ""), "hold"), num(p.get("entryAt")) or num(p.get("t")) or 0, hc["cpx"], now >= end) if end else None
+            x6 = hold_x6(hold_candles(d, p), num(p.get("entryAt")) or num(p.get("t")) or 0, hc["cpx"], now >= end) if end else None
             if x6 and entry:
                 sell(left, entry * x6, "time", at=end, chart="scan")
                 continue
@@ -3209,6 +3242,7 @@ def cmd_run(d, mode, now, force=False, snapshot=False, recommend=False):
                     continue
                 span = (now - t0) / 3_600_000 if key == "out" else hours     # the horizon check is priced now: its window runs up to now
                 cands = load_candles(d, str(p["pair"]), key) if p.get("pair") else []
+                cands = cands if unit_ok(cands, t0, px0) else []      # the pool's other coin (UNIT_X): as a pool without candles
                 hi, lo = window_extremes(cands, t0, span)
                 inside = [c for c in cands if t0 <= c[0] <= t0 + span * 3_600_000]
                 last_close = inside[-1][4] if inside else None

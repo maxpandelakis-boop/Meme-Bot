@@ -530,7 +530,7 @@ def priced(p):
 def items(d, now, ctx=None):
     """The windows to price this run: paper positions (priced(): since the restart and before it) whose window has closed, without a settled doc (ok, est, unit of this
     PEAK_V) and with fewer than MAX_TRIES empty fetches; up to RECENT_N that closed in the last RECENT_H hours first, then the
-    backlog oldest first; at most PEAK_MAX_ITEMS. -> [{"pid", "pool", "key", "entryAt", "end", "tries"}]"""
+    backlog oldest first; at most PEAK_MAX_ITEMS. -> [{"pid", "pool", "key", "entryAt", "end", "tries", "px", "t"}]"""
     ctx = ctx or context(d)
     todo = []
     for pid, p in ctx["pos"].items():
@@ -546,7 +546,8 @@ def items(d, now, ctx=None):
         tries = int(num(doc.get("tries")) or 0) if same_v else 0
         if tries >= MAX_TRIES:
             continue
-        todo.append({"pid": pid, "pool": str(p.get("pair") or ""), "key": pool_key(p), "entryAt": entry, "end": end, "tries": tries})
+        todo.append({"pid": pid, "pool": str(p.get("pair") or ""), "key": pool_key(p), "entryAt": entry, "end": end, "tries": tries,
+                     "px": num(p.get("px")), "t": num(p.get("t")) or entry})
     todo.sort(key=lambda it: (it["end"], it["pid"]))
     recent = [it for it in todo if now - it["end"] <= RECENT_H * 3_600_000][:RECENT_N]
     first = {it["pid"] for it in recent}
@@ -559,10 +560,23 @@ def gt_before(end):
     return int(end // 1000) + 120
 
 
-def gt_url(pool, end, agg=1):
+def gt_url(pool, end, agg=1, side="base"):
     lim = 400 if agg == 1 else 30
-    return F.GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=base" % (
-        urllib.parse.quote(str(pool), safe=""), agg, lim, gt_before(end))
+    return F.GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=%d&limit=%d&before_timestamp=%d&currency=usd&token=%s" % (
+        urllib.parse.quote(str(pool), safe=""), agg, lim, gt_before(end), side)
+
+
+def gt_own(http, url_of, before, agg, until, t, px, stop_at=None):
+    """gt_get and ohlcv_rows of a pool's candles that price its own coin: the base token's, and when those are the other coin's
+    (memebot.unit_ok against DexScreener's price px at t: memebot.UNIT_X) the quote token's. url_of(side) -> the request.
+    -> (gt_get's status, the rows as ohlcv_rows reads them); ("ok", []) when neither side prices the coin: as a pool without candles."""
+    for side in M.GT_SIDES:
+        st, j = gt_get(http, url_of(side), until, stop_at)
+        rows = ohlcv_rows(j, before, agg) if st == "ok" else []
+        if st != "ok" or not rows or M.unit_ok(rows, t, px):
+            return st, rows
+        http.log("  candles: token=%s of this pool is another coin's price" % side)
+    return "ok", []
 
 
 def ohlcv_rows(j, before=None, agg=1):
@@ -752,11 +766,10 @@ def fetch(http, d, items_, until, done=None, max_429=None):
             break
         info, stop = None, None
         for agg in (1, 15):
-            st, j = gt_get(http, gt_url(pool, it["end"], agg), until, stop_at)
+            st, rows = gt_own(http, lambda side: gt_url(pool, it["end"], agg, side), gt_before(it["end"]), agg, until, it.get("t"), it.get("px"), stop_at)
             if st in ("deadline", "limited", "dead", "share"):
                 stop = {"deadline": "deadline", "limited": "GeckoTerminal rate limit", "dead": GT_GONE, "share": GT_SHARE}[st]
                 break
-            rows = ohlcv_rows(j, gt_before(it["end"]), agg) if st == "ok" else []
             if st == "shape" or (st == "ok" and rows is None):
                 what = "with something that is not JSON" if st == "shape" else "without an ohlcv_list of [seconds, o, h, l, c, vol] rows"
                 http.gt_odd = getattr(http, "gt_odd", 0) + 1

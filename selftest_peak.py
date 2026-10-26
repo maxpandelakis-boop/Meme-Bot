@@ -378,7 +378,7 @@ def _p3_to_p7(check, PK, M, S, tmp, named):
           % (len(fa), ", train.json" if "db/memebot/train.json" in fa else "; no train.json in this db", diffs or ""))
     src = open(os.path.join(HERE, "peak.py"), encoding="utf-8").read()
     used = set(re.findall(r"\bM\.([A-Za-z_][A-Za-z0-9_]*)", src))
-    check(used <= {"num", "load_json", "load_docs", "positions", "in_account", "pos_value", "HOLD_TP", "PAPER_GROUPS"} and not re.search(r"\b(learn|bin_model|blended_weights|cmd_train|train)\(", src)
+    check(used <= {"num", "load_json", "load_docs", "positions", "in_account", "pos_value", "HOLD_TP", "PAPER_GROUPS", "GT_SIDES", "unit_ok"} and not re.search(r"\b(learn|bin_model|blended_weights|cmd_train|train)\(", src)
           and "memepeak" not in open(os.path.join(HERE, "memebot.py"), encoding="utf-8").read(),
           "P5 peak.py reads memebot only through %s; memebot.py never names memepeak (hindsight feeds nothing)" % sorted(used))
 
