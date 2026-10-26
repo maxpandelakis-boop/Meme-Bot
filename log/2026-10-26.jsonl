@@ -419,3 +419,7 @@
 {"t":1793053800844,"addr":"7AwsJBJLbD8L3Kr6T1d1gPmrbdeS1H7Hwh7qtfQhpump","sym":"Shitposting","age":43.5,"why":"no candles"}
 {"t":1793054220370,"addr":"C6nheAXVwX4yFtKAgHqMDwvzrRDNe2YezLwLdT23pump","sym":"memes","age":30.1,"why":"liquidity","liq":2474}
 {"t":1793054280923,"addr":"7xSxptto6XuutRYbpEbv2QUK5DpGepvfaDMcfZgUNL5e","sym":"HARMONIC","age":30.7,"why":"liquidity","liq":0}
+{"t":1793054340661,"addr":"HzL2PCRHp9r5a4Hgm9m64zBDgyMznsRhYsRTmFoGBAGS","sym":"Chamcrb","age":30.1,"why":"liquidity","liq":0}
+{"t":1793054400866,"addr":"CKqmnpZCTSyMm5mCrAGdMn3qY6cXt3hCTEWuHdBwQz9A","sym":"NEX Ai","age":30.7,"score":0.03758,"px":6.369e-05,"liq":72057,"p0":5.536310042397382e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":22.0,"f_cjk":0.0,"c_ret":0.9609,"c_peak":1.0037,"c_vol":4.9817,"c_act":1.0,"c_r5":0.1183,"c_r15":0.5033,"c_mc":4.7432}}
+{"t":1793054460947,"addr":"5mjr5SFCwjDyh2n9eKtxjRAyvpzLpt1s6qgASC1vpump","sym":"BABY\u2588","age":43.1,"why":"no candles"}
+{"t":1793054521380,"addr":"AzTYeXDqxMUjThS9PtLbgkLdKjQb3AdgUjZdQAQtpump","sym":"GOLDENMINI","age":30.6,"why":"liquidity","liq":2143}
