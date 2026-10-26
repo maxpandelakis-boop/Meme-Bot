@@ -111,16 +111,6 @@ def tests(t=None):
             'are the real test.</p></details>') % "".join(li)
 
 
-def pick_side(D):
-    """The scan's paper account, its pick positions only (the new launches ended on Oct 16: Archive tab), the same numbers as the Start tab."""
-    try:
-        import page_home as PH
-        b = PH.pick_book(D)
-    except Exception:
-        return None
-    return {"bal": b["bal"], "trades": b["closed"], "open": b["open"], "win": b["win"], "x3": b["x3"], "x10": b["x10"]} if b else None
-
-
 def sym(p, a=None):
     return str(p.get("sym") or str(p.get("addr") or a or "?")[:6])[:14]
 
@@ -194,7 +184,7 @@ def all_trades(PH, bk):
 
 def section(D):
     """The Radar tab's top block: the rocket hunter's own account, its open positions, every candidate of its last round with a bar to the
-    buy cut, the rules in one line and the Pick account for comparison."""
+    buy cut and the rules in one line."""
     import page_home as PH
     doc = load((D or {}).get("dir"))
     since = ""
@@ -208,12 +198,10 @@ def section(D):
         " · ".join(x for x in ("rocket hunter, every 15 minutes", since, "%s per buy" % PH.de_eur(float(M.TICKET)).replace(".00", "")) if x)))
     wrap = lambda inner: '<div class="rk" data-pa="rocket"%s>%s%s</div><style>%s</style>' % (
         (' data-rk-box data-rk-t="%d"' % int(num(doc.get("t")) or 0)) if doc else "", head, inner, CSS)
-    ps = pick_side(D)
-    cmp_ = ('<p class="rk-cmp">For comparison, Pick account: <b class="%s">%s</b> · %s/10 in profit · %d closed</p>' % (
-        PH.tone(ps["bal"]), E(PH.de_eur(ps["bal"], True)), E("–" if ps["win"] is None else PH.de_num(ps["win"], 1)), ps["trades"])) if ps else ""
+    # Oct 26 clean-up: the Pick account "for comparison" left this block (each account once, both on the Start tab)
     if doc is None:
         return wrap('<p class="rk-s">The rocket hunter has not run yet: every 15 minutes it checks the radar\'s coins and buys on '
-                    'paper only when a coin\'s rocket score reaches the buy line.</p>' + cmp_)
+                    'paper only when a coin\'s rocket score reaches the buy line.</p>')
     b = PH.rocket_book(doc)
     win = "–" if b["win"] is None else PH.de_num(b["win"], 1).rstrip("0").rstrip(".")
     stats = [("in profit", '<span data-rk-st="win">%s</span>/10' % E(win), ""), ("3x · 10x", "%d · %d" % (b["x3"], b["x10"]), "hits"),
@@ -250,10 +238,10 @@ def section(D):
             + ('<div class="rk-st"><span class="k">Candidates of the last round · buys at 100%% of the line (%s)</span><ul class="rk-cands" data-rk-cands="rk">%s</ul>%s</div>' % (
                 E(PH.de_num(cut, 4)), "".join(rows[:SHOWN]), ('<details class="rk-more" data-rk-more><summary>%d more</summary><ul class="rk-cands">%s</ul></details>' % (
                     len(rows) - SHOWN, "".join(rows[SHOWN:]))) if len(rows) > SHOWN else "") if rows else '<p class="rk-s">No coin of the right age in the last round.</p>')
-            + '<p class="rk-s">%s%s radar coins watched, %d scored. 20 € per coin, sold at −30%%, 11x or after 6 h. '
+            + '<p class="rk-s"><span data-rk-round>%s%s radar coins watched, %d scored. </span>20 € per coin, sold at −30%%, 11x or after 6 h. '
               'Live test: in the corrected look back this strategy lost money (about 1 in 10 buys in profit, 1 in 45 went 10x).</p>' % (
                   E(when), E(PH.de_num(int(num(rd.get("candidates")) or 0), 0)), int(num(rd.get("scored")) or 0))
-            + tests() + cmp_)
+            + tests())
     return wrap(body)
 
 
@@ -282,8 +270,6 @@ CSS = r"""
 .rk-cands li.near em { color:var(--warn) } .rk-cands li.buy em { color:var(--good); font-weight:600 } .rk-cands li.buy .rk-bar i { background:var(--good-mark) }
 .rk-more > summary { cursor:pointer; color:var(--accent); font-size:var(--fs-s); padding:6px 0 } .rk-more[open] > summary { margin-bottom:6px }
 .rk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
-.rk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
-.rk-cmp b.good { color:var(--good) } .rk-cmp b.bad { color:var(--bad) }
 .rk-sold li { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px; font-size:var(--fs-s); padding:4px 6px; border-radius:10px; margin:0 -6px }
 .rk-sold li span { grid-column:1; color:var(--fg2); font-size:var(--fs-xs) } .rk-sold li em { grid-column:2; grid-row:1 / span 2; align-self:center; font-style:normal; font-variant-numeric:tabular-nums; font-weight:600 }
 .rk-sold li.good em { color:var(--good) } .rk-sold li.bad em { color:var(--bad) }
@@ -408,6 +394,8 @@ LIVE_JS = r"""
         [].forEach.call(box.querySelectorAll('[data-rk-more]'),function(m){m.setAttribute('hidden','');});}
       drawAll(box);
       [].forEach.call(box.querySelectorAll('[data-rk-live]'),function(e){e.textContent='Live · as of '+hhmm(t)+' · new buys and sells show up here without a reload';e.removeAttribute('hidden');});
+      // a round newer than the page: its time (the page's counts belong to the older round, the live row has none)
+      if(t>(n(box.getAttribute('data-rk-t'))||0))[].forEach.call(box.querySelectorAll('[data-rk-round]'),function(e){e.textContent='Last round '+hhmm(t)+'. ';});
     });
     seen=ids;
   }

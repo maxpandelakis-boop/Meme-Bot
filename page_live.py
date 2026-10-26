@@ -225,19 +225,77 @@ def lane(key, ico, name, sub, cdk, cd, bar, say, chips_html="", late=False):
 
 
 def left(ms):
-    """A countdown in words: 'in 7:05' under an hour, 'in 3 h 05 min' above, 'now' when due."""
+    """A countdown in words: 'in 7:05' under an hour, 'in 3h 05m' above, 'now' when due."""
     if ms <= 0:
         return "now"
     s = int(ms // 1000)
-    return "in %d:%02d" % (s // 60, s % 60) if s < 3600 else "in %d h %02d min" % (s // 3600, (s % 3600) // 60)
+    return "in %d:%02d" % (s // 60, s % 60) if s < 3600 else "in %dh %02dm" % (s // 3600, (s % 3600) // 60)
 
 
 def share(now, t0, t1):
     return 100.0 * (now - t0) / (t1 - t0) if t1 > t0 else 0.0
 
 
+# Oct 26 (the user: "mach es logisch und organisiert, so dass die App einfach zu verstehen ist"): the Start tab showed every bot twice,
+# as an account card on top and as a lane here. Now each account is one box: its name, what it is in one sentence, its money, and inside
+# it the bots that trade for it (the Pick account: the Pick bot buys, the Sell bot sells; the Radar account: the Radar bot; the Learning
+# Pick: its own bot, a test with fake money of its own)
+ROLE = {"pick": "Two bots trade for it: the Pick bot buys, the Sell bot sells.",
+        "radar": "The Radar bot buys only coins that look like rockets, so most days it buys nothing.",
+        "lp": "A test bot with money of its own. It never trades for the two accounts above."}
+
+
+def acct(key, name, role, bal, line, spark_html, lanes_html, attrs=""):
+    """One account's box: name and money in one row, its role, the balance over time (spark_html), a line of counts, then its bots' lanes."""
+    return ('<div class="lv-acct lv-a-%s"%s><div class="lv-ah"><b class="lv-an">%s</b>%s</div><p class="lv-role">%s</p>%s<small class="lv-aline">%s</small>'
+            '<div class="lv-lanes">%s</div></div>') % (key, attrs, E(name), bal, E(role), spark_html, line, lanes_html)
+
+
+def accounts(D, R, doc, S, lanes):
+    """The three boxes (pick, radar, lp), each with the lanes of its bots; a box without its data keeps its lanes and a dash."""
+    now = D["now"]
+    out = []
+    b = PH.pick_book(D)
+    since = PH.since_words(R, (D.get("paper") or {}).get("since"))
+    tk = PH.de_eur(num(getattr(M, "TOP_TICKET", None)) or 50.0).replace(".00", "")
+    if b:
+        win = "–" if b["win"] is None else PH.de_num(b["win"], 1).rstrip("0").rstrip(".")
+        bal = '<b class="lv-ab %s">%s</b>' % (PH.tone(b["bal"]), E(PH.de_eur(b["bal"], True)))
+        line = "%s%d sold · %s of 10 in profit · <span data-lv-popen>%d</span> open · %s per buy" % (
+            E(since + " · ") if since else "", b["closed"], E(win), b["open"], E(tk))
+        sp = PH.spark(b["pts"], PH.tone(b["pts"][-1] if b["pts"] else 0))
+    else:
+        bal, line, sp = '<b class="lv-ab">–</b>', "nothing bought since the start yet · %s per buy" % E(tk), ""
+    out.append(acct("pick", "Pick account", ROLE["pick"], bal, line, sp, lanes.get("pick", "") + lanes.get("sell", "")))
+    rb = PH.rocket_book(doc)
+    rtk = PH.de_eur(M.TICKET).replace(".00", "")
+    if rb:
+        # the data-rk-* hooks: page_rocket.LIVE_JS fills them from the app's live row (the Radar tab's account does the same)
+        win = "–" if rb["win"] is None else PH.de_num(rb["win"], 1).rstrip("0").rstrip(".")
+        rs = PH.since_words(R, getattr(M, "FRESH_AT", None))
+        bal = '<b class="lv-ab %s" data-rk-bal>%s</b>' % (PH.tone(rb["bal"]), E(PH.de_eur(rb["bal"], True)))
+        line = ('%s<span data-rk-st="closed">%d</span> sold · <span data-rk-st="win">%s</span> of 10 in profit · <span data-rk-st="open">%d</span> open · %s per buy') % (
+            E(rs + " · ") if rs else "", rb["closed"], E(win), rb["open"], E(rtk))
+        out.append(acct("radar", "Radar account 🚀", ROLE["radar"], bal, line, PH.spark(rb["pts"], PH.tone(rb["pts"][-1] if rb["pts"] else 0)) if len(rb["pts"]) >= 2 else "",
+                        lanes.get("radar", ""), ' data-rk-box data-rk-t="%d"' % int(rb.get("t") or 0)))
+    else:
+        out.append(acct("radar", "Radar account 🚀", ROLE["radar"], '<b class="lv-ab">–</b>', "starts with the first radar round · %s per buy" % E(rtk), "", lanes.get("radar", "")))
+    me = (S or {}).get("me") or {}
+    ltk = PH.de_eur((S or {}).get("ticket") or 50).replace(".00", "")
+    if me.get("n"):
+        ls = PH.since_words(R, (S or {}).get("since"))
+        bal = '<b class="lv-ab %s">%s</b>' % (PH.tone(me.get("pnl")), E(PH.de_eur(me.get("pnl"), True)))
+        line = "%s%d sold %s · %d open · %s per buy" % (E(ls + " · ") if ls else "", int(me.get("sold") or 0), E(PH.de_eur(me.get("closedPnl"), True)),
+                                                       int(me.get("open") or 0), E(ltk))
+    else:
+        bal, line = '<b class="lv-ab">–</b>', "waiting for its first buy · %s per buy" % E(ltk)
+    if S or lanes.get("lp"):
+        out.append(acct("lp", "Learning Pick", ROLE["lp"], bal, line, "", lanes.get("lp", "")))
+    return "".join(out)
+
+
 def section(D, R):
-    """The live panel (id live) for the Start tab: the four lanes and the feed, with LV_CSS and LV_JS. '' when nothing can be read."""
+    """The live panel (id live) for the Start tab: the three accounts with their bots' lanes, and the feed, with LV_CSS and LV_JS."""
     now = D["now"]
     doc = PH.rocket_doc(D)
     S = lp_summary(D)
@@ -250,8 +308,8 @@ def section(D, R):
         say = "Last scan %s: looked at %s coins, %s." % (E(hm(R, scan_t)), E(PH.de_num(int(num(r0.get("scanned")) or 0), 0)), scan_words(r0, (PH.pick_book(D) or {}).get("rows")))
     else:
         say = "No scan yet."
-    lanes = [lane("pick", "🔎", "PICK BOT", "buys for the Pick account, hourly", "next scan", left(nxt - now) if nxt > now else "any moment",
-                  share(now, scan_t or nxt - H, nxt), say)]
+    lanes = {"pick": lane("pick", "🔎", "PICK BOT", "buys 1 coin with each hourly scan", "next scan", left(nxt - now) if nxt > now else "any moment",
+                          share(now, scan_t or nxt - H, nxt), say)}
     # SELL BOT: the open chart-exit positions of the Pick account, at the scan's price (LV_JS: the watch's minute)
     pick = {}
     items = []
@@ -273,7 +331,7 @@ def section(D, R):
         sb_cd = (left(look + LOOK_MS - now) if now - look < LOOK_MS else ("looking…" if now - look < PAUSE_MS else "pause")) if look and now - look < LATE["look"] else "every minute"
     else:
         sb_say, sb_cd = "Nothing to sell right now. It takes over the next coin the Pick bot buys.", "idle"
-    lanes.append(lane("sell", "🤖", "SELL BOT 🤖", "sells the Pick account's coins live", "next look", sb_cd,
+    lanes["sell"] = (lane("sell", "🤖", "SELL BOT 🤖", "watches each coin every minute", "next look", sb_cd,
                       share(now, look, look + LOOK_MS) if look and items and now - look < LATE["look"] else 0, sb_say, chips(items)))
     # RADAR: the last round, the next, its open coins
     radar, rk_t, cut, rk_items = {}, 0, 0, []
@@ -288,7 +346,7 @@ def section(D, R):
                 radar[str(a)] = {"sym": sym(p.get("sym")), "t": num(p.get("t"))}
                 rk_items.append((p.get("sym"), num(p.get("now")), "r:" + str(a), "change since the buy"))
         rk_due = rk_t + ROUND_MS
-        lanes.append(lane("radar", "🚀", "RADAR 🚀", "hunts rockets for the Radar account", "next round",
+        lanes["radar"] = (lane("radar", "🚀", "RADAR 🚀", "checks the new coins every 15 min", "next round",
                           left(rk_due - now) if now < rk_due else "every 15 min", share(now, rk_t, rk_due), rk_say, chips(rk_items)))
     # LEARNING PICK: its open coins at the last scan, the next training
     lp_items = []
@@ -298,9 +356,8 @@ def section(D, R):
             if isinstance(p, dict) and p.get("state") == "open":
                 lp_items.append((p.get("sym"), num(p.get("_now")), "l:" + str(p.get("pid")), "change since the buy, at the last scan's price"))
         nn = next_night(now)
-        lp_say = "Buys 1 coin with each scan by its own model. %d open, %d sold so far (%s)." % (
-            int(me.get("open") or 0), int(me.get("sold") or 0), E(PH.de_eur(me.get("closedPnl"), True)))
-        lanes.append(lane("lp", "🧠", "LEARNING PICK", "shadow account, learns nightly", "next training",
+        lp_say = "Picks its own coin with each scan and sells by its own rule. %d open right now." % int(me.get("open") or 0)
+        lanes["lp"] = (lane("lp", "🧠", "LEARNING PICK", "picks by what it learned", "next training",
                           left(nn - now), share(now, nn - 24 * H, nn), lp_say, chips(lp_items)))
     feed = events(D, R, doc, S)
     known = [e["k"] for e in feed]
@@ -314,9 +371,9 @@ def section(D, R):
         FEED_H, lis or '<li class="lv-none">Nothing happened in the last %d hours.</li>' % FEED_H,
         '<label for="lv-all" class="lv-showall" data-lv-more%s>Show all (%d)</label>' % ("" if more > 0 else " hidden", len(feed)))
     return ('<section class="lv" id="live" data-lv="%s"><div class="lv-head"><span class="lv-badge" data-lv-badge><i></i>LIVE</span>'
-            '<time class="lv-clock" data-lv-clock>%s</time><div class="lv-ht"><h3>What the bots are doing</h3><small data-lv-src>as of the last scan %s · fake money</small></div>'
-            '</div><div class="lv-lanes">%s</div>%s</section><style>%s</style><script>%s</script>') % (
-        E(json.dumps(data, separators=(",", ":"))), E(hm(R, now)), E(hm(R, scan_t) if scan_t else "–"), "".join(lanes), feed_html, LV_CSS, LV_JS)
+            '<time class="lv-clock" data-lv-clock>%s</time><div class="lv-ht"><h3>Your bots</h3><small data-lv-src>as of the last scan %s · fake money</small></div>'
+            '</div><div class="lv-accts">%s</div>%s</section><style>%s</style><script>%s</script>') % (
+        E(json.dumps(data, separators=(",", ":"))), E(hm(R, now)), E(hm(R, scan_t) if scan_t else "–"), accounts(D, R, doc, S, lanes), feed_html, LV_CSS, LV_JS)
 
 
 LV_JS = r"""
@@ -340,7 +397,7 @@ LV_JS = r"""
   function tone(v){return v>0.004?'good':(v<-0.004?'bad':'');}
   function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
   function left(ms){if(ms<=0)return 'now';var s=Math.floor(ms/1000);if(s<3600)return 'in '+Math.floor(s/60)+':'+('0'+s%60).slice(-2);
-    return 'in '+Math.floor(s/3600)+' h '+('0'+Math.floor(s%3600/60)).slice(-2)+' min';}
+    return 'in '+Math.floor(s/3600)+'h '+('0'+Math.floor(s%3600/60)).slice(-2)+'m';}
   function ago(ms){var m=Math.max(0,Math.floor(ms/60000));return m<1?'now':(m<60?m+'m ago':Math.floor(m/60)+'h ago');}
   function set(e,t){if(e&&e.textContent!==t)e.textContent=t;}
   function bar(l,p){if(l&&l.bar)l.bar.style.width=Math.max(0,Math.min(100,p)).toFixed(1)+'%';}
@@ -373,6 +430,7 @@ LV_JS = r"""
       var off=cpx&&entry&&(cpx/entry>D.ux||cpx/entry<1/D.ux);     // the pool's other coin (memebot.UNIT_X): no chart of its own yet, '…'
       var x=off?null:(m&&cpx&&entry?m*cpx/entry:(m||null));items.push({k:'p:'+id,label:w.sym||P.sym,m:x});
       var tb=n(w.entryAt)||n(w.t);if(!(D.pick||{})[id]&&tb)add('buy:'+id,tb,'pick',['bought ',{b:sym(w.sym)},' for the Pick account'],D.tk,'',false);});
+    set(box.querySelector('[data-lv-popen]'),String(items.length));      // the Pick account's open count: the coins the sell bot still watches
     Object.keys(sold).forEach(function(id){var x=sold[id];if(!x||typeof x!=='object'||!n(x.at))return;var v=n(x.pnl)||0;
       add('sell:'+id,n(x.at),'sell',['sold ',{b:sym(x.sym||((D.pick||{})[id]||{}).sym)},' · '+(SBW[x.why]||String(x.why||''))+(n(x.mult)?' · '+pct(n(x.mult)):'')],eur(v),tone(v),false);});
     st.lookN=items.length;chips(L.sell,items);
@@ -434,7 +492,7 @@ LV_JS = r"""
 
 
 LV_CSS = r"""
-/* the live panel (page_live.py) on the Start tab: four bot lanes with a clock each, then the feed; a dark stage like the brain's */
+/* the live panel (page_live.py) on the Start tab: three account boxes, each with its bots' lanes and a clock each, then the feed; a dark stage like the brain's */
 .lv { --lv-pick:var(--accent); --lv-sell:var(--good); --lv-radar:var(--nn2); --lv-lp:var(--nn1); --lv-scan:var(--muted);
   position:relative; display:grid; gap:12px; padding:14px; border-radius:18px; overflow:hidden; border:1px solid var(--line); scroll-margin-top:70px;
   background:radial-gradient(110% 70% at 100% 0%, color-mix(in srgb,var(--nn2) 14%,transparent), transparent 60%),
@@ -449,6 +507,18 @@ LV_CSS = r"""
 .lv-ht h3 { margin:0; font-size:17px; letter-spacing:-.01em } .lv-ht small { display:block; font-size:var(--fs-xs); color:var(--muted) }
 .lv-clock { justify-self:end; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:13px; color:var(--fg2); font-variant-numeric:tabular-nums }
 .lv-lanes { display:grid; gap:8px }
+.lv-accts { display:grid; gap:12px }
+.lv-acct { --a:var(--lv-pick); display:grid; gap:6px; padding:12px; border-radius:16px; min-width:0;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--a) 9%,transparent),transparent 70%); border:1px solid color-mix(in srgb,var(--a) 30%,var(--line)) }
+.lv-a-radar { --a:var(--lv-radar) } .lv-a-lp { --a:var(--lv-lp) }
+.lv-ah { display:flex; align-items:baseline; justify-content:space-between; gap:10px }
+.lv-an { font-size:17px; font-weight:600; letter-spacing:-.01em }
+.lv-ab { font-size:clamp(20px,6vw,28px); font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; white-space:nowrap }
+.lv-ab.good { color:var(--good) } .lv-ab.bad { color:var(--bad) }
+.lv-role { margin:0; font-size:var(--fs-s); color:var(--fg2); line-height:1.35 }
+.lv-aline { font-size:11px; color:var(--muted); line-height:1.35 }
+.lv-acct .hm-sp { height:26px }
+.lv-acct .lv-lanes { margin-top:4px }
 .lv-lane { --c:var(--accent); display:grid; gap:6px; padding:10px 12px; border-radius:14px; min-width:0; cursor:pointer; color:inherit; -webkit-tap-highlight-color:transparent;
   background:color-mix(in srgb,var(--bg) 55%,transparent); border:1px solid color-mix(in srgb,var(--c) 26%,var(--line)); transition:border-color .2s, background .2s }
 .lv-lane:hover, .lv-lane:active { border-color:color-mix(in srgb,var(--c) 60%,var(--line)); background:color-mix(in srgb,var(--c) 7%,color-mix(in srgb,var(--bg) 55%,transparent)) }

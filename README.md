@@ -704,6 +704,13 @@ of the live rows `pickwatch` and `rocket` every 10 seconds (a few bytes) and a r
 while a coin is open), so new sales and rounds slide in without a reload; a lane turns amber ("late") only when the live store answers
 and that bot's last move is far overdue. Display only: no rule, pick or account changes.
 
+Since 26 Oct 2026 the live panel is the whole Start tab, ordered by account so each bot shows once: the Pick account (its money, then
+the PICK BOT that buys and the SELL BOT 🤖 that sells), the Radar account 🚀 (its money, then the RADAR bot) and the Learning Pick (a
+test with money of its own, then its bot), each with one sentence on what it is. The account cards above the panel and "Right now"
+under it are gone (the pick and the rocket candidates are on the Pick and Radar tabs). The Pick and Radar tabs no longer show the other
+account "for comparison"; a Pick position the Sell bot sold after the page was built is marked sold on its own card until the next scan
+books it; the shadow rules and the Learning Pick sit under "Tests on the side" at the foot of the Pick tab.
+
 Until the switch the Radar tab shows the launch spotter's early list under the radar, in all its states, above the scored list, and its badge
 on the tab bar counts the coins of that list while the list is shown (otherwise there is no badge). The "new coins"
 notification goes out once a scan, when the first early list with coins is out: "9 new coins listed", "The newest is 4 min old.

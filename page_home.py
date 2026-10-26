@@ -1,22 +1,20 @@
 """page_home.py: the Start tab (#pane-home), the first thing the app shows. Fake money only: nothing here buys, signs or sends anything,
 and nothing here is advice. English words (the user's wish of Oct 22: the whole app in English).
 
-The product has two parts, and this tab shows both at a glance:
+The product has two accounts and a test, and this tab shows them at a glance:
   PICK   the full scan's paper account (50 € a pick, its sell rule unchanged)
   RADAR  the rocket hunter's own paper account (rocket_watch.py, 20 € a coin when its rocket score reaches the cut)
-and under them the Learning Pick (lernpick.py, a self-learning shadow with its own paper account) as a slim row whose tap opens its fold.
-pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells, the
-Radar for comparison), because the open Pick positions were only in the Archive. From memebot.LIVE_SELL_AT on (the Pick sells on the live
-chart) it carries one more line that PK_LIVE_JS fills from the app's live row memebot.LIVE_WATCH_ROW: what the minute watch sold of the
-positions this page still shows open, before the next scan books it. sell_bot(D, R, opn) -> HTML: the same chart exit as a bot of its own
+  LEARNING PICK  a self-learning shadow with its own paper account (lernpick.py)
+pick_account(D, R) -> HTML: the Pick tab's account block (balance since the start, the open pick positions as cards, the last sells),
+because the open Pick positions were only in the Archive. From memebot.LIVE_SELL_AT on (the Pick sells on the live chart) PK_LIVE_JS
+reads the app's live row memebot.LIVE_WATCH_ROW and marks a card sold when the minute watch sold that position after the page was built,
+until the next scan books it. sell_bot(D, R, opn) -> HTML: the same chart exit as a bot of its own
 on top of that block (the user could not find it on Oct 24): each open position's price now and its next move, filled live by SB_JS.
-section(D, R) -> HTML:
-  - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
-    (3x and 10x) and the open positions; under them the sell bot's row (sell_bot_row: what it watches, a tap opens its card)
-  - the live panel (page_live.py, Oct 25): each bot's last move, a clock to its next and its open coins, and a feed of the last day's buys,
-    sells, rounds and scans that new ones slide into (it replaced the two status lines and the tiles that repeated the tab bar)
-  - "Right now": the current pick with its look-alike forecast (forecast.py) and the rocket hunter's best candidates of its last
-    round, each with how close its score is to the buy cut
+section(D, R) -> HTML: the live panel (page_live.py). Since Oct 26 (the user: "mach es logisch und organisiert") it is the whole tab: one
+box per account (Pick account with the Pick bot and the Sell bot, Radar account 🚀 with the Radar bot, the Learning Pick with its own bot),
+each with its money and its bots' last move, clock and open coins, then the feed of the last day's buys, sells, rounds and scans. The
+account cards on top and "Right now" (the pick and the rocket candidates, both on their own tabs) are gone: each bot shows once. Without
+the live panel the account cards come back (acct_card, sell_bot_row, lern_row).
 Every number comes from the page data (D) and rocket.json; nothing here changes a pick, a sell rule or an account. The Pick side counts the
 paper account's pick positions only (the new launches ended on Oct 16 and live in the Archive tab). Every chain string is escaped.
 """
@@ -29,7 +27,6 @@ import memebot as M
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 MINUS = "−"
-CANDS_SHOWN = 5           # rocket candidates on the Start tab (the Radar tab lists all of the last round)
 
 
 def num(v):
@@ -194,8 +191,8 @@ PICK_SOLD = 5             # last sells in the Pick tab's account block
 def pick_account(D, R):
     """The Pick tab's account block (the user could not find the open Pick positions on Oct 22; they sat in Archive > Three paper traders):
     the Pick account since its start (balance, the same stats as the Start card), every open pick position as the page's own position card
-    (R.hold_card, tap opens: price since the buy, stop and target, the clock, the links), the last sells, and the Radar account for
-    comparison. Display only; the account, its rule and the trades before the start stay where they were (Archive)."""
+    (R.hold_card, tap opens: price since the buy, stop and target, the clock, the links), and the last sells.
+    Display only; the account, its rule and the trades before the start stay where they were (Archive)."""
     now = D["now"]
     b = pick_book(D)
     since = since_words(R, ((D.get("paper") or {}).get("since")))
@@ -213,12 +210,13 @@ def pick_account(D, R):
     cards = []
     for r in opn:
         try:
-            cards.append(R.hold_card(r, now))
+            c = R.hold_card(r, now)
         except Exception:
-            cards.append('<div class="pk-s">%s</div>' % E((r.get("p") or {}).get("sym") or "?"))
+            c = '<div class="pk-s">%s</div>' % E((r.get("p") or {}).get("sym") or "?")
+        cards.append('<div class="pk-card" data-pk-card="%s">%s</div>' % (E((r.get("p") or {}).get("_id") or ""), c))     # PK_LIVE_JS marks it sold
     t0 = num((D.get("paper") or {}).get("since")) or 0
     before = sum(1 for r in opn if (num((r.get("p") or {}).get("t")) or 0) < t0)
-    op_html = ('<div class="pk-st"><span class="k">Open positions (%d)%s</span><div class="holds">%s</div></div>' % (
+    op_html = ('<div class="pk-st"><span class="k">Open positions (<span data-pk-n>%d</span>)%s</span><div class="holds">%s</div></div>' % (
         len(opn), (" · %d bought before the start, not counted" % before) if before else "", "".join(cards)) if opn else
         '<div class="pk-st"><span class="k">Open positions (0)</span><p class="pk-s">None right now. Every scan buys its pick on paper for %s.</p></div>' % E(ticket))
     op_html += pick_live(opn, now)
@@ -234,9 +232,7 @@ def pick_account(D, R):
         sold.append('<li class="%s"><b>%s</b><span>%s</span><em>%s</em></li>' % (
             tone(r.get("pnl")), E(str(r.get("sym") or "?")[:14]), E(" · ".join(x for x in bits if x)), E(de_eur(r.get("pnl"), True))))
     sold_html = ('<div class="pk-st"><span class="k">Recently sold</span><ul class="pk-sold">%s</ul></div>' % "".join(sold)) if sold else ""
-    rk = rocket_book(rocket_doc(D))
-    cmp_ = ('<p class="pk-cmp">For comparison, Radar 🚀: <b class="%s">%s</b> · %d closed · %d open</p>' % (
-        tone(rk["bal"]), E(de_eur(rk["bal"], True)), rk["closed"], rk["open"])) if rk else ""
+    # Oct 26 clean-up: the Radar account "for comparison" left this block (each account once, both on the Start tab)
     live_at = M.live_sell_at()
     # Oct 25 clean-up: the rule in full behind a tap (the sell bot card above says what it does now)
     foot = ('<details class="pk-how"><summary>How it sells</summary><p class="pk-s">%s The trades before the start (%d) are in the archive under “Three paper traders”.</p></details>' % (
@@ -249,18 +245,17 @@ def pick_account(D, R):
     sb = sell_bot(D, R, opn)
     if sb:
         js += "<style>%s</style><script>%s</script>" % (SB_CSS, SB_JS)
-    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s%s</div><style>%s</style>%s' % (head, acct, sb, op_html, sold_html, foot, cmp_, PK_CSS, js)
+    return '<div class="pk" data-pa="pick">%s%s%s%s%s%s</div><style>%s</style>%s' % (head, acct, sb, op_html, sold_html, foot, PK_CSS, js)
 
 
 def pick_live(opn, now):
-    """The minute watch's line under the open pick positions (memebot.LIVE_SELL_AT on): empty and hidden on the page; PK_LIVE_JS shows the
-    sales the watch saw of the positions listed here (data-pk-open: their ids), each at its minute, and when it looked last. '' before."""
+    """The ids of the open pick positions for PK_LIVE_JS (memebot.LIVE_SELL_AT on; '' before): a position the minute watch has sold since
+    the page was built keeps its card, marked sold with its minute, why and its result until the next scan books it (Oct 26: it used to
+    show its old price under "Open positions" and its sale a second time in a list of its own under it)."""
     if now < M.live_sell_at():
         return ""
     ids = [str((r.get("p") or {}).get("_id") or "") for r in opn if (r.get("p") or {}).get("_id")]
-    return ('<div class="pk-st pk-lv" data-pk-box data-pk-open="%s" hidden><span class="k" data-pk-head hidden>Sold on the live chart since this page '
-            'was built (booked at that minute, the next scan adds it to the balance)</span><ul class="pk-sold" data-pk-sold></ul>'
-            '<small class="pk-s" data-pk-line></small></div>') % E(json.dumps(ids, separators=(",", ":")))
+    return '<div class="pk-st pk-lv" data-pk-box data-pk-open="%s" hidden></div>' % E(json.dumps(ids, separators=(",", ":")))
 
 
 # The sell bot: the Pick account's chart exit (memebot.chart_hit, run every minute by rocket_watch.py) shown as a bot of its own. The user
@@ -427,23 +422,21 @@ PK_LIVE_JS = r"""
   var box=document.querySelector('[data-pk-box]');
   if(!box||!/^https:\/\/[^\s\/]+$/.test(url)||!key||!window.fetch)return;
   var ids;try{ids=JSON.parse(box.getAttribute('data-pk-open')||'[]');}catch(e){ids=[];}
-  var EVERY=45000,next=0,busy=false,MINUS='−',WHY={stop:'stop',trail:'trailing stop',drop:'fast fall',tp:'11x reached',time:'after 6 h'};
+  var EVERY=45000,next=0,busy=false,MINUS='−',WHY=""" + json.dumps(SB_WHY, ensure_ascii=False) + r""";
   function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
   function de(v,d){var s=Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});return (v<0&&/[1-9]/.test(s)?MINUS:'')+s;}
   function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
-  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function pct(m){var v=Math.round(100*(m-1));return (v>0?'+':(v<0?MINUS:''))+Math.abs(v)+'%';}
   function apply(d){
-    var sold=d.sold&&typeof d.sold==='object'?d.sold:{},pos=d.pos&&typeof d.pos==='object'?d.pos:{},u=box.querySelector('[data-pk-sold]'),rows=[];
-    ids.forEach(function(id){var x=sold[id];if(x&&typeof x==='object'&&n(x.at))rows.push(x);});
-    rows.sort(function(a,b){return n(b.at)-n(a.at);});
-    if(u){u.textContent='';rows.forEach(function(x){var v=n(x.pnl)||0,li=el('li',v>0.004?'good':(v<-0.004?'bad':''));
-      li.appendChild(el('b',null,String(x.sym||'?').slice(0,14)));
-      li.appendChild(el('span',null,['x'+de(n(x.mult)||0,2),WHY[x.why]||String(x.why||''),hhmm(n(x.at))].filter(Boolean).join(' · ')));
-      li.appendChild(el('em',null,(v>0.004?'+':'')+de(v,2)+' €'));u.appendChild(li);});}
-    var w=ids.filter(function(id){return pos[id]&&!sold[id];}).length,line=box.querySelector('[data-pk-line]');
-    if(line)line.textContent='Live chart · last look '+(n(d.t)?hhmm(n(d.t)):'–')+' · '+w+' of '+ids.length+' open position'+(ids.length===1?'':'s')+' watched every minute';
-    var hd=box.querySelector('[data-pk-head]');if(hd){if(rows.length)hd.removeAttribute('hidden');else hd.setAttribute('hidden','');}
-    if(rows.length||ids.length)box.removeAttribute('hidden');
+    var sold=d.sold&&typeof d.sold==='object'?d.sold:{},gone=0;
+    ids.forEach(function(id){var x=sold[id],c=document.querySelector('[data-pk-card="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]');
+      if(!x||typeof x!=='object'||!n(x.at)||!c)return;gone++;
+      var v=n(x.pnl)||0,note=c.querySelector('.pk-gone-note');
+      if(!note){note=document.createElement('p');note.className='pk-gone-note';c.insertBefore(note,c.firstChild);}
+      note.className='pk-gone-note '+(v>0.004?'good':(v<-0.004?'bad':''));
+      note.textContent='Sold at '+hhmm(n(x.at))+' by the Sell bot · '+[WHY[x.why]||String(x.why||''),n(x.mult)?pct(n(x.mult)):'',(v>0.004?'+':'')+de(v,2)+' €'].filter(Boolean).join(' · ')+' · the next scan books it';
+      c.classList.add('pk-gone');});
+    var k=document.querySelector('[data-pk-n]');if(k)k.textContent=String(Math.max(0,ids.length-gone));
   }
   function want(){if(document.visibilityState==='hidden')return false;var a=document.getElementById('tab-pick');return !a||!!a.checked;}
   function poll(){
@@ -464,6 +457,9 @@ PK_LIVE_JS = r"""
 
 PK_CSS = r"""
 /* the Pick tab's account block (page_home.pick_account), the same look as the rocket hunter's block on the Radar tab */
+.pk-card { display:grid; gap:6px } .pk-gone > :not(.pk-gone-note) { opacity:.45 }
+.pk-gone-note { margin:0; padding:6px 10px; border-radius:10px; font-size:var(--fs-s); font-weight:500; background:var(--chip); color:var(--fg2) }
+.pk-gone-note.good { color:var(--good); background:color-mix(in srgb,var(--good) 12%,transparent) } .pk-gone-note.bad { color:var(--bad); background:color-mix(in srgb,var(--bad) 12%,transparent) }
 .pk { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 16px 10px; display:grid; gap:12px; min-width:0; margin:0 0 12px;
   background-image:radial-gradient(120% 80% at 100% 0%, color-mix(in srgb,var(--accent) 14%,transparent), transparent 60%) }
 .pk-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 10px } .pk-head h3 { margin:0; font-size:19px }
@@ -482,103 +478,41 @@ PK_CSS = r"""
 .pk-sold li em { grid-column:2; grid-row:1 / span 2; align-self:center; font-style:normal; font-variant-numeric:tabular-nums; font-weight:600 }
 .pk-sold li.good em { color:var(--good) } .pk-sold li.bad em { color:var(--bad) }
 .pk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
-.pk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
 .pk-how > summary { cursor:pointer; color:var(--accent); font-size:var(--fs-s); font-weight:500; min-height:44px; display:flex; align-items:center } .pk-how > p { margin-top:4px }
-.pk-cmp b.good { color:var(--good) } .pk-cmp b.bad { color:var(--bad) }
 @media (max-width:420px) { .pk-acct { grid-template-columns:1fr } }
 """
 
 
-def pick_now(D, R):
-    """The current pick: symbol, tier, safety, the trained odds and the look-alike forecast (forecast.py), and a way to its full card."""
-    picks = [c for c in ((D.get("rec") or {}).get("picks") or []) if isinstance(c, dict)]
-    if not picks:
-        return ('<div class="hm-now hm-pick"><div class="hm-nh"><span class="hm-tag">Pick</span></div>'
-                '<p class="hm-empty">No pick right now: no coin passed every filter and the safety check.</p></div>')
-    p = picks[0]
-    fc = None
-    try:
-        import forecast as FC
-        fc = FC.forecast(p.get("f"))
-    except Exception:
-        fc = None
-    rows = []
-    po, pz = num(p.get("upP")), num(p.get("zeroP"))
-    if po is not None:
-        rows.append(("Chance of a profit (2 h)", "%d%%" % round(100 * po)))
-    if pz is not None:
-        rows.append(("Chance of going to zero", "%d%%" % round(100 * pz)))
-    if fc:
-        rows += [("Similar coins: 2x in 6 h", "%d%%" % round(100 * fc["x2"])), ("Similar coins: 3x in 6 h", "%d%%" % round(100 * fc["x3"]))]
-    tier = {"strong": "strong pick", "fair": "fair pick", "weak": "weak pick"}.get(str(p.get("tier") or ""), "")
-    held = ""
-    hr = next((r for r in (pick_book(D) or {}).get("rows") or [] if r.get("open") and (r.get("p") or {}).get("addr") == p.get("addr")), None)
-    if hr and num(hr.get("pct")) is not None:
-        held = '<span class="hm-chip %s">bought · %s%%</span>' % (tone(hr["pct"]), E(("+" if hr["pct"] > 0 else "") + de_num(100 * hr["pct"], 1)))
-    meta = []
-    if num(p.get("mc")):
-        meta.append("MC %s" % R.fmt_money(p.get("mc")))
-    if num((p.get("f") or {}).get("ageH")) is not None:
-        meta.append("%s h old" % de_num(num(p["f"]["ageH"]), 0))
-    if num(p.get("score")) is not None:
-        meta.append("Score %d" % round(num(p["score"])))
-    return ('<div class="hm-now hm-pick"><div class="hm-nh"><span class="hm-tag">Pick</span><small>for the next 2 hours</small></div>'
-            '<div class="hm-coin"><b>%s</b><span>%s</span>%s%s%s</div><small class="hm-meta">%s</small>%s'
-            '<label class="hm-go" for="tab-pick" data-go="pick">All about the pick ›</label></div>') % (
-        E(p.get("sym") or "?"), E(str(p.get("name") or "")[:28]), ('<span class="hm-chip">%s</span>' % E(tier)) if tier else "",
-        '<span class="hm-chip good">safety: clean</span>' if p.get("ok") else "", held, E(" · ".join(meta)),
-        ('<div class="hm-odds">%s</div>' % "".join('<span><i>%s</i><b>%s</b></span>' % (E(k), E(v)) for k, v in rows)) if rows else "")
-
-
-def rocket_now(D, R, doc):
-    """The rocket hunter's best candidates of its last round, each with a bar: its score as a share of the buy cut (100 % buys)."""
-    head = '<div class="hm-nh"><span class="hm-tag rad">Radar 🚀</span><small>Rocket candidates · buys at 100%</small></div>'
-    if not doc:
-        return '<div class="hm-now hm-rd">%s<p class="hm-empty">The rocket hunter has not run yet: it checks the new coins every 15 minutes.</p></div>' % head
-    cut = num(doc.get("cut")) or 0
-    rows = []
-    for r in [r for r in doc.get("top") or [] if isinstance(r, dict)][:CANDS_SHOWN]:
-        sc = num(r.get("score")) or 0
-        share = sc / cut if cut > 0 else 0
-        w = max(2.0, min(100.0, 100 * share))
-        rows.append('<li class="%s"><b>%s</b><span class="hm-bar"><i style="width:%.1f%%"></i></span><em>%s</em><small>%s</small></li>' % (
-            "buy" if r.get("buy") else ("near" if share >= 0.5 else ""), E(str(r.get("sym") or str(r.get("addr") or "?")[:6])[:14]), w,
-            "bought" if r.get("buy") else "%d%%" % round(100 * share), E("%d min old" % int(num(r.get("age")) or 0))))
-    rd = doc.get("round") or {}
-    t = num(doc.get("t"))
-    foot = "Last round %s · %s coins watched · %d scored · %d bought" % (
-        when(R, t, D["now"]) if t else "–", de_num(int(num(rd.get("candidates")) or 0), 0), int(num(rd.get("scored")) or 0), int(num(rd.get("bought")) or 0))
-    body = ('<ul class="hm-cands" data-rk-cands="hm">%s</ul>' % "".join(rows)) if rows else '<p class="hm-empty">No coin of the right age in the last round.</p>'
-    return ('<div class="hm-now hm-rd" data-rk-box data-rk-t="%d">%s%s<small class="hm-meta">%s</small><label class="hm-go" for="tab-young" data-go="young">Go to Radar ›</label></div>') % (
-        int(t or 0), head, body, E(foot))
-
-
 def live_panel(D, R):
-    """The live panel (page_live.py: the four bots with their clocks and the feed of buys and sells), '' without the module."""
+    """The live panel (page_live.py: the three accounts with their bots, each bot's clock, and the feed of buys and sells), '' without
+    the module or when it fails (section then shows the account cards of before Oct 26 and says so)."""
     try:
         import page_live as PL
-    except ImportError:
-        return ""
-    try:
         return PL.section(D, R)
     except Exception as e:
-        return '<p class="hm-empty">The live panel could not be built this time (%s). The accounts above are unaffected.</p>' % E(type(e).__name__)
+        LIVE_ERR[0] = type(e).__name__
+        return ""
+
+
+LIVE_ERR = [""]
 
 
 def section(D, R):
-    doc = rocket_doc(D)
-    pk, rk = pick_book(D), rocket_book(doc)
-    # both accounts count from the same moment since the Pick's fresh start (memebot.FRESH_AT, the rocket hunter's first round)
-    cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
-             + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
-    lp = lern_row(D, R)
-    sb = sell_bot_row(D, R)       # the Pick's sell bot (no account of its own), right under the accounts
-    # Oct 25 clean-up: the two status lines (last scan, last radar round) are the live panel's lanes now, with a clock each; the four
-    # tiles that repeated the tab bar are gone
-    return ('<style>%s</style><section class="hm" data-home>'
-            '<div class="hm-hero"><div class="hm-ey">%s accounts · fake money · no real trades</div><div class="hm-accs">%s%s</div></div>'
-            '%s<h2 class="hm-h">Right now</h2><div class="hm-nows">%s%s</div></section><script>%s</script>') % (
-        CSS, "Three" if lp else "Two", cards, sb + lp, live_panel(D, R), pick_now(D, R), rocket_now(D, R, doc), JS)
+    lv = live_panel(D, R)
+    if lv:
+        body = lv
+    else:
+        # without the live panel: the two account cards, the sell bot's row and the Learning Pick's row (the Start tab before Oct 26)
+        doc = rocket_doc(D)
+        pk, rk = pick_book(D), rocket_book(doc)
+        cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
+                 + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
+        lp = lern_row(D, R)
+        sb = sell_bot_row(D, R)
+        body = ('<div class="hm-hero"><div class="hm-ey">%s accounts · fake money · no real trades</div><div class="hm-accs">%s%s</div></div>'
+                '<p class="hm-empty">The live view could not be built this time%s.</p>') % (
+            "Three" if lp else "Two", cards, sb + lp, (" (%s)" % E(LIVE_ERR[0])) if LIVE_ERR[0] else "")
+    return '<style>%s</style><section class="hm" data-home>%s</section><script>%s</script>' % (CSS, body, JS)
 
 
 JS = r"""
@@ -596,7 +530,7 @@ document.addEventListener('click',function(e){var l=e.target&&e.target.closest?e
 """
 
 CSS = r"""
-/* the Start tab (page_home.py): two account cards side by side, then the live panel (page_live.py), then the pick and the rocket candidates */
+/* the Start tab (page_home.py): the live panel (page_live.py); without it the account cards of before Oct 26 */
 .hm { display:grid; gap:14px } .hm [hidden] { display:none !important }
 .hm-hero { position:relative; border-radius:18px; padding:14px; overflow:hidden; border:1px solid var(--line);
   background:radial-gradient(120% 90% at 0% 0%, color-mix(in srgb,var(--accent) 22%,transparent), transparent 60%),
@@ -618,29 +552,7 @@ CSS = r"""
 .hm-st > span { display:grid; min-width:0 } .hm-st i { font-style:normal; font-size:11px; color:var(--muted) }
 .hm-st b { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap } .hm-st small { font-size:11px; font-weight:400; color:var(--muted); margin:0 3px 0 1px }
 .hm-n { font-size:11px; color:var(--muted) } .hm-empty { margin:0; font-size:var(--fs-s); color:var(--fg2) }
-.hm-h { margin:6px 2px 0; font-size:17px }
-.hm-nows { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:10px }
-.hm-now { min-width:0; display:grid; gap:8px; align-content:start; padding:12px 14px; border-radius:14px; background:var(--surface); border:1px solid var(--line) }
-.hm-nh { display:flex; align-items:center; gap:8px } .hm-nh small { color:var(--muted); font-size:var(--fs-xs) }
-.hm-tag { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:2px 8px; border-radius:999px;
-  color:var(--accent); background:color-mix(in srgb,var(--accent) 16%,transparent) }
-.hm-tag.rad { color:var(--nn2); background:color-mix(in srgb,var(--nn2) 16%,transparent) }
-.hm-coin { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px } .hm-coin > b { font-size:22px; font-weight:600 } .hm-coin > span { color:var(--fg2); font-size:var(--fs-s) }
-.hm-chip { font-size:11px; padding:1px 8px; border-radius:999px; background:var(--chip); color:var(--fg2); align-self:center }
-.hm-chip.good { color:var(--good); background:color-mix(in srgb,var(--good) 14%,transparent) } .hm-chip.bad { color:var(--bad); background:color-mix(in srgb,var(--bad) 14%,transparent) }
-.hm-meta { font-size:var(--fs-xs); color:var(--muted) }
-.hm-odds { display:grid; grid-template-columns:1fr 1fr; gap:6px }
-.hm-odds span { display:grid; padding:6px 8px; border-radius:10px; background:color-mix(in srgb,var(--fg) 4%,transparent) }
-.hm-odds i { font-style:normal; font-size:11px; color:var(--muted) } .hm-odds b { font-size:16px; font-variant-numeric:tabular-nums }
 .hm-go { justify-self:start; color:var(--accent); font-size:var(--fs-s); font-weight:500; cursor:pointer; padding:6px 0; min-height:32px }
-.hm-cands { list-style:none; margin:0; padding:0; display:grid; gap:6px }
-.hm-cands li { display:grid; grid-template-columns:minmax(64px,auto) 1fr auto; grid-template-rows:auto auto; column-gap:10px; align-items:center; font-size:var(--fs-s) }
-.hm-cands li b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px }
-.hm-cands li em { font-style:normal; font-variant-numeric:tabular-nums; color:var(--fg2); text-align:right; min-width:40px }
-.hm-cands li small { grid-column:1 / -1; font-size:11px; color:var(--muted); margin-top:-2px }
-.hm-bar { height:6px; border-radius:6px; background:color-mix(in srgb,var(--fg) 8%,transparent); overflow:hidden }
-.hm-bar i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),var(--nn2)) }
-.hm-cands li.near em { color:var(--warn) } .hm-cands li.buy em { color:var(--good); font-weight:600 } .hm-cands li.buy .hm-bar i { background:var(--good-mark) }
 .hm-lp { grid-column:1 / -1; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; cursor:pointer; text-decoration:none; color:inherit }
 .hm-lp > .hm-k, .hm-lp > .hm-since { grid-column:1 } .hm-lp > .hm-bal { grid-column:2; grid-row:1 / span 2; align-self:center }
 .hm-lp .hm-dot { background:var(--good); box-shadow:0 0 10px var(--good) } .hm-lp:hover { border-color:var(--accent) }
