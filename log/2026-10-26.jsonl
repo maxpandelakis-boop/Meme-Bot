@@ -76,3 +76,4 @@
 {"t":1793020500130,"addr":"FrQFfv9rGdQStzBAkUJjrhq7aMrTVP73TuFnXoVDpump","sym":"Rockstar","age":30.9,"why":"liquidity","liq":1928}
 {"t":1793020500130,"addr":"A9t37tF6QGApJoFRBU8CB9sZERzNiZMX5Ak7nR1cpump","sym":"Memelord","age":30.5,"why":"liquidity","liq":2066}
 {"t":1793020620399,"addr":"7yqTtb47Sa1w2KNabXCSLkv99DH1uCLLehK8uDpapQEe","sym":"AUGUR","age":30.5,"score":0.00203,"px":5.523e-05,"liq":18060,"p0":5.5237658002626486e-05,"bars":6,"buy":false,"f":{"f_curve_min":28.9667,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0477,"c_peak":1.0364,"c_vol":3.55,"c_act":1.0,"c_r5":0.0002,"c_r15":-0.0042,"c_mc":4.7422}}
+{"t":1793020921274,"addr":"kkm5nFam2MyAxQsKnugzeMCy8nNH8dVntQYLvWBpump","sym":"Haaland","age":30.2,"why":"liquidity","liq":1977}
