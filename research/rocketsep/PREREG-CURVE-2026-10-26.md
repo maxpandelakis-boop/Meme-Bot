@@ -80,3 +80,11 @@ with this source: a pass then does not count (a fail still does, since the gap w
 
 Nothing switches on by itself. A pass is reported to the user with the numbers; the next step would be a new month of fresh
 launches watched on the curve (a new kind of bot, before the graduation), which needs his explicit yes. A fail closes the lead.
+
+## Run log (no change to the plan)
+
+- Run 1 (26 Oct 09:06 UTC): the probe passed (22 of 30 coins with candles: 11 of 15 graduated, 11 of 15 never graduated; first
+  opens at 1.0-3.6 P0, so the prices are in SOL; last highs of the graduated coins at 0.93-1.00 G0, median about 0.996, so G = G0).
+  It was stopped at 09:18 UTC, five minutes into the fetch, so that the top 0.1 % is fetched and pushed on its own before the rest of
+  the top 1 %; its partial shard files are not used and were not opened.
+- Run 2: the same probe, the top 0.1 % in three shards (pushed to rocketscurve as soon as they are in), then the rest of the top 1 %.

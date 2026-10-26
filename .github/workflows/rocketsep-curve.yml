@@ -1,7 +1,7 @@
 # Bonding-curve prices of the launch model's top picks (fake money only; research/rocketsep/PREREG-CURVE-2026-10-26.md).
 # research/rocketsep/rs_curve.py reads GeckoTerminal's public one-minute candles (no API key; only the last job uses the repository
-# token, to push the data branch): first a probe on 30 coins outside the lists, then the 7,394 top-1 % launches of 10 Sep-6 Oct in
-# three shards (the top 0.1 % first). Nothing is bought.
+# token, to push the data branch): first a probe on 30 coins outside the lists, then the 739 top-0.1 % launches of 10 Sep-6 Oct in
+# three shards (pushed as soon as they are in), then the rest of the top 1 % (6,655) in three shards. Nothing is bought.
 # The candles go to the data branch "rocketscurve". Runs only on a push of this file or curve_run.txt on this branch, three runners
 # at most at a time, and does not touch the live scan.
 name: rocketsep-curve
@@ -24,8 +24,44 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: probe, path: probe.json, retention-days: 3}
-  shard:
+  primary:
     needs: probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        i: [0, 1, 2]
+    env:
+      GT_GAP: "2.2"
+      BUDGET_S: "6600"
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/rocketsep/rs_curve.py fetch research/rocketsep/curve_targets.csv ${{ matrix.i }} 3 primary_${{ matrix.i }}.json.gz top0.1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "primary-${{ matrix.i }}", path: "primary_*.json.gz", retention-days: 3}
+  final1:
+    needs: [probe, primary]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: "primary-*", merge-multiple: true, path: out}
+        continue-on-error: true
+      - uses: actions/download-artifact@v4
+        with: {name: probe, path: out}
+        continue-on-error: true
+      - env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p out && cd out && ls -la && git init -q && git checkout -q -b rocketscurve && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "curve candles: probe and the top 0.1 %" \
+            && git push -q --force "$URL" rocketscurve
+  rest:
+    needs: final1
     runs-on: ubuntu-latest
     timeout-minutes: 340
     strategy:
@@ -38,18 +74,18 @@ jobs:
       BUDGET_S: "19000"
     steps:
       - uses: actions/checkout@v4
-      - run: python3 research/rocketsep/rs_curve.py fetch research/rocketsep/curve_targets.csv ${{ matrix.i }} 3 shard_${{ matrix.i }}.json.gz
+      - run: python3 research/rocketsep/rs_curve.py fetch research/rocketsep/curve_targets.csv ${{ matrix.i }} 3 rest_${{ matrix.i }}.json.gz rest
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: "shard-${{ matrix.i }}", path: "shard_*.json.gz", retention-days: 3}
-  final:
-    needs: [probe, shard]
+        with: {name: "rest-${{ matrix.i }}", path: "rest_*.json.gz", retention-days: 3}
+  final2:
+    needs: [final1, rest]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/download-artifact@v4
-        with: {pattern: "shard-*", merge-multiple: true, path: out}
+        with: {pattern: "*-*", merge-multiple: true, path: out}
         continue-on-error: true
       - uses: actions/download-artifact@v4
         with: {name: probe, path: out}
@@ -58,5 +94,5 @@ jobs:
           URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           mkdir -p out && cd out && ls -la && git init -q && git checkout -q -b rocketscurve && git add -A \
-            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "curve candles of the launch model's top picks" \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "curve candles: probe, the top 0.1 % and the rest of the top 1 %" \
             && git push -q --force "$URL" rocketscurve

@@ -2,7 +2,7 @@
 
   python3 research/rocketsep/rs_curve.py targets <data dir>                       -> curve_targets.csv, curve_probe.csv (no network)
   python3 research/rocketsep/rs_curve.py probe <probe csv> <out json>             -> GeckoTerminal coverage on coins outside the lists
-  python3 research/rocketsep/rs_curve.py fetch <targets csv> <i> <n> <out json.gz> -> one shard of curve minute candles
+  python3 research/rocketsep/rs_curve.py fetch <targets csv> <i> <n> <out json.gz> <set> -> one shard (set top0.1 or rest)
   python3 research/rocketsep/rs_curve.py judge <targets csv> <candle dir> <out dir> -> <out dir>/curve.json (no network)
 
 targets: the Part 0a launch model of rs_curve_feas.py (14 launch facts, fit on w3, seed 7, unchanged) ranks every w4 launch; the top
@@ -169,9 +169,9 @@ def cmd_probe(path, out):
         sys.exit("GeckoTerminal returned curve candles for fewer than 10 of %d probe coins: the fetch does not start" % len(res))
 
 
-def cmd_fetch(path, i, n, out):
-    T = read_targets(path)
-    T = [r for k, r in enumerate(sorted(T, key=lambda r: int(r["rank"]))) if k % n == i]     # the primary set comes first
+def cmd_fetch(path, i, n, out, which):
+    T = [r for r in read_targets(path) if (r["set"] == "top0.1") == (which == "top0.1")]
+    T = [r for k, r in enumerate(sorted(T, key=lambda r: int(r["rank"]))) if k % n == i]
     t0, res = time.time(), {}
     for k, r in enumerate(T):
         if time.time() - t0 > BUDGET_S:
@@ -304,4 +304,4 @@ def cmd_judge(path, cdir, od):
 if __name__ == "__main__":
     a = sys.argv
     {"targets": lambda: cmd_targets(a[2]), "probe": lambda: cmd_probe(a[2], a[3]),
-     "fetch": lambda: cmd_fetch(a[2], int(a[3]), int(a[4]), a[5]), "judge": lambda: cmd_judge(a[2], a[3], a[4])}[a[1]]()
+     "fetch": lambda: cmd_fetch(a[2], int(a[3]), int(a[4]), a[5], a[6]), "judge": lambda: cmd_judge(a[2], a[3], a[4])}[a[1]]()
