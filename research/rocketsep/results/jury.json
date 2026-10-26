@@ -1,0 +1,83 @@
+{
+ "chosen": {
+  "model": "bR",
+  "q": 0.02,
+  "plan": "V3",
+  "win": "w3late",
+  "n": 30,
+  "mean": -4.949,
+  "rockets": 0,
+  "base_n": 1523,
+  "base_rocketPct": 0.35
+ },
+ "rounds": {
+  "1": {
+   "buys": 5,
+   "buysTakenByRule": 0,
+   "meanEurAfterCost": -3.63,
+   "rocketsBought": 0,
+   "rocketsAll": 3,
+   "aucProfit": 0.536,
+   "aucRocket": 0.621,
+   "votesPerReviewer": {
+    "1": 1,
+    "2": 11,
+    "3": 1,
+    "4": 4,
+    "5": 12,
+    "6": 16,
+    "7": 16,
+    "8": 7,
+    "9": 3,
+    "10": 4
+   },
+   "profit": {
+    "n": 5,
+    "meanAfterCost": -3.63,
+    "total": -18.15,
+    "lo1": -17.98,
+    "p": 0.7316,
+    "totalWithoutBest": -62.53,
+    "holds": false
+   }
+  },
+  "2": {
+   "buys": 3,
+   "buysTakenByRule": 0,
+   "meanEurAfterCost": 5.68,
+   "rocketsBought": 0,
+   "rocketsAll": 3,
+   "aucProfit": 0.539,
+   "aucRocket": 0.607,
+   "votesPerReviewer": {
+    "1": 1,
+    "2": 6,
+    "3": 1,
+    "4": 3,
+    "5": 6,
+    "6": 8,
+    "7": 6,
+    "8": 6,
+    "9": 3,
+    "10": 2
+   },
+   "profit": {
+    "n": 3,
+    "meanAfterCost": 5.68,
+    "total": 17.04,
+    "lo1": -17.01,
+    "p": 0.3007,
+    "totalWithoutBest": -27.34,
+    "holds": false
+   }
+  }
+ },
+ "ruleOnCards": {
+  "buys": 60,
+  "meanEurAfterCost": -3.91
+ },
+ "randomOnCards": {
+  "buys": 60,
+  "meanEurAfterCost": -13.17
+ }
+}
