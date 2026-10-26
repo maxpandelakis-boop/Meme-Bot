@@ -6,7 +6,9 @@
 # "seeker-data"; the scan job copies seeker.json into the page.
 # One run ticks every minute for about 55 minutes; the cron fires every 15 minutes and the concurrency group keeps the newest waiting
 # run, which starts when this one ends (rocket.yml's way: GitHub starts scheduled runs late or not at all when it is busy). Its own
-# group: it never waits for or delays the scan, the radar or the Radar's rounds. Stop it: Actions -> "Meme-Bot rocket seeker" -> ...
+# group: it never waits for or delays the scan, the radar or the Radar's rounds. GitHub's cron can also stop for more than an hour (26
+# Oct: no start from 11:43 to 13:00 UTC), so every 10 minutes keepalive.py starts the next run of this workflow, the Radar's and the
+# hourly scan when none is waiting (the cron stays the backup). Stop it: Actions -> "Meme-Bot rocket seeker" -> ...
 # -> Disable workflow, or the repository variable MEMEBOT_SEEKER=0.
 name: Meme-Bot rocket seeker
 on:
@@ -18,6 +20,7 @@ on:
     paths: [.github/workflows/seeker.yml]
 permissions:
   contents: write                    # the seeker-data branch only (seeker-smoke for the test run of a push)
+  actions: write                     # keepalive.py: the next run of this workflow, the Radar's and the scan (GitHub's API only)
 concurrency:
   group: memebot-seeker
   cancel-in-progress: false
@@ -50,8 +53,9 @@ jobs:
       - name: A tick every minute, the radar's records fetched every 2 minutes, the state saved after a buy or a sale and every 5 minutes
         env:
           REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          MEMEBOT_SEEKER: ${{ vars.MEMEBOT_SEEKER || '1' }}
         run: |
-          # the token is for the fetches and saves only: seeker_watch.py runs without it (env -u)
+          # the token is for the fetches, the saves and keepalive.py's starts only: seeker_watch.py runs without it (env -u)
           save() {
             (cd sk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "seeker $(date -u +%Y-%m-%dT%H:%MZ)" \
               && git push -q "$REPO_URL" "HEAD:$DATA_BRANCH") || echo "nothing to save"
@@ -65,6 +69,7 @@ jobs:
             out=$(env -u REPO_URL timeout 55 python3 seeker_watch.py tick --dir sk --radar rd) || { echo "tick $i failed"; failed=$((failed + 1)); out=""; }
             echo "$(date -u +%H:%M) $out"
             if echo "$out" | grep -q '"changed": true' || [ $((i % 5)) -eq 4 ]; then save; fi
+            if [ $((i % 10)) -eq 5 ]; then timeout 60 python3 keepalive.py --me seeker.yml || echo "keepalive did not answer"; fi
             i=$((i + 1))
             wait=$((60 - $(date +%s) % 60)); sleep "$wait"
           done

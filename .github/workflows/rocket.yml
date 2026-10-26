@@ -8,7 +8,9 @@
 # One run holds four rounds, 15 minutes apart (about an hour): GitHub starts scheduled runs late or not at all when it is busy (on
 # 22 Oct only 13 of about 30 quarter-hours got a run, 30 to 45 minutes apart), so a run that did one round left the coins unscored and
 # the open positions unwatched for half an hour. The cron still fires every 15 minutes; while a run is busy the newest of them waits
-# (the concurrency group keeps one) and starts when it ends, so the rounds go on every 15 minutes.
+# (the concurrency group keeps one) and starts when it ends, so the rounds go on every 15 minutes. GitHub's cron can also stop for
+# more than an hour (26 Oct: no start from 11:43 to 13:00 UTC), so after each round keepalive.py starts the next run of this workflow,
+# the seeker's and the hourly scan when none is waiting (the cron stays the backup; Disable workflow stays the stop switch).
 name: Meme-Bot rocket hunter
 on:
   schedule:
@@ -19,6 +21,7 @@ on:
     paths: [.github/workflows/rocket.yml]
 permissions:
   contents: write                    # the rocket-data branch only
+  actions: write                     # keepalive.py: the next run of this workflow, the seeker's and the scan (GitHub's API only)
 concurrency:
   group: memebot-rocket
   cancel-in-progress: false
@@ -86,8 +89,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          MEMEBOT_SEEKER: ${{ vars.MEMEBOT_SEEKER || '1' }}
         run: |
-          # the token is for the saves only: rocket_watch.py runs without it (env -u)
+          # the token is for the saves and keepalive.py's starts only: rocket_watch.py runs without it (env -u)
           save() {
             (cd rk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocket round $(date -u +%Y-%m-%dT%H:%MZ)" \
               && git push -q "$REPO_URL" HEAD:rocket-data) || echo "nothing to save"
@@ -102,6 +106,7 @@ jobs:
             fi
             env -u REPO_URL timeout 840 python3 rocket_watch.py round --dir rk --radar rd || { echo "round $i failed"; failed=$((failed + 1)); }
             save
+            timeout 60 python3 keepalive.py --me rocket.yml || echo "keepalive did not answer"
             env -u REPO_URL timeout 900 python3 rocket_watch.py watch --dir rk --until $((at + 840)) || echo "watch $i failed"
             save
             i=$((i + 1))
