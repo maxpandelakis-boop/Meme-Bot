@@ -196,4 +196,6 @@ No new search over the same months. Two things instead:
      buying too, and by the time an outsider can act that buying has taken the gain.
    - By entry price (exploration): within 1.2x of the start 281 trades -3.26 each; 1.2-2x 47 trades +1.29 (small, not a rule);
      2-4x 93, -3.38; 4-8x 106, -5.54; above 8x 46, -10.37.
-   - The top 1 % (secondary, reported only) is still being fetched; it will be added here.
+   - The top 1 % (secondary, reported only; results/curve_top1.json): 6,134 of the 7,394 fetched before the shards' time budget,
+     coverage 95.1 % graduated and 93.2 % never graduated. Primary plan: 5,110 trades, -5.84 EUR per trade, 1 % bound -6.77,
+     without the best trade -30,354; 223 graduated while held (+18,025), the rest -47,849. Every other sale -5.36 to -7.13.
