@@ -395,3 +395,34 @@ No outcome has been looked at for any media or picture fact. The data the real r
 
 The real run follows now, once; after it nothing in the plan, buckets or code changes except bug fixes, and any bug fix is
 reported.
+
+## Amendment 13 (26 Oct, ~03:20 UTC, before universe L's final run): the launch data as it stands
+
+No outcome has been looked at for any metadata or picture fact of universe L; only shuffled-outcome code checks ran on it. The
+data the real run of check_launches.py uses:
+- branch rocketslaunches (amendment 10): w3 821,715 and w4 739,407 test launches, unchanged.
+- branch rocketslmeta (25 Oct 18:20 UTC; rockets-lmeta.yml runs 1-3, run 2's merge redone by rockets-lmeta-final.yml): the
+  metadata sample of 600,000 (seed 7; w3 315,926, w4 284,074). **418,118 files read (w3 62.0 %, w4 78.3 %).** 173,732 answered
+  404: 26.9 % of the sample's metadata links point to metadata.j7tracker.io (w3 33.2 %, w4 19.9 %), a launch tool that has
+  deleted 99.5 % of them, and no free source has those files. 7,413 still failed after three passes (4,697 answered 400 by
+  both IPFS gateways; the rest are hosts that time out or are down). As amendment 8 rule 6 says, the metadata facts count only
+  where the file was read, the share read is reported for graduated and not graduated launches per window, and a gap of more
+  than 5 points marks that window's metadata facts "maybe biased by which files could be read".
+- branch rocketslimages (26 Oct 02:53 UTC, rockets-limages.yml runs 1-2): the picture sample of 150,000 (seed 7), drawn from the 418,118 files read; 149,942 name a
+  picture. **146,901 pictures read by CLIP** (98.0 % of the links; 1,374 answered 404, 728 answered 403, 305 were not a readable picture, 202 were over 4 MB, 432 timed out, hit server errors or were empty).
+- Bug fixes since amendment 10, made before any real result of these facts:
+  1. check_launches.py computed the X post's age (L-F14) in 64-bit integers and stopped on post ids too large to be real (223
+     of 90,460 X post links in the first 290,700 files). It now uses floats, as check_rockets.py always did, so both studies
+     treat such ids alike: an id that decodes to a date after the launch counts as "up to 1 h", one before 2020 as "older". In
+     the graduation study 35 of 17,367 X post links are of this kind; that result is not changed.
+  2. launches.py mfinal stopped on a metadata name holding half of an emoji (a lone UTF-16 surrogate); such characters are now
+     "?". This only touches the file's own name, which images.py uses for the name fit (L-F22).
+  3. images.py stopped on a picture 1 pixel high (CLIP's processor guessed its colour layout from the shape); the layout is
+     now given. For every other picture the input is the same.
+- Shuffled-outcome code checks: NULL = 31 (the first 290,700 metadata files, no pictures), 32 (the same with made-up pictures),
+  40 (all metadata, the first 116,103 pictures): no fact passes Holm, part C's unseen AUC 0.49-0.50. On exactly the data
+  above, NULL = 41, 42, 43, 44: no fact passes Holm, part C's unseen AUC 0.50-0.51 (results/L_final_null_2026-10-26.json).
+
+The real run follows now, once: all L-facts (L-F1, L-F1b, L-F4 to L-F22) x {L1, L2} in one Holm family, fit w3, unseen month
+w4, with the "matters" bar of amendment 6 (Holm on w4 and a day-bootstrap ratio interval starting at 1.25 or more); part C on
+the metadata sample. After it nothing in the plan, buckets or code changes except bug fixes, and any bug fix is reported.
