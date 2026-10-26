@@ -247,6 +247,23 @@ def r4():
               "R5 a position's price line goes to the page as numbers only, LIVE_JS draws it with or without the live store")
         h0 = PK.section({"dir": os.path.join(tmp, "none")})
         check("has not run yet" in h0, "R5 without a doc: one sentence")
+        # the trades in view (user, Oct 25: "where can I see what it buys and sells"): an empty account says so; a sale shows buy → sell price
+        os.makedirs(os.path.join(tmp, "page0", "db", "memebot"))
+        json.dump(dict(doc, book={"open": {}, "closed": []}), open(os.path.join(tmp, "page0", "db", "memebot", "rocket.json"), "w"))
+        he = PK.section({"dir": os.path.join(tmp, "page0")})
+        check("None open right now." in he and "No trade yet" in he and "data-rk-opnone>" in he and "data-rk-soldnone>" in he
+              and "data-rk-opw hidden" not in he and "data-rk-soldw hidden" not in he and "All trades of the Radar account" not in he
+              and "data-rk-opnone" in js and "data-rk-soldnone" in js,
+              "R5 no trade yet: the open positions and the last sells stay in view with one line each (LIVE_JS hides the line once there is one)")
+        sold = {"addr": "S1", "sym": "S<i>1", "t": now - 3 * 3_600_000, "px": 0.0002, "out": now - 3_600_000, "mult": 0.7, "eur": -6.1, "why": "stop"}
+        opn = {"addr": "O1", "sym": "O1", "t": now - 600_000, "px": 0.00125, "now": 1.2, "hi": 1.3}
+        json.dump(dict(doc, book={"open": {"O1": opn}, "closed": [sold]}), open(os.path.join(tmp, "page0", "db", "memebot", "rocket.json"), "w"))
+        hs = PK.section({"dir": os.path.join(tmp, "page0")})
+        sl = PK.sold_li(PH, sold)
+        check("$0.0002000 → $0.0001400" in sl and sl.count("stop −30%") == 1 and "S&lt;i&gt;1" in sl and "at $0.001250" in hs
+              and "All trades of the Radar account (1 sold" in hs and "data-rk-opnone hidden" in hs and "data-rk-soldnone hidden" in hs
+              and "<i>1" not in hs and "px(bp)+' → '+px(bp*m)" in js,
+              "R5 a sale shows buy price → sell price, the multiple, why and when; an open one when and at what price it was bought; a fold lists every sale")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

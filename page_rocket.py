@@ -4,7 +4,9 @@ section(D) -> HTML, a compact block "Rocket hunter (paper)":
   - the two paper accounts side by side: Pick (the scan's paper account, its sell rule unchanged) and Rocket hunter (its own
     account: rocket_watch.py buys a coin once when its score reaches the cut, rule A sells it), each with its balance, how many of
     10 closed trades ended in profit, and its 3x/10x hits
-  - the rocket hunter's open positions and the best scores of its last round
+  - the rocket hunter's open positions (bought when, at what price, now, high) and its last sells (buy price → sell price, why, when),
+    each with a line when there is none ("No trade yet" before its first buy), and a fold with all its sold trades
+  - the best scores of its last round
   - one honest line: on the corrected history (22 Oct) the model was in the red; this account is its live test
   - a fold with the tests of 22 Oct (rocket_tests.json next to this module, research/winlose/rocket_tests_export.py): the corrected
     history, the replay on the unseen days 9-21 Oct (research/winlose/backfill.py), an earlier first check, 134 other exit rules, a
@@ -15,7 +17,7 @@ section(); LIVE_JS (report.py puts it after the block) reads the app's live row 
 the Radar or Start tab is open, so the account, its open positions, its last sells and the candidates move between two scans; it
 only fills the data-rk-* hooks of both tabs with textContent, and rocket.json stays what the page shows without the live store.
 """
-import html, json, os, sys
+import html, json, math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -28,6 +30,17 @@ TESTS = os.path.join(HERE, "rocket_tests.json")
 SHOWN = 5                 # candidates in view on the Radar tab; the rest of the round behind "N more"
 SOLD = 5                  # last sells on the Radar tab
 WHY = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone"}
+NO_TRADE = ("No trade yet: the Radar account has bought nothing since it started (%s). It buys only when a coin reaches 100%% of the "
+            "line in the candidates below, so days without a buy are normal.")
+
+
+def since_day():
+    """The day the Radar account started (memebot.FRESH_AT, the accounts' fresh start of Oct 22), e.g. "Oct 22"."""
+    try:
+        import page_account as PA
+        return PA.mday(num(getattr(M, "FRESH_AT", None)))
+    except Exception:
+        return "Oct 22"
 
 
 def num(v):
@@ -124,22 +137,59 @@ def chart_div(p, closed=False):
     return '<div class="rk-ch" data-rk-ch="%s"%s></div>' % (E(json.dumps(pts, separators=(",", ":"))), end)
 
 
+def px_text(v):
+    """A coin's price in US dollars as the rest of the page writes it (report.fmt_px; LIVE_JS's px() the same): $0.0002288, $1.25."""
+    v = num(v)
+    if v is None or v <= 0:
+        return "–"
+    if v >= 1:
+        return "$" + format(v, ",.2f")
+    d = -int(math.floor(math.log10(v))) + 3
+    return ("$%.3g" % v) if d > 12 else "$" + ("%." + str(d) + "f") % v
+
+
+def at_text(ms, day=True):
+    """Oct 25, 14:02 (or 14:02) in the page's time zone."""
+    try:
+        import page_account as PA
+        return ("%s, %s" % (PA.mday(ms), PA.hhmm(ms))) if day else PA.hhmm(ms)
+    except Exception:
+        return ""
+
+
 def open_li(PH, p, a=None):
-    return '<li><b>%s</b><span>bought at score %s · now x%s · high x%s</span>%s</li>' % (
-        E(sym(p, a)), E(PH.de_num(num(p.get("score")) or 0, 3)), E(PH.de_num(num(p.get("now")) or 1.0)), E(PH.de_num(num(p.get("hi")) or 1.0)), chart_div(p))
+    """One open position: bought when and at what price, the price now and its high as multiples (LIVE_JS builds the same row)."""
+    return '<li><b>%s</b><span>bought %s at %s · now x%s · high x%s</span>%s</li>' % (
+        E(sym(p, a)), E(at_text(p.get("t")) if num(p.get("t")) else "–"), E(px_text(p.get("px"))), E(PH.de_num(num(p.get("now")) or 1.0)),
+        E(PH.de_num(num(p.get("hi")) or 1.0)), chart_div(p))
 
 
 def sold_li(PH, p):
-    """One sell: symbol, multiple, why and when, the result in euro (LIVE_JS builds the same row)."""
-    try:
-        import page_account as PA
-        at = PA.hhmm(p["out"]) if num(p.get("out")) else ""
-    except Exception:
-        at = ""
-    v = num(p.get("eur")) or 0.0
-    bits = ["x" + PH.de_num(num(p.get("mult")) or 0.0), WHY.get(str(p.get("why") or ""), str(p.get("why") or "")), at]
+    """One sell: symbol, buy price → sell price, multiple, why and when, the result in euro (LIVE_JS builds the same row)."""
+    at = at_text(p["out"]) if num(p.get("out")) else ""
+    v, m, bp = num(p.get("eur")) or 0.0, num(p.get("mult")) or 0.0, num(p.get("px"))
+    bits = [("%s → %s" % (px_text(bp), px_text(bp * m))) if bp else "", "x" + PH.de_num(m), WHY.get(str(p.get("why") or ""), str(p.get("why") or "")), at]
     return '<li class="%s"><b>%s</b><span>%s</span><em>%s</em>%s</li>' % (
         PH.tone(v), E(sym(p)), E(" · ".join(b for b in bits if b)), E(PH.de_eur(v, True)), chart_div(p, True) if p.get("chart") else "")
+
+
+def all_trades(PH, bk):
+    """The fold "All trades of the Radar account": every sold position of the scan's copy (rocket.json keeps the last 500), newest first:
+    the coin and its buy time, buy price → sell price with the multiple, when and why it sold, the result in euro. '' before the first sale."""
+    cl = sorted((p for p in bk.get("closed") or [] if isinstance(p, dict)), key=lambda p: -(num(p.get("out")) or 0))
+    if not cl:
+        return ""
+    rows = []
+    for p in cl:
+        v, m, bp = num(p.get("eur")) or 0.0, num(p.get("mult")) or 0.0, num(p.get("px"))
+        rows.append('<tr><td><b>%s</b><small>bought %s</small></td><td>%s → %s<small>x%s · sold %s · %s</small></td><td class="n %s">%s</td></tr>' % (
+            E(sym(p)), E(at_text(p.get("t")) if num(p.get("t")) else "–"), E(px_text(bp)), E(px_text(bp * m) if bp else "–"), E(PH.de_num(m)),
+            E(at_text(p.get("out")) if num(p.get("out")) else "–"), E(WHY.get(str(p.get("why") or ""), str(p.get("why") or ""))), PH.tone(v), E(PH.de_eur(v, True))))
+    tot = sum(num(p.get("eur")) or 0.0 for p in cl)
+    return ('<details class="rk-more rk-all"><summary>All trades of the Radar account (%d sold, %s)</summary><div class="rk-scroll"><table class="rk-t">'
+            '<thead><tr><th>Coin</th><th>Buy → sell price</th><th>Result</th></tr></thead><tbody>%s</tbody></table></div>'
+            '<small class="rk-s">Prices in US dollars per coin, results in euro after the paper fees. This list is the last scan\'s copy; the last '
+            'sells above move live.</small></details>') % (len(cl), E(PH.de_eur(tot, True)), "".join(rows))
 
 
 def section(D):
@@ -192,8 +242,11 @@ def section(D):
             when = ""
     body = (acct
             + '<p class="rk-s rk-live" data-rk-live hidden></p>'
-            + '<div class="rk-st" data-rk-opw%s><span class="k">Open positions</span><ul class="rk-op" data-rk-op>%s</ul></div>' % ("" if op else " hidden", "".join(op))
-            + '<div class="rk-st" data-rk-soldw%s><span class="k">Recently sold</span><ul class="rk-sold" data-rk-sold>%s</ul></div>' % ("" if sold else " hidden", "".join(sold))
+            + '<div class="rk-st" data-rk-opw><span class="k">Open positions</span><ul class="rk-op" data-rk-op>%s</ul><p class="rk-s" data-rk-opnone%s>None open right now.</p></div>' % (
+                "".join(op), " hidden" if op else "")
+            + '<div class="rk-st" data-rk-soldw><span class="k">Last sells</span><ul class="rk-sold" data-rk-sold>%s</ul><p class="rk-s" data-rk-soldnone%s>%s</p></div>' % (
+                "".join(sold), " hidden" if sold else "", E(NO_TRADE % since_day()))
+            + all_trades(PH, bk)
             + ('<div class="rk-st"><span class="k">Candidates of the last round · buys at 100%% of the line (%s)</span><ul class="rk-cands" data-rk-cands="rk">%s</ul>%s</div>' % (
                 E(PH.de_num(cut, 4)), "".join(rows[:SHOWN]), ('<details class="rk-more" data-rk-more><summary>%d more</summary><ul class="rk-cands">%s</ul></details>' % (
                     len(rows) - SHOWN, "".join(rows[SHOWN:]))) if len(rows) > SHOWN else "") if rows else '<p class="rk-s">No coin of the right age in the last round.</p>')
@@ -249,6 +302,12 @@ CSS = r"""
 @keyframes rkPulse { 0% { transform:scale(.5); opacity:.6 } 100% { transform:scale(1.8); opacity:0 } }
 .rk-sold li .rk-ch { grid-column:1 / -1; grid-row:3 }
 @media (prefers-reduced-motion:reduce) { .rk-sold li.new, .rk-op li.new, .rk-svg .pulse { animation:none } }
+.rk-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100% }
+.rk-t { width:100%; border-collapse:collapse; font-size:12px }
+.rk-t th { text-align:left; font-weight:500; color:var(--muted); font-size:11px; padding:4px 6px; border-bottom:1px solid var(--line) }
+.rk-t td { padding:6px; border-bottom:1px solid var(--line2); vertical-align:top; font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
+.rk-t td small { display:block; font-size:11px; color:var(--muted) } .rk-t td.n, .rk-t th:last-child { text-align:right; white-space:nowrap }
+.rk-t .good { color:var(--good) } .rk-t .bad { color:var(--bad) }
 .rk-tl { list-style:none; margin:0 0 6px; padding:0; display:grid; gap:8px } .rk-tl li { display:grid; gap:1px; font-size:var(--fs-s) }
 .rk-tl li span { color:var(--fg2); font-size:var(--fs-xs); overflow-wrap:anywhere }
 @media (max-width:560px) { .rk { padding:12px 12px 8px } .rk-acct { grid-template-columns:1fr } }
@@ -311,6 +370,9 @@ LIVE_JS = r"""
   function eur(v){return (v>0.004?'+':'')+de(v,2)+' €';}
   function tone(v){return v>0.004?'good':(v<-0.004?'bad':'');}
   function hhmm(ms){try{return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+  function at(ms){try{return new Date(ms).toLocaleDateString('en-US',{month:'short',day:'2-digit'})+', '+hhmm(ms);}catch(e){return '';}}
+  function px(p){if(!(p>0))return '–';if(p>=1)return '$'+p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    var d=-Math.floor(Math.log10(p))+3;return d>12?'$'+p.toPrecision(3):'$'+p.toFixed(d);}
   function sym(p){return String(p.sym||String(p.addr||'?').slice(0,6)).slice(0,14);}
   function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
   function li(cls,b,span,em){var e=el('li',cls);e.appendChild(el('b',null,b));if(span!=null)e.appendChild(el('span',null,span));if(em!=null)e.appendChild(el('em',null,em));return e;}
@@ -330,13 +392,13 @@ LIVE_JS = r"""
       set(box,'win',w===null?'–':de(w,1).replace(/\.0$/,''));
       set(box,'hits',(n(s.x3)||0)+' · '+(n(s.x10)||0));
       set(box,'open',String(n(s.open)||0));set(box,'closed',String(n(s.trades)||0));
-      var u=fill(box,'[data-rk-op]',op.map(function(p){var e=li('',sym(p),'bought at score '+de(n(p.score)||0,3)+' · now x'+de(n(p.now)||1,2)+' · high x'+de(n(p.hi)||1,2));
+      var u=fill(box,'[data-rk-op]',op.map(function(p){var e=li('',sym(p),'bought '+(n(p.t)?at(n(p.t)):'–')+' at '+px(n(p.px))+' · now x'+de(n(p.now)||1,2)+' · high x'+de(n(p.hi)||1,2));
         e.appendChild(chartDiv(p,false));return e;}));
-      if(u)show(u.closest('[data-rk-opw]'),op.length);
-      u=fill(box,'[data-rk-sold]',cl.map(function(p){var v=n(p.eur)||0,o=n(p.out);
-        var e=li((tone(v)+(fresh(p)?' new':'')).trim(),sym(p),['x'+de(n(p.mult)||0,2),WHY[p.why]||String(p.why||''),o?hhmm(o):''].filter(Boolean).join(' · '),eur(v));
+      if(u)[].forEach.call(box.querySelectorAll('[data-rk-opnone]'),function(e){show(e,!op.length);});
+      u=fill(box,'[data-rk-sold]',cl.map(function(p){var v=n(p.eur)||0,o=n(p.out),bp=n(p.px),m=n(p.mult)||0;
+        var e=li((tone(v)+(fresh(p)?' new':'')).trim(),sym(p),[bp?px(bp)+' → '+px(bp*m):'','x'+de(m,2),WHY[p.why]||String(p.why||''),o?at(o):''].filter(Boolean).join(' · '),eur(v));
         if(Array.isArray(p.chart)&&p.chart.length)e.appendChild(chartDiv(p,true));return e;}));
-      if(u)show(u.closest('[data-rk-soldw]'),cl.length);
+      if(u)[].forEach.call(box.querySelectorAll('[data-rk-soldnone]'),function(e){show(e,!cl.length);});
       var cs=box.querySelector('[data-rk-cands]');
       if(cs&&Array.isArray(d.top)&&d.top.length){var pre=cs.getAttribute('data-rk-cands')==='hm'?'hm':'rk';
         fill(box,'[data-rk-cands]',d.top.slice(0,SHOWN).filter(function(r){return r&&typeof r==='object';}).map(function(r){

@@ -13,9 +13,10 @@ on top of that block (the user could not find it on Oct 24): each open position'
 section(D, R) -> HTML:
   - the two accounts side by side: balance, a small line of the balance over time, x of 10 closed trades in profit, the big hits
     (3x and 10x) and the open positions; under them the sell bot's row (sell_bot_row: what it watches, a tap opens its card)
+  - the live panel (page_live.py, Oct 25): each bot's last move, a clock to its next and its open coins, and a feed of the last day's buys,
+    sells, rounds and scans that new ones slide into (it replaced the two status lines and the tiles that repeated the tab bar)
   - "Right now": the current pick with its look-alike forecast (forecast.py) and the rocket hunter's best candidates of its last
     round, each with how close its score is to the buy cut
-  - when the next scan and the last radar round ran, and a short map of the other tabs
 Every number comes from the page data (D) and rocket.json; nothing here changes a pick, a sell rule or an account. The Pick side counts the
 paper account's pick positions only (the new launches ended on Oct 16 and live in the Archive tab). Every chain string is escaped.
 """
@@ -160,7 +161,8 @@ def acct_card(key, title, sub, b, empty, live=False, since=""):
 
 def lern_row(D, R):
     """The Learning Pick (lernpick.py, a self-learning shadow with its own paper account) as a slim row under the two accounts: its balance
-    the way the Pick card counts it (sold trades plus the open ones at the last scan price), the sold trades' result as the fold's summary
+    the way the Pick card counts it (sold trades plus the open ones at the last scan price, or at the sale their rule already made on the
+    scan prices: lernpick.rule_on_marks; until Oct 25 a coin stopped out in its first hour counted at 14x here), the sold trades' result as the fold's summary
     line says it, how many open, since its first buy. A tap opens the Pick tab with its fold open (the user could not find it at the foot
     of the Pick tab, Oct 23). '' without the module or when it cannot be read."""
     try:
@@ -236,7 +238,8 @@ def pick_account(D, R):
     cmp_ = ('<p class="pk-cmp">For comparison, Radar 🚀: <b class="%s">%s</b> · %d closed · %d open</p>' % (
         tone(rk["bal"]), E(de_eur(rk["bal"], True)), rk["closed"], rk["open"])) if rk else ""
     live_at = M.live_sell_at()
-    foot = ('<p class="pk-s">%s The trades before the start (%d) are in the archive under “Three paper traders”.</p>' % (
+    # Oct 25 clean-up: the rule in full behind a tap (the sell bot card above says what it does now)
+    foot = ('<details class="pk-how"><summary>How it sells</summary><p class="pk-s">%s The trades before the start (%d) are in the archive under “Three paper traders”.</p></details>' % (
         E(("Sells on the live chart, every minute (the chart exit, since Oct 24): %d%% under its highest price once it has reached %gx, on a fall of %d%% "
            "within %d minutes, at −%d%%, at 11x or after 6 h, each at that minute. The fixed rule before it (−%d%%, 11x, 6 h) runs on as shadow rule K "
            "on the same trades.") % (round(100 * M.CHART_TRAIL), M.CHART_ARM, round(100 * M.CHART_DROP), M.CHART_DROP_MIN, round(100 * M.CHART_STOP),
@@ -480,6 +483,7 @@ PK_CSS = r"""
 .pk-sold li.good em { color:var(--good) } .pk-sold li.bad em { color:var(--bad) }
 .pk-s { margin:0; font-size:var(--fs-xs); color:var(--muted); max-width:70ch; overflow-wrap:anywhere }
 .pk-cmp { margin:0; font-size:var(--fs-s); color:var(--fg2); padding-top:8px; border-top:1px solid var(--line) }
+.pk-how > summary { cursor:pointer; color:var(--accent); font-size:var(--fs-s); font-weight:500; min-height:44px; display:flex; align-items:center } .pk-how > p { margin-top:4px }
 .pk-cmp b.good { color:var(--good) } .pk-cmp b.bad { color:var(--bad) }
 @media (max-width:420px) { .pk-acct { grid-template-columns:1fr } }
 """
@@ -549,29 +553,32 @@ def rocket_now(D, R, doc):
         int(t or 0), head, body, E(foot))
 
 
+def live_panel(D, R):
+    """The live panel (page_live.py: the four bots with their clocks and the feed of buys and sells), '' without the module."""
+    try:
+        import page_live as PL
+    except ImportError:
+        return ""
+    try:
+        return PL.section(D, R)
+    except Exception as e:
+        return '<p class="hm-empty">The live panel could not be built this time (%s). The accounts above are unaffected.</p>' % E(type(e).__name__)
+
+
 def section(D, R):
-    now = D["now"]
     doc = rocket_doc(D)
     pk, rk = pick_book(D), rocket_book(doc)
-    runs = [r for r in D.get("runs") or [] if isinstance(r, dict) and num(r.get("t"))]
-    nxt = R.next_scan_ms(now, runs)
-    status = ['<span><i class="hm-pulse"></i>Pick scan last %s · next ≈ %s</span>' % (E(hhmm(R, num(runs[0]["t"]))) if runs else "–", E(hhmm(R, nxt)))]
-    if doc and num(doc.get("t")):
-        status.append('<span><i class="hm-pulse rad"></i>Rocket radar last %s · every 15 min</span>' % E(hhmm(R, num(doc["t"]))))
     # both accounts count from the same moment since the Pick's fresh start (memebot.FRESH_AT, the rocket hunter's first round)
     cards = (acct_card("pick", "PICK", "Pick account", pk, "No pick bought since the start yet.", since=since_words(R, (D.get("paper") or {}).get("since")))
              + acct_card("rad", "RADAR", "Radar account 🚀", rk, "Starts with the first radar round.", live=True, since=since_words(R, getattr(M, "FRESH_AT", None))))
     lp = lern_row(D, R)
     sb = sell_bot_row(D, R)       # the Pick's sell bot (no account of its own), right under the accounts
-    nav = [("pick", "Pick", "The pick, its safety check, hour by hour"), ("young", "Radar", "Rocket hunter and launch radar"),
-           ("office", "Brain", "What the bot is thinking"), ("account", "Archive", "Research, old traders, all the data")]
+    # Oct 25 clean-up: the two status lines (last scan, last radar round) are the live panel's lanes now, with a clock each; the four
+    # tiles that repeated the tab bar are gone
     return ('<style>%s</style><section class="hm" data-home>'
             '<div class="hm-hero"><div class="hm-ey">%s accounts · fake money · no real trades</div><div class="hm-accs">%s%s</div></div>'
-            '<div class="hm-status">%s</div>'
-            '<h2 class="hm-h">Right now</h2><div class="hm-nows">%s%s</div>'
-            '<nav class="hm-nav">%s</nav></section><script>%s</script>') % (
-        CSS, "Three" if lp else "Two", cards, sb + lp, "".join(status), pick_now(D, R), rocket_now(D, R, doc),
-        "".join('<label for="tab-%s" data-go="%s"><b>%s</b><small>%s</small></label>' % (k, k, E(n), E(s)) for k, n, s in nav), JS)
+            '%s<h2 class="hm-h">Right now</h2><div class="hm-nows">%s%s</div></section><script>%s</script>') % (
+        CSS, "Three" if lp else "Two", cards, sb + lp, live_panel(D, R), pick_now(D, R), rocket_now(D, R, doc), JS)
 
 
 JS = r"""
@@ -589,7 +596,7 @@ document.addEventListener('click',function(e){var l=e.target&&e.target.closest?e
 """
 
 CSS = r"""
-/* the Start tab (page_home.py): two account cards side by side, then the pick and the rocket candidates, then a map of the other tabs */
+/* the Start tab (page_home.py): two account cards side by side, then the live panel (page_live.py), then the pick and the rocket candidates */
 .hm { display:grid; gap:14px } .hm [hidden] { display:none !important }
 .hm-hero { position:relative; border-radius:18px; padding:14px; overflow:hidden; border:1px solid var(--line);
   background:radial-gradient(120% 90% at 0% 0%, color-mix(in srgb,var(--accent) 22%,transparent), transparent 60%),
@@ -611,10 +618,6 @@ CSS = r"""
 .hm-st > span { display:grid; min-width:0 } .hm-st i { font-style:normal; font-size:11px; color:var(--muted) }
 .hm-st b { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap } .hm-st small { font-size:11px; font-weight:400; color:var(--muted); margin:0 3px 0 1px }
 .hm-n { font-size:11px; color:var(--muted) } .hm-empty { margin:0; font-size:var(--fs-s); color:var(--fg2) }
-.hm-status { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:var(--fs-xs); color:var(--fg2); padding:0 4px }
-.hm-status span { display:inline-flex; align-items:center; gap:6px }
-.hm-pulse { width:7px; height:7px; border-radius:50%; background:var(--good-mark); animation:hm-p 2.4s ease-in-out infinite } .hm-pulse.rad { background:var(--nn2) }
-@keyframes hm-p { 0%,100% { box-shadow:0 0 0 0 color-mix(in srgb,currentColor 0%,transparent); opacity:1 } 50% { opacity:.45 } }
 .hm-h { margin:6px 2px 0; font-size:17px }
 .hm-nows { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:10px }
 .hm-now { min-width:0; display:grid; gap:8px; align-content:start; padding:12px 14px; border-radius:14px; background:var(--surface); border:1px solid var(--line) }
@@ -638,14 +641,10 @@ CSS = r"""
 .hm-bar { height:6px; border-radius:6px; background:color-mix(in srgb,var(--fg) 8%,transparent); overflow:hidden }
 .hm-bar i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),var(--nn2)) }
 .hm-cands li.near em { color:var(--warn) } .hm-cands li.buy em { color:var(--good); font-weight:600 } .hm-cands li.buy .hm-bar i { background:var(--good-mark) }
-.hm-nav { display:grid; grid-template-columns:1fr 1fr; gap:8px }
-.hm-nav label { display:grid; gap:2px; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:var(--surface); cursor:pointer; min-height:44px }
-.hm-nav label:hover { border-color:var(--accent) } .hm-nav b { font-size:var(--fs-m) } .hm-nav small { font-size:11px; color:var(--muted) }
 .hm-lp { grid-column:1 / -1; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; cursor:pointer; text-decoration:none; color:inherit }
 .hm-lp > .hm-k, .hm-lp > .hm-since { grid-column:1 } .hm-lp > .hm-bal { grid-column:2; grid-row:1 / span 2; align-self:center }
 .hm-lp .hm-dot { background:var(--good); box-shadow:0 0 10px var(--good) } .hm-lp:hover { border-color:var(--accent) }
 .hm-lpf { grid-column:1 / -1; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px 10px } .hm-lpf .hm-go { padding:0; min-height:0 }
-@media (min-width:700px) { .hm-nav { grid-template-columns:repeat(4,1fr) } .hm-hero { padding:18px } .hm-acc { padding:16px } }
+@media (min-width:700px) { .hm-hero { padding:18px } .hm-acc { padding:16px } }
 @media (max-width:360px) { .hm-accs { grid-template-columns:1fr } }
-@media (prefers-reduced-motion: reduce) { .hm-pulse { animation:none } }
 """

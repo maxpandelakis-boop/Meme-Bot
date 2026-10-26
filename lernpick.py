@@ -813,8 +813,40 @@ def last_mark(p):
     return None, None
 
 
+def rule_on_marks(p, now):
+    """An open position that its own rule has already ended on the scan prices (marks, about one an hour): (ms, mult, why) or None.
+    A mark at or under the stop sells at the stop, at or over the target at the target, a trailing stop from the best mark, else the
+    first mark at or after the hold time. Only for the page: until the minute candles book the sale (about 6 h after the buy) the last
+    scan price is not what the position is worth when the rule sold it hours ago (LAUNCH, Oct 25: stop in the first hour, then 14x)."""
+    px0 = num(p.get("px"))
+    r = p.get("rule") or {}
+    if not px0 or not num(r.get("hours")):
+        return None
+    end = p["entryAt"] + int(num(r["hours"]) * H)
+    stop, target, trail = num(r.get("stop")), num(r.get("target")), num(r.get("trail"))
+    best = 1.0
+    for m in sorted((m for m in p.get("marks") or [] if isinstance(m, list) and len(m) >= 2 and num(m[0]) and num(m[0]) > p["entryAt"]), key=lambda m: m[0]):
+        t, x = int(m[0]), (num(m[1]) or 0.0) / px0
+        if len(m) >= 3 and num(m[2]) is not None and num(m[2]) < 1000:
+            return t, 0.0, "rug"
+        if not x:
+            continue
+        if trail and x <= best * (1.0 - trail):
+            return t, best * (1.0 - trail), "trail"
+        if stop and not trail and x <= 1.0 - stop:
+            return t, 1.0 - stop, "stop"
+        if target and x >= target:
+            return t, target, "tp"
+        if t >= end:
+            return t, min(x, MULT_CAP), "time"
+        best = max(best, x)
+    return None
+
+
 def summary(d, now=None):
-    """The Learning Pick's account, the comparison with the Pick and the Radar since its first buy, and the brain. Reads only."""
+    """The Learning Pick's account, the comparison with the Pick and the Radar since its first buy, and the brain. Reads only.
+    An open position is counted at the last scan price, or, once its rule has ended it on the scan prices, at that sale (rule_on_marks;
+    the trade row says so)."""
     now = int(now or time.time() * 1000)
     pos = sorted(positions(d).values(), key=lambda p: (-p["t"], p["pid"]))
     sold = [p for p in pos if p.get("state") == "sold"]
@@ -824,6 +856,10 @@ def summary(d, now=None):
         _, px = last_mark(p)
         mult = (px / num(p["px"])) if px and num(p.get("px")) else 0.0
         p["_now"] = round(mult, 4) if px else None
+        g = rule_on_marks(p, now)
+        if g:
+            p["_ended"] = {"t": g[0], "mult": round(g[1], 4), "why": g[2], "eur": money([(1.0, min(g[1], MULT_CAP))], num(p.get("ticket")) or TICKET)}
+            mult, px = g[1], True
         val += M.pos_value(dict(FEE_POS, ticket=num(p.get("ticket")) or TICKET), 1.0, min(mult, MULT_CAP)) if px else 0.0
     inv = sum(num(p.get("ticket")) or TICKET for p in pos)
     back = sum((num(p.get("eur")) or 0.0) + (num(p.get("ticket")) or TICKET) for p in sold)
@@ -866,7 +902,8 @@ def summary(d, now=None):
     except Exception:
         radar["ticket"] = 20.0
     return {"v": V, "t": now, "since": since, "ticket": TICKET, "me": me, "pick": pick, "radar": radar, "brain": brain_brief(brain_doc(d)),
-            "trades": [{k: p.get(k) for k in ("pid", "sym", "addr", "pair", "t", "px", "state", "eur", "why", "top", "rule", "brain", "samePick", "pick", "_now", "of", "score", "src")}
+            "trades": [{k: p.get(k) for k in ("pid", "sym", "addr", "pair", "t", "px", "state", "eur", "why", "top", "rule", "brain", "samePick", "pick", "_now", "_ended",
+                                              "of", "score", "src", "out", "sales")}
                        for p in pos]}
 
 

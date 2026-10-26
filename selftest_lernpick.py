@@ -26,6 +26,9 @@ LP7 summary and the fold: the account, the Pick and the Radar since its first bu
     the results branch; no push anywhere
 LP8 the workflows: the nightly steps after the filter search (soft, their own branch, no results push), the scan copies the brain before
     the scan and passes the switch, bot.py buys after the trader only in recommend mode (soft, with a time limit)
+LP9 an open trade that its rule already ended on the scan prices (LAUNCH, Oct 25: under its stop an hour after the buy, 14x later; the
+    Start tab showed +415 € for it) counts at that sale, not at the price after it; the trade list shows buy price → sell price, when
+    and why it sold, an open trade's price now and when its rule ends, the ended one marked ≈; display only (no file written)
 """
 import glob, json, math, os, random, shutil, sys, tempfile
 
@@ -92,6 +95,7 @@ def checks(check):
         _lp5_lp6(check, tmp)
         _lp7(check, tmp)
         _lp8(check)
+        _lp9(check, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -388,6 +392,45 @@ def _lp8(check):
     i_tr2, i_lp2, i_rep = bot.find('o.begin("trader")'), bot.find('run(["lernpick.py", "buy"], d, now, soft=True, limit=LERN_LIMIT_S)'), bot.find('o.begin("reporter")')
     check(0 < i_tr2 < i_lp2 < i_rep and "    if recommend:\n        run([\"lernpick.py\", \"buy\"]" in bot and '("memebot.py", "radar.py", "lernpick.py")' in bot,
           "LP8 bot.py buys after the trader and before the page, only in recommend mode, soft, with a time limit and the cycle's clock")
+
+
+def _lp9(check, tmp):
+    import lernpick as L, page_lernpick as PL, report as R, page_home as PH
+    print("== learning pick LP9: an open trade its rule already ended, and the trade list's prices")
+    d = os.path.join(tmp, "mb9")
+    rule = L._rule(0.2, 2.0, 2.0)
+    t = T0 + 40 * DAY
+    base = {"v": 1, "addr": "A9", "pair": "P9", "ticket": 50.0, "rule": rule, "brain": "2026-10-17", "score": 1.0, "of": 30, "samePick": False, "tries": 0}
+    L.write_pos(d, dict(base, pid="a-l-LAUNCH", sym="LAUNCH", t=t, entryAt=t, px=0.0002288, state="open",
+                        marks=[[t, 0.0002288, 44000.0], [t + HOUR, 0.0001716, 38000.0], [t + 4 * HOUR, 0.00254, 209000.0], [t + 5 * HOUR, 0.00334, 184000.0]]))
+    L.write_pos(d, dict(base, pid="b-l-UP", sym="UP", t=t + 4 * HOUR, entryAt=t + 4 * HOUR, px=1.0, state="open", marks=[[t + 4 * HOUR, 1.0, 50000.0], [t + 5 * HOUR, 1.2, 50000.0]]))
+    L.write_pos(d, dict(base, pid="c-l-SOLD", sym="SOLD", t=t - DAY, entryAt=t - DAY, px=0.0001, state="sold", why="tp", out=t - DAY + 90 * MIN,
+                        sales=[[t - DAY + 90 * MIN, 1.0, 2.0, "tp"]], eur=L.money([(1.0, 2.0)]), top=2.0, marks=[]))
+    before = sorted(_tree(d, "db"))
+    with _no_numpy():
+        S = L.summary(d, t + 5 * HOUR + MIN)
+    tr = {p["sym"]: p for p in S["trades"]}
+    stop_eur, up_val = L.money([(1.0, 0.8)]), L.money([(1.0, 1.2)]) + 50.0
+    check(tr["LAUNCH"]["_ended"]["why"] == "stop" and tr["LAUNCH"]["_ended"]["mult"] == 0.8 and tr["LAUNCH"]["_ended"]["t"] == t + HOUR and tr["UP"].get("_ended") is None
+          and abs(S["me"]["openValue"] - (stop_eur + 50.0 + up_val)) < 0.02 and abs(S["me"]["pnl"] - (S["me"]["closedPnl"] + stop_eur + up_val - 50.0)) < 0.03
+          and S["me"]["pnl"] < 50,
+          "LP9 an open trade under its stop on a scan price counts at the stop (%s), not at the 14.6x it reached after; one still inside its rule at the last price (balance %s)"
+          % (tr["LAUNCH"].get("_ended"), S["me"]["pnl"]))
+    with _no_numpy():
+        h = PL.section({"dir": d, "now": t + 5 * HOUR + MIN}, R)
+        row = PH.lern_row({"dir": d, "now": t + 5 * HOUR + MIN}, R)
+    trs = h.split("<tr")
+    lt = next(x for x in trs if "LAUNCH" in x)
+    up = next(x for x in trs if ">UP<" in x)
+    sd = next(x for x in trs if ">SOLD<" in x)
+    check("$0.0002288 → ≈ $0.0001830" in lt and "stop" in lt and "now 14.60x (after its sale)" in lt and "≈ " + PL.eur(stop_eur) in lt
+          and "$1.00 → now $1.20" in up and "its rule ends" in up and ">open<" in up
+          and "$0.0001000 → $0.0002000" in sd and "2.00x · sold" in sd and "target" in sd and PL.eur(L.money([(1.0, 2.0)])) in sd
+          and h.find('id="learning-pick-trades"') < h.find('class="lp-brain"') and "Its trades: 2 open, 1 sold" in h
+          and PH.de_eur(S["me"]["pnl"], True) in row and "+415" not in row,
+          "LP9 the trade list (above the brain): buy price → sell price, the multiple, when and why it sold; an open one's price now and its rule's end; "
+          "the ended one with ≈; the Start row's balance the same as the summary")
+    check(sorted(_tree(d, "db")) == before, "LP9 the summary and the fold write nothing")
 
 
 def main():
