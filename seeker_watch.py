@@ -53,7 +53,11 @@ def records(radar_dir):
 
 def candles(http, pool, since, now, px, side=None):
     """GeckoTerminal's one-minute candles of the side that prices the coin (base first, or the side used before), checked against
-    DexScreener's price px (memebot.unit_ok); ([], None) when neither side does or none came."""
+    DexScreener's price px (memebot.unit_ok); ([], None) when neither side does or none came. Without a price this minute the side
+    used before is read unchecked (an open position's coin may be far from its buy price by now)."""
+    if not px and side in M.GT_SIDES:
+        cs = RW.gt_candles(http, pool, since, now, side)
+        return (sorted(cs), side) if cs else ([], None)
     first = side if side in M.GT_SIDES else "base"
     for s in [first] + [x for x in M.GT_SIDES if x != first]:
         cs = RW.gt_candles(http, pool, since, now, s)
@@ -139,7 +143,7 @@ def tick(d, radar_dir, now, mock=None):
         p = RW.pick_pair(pairs.get(a), pos.get("pool"))
         px = S.num((p or {}).get("priceUsd"))
         last = S.num(pos.get("lastT")) or pos["t"]
-        cs, side = candles(http, pos["pool"], last - MIN, now, px or pos["px"], pos.get("tok"))
+        cs, side = candles(http, pos["pool"], last - MIN, now, px or (None if pos.get("tok") else pos["px"]), pos.get("tok"))
         if side:
             pos["tok"] = side
         # a minute is judged once it ended: the newest candle may still run
