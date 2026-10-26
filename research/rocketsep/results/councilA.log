@@ -1,0 +1,26 @@
+[   22s] council A A choose 19982 20720
+[   22s]  round 1
+[   66s]   lgb fits 280 median trees 52
+[   84s]  round 2
+[   96s]   lgb fits 70 median trees 54
+[  189s] council A A chosen {'cand': ['CH', 10.0], 'diff': 0.019, 'held': 180, 'buys': 2180}
+[  189s]  round 1
+[  261s]   lgb fits 280 median trees 116
+[  288s]  round 2
+[  325s]   lgb fits 70 median trees 106
+[  404s] council A A chosen ('CH', 10.0) {'w4': (1, 0.135, 0.0, False), 'w5': (2, -0.041, -0.345, False)}
+[  405s] council A A majority2 ('R2', 0.5) {'w4': (1, -0.002, -0.006, False), 'w5': (1, 0.0, 0.0, False)}
+[  405s] council A A chair0 ('CH', 0.0) {'w4': (119, -1.724, -3.124, False), 'w5': (59, 1.828, -3.145, False)}
+[  411s] council A B choose 19982 20720
+[  411s]  round 1
+[  443s]   lgb fits 280 median trees 56
+[  459s]  round 2
+[  471s]   lgb fits 70 median trees 57
+[  558s] council A B chosen {'cand': ['R1', 0.2], 'diff': 0.778, 'held': 1479, 'buys': 2280}
+[  558s]  round 1
+[  631s]   lgb fits 280 median trees 100
+[  658s]  round 2
+[  680s]   lgb fits 70 median trees 78
+[  774s] council A B chosen ('R1', 0.2) {'w4': (1012, 0.715, 0.123, True), 'w5': (482, 1.009, 0.2, True)}
+[  775s] council A B majority2 ('R2', 0.5) {'w4': (27, -0.035, -0.12, False), 'w5': (15, 0.024, -0.017, False)}
+[  775s] council A B chair0 ('CH', 0.0) {'w4': (1500, 1.53, -0.01, False), 'w5': (691, 1.161, -0.338, False)}

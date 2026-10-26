@@ -1,0 +1,1792 @@
+{
+ "buys": 61909,
+ "perWindow": {
+  "w1": 9708,
+  "w2": 10274,
+  "w3": 20720,
+  "w4": 15090,
+  "w5": 6117
+ },
+ "sale": {
+  "A": {
+   "rule": "Sell bot (v3)",
+   "role": "P",
+   "w1": {
+    "buys": 348,
+    "ruleMean": -4.22,
+    "rocketsAfterSale": 4,
+    "rocketsPer1000": 11.49,
+    "zerosAfterSale": 36,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 429.8,
+      "newMean": -3.79,
+      "oracleAnyHoldNewMean": 0.41
+     },
+     "H3": {
+      "eurPer1000": 861.1,
+      "newMean": -3.35,
+      "oracleAnyHoldNewMean": 3.11
+     },
+     "H6": {
+      "eurPer1000": 1536.1,
+      "newMean": -2.68,
+      "oracleAnyHoldNewMean": 4.69
+     },
+     "H12": {
+      "eurPer1000": 3121.3,
+      "newMean": -1.09,
+      "oracleAnyHoldNewMean": 5.67
+     },
+     "H24": {
+      "eurPer1000": 4156.2,
+      "newMean": -0.06,
+      "oracleAnyHoldNewMean": 7.18
+     },
+     "HE": {
+      "eurPer1000": 4156.2,
+      "newMean": -0.06,
+      "oracleAnyHoldNewMean": 7.01
+     },
+     "HN": {
+      "eurPer1000": 842.1,
+      "newMean": -3.37,
+      "oracleAnyHoldNewMean": 7.69
+     },
+     "TR": {
+      "eurPer1000": 349.4,
+      "newMean": -3.87,
+      "oracleAnyHoldNewMean": 2.36
+     },
+     "BE": {
+      "eurPer1000": 78.6,
+      "newMean": -4.14,
+      "oracleAnyHoldNewMean": 3.97
+     },
+     "RS": {
+      "eurPer1000": 84.2,
+      "newMean": -4.13,
+      "oracleAnyHoldNewMean": 1.18
+     },
+     "MAX24": {
+      "eurPer1000": 10386.5,
+      "newMean": 6.17
+     }
+    }
+   },
+   "w2": {
+    "buys": 394,
+    "ruleMean": -2.34,
+    "rocketsAfterSale": 6,
+    "rocketsPer1000": 15.23,
+    "zerosAfterSale": 42,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 332.5,
+      "newMean": -2.01,
+      "oracleAnyHoldNewMean": 2.91
+     },
+     "H3": {
+      "eurPer1000": -460.0,
+      "newMean": -2.8,
+      "oracleAnyHoldNewMean": 4.93
+     },
+     "H6": {
+      "eurPer1000": 785.3,
+      "newMean": -1.56,
+      "oracleAnyHoldNewMean": 6.45
+     },
+     "H12": {
+      "eurPer1000": 2326.1,
+      "newMean": -0.02,
+      "oracleAnyHoldNewMean": 8.41
+     },
+     "H24": {
+      "eurPer1000": 3524.1,
+      "newMean": 1.18,
+      "oracleAnyHoldNewMean": 8.45
+     },
+     "HE": {
+      "eurPer1000": 3524.1,
+      "newMean": 1.18,
+      "oracleAnyHoldNewMean": 6.94
+     },
+     "HN": {
+      "eurPer1000": 10887.0,
+      "newMean": 8.54,
+      "oracleAnyHoldNewMean": 18.73
+     },
+     "TR": {
+      "eurPer1000": -304.5,
+      "newMean": -2.65,
+      "oracleAnyHoldNewMean": 4.07
+     },
+     "BE": {
+      "eurPer1000": -925.8,
+      "newMean": -3.27,
+      "oracleAnyHoldNewMean": 5.87
+     },
+     "RS": {
+      "eurPer1000": -895.6,
+      "newMean": -3.24,
+      "oracleAnyHoldNewMean": 2.93
+     },
+     "MAX24": {
+      "eurPer1000": 15314.1,
+      "newMean": 12.97
+     }
+    }
+   },
+   "w3": {
+    "buys": 569,
+    "ruleMean": -1.95,
+    "rocketsAfterSale": 3,
+    "rocketsPer1000": 5.27,
+    "zerosAfterSale": 58,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 288.8,
+      "newMean": -1.66,
+      "oracleAnyHoldNewMean": 0.91
+     },
+     "H3": {
+      "eurPer1000": 1539.4,
+      "newMean": -0.41,
+      "oracleAnyHoldNewMean": 3.78
+     },
+     "H6": {
+      "eurPer1000": 1535.0,
+      "newMean": -0.42,
+      "oracleAnyHoldNewMean": 4.31
+     },
+     "H12": {
+      "eurPer1000": 1535.0,
+      "newMean": -0.42,
+      "oracleAnyHoldNewMean": 5.73
+     },
+     "H24": {
+      "eurPer1000": 1535.0,
+      "newMean": -0.42,
+      "oracleAnyHoldNewMean": 6.22
+     },
+     "HE": {
+      "eurPer1000": 1535.0,
+      "newMean": -0.42,
+      "oracleAnyHoldNewMean": 6.68
+     },
+     "HN": {
+      "eurPer1000": 964.5,
+      "newMean": -0.99,
+      "oracleAnyHoldNewMean": 7.2
+     },
+     "TR": {
+      "eurPer1000": 176.2,
+      "newMean": -1.78,
+      "oracleAnyHoldNewMean": 4.59
+     },
+     "BE": {
+      "eurPer1000": 76.3,
+      "newMean": -1.88,
+      "oracleAnyHoldNewMean": 6.04
+     },
+     "RS": {
+      "eurPer1000": 300.3,
+      "newMean": -1.65,
+      "oracleAnyHoldNewMean": 2.52
+     },
+     "MAX24": {
+      "eurPer1000": 3258.0,
+      "newMean": 1.3
+     }
+    }
+   },
+   "w4": {
+    "buys": 356,
+    "ruleMean": -3.17,
+    "rocketsAfterSale": 5,
+    "rocketsPer1000": 14.04,
+    "zerosAfterSale": 48,
+    "perfect": {
+     "H1": {
+      "eurPer1000": -20.6,
+      "newMean": -3.19,
+      "oracleAnyHoldNewMean": -0.34
+     },
+     "H3": {
+      "eurPer1000": 758.9,
+      "newMean": -2.41,
+      "oracleAnyHoldNewMean": 2.52
+     },
+     "H6": {
+      "eurPer1000": 1246.3,
+      "newMean": -1.93,
+      "oracleAnyHoldNewMean": 4.58
+     },
+     "H12": {
+      "eurPer1000": 4174.3,
+      "newMean": 1.0,
+      "oracleAnyHoldNewMean": 7.96
+     },
+     "H24": {
+      "eurPer1000": 4718.4,
+      "newMean": 1.54,
+      "oracleAnyHoldNewMean": 7.28
+     },
+     "HE": {
+      "eurPer1000": 4729.1,
+      "newMean": 1.56,
+      "oracleAnyHoldNewMean": 9.79
+     },
+     "HN": {
+      "eurPer1000": 2019.8,
+      "newMean": -1.15,
+      "oracleAnyHoldNewMean": 8.63
+     },
+     "TR": {
+      "eurPer1000": 317.1,
+      "newMean": -2.86,
+      "oracleAnyHoldNewMean": 1.6
+     },
+     "BE": {
+      "eurPer1000": 120.6,
+      "newMean": -3.05,
+      "oracleAnyHoldNewMean": 4.32
+     },
+     "RS": {
+      "eurPer1000": 156.5,
+      "newMean": -3.02,
+      "oracleAnyHoldNewMean": 1.48
+     },
+     "MAX24": {
+      "eurPer1000": 8446.9,
+      "newMean": 5.27
+     }
+    }
+   },
+   "w5": {
+    "buys": 185,
+    "ruleMean": -3.97,
+    "rocketsAfterSale": 3,
+    "rocketsPer1000": 16.22,
+    "zerosAfterSale": 28,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 335.1,
+      "newMean": -3.64,
+      "oracleAnyHoldNewMean": -0.86
+     },
+     "H3": {
+      "eurPer1000": 869.7,
+      "newMean": -3.1,
+      "oracleAnyHoldNewMean": -0.26
+     },
+     "H6": {
+      "eurPer1000": 1916.3,
+      "newMean": -2.06,
+      "oracleAnyHoldNewMean": 3.54
+     },
+     "H12": {
+      "eurPer1000": 2524.7,
+      "newMean": -1.45,
+      "oracleAnyHoldNewMean": 3.96
+     },
+     "H24": {
+      "eurPer1000": 7693.3,
+      "newMean": 3.72,
+      "oracleAnyHoldNewMean": 9.33
+     },
+     "HE": {
+      "eurPer1000": 7693.3,
+      "newMean": 3.72,
+      "oracleAnyHoldNewMean": 9.06
+     },
+     "HN": {
+      "eurPer1000": 5801.1,
+      "newMean": 1.83,
+      "oracleAnyHoldNewMean": 8.1
+     },
+     "TR": {
+      "eurPer1000": 3032.8,
+      "newMean": -0.94,
+      "oracleAnyHoldNewMean": 3.79
+     },
+     "BE": {
+      "eurPer1000": 314.4,
+      "newMean": -3.66,
+      "oracleAnyHoldNewMean": 2.64
+     },
+     "RS": {
+      "eurPer1000": 809.7,
+      "newMean": -3.16,
+      "oracleAnyHoldNewMean": 1.06
+     },
+     "MAX24": {
+      "eurPer1000": 11543.4,
+      "newMean": 7.57
+     }
+    }
+   },
+   "w1-w3": {
+    "buys": 1311,
+    "ruleMean": -2.67,
+    "rocketsAfterSale": 13,
+    "rocketsPer1000": 9.92,
+    "zerosAfterSale": 136,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 339.4,
+      "newMean": -2.33,
+      "oracleAnyHoldNewMean": 1.37
+     },
+     "H3": {
+      "eurPer1000": 758.5,
+      "newMean": -1.91,
+      "oracleAnyHoldNewMean": 3.95
+     },
+     "H6": {
+      "eurPer1000": 1310.0,
+      "newMean": -1.36,
+      "oracleAnyHoldNewMean": 5.05
+     },
+     "H12": {
+      "eurPer1000": 2193.8,
+      "newMean": -0.48,
+      "oracleAnyHoldNewMean": 6.52
+     },
+     "H24": {
+      "eurPer1000": 2828.6,
+      "newMean": 0.16,
+      "oracleAnyHoldNewMean": 7.15
+     },
+     "HE": {
+      "eurPer1000": 2828.6,
+      "newMean": 0.16,
+      "oracleAnyHoldNewMean": 6.84
+     },
+     "HN": {
+      "eurPer1000": 3914.0,
+      "newMean": 1.24,
+      "oracleAnyHoldNewMean": 10.79
+     },
+     "TR": {
+      "eurPer1000": 77.7,
+      "newMean": -2.59,
+      "oracleAnyHoldNewMean": 3.84
+     },
+     "BE": {
+      "eurPer1000": -224.3,
+      "newMean": -2.9,
+      "oracleAnyHoldNewMean": 5.44
+     },
+     "RS": {
+      "eurPer1000": -116.5,
+      "newMean": -2.79,
+      "oracleAnyHoldNewMean": 2.29
+     },
+     "MAX24": {
+      "eurPer1000": 8773.5,
+      "newMean": 6.1
+     }
+    }
+   },
+   "w4-w5": {
+    "buys": 541,
+    "ruleMean": -3.45,
+    "rocketsAfterSale": 8,
+    "rocketsPer1000": 14.79,
+    "zerosAfterSale": 76,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 101.1,
+      "newMean": -3.35,
+      "oracleAnyHoldNewMean": -0.52
+     },
+     "H3": {
+      "eurPer1000": 796.8,
+      "newMean": -2.65,
+      "oracleAnyHoldNewMean": 1.57
+     },
+     "H6": {
+      "eurPer1000": 1475.4,
+      "newMean": -1.97,
+      "oracleAnyHoldNewMean": 4.23
+     },
+     "H12": {
+      "eurPer1000": 3610.2,
+      "newMean": 0.16,
+      "oracleAnyHoldNewMean": 6.59
+     },
+     "H24": {
+      "eurPer1000": 5735.7,
+      "newMean": 2.29,
+      "oracleAnyHoldNewMean": 7.98
+     },
+     "HE": {
+      "eurPer1000": 5742.7,
+      "newMean": 2.3,
+      "oracleAnyHoldNewMean": 9.54
+     },
+     "HN": {
+      "eurPer1000": 3312.8,
+      "newMean": -0.13,
+      "oracleAnyHoldNewMean": 8.45
+     },
+     "TR": {
+      "eurPer1000": 1245.7,
+      "newMean": -2.2,
+      "oracleAnyHoldNewMean": 2.35
+     },
+     "BE": {
+      "eurPer1000": 186.9,
+      "newMean": -3.26,
+      "oracleAnyHoldNewMean": 3.75
+     },
+     "RS": {
+      "eurPer1000": 379.8,
+      "newMean": -3.07,
+      "oracleAnyHoldNewMean": 1.34
+     },
+     "MAX24": {
+      "eurPer1000": 9505.8,
+      "newMean": 6.06
+     }
+    }
+   },
+   "all": {
+    "buys": 1852,
+    "ruleMean": -2.9,
+    "rocketsAfterSale": 21,
+    "rocketsPer1000": 11.34,
+    "zerosAfterSale": 212,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 269.8,
+      "newMean": -2.63,
+      "oracleAnyHoldNewMean": 0.82
+     },
+     "H3": {
+      "eurPer1000": 769.7,
+      "newMean": -2.13,
+      "oracleAnyHoldNewMean": 3.25
+     },
+     "H6": {
+      "eurPer1000": 1358.3,
+      "newMean": -1.54,
+      "oracleAnyHoldNewMean": 4.81
+     },
+     "H12": {
+      "eurPer1000": 2607.6,
+      "newMean": -0.29,
+      "oracleAnyHoldNewMean": 6.54
+     },
+     "H24": {
+      "eurPer1000": 3677.8,
+      "newMean": 0.78,
+      "oracleAnyHoldNewMean": 7.39
+     },
+     "HE": {
+      "eurPer1000": 3679.8,
+      "newMean": 0.78,
+      "oracleAnyHoldNewMean": 7.63
+     },
+     "HN": {
+      "eurPer1000": 3738.4,
+      "newMean": 0.84,
+      "oracleAnyHoldNewMean": 10.11
+     },
+     "TR": {
+      "eurPer1000": 418.9,
+      "newMean": -2.48,
+      "oracleAnyHoldNewMean": 3.4
+     },
+     "BE": {
+      "eurPer1000": -104.2,
+      "newMean": -3.0,
+      "oracleAnyHoldNewMean": 4.95
+     },
+     "RS": {
+      "eurPer1000": 28.5,
+      "newMean": -2.87,
+      "oracleAnyHoldNewMean": 2.01
+     },
+     "MAX24": {
+      "eurPer1000": 8987.4,
+      "newMean": 6.09
+     }
+    }
+   }
+  },
+  "B": {
+   "rule": "Learning Pick -20%/2x/2h",
+   "role": "L",
+   "w1": {
+    "buys": 1718,
+    "ruleMean": -5.92,
+    "rocketsAfterSale": 44,
+    "rocketsPer1000": 25.61,
+    "zerosAfterSale": 393,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 1406.0,
+      "newMean": -4.52,
+      "oracleAnyHoldNewMean": 4.08
+     },
+     "H3": {
+      "eurPer1000": 2732.8,
+      "newMean": -3.19,
+      "oracleAnyHoldNewMean": 5.24
+     },
+     "H6": {
+      "eurPer1000": 4423.9,
+      "newMean": -1.5,
+      "oracleAnyHoldNewMean": 5.4
+     },
+     "H12": {
+      "eurPer1000": 5922.2,
+      "newMean": 0.0,
+      "oracleAnyHoldNewMean": 6.14
+     },
+     "H24": {
+      "eurPer1000": 6846.3,
+      "newMean": 0.92,
+      "oracleAnyHoldNewMean": 5.88
+     },
+     "HE": {
+      "eurPer1000": 6727.1,
+      "newMean": 0.81,
+      "oracleAnyHoldNewMean": 6.36
+     },
+     "HN": {
+      "eurPer1000": 4380.9,
+      "newMean": -1.54,
+      "oracleAnyHoldNewMean": 6.4
+     },
+     "TR": {
+      "eurPer1000": 350.3,
+      "newMean": -5.57,
+      "oracleAnyHoldNewMean": 0.56
+     },
+     "BE": {
+      "eurPer1000": 345.3,
+      "newMean": -5.58,
+      "oracleAnyHoldNewMean": 4.01
+     },
+     "RS": {
+      "eurPer1000": 628.3,
+      "newMean": -5.29,
+      "oracleAnyHoldNewMean": 1.49
+     },
+     "MAX24": {
+      "eurPer1000": 22866.9,
+      "newMean": 16.94
+     }
+    }
+   },
+   "w2": {
+    "buys": 1893,
+    "ruleMean": -8.06,
+    "rocketsAfterSale": 66,
+    "rocketsPer1000": 34.87,
+    "zerosAfterSale": 464,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 3038.3,
+      "newMean": -5.02,
+      "oracleAnyHoldNewMean": 3.93
+     },
+     "H3": {
+      "eurPer1000": 5252.2,
+      "newMean": -2.81,
+      "oracleAnyHoldNewMean": 4.57
+     },
+     "H6": {
+      "eurPer1000": 7063.6,
+      "newMean": -1.0,
+      "oracleAnyHoldNewMean": 5.15
+     },
+     "H12": {
+      "eurPer1000": 8657.5,
+      "newMean": 0.59,
+      "oracleAnyHoldNewMean": 5.67
+     },
+     "H24": {
+      "eurPer1000": 9858.2,
+      "newMean": 1.8,
+      "oracleAnyHoldNewMean": 5.59
+     },
+     "HE": {
+      "eurPer1000": 9920.3,
+      "newMean": 1.86,
+      "oracleAnyHoldNewMean": 6.0
+     },
+     "HN": {
+      "eurPer1000": 9834.2,
+      "newMean": 1.77,
+      "oracleAnyHoldNewMean": 8.02
+     },
+     "TR": {
+      "eurPer1000": 1643.0,
+      "newMean": -6.42,
+      "oracleAnyHoldNewMean": -0.56
+     },
+     "BE": {
+      "eurPer1000": 737.8,
+      "newMean": -7.33,
+      "oracleAnyHoldNewMean": 1.53
+     },
+     "RS": {
+      "eurPer1000": 1437.3,
+      "newMean": -6.63,
+      "oracleAnyHoldNewMean": 0.33
+     },
+     "MAX24": {
+      "eurPer1000": 36036.9,
+      "newMean": 27.97
+     }
+    }
+   },
+   "w3": {
+    "buys": 2280,
+    "ruleMean": -10.74,
+    "rocketsAfterSale": 47,
+    "rocketsPer1000": 20.61,
+    "zerosAfterSale": 674,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 1706.7,
+      "newMean": -9.03,
+      "oracleAnyHoldNewMean": -3.2
+     },
+     "H3": {
+      "eurPer1000": 3054.8,
+      "newMean": -7.68,
+      "oracleAnyHoldNewMean": -2.38
+     },
+     "H6": {
+      "eurPer1000": 3797.7,
+      "newMean": -6.94,
+      "oracleAnyHoldNewMean": -2.55
+     },
+     "H12": {
+      "eurPer1000": 4333.4,
+      "newMean": -6.41,
+      "oracleAnyHoldNewMean": -2.49
+     },
+     "H24": {
+      "eurPer1000": 5165.6,
+      "newMean": -5.57,
+      "oracleAnyHoldNewMean": -2.3
+     },
+     "HE": {
+      "eurPer1000": 5234.1,
+      "newMean": -5.5,
+      "oracleAnyHoldNewMean": -2.55
+     },
+     "HN": {
+      "eurPer1000": 5669.7,
+      "newMean": -5.07,
+      "oracleAnyHoldNewMean": 0.07
+     },
+     "TR": {
+      "eurPer1000": 430.3,
+      "newMean": -10.31,
+      "oracleAnyHoldNewMean": -6.0
+     },
+     "BE": {
+      "eurPer1000": 177.1,
+      "newMean": -10.56,
+      "oracleAnyHoldNewMean": -2.59
+     },
+     "RS": {
+      "eurPer1000": 632.6,
+      "newMean": -10.11,
+      "oracleAnyHoldNewMean": -4.02
+     },
+     "MAX24": {
+      "eurPer1000": 22111.6,
+      "newMean": 11.37
+     }
+    }
+   },
+   "w4": {
+    "buys": 1942,
+    "ruleMean": -9.5,
+    "rocketsAfterSale": 41,
+    "rocketsPer1000": 21.11,
+    "zerosAfterSale": 633,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 2759.3,
+      "newMean": -6.74,
+      "oracleAnyHoldNewMean": -0.07
+     },
+     "H3": {
+      "eurPer1000": 4438.1,
+      "newMean": -5.07,
+      "oracleAnyHoldNewMean": 0.65
+     },
+     "H6": {
+      "eurPer1000": 4885.3,
+      "newMean": -4.62,
+      "oracleAnyHoldNewMean": 0.47
+     },
+     "H12": {
+      "eurPer1000": 5464.1,
+      "newMean": -4.04,
+      "oracleAnyHoldNewMean": 0.51
+     },
+     "H24": {
+      "eurPer1000": 6115.9,
+      "newMean": -3.39,
+      "oracleAnyHoldNewMean": 0.47
+     },
+     "HE": {
+      "eurPer1000": 6115.9,
+      "newMean": -3.39,
+      "oracleAnyHoldNewMean": 0.92
+     },
+     "HN": {
+      "eurPer1000": 6178.6,
+      "newMean": -3.33,
+      "oracleAnyHoldNewMean": 2.87
+     },
+     "TR": {
+      "eurPer1000": 2169.9,
+      "newMean": -7.33,
+      "oracleAnyHoldNewMean": -2.21
+     },
+     "BE": {
+      "eurPer1000": 213.1,
+      "newMean": -9.29,
+      "oracleAnyHoldNewMean": -1.33
+     },
+     "RS": {
+      "eurPer1000": 1167.8,
+      "newMean": -8.34,
+      "oracleAnyHoldNewMean": -1.98
+     },
+     "MAX24": {
+      "eurPer1000": 29160.6,
+      "newMean": 19.66
+     }
+    }
+   },
+   "w5": {
+    "buys": 914,
+    "ruleMean": -10.45,
+    "rocketsAfterSale": 19,
+    "rocketsPer1000": 20.79,
+    "zerosAfterSale": 313,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 3259.8,
+      "newMean": -7.19,
+      "oracleAnyHoldNewMean": -0.19
+     },
+     "H3": {
+      "eurPer1000": 3433.4,
+      "newMean": -7.02,
+      "oracleAnyHoldNewMean": -2.46
+     },
+     "H6": {
+      "eurPer1000": 4522.8,
+      "newMean": -5.93,
+      "oracleAnyHoldNewMean": -1.32
+     },
+     "H12": {
+      "eurPer1000": 5270.1,
+      "newMean": -5.18,
+      "oracleAnyHoldNewMean": -1.33
+     },
+     "H24": {
+      "eurPer1000": 5592.8,
+      "newMean": -4.86,
+      "oracleAnyHoldNewMean": -0.99
+     },
+     "HE": {
+      "eurPer1000": 5262.0,
+      "newMean": -5.19,
+      "oracleAnyHoldNewMean": -1.25
+     },
+     "HN": {
+      "eurPer1000": 5763.3,
+      "newMean": -4.69,
+      "oracleAnyHoldNewMean": 0.95
+     },
+     "TR": {
+      "eurPer1000": 1836.2,
+      "newMean": -8.61,
+      "oracleAnyHoldNewMean": -2.96
+     },
+     "BE": {
+      "eurPer1000": 311.7,
+      "newMean": -10.14,
+      "oracleAnyHoldNewMean": -2.14
+     },
+     "RS": {
+      "eurPer1000": 1112.7,
+      "newMean": -9.34,
+      "oracleAnyHoldNewMean": -2.43
+     },
+     "MAX24": {
+      "eurPer1000": 25556.5,
+      "newMean": 15.11
+     }
+    }
+   },
+   "w1-w3": {
+    "buys": 5891,
+    "ruleMean": -8.47,
+    "rocketsAfterSale": 157,
+    "rocketsPer1000": 26.65,
+    "zerosAfterSale": 1531,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 2046.9,
+      "newMean": -6.43,
+      "oracleAnyHoldNewMean": 1.22
+     },
+     "H3": {
+      "eurPer1000": 3667.0,
+      "newMean": -4.81,
+      "oracleAnyHoldNewMean": 2.08
+     },
+     "H6": {
+      "eurPer1000": 5029.7,
+      "newMean": -3.44,
+      "oracleAnyHoldNewMean": 2.24
+     },
+     "H12": {
+      "eurPer1000": 6186.2,
+      "newMean": -2.29,
+      "oracleAnyHoldNewMean": 2.65
+     },
+     "H24": {
+      "eurPer1000": 7163.6,
+      "newMean": -1.31,
+      "oracleAnyHoldNewMean": 2.62
+     },
+     "HE": {
+      "eurPer1000": 7175.4,
+      "newMean": -1.3,
+      "oracleAnyHoldNewMean": 2.8
+     },
+     "HN": {
+      "eurPer1000": 6632.0,
+      "newMean": -1.84,
+      "oracleAnyHoldNewMean": 4.47
+     },
+     "TR": {
+      "eurPer1000": 796.7,
+      "newMean": -7.68,
+      "oracleAnyHoldNewMean": -2.34
+     },
+     "BE": {
+      "eurPer1000": 406.3,
+      "newMean": -8.07,
+      "oracleAnyHoldNewMean": 0.66
+     },
+     "RS": {
+      "eurPer1000": 889.9,
+      "newMean": -7.58,
+      "oracleAnyHoldNewMean": -1.01
+     },
+     "MAX24": {
+      "eurPer1000": 26806.6,
+      "newMean": 18.33
+     }
+    }
+   },
+   "w4-w5": {
+    "buys": 2856,
+    "ruleMean": -9.81,
+    "rocketsAfterSale": 60,
+    "rocketsPer1000": 21.01,
+    "zerosAfterSale": 946,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 2919.5,
+      "newMean": -6.89,
+      "oracleAnyHoldNewMean": -0.11
+     },
+     "H3": {
+      "eurPer1000": 4116.6,
+      "newMean": -5.69,
+      "oracleAnyHoldNewMean": -0.35
+     },
+     "H6": {
+      "eurPer1000": 4769.3,
+      "newMean": -5.04,
+      "oracleAnyHoldNewMean": -0.11
+     },
+     "H12": {
+      "eurPer1000": 5402.0,
+      "newMean": -4.4,
+      "oracleAnyHoldNewMean": -0.08
+     },
+     "H24": {
+      "eurPer1000": 5948.5,
+      "newMean": -3.86,
+      "oracleAnyHoldNewMean": 0.0
+     },
+     "HE": {
+      "eurPer1000": 5842.7,
+      "newMean": -3.96,
+      "oracleAnyHoldNewMean": 0.23
+     },
+     "HN": {
+      "eurPer1000": 6045.7,
+      "newMean": -3.76,
+      "oracleAnyHoldNewMean": 2.26
+     },
+     "TR": {
+      "eurPer1000": 2063.1,
+      "newMean": -7.74,
+      "oracleAnyHoldNewMean": -2.45
+     },
+     "BE": {
+      "eurPer1000": 244.6,
+      "newMean": -9.56,
+      "oracleAnyHoldNewMean": -1.59
+     },
+     "RS": {
+      "eurPer1000": 1150.2,
+      "newMean": -8.66,
+      "oracleAnyHoldNewMean": -2.13
+     },
+     "MAX24": {
+      "eurPer1000": 28007.2,
+      "newMean": 18.2
+     }
+    }
+   },
+   "all": {
+    "buys": 8747,
+    "ruleMean": -8.91,
+    "rocketsAfterSale": 217,
+    "rocketsPer1000": 24.81,
+    "zerosAfterSale": 2477,
+    "perfect": {
+     "H1": {
+      "eurPer1000": 2331.8,
+      "newMean": -6.58,
+      "oracleAnyHoldNewMean": 0.78
+     },
+     "H3": {
+      "eurPer1000": 3813.8,
+      "newMean": -5.1,
+      "oracleAnyHoldNewMean": 1.29
+     },
+     "H6": {
+      "eurPer1000": 4944.7,
+      "newMean": -3.96,
+      "oracleAnyHoldNewMean": 1.47
+     },
+     "H12": {
+      "eurPer1000": 5930.2,
+      "newMean": -2.98,
+      "oracleAnyHoldNewMean": 1.76
+     },
+     "H24": {
+      "eurPer1000": 6766.9,
+      "newMean": -2.14,
+      "oracleAnyHoldNewMean": 1.77
+     },
+     "HE": {
+      "eurPer1000": 6740.2,
+      "newMean": -2.17,
+      "oracleAnyHoldNewMean": 1.96
+     },
+     "HN": {
+      "eurPer1000": 6440.6,
+      "newMean": -2.47,
+      "oracleAnyHoldNewMean": 3.75
+     },
+     "TR": {
+      "eurPer1000": 1210.2,
+      "newMean": -7.7,
+      "oracleAnyHoldNewMean": -2.38
+     },
+     "BE": {
+      "eurPer1000": 353.5,
+      "newMean": -8.56,
+      "oracleAnyHoldNewMean": -0.07
+     },
+     "RS": {
+      "eurPer1000": 974.9,
+      "newMean": -7.93,
+      "oracleAnyHoldNewMean": -1.38
+     },
+     "MAX24": {
+      "eurPer1000": 27198.6,
+      "newMean": 18.29
+     }
+    }
+   }
+  }
+ },
+ "buy": {
+  "P": {
+   "w1-w3": {
+    "buys": 1199,
+    "rockets": 11,
+    "rocketPct": 0.92,
+    "plans": {
+     "V3": {
+      "mean": -2.84,
+      "rocketMean": 50.6,
+      "nonRocketMean": -3.34,
+      "breakEvenRocketPct": 7.58,
+      "onlyRocketsMean": 50.6
+     },
+     "K": {
+      "mean": -4.9,
+      "rocketMean": 140.19,
+      "nonRocketMean": -6.24,
+      "breakEvenRocketPct": 4.77,
+      "onlyRocketsMean": 140.19
+     },
+     "LP": {
+      "mean": -4.22,
+      "rocketMean": -2.98,
+      "nonRocketMean": -4.23,
+      "breakEvenRocketPct": 400.49,
+      "onlyRocketsMean": -2.98
+     },
+     "R6": {
+      "mean": -5.1,
+      "rocketMean": 144.33,
+      "nonRocketMean": -6.48,
+      "breakEvenRocketPct": 4.8,
+      "onlyRocketsMean": 144.33
+     },
+     "R24": {
+      "mean": -14.5,
+      "rocketMean": 270.19,
+      "nonRocketMean": -17.13,
+      "breakEvenRocketPct": 6.22,
+      "onlyRocketsMean": 270.19
+     },
+     "TR": {
+      "mean": -9.37,
+      "rocketMean": -4.9,
+      "nonRocketMean": -9.41,
+      "breakEvenRocketPct": 225.23,
+      "onlyRocketsMean": -4.9
+     },
+     "TR2": {
+      "mean": -14.29,
+      "rocketMean": 103.58,
+      "nonRocketMean": -15.38,
+      "breakEvenRocketPct": 13.56,
+      "onlyRocketsMean": 103.58
+     },
+     "HN": {
+      "mean": -16.7,
+      "rocketMean": 489.98,
+      "nonRocketMean": -21.39,
+      "breakEvenRocketPct": 4.33,
+      "onlyRocketsMean": 489.98
+     }
+    }
+   },
+   "w4": {
+    "buys": 330,
+    "rockets": 5,
+    "rocketPct": 1.52,
+    "plans": {
+     "V3": {
+      "mean": -2.84,
+      "rocketMean": 2.41,
+      "nonRocketMean": -2.92,
+      "breakEvenRocketPct": 68.91,
+      "onlyRocketsMean": 2.41
+     },
+     "K": {
+      "mean": -4.8,
+      "rocketMean": 25.52,
+      "nonRocketMean": -5.27,
+      "breakEvenRocketPct": 19.55,
+      "onlyRocketsMean": 25.52
+     },
+     "LP": {
+      "mean": -2.54,
+      "rocketMean": -5.48,
+      "nonRocketMean": -2.5,
+      "breakEvenRocketPct": null,
+      "onlyRocketsMean": -5.48
+     },
+     "R6": {
+      "mean": -4.79,
+      "rocketMean": 43.73,
+      "nonRocketMean": -5.54,
+      "breakEvenRocketPct": 12.76,
+      "onlyRocketsMean": 43.73
+     },
+     "R24": {
+      "mean": -10.65,
+      "rocketMean": 346.42,
+      "nonRocketMean": -16.14,
+      "breakEvenRocketPct": 4.66,
+      "onlyRocketsMean": 346.42
+     },
+     "TR": {
+      "mean": -9.76,
+      "rocketMean": 16.72,
+      "nonRocketMean": -10.16,
+      "breakEvenRocketPct": 40.6,
+      "onlyRocketsMean": 16.72
+     },
+     "TR2": {
+      "mean": -13.59,
+      "rocketMean": 48.92,
+      "nonRocketMean": -14.56,
+      "breakEvenRocketPct": 24.11,
+      "onlyRocketsMean": 48.92
+     },
+     "HN": {
+      "mean": -18.06,
+      "rocketMean": 146.21,
+      "nonRocketMean": -20.58,
+      "breakEvenRocketPct": 12.79,
+      "onlyRocketsMean": 146.21
+     }
+    }
+   },
+   "w5": {
+    "buys": 185,
+    "rockets": 3,
+    "rocketPct": 1.62,
+    "plans": {
+     "V3": {
+      "mean": -3.97,
+      "rocketMean": 14.64,
+      "nonRocketMean": -4.28,
+      "breakEvenRocketPct": 26.59,
+      "onlyRocketsMean": 14.64
+     },
+     "K": {
+      "mean": -6.47,
+      "rocketMean": 74.68,
+      "nonRocketMean": -7.81,
+      "breakEvenRocketPct": 10.37,
+      "onlyRocketsMean": 74.68
+     },
+     "LP": {
+      "mean": -3.0,
+      "rocketMean": 29.74,
+      "nonRocketMean": -3.54,
+      "breakEvenRocketPct": 12.89,
+      "onlyRocketsMean": 29.74
+     },
+     "R6": {
+      "mean": -6.57,
+      "rocketMean": 74.68,
+      "nonRocketMean": -7.91,
+      "breakEvenRocketPct": 10.49,
+      "onlyRocketsMean": 74.68
+     },
+     "R24": {
+      "mean": -13.91,
+      "rocketMean": 440.05,
+      "nonRocketMean": -21.39,
+      "breakEvenRocketPct": 4.8,
+      "onlyRocketsMean": 440.05
+     },
+     "TR": {
+      "mean": -9.53,
+      "rocketMean": 205.09,
+      "nonRocketMean": -13.07,
+      "breakEvenRocketPct": 6.33,
+      "onlyRocketsMean": 205.09
+     },
+     "TR2": {
+      "mean": -16.25,
+      "rocketMean": 226.91,
+      "nonRocketMean": -20.26,
+      "breakEvenRocketPct": 8.5,
+      "onlyRocketsMean": 226.91
+     },
+     "HN": {
+      "mean": -19.84,
+      "rocketMean": 372.37,
+      "nonRocketMean": -26.31,
+      "breakEvenRocketPct": 6.79,
+      "onlyRocketsMean": 372.37
+     }
+    }
+   },
+   "all": {
+    "buys": 1714,
+    "rockets": 19,
+    "rocketPct": 1.11,
+    "plans": {
+     "V3": {
+      "mean": -2.96,
+      "rocketMean": 32.24,
+      "nonRocketMean": -3.36,
+      "breakEvenRocketPct": 11.54,
+      "onlyRocketsMean": 32.24
+     },
+     "K": {
+      "mean": -5.05,
+      "rocketMean": 99.67,
+      "nonRocketMean": -6.22,
+      "breakEvenRocketPct": 6.58,
+      "onlyRocketsMean": 99.67
+     },
+     "LP": {
+      "mean": -3.76,
+      "rocketMean": 1.53,
+      "nonRocketMean": -3.82,
+      "breakEvenRocketPct": 85.48,
+      "onlyRocketsMean": 1.53
+     },
+     "R6": {
+      "mean": -5.2,
+      "rocketMean": 106.86,
+      "nonRocketMean": -6.46,
+      "breakEvenRocketPct": 6.36,
+      "onlyRocketsMean": 106.86
+     },
+     "R24": {
+      "mean": -13.69,
+      "rocketMean": 317.07,
+      "nonRocketMean": -17.4,
+      "breakEvenRocketPct": 5.43,
+      "onlyRocketsMean": 317.07
+     },
+     "TR": {
+      "mean": -9.46,
+      "rocketMean": 33.94,
+      "nonRocketMean": -9.95,
+      "breakEvenRocketPct": 24.38,
+      "onlyRocketsMean": 33.94
+     },
+     "TR2": {
+      "mean": -14.37,
+      "rocketMean": 108.67,
+      "nonRocketMean": -15.75,
+      "breakEvenRocketPct": 13.26,
+      "onlyRocketsMean": 108.67
+     },
+     "HN": {
+      "mean": -17.3,
+      "rocketMean": 380.95,
+      "nonRocketMean": -21.77,
+      "breakEvenRocketPct": 5.59,
+      "onlyRocketsMean": 380.95
+     }
+    }
+   }
+  },
+  "L": {
+   "w1-w3": {
+    "buys": 5541,
+    "rockets": 148,
+    "rocketPct": 2.67,
+    "plans": {
+     "V3": {
+      "mean": -6.59,
+      "rocketMean": 32.23,
+      "nonRocketMean": -7.65,
+      "breakEvenRocketPct": 21.07,
+      "onlyRocketsMean": 32.23
+     },
+     "K": {
+      "mean": -12.21,
+      "rocketMean": 180.66,
+      "nonRocketMean": -17.5,
+      "breakEvenRocketPct": 9.21,
+      "onlyRocketsMean": 180.66
+     },
+     "LP": {
+      "mean": -8.28,
+      "rocketMean": 20.85,
+      "nonRocketMean": -9.08,
+      "breakEvenRocketPct": 32.84,
+      "onlyRocketsMean": 20.85
+     },
+     "R6": {
+      "mean": -13.78,
+      "rocketMean": 231.51,
+      "nonRocketMean": -20.52,
+      "breakEvenRocketPct": 8.44,
+      "onlyRocketsMean": 231.51
+     },
+     "R24": {
+      "mean": -16.59,
+      "rocketMean": 367.06,
+      "nonRocketMean": -27.12,
+      "breakEvenRocketPct": 7.07,
+      "onlyRocketsMean": 367.06
+     },
+     "TR": {
+      "mean": -11.52,
+      "rocketMean": 32.76,
+      "nonRocketMean": -12.73,
+      "breakEvenRocketPct": 29.64,
+      "onlyRocketsMean": 32.76
+     },
+     "TR2": {
+      "mean": -14.8,
+      "rocketMean": 120.72,
+      "nonRocketMean": -18.52,
+      "breakEvenRocketPct": 13.84,
+      "onlyRocketsMean": 120.72
+     },
+     "HN": {
+      "mean": -27.08,
+      "rocketMean": 242.72,
+      "nonRocketMean": -34.49,
+      "breakEvenRocketPct": 12.71,
+      "onlyRocketsMean": 242.72
+     }
+    }
+   },
+   "w4": {
+    "buys": 1723,
+    "rockets": 36,
+    "rocketPct": 2.09,
+    "plans": {
+     "V3": {
+      "mean": -11.16,
+      "rocketMean": 34.54,
+      "nonRocketMean": -12.14,
+      "breakEvenRocketPct": 27.61,
+      "onlyRocketsMean": 34.54
+     },
+     "K": {
+      "mean": -16.21,
+      "rocketMean": 229.61,
+      "nonRocketMean": -21.45,
+      "breakEvenRocketPct": 8.84,
+      "onlyRocketsMean": 229.61
+     },
+     "LP": {
+      "mean": -9.94,
+      "rocketMean": 13.97,
+      "nonRocketMean": -10.45,
+      "breakEvenRocketPct": 45.87,
+      "onlyRocketsMean": 13.97
+     },
+     "R6": {
+      "mean": -18.33,
+      "rocketMean": 272.05,
+      "nonRocketMean": -24.53,
+      "breakEvenRocketPct": 8.52,
+      "onlyRocketsMean": 272.05
+     },
+     "R24": {
+      "mean": -22.3,
+      "rocketMean": 322.2,
+      "nonRocketMean": -29.65,
+      "breakEvenRocketPct": 8.64,
+      "onlyRocketsMean": 322.2
+     },
+     "TR": {
+      "mean": -14.41,
+      "rocketMean": 98.93,
+      "nonRocketMean": -16.83,
+      "breakEvenRocketPct": 15.18,
+      "onlyRocketsMean": 98.93
+     },
+     "TR2": {
+      "mean": -17.57,
+      "rocketMean": 190.66,
+      "nonRocketMean": -22.01,
+      "breakEvenRocketPct": 10.7,
+      "onlyRocketsMean": 190.66
+     },
+     "HN": {
+      "mean": -29.06,
+      "rocketMean": 297.08,
+      "nonRocketMean": -36.02,
+      "breakEvenRocketPct": 11.04,
+      "onlyRocketsMean": 297.08
+     }
+    }
+   },
+   "w5": {
+    "buys": 914,
+    "rockets": 19,
+    "rocketPct": 2.08,
+    "plans": {
+     "V3": {
+      "mean": -8.9,
+      "rocketMean": 48.94,
+      "nonRocketMean": -10.13,
+      "breakEvenRocketPct": 18.42,
+      "onlyRocketsMean": 48.94
+     },
+     "K": {
+      "mean": -16.29,
+      "rocketMean": 187.22,
+      "nonRocketMean": -20.62,
+      "breakEvenRocketPct": 10.28,
+      "onlyRocketsMean": 187.22
+     },
+     "LP": {
+      "mean": -10.45,
+      "rocketMean": 22.21,
+      "nonRocketMean": -11.14,
+      "breakEvenRocketPct": 35.66,
+      "onlyRocketsMean": 22.21
+     },
+     "R6": {
+      "mean": -17.69,
+      "rocketMean": 258.8,
+      "nonRocketMean": -23.56,
+      "breakEvenRocketPct": 8.61,
+      "onlyRocketsMean": 258.8
+     },
+     "R24": {
+      "mean": -20.56,
+      "rocketMean": 365.21,
+      "nonRocketMean": -28.75,
+      "breakEvenRocketPct": 7.49,
+      "onlyRocketsMean": 365.21
+     },
+     "TR": {
+      "mean": -14.23,
+      "rocketMean": 54.49,
+      "nonRocketMean": -15.69,
+      "breakEvenRocketPct": 23.42,
+      "onlyRocketsMean": 54.49
+     },
+     "TR2": {
+      "mean": -16.84,
+      "rocketMean": 165.75,
+      "nonRocketMean": -20.72,
+      "breakEvenRocketPct": 11.51,
+      "onlyRocketsMean": 165.75
+     },
+     "HN": {
+      "mean": -29.75,
+      "rocketMean": 299.46,
+      "nonRocketMean": -36.74,
+      "breakEvenRocketPct": 11.15,
+      "onlyRocketsMean": 299.46
+     }
+    }
+   },
+   "all": {
+    "buys": 8178,
+    "rockets": 203,
+    "rocketPct": 2.48,
+    "plans": {
+     "V3": {
+      "mean": -7.81,
+      "rocketMean": 34.2,
+      "nonRocketMean": -8.88,
+      "breakEvenRocketPct": 22.35,
+      "onlyRocketsMean": 34.2
+     },
+     "K": {
+      "mean": -13.51,
+      "rocketMean": 189.96,
+      "nonRocketMean": -18.69,
+      "breakEvenRocketPct": 9.32,
+      "onlyRocketsMean": 189.96
+     },
+     "LP": {
+      "mean": -8.87,
+      "rocketMean": 19.76,
+      "nonRocketMean": -9.6,
+      "breakEvenRocketPct": 35.26,
+      "onlyRocketsMean": 19.76
+     },
+     "R6": {
+      "mean": -15.18,
+      "rocketMean": 241.25,
+      "nonRocketMean": -21.71,
+      "breakEvenRocketPct": 8.54,
+      "onlyRocketsMean": 241.25
+     },
+     "R24": {
+      "mean": -18.24,
+      "rocketMean": 358.93,
+      "nonRocketMean": -27.84,
+      "breakEvenRocketPct": 7.39,
+      "onlyRocketsMean": 358.93
+     },
+     "TR": {
+      "mean": -12.43,
+      "rocketMean": 46.53,
+      "nonRocketMean": -13.93,
+      "breakEvenRocketPct": 24.28,
+      "onlyRocketsMean": 46.53
+     },
+     "TR2": {
+      "mean": -15.61,
+      "rocketMean": 137.34,
+      "nonRocketMean": -19.5,
+      "breakEvenRocketPct": 12.91,
+      "onlyRocketsMean": 137.34
+     },
+     "HN": {
+      "mean": -27.8,
+      "rocketMean": 257.67,
+      "nonRocketMean": -35.07,
+      "breakEvenRocketPct": 12.23,
+      "onlyRocketsMean": 257.67
+     }
+    }
+   }
+  },
+  "A": {
+   "w1-w3": {
+    "buys": 9577,
+    "rockets": 181,
+    "rocketPct": 1.89,
+    "plans": {
+     "V3": {
+      "mean": -11.71,
+      "rocketMean": 28.81,
+      "nonRocketMean": -12.49,
+      "breakEvenRocketPct": 32.06,
+      "onlyRocketsMean": 28.81
+     },
+     "K": {
+      "mean": -15.81,
+      "rocketMean": 185.27,
+      "nonRocketMean": -19.69,
+      "breakEvenRocketPct": 9.97,
+      "onlyRocketsMean": 185.27
+     },
+     "LP": {
+      "mean": -9.24,
+      "rocketMean": 18.86,
+      "nonRocketMean": -9.78,
+      "breakEvenRocketPct": 36.77,
+      "onlyRocketsMean": 18.86
+     },
+     "R6": {
+      "mean": -16.99,
+      "rocketMean": 228.41,
+      "nonRocketMean": -21.71,
+      "breakEvenRocketPct": 8.98,
+      "onlyRocketsMean": 228.41
+     },
+     "R24": {
+      "mean": -20.34,
+      "rocketMean": 364.81,
+      "nonRocketMean": -27.76,
+      "breakEvenRocketPct": 7.26,
+      "onlyRocketsMean": 364.81
+     },
+     "TR": {
+      "mean": -18.34,
+      "rocketMean": 48.46,
+      "nonRocketMean": -19.63,
+      "breakEvenRocketPct": 29.93,
+      "onlyRocketsMean": 48.46
+     },
+     "TR2": {
+      "mean": -20.5,
+      "rocketMean": 162.95,
+      "nonRocketMean": -24.03,
+      "breakEvenRocketPct": 13.25,
+      "onlyRocketsMean": 162.95
+     },
+     "HN": {
+      "mean": -27.1,
+      "rocketMean": 370.69,
+      "nonRocketMean": -34.76,
+      "breakEvenRocketPct": 8.76,
+      "onlyRocketsMean": 370.69
+     }
+    }
+   },
+   "w4": {
+    "buys": 3979,
+    "rockets": 52,
+    "rocketPct": 1.31,
+    "plans": {
+     "V3": {
+      "mean": -17.15,
+      "rocketMean": 37.58,
+      "nonRocketMean": -17.87,
+      "breakEvenRocketPct": 33.58,
+      "onlyRocketsMean": 37.58
+     },
+     "K": {
+      "mean": -19.91,
+      "rocketMean": 203.27,
+      "nonRocketMean": -22.87,
+      "breakEvenRocketPct": 10.44,
+      "onlyRocketsMean": 203.27
+     },
+     "LP": {
+      "mean": -11.56,
+      "rocketMean": 20.05,
+      "nonRocketMean": -11.98,
+      "breakEvenRocketPct": 39.74,
+      "onlyRocketsMean": 20.05
+     },
+     "R6": {
+      "mean": -20.96,
+      "rocketMean": 241.9,
+      "nonRocketMean": -24.44,
+      "breakEvenRocketPct": 9.46,
+      "onlyRocketsMean": 241.9
+     },
+     "R24": {
+      "mean": -26.15,
+      "rocketMean": 331.41,
+      "nonRocketMean": -30.89,
+      "breakEvenRocketPct": 8.73,
+      "onlyRocketsMean": 331.41
+     },
+     "TR": {
+      "mean": -25.33,
+      "rocketMean": 81.81,
+      "nonRocketMean": -26.75,
+      "breakEvenRocketPct": 25.33,
+      "onlyRocketsMean": 81.81
+     },
+     "TR2": {
+      "mean": -27.69,
+      "rocketMean": 139.54,
+      "nonRocketMean": -29.9,
+      "breakEvenRocketPct": 18.09,
+      "onlyRocketsMean": 139.54
+     },
+     "HN": {
+      "mean": -34.56,
+      "rocketMean": 202.15,
+      "nonRocketMean": -37.7,
+      "breakEvenRocketPct": 16.03,
+      "onlyRocketsMean": 202.15
+     }
+    }
+   },
+   "w5": {
+    "buys": 1754,
+    "rockets": 26,
+    "rocketPct": 1.48,
+    "plans": {
+     "V3": {
+      "mean": -15.85,
+      "rocketMean": 36.28,
+      "nonRocketMean": -16.63,
+      "breakEvenRocketPct": 32.85,
+      "onlyRocketsMean": 36.28
+     },
+     "K": {
+      "mean": -20.48,
+      "rocketMean": 151.74,
+      "nonRocketMean": -23.07,
+      "breakEvenRocketPct": 13.63,
+      "onlyRocketsMean": 151.74
+     },
+     "LP": {
+      "mean": -12.89,
+      "rocketMean": 22.08,
+      "nonRocketMean": -13.42,
+      "breakEvenRocketPct": 39.91,
+      "onlyRocketsMean": 22.08
+     },
+     "R6": {
+      "mean": -21.17,
+      "rocketMean": 223.86,
+      "nonRocketMean": -24.85,
+      "breakEvenRocketPct": 10.29,
+      "onlyRocketsMean": 223.86
+     },
+     "R24": {
+      "mean": -23.9,
+      "rocketMean": 349.42,
+      "nonRocketMean": -29.52,
+      "breakEvenRocketPct": 7.99,
+      "onlyRocketsMean": 349.42
+     },
+     "TR": {
+      "mean": -17.44,
+      "rocketMean": 279.9,
+      "nonRocketMean": -21.91,
+      "breakEvenRocketPct": 7.51,
+      "onlyRocketsMean": 279.9
+     },
+     "TR2": {
+      "mean": -19.13,
+      "rocketMean": 383.32,
+      "nonRocketMean": -25.18,
+      "breakEvenRocketPct": 6.35,
+      "onlyRocketsMean": 383.32
+     },
+     "HN": {
+      "mean": -27.75,
+      "rocketMean": 479.75,
+      "nonRocketMean": -35.38,
+      "breakEvenRocketPct": 7.01,
+      "onlyRocketsMean": 479.75
+     }
+    }
+   },
+   "all": {
+    "buys": 15310,
+    "rockets": 259,
+    "rocketPct": 1.69,
+    "plans": {
+     "V3": {
+      "mean": -13.6,
+      "rocketMean": 31.32,
+      "nonRocketMean": -14.37,
+      "breakEvenRocketPct": 33.09,
+      "onlyRocketsMean": 31.32
+     },
+     "K": {
+      "mean": -17.41,
+      "rocketMean": 185.51,
+      "nonRocketMean": -20.91,
+      "breakEvenRocketPct": 10.49,
+      "onlyRocketsMean": 185.51
+     },
+     "LP": {
+      "mean": -10.26,
+      "rocketMean": 19.42,
+      "nonRocketMean": -10.77,
+      "breakEvenRocketPct": 38.16,
+      "onlyRocketsMean": 19.42
+     },
+     "R6": {
+      "mean": -18.5,
+      "rocketMean": 230.66,
+      "nonRocketMean": -22.79,
+      "breakEvenRocketPct": 9.29,
+      "onlyRocketsMean": 230.66
+     },
+     "R24": {
+      "mean": -22.26,
+      "rocketMean": 356.56,
+      "nonRocketMean": -28.78,
+      "breakEvenRocketPct": 7.66,
+      "onlyRocketsMean": 356.56
+     },
+     "TR": {
+      "mean": -20.05,
+      "rocketMean": 78.39,
+      "nonRocketMean": -21.75,
+      "breakEvenRocketPct": 22.47,
+      "onlyRocketsMean": 78.39
+     },
+     "TR2": {
+      "mean": -22.21,
+      "rocketMean": 180.37,
+      "nonRocketMean": -25.7,
+      "breakEvenRocketPct": 12.83,
+      "onlyRocketsMean": 180.37
+     },
+     "HN": {
+      "mean": -29.11,
+      "rocketMean": 347.8,
+      "nonRocketMean": -35.6,
+      "breakEvenRocketPct": 9.48,
+      "onlyRocketsMean": 347.8
+     }
+    }
+   }
+  }
+ }
+}
