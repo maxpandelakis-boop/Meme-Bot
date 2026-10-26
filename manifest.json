@@ -1,0 +1,411 @@
+{
+ "fetched_utc": "2026-10-26T09:35:44Z",
+ "symbols": [
+  {
+   "symbol": "1000CATUSDT",
+   "months": 22,
+   "days": 25,
+   "hours": 16263,
+   "failed": []
+  },
+  {
+   "symbol": "1000CHEEMSUSDT",
+   "months": 20,
+   "days": 25,
+   "hours": 14965,
+   "failed": []
+  },
+  {
+   "symbol": "1000SATSUSDT",
+   "months": 34,
+   "days": 25,
+   "hours": 25164,
+   "failed": []
+  },
+  {
+   "symbol": "1MBABYDOGEUSDT",
+   "months": 25,
+   "days": 25,
+   "hours": 18470,
+   "failed": []
+  },
+  {
+   "symbol": "ACTUSDT",
+   "months": 23,
+   "days": 25,
+   "hours": 17126,
+   "failed": []
+  },
+  {
+   "symbol": "AIXBTUSDT",
+   "months": 21,
+   "days": 25,
+   "hours": 15683,
+   "failed": []
+  },
+  {
+   "symbol": "ALPACAUSDT",
+   "months": 46,
+   "days": 0,
+   "hours": 32628,
+   "failed": []
+  },
+  {
+   "symbol": "ALPHAUSDT",
+   "months": 58,
+   "days": 0,
+   "hours": 41451,
+   "failed": []
+  },
+  {
+   "symbol": "ANIMEUSDT",
+   "months": 21,
+   "days": 25,
+   "hours": 15369,
+   "failed": []
+  },
+  {
+   "symbol": "ANTUSDT",
+   "months": 43,
+   "days": 0,
+   "hours": 30846,
+   "failed": []
+  },
+  {
+   "symbol": "BADGERUSDT",
+   "months": 50,
+   "days": 0,
+   "hours": 36126,
+   "failed": []
+  },
+  {
+   "symbol": "BANANAS31USDT",
+   "months": 19,
+   "days": 25,
+   "hours": 13851,
+   "failed": []
+  },
+  {
+   "symbol": "BCCUSDT",
+   "months": 13,
+   "days": 0,
+   "hours": 8805,
+   "failed": []
+  },
+  {
+   "symbol": "BETAUSDT",
+   "months": 43,
+   "days": 0,
+   "hours": 30854,
+   "failed": []
+  },
+  {
+   "symbol": "BLZUSDT",
+   "months": 53,
+   "days": 0,
+   "hours": 38306,
+   "failed": []
+  },
+  {
+   "symbol": "BOMEUSDT",
+   "months": 31,
+   "days": 25,
+   "hours": 22884,
+   "failed": []
+  },
+  {
+   "symbol": "BONKUSDT",
+   "months": 34,
+   "days": 25,
+   "hours": 25096,
+   "failed": []
+  },
+  {
+   "symbol": "BROCCOLI714USDT",
+   "months": 19,
+   "days": 25,
+   "hours": 13851,
+   "failed": []
+  },
+  {
+   "symbol": "BURGERUSDT",
+   "months": 48,
+   "days": 0,
+   "hours": 34256,
+   "failed": []
+  },
+  {
+   "symbol": "DATAUSDT",
+   "months": 71,
+   "days": 0,
+   "hours": 51278,
+   "failed": []
+  },
+  {
+   "symbol": "DOGEUSDT",
+   "months": 87,
+   "days": 25,
+   "hours": 64025,
+   "failed": []
+  },
+  {
+   "symbol": "DOGSUSDT",
+   "months": 26,
+   "days": 25,
+   "hours": 18972,
+   "failed": []
+  },
+  {
+   "symbol": "FARMUSDT",
+   "months": 58,
+   "days": 0,
+   "hours": 41988,
+   "failed": []
+  },
+  {
+   "symbol": "FLOKIUSDT",
+   "months": 41,
+   "days": 25,
+   "hours": 30462,
+   "failed": []
+  },
+  {
+   "symbol": "FUNUSDT",
+   "months": 81,
+   "days": 0,
+   "hours": 58308,
+   "failed": []
+  },
+  {
+   "symbol": "GALUSDT",
+   "months": 27,
+   "days": 0,
+   "hours": 19238,
+   "failed": []
+  },
+  {
+   "symbol": "GHSTUSDT",
+   "months": 55,
+   "days": 0,
+   "hours": 39302,
+   "failed": []
+  },
+  {
+   "symbol": "GIGGLEUSDT",
+   "months": 12,
+   "days": 25,
+   "hours": 8778,
+   "failed": []
+  },
+  {
+   "symbol": "LOOMUSDT",
+   "months": 18,
+   "days": 0,
+   "hours": 12498,
+   "failed": []
+  },
+  {
+   "symbol": "MARSCOINUSDT",
+   "months": 1,
+   "days": 25,
+   "hours": 1235,
+   "failed": []
+  },
+  {
+   "symbol": "MCUSDT",
+   "months": 24,
+   "days": 0,
+   "hours": 16914,
+   "failed": []
+  },
+  {
+   "symbol": "MEMEUSDT",
+   "months": 35,
+   "days": 25,
+   "hours": 26104,
+   "failed": []
+  },
+  {
+   "symbol": "MOBUSDT",
+   "months": 25,
+   "days": 0,
+   "hours": 16912,
+   "failed": []
+  },
+  {
+   "symbol": "MUBARAKUSDT",
+   "months": 19,
+   "days": 25,
+   "hours": 13851,
+   "failed": []
+  },
+  {
+   "symbol": "NEIROUSDT",
+   "months": 25,
+   "days": 25,
+   "hours": 18470,
+   "failed": []
+  },
+  {
+   "symbol": "NOTUSDT",
+   "months": 29,
+   "days": 25,
+   "hours": 21420,
+   "failed": []
+  },
+  {
+   "symbol": "OCEANUSDT",
+   "months": 48,
+   "days": 0,
+   "hours": 33864,
+   "failed": []
+  },
+  {
+   "symbol": "OMGUSDT",
+   "months": 63,
+   "days": 0,
+   "hours": 45594,
+   "failed": []
+  },
+  {
+   "symbol": "OMNIUSDT",
+   "months": 18,
+   "days": 0,
+   "hours": 12711,
+   "failed": []
+  },
+  {
+   "symbol": "ORDIUSDT",
+   "months": 35,
+   "days": 25,
+   "hours": 26004,
+   "failed": []
+  },
+  {
+   "symbol": "PENGUUSDT",
+   "months": 22,
+   "days": 25,
+   "hours": 16258,
+   "failed": []
+  },
+  {
+   "symbol": "PEOPLEUSDT",
+   "months": 58,
+   "days": 25,
+   "hours": 42425,
+   "failed": []
+  },
+  {
+   "symbol": "PEPEUSDT",
+   "months": 41,
+   "days": 25,
+   "hours": 30462,
+   "failed": []
+  },
+  {
+   "symbol": "PNUTUSDT",
+   "months": 23,
+   "days": 25,
+   "hours": 17126,
+   "failed": []
+  },
+  {
+   "symbol": "POLYUSDT",
+   "months": 14,
+   "days": 0,
+   "hours": 9497,
+   "failed": []
+  },
+  {
+   "symbol": "PUMPUSDT",
+   "months": 13,
+   "days": 25,
+   "hours": 9828,
+   "failed": []
+  },
+  {
+   "symbol": "SHIBUSDT",
+   "months": 65,
+   "days": 25,
+   "hours": 47862,
+   "failed": []
+  },
+  {
+   "symbol": "TRIBEUSDT",
+   "months": 16,
+   "days": 0,
+   "hours": 11059,
+   "failed": []
+  },
+  {
+   "symbol": "TRUMPUSDT",
+   "months": 21,
+   "days": 25,
+   "hours": 15472,
+   "failed": []
+  },
+  {
+   "symbol": "TSTUSDT",
+   "months": 20,
+   "days": 25,
+   "hours": 14965,
+   "failed": []
+  },
+  {
+   "symbol": "TURBOUSDT",
+   "months": 25,
+   "days": 25,
+   "hours": 18470,
+   "failed": []
+  },
+  {
+   "symbol": "TUTUSDT",
+   "months": 19,
+   "days": 25,
+   "hours": 13851,
+   "failed": []
+  },
+  {
+   "symbol": "UTKUSDT",
+   "months": 67,
+   "days": 0,
+   "hours": 48469,
+   "failed": []
+  },
+  {
+   "symbol": "WANUSDT",
+   "months": 81,
+   "days": 0,
+   "hours": 58308,
+   "failed": []
+  },
+  {
+   "symbol": "WIFUSDT",
+   "months": 31,
+   "days": 25,
+   "hours": 23146,
+   "failed": []
+  },
+  {
+   "symbol": "\u5e01\u5b89\u4eba\u751fUSDT",
+   "months": 9,
+   "days": 25,
+   "hours": 6994,
+   "failed": []
+  },
+  {
+   "symbol": "\u725b\u6765USDT",
+   "months": 1,
+   "days": 25,
+   "hours": 1114,
+   "failed": []
+  },
+  {
+   "symbol": "BTCUSDT",
+   "months": 110,
+   "days": 25,
+   "hours": 80437,
+   "failed": []
+  }
+ ]
+}
