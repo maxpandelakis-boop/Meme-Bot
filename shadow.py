@@ -146,10 +146,11 @@ def due(d, now, pos=None):
 
 
 # ---------------------------------------------------------------- the paths
-def gt_url(pool, end):
-    """One-minute candles up to 2 minutes past the end: limit 1000 reaches back about 16.6 h, so one request covers the 12 hours."""
-    return F.GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=1&limit=1000&before_timestamp=%d&currency=usd&token=base" % (
-        urllib.parse.quote(str(pool), safe=""), P.gt_before(end))
+def gt_url(pool, end, side="base"):
+    """One-minute candles up to 2 minutes past the end: limit 1000 reaches back about 16.6 h, so one request covers the 12 hours; side:
+    the pool's token they price (peak.gt_own)."""
+    return F.GT + "/networks/solana/pools/%s/ohlcv/minute?aggregate=1&limit=1000&before_timestamp=%d&currency=usd&token=%s" % (
+        urllib.parse.quote(str(pool), safe=""), P.gt_before(end), side)
 
 
 def book(ctx, pid, p, status, rows, old, now):
@@ -210,11 +211,10 @@ def run(d, now, deadline_s=90.0, mock=None):
                 why = P.GT_GONE
                 break
             end = entry_of(p) + int(PATH_H * H)
-            st, j = P.gt_get(http, gt_url(p["pair"], end), until)
+            st, rows = P.gt_own(http, lambda side: gt_url(p["pair"], end, side), P.gt_before(end), 1, until, num(p.get("t")) or entry_of(p), num(p.get("px")))
             if st in ("deadline", "limited", "dead", "share"):
                 why = {"deadline": "deadline", "limited": "GeckoTerminal rate limit", "dead": P.GT_GONE, "share": P.GT_SHARE}[st]
                 break
-            rows = P.ohlcv_rows(j, P.gt_before(end), 1) if st == "ok" else []
             if st == "shape" or (st == "ok" and rows is None):
                 st, rows = "error", []
             doc = book(ctx, pid, p, st, rows or [], old, now)

@@ -282,7 +282,8 @@ def _lp5_lp6(check, tmp):
     pos = L.positions(d)
     pa, pb = sorted(pos.values(), key=lambda p: p["t"])
     A0 = pa["entryAt"]
-    up = lambda ms: 1.0 if ms < A0 + 30 * MIN else (12.0 if ms < A0 + 40 * MIN else 1.0)
+    k0 = pa["px"] / 1e-5          # the mock's closes are 1e-5 x up(): at the coin's own price (memebot.UNIT_X)
+    up = lambda ms: k0 * (1.0 if ms < A0 + 30 * MIN else (12.0 if ms < A0 + 40 * MIN else 1.0))
     gt = SS._GT({"POOL1": up})
     keep6 = {k: v for k, v in _tree(d, "db").items() if not k.startswith("db/memelern")}
     try:

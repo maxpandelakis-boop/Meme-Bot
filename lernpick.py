@@ -768,11 +768,10 @@ def run(d, now, deadline_s=60.0, mock=None):
                 why = P.GT_GONE
                 break
             end = p["entryAt"] + int(PATH_H * H)
-            st, j = P.gt_get(http, SH.gt_url(p["pair"], end), until)
+            st, rows = P.gt_own(http, lambda side: SH.gt_url(p["pair"], end, side), P.gt_before(end), 1, until, num(p.get("t")) or p["entryAt"], num(p.get("px")))
             if st in ("deadline", "limited", "dead", "share"):
                 why = {"deadline": "deadline", "limited": "GeckoTerminal rate limit", "dead": P.GT_GONE, "share": P.GT_SHARE}[st]
                 break
-            rows = P.ohlcv_rows(j, P.gt_before(end), 1) if st == "ok" else []
             got = None
             if st == "ok" and rows and P.covers(rows, p["entryAt"], 1):
                 r = P.peak_of(rows, p["entryAt"], end, num(p.get("px")), None, (), liq0=num(p.get("liq")), mc0=num(p.get("mc")), res=1)
