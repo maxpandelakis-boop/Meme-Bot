@@ -39,3 +39,5 @@
 {"t":1793016780746,"addr":"EXSC8oweLh4hZSQHTmx77GU1cngcyYZR4VHEpG5Wmoon","sym":"Champi","age":30.6,"why":"liquidity","liq":0}
 {"t":1793016900703,"addr":"pc66rf7LbFt3za3QUs2oryLmY3gPbR3xdr4XUfdpump","sym":"YouTube","age":30.4,"why":"liquidity","liq":1842}
 {"t":1793016960735,"addr":"9YfTtbSbZtmoJa7vT6e2jReuXs5sUpJer1kYyFbPpump","sym":"DeepSeek","age":30.6,"score":0.00455,"px":6.971e-05,"liq":20633,"p0":6.94724154975547e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":-1.6637,"c_peak":10.1235,"c_vol":4.8952,"c_act":1.0,"c_r5":0.2781,"c_r15":-2.0779,"c_mc":4.8418}}
+{"t":1793017321231,"addr":"JBGpUbb259mqcxhGDeQUP3JuBhi6bJneuzTYsTsgpump","sym":"QSTACK","age":30.7,"why":"liquidity","liq":2003}
+{"t":1793017500481,"addr":"4TmhwNmVbJtcyfgHoRfaAxmtFLcR8NJPWhyfRbsQy9JY","sym":"Fireant","age":30.8,"why":"liquidity","liq":0}
