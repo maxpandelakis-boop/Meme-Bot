@@ -1,0 +1,73 @@
+# The Rocket seeker (seeker_watch.py, a test bot with fake money of its own; research/seeker/PREREG-SEEKER-2026-10-26.md): once a
+# minute it scores each new pump.fun graduation the launch radar recorded, 30 minutes after its pool opened, from its launch facts and
+# its first 30 minutes of chart (seeker_model.json), buys the coins at the model's cut on paper (20 each) and sells them by Rocket
+# hold (a close at half the buy; after 2x a close 40% under the best; 24 hours). Nothing is bought anywhere and nothing is pushed; the
+# Pick, the Sell bot, the Radar account and the Learning Pick never read what it writes. Its state and log go to the branch
+# "seeker-data"; the scan job copies seeker.json into the page.
+# One run ticks every minute for about 55 minutes; the cron fires every 15 minutes and the concurrency group keeps the newest waiting
+# run, which starts when this one ends (rocket.yml's way: GitHub starts scheduled runs late or not at all when it is busy). Its own
+# group: it never waits for or delays the scan, the radar or the Radar's rounds. Stop it: Actions -> "Meme-Bot rocket seeker" -> ...
+# -> Disable workflow, or the repository variable MEMEBOT_SEEKER=0.
+name: Meme-Bot rocket seeker
+on:
+  schedule:
+    - cron: '3,18,33,48 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-7boz2k]
+    paths: [.github/workflows/seeker.yml]
+permissions:
+  contents: write                    # the seeker-data branch only (seeker-smoke for the test run of a push)
+concurrency:
+  group: memebot-seeker
+  cancel-in-progress: false
+jobs:
+  seek:
+    if: (vars.MEMEBOT_SEEKER || '1') != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 70              # 55 minutes of ticks, the saves
+    env:
+      PYTHONUTF8: '1'
+      # a push of this file on the build branch is a short test run with its own state branch; the real one is seeker-data
+      DATA_BRANCH: ${{ github.event_name == 'push' && 'seeker-smoke' || 'seeker-data' }}
+      RUN_MIN: ${{ github.event_name == 'push' && '4' || '55' }}
+    steps:
+      - name: Note the start
+        run: echo "STARTED=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Get the launch radar's records and the seeker's state
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch radar-data "$REPO_URL" rd || mkdir -p rd
+          if git ls-remote --exit-code --heads "$REPO_URL" "$DATA_BRANCH" >/dev/null; then
+            git clone -q --depth 1 --branch "$DATA_BRANCH" "$REPO_URL" sk
+          else
+            mkdir sk && git -C sk init -q && git -C sk checkout -q -b "$DATA_BRANCH"
+          fi
+      - name: A tick every minute, the radar's records fetched every 2 minutes, the state saved after a buy or a sale and every 5 minutes
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          # the token is for the fetches and saves only: seeker_watch.py runs without it (env -u)
+          save() {
+            (cd sk && git add -A && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "seeker $(date -u +%Y-%m-%dT%H:%MZ)" \
+              && git push -q "$REPO_URL" "HEAD:$DATA_BRANCH") || echo "nothing to save"
+          }
+          last=$((STARTED + RUN_MIN * 60))
+          i=0; failed=0
+          while [ "$(date +%s)" -le "$last" ]; do
+            if [ "$i" -gt 0 ] && [ $((i % 2)) -eq 0 ]; then
+              git -C rd fetch -q --depth 1 origin radar-data && git -C rd reset -q --hard FETCH_HEAD || echo "radar-data not refreshed"
+            fi
+            out=$(env -u REPO_URL timeout 55 python3 seeker_watch.py tick --dir sk --radar rd) || { echo "tick $i failed"; failed=$((failed + 1)); out=""; }
+            echo "$(date -u +%H:%M) $out"
+            if echo "$out" | grep -q '"changed": true' || [ $((i % 5)) -eq 4 ]; then save; fi
+            i=$((i + 1))
+            wait=$((60 - $(date +%s) % 60)); sleep "$wait"
+          done
+          save
+          echo "$i ticks, $failed failed"
+          [ "$failed" -lt $((i / 2 + 1)) ]

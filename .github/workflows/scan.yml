@@ -220,6 +220,11 @@ jobs:
           else
             echo "no learning pick brain yet"
           fi
+          # the Rocket seeker's account (seeker_watch.py, a test bot with money of its own, seeker.yml): the Start box and its fold
+          if git ls-remote --exit-code --heads "$RESULTS_URL" seeker-data >/dev/null; then
+            git fetch -q --depth 1 "$RESULTS_URL" seeker-data && mkdir -p mb/db/memebot && git show FETCH_HEAD:seeker.json > mb/db/memebot/seeker.json \
+              && echo "rocket seeker doc copied ($(wc -c < mb/db/memebot/seeker.json) bytes)"
+          fi
       - name: Import the launch radar's records (branches radar-data and radar-feed; a minute at most, the scan never depends on it)
         if: steps.recent.outputs.skip != 'true'
         continue-on-error: true
