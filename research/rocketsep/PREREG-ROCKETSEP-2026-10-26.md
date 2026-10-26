@@ -151,3 +151,11 @@ judged again on the fresh month after 22 Nov before anything else; a Pick rule c
 user's yes either way. If nothing holds, the report says so plainly with the numbers and nothing is built.
 
 Compute: this container only (4 cores, at most 3 worker processes); no GitHub Actions runner, so the live scans are not touched.
+
+## Amendment 1 (26 Oct, ~08:20 UTC; before any jury vote was scored)
+
+The first jury cards showed 36 five-minute closes before the buy, the last of which was the close of the candle in which the buy
+falls, i.e. up to five minutes AFTER the buy (a look-ahead; the computing rules were not affected: their buy features use the
+last candle that finished before the buy). Five reviewers pointed it out in their round-1 replies. All round-1 answers were set
+aside unscored (kept in research/rocketsep/jury/invalid_lookahead/), the cards were rebuilt with the 35 closes and volumes up to
+the last finished candle (the same 120 seeded cases), and round 1 was started again with all ten reviewers.
