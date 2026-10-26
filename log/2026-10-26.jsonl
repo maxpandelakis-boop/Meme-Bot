@@ -439,3 +439,4 @@
 {"t":1793056980560,"addr":"5UJkWhgLxiZZoCbcN4NfqacmrtAPKNxwa17Puv4zpump","sym":"SYMF","age":30.9,"score":0.01009,"px":4.093e-05,"liq":15307,"p0":3.388755331823714e-05,"bars":6,"buy":false,"f":{"f_curve_min":175.4333,"f_creator_prior":2.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1017,"c_peak":1.6233,"c_vol":4.6083,"c_act":1.0,"c_r5":0.104,"c_r15":0.205,"c_mc":4.53}}
 {"t":1793056980560,"addr":"euzvDR5qAdcCGJPDpGHhoJqKGsD6HWkxTrLVBMFpump","sym":"AMAZON","age":30.5,"why":"liquidity","liq":1868}
 {"t":1793057040439,"addr":"57PEf1C48UKYpkMiJzBEqtKCw4qHBm4ssi1pf8j7cY8K","sym":"DCT","age":30.0,"why":"liquidity","liq":0}
+{"t":1793057340568,"addr":"nUivyzwdqiknpfcZHXHRtWPsLGtqDg8ZQrtCqg1pump","sym":"DeepSeek","age":30.8,"why":"liquidity","liq":1802}
