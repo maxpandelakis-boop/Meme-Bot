@@ -100,3 +100,4 @@
 {"t":1793022841357,"addr":"8XT1dc6A5HQwu1eWx7SGTfyaAr1wzy8qAxHFt23UEvHg","sym":".AiTown","age":30.6,"why":"liquidity","liq":0}
 {"t":1793023020803,"addr":"8E7qVCuLA6qSmEfbJsrNrQmv7iHLSDbb2vFniHipump","sym":"Robinhood","age":30.3,"why":"liquidity","liq":1826}
 {"t":1793023080753,"addr":"Ha9cG2TaNbBoS9Y7WRvQjqSjWpEUCjuwgpdPCohUmoon","sym":"MISDPOT","age":30.5,"why":"liquidity","liq":0}
+{"t":1793023218987,"addr":"3bzqGFeB9ik8owLqSLgnhdTVVMwNN4UW1KLPxb63pump","sym":"L1-79","age":30.4,"score":0.02545,"px":2.069e-05,"liq":10484,"p0":2.9385224649643246e-05,"bars":6,"buy":false,"f":{"f_curve_min":11.7833,"f_creator_prior":1.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.3032,"c_peak":3.0275,"c_vol":5.2741,"c_act":1.0,"c_r5":0.1963,"c_r15":0.0524,"c_mc":4.4681}}
