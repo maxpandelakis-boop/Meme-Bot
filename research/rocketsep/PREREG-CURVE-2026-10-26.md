@@ -1,4 +1,4 @@
-# Pre-registration: buying the launch model's top picks on the bonding curve (26 Oct 2026, ~10:30 UTC)
+# Pre-registration: buying the launch model's top picks on the bonding curve (26 Oct 2026, ~09:05 UTC)
 
 Fake money only. Research only: nothing here is switched on, no bot, account or rule changes, no shadow in the live bots.
 Written and pushed before a single curve price of these coins is fetched.
