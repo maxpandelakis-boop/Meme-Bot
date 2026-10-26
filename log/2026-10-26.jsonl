@@ -296,3 +296,7 @@
 {"t":1793040481058,"addr":"SGc5C24JMNgP7ZGNSmTLsWPyaZsT5Yth8QX5oBwpump","sym":"LEGO","age":30.2,"why":"liquidity","liq":1832}
 {"t":1793040660930,"addr":"Efs7a3xyb36uBrQNmhtNeJXT6vYiQhSVPRRUmJgdJ9ZW","sym":"yoki\u9171","age":30.3,"why":"liquidity","liq":0}
 {"t":1793040780911,"addr":"46gBEDU8qNNge5UuXTLWoGsvHP9rePTtJSc99jjapump","sym":"Rockstar","age":30.1,"why":"liquidity","liq":1817}
+{"t":1793040960638,"addr":"7xErkp71hFoo8ZEpQK1YrZbTBTxY8M3WLGro1sFRpump","sym":"Google","age":30.6,"score":0.0085,"px":0.0006013,"liq":63520,"p0":0.0006033749704117505,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":21.0,"f_cjk":0.0,"c_ret":0.4059,"c_peak":1.0009,"c_vol":4.7659,"c_act":1.0,"c_r5":0.0769,"c_r15":0.2472,"c_mc":5.7806}}
+{"t":1793041020228,"addr":"BEGt58ELcKNLYkbYjBEpZqnRFCT6Kfvd3wHjAB5Tpump","sym":"SOB","age":43.1,"why":"no candles"}
+{"t":1793041081199,"addr":"uDjtM5MrwnKX3g598HQ6CGXW8aA2b2VDBHyAKW7pump","sym":"Google","age":30.6,"why":"liquidity","liq":1868}
+{"t":1793041081199,"addr":"GXdtgrPdia3u5zBpE2ZeWXDNqAMxxvyzC3TAbfrLpump","sym":"NODF","age":30.1,"score":0.00514,"px":0.1463,"liq":1015554,"p0":0.14649418154621574,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":1.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.0033,"c_peak":1.0031,"c_vol":5.7031,"c_act":1.0,"c_r5":0.0006,"c_r15":-0.0026,"c_mc":8.1658}}
