@@ -4034,6 +4034,8 @@ console.log(JSON.stringify(o));
     selftest_gtunit.checks(check)
     import selftest_seeker                      # the Rocket seeker 🔭: a test bot with its own paper account (seeker.py, seeker_watch.py, page_seeker.py, seeker.yml)
     selftest_seeker.checks(check)
+    import selftest_keepalive                   # the bots start each other instead of waiting for GitHub's cron (keepalive.py, rocket.yml, seeker.yml)
+    selftest_keepalive.checks(check)
 
     keep = os.environ.get("MEMEBOT_KEEP")
     if keep:
