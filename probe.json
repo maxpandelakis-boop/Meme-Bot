@@ -1,0 +1,307 @@
+{
+ "coins": 30,
+ "withCandles": 22,
+ "graduatedWith": 11,
+ "notGraduatedWith": 11,
+ "calls": 61,
+ "rows": [
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 17,
+   "firstMinAfterLaunch": -0.5,
+   "lastMinAfterLaunch": 15.5,
+   "firstOpenOverP0": 1.094,
+   "lastMinBeforeGrad": 0.2,
+   "lastHighOverG0": 0.995
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 32,
+   "firstMinAfterLaunch": -0.7,
+   "lastMinAfterLaunch": 30.3,
+   "firstOpenOverP0": 1.835,
+   "lastMinBeforeGrad": 0.3,
+   "lastHighOverG0": 0.999
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 7,
+   "firstMinAfterLaunch": -0.0,
+   "lastMinAfterLaunch": 6.0,
+   "firstOpenOverP0": 1.192,
+   "lastMinBeforeGrad": 0.4,
+   "lastHighOverG0": 0.996
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 59,
+   "firstMinAfterLaunch": -0.2,
+   "lastMinAfterLaunch": 57.8,
+   "firstOpenOverP0": 3.598,
+   "lastMinBeforeGrad": 0.4,
+   "lastHighOverG0": 0.999
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 6,
+   "firstMinAfterLaunch": -0.1,
+   "lastMinAfterLaunch": 4.9,
+   "firstOpenOverP0": 3.506,
+   "lastMinBeforeGrad": 0.7,
+   "lastHighOverG0": 0.996
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 22,
+   "firstMinAfterLaunch": -0.8,
+   "lastMinAfterLaunch": 20.2,
+   "firstOpenOverP0": 1.033,
+   "lastMinBeforeGrad": 0.4,
+   "lastHighOverG0": 0.993
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 12,
+   "firstMinAfterLaunch": -0.4,
+   "lastMinAfterLaunch": 10.6,
+   "firstOpenOverP0": 1.762,
+   "lastMinBeforeGrad": 0.1,
+   "lastHighOverG0": 0.998
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 19,
+   "firstMinAfterLaunch": -0.6,
+   "lastMinAfterLaunch": 17.4,
+   "firstOpenOverP0": 1.132,
+   "lastMinBeforeGrad": 0.9,
+   "lastHighOverG0": 0.996
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 10,
+   "firstMinAfterLaunch": -0.7,
+   "lastMinAfterLaunch": 8.3,
+   "firstOpenOverP0": 2.975,
+   "lastMinBeforeGrad": 0.5,
+   "lastHighOverG0": 0.927
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 12,
+   "firstMinAfterLaunch": -0.9,
+   "lastMinAfterLaunch": 10.1,
+   "firstOpenOverP0": 1.036,
+   "lastMinBeforeGrad": 0.9,
+   "lastHighOverG0": 0.998
+  },
+  {
+   "graduated": true,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 13,
+   "firstMinAfterLaunch": -0.7,
+   "lastMinAfterLaunch": 11.3,
+   "firstOpenOverP0": 1.335,
+   "lastMinBeforeGrad": 0.1,
+   "lastHighOverG0": 0.989
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 2,
+   "firstMinAfterLaunch": -0.6,
+   "lastMinAfterLaunch": -0.6,
+   "firstOpenOverP0": 1.012
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 6,
+   "firstMinAfterLaunch": -0.4,
+   "lastMinAfterLaunch": 6.6,
+   "firstOpenOverP0": 1.075
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 3,
+   "firstMinAfterLaunch": -0.4,
+   "lastMinAfterLaunch": 9.6,
+   "firstOpenOverP0": 1.007
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 3,
+   "firstMinAfterLaunch": -0.5,
+   "lastMinAfterLaunch": 1.6,
+   "firstOpenOverP0": 1.0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 3,
+   "firstMinAfterLaunch": -0.2,
+   "lastMinAfterLaunch": 12.8,
+   "firstOpenOverP0": 1.033
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 5,
+   "firstMinAfterLaunch": -0.6,
+   "lastMinAfterLaunch": 7.4,
+   "firstOpenOverP0": 1.013
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 6,
+   "firstMinAfterLaunch": -0.9,
+   "lastMinAfterLaunch": 8.1,
+   "firstOpenOverP0": 1.0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 2,
+   "firstMinAfterLaunch": 0.7,
+   "lastMinAfterLaunch": 0.7,
+   "firstOpenOverP0": 1.0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 2,
+   "firstMinAfterLaunch": -0.7,
+   "lastMinAfterLaunch": 1.3,
+   "firstOpenOverP0": 1.0
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 2,
+   "firstMinAfterLaunch": -0.3,
+   "lastMinAfterLaunch": 868.7,
+   "firstOpenOverP0": 1.033
+  },
+  {
+   "graduated": false,
+   "status": 200,
+   "how": "curve",
+   "lookup": null,
+   "candles": 5,
+   "firstMinAfterLaunch": -0.8,
+   "lastMinAfterLaunch": 25.2,
+   "firstOpenOverP0": 1.828
+  }
+ ]
+}
