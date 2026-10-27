@@ -15,7 +15,8 @@ the pool opened:
   Book                the paper account: a score at or over the model's cut buys the coin once for TICKET at DexScreener's price of that
       minute; "Rocket hold" sells it on one-minute closes: at or below 0.5x the buy, or (once a close reached 2x) at or below 0.6x the
       best close, or after 24 hours at the last close; a close more than GLITCH_X off the one before it that neither DexScreener's
-      price of the moment nor the next two closes confirm is a glitch, not judged. memebot's paper fees (tip_net). Nothing here is advice.
+      price of the moment nor the next two closes confirm is a glitch, not judged; a coin whose pools hold under RUG_LIQ of liquidity is
+      a rug, sold at 0 (the Pick account's and the Learning Pick's line). memebot's paper fees (tip_net). Nothing here is advice.
 """
 import math, os, re, sys
 
@@ -34,6 +35,9 @@ BAR, MIN, H, DAY = 300_000, 60_000, 3_600_000, 86_400_000
 GLITCH_X = M.UNIT_X         # a one-minute close more than this many times off the close before it is a GeckoTerminal glitch unless
                             # DexScreener's price of the moment or the two closes after it say the same: NEX Ai (27 Oct) had a close at
                             # 4,615,119x its buy and then one at 7,231x while DexScreener had it at 1.2x, and was booked +138,058
+RUG_LIQ = 1_000             # $ of liquidity left in the coin's pools (DexScreener) under which it is a rug, sold at 0, as on the Pick
+                            # account (memebot) and the Learning Pick: SOLY and NEX Ai (27 Oct) had their liquidity pulled, so their price
+                            # froze at 1.52x and 0.65x with no trade after it, and the 24-hour sale would have booked a price nobody could sell at
 NEAR_MS = 5 * MIN           # DexScreener's price now vouches for the closes of the last five minutes, and for the newest close of any age
                             # (no trade after it: the price now is its price; .AiTown's rug to 0.0001x, judged again hours later)
 nan = float("nan")
@@ -267,9 +271,10 @@ class Book:
         self.open[a] = p
         return p
 
-    def update(self, a, now, closes, px=None):
+    def update(self, a, now, closes, px=None, liq=None):
         """closes: [(minute ms, close)] of the minutes since the last look; a minute counts once it started after the buy, and only a
-        believed close (no glitch) is judged. px: the price now (DexScreener). Returns the closed position or None."""
+        believed close (no glitch) is judged. px: the price now (DexScreener); liq: the liquidity now ($, the coin's pools on
+        DexScreener; under RUG_LIQ a rug, sold at 0). Returns the closed position or None."""
         p = self.open.get(a)
         if not p:
             return None
@@ -285,6 +290,8 @@ class Book:
                 return self._close(a, t + MIN, p["last"], why)
         if px and px > 0:
             p["now"] = round(px / p["px"], 6)
+        if liq is not None and liq < RUG_LIQ:
+            return self._close(a, now, 0.0, "rug")
         if now - p["t"] >= HOLD_MS:
             return self._close(a, now, num(p.get("last")) or num(p.get("now")) or 0.0, "24h")
         return None

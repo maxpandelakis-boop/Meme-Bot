@@ -42,7 +42,7 @@ try:
     from page_brain import NAMES as AGENTS          # the scan's helpers by name (Scouts, Deep search, Prices ...) for the running scan's line
 except Exception:
     AGENTS = {}
-RS_WHY = {"floor": "fell to half", "trail": "40% under its best", "24h": "after 24 h"}     # page_seeker.WHY
+RS_WHY = {"floor": "fell to half", "trail": "40% under its best", "24h": "after 24 h", "rug": "liquidity pulled (rug)"}     # page_seeker.WHY
 RS_TICKET = 20.0
 LP_WHY = {"tp": "target", "half": "half at target", "stop": "stop", "trail": "trailing stop", "time": "time limit", "rug": "pool dead"}
 

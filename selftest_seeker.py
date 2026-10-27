@@ -13,7 +13,8 @@ count, the state and the log, no numpy, no network; S7 the page: the fold under 
 box with its lane and feed; S8 the workflow writes only its own branch, runs the bot without the token, in its own group, and the
 scan job only reads seeker.json; S9 the glitch guard: NEX Ai's two GeckoTerminal glitch closes (27 Oct) sell nothing, a real crash
 (confirmed by the next closes or by DexScreener) and a real rocket still sell, the sales booked before the guard on a glitch are open
-again and a tick judges them on their candles since the buy.
+again and a tick judges them on their candles since the buy; S10 the rug line: a coin whose pools hold under $1,000 of liquidity
+(SOLY and NEX Ai, 27 Oct: price frozen, no trade) is sold at 0, a coin with liquidity left in another pool is not.
 """
 import json, math, os, re, shutil, subprocess, sys, tempfile
 
@@ -296,6 +297,36 @@ def s9(check, tmp):
           "S9 a tick judges NEX Ai again from its buy: the glitch closes skipped, sold at the real half (%s)" % [(p["why"], p["mult"], p["eur"]) for p in sold])
 
 
+def s10(check, tmp):
+    b = S.Book()
+    for a in ("S", "L", "U", "C"):
+        b.buy(a, a, "P" + a, 1.0, T0, 0.1, 0.05)
+    o1 = b.update("S", T0 + 6 * H, [], px=1.518729, liq=0.0)        # SOLY (27 Oct): +52 % on DexScreener, its liquidity pulled
+    o2 = b.update("L", T0 + 6 * H, [], px=1.5, liq=12_000.0)
+    o3 = b.update("U", T0 + 6 * H, [], px=1.5)
+    o4 = b.update("C", T0 + 3 * MIN, [(T0 + MIN, 1.0), (T0 + 2 * MIN, 0.4)], px=0.4, liq=0.0)
+    check(o1 and o1["why"] == "rug" and o1["mult"] == 0.0 and o1["eur"] == -20.0 and o1["out"] == T0 + 6 * H and o2 is None and o3 is None
+          and o4 and o4["why"] == "floor" and same(o4["mult"], 0.4),
+          "S10 liquidity under $1,000 sells at 0 (rug); liquidity left or unknown keeps it; a sale on the candles comes first")
+    rd, sk, mk = (os.path.join(tmp, "s10", x) for x in ("rd", "sk", "mk"))
+    for x in (os.path.join(rd, "db", "memeradar"), sk, mk):
+        os.makedirs(x, exist_ok=True)
+    json.dump({"coins": {}}, open(os.path.join(rd, "db", "memeradar", "2026-10-27T00.json"), "w"))
+    pos = lambda a: {"addr": a, "sym": a, "pool": "P" + a, "t": T0, "px": 1.0, "score": 0.06, "cut": 0.057, "best": 1.66, "last": 1.52,
+                     "tok": "base", "lastT": T0 + 20 * MIN}
+    json.dump({"since": T0 - H, "book": {"open": {"SOLY": pos("SOLY"), "TWO": pos("TWO")}, "closed": []}}, open(os.path.join(sk, "seeker.json"), "w"))
+    json.dump([{"baseToken": {"address": "SOLY"}, "pairAddress": "PSOLY", "priceUsd": "1.518729", "liquidity": {"usd": 0}},
+               {"baseToken": {"address": "TWO"}, "pairAddress": "PTWO", "priceUsd": "1.5", "liquidity": {"usd": 0}},
+               {"baseToken": {"address": "TWO"}, "pairAddress": "PTWO2", "priceUsd": "1.5", "liquidity": {"usd": 30000}}],
+              open(os.path.join(mk, "ds.json"), "w"))
+    d = SW.tick(sk, rd, T0 + 6 * H, mk)
+    sold = d["book"]["closed"]
+    check([(p["addr"], p["why"], p["eur"]) for p in sold] == [("SOLY", "rug", -20.0)] and list(d["book"]["open"]) == ["TWO"]
+          and d["tick"]["closed"] == 1,
+          "S10 a tick sells SOLY (its only pool empty) as a rug at -20, keeps a coin with liquidity in another pool: %s"
+          % [(p["addr"], p["why"], p["eur"]) for p in sold])
+
+
 def checks(check):
     tmp = tempfile.mkdtemp(prefix="memebot-seeker-")
     try:
@@ -308,6 +339,7 @@ def checks(check):
         s7(check, tmp, sk)
         s8(check)
         s9(check, tmp)
+        s10(check, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
