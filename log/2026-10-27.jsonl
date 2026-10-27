@@ -723,3 +723,5 @@
 {"t":1793138280424,"addr":"GsBvxwEbmbLM7yGhMT7KEWYFFwjBzvxqRdEZP9Tv2c5g","sym":"BNCI","age":30.5,"why":"liquidity","liq":0}
 {"t":1793138340340,"addr":"9U73FE2vHtUJBJXtU4KzGVoKY1rn8FAwsb51XUpfuq5s","sym":"Dawid","age":30.2,"why":"liquidity","liq":0}
 {"t":1793138461226,"addr":"4tooZXbQN77pzsZkNfYiKdjEKVSQQiK188wCxWRNCnQS","sym":"MICROVERSE","age":30.7,"why":"liquidity","liq":3138}
+{"t":1793138640414,"addr":"DRnnb9KzHczNfcgS1iJEB2cFDvQshybZBjdAN6nBfuzG","sym":"RFC","age":30.5,"score":0.01458,"px":9.002e-05,"liq":24113,"p0":0.00010529491082791515,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":49.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.844,"c_peak":3.2825,"c_vol":5.5592,"c_act":1.0,"c_r5":-0.0832,"c_r15":-0.2606,"c_mc":5.0224}}
+{"t":1793138760091,"addr":"8n5LEHog7Ure7JGv1hhGwGWVqpg4XxeuxVhHiHQapump","sym":"Brangus","age":43.8,"why":"no candles"}
