@@ -206,3 +206,5 @@
 {"t":1793079720597,"addr":"V1VuuEnA2ZD3ZZbamxHCEDh3NjWqxgP6e2p68ALpump","sym":"UKFLMS","age":30.3,"score":0.00524,"px":0.008143,"liq":237564,"p0":0.0080959719174223,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.015,"c_peak":1.0063,"c_vol":5.0512,"c_act":1.0,"c_r5":0.0041,"c_r15":-0.0023,"c_mc":6.9083}}
 {"t":1793079840770,"addr":"SS6HqVEebLSZzRZQ1229peZSCq733PUhrgJMSaibonk","sym":"NFXPOCK","age":30.4,"why":"liquidity","liq":0}
 {"t":1793079840770,"addr":"2MrvkX9jKfLLiVHjrrc24cnFYRLzpan7rZuwMWBEpump","sym":"MrBeast","age":30.3,"why":"liquidity","liq":1791}
+{"t":1793080441286,"addr":"JCz6diqi4PyE5Kw7VPSJSfmRMu9Hfig3o2Lij3g2moon","sym":"Taighst","age":30.3,"why":"liquidity","liq":0}
+{"t":1793080561558,"addr":"M2dEc9TGW4zuFoNnSZuj8dhRFQeDxTAqAuKSdgg77Eh","sym":"Gangstar","age":30.1,"why":"liquidity","liq":0}
