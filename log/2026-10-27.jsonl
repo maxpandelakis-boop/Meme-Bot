@@ -439,3 +439,5 @@
 {"t":1793105341345,"addr":"HxF8pjQTowLSWJxRHsnRxUruTQDk5z7WhWnuqZ9L59vx","sym":"Koyuri","age":30.5,"why":"liquidity","liq":0}
 {"t":1793105400765,"addr":"99iEMJkkRvZs4vJPmXViWmdvQc7XwoyBN53GRmR4EY6Z","sym":"\u5927A","age":30.3,"why":"liquidity","liq":0}
 {"t":1793105400765,"addr":"HjPBgvW6E3JHGxdUFac4yWttrRXWsG3neMdEdwDwBAGS","sym":"Faldash","age":30.2,"why":"liquidity","liq":0}
+{"t":1793105640097,"addr":"6s8nNJ8ZCwVhvw8w5f1zkReAyyJVfqsaNg9eVkxwpump","sym":"fomo","age":30.3,"why":"liquidity","liq":4560}
+{"t":1793105640097,"addr":"J58Lht8j8HwwqfEjoqgSvnxEpdsMJqenoa35faxipump","sym":"Koyuri","age":30.0,"why":"liquidity","liq":3623}
