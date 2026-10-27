@@ -14,7 +14,8 @@ the pool opened:
   score(model, f)     P(a close at 10x within 24 hours) from seeker_model.json (LightGBM trees as plain JSON, its missing-value rules)
   Book                the paper account: a score at or over the model's cut buys the coin once for TICKET at DexScreener's price of that
       minute; "Rocket hold" sells it on one-minute closes: at or below 0.5x the buy, or (once a close reached 2x) at or below 0.6x the
-      best close, or after 24 hours at the last close. memebot's paper fees (tip_net). Nothing here is advice.
+      best close, or after 24 hours at the last close; a close more than GLITCH_X off the one before it that neither DexScreener's
+      price of the moment nor the next two closes confirm is a glitch, not judged. memebot's paper fees (tip_net). Nothing here is advice.
 """
 import math, os, re, sys
 
@@ -30,6 +31,10 @@ LIQ_MIN = 10_000            # pool liquidity at the score, $ (the training's ent
 FLOOR, ARM, KEEP = 0.5, 2.0, 0.6
 HOLD_MS = 24 * 3_600_000
 BAR, MIN, H, DAY = 300_000, 60_000, 3_600_000, 86_400_000
+GLITCH_X = M.UNIT_X         # a one-minute close more than this many times off the close before it is a GeckoTerminal glitch unless
+                            # DexScreener's price of the moment or the two closes after it say the same: NEX Ai (27 Oct) had a close at
+                            # 4,615,119x its buy and then one at 7,231x while DexScreener had it at 1.2x, and was booked +138,058
+NEAR_MS = 5 * MIN           # DexScreener's price now vouches only for the closes of the last five minutes
 nan = float("nan")
 
 # check_rockets.py (PR #55) word rules for the theme heat, its tweet id and CJK patterns, line by line
@@ -217,6 +222,18 @@ def net(mult):
     return M.tip_net(max(0.0, mult))
 
 
+def near(a, b):
+    """Whether two prices (or multiples) are at most GLITCH_X times apart; False when either is missing or not above zero."""
+    a, b = num(a), num(b)
+    return bool(a and b and a > 0 and b > 0 and 1.0 / GLITCH_X <= a / b <= GLITCH_X)
+
+
+def believed(last, x, after, now_x=None):
+    """Whether a close x (a multiple of the buy price) is the coin's price and not a glitch: near the close before it (last), or near
+    DexScreener's price now (now_x, for a close of the last minutes), or near both of the two closes after it (a level the chart stays at)."""
+    return near(x, last) or near(x, now_x) or (len(after) == 2 and all(near(x, y) for y in after))
+
+
 def rule(p, t, x):
     """Rocket hold on one close x (a multiple of the buy price) at minute t: the reason to sell, or None. Updates p's best and last."""
     p["last"], p["lastT"] = round(x, 6), int(t)
@@ -249,15 +266,19 @@ class Book:
         return p
 
     def update(self, a, now, closes, px=None):
-        """closes: [(minute ms, close)] of the minutes since the last look; a minute counts once it started after the buy. px: the price
-        now (DexScreener). Returns the closed position or None."""
+        """closes: [(minute ms, close)] of the minutes since the last look; a minute counts once it started after the buy, and only a
+        believed close (no glitch) is judged. px: the price now (DexScreener). Returns the closed position or None."""
         p = self.open.get(a)
         if not p:
             return None
-        for t, c in sorted(closes or []):
-            if t < p["t"] or t <= (num(p.get("lastT")) or 0) or not c or c <= 0:
+        xs = sorted((t, c / p["px"]) for t, c in (closes or []) if c and c > 0)
+        now_x = px / p["px"] if px and px > 0 else None
+        for i, (t, x) in enumerate(xs):
+            if t < p["t"] or t <= (num(p.get("lastT")) or 0):
                 continue
-            why = rule(p, t, c / p["px"])
+            if not believed(num(p.get("last")) or 1.0, x, [y for _, y in xs[i + 1:i + 3]], now_x if now - t <= NEAR_MS else None):
+                continue
+            why = rule(p, t, x)
             if why:
                 return self._close(a, t + MIN, p["last"], why)
         if px and px > 0:
@@ -268,9 +289,24 @@ class Book:
 
     def _close(self, a, at, mult, why):
         p = self.open.pop(a)
-        p.update(out=int(at), mult=round(mult, 4), eur=net(mult), why=why)
+        p.update(out=int(at), mult=round(mult, 4), eur=net(mult), why=why, g=1)      # g: sold with the glitch guard (GLITCH_X)
         self.closed.append(p)
         return p
+
+    def reopen_glitches(self):
+        """Sales booked before the glitch guard (no "g") at a multiple more than GLITCH_X off DexScreener's price at the look before
+        ("now"): sold on a glitch (NEX Ai and .AiTown, 27 Oct). Each is open again as bought, its old booking kept under "was", so the
+        next look judges it again on its candles since the buy. -> their addresses"""
+        back = []
+        for p in list(self.closed):
+            if p.get("g") or not num(p.get("now")) or near(p.get("mult"), p.get("now")) or p.get("addr") in self.open:
+                continue
+            self.closed.remove(p)
+            p["was"] = {k: p.pop(k) for k in ("out", "mult", "eur", "why", "best", "last", "lastT") if k in p}
+            p.update(best=1.0, last=1.0)
+            self.open[p["addr"]] = p
+            back.append(p["addr"])
+        return back
 
     def summary(self):
         eur = [p["eur"] for p in self.closed]

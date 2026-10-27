@@ -11,7 +11,8 @@ One tick:
      (liquidity at least $10,000, a price), GeckoTerminal's one-minute candles since the pool opened (the side that prices the coin,
      memebot.unit_ok), seeker.features as of 30 minutes, seeker.score; at or over the model's cut it buys the coin once on paper (20
      at DexScreener's price). A coin it could not price yet is tried again the next minute until 43 minutes, then counted as missed
-  3. every open position: the candles since its last look, Rocket hold on their closes (seeker.Book.update)
+  3. every open position: the candles since its last look, Rocket hold on their closes (seeker.Book.update; a close far off the one
+     before it that neither DexScreener's price nor the next closes confirm is a glitch and not judged: seeker.GLITCH_X)
   4. <dir>/seeker.json (the account, the last scores, the counts) and <dir>/log/<UTC day>.jsonl (every score with its inputs, every
      sale) go to the branch seeker-data; the scan job copies seeker.json into the app's page. No push.
 usage: python3 seeker_watch.py tick --dir sk --radar radar-data-dir [--now ms] [--mock DIR]
@@ -82,6 +83,8 @@ def tick(d, radar_dir, now, mock=None):
     cut = model["cut"]
     st = load(d)
     book = S.Book(st.get("book"))
+    for a in book.reopen_glitches():
+        log("  %s was sold on a glitch candle before the guard: open again, judged on its candles since the buy" % book.open[a].get("sym"))
     since = S.num(st.get("since")) or now
     scored = {a: t for a, t in (st.get("scored") or {}).items() if now - (S.num(t) or 0) < KEEP_MS}
     missed = {a: t for a, t in (st.get("missed") or {}).items() if now - (S.num(t) or 0) < KEEP_MS}
