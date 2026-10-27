@@ -158,3 +158,5 @@
 {"t":1793074860590,"addr":"wj6arzzfBWL3KVeFsH6uoM2mm4kGaAjrjPabsUApump","sym":"ChatGPT","age":38.1,"why":"liquidity","liq":1838}
 {"t":1793074860590,"addr":"DSMLRDWPDKWDLx4mTGaAYXYfiAD5D9oXg5fhsbPPpump","sym":"POKEMOG","age":38.0,"score":0.0164,"px":2.894e-05,"liq":12526,"p0":4.424795873704828e-05,"bars":6,"buy":false,"f":{"f_curve_min":4534.3,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1,"c_peak":1.2462,"c_vol":3.8699,"c_act":1.0,"c_r5":0.0286,"c_r15":0.0194,"c_mc":4.6459}}
 {"t":1793074860590,"addr":"ADFRC2i71T5HwuBR3uzgPghksV1AM6AMc688Bi2sbonk","sym":"OLSAID","age":33.7,"why":"liquidity","liq":0}
+{"t":1793075280414,"addr":"5BjCA2Uoqjw3wsZgQ7h33chFGTxfqyYXNAhZdvX1bonk","sym":"Wicker","age":30.8,"why":"liquidity","liq":0}
+{"t":1793075341035,"addr":"9cGsXTqdbb8YQdgwtSB3mhaFNLZSYf7ejtZYhmKrpump","sym":"Grok","age":30.5,"why":"liquidity","liq":1833}
