@@ -743,3 +743,7 @@
 {"t":1793140560906,"addr":"2mPwr92SEnFKdMPGJYbCkuicCmXHtVFPse2AvFXTpump","sym":"INGUS","age":30.9,"why":"liquidity","liq":0}
 {"t":1793140620400,"addr":"C9GJmb1Y4o745EJRGB1kdZGQYbxnL4hTJnAJnxaNpump","sym":"GUS","age":30.3,"why":"liquidity","liq":2159}
 {"t":1793140620400,"addr":"J94PgjyfMdzgzNQjCcfFQRmaPCmoc8MyhHet8Vdkpump","sym":"Rollcage","age":30.1,"score":0.02335,"px":0.0001367,"liq":29830,"p0":0.00012453017358162718,"bars":6,"buy":false,"f":{"f_curve_min":12.2333,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9431,"c_peak":1.0749,"c_vol":5.1232,"c_act":1.0,"c_r5":0.6319,"c_r15":0.3166,"c_mc":5.0953}}
+{"t":1793140740485,"addr":"EGXMTPdbZZmxVRzwqQFNPS9vsoymAuTXGx2J5fUZBAGS","sym":"MADWICK","age":30.8,"why":"liquidity","liq":0}
+{"t":1793140920266,"addr":"az55LNrwPxbrx7qDJicQpbL5wQaF4YCT4fG7Qdjpump","sym":"FIFI","age":30.2,"why":"liquidity","liq":2312}
+{"t":1793140980714,"addr":"FGktccUPyTyAinpANhZqFitf87seVKdiR1jxAc8J1W9F","sym":"NEX Ai","age":30.6,"why":"liquidity","liq":0}
+{"t":1793140980714,"addr":"QyjXN4CcmnDZpkXw1ZyJoQTVFygDeYXKggLBFL2pump","sym":"Claude","age":30.1,"why":"liquidity","liq":1859}
