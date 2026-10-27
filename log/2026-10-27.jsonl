@@ -39,3 +39,6 @@
 {"t":1793063401299,"addr":"G5JkaBZcqezipauuJ21SbsTUzikyNiHUfxfTyXAA4BA1","sym":"S-E-R","age":30.9,"score":0.01328,"px":2.9e-05,"liq":48385,"p0":2.7025437331434e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.192,"c_peak":1.0434,"c_vol":4.7116,"c_act":1.0,"c_r5":0.0279,"c_r15":0.0722,"c_mc":4.4318}}
 {"t":1793063401299,"addr":"3rAHYRQ8eZ2GHQD2WpPfFMfbVxmbpbdqCAcdHwHLmoon","sym":"Melsh","age":30.5,"why":"liquidity","liq":0}
 {"t":1793063401299,"addr":"F4Z7MHeJSpj5ftZ1rRTEv1cM4Dktr7QtZhXytERWZST6","sym":"AMERICA","age":30.4,"why":"liquidity","liq":17}
+{"t":1793063532469,"addr":"H7xa5GiUF1gZEDydL9TkQzYnK2sNZvwNyAqzajCbEnhC","sym":"ELON2028","age":30.0,"why":"liquidity","liq":0}
+{"t":1793063641263,"addr":"FW56cRLch4NLenFmoVoRcDBMpUut6VRG4QFmboT3pump","sym":"Apple","age":30.6,"why":"liquidity","liq":1795}
+{"t":1793063761048,"addr":"4zgNgq3VoAXYqq8frWTeiTuKewmMiyzPwgYN8Y2NfshD","sym":"HARMONIC","age":30.8,"why":"liquidity","liq":0}
