@@ -34,7 +34,8 @@ BAR, MIN, H, DAY = 300_000, 60_000, 3_600_000, 86_400_000
 GLITCH_X = M.UNIT_X         # a one-minute close more than this many times off the close before it is a GeckoTerminal glitch unless
                             # DexScreener's price of the moment or the two closes after it say the same: NEX Ai (27 Oct) had a close at
                             # 4,615,119x its buy and then one at 7,231x while DexScreener had it at 1.2x, and was booked +138,058
-NEAR_MS = 5 * MIN           # DexScreener's price now vouches only for the closes of the last five minutes
+NEAR_MS = 5 * MIN           # DexScreener's price now vouches for the closes of the last five minutes, and for the newest close of any age
+                            # (no trade after it: the price now is its price; .AiTown's rug to 0.0001x, judged again hours later)
 nan = float("nan")
 
 # check_rockets.py (PR #55) word rules for the theme heat, its tweet id and CJK patterns, line by line
@@ -230,7 +231,8 @@ def near(a, b):
 
 def believed(last, x, after, now_x=None):
     """Whether a close x (a multiple of the buy price) is the coin's price and not a glitch: near the close before it (last), or near
-    DexScreener's price now (now_x, for a close of the last minutes), or near both of the two closes after it (a level the chart stays at)."""
+    DexScreener's price now (now_x, for a close of the last minutes or the newest close), or near both of the two closes after it (a level
+    the chart stays at)."""
     return near(x, last) or near(x, now_x) or (len(after) == 2 and all(near(x, y) for y in after))
 
 
@@ -276,7 +278,7 @@ class Book:
         for i, (t, x) in enumerate(xs):
             if t < p["t"] or t <= (num(p.get("lastT")) or 0):
                 continue
-            if not believed(num(p.get("last")) or 1.0, x, [y for _, y in xs[i + 1:i + 3]], now_x if now - t <= NEAR_MS else None):
+            if not believed(num(p.get("last")) or 1.0, x, [y for _, y in xs[i + 1:i + 3]], now_x if now - t <= NEAR_MS or i == len(xs) - 1 else None):
                 continue
             why = rule(p, t, x)
             if why:

@@ -254,6 +254,12 @@ def s9(check, tmp):
     o6 = b.update("W", T0 + 5 * MIN, [(T0 + 2 * MIN, 0.0001), (T0 + 3 * MIN, 1.02), (T0 + 4 * MIN, 1.01)], px=1.01)
     check(o5 is None and o6 is None and b.open["W"]["lastT"] == T0 + 4 * MIN and same(b.open["W"]["last"], 1.01),
           "S9 a glitch in the newest minute waits, and the next look leaves it out")
+    b.buy("D", "DEAD", "PD", 1.0, T0, 0.1, 0.05)                 # .AiTown (27 Oct): a rug to 0.0001x, no trade after it, judged hours later
+    o8 = b.update("D", T0 + 6 * H, [(T0 + MIN, 1.27), (T0 + 8 * MIN, 0.000064)], px=0.000064)
+    b.buy("E", "STALE", "PE", 1.0, T0, 0.1, 0.05)
+    o9 = b.update("E", T0 + 6 * H, [(T0 + MIN, 1.27), (T0 + 8 * MIN, 0.000064), (T0 + 9 * MIN, 1.25)], px=1.25)
+    check(o8 and o8["why"] == "floor" and o8["mult"] == 0.0001 and o9 is None and same(b.open["E"]["last"], 1.25),
+          "S9 a rug with no trade after it counts when DexScreener's price now is the same, hours later; an old glitch with trades after it does not")
     b.buy("K", "ROCKET", "PK", 1.0, T0, 0.1, 0.05)
     o7 = b.update("K", T0 + 7 * MIN, [(T0 + k * MIN, x) for k, x in enumerate((1.5, 3.0, 7.0, 16.0, 30.0, 17.0), 1)])
     check(o7 and o7["why"] == "trail" and same(o7["mult"], 17.0), "S9 a real rocket (1.5x to 30x within minutes) still counts: sold at 17x")
