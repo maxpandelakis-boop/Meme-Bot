@@ -618,3 +618,6 @@
 {"t":1793126760975,"addr":"7oVoTVdxe6ugQcByNZ8ZX2Sb8mwrFzfFG5idA4BgHN5x","sym":"PX PEARL","age":30.9,"score":0.01383,"px":3.932e-05,"liq":57148,"p0":3.692988523534908e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.2766,"c_peak":1.1982,"c_vol":5.4572,"c_act":1.0,"c_r5":-0.0937,"c_r15":0.0134,"c_mc":4.5674}}
 {"t":1793126821294,"addr":"AnPHFvZpCN6pFZaisXEnxoa6pvtQY3TMxqE8HZU7BAGS","sym":"Cavhoop","age":30.5,"why":"liquidity","liq":0}
 {"t":1793126880576,"addr":"12fFndtibkitouZReVrgDK1gtUo8xLJTpxJwLi49pump","sym":"AMAZON","age":30.4,"why":"liquidity","liq":2549}
+{"t":1793127000212,"addr":"GZcqVTFLwq7FX1tvtxezcG2sZxZXmC5EgunrFZUqpump","sym":"COKE","age":30.2,"why":"liquidity","liq":3342}
+{"t":1793127120388,"addr":"EVcoZp3PwQmrFTijE1iGaAtBnTxb3a2ZYDeErQ1rpump","sym":"SQUADS","age":44.0,"why":"no candles"}
+{"t":1793127120388,"addr":"2j4iCzjv54siy96t6ySqGmatbhSwr4bmNRRzpJ8C9KBV","sym":"Frongus","age":30.1,"why":"liquidity","liq":5868}
