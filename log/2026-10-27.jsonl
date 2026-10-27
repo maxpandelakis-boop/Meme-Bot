@@ -180,3 +180,6 @@
 {"t":1793077440993,"addr":"2ogGWVYDRtaY4ZNs6G8p38tGFudoPEieKeio9bxnpump","sym":"Apple","age":30.9,"why":"liquidity","liq":1780}
 {"t":1793077500433,"addr":"HtBWXsHgoshyCfk4j9EDfNSRssRSWiQc7xmuw4qpump","sym":"Robinhood","age":30.6,"score":0.00125,"px":7.565e-05,"liq":21436,"p0":0.0008397677482230554,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.9728,"c_peak":1.0124,"c_vol":4.5348,"c_act":1.0,"c_r5":0.2298,"c_r15":0.6882,"c_mc":5.9242}}
 {"t":1793077500433,"addr":"9pAFArphV2cd6M6ieRW465cEQJBvzaxf2gJDYedZfU7T","sym":"DBLOB","age":30.6,"why":"liquidity","liq":0}
+{"t":1793077561291,"addr":"ADoZcGutgdput2BBoQfoMxms4SzgvUVxRQuJEu95pump","sym":"NVIDIA","age":30.6,"score":0.002,"px":0.0008645,"liq":76429,"p0":0.0008565441040334898,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":12.0,"f_cjk":0.0,"c_ret":0.6986,"c_peak":1.0015,"c_vol":4.7447,"c_act":1.0,"c_r5":0.1447,"c_r15":0.4496,"c_mc":5.9327}}
+{"t":1793077620529,"addr":"2qZEAiz5bbjhdaAQ6BTEo8Vyymy41nMgGgKbbV8Xpump","sym":"Claygoo","age":30.5,"why":"liquidity","liq":0}
+{"t":1793077620529,"addr":"tMagf4PU5mDXzPvQBfBjHaEVRuh6GUQWjGm2rkppump","sym":"Rockstar","age":30.4,"why":"liquidity","liq":1809}
