@@ -238,3 +238,4 @@
 {"t":1793083321132,"addr":"bp4kiGw22njEXkpvoBjhUejXuhGMiPrfLjPSWfmpump","sym":"Nyx","age":30.1,"score":0.05112,"px":8.648e-05,"liq":23184,"p0":8.546390312222481e-05,"bars":6,"buy":false,"f":{"f_curve_min":3.5833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.1952,"c_peak":2.0763,"c_vol":5.1618,"c_act":1.0,"c_r5":-0.3189,"c_r15":-0.3032,"c_mc":4.9318}}
 {"t":1793083380439,"addr":"4KSx1MAyyDB47y42WRF2LHBFErt7iNFZd9TePmySpump","sym":"ONC","age":30.7,"why":"liquidity","liq":2399}
 {"t":1793083620896,"addr":"FzqVaesAJoKPdeVCfNQbj99P77Zq1BipP1iX8cZRpump","sym":"Robinhood","age":30.7,"why":"liquidity","liq":1789}
+{"t":1793083740192,"addr":"2KYoKJdXFUGW4Qbm5S3v1Lsrsorm1NubgjxarWeqbonk","sym":"Bvcrab","age":30.8,"why":"liquidity","liq":0}
