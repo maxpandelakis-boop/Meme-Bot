@@ -222,3 +222,10 @@
 {"t":1793081940494,"addr":"ApnAeLMmXfXQZzUjUXeTa4cKXbHnujguqvGR36FnBAGS","sym":"Cldant","age":30.8,"why":"liquidity","liq":0}
 {"t":1793081940494,"addr":"5CtYxchJRsJDDALsYzWwhZcgtvRCiuucaE8A7ckqpump","sym":"Grok","age":30.3,"why":"liquidity","liq":1777}
 {"t":1793082240893,"addr":"Wc82cyyuPU7Hm6rTWLwmQpD4zzxKwv3vY8Ci3dspump","sym":"NVIDIA","age":30.9,"why":"liquidity","liq":2096}
+{"t":1793082420583,"addr":"CseRC8oxowM1sqLjzRYgTXBJapo85jwkW3fkWkgqmoon","sym":"JZCROWN","age":30.1,"why":"liquidity","liq":0}
+{"t":1793082480666,"addr":"FpvHsyuDnsS6JDjp15gyM7goW7zQgzia18TRc37ipump","sym":"YouTube","age":30.4,"score":0.00088,"px":0.0007551,"liq":71164,"p0":0.0006972614075147711,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.5802,"c_peak":1.0125,"c_vol":4.7471,"c_act":1.0,"c_r5":0.1079,"c_r15":0.2757,"c_mc":5.8434}}
+{"t":1793082540202,"addr":"pPnbA4qZyJssEWf9E6fcGAbhJCsUJtGKU5VamkApump","sym":"GTA 6 Coin","age":30.3,"score":0.00275,"px":0.0007137,"liq":69068,"p0":0.0006466871060841481,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":2.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":16.0,"f_cjk":0.0,"c_ret":0.6148,"c_peak":1.0001,"c_vol":4.4198,"c_act":1.0,"c_r5":0.1518,"c_r15":0.3375,"c_mc":5.8107}}
+{"t":1793082601268,"addr":"3VB9uYhiubzSP8uFoiSirbti5tJdZQhdKpuNxqNTpump","sym":"Robinhood","age":30.2,"why":"liquidity","liq":1854}
+{"t":1793082601268,"addr":"8LQ5DQUrKqvmithWcNkKj41HYu1wsUVR3ZvUikhvpump","sym":"s8n","age":30.1,"why":"liquidity","liq":8171}
+{"t":1793082660299,"addr":"ERSk2EpiYrk91tQQ7Mh9yDZu6U1Q1rShh6BuAzZDbonk","sym":"Spxchip","age":30.4,"why":"liquidity","liq":0}
+{"t":1793082660299,"addr":"5jmb1BXEGKWS3NBkb259dwg3yYLRMbfPXxStupZ7s2w","sym":"UNITE","age":30.1,"why":"liquidity","liq":0}
