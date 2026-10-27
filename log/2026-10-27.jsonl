@@ -370,3 +370,10 @@
 {"t":1793096581297,"addr":"995teezNyGCBXBhKbRhB8i9f5ZqntuYLyh8F2QWNhUJc","sym":"CYBERCAT","age":31.0,"why":"liquidity","liq":253}
 {"t":1793096581297,"addr":"3DYTVUzTEyokeXstfqrFJaqMPe6GfTqHpWdEBK3Fpump","sym":"SLOPINU","age":30.9,"why":"liquidity","liq":1864}
 {"t":1793096581297,"addr":"GEwuLprjMkexnmTx6Gt411pjMUQH9u37bFrPhtRHfVZC","sym":".AiTown","age":30.7,"score":0.01661,"px":2.168e-05,"liq":30954,"p0":2.2131786187466865e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":10.0,"f_cjk":0.0,"c_ret":0.4763,"c_peak":1.0153,"c_vol":5.0476,"c_act":1.0,"c_r5":0.0994,"c_r15":0.2312,"c_mc":4.345}}
+{"t":1793096760360,"addr":"GvNAWVVYXd4YTbiPJek3SVdZEZmCPTMnCAYSLBcbKCQz","sym":"\u5927\u80a5\u9c7c","age":30.9,"why":"liquidity","liq":0}
+{"t":1793096760360,"addr":"CyCq8NPFrYkKSchHZBMqK3849jLamGRwPyfEth6Bmoon","sym":"Hobcrab","age":30.5,"why":"liquidity","liq":0}
+{"t":1793096821559,"addr":"5ir6FeoSPaazoHwL9DYxWmxEpyKxPYqf3z6AyvYspump","sym":"LILGUY","age":30.4,"score":0.01252,"px":5.329e-05,"liq":17573,"p0":4.9665344214321515e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.3833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0874,"c_peak":1.081,"c_vol":4.0274,"c_act":1.0,"c_r5":0.0087,"c_r15":0.0125,"c_mc":4.6961}}
+{"t":1793096880205,"addr":"7iUDzDvFuQFXq8djG1AVBWE6Ah7zRZTmpgGm6QkMKth","sym":"SLOPINU","age":30.9,"why":"liquidity","liq":0}
+{"t":1793096941085,"addr":"Fof8FjATPK4DWX93omJ2TnFdVy8inYHh9AzjW8yipump","sym":"AOP","age":30.8,"score":0.00693,"px":0.1449,"liq":1004954,"p0":0.1448136061108476,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0069,"c_peak":1.0007,"c_vol":5.6972,"c_act":1.0,"c_r5":0.0016,"c_r15":0.0028,"c_mc":8.1608}}
+{"t":1793097000924,"addr":"JC94eXWVNB3LWupi3YEzXgdpuos8F9JNRPcoj4x8pump","sym":"NOSLEEP","age":30.9,"why":"liquidity","liq":1938}
+{"t":1793097000924,"addr":"ChwX8sX9vtW5S9b5geQJXDU7GcpajYYoQvgXUSgkpump","sym":"FEVER","age":30.3,"why":"liquidity","liq":2164}
