@@ -108,3 +108,7 @@
 {"t":1793069640965,"addr":"6FLZ8hehQ1dzgWTATQFE6LnCCHhggv7vVHHmdYS9pump","sym":"NVIDIA","age":30.6,"why":"liquidity","liq":1792}
 {"t":1793069700791,"addr":"c431YCn8QJQEBFWsDHBVfSWQHMjArBRDPLGLCqZpump","sym":"Coca Cola","age":30.2,"why":"liquidity","liq":1863}
 {"t":1793069700791,"addr":"322nR3uijcJBNFKAzNBY4PqwrJ3qNg33vLnfhkvrpump","sym":"Rockstar","age":30.1,"score":0.00258,"px":0.001091,"liq":86107,"p0":0.0009782505305321084,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":19.0,"f_cjk":0.0,"c_ret":0.889,"c_peak":1.0,"c_vol":4.705,"c_act":1.0,"c_r5":0.1672,"c_r15":0.4742,"c_mc":5.9905}}
+{"t":1793069880768,"addr":"7eoTekNiEXRUokBv4hThvdcyjpWGzETdZ1mTrb7Hpump","sym":"Ransom","age":30.9,"why":"liquidity","liq":2043}
+{"t":1793069880768,"addr":"214wZQKYReaurS5hFXtNJrdiMLmjwXp2a5UgyaF2pump","sym":"SOG","age":30.6,"why":"liquidity","liq":2048}
+{"t":1793069880768,"addr":"4q7b8xt4nW3eFXdt61aLjaLccYCGFv3R7Xn6ZvWyBAGS","sym":"CLDIPO","age":30.4,"why":"liquidity","liq":0}
+{"t":1793069940542,"addr":"81iZNhPLKe7q3yemmStq2u8fpTpioq8C54LNSgDapump","sym":"GTA 6","age":30.2,"why":"liquidity","liq":1823}
