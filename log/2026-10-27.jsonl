@@ -7,3 +7,5 @@
 {"addr":"8RW2xxW7K1J1L4pCuaaoanWAHMY1jVDuPHDUHf9qppi2","sym":"NEX Ai","pool":"A7cRYTuBAJCUupYWQAfyYJEKLwBSAc1hGtaxyhir4FJF","t":1793058840506,"px":5.488e-05,"score":0.0618,"cut":0.057,"best":4615119.128804,"last":7231.476908,"tok":"base","seen":1793059500904,"now":1.203535,"lastT":1793059440000,"out":1793059500000,"mult":7231.4769,"eur":138058.18,"why":"trail","closed":true}
 {"t":1793059620562,"addr":"H6J9qySDEswnBzCCyMU1CLshUmssgFs1FW4g1Uhypump","sym":"AMERICA","age":30.5,"why":"liquidity","liq":6446}
 {"t":1793059620562,"addr":"9YFP31dKnPkxXSnqVR6nZ8t2NUdkiucGmJDapoGmpump","sym":"Grok","age":30.2,"why":"liquidity","liq":1810}
+{"t":1793059801242,"addr":"wKsFriL4RGDLncR4HjdQ2vjd3A5Vc9CkiRRiJn3pump","sym":"AMAZON","age":30.7,"why":"liquidity","liq":1875}
+{"t":1793059921053,"addr":"5d6cWiaE1yjsAMCeECq4fCX3v17rDf7zK7Dx5m22pump","sym":"X","age":30.6,"why":"liquidity","liq":1806}
