@@ -488,3 +488,5 @@
 {"addr":"BCLiZgKGMwPqZkf791vG2Xah8Bsz3ge6oEtQ7dEXpump","sym":"FILET","pool":"6K5AxrLv5KoXT42nmqYA6p62HUVHnFj5eXuwQDmYstfx","t":1793110261404,"px":0.0004013,"score":0.0918,"cut":0.057,"best":1.275103,"last":0.241954,"tok":"base","seen":1793110800252,"now":0.841764,"lastT":1793110740000,"out":1793110800000,"mult":0.242,"eur":-16.17,"why":"floor","g":1,"closed":true}
 {"t":1793111040847,"addr":"C7VgiizMnrp65oAHs9T2xbhg17RrrBVrPfGkJaiUpump","sym":"Cage","age":30.2,"why":"liquidity","liq":1964}
 {"t":1793111100729,"addr":"DB8JVSaYmZ44NoZMYV6bAZJMqwzcYxmkub7db5Sepump","sym":"Cage","age":30.4,"why":"liquidity","liq":3869}
+{"t":1793111280237,"addr":"3ErFqxULgdWjADMQ44WzFpJWa2NpPsQRwSiLEgRZmoon","sym":"Antcrab","age":30.0,"why":"liquidity","liq":0}
+{"t":1793111400349,"addr":"FWDjmUB7saWe1tb6ttp6eJzWtoHtutwVKkDL5Rdipump","sym":"\u718a","age":30.8,"why":"liquidity","liq":6592}
