@@ -1,3 +1,4 @@
 {"at":1793061540000,"why":"drop","mult":0.8484608001815678,"late":true,"hitAt":1793061480000,"rule":"chart","sym":"DESSA","t":1793061600607,"eur":41.58,"pnl":-8.42,"entryAt":1793046641310,"id":"2026-10-26T201201-h-DESSA-npz2Fh"}
 {"at":1793082720000,"why":"drop","mult":1.238325684313454,"rule":"chart","sym":"RETIRED","t":1793082832873,"eur":60.68,"pnl":10.68,"entryAt":1793071372534,"id":"2026-10-27T030210-h-RETIRED-BLeMEe"}
 {"at":1793085240000,"why":"time","mult":1.6147423904606444,"late":true,"hitAt":1793085063339,"rule":"chart","sym":"DESSA","t":1793085313650,"eur":79.13,"pnl":29.13,"entryAt":1793063463339,"id":"2026-10-27T005156-h-DESSA-npz2Fh"}
+{"at":1793090640000,"why":"drop","mult":0.8917047438927145,"late":true,"hitAt":1793090340000,"rule":"chart","sym":"HACHI","t":1793090655227,"eur":43.7,"pnl":-6.3,"entryAt":1793089782508,"id":"2026-10-27T081019-h-HACHI-DMnMwU"}
