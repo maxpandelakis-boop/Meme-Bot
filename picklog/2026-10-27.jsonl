@@ -6,3 +6,4 @@
 {"at":1793099520000,"why":"drop","mult":0.9759783196268108,"rule":"chart","sym":"DESSA","t":1793099578782,"eur":47.83,"pnl":-2.17,"entryAt":1793093509777,"id":"2026-10-27T090839-h-DESSA-npz2Fh"}
 {"at":1793114340000,"why":"drop","mult":0.7580833589592864,"late":true,"hitAt":1793114280000,"rule":"chart","sym":"Wifoween","t":1793114360694,"eur":37.15,"pnl":-12.85,"entryAt":1793111783263,"id":"2026-10-27T141436-h-Wifoween-DtBatQ"}
 {"at":1793122200000,"why":"time","mult":1.0247167853102641,"late":true,"hitAt":1793121967598,"rule":"chart","sym":"RETIRED","t":1793122250726,"eur":50.22,"pnl":0.22,"entryAt":1793100367598,"id":"2026-10-27T110241-h-RETIRED-BLeMEe"}
+{"at":1793125017836,"why":"time","mult":1.027943295930987,"rule":"chart","sym":"DESSA","t":1793125077810,"eur":50.37,"pnl":0.37,"entryAt":1793103417836,"id":"2026-10-27T120050-h-DESSA-npz2Fh"}
