@@ -383,3 +383,5 @@
 {"t":1793097301457,"addr":"HU3Bv1CXPwpZhdysiLsAhQtJsBvY34VHDSSyYQJtpump","sym":"Antbell","age":30.9,"why":"liquidity","liq":0}
 {"t":1793097900394,"addr":"2hiKvC3P9sAhpH2J7hGmfNHASwRAKUfn1JLoPw9jpump","sym":"trader","age":30.5,"why":"liquidity","liq":2347}
 {"t":1793097960706,"addr":"yf4EvGhL58T4DX4AcGBuWavFRGUApntZT9puMZ7LWDs","sym":"NEX Ai","age":30.3,"score":0.02091,"px":4.269e-05,"liq":58569,"p0":4.197681386151984e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.3518,"c_peak":1.0294,"c_vol":5.0862,"c_act":1.0,"c_r5":0.1455,"c_r15":0.1168,"c_mc":4.623}}
+{"t":1793098080304,"addr":"4X2biT7cCLrC8RRytngrTr9HbrqNLQghZ5iZ3xNBpump","sym":"SEALS","age":30.8,"why":"liquidity","liq":2151}
+{"t":1793098140843,"addr":"7Zn5fXZrMync5KkE6TVeLeU4UParyaU1g3LSeZbLmoon","sym":"UCLBOT","age":30.7,"why":"liquidity","liq":0}
