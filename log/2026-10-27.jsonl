@@ -310,3 +310,4 @@
 {"t":1793092200876,"addr":"BiQtjs5eCDgZndTDQbXKSgaF9yyRxZgCxAYP5uQYuVCN","sym":"NAMI","age":30.9,"why":"liquidity","liq":1}
 {"t":1793092200876,"addr":"2SDs91MXXtQmfgJGUASeZiLkKknFhY7qvurTABUxGZZQ","sym":"CYBERCAT","age":30.8,"why":"liquidity","liq":0}
 {"t":1793092200876,"addr":"xMk6MVpriAAZmrqdqoqG7x3rc2dFLg4V5ZHAvSHjbTD","sym":"\u59c6\u5df4\u4f69\u8fb1\u534e\u72d7","age":30.4,"score":0.02344,"px":3.027e-05,"liq":23858,"p0":1.4367394728128305e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.7579,"c_peak":3.4696,"c_vol":5.1929,"c_act":1.0,"c_r5":0.6756,"c_r15":-0.6473,"c_mc":4.1574}}
+{"t":1793093040810,"addr":"2q3mLExdxyY9UHFFjCrFwWn8G84DGBa8Syk3452Ebonk","sym":"WOLVPS","age":30.6,"why":"liquidity","liq":0}
