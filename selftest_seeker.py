@@ -11,7 +11,9 @@ paper account: one buy per coin, Rocket hold on closes (half, 40 % under the bes
 only PumpSwap graduations 30-45 minutes old, the liquidity line, a retry without a price, a buy at the cut, a sale later, the missed
 count, the state and the log, no numpy, no network; S7 the page: the fold under Tests on the side (escaped, no script) and the Start
 box with its lane and feed; S8 the workflow writes only its own branch, runs the bot without the token, in its own group, and the
-scan job only reads seeker.json.
+scan job only reads seeker.json; S9 the glitch guard: NEX Ai's two GeckoTerminal glitch closes (27 Oct) sell nothing, a real crash
+(confirmed by the next closes or by DexScreener) and a real rocket still sell, the sales booked before the guard on a glitch are open
+again and a tick judges them on their candles since the buy.
 """
 import json, math, os, re, shutil, subprocess, sys, tempfile
 
@@ -228,6 +230,66 @@ def s8(check):
           "S8 the scan only copies seeker.json")
 
 
+def s9(check, tmp):
+    px = 5.488e-05                                               # NEX Ai's buy (27 Oct 2026, 23:54 UTC), its closes as GeckoTerminal gave them
+    b = S.Book()
+    b.buy("N", "NEX Ai", "PN", px, T0, 0.0618, 0.057)
+    real = [(T0 + k * MIN, px * (1.0 + 0.02 * k)) for k in range(1, 9)]
+    o1 = b.update("N", T0 + 9 * MIN, real, px=1.17 * px)
+    o2 = b.update("N", T0 + 13 * MIN, [(T0 + 9 * MIN, 4_615_119.1 * px), (T0 + 10 * MIN, 7_231.48 * px), (T0 + 11 * MIN, 1.2 * px),
+                                        (T0 + 12 * MIN, 1.21 * px)], px=1.2035 * px)
+    n = b.open.get("N") or {}
+    check(o1 is None and o2 is None and same(n.get("best"), 1.21) and n.get("lastT") == T0 + 12 * MIN,
+          "S9 NEX Ai's glitch closes (4,615,119x, then 7,231x, DexScreener 1.2x) sell nothing and are no best: best %s" % n.get("best"))
+    b.buy("R", "RUG", "PR", 1.0, T0, 0.1, 0.05)
+    b.update("R", T0 + 3 * MIN, [(T0 + MIN, 1.2), (T0 + 2 * MIN, 1.28)])
+    o3 = b.update("R", T0 + 6 * MIN, [(T0 + 3 * MIN, 0.18), (T0 + 4 * MIN, 0.17), (T0 + 5 * MIN, 0.15)])
+    check(o3 and o3["why"] == "floor" and same(o3["mult"], 0.18) and o3.get("g") == 1,
+          "S9 a real crash (1.28x to 0.18x, the next closes stay there) sells at 0.18x without DexScreener's price")
+    b.buy("Q", "QUICK", "PQ", 1.0, T0, 0.1, 0.05)
+    o4 = b.update("Q", T0 + 3 * MIN, [(T0 + MIN, 1.0), (T0 + 2 * MIN, 0.1)], px=0.1)
+    check(o4 and o4["why"] == "floor" and same(o4["mult"], 0.1), "S9 a crash in the newest minute sells when DexScreener has the same price")
+    b.buy("W", "WAIT", "PW", 1.0, T0, 0.1, 0.05)
+    o5 = b.update("W", T0 + 3 * MIN, [(T0 + MIN, 1.0), (T0 + 2 * MIN, 0.0001)], px=1.0)
+    o6 = b.update("W", T0 + 5 * MIN, [(T0 + 2 * MIN, 0.0001), (T0 + 3 * MIN, 1.02), (T0 + 4 * MIN, 1.01)], px=1.01)
+    check(o5 is None and o6 is None and b.open["W"]["lastT"] == T0 + 4 * MIN and same(b.open["W"]["last"], 1.01),
+          "S9 a glitch in the newest minute waits, and the next look leaves it out")
+    b.buy("K", "ROCKET", "PK", 1.0, T0, 0.1, 0.05)
+    o7 = b.update("K", T0 + 7 * MIN, [(T0 + k * MIN, x) for k, x in enumerate((1.5, 3.0, 7.0, 16.0, 30.0, 17.0), 1)])
+    check(o7 and o7["why"] == "trail" and same(o7["mult"], 17.0), "S9 a real rocket (1.5x to 30x within minutes) still counts: sold at 17x")
+    # the sales booked before the guard, as seeker.json holds them (no "g")
+    nex = {"addr": "N2", "sym": "NEX Ai", "pool": "PN2", "t": T0, "px": px, "score": 0.0618, "cut": 0.057, "best": 4615119.128804,
+           "last": 7231.476908, "tok": "base", "seen": T0 + 11 * MIN, "now": 1.203535, "lastT": T0 + 10 * MIN, "out": T0 + 11 * MIN,
+           "mult": 7231.4769, "eur": 138058.18, "why": "trail"}
+    ait = dict(nex, addr="A2", sym=".AiTown", pool="PA2", px=3.114e-05, best=1.298045, last=6.4e-05, now=0.182177, mult=0.0001, eur=-20.0, why="floor")
+    fine = dict(nex, addr="F2", sym="FINE", pool="PF2", best=1.1, last=0.45, now=0.6, mult=0.45, eur=S.net(0.45), why="floor")
+    late = dict(fine, addr="G2", sym="GUARDED", mult=30.0, now=1.0, eur=S.net(30.0), why="trail", g=1)
+    b2 = S.Book({"open": {}, "closed": [dict(nex), ait, fine, late]})
+    back = b2.reopen_glitches()
+    nx = b2.open.get("N2") or {}
+    check(back == ["N2", "A2"] and [p["addr"] for p in b2.closed] == ["F2", "G2"] and nx.get("best") == 1.0 and "lastT" not in nx
+          and (nx.get("was") or {}).get("eur") == 138058.18 and b2.reopen_glitches() == [] and b2.summary()["eur"] == round(S.net(0.45) + S.net(30.0), 2),
+          "S9 the pre-guard sales on a glitch are open again (their old booking kept), a believable one and a guarded one stay: %s" % back)
+    # a tick: NEX Ai open again, judged on its candles since the buy (the glitch closes still in them)
+    rd, sk, mk = (os.path.join(tmp, "s9", x) for x in ("rd", "sk", "mk"))
+    for x in (os.path.join(rd, "db", "memeradar"), sk, mk):
+        os.makedirs(x, exist_ok=True)
+    json.dump({"coins": {}}, open(os.path.join(rd, "db", "memeradar", "2026-10-27T00.json"), "w"))
+    nex3 = dict(nex, addr="NNN", pool="PNNN")
+    json.dump({"since": T0 - H, "book": {"open": {}, "closed": [nex3]}}, open(os.path.join(sk, "seeker.json"), "w"))
+    rows = ([(T0 + k * MIN, px, px, px, px * (1.0 + 0.02 * k), 50.0) for k in range(0, 9)]
+            + [(T0 + 9 * MIN, px, 4_615_119.1 * px, px, 4_615_119.1 * px, 50.0), (T0 + 10 * MIN, px, 7_231.48 * px, px, 7_231.48 * px, 50.0)]
+            + [(T0 + k * MIN, px, px, px, px * x, 50.0) for k, x in ((11, 1.2), (12, 0.9), (13, 0.45), (14, 0.44))])
+    json.dump(gt(rows), open(os.path.join(mk, "gt_PNNN_ohlcv.json"), "w"))
+    json.dump([{"baseToken": {"address": "NNN"}, "pairAddress": "PNNN", "priceUsd": str(0.44 * px), "liquidity": {"usd": 20000}}],
+              open(os.path.join(mk, "ds.json"), "w"))
+    d = SW.tick(sk, rd, T0 + 15 * MIN + 5_000, mk)
+    sold = d["book"]["closed"]
+    check(len(sold) == 1 and sold[0]["why"] == "floor" and same(sold[0]["mult"], 0.45) and sold[0].get("g") == 1 and sold[0]["was"]["mult"] == 7231.4769
+          and d["book"]["summary"]["eur"] == S.net(0.45) and d["book"]["summary"]["x10"] == 0,
+          "S9 a tick judges NEX Ai again from its buy: the glitch closes skipped, sold at the real half (%s)" % [(p["why"], p["mult"], p["eur"]) for p in sold])
+
+
 def checks(check):
     tmp = tempfile.mkdtemp(prefix="memebot-seeker-")
     try:
@@ -239,6 +301,7 @@ def checks(check):
         sk = s6(check, tmp)
         s7(check, tmp, sk)
         s8(check)
+        s9(check, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
