@@ -63,3 +63,5 @@
 {"t":1793064960590,"addr":"33nXFwuioSwwhvLuRS7Y2WeTF6dUzFcHCPa9bufCpump","sym":"Kangold","age":30.8,"why":"liquidity","liq":0}
 {"t":1793065080729,"addr":"4BMK69DfgXmZQnDPKUTUcJC1Nwxbo4VJWUuTZm3ceHND","sym":"yoki\u9171","age":30.5,"score":0.01644,"px":3e-05,"liq":35147,"p0":2.8244436191264463e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":11.0,"f_cjk":1.0,"c_ret":0.5968,"c_peak":1.0486,"c_vol":4.9198,"c_act":1.0,"c_r5":0.037,"c_r15":0.3979,"c_mc":4.4509}}
 {"addr":"3g2AUcpDZjUPVxiHbPHovnQUd77hPkzvvweg9QXRoSw1","sym":".AiTown","pool":"SF5zoSc6QwAXQ7GCSfveRfdfyQeKE3S9QNp52pgCouF","t":1793064180444,"px":3.114e-05,"score":0.0719,"cut":0.057,"best":1.298045,"last":6.4e-05,"tok":"base","seen":1793065080729,"now":0.182177,"lastT":1793064960000,"out":1793065020000,"mult":0.0001,"eur":-20.0,"why":"floor","closed":true}
+{"t":1793065140302,"addr":"FNk16UvXdDJDZcJuZwWxXnLxv5jDVxCBvVQaRGxxXstX","sym":"SOLY","age":31.0,"why":"liquidity","liq":0}
+{"t":1793065260667,"addr":"AtJA72xgahyvN6Gv6e9mysEwbUqmb492T3k2D351pump","sym":"ENTIRE","age":30.6,"why":"liquidity","liq":4749}
