@@ -584,3 +584,6 @@
 {"t":1793122080873,"addr":"FbmV6oHvGuAiX69ZD3VJNcxm9Qn3wKhYq3LJ8HCRBAGS","sym":"HSBCRAB","age":30.1,"why":"liquidity","liq":0}
 {"t":1793122200983,"addr":"BjQCNrQeD8vAYoo4wvP7DxNUKrut84CoLgpq9XNEpump","sym":"**","age":30.1,"score":0.04067,"px":2.778e-05,"liq":13355,"p0":3.2010118915652336e-05,"bars":6,"buy":false,"f":{"f_curve_min":4.2167,"f_creator_prior":2.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1821,"c_peak":2.1118,"c_vol":5.2946,"c_act":1.0,"c_r5":-0.4174,"c_r15":-0.2141,"c_mc":4.5053}}
 {"t":1793122381026,"addr":"BAgTHtGAWadtrEzYA3YVa7y2LSsUoDuSf4CT9AQFpump","sym":"ACT2","age":30.8,"why":"liquidity","liq":2257}
+{"t":1793122440553,"addr":"3kRPANVQ4xHwFygEUYqXAavp1jDEVXqjrBXdDvuFqWsK","sym":"TRUMP2028","age":30.2,"why":"liquidity","liq":0}
+{"t":1793122560219,"addr":"2iwfxFjXaHQeDFcPQpJEKCsnUK2jewnBivLhJdUbVbAB","sym":"Rebate","age":30.8,"why":"liquidity","liq":0}
+{"t":1793122621052,"addr":"3Z6qNjBb9jqk3Tu8Y7JGnPCT1Q1UrwqebYcbg1UDpump","sym":"runner","age":30.9,"why":"liquidity","liq":2029}
