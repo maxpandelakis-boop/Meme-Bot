@@ -771,3 +771,4 @@
 {"t":1793143680781,"addr":"64wpJnbfz6vFDNXKFBF9oEB5NgDdSkMMo8RdRt2gpump","sym":"rDog","age":30.9,"why":"liquidity","liq":4500}
 {"t":1793143680781,"addr":"EvrKq2F3PWA6HS1zwqjKe5cAjjfAMEV3aLZSjpq6LB56","sym":"NEX Ai","age":30.1,"why":"liquidity","liq":0}
 {"t":1793143740684,"addr":"Bx11Wc4KS14g71SzpD2QSBL6T3XQkgFFai5eRUYVehR","sym":"Stonkz","age":30.5,"why":"liquidity","liq":0}
+{"t":1793144040490,"addr":"5GKPTBe1k6EpFqX4ZVkcyWTSHAtVMTLE7roJbXmZpump","sym":"Retard","age":30.8,"score":0.00672,"px":2.937e-05,"liq":13089,"p0":2.4981856670585164e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":50.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":-2.4609,"c_peak":13.1457,"c_vol":5.6314,"c_act":1.0,"c_r5":0.0068,"c_r15":-1.2961,"c_mc":4.3976}}
