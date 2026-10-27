@@ -394,3 +394,7 @@
 {"t":1793099040438,"addr":"DWrpRo7dHiXiWJ7zdmAovnc8eKKvx4PvBRdgzLXqNh73","sym":"TMTN","age":30.6,"why":"liquidity","liq":0}
 {"t":1793099340602,"addr":"qq81R8SCyjpn1XKJg9x1Dj2mzuQehMC2yW5m38Epump","sym":"eloncloud","age":30.3,"why":"liquidity","liq":1971}
 {"t":1793099400971,"addr":"9GfXXQbAqxmu1UsvCmq3dWGCtdKYEHZCZ6t52fARmoon","sym":"IPOOWL","age":30.5,"why":"liquidity","liq":0}
+{"t":1793099941102,"addr":"CCCPaCpzbr6BFQigZx7XPLXN2jFQNcSBTBsUdwQqpump","sym":"NOSLEEP","age":30.6,"score":0.04577,"px":0.0001117,"liq":26351,"p0":8.484969682088895e-05,"bars":6,"buy":false,"f":{"f_curve_min":13.3833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.9252,"c_peak":1.2705,"c_vol":4.686,"c_act":1.0,"c_r5":0.3232,"c_r15":1.6967,"c_mc":4.9287}}
+{"t":1793099941102,"addr":"hTyajTwodWW3oChZz95Fb1SW6PJPiSVgVSLdAzQmoon","sym":"MUSECRB","age":30.4,"why":"liquidity","liq":0}
+{"t":1793100000128,"addr":"3TXWEkebrqKpxoq3rtytGoN8PHhqdRC8o4AZkhowpump","sym":"MMGA","age":30.1,"why":"liquidity","liq":2017}
+{"t":1793100060717,"addr":"G196duFitv3AQqHf9EwXpZFeANwtm2y717pD3ib1YJyg","sym":"TMTN","age":30.4,"why":"liquidity","liq":0}
