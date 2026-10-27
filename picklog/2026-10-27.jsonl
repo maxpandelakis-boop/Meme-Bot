@@ -8,3 +8,4 @@
 {"at":1793122200000,"why":"time","mult":1.0247167853102641,"late":true,"hitAt":1793121967598,"rule":"chart","sym":"RETIRED","t":1793122250726,"eur":50.22,"pnl":0.22,"entryAt":1793100367598,"id":"2026-10-27T110241-h-RETIRED-BLeMEe"}
 {"at":1793125017836,"why":"time","mult":1.027943295930987,"rule":"chart","sym":"DESSA","t":1793125077810,"eur":50.37,"pnl":0.37,"entryAt":1793103417836,"id":"2026-10-27T120050-h-DESSA-npz2Fh"}
 {"at":1793126700000,"why":"trail","mult":1.266906959687928,"rule":"chart","sym":"Nothing","t":1793126737931,"eur":62.08,"pnl":12.08,"entryAt":1793118731284,"id":"2026-10-27T160851-h-Nothing-51SfaA"}
+{"at":1793129940000,"why":"drop","mult":0.8453662781590654,"rule":"chart","sym":"Nothing","t":1793129983833,"eur":41.43,"pnl":-8.57,"entryAt":1793128939998,"id":"2026-10-27T190059-h-Nothing-51SfaA"}
