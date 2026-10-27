@@ -69,3 +69,4 @@
 {"t":1793065500967,"addr":"75QBc46qwQifK19fKaqExoSGJefjLCQDERp1AZUFoyKf","sym":"\u9762\u8981\u591a\u89c1","age":30.9,"why":"liquidity","liq":0}
 {"t":1793065500967,"addr":"8wVfQLqpPZX79q2pycZyoywtoaSXaYSSzUUJTo8apump","sym":"Neko","age":30.6,"score":0.0553,"px":4.394e-05,"liq":16845,"p0":4.557786464139692e-05,"bars":6,"buy":false,"f":{"f_curve_min":11.2333,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.2275,"c_peak":2.8436,"c_vol":5.2304,"c_act":1.0,"c_r5":-0.4944,"c_r15":-0.4651,"c_mc":4.6588}}
 {"t":1793065500967,"addr":"C38UzdT5QFmrGNRoRrWnpVYsmR4okkQGCXTjL1ykgR6R","sym":"\u9762\u8981\u591a\u5403","age":30.0,"why":"liquidity","liq":0}
+{"t":1793065620244,"addr":"D8EUTJjDhwudVaP8CJoPkXek49N2oBdKE2hRUCkYpump","sym":"Saylur","age":43.3,"why":"no candles"}
