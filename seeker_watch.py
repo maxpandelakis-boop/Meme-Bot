@@ -12,7 +12,8 @@ One tick:
      memebot.unit_ok), seeker.features as of 30 minutes, seeker.score; at or over the model's cut it buys the coin once on paper (20
      at DexScreener's price). A coin it could not price yet is tried again the next minute until 43 minutes, then counted as missed
   3. every open position: the candles since its last look, Rocket hold on their closes (seeker.Book.update; a close far off the one
-     before it that neither DexScreener's price nor the next closes confirm is a glitch and not judged: seeker.GLITCH_X)
+     before it that neither DexScreener's price nor the next closes confirm is a glitch and not judged: seeker.GLITCH_X); its pools'
+     liquidity on DexScreener under seeker.RUG_LIQ is a rug, sold at 0
   4. <dir>/seeker.json (the account, the last scores, the counts) and <dir>/log/<UTC day>.jsonl (every score with its inputs, every
      sale) go to the branch seeker-data; the scan job copies seeker.json into the app's page. No push.
 usage: python3 seeker_watch.py tick --dir sk --radar radar-data-dir [--now ms] [--mock DIR]
@@ -152,7 +153,9 @@ def tick(d, radar_dir, now, mock=None):
         # a minute is judged once it ended: the newest candle may still run
         done = [(int(c[0]), float(c[4])) for c in cs if c[0] + MIN <= now]
         pos["seen"] = int(now)
-        out = book.update(a, now, done, px)
+        liqs = [S.num((q.get("liquidity") or {}).get("usd")) for q in pairs.get(a) or [] if isinstance(q, dict)]
+        liqs = [x for x in liqs if x is not None]          # all its pools: a coin still sellable in another pool is no rug
+        out = book.update(a, now, done, px, max(liqs) if liqs else None)
         if out:
             closed.append(out)
             log("  paper sell %s x%.2f (%s) %+.2f" % (out.get("sym"), out["mult"], out["why"], out["eur"]))

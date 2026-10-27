@@ -25,7 +25,7 @@ TRADES_SHOWN = 120
 CHECKS_SHOWN = 12
 JUDGED = "Nov 27"            # PREREG: the buys of its first 30 days, judged once
 BACKTEST = "−7.80 €"         # research/seeker/results/backtest.json, w4 top 2 % after the allowance, per 20 € trade
-WHY = {"floor": "fell to half", "trail": "40% under its best", "24h": "after 24 h"}
+WHY = {"floor": "fell to half", "trail": "40% under its best", "24h": "after 24 h", "rug": "liquidity pulled (rug)"}
 
 
 def num(v):
