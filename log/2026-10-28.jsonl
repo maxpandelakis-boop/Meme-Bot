@@ -123,3 +123,8 @@
 {"t":1793160660527,"addr":"PLpVGYcG8Zt9nE4YeYontG4hUVgHwwD7KFTGLAGmoon","sym":"Xiscroll","age":30.7,"why":"liquidity","liq":0}
 {"t":1793160720817,"addr":"9JWXozmaRx9jHBzptiyMpLYhbizY265KUauWCYdYbSFh","sym":"Robotaxi","age":30.5,"why":"liquidity","liq":0}
 {"t":1793160840587,"addr":"4bXNxoxpmzFbmSPA7yMSohmGSfTXhQpAZjh14ECUCeFd","sym":"Google AI","age":30.4,"why":"liquidity","liq":0}
+{"t":1793160900544,"addr":"WpYqcbD34QhZkhdgpiMUEKNHJDirxES4swcDE42pump","sym":"AODF","age":30.2,"score":0.00462,"px":0.1506,"liq":1037682,"p0":0.1496715919898383,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0553,"c_peak":1.0,"c_vol":5.7119,"c_act":1.0,"c_r5":0.008,"c_r15":0.0234,"c_mc":8.1751}}
+{"t":1793160960503,"addr":"GNt7xeKjjM699z2jJjuUZYsnrWqLK5P5dtvUKKRkpump","sym":"John","age":30.2,"why":"liquidity","liq":5157}
+{"t":1793161140928,"addr":"9HDhPww3pZXU6rNgxqBx4VAKxHd8nHvS4XT8hXMiqVKi","sym":"Google AI","age":30.7,"why":"liquidity","liq":0}
+{"t":1793161140928,"addr":"G4eXQLxgSnTtdcZcPWc1nqD4Arq3JcYaY2oCXTLCMmwx","sym":"Mbapp\u00e9","age":30.5,"why":"liquidity","liq":0}
+{"t":1793161140928,"addr":"8MYbxoE2sqfsxk7qPzuJnEde7xSSFHcDazxFxipgbvtS","sym":"\u8d77\u98de","age":30.4,"why":"liquidity","liq":0}
