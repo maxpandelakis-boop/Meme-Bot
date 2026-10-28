@@ -372,3 +372,4 @@
 {"t":1793196300710,"addr":"GTMJFHrWXzitRBCfZ4LNShr5GxC1hBU2b7xctRTHpump","sym":"Eldgr","age":30.5,"why":"liquidity","liq":0}
 {"t":1793196541238,"addr":"BFKYSwqKpyuMRmuuiYzcm84SdMrRaatAvguxrHkyuTFu","sym":"QUBIT","age":30.3,"score":0.01845,"px":6.658e-05,"liq":125436,"p0":6.721376055132787e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.3,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.0794,"c_peak":1.0018,"c_vol":6.1804,"c_act":1.0,"c_r5":0.0452,"c_r15":0.0764,"c_mc":4.8275}}
 {"t":1793196601026,"addr":"69o1FQGP3yjGwuZkBZoCxHsnXMmbU5DHnMuCDQEChTSf","sym":"JOCKEY","age":30.8,"why":"liquidity","liq":0}
+{"t":1793196660793,"addr":"8KhoRD2NgEnuafbVMryfMw6mRTJ48NQzBPtoqo93pump","sym":"WORET","age":30.4,"why":"liquidity","liq":2865}
