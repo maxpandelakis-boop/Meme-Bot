@@ -4,3 +4,4 @@
 {"at":1793173080000,"why":"trail","mult":1.3696680932195924,"rule":"chart","sym":"MOONX","t":1793173127372,"eur":67.12,"pnl":17.12,"entryAt":1793165788460,"id":"2026-10-28T051644-h-MOONX-28vWTt"}
 {"at":1793174280000,"why":"drop","mult":0.8449577470516446,"late":true,"hitAt":1793174220000,"rule":"chart","sym":"INVERSE","t":1793174330469,"eur":41.41,"pnl":-8.59,"entryAt":1793172512985,"id":"2026-10-28T070855-h-INVERSE-2gLhk8"}
 {"at":1793179380000,"why":"trail","mult":1.7333113621635738,"late":true,"hitAt":1793179320000,"rule":"chart","sym":"MOONX","t":1793179390925,"eur":84.94,"pnl":34.94,"entryAt":1793177442704,"id":"2026-10-28T083102-h-MOONX-28vWTt"}
+{"at":1793186580000,"why":"drop","mult":0.8896653749548525,"late":true,"hitAt":1793186520000,"rule":"chart","sym":"INVERSE","t":1793186641064,"eur":43.6,"pnl":-6.4,"entryAt":1793184475684,"id":"2026-10-28T102225-h-INVERSE-2gLhk8"}
