@@ -1,0 +1,70 @@
+{
+ "P": {
+  "bestShrunk": {
+   "filter": "share of rising candles, last hour at most 0.5 AND SOL 24 h change at most 0.002194",
+   "rule": "no stop / 1.5x / 2 h",
+   "score": 0.15,
+   "n": 42
+  },
+  "bestMean40": {
+   "filter": "1 h change at least 0.01225 AND SOL 1 h change at least 0.002115 AND BTC 24 h change at most 0.0008138",
+   "rule": "-30% / no target / 6 h",
+   "meanAfter": 8.04,
+   "n": 40
+  },
+  "searched": 242166150,
+  "filters40": 1438,
+  "filters40BestRulePositive": 880
+ },
+ "U": {
+  "bestShrunk": {
+   "filter": "hours since graduation at least 9 AND hour (UTC) at most 7 AND number of links = 1",
+   "rule": "-70% / 1.5x / 6 h",
+   "score": 3.17,
+   "n": 43
+  },
+  "bestMean40": {
+   "filter": "6 h change at most 0.1802 AND share of rising candles, last hour at most 0.5 AND SOL 1 h change at least 0.006178",
+   "rule": "-50% / no target / 12 h",
+   "meanAfter": 45.04,
+   "n": 41
+  },
+  "searched": 206670150,
+  "filters40": 157463,
+  "filters40BestRulePositive": 41248
+ },
+ "R": {
+  "bestShrunk": {
+   "filter": "hours since the high at most 0 AND log10 last hour volume at most 4.416 AND minutes on the bonding curve at most 0",
+   "rule": "-70% / 1.2x / 24 h",
+   "score": 0.04,
+   "n": 43
+  },
+  "bestMean40": {
+   "filter": "24 h volume / market cap at least 0.5117 AND 6 h change at most 0.01894 AND share of rising candles, last hour at most 0.5833",
+   "rule": "-50% / no target / 6 h",
+   "meanAfter": 13.18,
+   "n": 40
+  },
+  "searched": 218727450,
+  "filters40": 89570,
+  "filters40BestRulePositive": 6974
+ },
+ "S": {
+  "bestShrunk": {
+   "filter": "1 h volatility at most 0.009055 AND hour (UTC) at most 4",
+   "rule": "-10% / 1.2x / 12 h",
+   "score": -0.89,
+   "n": 42
+  },
+  "bestMean40": {
+   "filter": "hours since the high at least 0.4167 AND 6-hour block (UTC) = 1 AND same ticker in 7 days at most 1",
+   "rule": "-10% / no target / 24 h",
+   "meanAfter": 20.55,
+   "n": 40
+  },
+  "searched": 186162075,
+  "filters40": 203358,
+  "filters40BestRulePositive": 10072
+ }
+}
