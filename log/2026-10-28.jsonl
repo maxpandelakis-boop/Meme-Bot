@@ -625,3 +625,4 @@
 {"t":1793225820864,"addr":"4KLa5LH7UgGFP1BcsTKgeRSZg1dQtGzUEbkaXAE9pump","sym":"Land","age":30.5,"why":"liquidity","liq":3558}
 {"t":1793225820864,"addr":"CL9R6oc74kM2kojv63Qka6tx6Ph2Ynr6iNaThifgvQzB","sym":"NEX Ai","age":30.4,"score":0.03661,"px":2.966e-05,"liq":45963,"p0":2.9764566065810198e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":52.0,"f_cjk":0.0,"c_ret":0.1969,"c_peak":1.0561,"c_vol":5.3788,"c_act":1.0,"c_r5":0.0047,"c_r15":0.009,"c_mc":4.4737}}
 {"t":1793225880778,"addr":"3aNTtSBD7SKhWyDSdd1LapCG513RMEcXtmCJWDRbBAGS","sym":"HUNTRX","age":30.4,"why":"liquidity","liq":0}
+{"t":1793226480386,"addr":"Kf87xkEvDrWCWzmxB28eUYzw4EQ6Gy9fBykUDQCb9dP","sym":"JOCKEY","age":30.7,"why":"liquidity","liq":0}
