@@ -291,3 +291,4 @@
 {"addr":"6U3QF4gq4Bujj5s5PFe2jiuvD46pQE2h6M7LGiLBJgjT","sym":"NEX Ai","pool":"6TDExgX7EPV58TVKMXogtkG42aGErwYLQrLE23ojfPss","t":1793184060871,"px":5.788e-05,"score":0.0926,"cut":0.057,"best":1.186562,"last":1.186562,"tok":"base","seen":1793185020472,"now":1.18642,"lastT":1793184900000,"out":1793185020472,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793185080802,"addr":"B57iR2kZanf9TrVkhJpTVF5NgcRK4TKBXkZsTSBupump","sym":"LMAOBTC","age":31.0,"why":"liquidity","liq":2555}
 {"t":1793185140862,"addr":"jzg6hkDMMMAHcdx6XfNrfSCt5fMm9cV8emFGTJ3bonk","sym":"Chipz","age":30.9,"why":"liquidity","liq":0}
+{"t":1793186160086,"addr":"GgADaPWirs9xGyeJaoUsXkjuGwDei5q8PGLaGnTKmoon","sym":"HYNCHIP","age":30.9,"why":"liquidity","liq":0}
