@@ -285,3 +285,4 @@
 {"t":1793184000210,"addr":"gHJ8BG4uA2BJzjVYpMGSRHFioxx2VTiVYXfFuvJmoon","sym":"Knsghost","age":30.2,"why":"liquidity","liq":0}
 {"t":1793184000210,"addr":"A1wbf3tW1gR5Fo9a93NQZXJUTW6fLZpQRaCJMuTmpump","sym":"Fonechi","age":30.2,"why":"liquidity","liq":2554}
 {"t":1793184060871,"addr":"6U3QF4gq4Bujj5s5PFe2jiuvD46pQE2h6M7LGiLBJgjT","sym":"NEX Ai","age":30.8,"score":0.09262,"px":5.788e-05,"liq":69971,"p0":5.815712712936945e-05,"bars":6,"buy":true,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":33.0,"f_cjk":0.0,"c_ret":0.7706,"c_peak":1.0009,"c_vol":4.949,"c_act":1.0,"c_r5":0.1575,"c_r15":0.4719,"c_mc":4.7646}}
+{"t":1793184301377,"addr":"8RtR4Wx9W9g1LUmJ8q63HFmm2x6nna1zFvhR4C1dpump","sym":"PUMPPILL","age":30.2,"why":"liquidity","liq":0}
