@@ -11,3 +11,4 @@
 {"at":1793199840000,"why":"drop","mult":0.5998136064223939,"late":true,"hitAt":1793199780000,"rule":"chart","sym":"jeff","t":1793199859795,"eur":29.39,"pnl":-20.61,"entryAt":1793199129820,"id":"2026-10-28T142700-h-jeff-HAsTKX"}
 {"at":1793202673294,"why":"time","mult":0.9355195462840419,"rule":"chart","sym":"REAPURR","t":1793202709086,"eur":45.85,"pnl":-4.15,"entryAt":1793181073294,"id":"2026-10-28T092657-h-REAPURR-21VTKj"}
 {"at":1793206080000,"why":"trail","mult":1.5112802072213019,"late":true,"hitAt":1793206020000,"rule":"chart","sym":"INVERSE","t":1793206129967,"eur":74.06,"pnl":24.06,"entryAt":1793202501784,"id":"2026-10-28T152304-h-INVERSE-2gLhk8"}
+{"at":1793220660000,"why":"drop","mult":0.9972606112028486,"late":true,"hitAt":1793220600000,"rule":"chart","sym":"$CHIMP","t":1793220774062,"eur":48.87,"pnl":-1.13,"entryAt":1793215870285,"id":"2026-10-28T191124-h-CHIMP-AHKcbf"}
