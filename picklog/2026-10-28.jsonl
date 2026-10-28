@@ -2,3 +2,4 @@
 {"at":1793153400000,"why":"drop","mult":0.7119589014067521,"late":true,"hitAt":1793152920000,"rule":"chart","sym":"Nothing","t":1793153415345,"eur":34.89,"pnl":-15.11,"entryAt":1793150160382,"id":"2026-10-28T005246-h-Nothing-FpSSpq"}
 {"at":1793164956788,"why":"time","mult":0.9993670473622529,"rule":"chart","sym":"MOONX","t":1793165052949,"eur":48.97,"pnl":-1.03,"entryAt":1793143356788,"id":"2026-10-27T225810-h-MOONX-28vWTt"}
 {"at":1793173080000,"why":"trail","mult":1.3696680932195924,"rule":"chart","sym":"MOONX","t":1793173127372,"eur":67.12,"pnl":17.12,"entryAt":1793165788460,"id":"2026-10-28T051644-h-MOONX-28vWTt"}
+{"at":1793174280000,"why":"drop","mult":0.8449577470516446,"late":true,"hitAt":1793174220000,"rule":"chart","sym":"INVERSE","t":1793174330469,"eur":41.41,"pnl":-8.59,"entryAt":1793172512985,"id":"2026-10-28T070855-h-INVERSE-2gLhk8"}
