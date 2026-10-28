@@ -8,3 +8,6 @@
 {"t":1793146500971,"addr":"7fRmeFVRejsz6GwLLzH2RxexYvppVAt7cXGip4h8cZ49","sym":"BACKED","age":30.7,"why":"liquidity","liq":2210}
 {"t":1793146500971,"addr":"HYNu8bQjCxY4WmVppr6A928ZG6XbKUbwxHC3eNHpump","sym":"DeepSeek","age":30.2,"why":"liquidity","liq":1847}
 {"t":1793146560364,"addr":"H1xvejvbsWNexJ2xq2SHqPSuAh6p5er8ZvRmNa5Kpump","sym":"katzi","age":30.6,"score":0.01166,"px":2.298e-05,"liq":11035,"p0":2.29916688085283e-05,"bars":6,"buy":false,"f":{"f_curve_min":117.0333,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.5155,"c_peak":1.8156,"c_vol":4.3672,"c_act":1.0,"c_r5":-0.1191,"c_r15":-0.2597,"c_mc":4.3616}}
+{"t":1793146861031,"addr":"9zBSeSKf7sJvqz5q1wiwN7aZCK7TLkniuWHgaSkebonk","sym":"Acmegvl","age":30.6,"why":"liquidity","liq":0}
+{"t":1793147040127,"addr":"qqG6D1jm6upQ2oVxWVpzEP1ALikcW2hiRd4qtjhpump","sym":"NVIDIA","age":30.8,"why":"liquidity","liq":1896}
+{"t":1793147040127,"addr":"851f25vxtwjFciCBsEn7wroUAjp2ncJi6Jw8ANcAgwz5","sym":"GINNAN","age":30.2,"why":"liquidity","liq":0}
