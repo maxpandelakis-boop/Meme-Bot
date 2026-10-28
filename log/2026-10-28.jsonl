@@ -96,3 +96,7 @@
 {"t":1793157181195,"addr":"EtXzpr8RaCDCUHJs6sXZmJeszWsHy9D2jc5ADhCwpump","sym":"WIRED","age":30.2,"why":"liquidity","liq":7486}
 {"t":1793157360388,"addr":"6JN2xhmuey3XL4NNewomhLdnaKMCt991aEg8kEa8QU6N","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":56}
 {"t":1793157420784,"addr":"8iT11XpdTEWeX2Kb5pKpMgndqdxxPfcoqu2DS4WNRVhe","sym":"smirkcat","age":30.4,"score":0.02845,"px":3.801e-05,"liq":36573,"p0":2.8353065758507768e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4289,"c_peak":2.0953,"c_vol":5.0798,"c_act":1.0,"c_r5":0.2869,"c_r15":-0.3632,"c_mc":4.4526}}
+{"t":1793157660854,"addr":"nKx77SSCq6yGkVk8TTvKsGG1PrFnJryNY11DTMSpump","sym":"paws","age":43.5,"why":"no candles"}
+{"t":1793157660854,"addr":"FeFJBWGuG65xypEEawyEnzbBFY1q5xUjzCbaLjEWpump","sym":"SLEGO","age":30.6,"why":"liquidity","liq":1997}
+{"t":1793157660854,"addr":"B4MpGyWyBvVmQMBhXQFhvgpKT3rFqSm4dscrRWXKpump","sym":"Robotaxi","age":30.1,"why":"liquidity","liq":4914}
+{"t":1793157780764,"addr":"6a7NykgrmZH2dkMU25XgdnwNcEPf78uFYHnfuGVAKahg","sym":"Mbapp\u00e9","age":30.7,"why":"liquidity","liq":38}
