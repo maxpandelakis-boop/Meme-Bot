@@ -84,7 +84,7 @@ research/bigsearch/CANDIDATES-2026-10-28.json for every threshold.
 - [Certain] The first fetch (public RPC, transaction version 0 only) lost the migrations sent as version-1 transactions
   ("rpc -32015", ~14 % of the migration account's transactions; 123 of w5's 151 graduations of 21 Oct 00:00-06:00 found).
   This was found from counts only, before any S1 price or result was looked at (prereg amendment, 18:30 UTC). Two repair passes
-  (runs 40745607675 and 40754235738) asked those transactions again with version 1 and added 766 S1 pools; in the second pass 68
+  (runs 40745607675 and 40754235738) asked those transactions again with version 1 and added 766 S1 pools (29 % of S1); in the second pass 68
   of the 71 graduations recovered were version-1 transactions, 3 of 307 transactions stayed unanswered. 21 Oct 00:00-06:00 is
   taken from w5's Helius list.
 
