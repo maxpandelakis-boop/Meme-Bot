@@ -150,3 +150,14 @@ The "size of luck" (`bs_search.py luck`) counts only filters with at least 40 S1
 many of those have a positive best sell rule. The judgement of the 20 frozen candidates is unchanged. The judge and luck code
 were dry-run on w5 (fit data, rows relabelled) to check that they run; the candidates' w5 trade counts matched the frozen
 fitTrades.
+
+## Amendment, 28 Oct 2026 ~18:45 UTC (S1 data fetched, no S1 price, outcome or rule result looked at)
+
+The coverage check found the S1 graduation list incomplete: the public RPC was asked for transaction version 0 only, and ~14 % of
+the migration account's transactions came back as "rpc -32015" (a newer transaction version). Of the 151 graduations of 21 Oct
+00:00-06:00 in w5's Helius list, the new list had 123 (81 %); S1 had ~430 graduations a day with start SOL side >= 10 against
+559-852 a day in w5. Only counts were looked at (graduations per day, candles found: 1,895 of 1,895 planned pools, launch facts
+found). Because the missing graduations are a newer transaction format, not a random sample, S1 is not judged on the incomplete
+list: a repair run of .github/workflows/bigsearch-data.yml asks those transactions again with the version the RPC names and adds
+candles and launch facts for the new pools. The coverage after the repair (again against w5's 21 Oct 00:00-06:00) is reported
+with the result. The candidates, the bar and the one-time judgement are unchanged.

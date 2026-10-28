@@ -183,13 +183,47 @@ def cmd_sigs(out):
 
 
 def cmd_tx(sigf, i, n, out):
-    import concurrent.futures, threading
-    sigs = json.load(open(sigf))["sigs"][int(i)::int(n)]
-    grads, miss, lock = {}, collections.Counter(), threading.Lock()
+    """Env TX_FROM / TX_TO (UTC "YYYY-MM-DD HH:MM") limit the signatures by time; OLD/grads.json (an earlier run's graduations)
+    skips the signatures whose second already gave a graduation. Transactions newer than version 0 are asked again with the
+    version the RPC names (the first run asked for version 0 only and lost them as "rpc -32015")."""
+    import concurrent.futures, re, threading
+    sigs = json.load(open(sigf))["sigs"]
+    lo = ms(os.environ["TX_FROM"]) if os.environ.get("TX_FROM") else 0
+    hi = ms(os.environ["TX_TO"]) if os.environ.get("TX_TO") else 1 << 62
+    sigs = [s for s in sigs if lo <= s[1] * 1000 < hi]
+    old = os.path.join(os.environ.get("OLD") or "-", "grads.json")
+    if os.path.exists(old):
+        known = {g["t"] // 1000 for g in json.load(open(old))["grads"]}
+        n0 = len(sigs)
+        sigs = [s for s in sigs if s[1] not in known]
+        log("signatures in the window", n0, "after skipping the seconds of known graduations", len(sigs))
+    sigs = sigs[int(i)::int(n)]
+    grads, miss, ver, lock = {}, collections.Counter(), collections.Counter(), threading.Lock()
+    notes = []
 
     def one(s):
-        st, tx = rpc(PUBLIC_RPC, "getTransaction", [s[0], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}], PGAP)
-        return s, st, tx
+        v, enc = 0, "jsonParsed"
+        for _ in range(4):
+            st, j = post(PUBLIC_RPC, {"jsonrpc": "2.0", "id": 1, "method": "getTransaction",
+                                      "params": [s[0], {"encoding": enc, "maxSupportedTransactionVersion": v}]}, PGAP)
+            if not isinstance(j, dict):
+                return s, st, None
+            e = j.get("error")
+            if not e:
+                return s, st, j.get("result")
+            msg = str(e.get("message"))
+            m = re.search(r"version \(?(\d+)\)?", msg)
+            with lock:
+                if len(notes) < 8 and msg[:60] not in [x[:60] for x in notes]:
+                    notes.append(msg[:200])
+            if e.get("code") == -32015 and m and int(m.group(1)) != v:
+                v = int(m.group(1))
+                continue
+            if e.get("code") == -32602 and enc == "jsonParsed":
+                enc = "json"
+                continue
+            return s, "rpc %s" % e.get("code"), None
+        return s, "retries", None
 
     t0 = time.time()
     with concurrent.futures.ThreadPoolExecutor(3) as ex:
@@ -198,12 +232,17 @@ def cmd_tx(sigf, i, n, out):
                 miss[str(st)] += 1
                 continue
             g = migration(tx)
+            ver[str(tx.get("version"))] += 1
             if g:
                 grads[g["mint"]] = g
+                ver["grad v%s" % tx.get("version")] += 1
             if k % 500 == 499:
-                log("tx", k + 1, "of", len(sigs), "graduations", len(grads), "missing", dict(miss), "%.2f s each" % ((time.time() - t0) / (k + 1)))
-    json.dump({"grads": list(grads.values()), "missing": dict(miss), "asked": len(sigs)}, open(out, "w"))
-    log("done", len(sigs), "graduations", len(grads), "missing", dict(miss))
+                log("tx", k + 1, "of", len(sigs), "graduations", len(grads), "missing", dict(miss), "versions", dict(ver),
+                    "%.2f s each" % ((time.time() - t0) / (k + 1)))
+    json.dump({"grads": list(grads.values()), "missing": dict(miss), "asked": len(sigs), "versions": dict(ver)}, open(out, "w"))
+    log("done", len(sigs), "graduations", len(grads), "missing", dict(miss), "versions", dict(ver))
+    for x in notes:
+        log("rpc said:", x)
 
 
 def klines(sym, t0, t1):
@@ -225,8 +264,16 @@ def klines(sym, t0, t1):
 
 
 def cmd_plan(src, out):
+    """With env OLD (the branch bigsearchdata of an earlier run): its graduations are merged in, and plan.json / mints.json hold only
+    the S1 pools and mints that run has no candles / launch facts for (final then merges both)."""
     os.makedirs(out, exist_ok=True)
     grads, info = {}, {}
+    od = os.environ.get("OLD") or "-"
+    if os.path.exists(os.path.join(od, "grads.json")):
+        for g in json.load(open(os.path.join(od, "grads.json")))["grads"]:
+            if g.get("pool") and g.get("t", 0) >= T_FROM:
+                grads.setdefault(g["pool"], g)
+        info["old"] = {"grads": len(grads)}
     for f in sorted(glob.glob(os.path.join(src, "**", "*.json"), recursive=True)):
         d = json.load(open(f))
         if "grads" not in d:
@@ -241,6 +288,14 @@ def cmd_plan(src, out):
     log("graduations", len(gs), "per day", dict(sorted(day.items())), "with SOL side >= 10", dict(sorted(day10.items())))
     s1 = [g for g in gs if S1[0] <= g["t"] < S1[1] and g["sol0"] >= MIN_SOL]
     mints = [g["mint"] for g in gs if g["t"] < S1[1] and g["sol0"] >= MIN_SOL]
+    if os.path.exists(os.path.join(od, "meta_s1.json")):
+        import pandas as pd
+        have = {g["pool"] for g in json.load(open(os.path.join(od, "meta_s1.json"))) if g.get("bars")}
+        hm = set(pd.read_parquet(os.path.join(od, "chain_s1.parquet"), columns=["mint"])["mint"])
+        log("S1 pools", len(s1), "of which new", sum(1 for g in s1 if g["pool"] not in have), "mints", len(mints),
+            "of which new", sum(1 for m in mints if m not in hm))
+        s1 = [g for g in s1 if g["pool"] not in have]
+        mints = [m for m in mints if m not in hm]
     json.dump({"grads": gs, "files": info}, open(os.path.join(out, "grads.json"), "w"))
     json.dump({"grads": s1}, open(os.path.join(out, "plan.json"), "w"))
     json.dump({"mints": mints}, open(os.path.join(out, "mints.json"), "w"))
@@ -251,9 +306,15 @@ def cmd_plan(src, out):
 
 
 def cmd_final(candles, chain, plan, out):
+    """With env OLD (see plan): the earlier run's candles, pools and launch facts are kept and the new ones added."""
     import pandas as pd
     os.makedirs(out, exist_ok=True)
+    od = os.environ.get("OLD") or "-"
+    old = os.path.exists(os.path.join(od, "meta_s1.json"))
     frames, metas = [], []
+    if old:
+        frames.append(pd.read_parquet(os.path.join(od, "bars_s1.parquet")))
+        metas += json.load(open(os.path.join(od, "meta_s1.json")))
     for f in sorted(glob.glob(os.path.join(candles, "**", "gt_*.json.gz"), recursive=True)):
         d = json.load(gzip.open(f))
         metas += d["meta"]
@@ -270,19 +331,37 @@ def cmd_final(candles, chain, plan, out):
         if g["pool"] not in seen or (g.get("bars") and not seen[g["pool"]].get("bars")):
             seen[g["pool"]] = g
     planned = json.load(open(os.path.join(plan, "plan.json")))["grads"]
+    if old:
+        po = {g["pool"] for g in planned}
+        planned = [g for g in json.load(open(os.path.join(od, "meta_s1.json"))) if g["pool"] not in po] + planned
+        planned.sort(key=lambda g: g["t"])
     meta = [seen.get(g["pool"], dict(g, bars=0, missing=True)) for g in planned]
     json.dump(meta, open(os.path.join(out, "meta_s1.json"), "w"))
     for f in ("grads.json", "market.json"):
         os.replace(os.path.join(plan, f), os.path.join(out, f))
+    if old:
+        mk, mo = json.load(open(os.path.join(out, "market.json"))), json.load(open(os.path.join(od, "market.json")))
+        if any(len(mk.get(k) or []) < len(mo.get(k) or []) for k in mo):
+            os.replace(os.path.join(od, "market.json"), os.path.join(out, "market.json"))
     ch = os.path.join(chain, "chain.parquet")
     summ = {"planned": len(planned), "with candles": sum(1 for g in meta if g.get("bars")), "bars": int(len(b))}
-    if os.path.exists(ch):
-        c = pd.read_parquet(ch)
-        os.replace(ch, os.path.join(out, "chain_s1.parquet"))
+    cs = [pd.read_parquet(ch)] if os.path.exists(ch) else []
+    if old:
+        summ["repair"] = {"new pools": len(json.load(open(os.path.join(plan, "plan.json")))["grads"]),
+                          "new launch mints": int(len(cs[0])) if cs else 0}
+        cs.append(pd.read_parquet(os.path.join(od, "chain_s1.parquet")))
+    if cs:
+        c = pd.concat(cs, ignore_index=True).drop_duplicates("mint")
+        for col in c.columns:
+            if c[col].dtype == object:
+                c[col] = c[col].astype(object).where(c[col].notna(), None)
+        c.to_parquet(os.path.join(out, "chain_s1.parquet"), index=False)
         summ["launch facts"] = {k: int(c[k].notna().sum()) for k in ("curve_creator", "created_s", "symbol", "f_keys") if k in c}
         summ["launch mints"] = int(len(c))
     if os.path.exists(os.path.join(chain, "wiki_top.json")):
         os.replace(os.path.join(chain, "wiki_top.json"), os.path.join(out, "wiki_top.json"))
+    elif old and os.path.exists(os.path.join(od, "wiki_top.json")):
+        os.replace(os.path.join(od, "wiki_top.json"), os.path.join(out, "wiki_top.json"))
     json.dump(summ, open(os.path.join(out, "summary.json"), "w"), indent=1)
     log("summary", summ)
 

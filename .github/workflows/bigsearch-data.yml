@@ -5,6 +5,10 @@
 #   shard         GeckoTerminal 5-minute candles of the first 48 h (research/months_fetch.py shard) and the launch facts from the
 #                 chain and the metadata files (research/rockets/meta_chain.py shard), both unchanged
 #   final         bars_s1.parquet, meta_s1.json, chain_s1.parquet, wiki_top.json, grads.json, market.json, summary.json
+# Repair run (28 Oct): the first run asked the public RPC for transaction version 0 only and lost the newer-version
+# migrations ("rpc -32015", ~18 % of 21 Oct's graduations). tx/plan/final now read the first run's data (branch bigsearchdata,
+# checked out to old/), ask only the signatures of 21 Oct 06:00 - 26 Oct 12:00 that gave no graduation, with the version the RPC
+# names, and fetch candles and launch facts for the new pools only.
 # Nothing is bought. HELIUS_API_KEY is only passed to the scripts, never printed or saved. Touches no bot branch and no paper
 # account. At most 3 runners at once. Started by a push of this file or of research/bigsearch/bs_fetch.py on this branch.
 name: bigsearch-data
@@ -48,8 +52,16 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with: {name: sigs, path: g}
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: bigsearchdata
+          path: old
       - env:
           PGAP: "0.3"
+          OLD: old
+          TX_FROM: "2026-10-21 06:00"
+          TX_TO: "2026-10-26 12:00"
         run: python3 research/bigsearch/bs_fetch.py tx g/sigs.json ${{ matrix.i }} 3 tx_${{ matrix.i }}.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -67,7 +79,15 @@ jobs:
         with: {pattern: "tx-*", merge-multiple: true, path: src}
       - uses: actions/download-artifact@v4
         with: {name: sigs, path: src/sigs}
-      - run: python3 research/bigsearch/bs_fetch.py plan src plan
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: bigsearchdata
+          path: old
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - env:
+          OLD: old
+        run: python3 research/bigsearch/bs_fetch.py plan src plan
       - uses: actions/upload-artifact@v4
         with: {name: plan, path: "plan/*.json", retention-days: 5}
   shard:
@@ -117,7 +137,13 @@ jobs:
         with: {pattern: "shard-*", merge-multiple: true, path: src}
       - uses: actions/download-artifact@v4
         with: {name: plan, path: plan}
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: bigsearchdata
+          path: old
       - env:
+          OLD: old
           GIT_TERMINAL_PROMPT: '0'
           URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
