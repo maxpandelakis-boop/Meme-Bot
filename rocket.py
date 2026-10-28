@@ -9,7 +9,11 @@ What it does with the numbers of one coin at one check (every 15 minutes from 30
   universe(...) -> whether the coin is one the model was trained on (liquidity and 24 h volume $15k, market cap $100k-5M, not
       down 10% in an hour or 50% in 6 hours, 30 min to 18 h old)
   Book: the paper account. A coin whose score reaches the model's cut is bought once for TICKET at the check's price; rule A sells
-      it (-30% stop on a low, 11x target on a high, 6 hours), after memebot's fees (tip_net). Nothing here is advice.
+      it (-30% stop on a low, 11x target on a high, 6 hours), after memebot's fees (tip_net); a coin whose pools hold under RUG_LIQ of
+      liquidity is a rug, sold at 0 (the Pick account's, the Learning Pick's and the Rocket seeker's line). Nothing here is advice.
+  sane(pos, candles, px, now) -> the high and low rule A judges, of the candles that are the coin's price: a close more than GLITCH_X
+      off the one before it that neither DexScreener's price now nor the next two closes confirm is a GeckoTerminal glitch, not
+      judged (the Rocket seeker's guard); a wick more than memebot.CANDLE_WICK_X beyond its close is one too (the Pick's guard)
 Inputs:
   candles  [[ms, open, high, low, close, volume_usd], ...] one-minute (GeckoTerminal ohlcv, any order)
   trades   [{"t": ms, "buy": bool, "usd": float, "who": address}, ...] the pool's latest trades (GeckoTerminal: the last 300)
@@ -27,6 +31,12 @@ START_MIN, END_MIN, STEP_MIN = 30, 18 * 60, 15
 STOP, TARGET, HOLD_MS = 0.70, 11.0, 6 * 3_600_000      # sell rule A, the rule the model was trained with
 SMART_MIN = 5
 H = 3_600_000
+GLITCH_X = M.UNIT_X         # a one-minute close more than this many times off the close before it is a GeckoTerminal glitch unless
+                            # DexScreener's price of the moment or the two closes after it say the same (seeker.GLITCH_X: NEX Ai, 27 Oct,
+                            # had a close at 4,615,119x its buy while DexScreener had it at 1.2x); here such a high booked 11x, such a low a stop
+RUG_LIQ = 1_000             # $ of liquidity left in the coin's pools (DexScreener) under which it is a rug, sold at 0 (seeker.RUG_LIQ, the
+                            # Pick account's and the Learning Pick's line): a pulled pool freezes the price nobody can sell at
+NEAR_MS = 5 * 60_000        # DexScreener's price now vouches for the closes of the last five minutes and for the newest close of any age
 nan = float("nan")
 
 
@@ -277,6 +287,50 @@ def net(mult):
     return M.tip_net(max(0.0, mult))
 
 
+def near(a, b):
+    """Whether two prices (or multiples) are at most GLITCH_X times apart; False when either is missing or not above zero (seeker.near)."""
+    a, b = num(a), num(b)
+    return bool(a and b and a > 0 and b > 0 and 1.0 / GLITCH_X <= a / b <= GLITCH_X)
+
+
+def believed(last, x, after, now_x=None):
+    """Whether a close x (a multiple of the buy price) is the coin's price and not a glitch: near the believed close before it (last), or
+    near DexScreener's price now (now_x, for a close of the last minutes or the newest close), or near both of the two closes after it
+    (a level the chart stays at). seeker.believed."""
+    return near(x, last) or near(x, now_x) or (len(after) == 2 and all(near(x, y) for y in after))
+
+
+def sane(p, candles, px, now):
+    """The candles of one look [[ms, open, high, low, close, ...], ...] (any order; from the position's last counted minute on) that
+    rule A judges, sorted: a close more than GLITCH_X off the counted close before it (p["last"], a multiple of the buy price; the buy's
+    1.0 at first) counts only when DexScreener's price now (px: for the closes of the last NEAR_MS and the newest one) or both of the
+    next two closes say the same, else its candle is left out; a counted candle's wick more than memebot.CANDLE_WICK_X beyond its close
+    is a glitch too, the close stands in (memebot.hold_wicks, the Pick's guard). p["last"] and p["lastT"]: the newest counted close and
+    its minute."""
+    bp = num(p.get("px"))
+    if not bp or bp <= 0:
+        return []
+    rows = []
+    for r in candles or []:
+        try:
+            row = [float(v) for v in r[:5]]
+        except (TypeError, ValueError):
+            continue
+        if len(row) == 5 and row[4] > 0:
+            rows.append(row)
+    rows.sort()
+    now_x = px / bp if px and px > 0 else None
+    out = []
+    for i, r in enumerate(rows):
+        x = r[4] / bp
+        if not believed(num(p.get("last")) or 1.0, x, [y[4] / bp for y in rows[i + 1:i + 3]], now_x if now - r[0] <= NEAR_MS or i == len(rows) - 1 else None):
+            continue
+        h, l = M.hold_wicks(r)
+        out.append([r[0], r[1], h, l, r[4]])
+        p["last"], p["lastT"] = round(x, 6), int(r[0])
+    return out
+
+
 class Book:
     """The rocket hunter's paper account: doc = {"open": {addr: pos}, "closed": [pos, ...], "seen": {addr: last check ms}}."""
 
@@ -295,9 +349,10 @@ class Book:
         self.open[a] = p
         return p
 
-    def update(self, a, now, hi=None, lo=None, px=None, gone=False):
-        """New high/low (as multiples of the buy price, from the candles since the buy) and the price now; rule A decides. A stop and a
-        target in the same minute count as the stop (the safe side). Returns the closed position or None."""
+    def update(self, a, now, hi=None, lo=None, px=None, gone=False, liq=None):
+        """New high/low (prices, of the candles since the last look that sane counted) and the price now; rule A decides. A stop and a
+        target in the same minute count as the stop (the safe side). liq: the liquidity now ($, the coin's pools on DexScreener); under
+        RUG_LIQ it is a rug, sold at 0. Returns the closed position or None."""
         p = self.open.get(a)
         if not p:
             return None
@@ -313,6 +368,8 @@ class Book:
             p["lo"] = min(p["lo"], lo / p["px"])
         if px:
             p["now"] = px / p["px"]
+        if liq is not None and liq < RUG_LIQ:
+            return self._close(a, now, 0.0, "rug")
         if now - p["t"] >= HOLD_MS and px:
             return self._close(a, now, px / p["px"], "6h")
         return None

@@ -1013,13 +1013,13 @@ def notify_curve(c):
 
 def rocket_words(buys, summary=None, sells=None):
     """(title, body) of the rocket hunter's notification for one round's paper buys and sells, or None: "Radar 🚀", each bought coin
-    with its score and the cut, each sold coin with its multiple, euros and why (stop, 11x, 6 h), the account so far, and that it
+    with its score and the cut, each sold coin with its multiple, euros and why (stop, 11x, 6 h, rug), the account so far, and that it
     is paper money and a live test."""
     buys = [b for b in buys or [] if isinstance(b, dict)]
     sells = [x for x in sells or [] if isinstance(x, dict)]
     if not buys and not sells:
         return None
-    why = {"stop": "stop -30%", "11x": "target 11x", "6h": "after 6 h", "gone": "pool gone"}
+    why = {"stop": "stop -30%", "11x": "target 11x", "6h": "after 6 h", "gone": "pool gone", "rug": "liquidity pulled (rug)"}
     sold = ["%s x%.2f (%+.2f €, %s)" % (_sym(x.get("sym")), _num(x.get("mult")) or 0.0, _num(x.get("eur")) or 0.0, why.get(x.get("why"), "sold"))
             for x in sells]
     if buys:

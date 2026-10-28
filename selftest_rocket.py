@@ -12,7 +12,9 @@ R5 the page block: no doc, a doc (escaped, no script), its place at the top of t
 uses the run's token and the push secrets only, and the scan job only reads rocket.json; R7 the "Radar 🚀" push of a round's paper buys;
 R8 the minute watch between rounds; R9 rocket.yml's round step as written, on a fake clock: four rounds 15 minutes apart in one run,
 each followed by a save, the watch until the next round and a save, the radar's records fetched again before each later round,
-rocket_watch.py always without the token, a failed round neither stops the others nor ends the run green.
+rocket_watch.py always without the token, a failed round neither stops the others nor ends the run green; R10 broken candles and rugs
+(28 Oct, the Rocket seeker's guards on the Radar account): a glitch close or wick books neither 11x nor a stop, a real move does, the
+pool's other coin is not its chart, a coin whose liquidity was pulled is a rug at 0.
 """
 import json, math, os, random, re, shutil, sys, tempfile
 
@@ -453,8 +455,130 @@ def r9():
           "R9 a failed round neither stops the others nor lets the run end green (%s)" % p2.returncode)
 
 
+def r10():
+    """Broken candles and rugs on the Radar account (28 Oct, the user's "okay mach das dann": the Rocket seeker's guards of 27 Oct, PR
+    #64-#66). Before, rule A took the high and the low of every GeckoTerminal candle as they came: NEX Ai's glitch close of 4,615,119x
+    (the seeker, 27 Oct) would have booked 11x here, a glitch low a stop at that low; a coin whose liquidity was pulled stayed open at a
+    frozen price until 6 h. Rule A's levels, the scoring and the buy line are as before."""
+    t0, MIN = 1_800_000_000_000, 60_000
+
+    def rows(closes, start=t0 + MIN, wick=1.02):
+        return [[start + i * MIN, c, c * wick, c / wick, c, 100.0] for i, c in enumerate(closes)]
+
+    def look(cs, px, now=None, pos=None):
+        b = R.Book()
+        p = b.buy("A", "A", 1.0, t0, 0.5, 0.1, "pA")
+        p.update(pos or {})
+        now = now or max(r[0] for r in cs) + MIN
+        got = R.sane(p, cs, px, now)
+        out = b.update("A", now, hi=max((r[2] for r in got), default=None), lo=min((r[3] for r in got), default=None), px=px)
+        return out, p, got
+
+    def raw(cs, px):
+        b = R.Book()
+        b.buy("A", "A", 1.0, t0, 0.5, 0.1, "pA")
+        return b.update("A", max(r[0] for r in cs) + MIN, hi=max(r[2] for r in cs), lo=min(r[3] for r in cs), px=px)
+
+    nex = rows([1.05, 1.1, 1.19, 4_615_119.0, 7_231.0, 1.2])
+    out, p, got = look(nex, 1.2)
+    check(raw(nex, 1.2)["why"] == "11x" and out is None and len(got) == 4 and p["hi"] < 1.3 and p["last"] == 1.2,
+          "R10 NEX Ai's glitch closes (4,615,119x and 7,231x between 1.19x and 1.2x, DexScreener 1.2x): no 11x, as before there would have "
+          "been one (+190); the price line goes on at 1.2x (high %.3f)" % p["hi"])
+    dip = rows([1.0, 1.01, 0.0001, 1.02, 1.01])
+    out, p, got = look(dip, 1.01)
+    check(raw(dip, 1.01)["why"] == "stop" and out is None and p["lo"] > 0.9 and len(got) == 4,
+          "R10 a glitch low (0.0001x for one minute between 1.01x and 1.02x): no stop, as before there would have been one at 0.0001x")
+    out, p, _ = look(rows([1.0, 0.98, 0.12, 0.11, 0.1]), None)
+    check(out and out["why"] == "stop" and abs(out["mult"] - 0.1 / 1.02) < 1e-3,
+          "R10 a real crash the next two closes confirm (no DexScreener price): the stop at the look's low, as before (x%.3f)" % (out or {}).get("mult", 0))
+    out, p, _ = look(rows([1.0, 0.99, 0.05]), 0.05)
+    check(out and out["why"] == "stop" and abs(out["mult"] - 0.05 / 1.02) < 1e-3,
+          "R10 a crash in the newest minute DexScreener's price confirms: the stop at once (x%.3f)" % (out or {}).get("mult", 0))
+    cs = rows([1.0, 0.99, 0.05])
+    out, p, got = look(cs, None)
+    lt = p.get("lastT")
+    later = R.sane(p, rows([0.99, 0.05, 0.05, 0.05], start=lt), None, lt + 5 * MIN)
+    check(out is None and lt == cs[1][0] and [r[4] for r in later] == [0.99, 0.05, 0.05, 0.05] and p["last"] == 0.05,
+          "R10 the same crash with no price to confirm it: left to the next look, which reads from the last counted minute and counts it "
+          "once the closes after it stay there")
+    out, p, _ = look(rows([1.5, 3.0, 6.0, 9.0, 11.6]), 11.6)
+    out2, _, _ = look(rows([1.0, 12.0]), 12.0)
+    check(out and out["why"] == "11x" and out["mult"] == 11.0 and out2 and out2["why"] == "11x",
+          "R10 a real rocket books 11x: in steps, and in one jump that DexScreener's price confirms")
+    wk = [[t0 + MIN, 1.1, 5000.0, 1.05, 1.1, 1.0], [t0 + 2 * MIN, 1.0, 1.05, 0.00001, 1.0, 1.0]]
+    out, p, got = look(wk, 1.0)
+    check(out is None and abs(p["hi"] - 1.1) < 1e-9 and p["lo"] >= 0.99 and [r[2] for r in got] == [1.1, 1.05] and [r[3] for r in got] == [1.05, 1.0],
+          "R10 a wick more than 5x beyond its close (high 5000x, low 0.00001x): the close stands in (memebot.hold_wicks, the Pick's guard)")
+
+    b = R.Book()
+    b.buy("A", "A", 1.0, t0, 0.5, 0.1, "pA")
+    check(b.update("A", t0 + H, px=0.5, liq=None) is None and b.update("A", t0 + H, px=0.5, liq=1500) is None, "R10 liquidity unknown or $1,500: open")
+    out = b.update("A", t0 + H, px=0.5, liq=400)
+    check(out and out["why"] == "rug" and out["mult"] == 0 and out["eur"] == R.net(0.0) == -20.0 and R.RUG_LIQ == 1000,
+          "R10 the coin's pools hold under $1,000 of liquidity: a rug, sold at 0 (-20), as on the Pick account and the Rocket seeker")
+
+    class Http:
+        """rocket_watch.Http's get on fixed GeckoTerminal answers per side (selftest_gtunit.Http)."""
+        mock = "fixed"
+
+        def __init__(self, base, quote=None):
+            self.ans, self.urls = {"base": base, "quote": quote}, []
+
+        def get(self, url, key, gap=0.0):
+            self.urls.append(url)
+            cs = self.ans["quote" if "token=quote" in url else "base"]
+            return {"data": {"attributes": {"ohlcv_list": [[r[0] // 1000] + list(r[1:6]) for r in cs][::-1]}}} if cs else None
+
+    def pair(pool, px, liq):
+        return {"baseToken": {"address": "A"}, "pairAddress": pool, "priceUsd": str(px), "liquidity": {"usd": liq}}
+
+    def book():
+        b = R.Book()
+        b.buy("A", "A", 1.0, t0, 0.5, 0.1, "pA")
+        b.open["A"]["seen"] = t0                     # bought in a round, looked at once (no candle after the buy yet)
+        return b
+
+    now = t0 + 6 * MIN
+    own = rows([1.0, 1.02, 1.05, 1.1])
+    b = book()
+    out = RW.check_open(Http(own), b, {"A": [pair("pA", 1.1, 300), pair("pB", 1.1, 25_000)]}, now)
+    b2 = book()
+    out2 = RW.check_open(Http(own), b2, {"A": [pair("pA", 1.1, 300), pair("pB", 1.1, 600)]}, now)
+    check(not out and "A" in b.open and out2 and out2[0]["why"] == "rug" and out2[0]["eur"] == -20.0,
+          "R10 rocket_watch: $300 in its pool but $25,000 in another: no rug (it can still be sold there); under $1,000 in all of them: a rug")
+    other = rows([650.0] * 4, wick=1.01)
+    b, h = book(), Http(other, own)
+    out = RW.check_open(h, b, {"A": [pair("pA", 1.1, 50_000)]}, now)
+    pos = b.open.get("A") or {}
+    b3, h3 = book(), Http(other, rows([300.0] * 4))
+    out3 = RW.check_open(h3, b3, {"A": [pair("pA", 1.1, 50_000)]}, now)
+    b4, h4 = book(), Http(own)
+    RW.check_open(h4, b4, {"A": [pair("pA", 1.1, 50_000)]}, now)
+    check(not out and pos.get("tok") == "quote" and pos["hi"] < 1.2 and not out3 and b3.open["A"]["hi"] == 1.0 and "tok" not in b3.open["A"]
+          and len(h4.urls) == 1 and b4.open["A"].get("tok") == "base",
+          "R10 base candles of the pool's other coin (650x, flat: before, 11x at once): the quote side is its own chart (kept as tok); "
+          "neither side its own: no candles, no sale; a pool whose base is the coin is asked once")
+    glitch = rows([1.0, 1.02, 4_615_119.0])
+    b = book()
+    out = RW.check_open(Http(glitch), b, {"A": [pair("pA", 1.02, 50_000)]}, t0 + 4 * MIN)
+    seen1 = dict(b.open["A"])
+    out2 = RW.check_open(Http(rows([1.0, 1.02, 4_615_119.0, 1.03, 1.02])), b, {"A": [pair("pA", 1.02, 50_000)]}, t0 + 6 * MIN)
+    pos = b.open.get("A") or {}
+    check(not out and "lastT" not in seen1 and not out2 and pos.get("hi", 9) < 1.1 and pos.get("lastT") == t0 + 5 * MIN
+          and max(v for _, v in pos.get("chart") or [[0, 9]]) < 1.1,
+          "R10 a glitch in the newest minute: the look counts nothing (its newest close is not the coin's price), the next one reads from "
+          "the buy again and leaves the glitch out of the rule and of the app's price line (%s)" % pos.get("chart"))
+    import app as A
+    w = A.rocket_words([], {"trades": 1, "eur": -20.0}, [{"sym": "SOLY", "mult": 0.0, "eur": -20.0, "why": "rug"}])
+    check(PK.sold_li(PH, {"sym": "SOLY", "mult": 0.0, "eur": -20.0, "why": "rug", "out": t0}).count("liquidity pulled (rug)") == 1
+          and "rug:'liquidity pulled (rug)'" in PK.LIVE_JS and w and "liquidity pulled (rug)" in w[0],
+          "R10 the page, its live script and the push name a rug sale 'liquidity pulled (rug)'")
+    import page_live as PL
+    check(PL.RK_WHY == PK.WHY, "R10 the live feed's words for a Radar sale are the page's (page_live.RK_WHY == page_rocket.WHY)")
+
+
 def main():
-    r1(); r1b(); r1c(); r2(); r3(); r4(); r6(); r7(); r8(); r9()
+    r1(); r1b(); r1c(); r2(); r3(); r4(); r6(); r7(); r8(); r9(); r10()
     print("\n%d failed" % len(FAILS) if FAILS else "\nall ok")
     sys.exit(1 if FAILS else 0)
 

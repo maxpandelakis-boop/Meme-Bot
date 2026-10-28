@@ -8,7 +8,9 @@ One round:
   3. for each coin in the universe whose last check is 15 minutes old or more (at most MAX_SCORE a round, the oldest check first):
      GeckoTerminal's one-minute candles since the pool opened and its latest trades -> rocket.features -> rocket.score
   4. a score at or over the model's cut buys the coin once on paper (20 at DexScreener's price); every open position gets the
-     candles since its last check (its high and low) and the price now, and rule A (-30% / 11x / 6 h) sells it
+     candles since its last check (its high and low) and the price now, and rule A (-30% / 11x / 6 h) sells it; only candles of the
+     coin's own price count (own_candles: the pool's side that prices it; rocket.sane: no glitch close or wick), and a coin whose
+     pools hold under rocket.RUG_LIQ of liquidity on DexScreener is a rug, sold at 0
   5. <dir>/rocket.json (the account, this round's scores, the counts) and <dir>/log/<UTC day>.jsonl (every score, for the
      forward test) go to the branch rocket-data; the scan job copies rocket.json into the app's page
 BTC and SOL hourly candles come from Binance's public market-data mirror. The wallet memory (rocket_memory.json.gz on rocket-data:
@@ -206,22 +208,45 @@ def slim(book):
         p.pop("chart", None)
 
 
+def own_candles(http, pos, since, now, px):
+    """An open position's one-minute candles of the pool's side that prices its coin (base first, or the side used before: pos["tok"]),
+    checked against DexScreener's price now px (memebot.unit_ok; the buy price while the side is not known and there is no price):
+    GeckoTerminal's token=base candles of some pools are the partner coin's (LAUNCH, MEMEMAN, 26 Oct: a flat chart of another coin
+    could book 11x). No candles when neither side is, or none came; without a price this minute the side used before is read
+    unchecked (seeker_watch.candles)."""
+    if not px and pos.get("tok") in M.GT_SIDES:
+        return gt_candles(http, pos["pool"], since, now, pos["tok"])
+    first = pos.get("tok") if pos.get("tok") in M.GT_SIDES else "base"
+    for side in [first] + [x for x in M.GT_SIDES if x != first]:
+        cs = gt_candles(http, pos["pool"], since, now, side)
+        if not cs:
+            return []
+        if M.unit_ok(cs, now, px or pos.get("px")):
+            pos["tok"] = side
+            return cs
+    return []
+
+
 def check_open(http, book, pairs, now):
-    """The open positions: their high and low since the last look (one-minute candles), the price now, rule A. Returns the sells."""
+    """The open positions: the high and low since the last look of the candles that are the coin's price (own_candles; rocket.sane: no
+    glitch close or wick), the price now, rule A; the liquidity of the coin's pools on DexScreener (the most of any: a coin still
+    sellable in another pool is no rug) under rocket.RUG_LIQ: a rug, sold at 0. Returns the sells."""
     closed = []
     for a, pos in list(book.open.items()):
         p = pick_pair(pairs.get(a), pos.get("pool"))
-        last = R.num(pos.get("seen")) or pos["t"]
-        cs = gt_candles(http, pos.get("pool"), last, now) if pos.get("pool") else []
-        # from the buy on (the minute before the buy is not the position's; its low could stop it at once), then one minute of
-        # overlap between two looks
-        cs = [r for r in cs if r[0] >= (last if not pos.get("seen") else last - 60_000)]
-        hi = max((float(r[2]) for r in cs), default=None)
-        lo = min((float(r[3]) for r in cs), default=None)
         px = R.num((p or {}).get("priceUsd"))
+        # from the buy on (the minute before the buy is not the position's; its low could stop it at once), then from the last counted
+        # minute (seen again: it may have still run); a look whose candles did not count leaves their minutes to the next look
+        start = R.num(pos.get("lastT")) or (pos["t"] - 60_000 if pos.get("seen") else pos["t"])
+        cs = own_candles(http, pos, start, now, px) if pos.get("pool") else []
+        cs = R.sane(pos, [r for r in cs if r[0] >= start], px, now)
+        hi = max((r[2] for r in cs), default=None)
+        lo = min((r[3] for r in cs), default=None)
+        liqs = [R.num((q.get("liquidity") or {}).get("usd")) for q in pairs.get(a) or [] if isinstance(q, dict)]
+        liqs = [x for x in liqs if x is not None]
         pos["seen"] = now
         chart_add(pos, cs, px, now)
-        out = book.update(a, now, hi=hi, lo=lo, px=px)
+        out = book.update(a, now, hi=hi, lo=lo, px=px, liq=max(liqs) if liqs else None)
         if out:
             closed.append(out)
             log("  paper sell %s x%.2f (%s) %+.2f" % (out.get("sym"), out["mult"], out["why"], out["eur"]))
