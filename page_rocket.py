@@ -29,7 +29,7 @@ DOC = ("db", "memebot", "rocket.json")
 TESTS = os.path.join(HERE, "rocket_tests.json")
 SHOWN = 5                 # candidates in view on the Radar tab; the rest of the round behind "N more"
 SOLD = 5                  # last sells on the Radar tab
-WHY = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone"}
+WHY = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone", "rug": "liquidity pulled (rug)"}
 NO_TRADE = ("No trade yet: the Radar account has bought nothing since it started (%s). It buys only when a coin reaches 100%% of the "
             "line in the candidates below, so days without a buy are normal.")
 
@@ -350,7 +350,7 @@ LIVE_JS = r"""
   drawAll();
   if(!/^https:\/\/[^\s\/]+$/.test(url)||!key||!boxes.length||!window.fetch)return;
   var EVERY=45000,SOLD=5,SHOWN=5,next=0,busy=false,seen=null,MINUS='−';
-  var WHY={stop:'stop −30%','11x':'hit 11x','6h':'after 6 h',gone:'coin gone'};
+  var WHY={stop:'stop −30%','11x':'hit 11x','6h':'after 6 h',gone:'coin gone',rug:'liquidity pulled (rug)'};
   function n(v){v=typeof v==='number'?v:parseFloat(v);return isFinite(v)?v:null;}
   function de(v,d){var s=Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});return (v<0&&/[1-9]/.test(s)?MINUS:'')+s;}
   function eur(v){return (v>0.004?'+':'')+de(v,2)+' €';}

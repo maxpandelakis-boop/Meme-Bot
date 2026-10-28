@@ -37,7 +37,7 @@ ROUND_MS = 15 * 60_000    # the Radar round every 15 minutes (rocket.yml)
 LATE = {"scan": 45 * 60_000, "look": 15 * 60_000, "round": 35 * 60_000}  # overdue by this much: the lane turns amber (the sell bot pauses
 PAUSE_MS = 150_000        # during a Radar round and between two runs of rocket.yml, a few minutes: "pause", not "late")
 WHO = {"pick": "PICK BOT", "sell": "SELL BOT 🤖", "acct": "PICK ACCOUNT", "radar": "RADAR 🚀", "lp": "LEARNING PICK", "rs": "ROCKET SEEKER 🔭", "scan": "SCAN"}
-RK_WHY = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone"}      # page_rocket.WHY
+RK_WHY = {"stop": "stop −30%", "11x": "hit 11x", "6h": "after 6 h", "gone": "coin gone", "rug": "liquidity pulled (rug)"}      # page_rocket.WHY
 try:
     from page_brain import NAMES as AGENTS          # the scan's helpers by name (Scouts, Deep search, Prices ...) for the running scan's line
 except Exception:
