@@ -67,3 +67,4 @@
 {"t":1793153760482,"addr":"JSsWkfdJS2Fmf4AGmk48mMmLXKSXSYH3HkMheafQF9f","sym":"INVISIBLE","age":30.7,"score":0.02165,"px":1.14e-06,"liq":163966,"p0":1.1511139590935984e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.2,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.3621,"c_peak":1.0086,"c_vol":6.4985,"c_act":1.0,"c_r5":0.0632,"c_r15":0.187,"c_mc":3.0611}}
 {"t":1793153760482,"addr":"EWvJizG3mwr3U4Z2UwXUgFuKsyFvaH5tnxDh1cXqpump","sym":"Musashi","age":30.6,"why":"liquidity","liq":2396}
 {"t":1793153820338,"addr":"4V6xZ5UdRtBX8xqhKfVPPNk7CuGftCFsfDftUZiJpump","sym":"POLYMEME","age":30.2,"why":"liquidity","liq":4996}
+{"t":1793154061237,"addr":"iWqYtDRGDVeZovbrpctYzkFcuo5cZsRck1ZN1vGwr1A","sym":"SPREAD","age":30.5,"why":"liquidity","liq":0}
