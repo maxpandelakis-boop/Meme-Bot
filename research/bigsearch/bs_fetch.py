@@ -159,7 +159,12 @@ def cmd_sigs(out):
         o = {"limit": 1000}
         if before:
             o["before"] = before
-        st, res = rpc(PUBLIC_RPC, "getSignaturesForAddress", [MIG, o], PGAP)
+        for k in range(8):
+            st, res = rpc(PUBLIC_RPC, "getSignaturesForAddress", [MIG, o], PGAP)
+            if isinstance(res, list):
+                break
+            log("signature page failed (%s), try %d" % (st, k + 1))
+            time.sleep(10 * (k + 1))
         calls += 1
         if not isinstance(res, list):
             log("signature list stopped (%s) after %d calls" % (st, calls))

@@ -8,7 +8,8 @@
 # Repair run (28 Oct): the first run asked the public RPC for transaction version 0 only and lost the newer-version
 # migrations ("rpc -32015", ~18 % of 21 Oct's graduations). tx/plan/final now read the first run's data (branch bigsearchdata,
 # checked out to old/), ask only the signatures of 21 Oct 06:00 - 26 Oct 12:00 that gave no graduation, with the version the RPC
-# names, and fetch candles and launch facts for the new pools only.
+# names, and fetch candles and launch facts for the new pools only. The first repair's signature list stopped at 22 Oct ~14 UTC
+# (rpc -32019, the RPC's long-term storage); the second pass retries the pages and asks 21 Oct 06:00 - 22 Oct 16:00 only.
 # Nothing is bought. HELIUS_API_KEY is only passed to the scripts, never printed or saved. Touches no bot branch and no paper
 # account. At most 3 runners at once. Started by a push of this file or of research/bigsearch/bs_fetch.py on this branch.
 name: bigsearch-data
@@ -61,7 +62,7 @@ jobs:
           PGAP: "0.3"
           OLD: old
           TX_FROM: "2026-10-21 06:00"
-          TX_TO: "2026-10-26 12:00"
+          TX_TO: "2026-10-22 16:00"
         run: python3 research/bigsearch/bs_fetch.py tx g/sigs.json ${{ matrix.i }} 3 tx_${{ matrix.i }}.json
       - uses: actions/upload-artifact@v4
         if: always()
