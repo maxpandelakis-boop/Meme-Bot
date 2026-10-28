@@ -143,3 +143,10 @@ Expected: nothing holds. Every earlier search on these windows failed on unseen 
 the next window; 0 Holm survivors). S1 is short: a rule with ~10 trades a day and the usual spread (about 30-47 EUR per 50 EUR
 trade) needs a mean of roughly +8-12 EUR per trade to clear point 3, so a small true edge would also fail. A fail therefore
 means "no edge big enough to see in 4.5 days", S2 then has about 6x more data. A pass on S1 would be a surprise and still needs S2.
+
+## Amendment, 28 Oct 2026 ~16:55 UTC (before any S1 data was read; the S1 fetch was still running)
+
+The "size of luck" (`bs_search.py luck`) counts only filters with at least 40 S1 trades (the bar's point 1) and also reports how
+many of those have a positive best sell rule. The judgement of the 20 frozen candidates is unchanged. The judge and luck code
+were dry-run on w5 (fit data, rows relabelled) to check that they run; the candidates' w5 trade counts matched the frozen
+fitTrades.

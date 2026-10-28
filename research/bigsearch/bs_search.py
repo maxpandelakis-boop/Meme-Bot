@@ -210,7 +210,7 @@ def kernel():
 _RUN = None
 
 
-def evaluate(F, B, codes, widx, O, allow, fitm=None, testw=None, nw=NW, days=DAYS):
+def evaluate(F, B, codes, widx, O, allow, fitm=None, testw=None, nw=NW, days=DAYS, min_win=MIN_WIN, min_pooled=MIN_POOLED):
     global _RUN
     if _RUN is None:
         _RUN = kernel()
@@ -239,7 +239,7 @@ def evaluate(F, B, codes, widx, O, allow, fitm=None, testw=None, nw=NW, days=DAY
     tn = np.zeros((nf, S), np.int32)
     cnt = np.zeros((nf, nw), np.int32)
     _RUN(F.astype(np.int64), B, rowsof, rstart, rlen, codes.astype(np.int64), widx.astype(np.int64), O, nw, fitm, testw,
-         days.astype(np.float64), float(allow), MIN_WIN, MIN_POOLED, FREQ_DAY, score, ex, tmean, tn, cnt)
+         days.astype(np.float64), float(allow), min_win, min_pooled, FREQ_DAY, score, ex, tmean, tn, cnt)
     return {"score": score, "ex": ex, "tmean": tmean, "tn": tn, "cnt": cnt, "F": F}
 
 
@@ -553,7 +553,8 @@ def cmd_judge(work, candf, out):
 
 
 def cmd_luck(work, out):
-    """The best (filter, sell rule) in hindsight on S1 with the same conditions: the size of luck."""
+    """The best (filter, sell rule) in hindsight on S1 with the same conditions: the size of luck. Only filters with at least 40 S1
+    trades (the bar's point 1) count: the best mean after the allowance, and the best mean minus 2 standard errors."""
     res = {}
     for fam in BB.FAMS:
         p = os.path.join(work, "search_%s.npz" % fam)
@@ -568,14 +569,17 @@ def cmd_luck(work, out):
         B = cond_matrix(df, conds)
         widx = np.zeros(len(df), np.int64)
         fitm = np.ones((1, 1), np.bool_)
-        r = evaluate(F[ok], B, codes, widx, O, ALLOW[fam], fitm=fitm, testw=np.array([-1], np.int64), nw=1, days=np.array([4.5]))
+        r = evaluate(F[ok], B, codes, widx, O, ALLOW[fam], fitm=fitm, testw=np.array([-1], np.int64), nw=1, days=np.array([4.5]),
+                     min_win=40, min_pooled=40)
         k = int(np.argmax(r["score"][:, 0, 1]))
         k2 = int(np.argmax(r["score"][:, 0, 0]))
         res[fam] = {"bestShrunk": {"filter": filter_text(F[ok][k], conds), "rule": BB.rule_name(BB.RULES[int(r["ex"][k, 0, 1])]),
                                    "score": round(float(r["score"][k, 0, 1]), 2), "n": int(r["cnt"][k, 0])},
-                    "bestMean30": {"filter": filter_text(F[ok][k2], conds), "rule": BB.rule_name(BB.RULES[int(r["ex"][k2, 0, 0])]),
+                    "bestMean40": {"filter": filter_text(F[ok][k2], conds), "rule": BB.rule_name(BB.RULES[int(r["ex"][k2, 0, 0])]),
                                    "meanAfter": round(float(r["score"][k2, 0, 0]), 2), "n": int(r["cnt"][k2, 0])},
-                    "searched": int(ok.sum()) * len(BB.RULES)}
+                    "searched": int(ok.sum()) * len(BB.RULES),
+                    "filters40": int((r["score"][:, 0, 0] > -1e8).sum()),
+                    "filters40BestRulePositive": int((r["score"][:, 0, 0] > 0).sum())}
         log(fam, res[fam])
     json.dump(res, open(out, "w"), indent=1)
 
