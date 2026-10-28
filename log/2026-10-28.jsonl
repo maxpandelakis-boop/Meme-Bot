@@ -529,3 +529,5 @@
 {"t":1793214421523,"addr":"2V4QyZsC9aWPjyW8L598JrvTo2RXhPkhpkJsoG3GBAGS","sym":"SPGCHIP","age":30.5,"why":"liquidity","liq":0}
 {"t":1793214421523,"addr":"94WfdYvKknmstbs8oQpGcrHi1JrGZqjqd4Kbv5yepump","sym":"PENISINU","age":30.2,"why":"liquidity","liq":2153}
 {"t":1793214542024,"addr":"AN4mNPb3rP61d3b2u1LCKKhBdEgdW9BiNDp7ZHKupump","sym":"omni","age":30.4,"score":0.02667,"px":5.493e-05,"liq":19245,"p0":7.042808725610653e-05,"bars":6,"buy":false,"f":{"f_curve_min":8.8667,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.4088,"c_peak":1.8476,"c_vol":5.6532,"c_act":1.0,"c_r5":-0.2129,"c_r15":-0.3685,"c_mc":4.8477}}
+{"t":1793214720379,"addr":"EV5xprdyM2kfE72xu52v1G9GJFvVK2NyzYV83cZKpump","sym":"NYSE","age":30.9,"why":"liquidity","liq":2248}
+{"t":1793214782387,"addr":"GwvVsrECK5dajqMQhh6FT5PcPX4ao5QipuZMbWQHpump","sym":"MARS","age":30.7,"why":"liquidity","liq":3142}
