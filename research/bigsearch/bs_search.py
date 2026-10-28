@@ -501,10 +501,10 @@ def holm(ps, alpha=0.05):
     return rej
 
 
-def selected_trades(c, df, O, codes, work):
+def selected_trades(c, df, O, codes, base):
     if c["picker"] == "ML":
         import lightgbm as lgb
-        m = lgb.Booster(model_file=os.path.join(work, c["model"]))
+        m = lgb.Booster(model_file=os.path.join(base, c["model"]))
         p = m.predict(df[c["features"]].to_numpy(np.float32))
         mask = p >= c["thr"]
     else:
@@ -527,7 +527,7 @@ def cmd_judge(work, candf, out):
         if fam not in data:
             data[fam] = load(work, fam, "_s1")
         df, O, codes = data[fam]
-        s, va = selected_trades(c, df, O, codes, work)
+        s, va = selected_trades(c, df, O, codes, os.path.dirname(os.path.abspath(candf)))
         r = {k: c[k] for k in ("family", "picker", "ruleName") if k in c}
         r["text"] = c.get("text", "LightGBM top %g%%" % (100 * c.get("cut", 0)))
         r["n"] = int(len(va))

@@ -318,10 +318,11 @@ def cmd_wallets(wd, kol, out):
     pool_of = dict(zip(wc["coin"], wc["pool"]))
     kol_ids = set()
     if kol != "-" and os.path.exists(kol):
-        kl = set(pd.read_csv(kol).iloc[:, 0].astype(str))
+        kc = pd.read_csv(kol)
+        kl = set(kc["address"] if "address" in kc else kc.iloc[:, 0]).copy()
+        kl = {str(x).strip() for x in kl}
         wl = pd.read_parquet(os.path.join(wd, "wallets.parquet"))
-        acol = [c for c in wl.columns if wl[c].dtype == object][0]
-        kol_ids = set(wl.loc[wl[acol].astype(str).isin(kl), "wid"]) if "wid" in wl else set()
+        kol_ids = set(wl.loc[wl["address"].astype(str).isin(kl), "wid"])
         print("KOL wallets found", len(kol_ids), flush=True)
     # each pair's wallet record before its coin
     o = np.lexsort((p["grad_ms"].to_numpy(), p["wid"].to_numpy()))
