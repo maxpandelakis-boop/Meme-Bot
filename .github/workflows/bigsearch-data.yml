@@ -1,0 +1,134 @@
+# Big search (fake money only; research/bigsearch/PREREG-BIGSEARCH-2026-10-28.md): the sealed days S1 (pump.fun graduations of
+# 22 Oct 00:00 - 26 Oct 12:00 UTC) in the same format as the fit windows -> branch "bigsearchdata":
+#   sigs/tx/plan  every graduation from 21 Oct on (the migration account's transactions; Helius if the free key answers, else the
+#                 public Solana RPC), Binance SOL/BTC by hour
+#   shard         GeckoTerminal 5-minute candles of the first 48 h (research/months_fetch.py shard) and the launch facts from the
+#                 chain and the metadata files (research/rockets/meta_chain.py shard), both unchanged
+#   final         bars_s1.parquet, meta_s1.json, chain_s1.parquet, wiki_top.json, grads.json, market.json, summary.json
+# Nothing is bought. HELIUS_API_KEY is only passed to the scripts, never printed or saved. Touches no bot branch and no paper
+# account. At most 3 runners at once. Started by a push of this file or of research/bigsearch/bs_fetch.py on this branch.
+name: bigsearch-data
+on:
+  push:
+    branches: [claude/project-thread-wm0ekt]
+    paths: [.github/workflows/bigsearch-data.yml, research/bigsearch/bs_fetch.py]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: bigsearch-data
+  cancel-in-progress: false
+jobs:
+  sigs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+          PGAP: "0.5"
+        run: python3 research/bigsearch/bs_fetch.py sigs g
+      - uses: actions/upload-artifact@v4
+        with: {name: sigs, path: "g/*.json", retention-days: 5}
+  tx:
+    needs: sigs
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        i: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with: {name: sigs, path: g}
+      - env:
+          PGAP: "0.3"
+        run: python3 research/bigsearch/bs_fetch.py tx g/sigs.json ${{ matrix.i }} 3 tx_${{ matrix.i }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "tx-${{ matrix.i }}", path: "tx_*.json", retention-days: 5}
+  plan:
+    needs: tx
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with: {pattern: "tx-*", merge-multiple: true, path: src}
+      - uses: actions/download-artifact@v4
+        with: {name: sigs, path: src/sigs}
+      - run: python3 research/bigsearch/bs_fetch.py plan src plan
+      - uses: actions/upload-artifact@v4
+        with: {name: plan, path: "plan/*.json", retention-days: 5}
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        i: [0, 1, 2]
+    env:
+      GT_GAP: "2.2"
+      SHARD_MINUTES: "300"
+      WORKERS: "6"
+      GATEWAYS: "https://ipfs.filebase.io/ipfs/%s,https://pump.mypinata.cloud/ipfs/%s,https://gateway.pinata.cloud/ipfs/%s"
+      GW_ROTATE: "0"
+      GW_GAP: "0.8"
+      PGAP: "1.0"
+      FILE_TRIES: "3"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with: {name: plan}
+      - env:
+          HK: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python3 research/months_fetch.py shard plan.json ${{ matrix.i }} 3 gt_${{ matrix.i }}.json.gz &
+          python3 research/rockets/meta_chain.py shard mints.json ${{ matrix.i }} 3 chain_${{ matrix.i }}.json.gz
+          wait
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "shard-${{ matrix.i }}", path: "*_${{ matrix.i }}.json.gz", retention-days: 5}
+  final:
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with: {pattern: "shard-*", merge-multiple: true, path: src}
+      - uses: actions/download-artifact@v4
+        with: {name: plan, path: plan}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p cs ch
+          mv src/gt_*.json.gz cs/ 2>/dev/null || true
+          mv src/chain_*.json.gz ch/ 2>/dev/null || true
+          python3 research/rockets/meta_chain.py final ch chout
+          python3 research/rockets/meta_chain.py wiki 2026-10-19 2026-10-27 chout/wiki_top.json
+          python3 research/bigsearch/bs_fetch.py final cs chout plan out
+          printf 'The sealed days S1 of the big search (pump.fun graduations of 22 Oct 00:00 - 26 Oct 12:00 UTC, start SOL side >= 10): GeckoTerminal five-minute USD candles of the first 48 hours, launch facts from the chain and metadata files, all graduations from 21 Oct (grads.json), Binance SOL/BTC by hour, Wikipedia top articles. Made by research/bigsearch/bs_fetch.py (research/bigsearch/PREREG-BIGSEARCH-2026-10-28.md). Fake money only.\n' > out/README.md
+          cd out && du -sh . && cat summary.json
+          git init -q && git checkout -q -b bigsearchdata && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "bigsearchdata $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" bigsearchdata
