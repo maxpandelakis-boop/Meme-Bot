@@ -329,3 +329,4 @@
 {"t":1793190120754,"addr":"EtsdgZAjRuFTpqgCo4enAtdFyiPSGTYZS2tgqXdC7khQ","sym":"Stonker","age":31.0,"why":"liquidity","liq":0}
 {"t":1793190300629,"addr":"4f9PFK2wHB1LkYKWrGK67GBfypZ6APdi67xKfexwpump","sym":"chance","age":30.7,"why":"liquidity","liq":2504}
 {"t":1793190420594,"addr":"CqhqkSsXiMuccGEW9EqFRjoQY4szKq2Vsssae2xUbonk","sym":"UNMDUCK","age":30.8,"why":"liquidity","liq":0}
+{"t":1793190600282,"addr":"APeJi5ZEjBZXqGxQ1DKWuJjsHtsBtbV7oj1Ukfn6qPGa","sym":"microduck","age":30.5,"score":0.06035,"px":3.494e-05,"liq":49368,"p0":3.202851086212083e-05,"bars":6,"buy":true,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4361,"c_peak":1.0,"c_vol":4.9601,"c_act":1.0,"c_r5":0.1496,"c_r15":0.2655,"c_mc":4.5055}}
