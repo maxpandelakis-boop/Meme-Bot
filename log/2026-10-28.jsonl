@@ -615,3 +615,4 @@
 {"t":1793223661128,"addr":"25XYntzwGpubUjgJPTJgv5qKd3Kfp9n5tKKRZAVipump","sym":"shibana","age":30.7,"score":0.01992,"px":6.795e-05,"liq":20530,"p0":6.707381943906184e-05,"bars":6,"buy":false,"f":{"f_curve_min":2.3833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.133,"c_peak":1.112,"c_vol":5.0266,"c_act":1.0,"c_r5":-0.0364,"c_r15":0.1607,"c_mc":4.8266}}
 {"t":1793223661128,"addr":"CzG25sLsxCEvAztznes4wymL9i4m8PHLRBHp9skLM7cJ","sym":"NEX Ai","age":30.7,"why":"liquidity","liq":63}
 {"t":1793223720539,"addr":"DTLnctZ8TsBoVEX7XsbUzwkZm7KmuhXVmgGuhNoLpump","sym":"RENT","age":43.9,"why":"no candles"}
+{"t":1793224560859,"addr":"5tHRzSHPBuAurUKkaa5oaH77HSzVLFzRSspZDLYZpump","sym":"Lovlimo","age":30.1,"why":"liquidity","liq":0}
