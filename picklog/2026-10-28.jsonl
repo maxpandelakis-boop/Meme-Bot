@@ -10,3 +10,4 @@
 {"at":1793197320000,"why":"drop","mult":1.1133789095548816,"late":true,"hitAt":1793197260000,"rule":"chart","sym":"ENVAR","t":1793197331883,"eur":54.56,"pnl":4.56,"entryAt":1793187873732,"id":"2026-10-28T111906-h-ENVAR-FuK9Bk"}
 {"at":1793199840000,"why":"drop","mult":0.5998136064223939,"late":true,"hitAt":1793199780000,"rule":"chart","sym":"jeff","t":1793199859795,"eur":29.39,"pnl":-20.61,"entryAt":1793199129820,"id":"2026-10-28T142700-h-jeff-HAsTKX"}
 {"at":1793202673294,"why":"time","mult":0.9355195462840419,"rule":"chart","sym":"REAPURR","t":1793202709086,"eur":45.85,"pnl":-4.15,"entryAt":1793181073294,"id":"2026-10-28T092657-h-REAPURR-21VTKj"}
+{"at":1793206080000,"why":"trail","mult":1.5112802072213019,"late":true,"hitAt":1793206020000,"rule":"chart","sym":"INVERSE","t":1793206129967,"eur":74.06,"pnl":24.06,"entryAt":1793202501784,"id":"2026-10-28T152304-h-INVERSE-2gLhk8"}
