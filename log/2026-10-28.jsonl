@@ -37,3 +37,6 @@
 {"t":1793149740903,"addr":"2HcvsX12NyuLnhDXoU6yWL2XLcr3snCTQ7RhqVmZuCgr","sym":"INVISIBLE","age":43.3,"why":"no candles"}
 {"t":1793150101081,"addr":"DPLQuynGA5FsUTLcLq9d2a4JmeykXCVwbJT1mhYZpump","sym":"UI","age":30.3,"score":0.02019,"px":4.207e-05,"liq":16038,"p0":3.075327259212922e-05,"bars":6,"buy":false,"f":{"f_curve_min":5.0167,"f_creator_prior":4.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1962,"c_peak":2.7193,"c_vol":5.5138,"c_act":1.0,"c_r5":0.4137,"c_r15":-0.938,"c_mc":4.4879}}
 {"t":1793150340574,"addr":"2qVhSTY1VYMGQ4YRXdwVVzzA1MdKoX8kcCWNuwQGZWrk","sym":"INVISIBLE","age":30.2,"why":"liquidity","liq":0}
+{"t":1793150581253,"addr":"5Y7C2FcAVaLMWCWdUnifufzjkHWGRboAV2EKJTj1aVuL","sym":"INVISIBLE","age":30.3,"why":"liquidity","liq":0}
+{"t":1793150760209,"addr":"2BSGc9X3fQenFoGWtvkMwXwPz3s6oDsDqtG6D5LPAKqR","sym":"LAIKA","age":31.0,"why":"liquidity","liq":721}
+{"t":1793150760209,"addr":"NTk6VK8uAiRftWY7cyxtVFBAuKfTG5k8A4GmuFDMETG","sym":"UI","age":30.1,"why":"liquidity","liq":0}
