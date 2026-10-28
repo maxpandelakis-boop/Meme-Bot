@@ -429,3 +429,4 @@
 {"t":1793202902025,"addr":"5sXSNqZ9arGEz7kRrKvJh59Q8ant4HGGJbMZ8SHpump","sym":"XTO","age":30.5,"why":"liquidity","liq":1825}
 {"t":1793202902025,"addr":"FhsZqiGsBrBe3kkZZ1H3Z35ae9uCqfKhMJdJs9bPpump","sym":"Petrophila","age":30.0,"score":0.02361,"px":2.332e-05,"liq":11376,"p0":2.282458867882653e-05,"bars":6,"buy":false,"f":{"f_curve_min":3.45,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.8841,"c_peak":2.6378,"c_vol":5.3416,"c_act":1.0,"c_r5":0.2052,"c_r15":-0.4414,"c_mc":4.3584}}
 {"t":1793203080043,"addr":"8F9hK9qnemZ9rPfbLWuhvMwXbVXFusPtQUFiZNzxpump","sym":"KINGCAT","age":30.3,"why":"liquidity","liq":1987}
+{"t":1793203382498,"addr":"Ct296yzJv1b53UuQ8zWedwoMemSxPC8JB6WUEMBAbonk","sym":"Cldkey","age":30.3,"why":"liquidity","liq":0}
