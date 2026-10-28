@@ -1,0 +1,16 @@
+{
+ "planned": 2661,
+ "with candles": 2661,
+ "bars": 191849,
+ "repair": {
+  "new pools": 113,
+  "new launch mints": 196
+ },
+ "launch facts": {
+  "curve_creator": 3248,
+  "created_s": 3241,
+  "symbol": 3253,
+  "f_keys": 3214
+ },
+ "launch mints": 3253
+}
