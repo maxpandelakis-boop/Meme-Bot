@@ -34,3 +34,4 @@
 {"t":1793149440311,"addr":"FEFEVFRRU3RzSaRhmgv9txwspMWpxvnx4QKhVxQLpump","sym":"CF","age":30.6,"why":"liquidity","liq":8086}
 {"t":1793149500505,"addr":"7bKmRpDaMYyB8aL3PiN7mtsVcQKDTFGn9cnGvd8EpVwa","sym":"Memebook","age":30.7,"why":"liquidity","liq":2120}
 {"t":1793149560711,"addr":"EY1FnAmTQSprhYPD9TJFrkggZ3MQWRHJMuaKjWdTpump","sym":"Stowl","age":30.7,"why":"liquidity","liq":0}
+{"t":1793149740903,"addr":"2HcvsX12NyuLnhDXoU6yWL2XLcr3snCTQ7RhqVmZuCgr","sym":"INVISIBLE","age":43.3,"why":"no candles"}
