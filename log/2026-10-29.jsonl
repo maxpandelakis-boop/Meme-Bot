@@ -594,3 +594,5 @@
 {"addr":"ASHfQpyyzv2xNKuFUQ3h4hvCnp4i4ufCAoYrNLKTJtVQ","sym":"NEX AI","pool":"63yoPtXm6v9GaG4AhJitMPELJxMdboWU3jKzgRpXdghV","t":1793309400886,"px":5.012e-05,"score":0.0668,"cut":0.057,"best":1.22195,"last":1.187926,"tok":"base","seen":1793309640717,"now":9307.661612,"lastT":1793309520000,"out":1793309640717,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793309700423,"addr":"E4VydPKSTmZ244w54wXUJgbFwPPxhfng1sSioUkUCtmH","sym":"FOMOCAT$","age":30.3,"why":"liquidity","liq":0}
 {"t":1793309940546,"addr":"6fv6ZLiiwZzQq5kqx1STsMHFjcbahCqimttDY6WxyszA","sym":"Fine","age":30.6,"why":"liquidity","liq":3463}
+{"t":1793310180546,"addr":"9pb26kLf7tu27sapkJN1xHB28iRQpZAsvQfXjcn4mojN","sym":"Affirm","age":30.6,"score":0.02121,"px":9.677e-06,"liq":14845,"p0":1.0826025762144814e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":1.0,"c_ret":0.5371,"c_peak":2.2864,"c_vol":5.2355,"c_act":1.0,"c_r5":-0.5973,"c_r15":-0.4411,"c_mc":4.0345}}
+{"t":1793310240853,"addr":"46ofhBatX8U23rFGMEPq3JTs5ExNG5FR3r3FczFspump","sym":"bye","age":30.2,"why":"liquidity","liq":2009}
