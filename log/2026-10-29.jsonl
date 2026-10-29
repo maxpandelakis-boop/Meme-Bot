@@ -596,3 +596,5 @@
 {"t":1793309940546,"addr":"6fv6ZLiiwZzQq5kqx1STsMHFjcbahCqimttDY6WxyszA","sym":"Fine","age":30.6,"why":"liquidity","liq":3463}
 {"t":1793310180546,"addr":"9pb26kLf7tu27sapkJN1xHB28iRQpZAsvQfXjcn4mojN","sym":"Affirm","age":30.6,"score":0.02121,"px":9.677e-06,"liq":14845,"p0":1.0826025762144814e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":1.0,"c_ret":0.5371,"c_peak":2.2864,"c_vol":5.2355,"c_act":1.0,"c_r5":-0.5973,"c_r15":-0.4411,"c_mc":4.0345}}
 {"t":1793310240853,"addr":"46ofhBatX8U23rFGMEPq3JTs5ExNG5FR3r3FczFspump","sym":"bye","age":30.2,"why":"liquidity","liq":2009}
+{"t":1793310481029,"addr":"cB7iBBjyZcsPsYZt3JD1Nron76AtfnP54we8TTnpump","sym":"YouTube","age":30.8,"why":"liquidity","liq":1803}
+{"t":1793310481029,"addr":"3LTgq8qj8AXybDQWHRRW4qPJYQbqaiSYKCuJokVwF1zi","sym":"FOMOCAT$","age":30.1,"why":"liquidity","liq":0}
