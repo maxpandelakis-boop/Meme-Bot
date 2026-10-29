@@ -90,3 +90,6 @@
 {"t":1793245440495,"addr":"J2kAq87ruuCWs6zvyqKEoYxGaB4NDqC65gXH2qNqpump","sym":"HOLLY","age":30.0,"why":"liquidity","liq":4327}
 {"t":1793245800320,"addr":"HgABNrMYxrTSr4oQKBGa59vyvMzZEWfDQETuK5Vgpump","sym":"UOF","age":30.3,"score":0.00277,"px":8.962e-05,"liq":27523,"p0":8.96877126715535e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":12.0,"f_cjk":0.0,"c_ret":0.3166,"c_peak":1.0337,"c_vol":3.311,"c_act":0.8333,"c_r5":0.0,"c_r15":-0.019,"c_mc":4.9527}}
 {"t":1793245981076,"addr":"E72SUH6yujusuGbbNmdQbvc6188FH269FkPmXrAjbonk","sym":"Corcrown","age":30.8,"why":"liquidity","liq":0}
+{"t":1793246160565,"addr":"3riFgmc9PByF99R8Pva5UsehJMNq2rwXyaWJaJzRBAGS","sym":"GEMCARB","age":30.3,"why":"liquidity","liq":0}
+{"t":1793246280719,"addr":"DkND6CmPqUuTVC5rCkKB137P1rFW8NqjUS3mcpoEpump","sym":"Pumpkinu","age":30.8,"why":"liquidity","liq":5511}
+{"t":1793246280719,"addr":"3uJna6yx6aVmUCyF8EjaeqhKYrGLkwnQXpEYvjgRxKvY","sym":"FOMOCAT$","age":30.4,"why":"liquidity","liq":0}
