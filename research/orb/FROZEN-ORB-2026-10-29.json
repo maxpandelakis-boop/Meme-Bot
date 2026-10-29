@@ -1,0 +1,15 @@
+{
+ "frozen": {
+  "N": 60,
+  "W": 6,
+  "R": 1,
+  "T": 6
+ },
+ "name": "range 60 min, wait 6 h, target 1R, 6 h",
+ "fit": {
+  "n": 2320,
+  "meanAfterAllowance": -4.46,
+  "total": -10343.9,
+  "inProfit": 45.6
+ }
+}
