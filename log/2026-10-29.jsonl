@@ -186,3 +186,5 @@
 {"t":1793257320888,"addr":"Fxyj1MSfyE8PCsVUWmXTHCWmCKFK7dkvgkd6HvuHpump","sym":"Steve","age":30.9,"why":"liquidity","liq":2003}
 {"t":1793257320888,"addr":"AXzttvtH8Fwa8aVrdhhSsDZoeDx7Z7cYKobyY77Kbonk","sym":"DHSLOCK","age":30.6,"why":"liquidity","liq":0}
 {"t":1793257560887,"addr":"DPb1vNz5wXuYCv27S85zZ8sGh6NTfU6gMYRFYA7Jpump","sym":"SELLICON","age":30.8,"score":0.01117,"px":0.0001771,"liq":36581,"p0":0.00017183273692632822,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":2.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4607,"c_peak":2.3621,"c_vol":5.6548,"c_act":1.0,"c_r5":-0.0904,"c_r15":0.1276,"c_mc":5.2351}}
+{"t":1793258161038,"addr":"E4f96f1aW2AzEwmqUJFcr7isxMaGgaRr3ohsxF6vpump","sym":"RSGP","age":30.9,"why":"liquidity","liq":2146}
+{"t":1793258280116,"addr":"CTHzwCDDwCHJ4nyfZHF5W66MrdSLFdbT5gcssKXYpump","sym":"VC","age":43.1,"why":"no candles"}
