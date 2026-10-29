@@ -440,3 +440,4 @@
 {"t":1793291640763,"addr":"2NkrkugTLN7PqLyorv2wCt1GwYSHW9tj6N9RLuYPpump","sym":"ZAIO","age":30.4,"why":"liquidity","liq":3323}
 {"t":1793292061453,"addr":"74hGo15SYb8YcEjrtsUqdP8jaZbTuNtPRoyQ5RaKpump","sym":"McElon","age":30.9,"why":"liquidity","liq":2130}
 {"t":1793292181715,"addr":"9F8to64L3vi3HcyRtYFyZcKBZQ7imCAy1jnqoGnvpump","sym":"musks","age":30.8,"why":"liquidity","liq":8083}
+{"t":1793292240309,"addr":"8jRftosHxzNAJpZzP3FM7hvqtY74ZPJvJNn9Kpqwpump","sym":"SPCX80K","age":30.2,"score":0.0037,"px":0.004542,"liq":178968,"p0":0.004533985220739021,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0474,"c_peak":1.0002,"c_vol":4.94,"c_act":1.0,"c_r5":0.0087,"c_r15":0.0111,"c_mc":6.6565}}
