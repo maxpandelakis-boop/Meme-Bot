@@ -421,3 +421,5 @@
 {"t":1793288400408,"addr":"GgQFU9PJnRB5BCnbCaDW8cj6e1FQiVB4tdPdjLRipump","sym":"ELOOONG","age":30.3,"why":"liquidity","liq":3320}
 {"t":1793288520205,"addr":"3zoyoJwywuALj49wi9ffsz49hJaToJ29f9JBSCGNpump","sym":"ELOOONG","age":30.4,"score":0.02279,"px":0.0001428,"liq":35293,"p0":0.00017075180760946657,"bars":6,"buy":false,"f":{"f_curve_min":0.75,"f_creator_prior":2.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-0.689,"c_peak":3.5484,"c_vol":6.0139,"c_act":0.8333,"c_r5":-0.199,"c_r15":-0.6799,"c_mc":5.2324}}
 {"addr":"CBzUCZy7DkDyBdfVZ72JR3UQ6b2sU6E4eHpLBoeX2Hrn","sym":"Mbappe","pool":"GxWroa7CsYaBQ2Jxge7cJMEF8N35YKLdJbwfPXbtRnP3","t":1793287200942,"px":1.116e-05,"score":0.0617,"cut":0.057,"best":8.430339,"last":1.918624,"tok":"base","seen":1793288640353,"now":1.74552,"lastT":1793288520000,"out":1793288580000,"mult":1.9186,"eur":16.01,"why":"trail","g":1,"closed":true}
+{"t":1793288702428,"addr":"7zaffzApxYGhwYEHUP6Hi2qwW3UrjA5gjrffjM22pump","sym":"SPCX80K","age":30.5,"why":"liquidity","liq":2168}
+{"t":1793288702428,"addr":"wFzq9GgySwc9bqbcwXkGHL64Nbam67o6TnFcGMrpump","sym":"FOMO","age":30.2,"why":"liquidity","liq":1893}
