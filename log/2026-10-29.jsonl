@@ -247,3 +247,4 @@
 {"t":1793266680808,"addr":"6MNY67xmhYWgo4ipFpASKuT7RKZ1T4hiaVUXsmPppump","sym":"Go go","age":30.4,"why":"liquidity","liq":1901}
 {"t":1793266981475,"addr":"HkYuxbWvQjUCGYcc93BnWWYRkpqgRkQS4wXvhjF3pump","sym":"SILWIZ","age":30.2,"why":"liquidity","liq":0}
 {"t":1793267101443,"addr":"S16PWYbSx6VBiNzjfy9DXCiU9rrTD7a4mkXLRuNZZdo","sym":"GANGBALL","age":30.9,"score":0.01702,"px":1.17e-06,"liq":166914,"p0":1.138930998386368e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.3833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.5847,"c_peak":1.0099,"c_vol":6.3708,"c_act":1.0,"c_r5":0.0579,"c_r15":0.2646,"c_mc":3.0565}}
+{"t":1793267221434,"addr":"89nH3hmuK7rUSc8NbptXmUu89KJ1Mg7kaoTu6dVKpump","sym":"VC","age":30.3,"why":"liquidity","liq":2015}
