@@ -121,3 +121,4 @@
 {"t":1793249520429,"addr":"EpzTWHfHTtqq7Mu1b1d1R68FxRhX8YT45U3RYmDxpump","sym":"UFP","age":30.2,"score":0.0092,"px":7.815e-05,"liq":24131,"p0":6.154367280681512e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":-1.4059,"c_peak":5.1913,"c_vol":5.6998,"c_act":1.0,"c_r5":-0.1449,"c_r15":-0.8937,"c_mc":4.7892}}
 {"t":1793249520429,"addr":"7QGmz1AcT1GYSkaiK8TdJZEPzhtNLq2gFJD2CJZSpump","sym":"Chptngo","age":30.1,"why":"liquidity","liq":0}
 {"t":1793249760177,"addr":"QrTsGoJvhQLQffjjHFSHgybUKJGJZUDMA6KyYb8Mt7d","sym":"GTA Ai","age":30.5,"why":"liquidity","liq":0}
+{"t":1793249941391,"addr":"HaoZYLcN2ANLkogiXqzzscC3pRpYvTornvZkDsCELLMS","sym":"AI/SI","age":30.5,"why":"liquidity","liq":0}
