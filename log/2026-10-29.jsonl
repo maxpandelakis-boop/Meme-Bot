@@ -417,3 +417,6 @@
 {"t":1793287742706,"addr":"AuDaog7PPFfAmxmf3SdbA1Tv3j5SfVn3QUJTFUkVBAGS","sym":"COSMIC","age":30.8,"why":"liquidity","liq":0}
 {"t":1793287920740,"addr":"8TJ1uhidGn7PmzEtmftDUJkAxEcLpPNWqdvh42SZpump","sym":"GTA6","age":30.4,"score":0.00552,"px":0.1493,"liq":1033996,"p0":0.14923984770426882,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":1.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0124,"c_peak":1.0012,"c_vol":5.7097,"c_act":1.0,"c_r5":0.0008,"c_r15":-0.0008,"c_mc":8.1739}}
 {"t":1793287920740,"addr":"CuFjT6SJQKUV4ApLPF8UKJQ7TA9sBzaw3rAFrkbRpump","sym":"GTAVI","age":30.1,"why":"liquidity","liq":2013}
+{"t":1793288340654,"addr":"531wXhUCBzyRfKJQzGjdfiyNGpbWn2WUwtgHZA1EeLWB","sym":"ELOOONG","age":30.5,"why":"liquidity","liq":2895}
+{"t":1793288400408,"addr":"GgQFU9PJnRB5BCnbCaDW8cj6e1FQiVB4tdPdjLRipump","sym":"ELOOONG","age":30.3,"why":"liquidity","liq":3320}
+{"t":1793288520205,"addr":"3zoyoJwywuALj49wi9ffsz49hJaToJ29f9JBSCGNpump","sym":"ELOOONG","age":30.4,"score":0.02279,"px":0.0001428,"liq":35293,"p0":0.00017075180760946657,"bars":6,"buy":false,"f":{"f_curve_min":0.75,"f_creator_prior":2.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-0.689,"c_peak":3.5484,"c_vol":6.0139,"c_act":0.8333,"c_r5":-0.199,"c_r15":-0.6799,"c_mc":5.2324}}
