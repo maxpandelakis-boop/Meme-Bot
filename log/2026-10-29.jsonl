@@ -438,3 +438,5 @@
 {"t":1793291400570,"addr":"hYi8naNVahwp9uk37NmQWqcX5nU3arNtp6TjyFupump","sym":"XYZ","age":30.3,"score":0.00668,"px":2.634e-05,"liq":12006,"p0":2.3949066522364024e-05,"bars":6,"buy":false,"f":{"f_curve_min":558539.4865,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.5846,"c_peak":2.3777,"c_vol":4.8173,"c_act":1.0,"c_r5":-0.0324,"c_r15":0.2922,"c_mc":4.3793}}
 {"t":1793291520102,"addr":"CMfr1MnVVaZEwxH5fu2ki63MF4kmaRddfi2MsfU6Y8xr","sym":"Google AI","age":31.0,"why":"liquidity","liq":13}
 {"t":1793291640763,"addr":"2NkrkugTLN7PqLyorv2wCt1GwYSHW9tj6N9RLuYPpump","sym":"ZAIO","age":30.4,"why":"liquidity","liq":3323}
+{"t":1793292061453,"addr":"74hGo15SYb8YcEjrtsUqdP8jaZbTuNtPRoyQ5RaKpump","sym":"McElon","age":30.9,"why":"liquidity","liq":2130}
+{"t":1793292181715,"addr":"9F8to64L3vi3HcyRtYFyZcKBZQ7imCAy1jnqoGnvpump","sym":"musks","age":30.8,"why":"liquidity","liq":8083}
