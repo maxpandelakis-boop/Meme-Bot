@@ -34,3 +34,4 @@
 {"t":1793236021124,"addr":"FFZEw5fwzpUPSUajqpWtwMVTmfCp75TZPtjJYhS8pump","sym":"bio\u00b7\u03b5/909\u0394","age":30.6,"score":0.022,"px":2.884e-05,"liq":12995,"p0":1.874182379480101e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.3833,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":1.2973,"c_peak":3.563,"c_vol":5.3202,"c_act":1.0,"c_r5":0.1536,"c_r15":0.2935,"c_mc":4.2728}}
 {"t":1793236021124,"addr":"7nSapKWaKAoL1GmX9bFfeTNN93TQJqu75PF25UpSmoon","sym":"GEMCARB","age":30.1,"why":"liquidity","liq":0}
 {"t":1793236080295,"addr":"CzpfCSGHSBSBZSrqX4WayeYAqUGazRy47aqLh7RSZpiz","sym":"Kleinfrog","age":30.6,"why":"liquidity","liq":0}
+{"t":1793236560781,"addr":"4Xc3mNWUFEMAP3MuPcsJv4rwAfrCz1DkxxY4PQnySish","sym":"Kleinfrog","age":30.6,"why":"liquidity","liq":0}
