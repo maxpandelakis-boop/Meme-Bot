@@ -618,3 +618,8 @@
 {"t":1793312160461,"addr":"EQ6fqA3UCWQ5hqZmXd9aEotm8dmNh5719HyuipuTGUca","sym":"SAFU","age":30.4,"why":"liquidity","liq":0}
 {"t":1793312160461,"addr":"A99wv56WHNxeUhjriLMqvEZtmZcU69Bech22GJ5Vmoon","sym":"Chipzla","age":30.4,"why":"liquidity","liq":0}
 {"t":1793312280564,"addr":"7EfosxNa5BqfdgbwS8Steyc7xn1H7xXBC9o3iwyopump","sym":"TIT","age":30.3,"why":"liquidity","liq":3376}
+{"t":1793312521057,"addr":"qi6wtTo9jZhkGcokNrjNNnBSjt12sUxgNyhWuUUpump","sym":"USOE","age":30.5,"score":0.00349,"px":0.5561,"liq":1949252,"p0":0.4930804012850468,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.1023,"c_peak":1.0013,"c_vol":5.963,"c_act":1.0,"c_r5":0.0048,"c_r15":0.0119,"c_mc":8.6929}}
+{"t":1793312701021,"addr":"2orqEGSdkm5BMmhdM8TpKCpACk32a3Zaj3Lef7ceqsc6","sym":"ETF","age":43.9,"why":"no candles"}
+{"t":1793312701021,"addr":"36N3vQ9AHj5VNceTquAsRDfoYL2kfp88QASQa965pump","sym":"ICG","age":30.5,"score":0.00808,"px":0.0001913,"liq":71212,"p0":0.0001592102988404146,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":1.1655,"c_peak":1.8005,"c_vol":5.9539,"c_act":1.0,"c_r5":-0.4242,"c_r15":-0.1904,"c_mc":5.202}}
+{"t":1793312701021,"addr":"7my5eDnPaurLg3tVjKAEAvZNeYXCQWfDMU23Jj1U5ht9","sym":"NEX AI","age":30.2,"why":"liquidity","liq":0}
+{"t":1793312701021,"addr":"wizii2ieGK5hzGaoVjKoSpLFs4BD9MXHdQNovBkpump","sym":"FI","age":30.1,"why":"liquidity","liq":1973}
