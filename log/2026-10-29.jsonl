@@ -56,3 +56,4 @@
 {"t":1793240100659,"addr":"4WDkzfAPgrehrnr5KFTR8HJSzgik67f7WJwTzEnJpump","sym":"RUSSO3","age":30.9,"why":"liquidity","liq":0}
 {"t":1793240100659,"addr":"BZutpnKFLjLqQ8XRP1Ny7RnVNBvZ4NgoEn4QBAxVpump","sym":"BAJRANGI","age":30.7,"why":"liquidity","liq":7099}
 {"t":1793240160553,"addr":"eaHUmQuZfL8f8NkAWSXUbjWvCrCaqm3PLtZDju7pump","sym":"GALEI","age":30.7,"score":0.01892,"px":5.899e-05,"liq":18605,"p0":5.901516766816691e-05,"bars":6,"buy":false,"f":{"f_curve_min":32467.3167,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.31,"c_peak":1.2671,"c_vol":4.0414,"c_act":0.8333,"c_r5":0.1726,"c_r15":0.2491,"c_mc":4.771}}
+{"t":1793240400752,"addr":"8jnFeARtDLN8jFWvmR3CgCPSZ9yrRstShBP4S9WdK1dz","sym":"ZEAL","age":43.8,"why":"no candles"}
