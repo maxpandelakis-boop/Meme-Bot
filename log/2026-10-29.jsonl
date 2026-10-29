@@ -586,3 +586,6 @@
 {"t":1793308681037,"addr":"7tQXn4wtQtqejxPHB5iUQiGNMadchjzNsKjwSzRHviGt","sym":"10/29","age":30.5,"why":"liquidity","liq":6901}
 {"t":1793308980450,"addr":"CBwX7xj3xvoHh5zM97bwq8wHMuXmqYTftbH7Fgcdpump","sym":"HYPEHOUSE","age":43.8,"why":"no candles"}
 {"t":1793308980450,"addr":"81KBZN1b47qN2e3baFzm4N7xRFQz1HPzxYRseu7GBAGS","sym":"HORMINE","age":30.1,"why":"liquidity","liq":0}
+{"t":1793309110637,"addr":"Eb4SxWgieZGqSW12pNpxJQinV5w5nfUeWG8mgEmCpump","sym":"Shadow","age":30.4,"why":"liquidity","liq":2001}
+{"t":1793309220838,"addr":"2vFZCicJaNjdN9g7dNeSBMAzp5NBbE8rnq81Xp2masNW","sym":"FOMOCAT$","age":30.3,"why":"liquidity","liq":0}
+{"t":1793309341135,"addr":"gEYL94W8sDev2BV411JHrAz9nMngJi1AmaZ6ZUspump","sym":"RPOOL","age":30.9,"why":"liquidity","liq":1933}
