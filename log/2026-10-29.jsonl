@@ -98,3 +98,4 @@
 {"t":1793246581330,"addr":"2voACP2obDk5V1nt1E2EMUawANtPrFT54exypYWXpump","sym":"MRSDUST","age":30.4,"why":"liquidity","liq":0}
 {"t":1793246701410,"addr":"9ciyZMYQTTKWbN3pviRKVfpJFnnyLQH3qZjhAmraFq1Z","sym":"FOMOCAT$","age":30.7,"score":0.02647,"px":5.404e-05,"liq":66254,"p0":4.970066539164893e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.7905,"c_peak":1.0057,"c_vol":4.9514,"c_act":1.0,"c_r5":0.1587,"c_r15":0.3703,"c_mc":4.6964}}
 {"t":1793246701410,"addr":"C7wnX8xaSvNXGpRufLfmf3iPDmzSXKvnTP2Tjytapump","sym":"DOGPOOP","age":30.3,"why":"liquidity","liq":2046}
+{"t":1793246820985,"addr":"31WBH7UKpHTMiXKqhTik3By6i8L4ZMNfqDdWbkxKpump","sym":"UFP","age":30.4,"why":"liquidity","liq":7042}
