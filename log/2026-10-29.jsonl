@@ -174,3 +174,5 @@
 {"t":1793255881036,"addr":"FvWfJQdT9uTt6Hqr3GAnQfCEWCyvMMVLvpDvruBpF1BE","sym":"STEVE","age":30.2,"why":"liquidity","liq":2969}
 {"t":1793255940882,"addr":"49pu7RnTGdupxAPTauyje5VDHqzbjUbHLKBF5wig3pfJ","sym":"JAGENT","age":30.0,"score":0.01566,"px":3.882e-05,"liq":39573,"p0":3.552674880150573e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.9864,"c_peak":1.0229,"c_vol":4.98,"c_act":1.0,"c_r5":0.2431,"c_r15":0.568,"c_mc":4.5506}}
 {"addr":"8edFdoB572uooTmNaCbFwozsoMYH2mYpXa5gsPUVqa3b","sym":"AI/SI","pool":"C7MjggGDupNgFvFBSnBBRvCjBbpWgUCqe6R6t839Ls11","t":1793254080792,"px":0.0003518,"score":0.0595,"cut":0.057,"best":1.771647,"last":1.771647,"tok":"base","seen":1793256061356,"now":1.77203,"lastT":1793255940000,"out":1793256061356,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
+{"t":1793256120794,"addr":"F59aKsnV5NwwhALKxHt48yzBnf7d42RHpaRwtdKApump","sym":"SELLICON","age":30.9,"why":"liquidity","liq":1973}
+{"t":1793256120794,"addr":"FMzQfjhqGnMTB56Z6ie9Muz2BzSKbGUwB2wwS4Dqex4C","sym":"STEVE","age":30.8,"why":"liquidity","liq":7379}
