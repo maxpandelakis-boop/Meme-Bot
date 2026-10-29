@@ -546,3 +546,8 @@
 {"t":1793304180638,"addr":"EpNBTZXHeYC9aywzf1VTCq1NLCAGXE5dEsyB1yRmmoon","sym":"CSCRASH","age":30.6,"why":"liquidity","liq":0}
 {"t":1793304360910,"addr":"vH36oo5Q5vSUTfJeEfdBZL8FHWdGJyueuAEbFu5pump","sym":"SCHIZOAPE","age":30.8,"why":"liquidity","liq":2284}
 {"t":1793304421203,"addr":"QxWFEV4amHayhA2n3sG5e2AZVkexZpKAc4kEjqLdJU8","sym":"Hypurr","age":30.6,"score":0.03403,"px":0.0001039,"liq":142916,"p0":0.00010270265554661929,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.4751,"c_peak":1.0689,"c_vol":6.4753,"c_act":1.0,"c_r5":0.0025,"c_r15":0.1453,"c_mc":5.0116}}
+{"t":1793304481034,"addr":"FAQ9cZQdYQA8TTQnyjx1dgUjmqcHc4zZ7N3vwDHSpump","sym":"HyPepe","age":30.6,"why":"liquidity","liq":8787}
+{"t":1793304541436,"addr":"D5CfbHRHwvKXqTCfRh2WiUBtejhRc5cv655yGuA438F6","sym":"NEX AI","age":30.3,"why":"liquidity","liq":503}
+{"t":1793304600868,"addr":"ApRpA8NcK1YtdjoQqTCshPCVKSKnjPmYxePMCmHwpump","sym":"FOM404","age":30.2,"why":"liquidity","liq":1983}
+{"t":1793304660937,"addr":"921GqqgNKkNp1y3w1LTzMhUMEe48q5nAwJn5N2x9pump","sym":"Keith","age":30.5,"why":"liquidity","liq":2084}
+{"t":1793304720366,"addr":"FVXgDYrz7pzgeAphxVTzmXxVVZhAQyULoUEQ44gkBAGS","sym":"PENTAICE","age":30.4,"why":"liquidity","liq":0}
