@@ -371,3 +371,6 @@
 {"t":1793282580421,"addr":"71KNbeGwJ1GSQ4MXp13mqoe96ALXtL1jmsrGdyVVpump","sym":"Trader","age":30.9,"why":"liquidity","liq":2139}
 {"t":1793282701502,"addr":"DyM2wqV3Yn1BSRJNcFmXfijvpkNYnq3QvZacE2qQtC8x","sym":"ZIP","age":31.0,"score":0.00963,"px":1.8e-05,"liq":10436,"p0":1.8025292597307163e-05,"bars":6,"buy":false,"f":{"f_curve_min":14.7,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.107,"c_peak":2.3824,"c_vol":3.6764,"c_act":0.8333,"c_r5":0.0165,"c_r15":0.0282,"c_mc":4.2559}}
 {"t":1793282701502,"addr":"9B5uDwoTPkXXb67vaHiqWmyvWuUEDBMSU6ssZH1Zpump","sym":"Chloe","age":30.2,"why":"liquidity","liq":7806}
+{"t":1793282820403,"addr":"D5VqgrRmerKNiY8jmHKJkY9QyYD1QNmjqCoy4etspump","sym":"SOLCAT","age":30.2,"why":"liquidity","liq":2169}
+{"t":1793282880066,"addr":"DC6ctSFVfwS1n4UnRYQCD5tAbWB7LEWae4CreDENyXHc","sym":"\u5927A","age":30.4,"why":"liquidity","liq":81}
+{"t":1793283000779,"addr":"GWf7M89r6PZNiKeVsvbtgoLjnmgXGNp74JyNNPWqmoon","sym":"VMSHADOW","age":30.2,"why":"liquidity","liq":0}
