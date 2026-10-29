@@ -564,3 +564,4 @@
 {"t":1793305920353,"addr":"HR1z3ALobUK5U3rKM3LBEZq1gqXEKfWCg82zWvBGm4QV","sym":"FOMOCAT$","age":30.9,"why":"liquidity","liq":0}
 {"t":1793305920353,"addr":"CcayRtN6AVV2o3fcH65DmuRgNhBXGiNRLhVmXdSeBAGS","sym":"MIBG","age":30.6,"why":"liquidity","liq":0}
 {"t":1793306101009,"addr":"7p2ZBjXspFywnRyahtLkSs6eR3S1dZ4A9ugEbPG3pump","sym":"HYPERCHAN","age":30.9,"why":"liquidity","liq":1877}
+{"t":1793306341179,"addr":"C5hLhhd5MivJ8m2MTQjB9A2nmuBymRzYhyRpeRMMpump","sym":"ASSAY","age":30.4,"score":0.04761,"px":6.374e-05,"liq":19777,"p0":3.763438515427947e-05,"bars":6,"buy":false,"f":{"f_curve_min":9.85,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.249,"c_peak":2.4779,"c_vol":5.2296,"c_act":1.0,"c_r5":-0.2956,"c_r15":-0.6084,"c_mc":4.5756}}
