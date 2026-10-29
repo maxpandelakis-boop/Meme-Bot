@@ -283,3 +283,5 @@
 {"t":1793272380958,"addr":"Grz5NYcXT5ffZrg4JDgHE72jCqRqFMS6cedwEpQ81s1t","sym":"GANGBALL","age":30.8,"why":"liquidity","liq":0}
 {"t":1793272440982,"addr":"2rGSBDb79CbtEE92osnUWGGCKJ3m5LAheNExebNia56D","sym":"GANGBALL","age":30.9,"score":0.06333,"px":0.0002207,"liq":13521,"p0":0.00017371587949863482,"bars":6,"buy":true,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":1.0,"c_ret":0.4344,"c_peak":1.1801,"c_vol":4.9258,"c_act":1.0,"c_r5":0.2195,"c_r15":0.1995,"c_mc":5.2398}}
 {"t":1793272440982,"addr":"EnCCxEZRuqfyV79xbz4z9doC4t9srdExmrd2vzEeBAGS","sym":"CNPANDA","age":30.9,"why":"liquidity","liq":0}
+{"t":1793272980584,"addr":"3HGDiBPmF38pjEYn3PcCD1VFeXNvj3uGwXigh7Zrpump","sym":"Wppking","age":30.9,"why":"liquidity","liq":0}
+{"t":1793272980584,"addr":"GnCo3guxeJ2w8Rm4649K9ej62WtAmDHgDAikCrGmpump","sym":"SHIBLASTER","age":30.6,"why":"liquidity","liq":2293}
