@@ -4,3 +4,4 @@
 {"at":1793263582188,"why":"time","mult":1.043968432919955,"rule":"chart","sym":"Chameleon","t":1793263582188,"eur":51.16,"pnl":1.16,"entryAt":1793241923632,"id":"2026-10-29T022453-h-Chameleon-Exv4ix"}
 {"at":1793267640000,"why":"drop","mult":0.8471565068695187,"late":true,"hitAt":1793267460000,"rule":"chart","sym":"ANTS","t":1793267864283,"eur":41.51,"pnl":-8.49,"entryAt":1793264052721,"id":"2026-10-29T083031-h-ANTS-Vbj43i"}
 {"at":1793279700000,"why":"drop","mult":0.9309679484457324,"rule":"chart","sym":"ANTS","t":1793279732385,"eur":45.62,"pnl":-4.38,"entryAt":1793271017281,"id":"2026-10-29T102749-h-ANTS-Vbj43i"}
+{"at":1793290980000,"why":"trail","mult":1.5107738476742198,"late":true,"hitAt":1793290860000,"rule":"chart","sym":"ANTS","t":1793291048822,"eur":74.04,"pnl":24.04,"entryAt":1793281085794,"id":"2026-10-29T131659-h-ANTS-Vbj43i"}
