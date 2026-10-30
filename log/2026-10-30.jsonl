@@ -587,3 +587,5 @@
 {"t":1793386680507,"addr":"84VdB3qqyj3RJ3fJxgkZY4gSGSULC3rr4he7gDoDJ2ec","sym":"Acat","age":30.4,"why":"liquidity","liq":0}
 {"t":1793386861493,"addr":"E38LBcjAiYAaiDZ9MKWteVHGaahvCeSqP4eeQay9ib2M","sym":"Pum Coin","age":30.2,"why":"liquidity","liq":0}
 {"addr":"DD2J1mAcXDdDgi8RaaUzaFGX3N6GzJZ2RzrUWtpXRZUS","sym":"\u54aa\u54aa","pool":"EhDxQi6EdLTgKEHDsWWhrkXGYDx4mto6KQK95avHuPQt","t":1793382480527,"px":1.765e-05,"score":0.0625,"cut":0.057,"best":2.880497,"last":1.704602,"tok":"base","seen":1793386920720,"now":2.872521,"lastT":1793386860000,"out":1793386920000,"mult":1.7046,"eur":11.9,"why":"trail","g":1,"closed":true}
+{"t":1793387520704,"addr":"E7juGqPqtMrjB6LvDLqCW3yu7opkcnYQwHhWmWdpump","sym":"FODF","age":30.8,"score":0.00162,"px":0.002527,"liq":127904,"p0":0.002550993743798579,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":24.0,"f_cjk":0.0,"c_ret":0.0434,"c_peak":1.0006,"c_vol":4.7489,"c_act":1.0,"c_r5":0.0138,"c_r15":0.011,"c_mc":6.4067}}
+{"t":1793387520704,"addr":"FBr88QqkdBb8Nbci9D3dao2AFj7Y9cRjkrd6jkq3oCep","sym":"Candy","age":30.6,"why":"liquidity","liq":11}
