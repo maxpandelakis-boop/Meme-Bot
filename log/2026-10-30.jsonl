@@ -298,3 +298,4 @@
 {"t":1793356441015,"addr":"BZsc3v9AGQJ6JnKxkgj7TqeKiymHERQNyyXt9aLKpump","sym":"PFT6","age":30.7,"why":"liquidity","liq":1807}
 {"t":1793356680202,"addr":"FToAf8kM8YkWrVwxapnp1GzYRQPE87H3rEL9qTt1moon","sym":"Mcdrad","age":30.5,"why":"liquidity","liq":0}
 {"t":1793356920135,"addr":"9DektAfmLPwdrJzdEbnsHZWR1aWimHJJkJaGCVqopump","sym":"Horkra","age":30.2,"why":"liquidity","liq":0}
+{"t":1793357221119,"addr":"72eezJMJTZ372KzYzgVceYh2YqyZWDtDj8mHMhprZ1HH","sym":"RAPI","age":30.4,"score":0.01299,"px":3.649e-05,"liq":15971,"p0":4.13272199170451e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0404,"c_peak":1.0365,"c_vol":4.8619,"c_act":0.8333,"c_r5":0.0635,"c_r15":0.0805,"c_mc":4.6162}}
