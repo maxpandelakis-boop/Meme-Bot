@@ -238,3 +238,4 @@
 {"t":1793348581561,"addr":"65E2u8E65wLCxkRfmwrjt3gDa9L6NiHMoKSieAeabPFE","sym":"\u5927A","age":30.6,"why":"liquidity","liq":0}
 {"t":1793348640366,"addr":"CgLtuEXbvqLgrcRNh2dSC2F2JsiePCzWg8vGjXoumoon","sym":"POLBRDG","age":30.3,"why":"liquidity","liq":0}
 {"t":1793348940937,"addr":"HJVTpBXp5pc1LxqBvmqxwhR2QYsARbey4yjGny5geGAE","sym":"\u5927A","age":30.6,"score":0.02376,"px":1.265e-05,"liq":17644,"p0":1.7665199146531325e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":13.0,"f_cjk":1.0,"c_ret":0.4117,"c_peak":4.5903,"c_vol":5.351,"c_act":1.0,"c_r5":0.4982,"c_r15":-0.088,"c_mc":4.2471}}
+{"t":1793349240829,"addr":"7gx258WMjs2L5zgVBLTUrwk57arFY2Hfo43uRj8Bmoon","sym":"ARNBTUR","age":30.8,"why":"liquidity","liq":0}
