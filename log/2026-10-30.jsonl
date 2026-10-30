@@ -367,3 +367,7 @@
 {"t":1793364781447,"addr":"7kAZFbvWZ9bKCD1tKCCNDK9poruBJpcwMt6DmD8sGvzH","sym":"CATPAD","age":30.0,"why":"liquidity","liq":2781}
 {"t":1793364840983,"addr":"3tTZ6ysg1fNP9TccgoRxpkiSP5MLuQqATKJsRtG4oM5z","sym":"Pum Coin","age":30.9,"why":"liquidity","liq":0}
 {"t":1793364900772,"addr":"5VdrfY3NK6T1V3mywUkb3UShFM5eS3zEni8G8aQ2pump","sym":"PAHOL","age":30.5,"why":"liquidity","liq":0}
+{"t":1793364960558,"addr":"KDn5RX8TZtWny2Me9KrzjWmw3iHsGyghjrnmfUDj4Sg","sym":"PURPS","age":30.5,"score":0.04637,"px":0.0001044,"liq":140605,"p0":0.00010469151970152844,"bars":6,"buy":false,"f":{"f_curve_min":0.4333,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.4827,"c_peak":1.0194,"c_vol":6.503,"c_act":1.0,"c_r5":0.0513,"c_r15":0.1737,"c_mc":5.0199}}
+{"t":1793365200587,"addr":"EFo8uB6wD739GgtGoYbAwxM6Pp8iCzM8XGf7jQW7pump","sym":"PURPS","age":43.0,"why":"no candles"}
+{"t":1793365200587,"addr":"6pzLxMmyvWDtCwLp7abKhXGCxK6nQ6pjAiQj2awfbonk","sym":"NADCHECK","age":30.8,"why":"liquidity","liq":0}
+{"t":1793365200587,"addr":"DcKJ61x4Wfe1dCGUhuUZDi1uHAc9KzQviGxwWXCbaP42","sym":"Pum Coin","age":30.6,"why":"liquidity","liq":0}
