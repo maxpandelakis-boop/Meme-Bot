@@ -138,3 +138,5 @@
 {"t":1793334781170,"addr":"emXJL3vjwvyMjSf7pj7bmJDm29F9SBcYxtFURn7pump","sym":"UODF","age":30.8,"score":0.00692,"px":0.02341,"liq":398612,"p0":0.023421431893369735,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":18.0,"f_cjk":0.0,"c_ret":0.034,"c_peak":1.0009,"c_vol":5.2816,"c_act":1.0,"c_r5":0.0032,"c_r15":0.0177,"c_mc":7.3696}}
 {"t":1793334961005,"addr":"5oGAd3jQUYMEK9fSpaTZvPKvHMdJdsriyD9dnK4vpump","sym":"GIMODELO","age":30.0,"why":"liquidity","liq":1937}
 {"t":1793335020782,"addr":"6kjcQSAN6YFDbxXWKLTbHf7wWFXvMEj39Qu5BVoPpump","sym":"TELEPATHY","age":30.6,"why":"liquidity","liq":3163}
+{"t":1793335381503,"addr":"ARTQ3RHrvC5kWwVE5cJimZiKpJ2ZfS2WP3n2fDN5BAGS","sym":"HTFALCON","age":30.7,"why":"liquidity","liq":0}
+{"t":1793335501236,"addr":"GqaP7NBtPAFAUq45UAp426bdEtfz5nz2ffMn9MiHpump","sym":"LIQUID","age":43.4,"why":"no candles"}
