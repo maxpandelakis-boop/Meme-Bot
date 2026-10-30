@@ -505,3 +505,4 @@
 {"t":1793376720466,"addr":"AnimExxPtPjQFMG4FiFtnp8WrbFwWQS5f5BP6oHRMLrG","sym":"ANIMEG","age":30.6,"why":"liquidity","liq":9330}
 {"t":1793376780563,"addr":"CjRn9ZS9aPbsS4MPwjScJnKz56QeKVsyUtkenjcjohAX","sym":"Elon CTO","age":30.5,"score":0.00394,"px":0.0002878,"liq":42205,"p0":0.00029959826208982986,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":1.0,"f_xtype":1.0,"f_post_age":2.0,"f_theme24":13.0,"f_cjk":0.0,"c_ret":0.4943,"c_peak":1.0124,"c_vol":3.7971,"c_act":1.0,"c_r5":0.0655,"c_r15":0.2825,"c_mc":5.4765}}
 {"t":1793376840249,"addr":"Fe5fUKvzF2L7LsHcYqfcddyek562bVwcSdSPeXaSpump","sym":"Fedinu","age":30.3,"why":"liquidity","liq":2031}
+{"t":1793376900755,"addr":"79FZ2fZp9nfqvpF9GfRPksmHYM5LJp3UfvAPqWQXpump","sym":"MONGHERO","age":30.7,"why":"liquidity","liq":0}
