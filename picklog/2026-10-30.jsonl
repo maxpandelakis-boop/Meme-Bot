@@ -5,3 +5,4 @@
 {"at":1793373300000,"why":"drop","mult":0.8439115920267567,"rule":"chart","sym":"FLUKE","t":1793373352338,"eur":41.36,"pnl":-8.64,"entryAt":1793372031844,"id":"2026-10-30T143448-h-FLUKE-C31uUc"}
 {"at":1793377680000,"why":"drop","mult":0.8821146596459786,"rule":"chart","sym":"FLUKE","t":1793377734911,"eur":43.23,"pnl":-6.77,"entryAt":1793375330337,"id":"2026-10-30T153004-h-FLUKE-C31uUc"}
 {"at":1793382540000,"why":"drop","mult":0.9808832516074232,"late":true,"hitAt":1793382480000,"rule":"chart","sym":"FLUKE","t":1793382596355,"eur":48.07,"pnl":-1.93,"entryAt":1793379387249,"id":"2026-10-30T162946-h-FLUKE-C31uUc"}
+{"at":1793386500000,"why":"drop","mult":0.8803565160520601,"late":true,"hitAt":1793386320000,"rule":"chart","sym":"HYPERCHAN","t":1793386639126,"eur":43.14,"pnl":-6.86,"entryAt":1793384716479,"id":"2026-10-30T180251-h-HYPERCHAN-3ApVr1"}
