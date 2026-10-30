@@ -371,3 +371,4 @@
 {"t":1793365200587,"addr":"EFo8uB6wD739GgtGoYbAwxM6Pp8iCzM8XGf7jQW7pump","sym":"PURPS","age":43.0,"why":"no candles"}
 {"t":1793365200587,"addr":"6pzLxMmyvWDtCwLp7abKhXGCxK6nQ6pjAiQj2awfbonk","sym":"NADCHECK","age":30.8,"why":"liquidity","liq":0}
 {"t":1793365200587,"addr":"DcKJ61x4Wfe1dCGUhuUZDi1uHAc9KzQviGxwWXCbaP42","sym":"Pum Coin","age":30.6,"why":"liquidity","liq":0}
+{"t":1793365320938,"addr":"6fkohNAU9QtvWvDyv3mqs4ttYyyM7FADnEu9WDHng6KC","sym":"Memelord","age":30.9,"score":0.02515,"px":1.166e-05,"liq":19719,"p0":1.5209462206089999e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.1139,"c_peak":1.5449,"c_vol":4.7774,"c_act":1.0,"c_r5":-0.0226,"c_r15":-0.3619,"c_mc":4.1821}}
