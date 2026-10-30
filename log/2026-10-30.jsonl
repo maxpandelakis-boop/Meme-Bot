@@ -355,3 +355,15 @@
 {"t":1793363701191,"addr":"qAHzmuFp83VQaugKHWdNxqiAsAbYmtSgbkLKTo5pump","sym":"YouTube","age":30.0,"why":"liquidity","liq":1822}
 {"t":1793363820655,"addr":"Dck2UxbeMqjS99XTSNHF3bqcTdJGNgSAM428XW2D5JCL","sym":"1029","age":30.4,"why":"liquidity","liq":0}
 {"t":1793364000587,"addr":"6RvmStHAWduAeLVfwYHYCrRBw7J8e7p6SkiuCjbSheT5","sym":"Kit","age":30.9,"why":"liquidity","liq":0}
+{"t":1793364660720,"addr":"3f21f8Kaw3EtT7GoRzCPQgasmEcuU9bvwfFvRCaMRiwE","sym":"1029","age":40.5,"score":0.02553,"px":4.218e-05,"liq":55697,"p0":3.839684847383492e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":23.0,"f_cjk":0.0,"c_ret":0.5241,"c_peak":1.0387,"c_vol":4.846,"c_act":1.0,"c_r5":0.0886,"c_r15":0.2812,"c_mc":4.5843}}
+{"t":1793364660720,"addr":"8ATdTSk5ox7wnfs8iYVrvgJm2UbxRJNmxsgqv1d8moon","sym":"Soldrgn","age":40.1,"why":"liquidity","liq":0}
+{"t":1793364660720,"addr":"yZ47DAB1H3WiWdkSdVpKx9sptxTeAhQ2fxrzrHypump","sym":"Mr Beast","age":39.5,"why":"liquidity","liq":1761}
+{"t":1793364660720,"addr":"EkusXTuYQJ36HwxRcxUyJ2ymmyUuGCbKYbUHyVLzWFpc","sym":"Blindsight","age":39.4,"why":"liquidity","liq":0}
+{"t":1793364660720,"addr":"5Cab1x4S6dyWKczijKwup5KGsg8WcHiErsMHtddM7hfL","sym":"Mbappe","age":35.2,"why":"liquidity","liq":0}
+{"t":1793364660720,"addr":"FJtB5B9zQASTVSvsyctSWueR37L2B3xeWmDUSQRTBAGS","sym":"Gzroar","age":34.9,"why":"liquidity","liq":0}
+{"t":1793364660720,"addr":"DRveUDTdDpguzzo7NW8UBFtPe1VjNwJLoV3AiZ5hYqSh","sym":"PCAT","age":33.6,"why":"liquidity","liq":0}
+{"t":1793364720663,"addr":"4q6cZzT9niFWM8UQnrAGC2KPWthhLnsYpfpuQNS2xQ1S","sym":"DATAR","age":30.8,"why":"liquidity","liq":0}
+{"t":1793364781447,"addr":"8NVfiK3KmJFQmFNDrqkZDLFKUokSncypamYJtSFepump","sym":"XTruth Oil","age":30.5,"score":0.00453,"px":0.0003437,"liq":46727,"p0":0.00030901467807865955,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9252,"c_peak":1.0133,"c_vol":4.4496,"c_act":1.0,"c_r5":0.2979,"c_r15":0.5839,"c_mc":5.49}}
+{"t":1793364781447,"addr":"7kAZFbvWZ9bKCD1tKCCNDK9poruBJpcwMt6DmD8sGvzH","sym":"CATPAD","age":30.0,"why":"liquidity","liq":2781}
+{"t":1793364840983,"addr":"3tTZ6ysg1fNP9TccgoRxpkiSP5MLuQqATKJsRtG4oM5z","sym":"Pum Coin","age":30.9,"why":"liquidity","liq":0}
+{"t":1793364900772,"addr":"5VdrfY3NK6T1V3mywUkb3UShFM5eS3zEni8G8aQ2pump","sym":"PAHOL","age":30.5,"why":"liquidity","liq":0}
