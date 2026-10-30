@@ -627,3 +627,6 @@
 {"t":1793391180814,"addr":"iNo3smBMiYRrQHJsZXMT2QAQPUzVSszXQLp8Yxypump","sym":"BARRON","age":30.1,"why":"liquidity","liq":1798}
 {"t":1793391300608,"addr":"71WSiyFp2xF2CkpiMyTJ9dFJfWdxWqNwMfrWRkS4pump","sym":"PILLY","age":30.1,"why":"liquidity","liq":3534}
 {"t":1793391421112,"addr":"AtJabex6nt7AdddD23pKMtx7Pca32NL2vKXPcbk7rjbB","sym":"Candy","age":30.1,"why":"liquidity","liq":24}
+{"t":1793391600531,"addr":"3Eb9vYqDandnTPCYNQ5TZtbuZxkMuQ6jpekEVH3sbonk","sym":"Astradx","age":30.2,"why":"liquidity","liq":0}
+{"t":1793391781389,"addr":"G8fT2F8ZCQXGR5WmS71gGPo3bBjztgsjivbPuT9qpump","sym":"INUFLUENCER","age":39.5,"why":"liquidity","liq":9109}
+{"t":1793391781389,"addr":"8GUoRZCSzjfoA47FRBJ4MuNjjpyn3pWZDTkRePWNpump","sym":"HC","age":30.3,"score":0.01261,"px":3.566e-05,"liq":14275,"p0":4.2090366692208145e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":-1.9561,"c_peak":11.6729,"c_vol":5.7785,"c_act":1.0,"c_r5":-1.8583,"c_r15":-1.5159,"c_mc":4.6242}}
