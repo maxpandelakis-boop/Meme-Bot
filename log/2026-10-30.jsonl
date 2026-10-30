@@ -6,3 +6,5 @@
 {"t":1793319120079,"addr":"4HSHFbFiKuMvZW7yGiDTab17B63MzBkkhadFKxhkpump","sym":"calm","age":30.7,"score":0.01315,"px":7.203e-05,"liq":20351,"p0":5.994266378465798e-05,"bars":6,"buy":false,"f":{"f_curve_min":16.9167,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.1067,"c_peak":1.0963,"c_vol":4.3845,"c_act":1.0,"c_r5":0.1682,"c_r15":0.1012,"c_mc":4.7777}}
 {"t":1793319120079,"addr":"CCiw1H4BJcrmwQYisnaTqAkyvLm9xtBGjemQh6DN9BZ","sym":"ZERODAY","age":30.7,"why":"liquidity","liq":0}
 {"t":1793319191481,"addr":"5bnvYJuf6MsJjPTnSRY3wn9kQZyVVPPpwEuD3Laqbonk","sym":"WEMTOW","age":30.9,"why":"liquidity","liq":0}
+{"t":1793319661282,"addr":"5d3BgrBRzYMhswg1QNveWvDUvQAKpVAUEiidBT2earny","sym":"EARNY","age":43.8,"why":"no candles"}
+{"t":1793319720597,"addr":"7A2E8Gg3oKEL37U4sWCSUZufNiR4yxFLbFTkfibvmoon","sym":"Clkturt","age":30.3,"why":"liquidity","liq":0}
