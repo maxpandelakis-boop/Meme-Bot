@@ -680,3 +680,4 @@
 {"t":1793395800828,"addr":"5hMnmxFcD948yzMZ6Cieh6s4yLupDobeugyhcHm5BAGS","sym":"Diskgho","age":30.9,"why":"liquidity","liq":0}
 {"t":1793395800828,"addr":"6iNZH8xup3sHUBBeqz1A2gUrYtKGizqVdV2z1NuYhnuQ","sym":"Ghost Cat","age":30.5,"why":"liquidity","liq":83}
 {"t":1793395860579,"addr":"EV116Y5Y6cYvcugmXwLVZPhbZus1NxV5WbArJxtUxxxx","sym":"xpad","age":30.3,"why":"liquidity","liq":2118}
+{"addr":"5wCqCq6jbppuTocMeq6zd4UywAm64L1QNNxvEDAHpump","sym":"TYGR","pool":"CRuK58zxhmh5NFdSMcjVftE9B4AxGfUqWqET5SJjJajC","t":1793384820928,"px":0.0003608,"score":0.087,"cut":0.057,"best":1.174408,"last":0.466517,"tok":"base","seen":1793396220631,"now":0.525222,"lastT":1793396160000,"out":1793396220000,"mult":0.4665,"eur":-11.86,"why":"floor","g":1,"closed":true}
