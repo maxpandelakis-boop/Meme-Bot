@@ -468,3 +468,4 @@
 {"t":1793373660904,"addr":"dhwgy3mfxJ3sNrBqZEjLpqS5Wf3rptfq8YfL4rVpump","sym":"TESLA SI","age":30.2,"why":"liquidity","liq":1773}
 {"t":1793373720780,"addr":"5tvhMvt2Lr53ciXNSuVUFdsi762ads7h1wewQsJxt8tM","sym":"newt","age":30.8,"why":"liquidity","liq":0}
 {"t":1793373781655,"addr":"mc4haRWtRshCJQpkRXyBSmrou8kJnKU3MMxHXDgmoon","sym":"Crocsur","age":30.9,"why":"liquidity","liq":0}
+{"t":1793373960889,"addr":"GyGwKcJUfMF4UhsfsM8cVBZT9jP1PvmoasXx29aG6QX","sym":"SAFU","age":30.5,"score":0.03019,"px":1.163e-06,"liq":165680,"p0":1.1619922539842123e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.4833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":35.0,"f_cjk":0.0,"c_ret":0.4576,"c_peak":1.0191,"c_vol":6.4443,"c_act":1.0,"c_r5":0.0642,"c_r15":0.1885,"c_mc":3.0652}}
