@@ -78,3 +78,4 @@
 {"t":1793327880153,"addr":"aQdhoRY87T5XhdZrTY8LVKERGRiH4T8b1Pr1kZWpump","sym":"Rockstar","age":30.7,"why":"liquidity","liq":1826}
 {"t":1793327880153,"addr":"nmnGMuUpFDB5VSP99RkuYdY5DcFLn1Pj3yjPxCNpump","sym":"BMW","age":30.3,"why":"liquidity","liq":1760}
 {"t":1793328300879,"addr":"AkN8CWevo77MjjkfY3hQ5R7vGsPb5zumqKaUJbr4pump","sym":"SWAN","age":30.8,"why":"liquidity","liq":2140}
+{"t":1793328840487,"addr":"U72nP7UppuQJd5ew864wTD3oDRA9fzgDBW4zHtEpump","sym":"UODF","age":30.7,"score":0.00382,"px":0.01225,"liq":284751,"p0":0.012319181328851075,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":17.0,"f_cjk":0.0,"c_ret":0.0175,"c_peak":1.003,"c_vol":5.1295,"c_act":1.0,"c_r5":-0.0028,"c_r15":0.0072,"c_mc":7.0906}}
