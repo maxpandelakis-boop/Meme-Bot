@@ -326,3 +326,5 @@
 {"t":1793360040590,"addr":"GmB6pej6JY7u6RwxzVmcv523AaLFNzQH4qyiyZuxpump","sym":"Pitpaw","age":30.3,"why":"liquidity","liq":2154}
 {"t":1793360160578,"addr":"4WKiDZ8Z58mHvfoQYRPwsb6TxNs5Ci2c6QqgY89qr2BZ","sym":"Catori","age":30.8,"why":"liquidity","liq":0}
 {"t":1793360160578,"addr":"i5oUQAw6btBb3RBcy4c6VFeiMWGzjdRSApgLSoJpump","sym":"BLOB","age":30.1,"score":0.00581,"px":0.0001545,"liq":30763,"p0":0.00015458708378596572,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.121,"c_peak":1.037,"c_vol":3.7501,"c_act":1.0,"c_r5":0.0146,"c_r15":0.0171,"c_mc":5.1892}}
+{"t":1793360760790,"addr":"AvxawfhmpLcBnRz4p2KDcS5J1HCU7px81JZ4PTB7uY74","sym":"Tessera","age":30.6,"why":"liquidity","liq":0}
+{"t":1793360880541,"addr":"6BtmMSwPuf3T3JBtDEgtPWmBvaoZHmgBzGhXd3ucpump","sym":"MMDC","age":30.7,"why":"liquidity","liq":2115}
