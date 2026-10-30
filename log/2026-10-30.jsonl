@@ -402,3 +402,5 @@
 {"t":1793367661269,"addr":"xRCQzJKdEWR4C6Q4j7VDrdMaexCbYcPvvkDVfggpump","sym":"LEGO","age":30.7,"why":"liquidity","liq":1745}
 {"t":1793367901001,"addr":"DXCqgL1uLKNeaEvvKQVPoCuPtekAz6AP7gyosN6KeXDG","sym":"\u5927A","age":30.3,"score":0.04751,"px":9.13e-06,"liq":14893,"p0":1.1156015490185782e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":16.0,"f_cjk":1.0,"c_ret":0.4931,"c_peak":1.7187,"c_vol":5.2538,"c_act":1.0,"c_r5":0.1037,"c_r15":-0.3853,"c_mc":4.0475}}
 {"t":1793367901001,"addr":"82wMUeqAkxf3CkQjrc1VHyP2doUnNDzZ51Ep4Z5rKC7b","sym":"Pum Coin","age":30.2,"why":"liquidity","liq":0}
+{"t":1793368140807,"addr":"kCQz9oeHN9JDT5mib8AxBchSzVuukn3DiSVNFvqhTmm","sym":"fighter","age":30.6,"why":"liquidity","liq":0}
+{"t":1793368260542,"addr":"T52KSuMZshVRCro2QUMgFPgGrXakcWZbFnt8q7Npump","sym":"AODF","age":30.6,"score":0.00421,"px":0.3045,"liq":1426027,"p0":0.3037588981902421,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":22.0,"f_cjk":0.0,"c_ret":0.154,"c_peak":1.0089,"c_vol":5.8542,"c_act":1.0,"c_r5":-0.0017,"c_r15":-0.0076,"c_mc":8.4825}}
