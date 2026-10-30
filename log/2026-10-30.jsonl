@@ -39,3 +39,7 @@
 {"t":1793324100598,"addr":"YKZh5HnNq8eE8GksAqoRBsdMrnS9hbCbCPjqQECpump","sym":"USDP","age":30.4,"score":0.00455,"px":0.1617,"liq":1031909,"p0":0.16283125815126948,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":14.0,"f_cjk":0.0,"c_ret":-0.0001,"c_peak":1.0144,"c_vol":5.7144,"c_act":1.0,"c_r5":-0.0027,"c_r15":-0.0104,"c_mc":8.2117}}
 {"t":1793324160140,"addr":"rAeHwFoaz4vhd5wNRqD9rAsGsfq9a8NY9b2biJmpump","sym":"TESLA SI","age":30.6,"why":"liquidity","liq":1732}
 {"t":1793324221057,"addr":"NpRt2DGFxPg1hKdCj8JAxRk5mzdcc5uF89QX1Rm564g","sym":"\u5e01\u5b89\u52a0\u6cb9","age":30.7,"score":0.01765,"px":1.834e-05,"liq":24479,"p0":1.729055825040643e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.2503,"c_peak":1.2831,"c_vol":4.9404,"c_act":1.0,"c_r5":-0.2128,"c_r15":-0.0402,"c_mc":4.2378}}
+{"t":1793324400906,"addr":"BH72YNkrVTqoKZScWJd9dQYaCu8SQAfaF84HapgsNe2R","sym":"NEX Ai","age":30.2,"why":"liquidity","liq":0}
+{"t":1793324460695,"addr":"6ekWY5qWDSKfvGo8heM1hXAwinGeErJYxSmh4s97pump","sym":"Qkey","age":30.9,"why":"liquidity","liq":0}
+{"t":1793324580647,"addr":"69z5Hs8ovWm11nWaaLTbrhxCdTzcynSUWmZbJLogpump","sym":"HACKER","age":30.4,"why":"liquidity","liq":3523}
+{"t":1793324580647,"addr":"6bzhzD9DVr9Vn5VLVpdG63pg9pXsPYzmW7H7ureqcjrj","sym":"NEX Ai","age":30.2,"why":"liquidity","liq":0}
