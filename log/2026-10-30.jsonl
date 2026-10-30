@@ -681,3 +681,6 @@
 {"t":1793395800828,"addr":"6iNZH8xup3sHUBBeqz1A2gUrYtKGizqVdV2z1NuYhnuQ","sym":"Ghost Cat","age":30.5,"why":"liquidity","liq":83}
 {"t":1793395860579,"addr":"EV116Y5Y6cYvcugmXwLVZPhbZus1NxV5WbArJxtUxxxx","sym":"xpad","age":30.3,"why":"liquidity","liq":2118}
 {"addr":"5wCqCq6jbppuTocMeq6zd4UywAm64L1QNNxvEDAHpump","sym":"TYGR","pool":"CRuK58zxhmh5NFdSMcjVftE9B4AxGfUqWqET5SJjJajC","t":1793384820928,"px":0.0003608,"score":0.087,"cut":0.057,"best":1.174408,"last":0.466517,"tok":"base","seen":1793396220631,"now":0.525222,"lastT":1793396160000,"out":1793396220000,"mult":0.4665,"eur":-11.86,"why":"floor","g":1,"closed":true}
+{"t":1793396280565,"addr":"B8pBcx8W8NsTJxhRFF6iKPbnqrvtcgmub51VxcpJJ6rV","sym":"microduck","age":31.0,"why":"liquidity","liq":0}
+{"t":1793396280565,"addr":"J5jxG3PFaWpj6BLEQExyC6FSqSvaTKNdQ9G3sZwBpump","sym":"PILLSEY","age":30.7,"score":0.02102,"px":0.0002707,"liq":41938,"p0":0.000328249481278132,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.1129,"c_peak":1.4231,"c_vol":5.6786,"c_act":1.0,"c_r5":0.1151,"c_r15":0.2438,"c_mc":5.5162}}
+{"t":1793396340768,"addr":"6D75bUMYnLvy3HkxuKHHW9rgjKTU4xhFHahYSyzxpump","sym":"REMARC","age":30.3,"why":"liquidity","liq":2328}
