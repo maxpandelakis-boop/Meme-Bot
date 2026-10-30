@@ -498,3 +498,5 @@
 {"t":1793375941010,"addr":"61h4rUn7C21QNv1NJADc2oAxpAhr7f2WGqbXRDEupump","sym":"SPACECAT","age":30.4,"why":"liquidity","liq":7421}
 {"t":1793376181499,"addr":"3RWAy2b6cc8qascNNGFXae8AiKe6j5uv3hje6fjvpump","sym":"NET","age":31.0,"why":"liquidity","liq":3291}
 {"t":1793376181499,"addr":"9bf2pH1xTdvqMEmS66X8SjtBNJ84G7bnJQdcoxNJJZH8","sym":"\u5927A","age":30.3,"score":0.0168,"px":3.911e-05,"liq":30108,"p0":2.989529820736795e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":18.0,"f_cjk":1.0,"c_ret":1.1952,"c_peak":1.0046,"c_vol":4.8042,"c_act":1.0,"c_r5":0.7192,"c_r15":0.8738,"c_mc":4.4756}}
+{"t":1793376310958,"addr":"Fpyhs2b6YgWHtPNF6wMamhatR61hnfiY3JciSXD4pump","sym":"FLOATWINGS","age":31.1,"why":"liquidity","liq":1834}
+{"t":1793376360591,"addr":"GWUen31GwoTPgyqkPxVP8oESyxRgFVo7PETuxkBpump","sym":"AMAZON","age":30.5,"why":"liquidity","liq":1727}
