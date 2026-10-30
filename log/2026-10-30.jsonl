@@ -342,3 +342,4 @@
 {"t":1793362440669,"addr":"4SqkCNydwFHMbU47cCzAJgjq59ZfsmYDzf6KH6EXBAGS","sym":"Ninov","age":30.9,"why":"liquidity","liq":0}
 {"t":1793362741399,"addr":"CCixYUYK7Zp7AZZRZYf78vEBSZN1wThkRaHBh1CMFCTp","sym":"JAGENT","age":30.9,"score":0.00252,"px":1.097e-05,"liq":21912,"p0":1.0978455740028912e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.8,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.0006,"c_peak":1.0,"c_vol":0.4313,"c_act":0.3333,"c_r5":0.0,"c_r15":0.0006,"c_mc":4.0405}}
 {"t":1793362741399,"addr":"D5jXa1ejTRaPM2aGx9AQwyknZ8ZRcwAMzD8Kj9jemoon","sym":"Mngchase","age":30.4,"why":"liquidity","liq":0}
+{"t":1793362801051,"addr":"4L1Sj35H2KkCSNYDhv2S5M7YTmYZe5P2sxne8Eq7pump","sym":"PEET","age":30.7,"why":"liquidity","liq":2943}
