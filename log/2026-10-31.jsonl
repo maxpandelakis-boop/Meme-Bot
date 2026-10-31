@@ -19,3 +19,4 @@
 {"addr":"EyP4jf5BreUWNdHtkf9bBUANFdx3M4ETzmp9zNrvECG4","sym":"Ghost Dog","pool":"FPujbj8Uwnpbgo5hfTUutWKRD6NWUXw5juiL4QgvvZyB","t":1793405040901,"px":8.933e-05,"score":0.0847,"cut":0.057,"best":1.022177,"last":1.016932,"tok":"base","seen":1793406240517,"now":1.020038,"lastT":1793406180000,"out":1793406240517,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793406301130,"addr":"AfrmQ13HrEfjPFSmcjz1PVGKHctuP2UTiUQtgcaZmoon","sym":"DOOMPHX","age":30.1,"why":"liquidity","liq":0}
 {"t":1793406421160,"addr":"5ahor7yZ9EdXLzfS43aEPsfBsLtgocsi5sGc2Rsa58PG","sym":"NATIONS","age":30.9,"why":"liquidity","liq":5894}
+{"t":1793406480801,"addr":"3dyKznwS44LJeJRSLf74GT5piyNKKqWYYyXcDcixpump","sym":"Zazu","age":30.4,"why":"liquidity","liq":7478}
