@@ -179,3 +179,5 @@
 {"t":1793424360403,"addr":"8Pn7XtHzEtj1FbzKuawzZ7PdBk5k6eEtH8p7Unq5frx","sym":"MONEKO","age":30.2,"score":0.04992,"px":0.0001114,"liq":145212,"p0":0.00010903890014421297,"bars":6,"buy":false,"f":{"f_curve_min":0.7667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.4967,"c_peak":1.0256,"c_vol":6.4614,"c_act":1.0,"c_r5":0.0365,"c_r15":0.2155,"c_mc":5.0376}}
 {"t":1793424421357,"addr":"J9PFSnEbqq6b2Fkd3i3reFnEM4MkQkysuY8U1h7mTFAS","sym":"Pum Coin","age":30.3,"why":"liquidity","liq":29}
 {"t":1793424421357,"addr":"Gc2dJW92D9fckoToufKmnNQQnyRFDuj3ZEYfwhsjWJab","sym":"KYC","age":30.3,"score":0.00755,"px":0.01954,"liq":105774,"p0":0.019146687517173577,"bars":6,"buy":false,"f":{"f_curve_min":0.1,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":1.7859,"c_peak":1.008,"c_vol":5.3743,"c_act":1.0,"c_r5":0.1423,"c_r15":0.2489,"c_mc":7.2821}}
+{"t":1793424540947,"addr":"8VNBR9rUapqSTbkG4oxgJ8qsrx3VY6NTaphYov1Sbonk","sym":"Dowred","age":30.3,"why":"liquidity","liq":0}
+{"t":1793424720139,"addr":"12AMXsZwkkjvKqJRov3DDc3txpCCEYjPzbd5CKsxUTKt","sym":":)","age":30.8,"why":"liquidity","liq":0}
