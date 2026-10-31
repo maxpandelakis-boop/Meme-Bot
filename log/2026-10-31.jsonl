@@ -688,3 +688,6 @@
 {"t":1793476440057,"addr":"DRPG2eoTrnWob1Y3M8zcPz9Wz8WEUu5TfaGom3YqGUmJ","sym":"LOKOK","age":30.3,"score":0.00586,"px":3.724e-05,"liq":16028,"p0":4.110010051760068e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0458,"c_peak":1.0334,"c_vol":4.7924,"c_act":0.8333,"c_r5":-0.0056,"c_r15":0.0458,"c_mc":4.6138}}
 {"t":1793476501280,"addr":"7ghDpc58nMKY9Y3Av5dxQfqjvA6mnYJYNRwWUsyrpump","sym":"Claude","age":30.9,"why":"liquidity","liq":1798}
 {"t":1793476560513,"addr":"H4G9m7wJxq1rmDJnHD7fXTkarXPvUrkDhs6UA2T1pump","sym":"FRUADBUSTERS","age":30.7,"why":"liquidity","liq":1930}
+{"t":1793476741048,"addr":"CEay1WQPZApDxm3vXmsaihyoFafeooe4bsxp9c9Zpump","sym":"PUMPUSER","age":30.1,"why":"liquidity","liq":1901}
+{"t":1793476860953,"addr":"6bE4Xo8eEEeWUXuLezkNnnoqwbWpQE2zLAYCJdgyyhR4","sym":"SAFU","age":30.2,"score":0.02328,"px":3.234e-05,"liq":48661,"p0":3.2141926434375296e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":14.0,"f_cjk":0.0,"c_ret":0.3237,"c_peak":1.0489,"c_vol":5.0365,"c_act":1.0,"c_r5":0.1191,"c_r15":0.1029,"c_mc":4.5071}}
+{"t":1793476980466,"addr":"9XGhFJtFnNi5866cTBhGHyggffJWVMCVM7xig2Ghpump","sym":"UODF","age":30.6,"why":"liquidity","liq":2158}
