@@ -799,3 +799,4 @@
 {"t":1793486880935,"addr":"DxCigS14Vzf1ZxiFA2TKK47DHRnecaDLaAchipVBpump","sym":"SAMRAM","age":30.4,"why":"liquidity","liq":2115}
 {"t":1793486880935,"addr":"FwaFnSdwRdgomq7L5Z3ct2fzFk6Nm2xaCVkD4NZGpump","sym":"SOWCROW","age":30.2,"why":"liquidity","liq":0}
 {"addr":"8pjfN5Ayb4rucGpYE3tZWN6v3EysizjPx1v62zx1pump","sym":"KIM","pool":"AbeqLWaD4nQi37xvTZcPUo953cHcLqBUCUYC8MHDP4EQ","t":1793482381750,"px":0.0004003,"score":0.0612,"cut":0.057,"best":2.111209,"last":1.195925,"tok":"base","seen":1793487000937,"now":1.577317,"lastT":1793486940000,"out":1793487000000,"mult":1.1959,"eur":2.14,"why":"trail","g":1,"closed":true}
+{"t":1793487120719,"addr":"FTbk63ToV6PFMFiyXrpe9gXcvdX3b6DtBoEFkNa1pump","sym":"Amazon","age":30.8,"why":"liquidity","liq":1765}
