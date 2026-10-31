@@ -169,3 +169,4 @@
 {"t":1793423280635,"addr":"F7ZQtqwJjwQs4VRUAnxg6KRZWPzMvLpKKmUsx4x9pump","sym":"offline","age":30.7,"score":0.02,"px":3.025e-05,"liq":13063,"p0":2.6538080779584453e-05,"bars":6,"buy":false,"f":{"f_curve_min":19.5,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.3443,"c_peak":3.111,"c_vol":5.2015,"c_act":1.0,"c_r5":-0.4478,"c_r15":-0.6284,"c_mc":4.4239}}
 {"t":1793423352407,"addr":"GUzXPKkFMkPQPUgSUSQ4SUfp8MtGMvLso55uhe5vpump","sym":"PANKO","age":30.3,"why":"liquidity","liq":2063}
 {"t":1793423400747,"addr":"27vFfoEQufDj9zveFXVpw6oSDZM2GaBNtq4dE9vgmoon","sym":"HOFB","age":30.1,"why":"liquidity","liq":0}
+{"t":1793423640471,"addr":"9Ua9HojY1Yqw61Tu23EXrz38gXGzYTQGq8HSs5gvQpX","sym":"VIBECAT","age":30.8,"why":"liquidity","liq":0}
