@@ -64,3 +64,5 @@
 {"addr":"5QHLLrwKuGrLgrC1CUBZVL9PuL2p9WpiGZi3XARmKQUQ","sym":"Pum Coin","pool":"4qUdtqZE1g2oPLuFmdK3kJhsvw4pfxGWddRZ8n426wKq","t":1793412660955,"px":3.755e-05,"score":0.0909,"cut":0.057,"best":9904.129663,"last":9904.129663,"tok":"base","seen":1793412840876,"now":9885.486019,"lastT":1793412720000,"out":1793412840876,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793413140773,"addr":"3TAowq9oN5JF71vFo2dsiJ47JYouSiqmEiSbcLDam9rM","sym":"Ghost Cat","age":30.3,"why":"liquidity","liq":0}
 {"t":1793413140773,"addr":"9DoEsfrVCHQsuy9xr4v81d6FdX9QT1rLxohNK7ycpump","sym":"HACKCOIN","age":30.1,"why":"liquidity","liq":3150}
+{"t":1793413320375,"addr":"HE5BStXXf4MLsEtsqSd1pPY2Rq89nQiYrcwvETbqzFM6","sym":"Witch","age":30.7,"why":"liquidity","liq":0}
+{"t":1793413440782,"addr":"3BX1siu3a96UmCALwyE1iRb9iGB8PFmz5eiSAaTW1cuR","sym":"Ghost Cat","age":30.9,"why":"liquidity","liq":0}
