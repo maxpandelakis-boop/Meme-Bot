@@ -725,3 +725,7 @@
 {"t":1793479800171,"addr":"3JL9Wxzy1o7K6Jfr9S2QcxCX9A14EL3yhMbDPczYmoon","sym":"TPILANT","age":30.7,"why":"liquidity","liq":0}
 {"t":1793479800171,"addr":"Ewyifvp8X9NxeaKawXamGXBFDisuMfcFfcdvSZ8opump","sym":"CREDIT","age":30.5,"score":0.02858,"px":0.0002967,"liq":47186,"p0":0.0002817950200711424,"bars":6,"buy":false,"f":{"f_curve_min":2.6667,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":1.5518,"c_peak":1.5775,"c_vol":6.0368,"c_act":1.0,"c_r5":0.3593,"c_r15":0.1246,"c_mc":5.4499}}
 {"t":1793479800171,"addr":"24kWscggSvyY1Zn1pFbVv4V4RHSgWXZQ1ZT7oKN3bmg8","sym":"\u76d8\u53e4\u5e01","age":30.2,"why":"liquidity","liq":0}
+{"t":1793480221451,"addr":"848SDpabbw1qQXiCbsfSmGXWtyQvoNop3fzwJnSWRNQ5","sym":"\u76d8\u53e4\u5e01","age":30.9,"why":"liquidity","liq":0}
+{"t":1793480221451,"addr":"aCGvMYkFG9sjypnvKXdrid16T6BTmvqCVTK5f56pump","sym":"TESLA SI","age":30.8,"score":0.00685,"px":0.0002132,"liq":36268,"p0":0.0001992692876156149,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.5995,"c_peak":1.0154,"c_vol":4.5835,"c_act":1.0,"c_r5":0.1565,"c_r15":0.2999,"c_mc":5.2994}}
+{"t":1793480341096,"addr":"Ekrfsatr4wnfgPwYHGUXkZXndYrVQPpZqn6MKRQm4fvZ","sym":"\u76d8\u53e4\u5e01","age":30.8,"why":"liquidity","liq":0}
+{"t":1793480341096,"addr":"8p3YPiYwdKPqY3VytD86YctdXP7XTJpsqj5hE1ULpump","sym":"HORMRAD","age":30.8,"why":"liquidity","liq":0}
