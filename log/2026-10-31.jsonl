@@ -441,3 +441,10 @@
 {"t":1793455740513,"addr":"CH4somejo6HMscqRV5JqekHC7ZPrk7eepTGRR1jvpump","sym":"CUM","age":30.3,"why":"liquidity","liq":6188}
 {"t":1793455800826,"addr":"GkBjLod3ykoE79BujAC7GLB37319qTcgdE6xVXUrBAGS","sym":"MYERSXP","age":30.5,"why":"liquidity","liq":0}
 {"t":1793455800826,"addr":"Fsj9TeczXxjds69HFk3NNpBHD9uA8CW5SMUFK1k7zLQP","sym":"Hustler","age":30.3,"score":0.01916,"px":5.055e-05,"liq":66767,"p0":4.524216109766949e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.6478,"c_peak":1.0414,"c_vol":5.0778,"c_act":1.0,"c_r5":0.0675,"c_r15":0.2064,"c_mc":4.6555}}
+{"t":1793456280256,"addr":"ABuxAs68SXDsF9SUCLXDiBtteUUXjnSGdYTEcQRxJTJE","sym":"vampire\ud83d\udc7b","age":30.8,"score":0.0271,"px":3.205e-05,"liq":43636,"p0":3.120788123470346e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":101.0,"f_cjk":0.0,"c_ret":0.5525,"c_peak":1.0081,"c_vol":5.3587,"c_act":1.0,"c_r5":0.1977,"c_r15":0.4648,"c_mc":4.4943}}
+{"t":1793456280256,"addr":"gj7D9L5tFdrFQc2HgzS7waJmyy1CoGTppXTCPYzpump","sym":"Gemini","age":30.2,"why":"liquidity","liq":1747}
+{"t":1793456341373,"addr":"C27AtCPQiPVdMLbwugfxvvYUZask3y2ENQkCW3gCpump","sym":"CHANFLM","age":30.6,"why":"liquidity","liq":0}
+{"t":1793456341373,"addr":"5YREyyZig2rjst2rZv5e5UtNqP5FrWSjCdPNMcm7pump","sym":"Hallowinu","age":30.0,"score":0.00648,"px":0.0002535,"liq":41010,"p0":0.00023439530782906308,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":104.0,"f_cjk":0.0,"c_ret":0.0952,"c_peak":1.0516,"c_vol":5.7069,"c_act":1.0,"c_r5":0.3408,"c_r15":0.5381,"c_mc":5.3699}}
+{"t":1793456400125,"addr":"E5NTba6r3n8cznCPvwZmmgMEtwuNr2forTXAFD2Dpump","sym":"Bu","age":30.5,"why":"liquidity","liq":2003}
+{"t":1793456400125,"addr":"Dr1xizyVpFiBgtBa5WpcwGBsZ3Y1RBgAZtCqsZzxfdrz","sym":"VAMPDOG","age":30.4,"why":"liquidity","liq":0}
+{"t":1793456400125,"addr":"636GVXSKXzik2LEFGd8VPotHx2ygyH6b47cXhB3Exw28","sym":"Ghost Dog","age":30.4,"why":"liquidity","liq":0}
