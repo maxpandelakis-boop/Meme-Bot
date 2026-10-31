@@ -158,3 +158,7 @@
 {"t":1793422320378,"addr":"E5rDYVZTqb58V3AnkqKwVj7NmnwTvNZ8EeXdHUyvmoon","sym":"INOSHLD","age":30.7,"why":"liquidity","liq":0}
 {"addr":"6uhYq3yHjGv76uDsHHkFPAPA4dzagtWonqe2WeW49juG","sym":"Pum Coin","pool":"5uysJ8Hfez6WnvCkLpCkuvTsU63siCDqvY5bCsAHDPuD","t":1793419861286,"px":4.819e-05,"score":0.1089,"cut":0.057,"best":11516.004859,"last":11516.004859,"tok":"base","seen":1793422381259,"now":11498.236149,"lastT":1793422260000,"out":1793422381259,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793422440470,"addr":"4MinLrUYVTGQ854Jk8WjaxaDMtKHTYRiDqr2BKyCpump","sym":"RAM","age":30.3,"score":0.03814,"px":0.0001382,"liq":29730,"p0":0.00014695809497926573,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.4056,"c_peak":1.4549,"c_vol":5.6372,"c_act":1.0,"c_r5":0.0948,"c_r15":0.1756,"c_mc":5.1672}}
+{"t":1793422680178,"addr":"FrnFWjrDrm7xWY4DounP7ayJwjsfBuNxzbHcUk4an5uK","sym":"NEX Ai","age":30.0,"why":"liquidity","liq":14}
+{"t":1793422860772,"addr":"ADpzsC5eB1yDD5T9LocQ8kpN7jrcW5gobA4FBHuipump","sym":"Hyped","age":43.5,"why":"no candles"}
+{"t":1793422860772,"addr":"DEvjucZjqiLzDXdRdhpZa2kT7sVYgw7TDHoorqbcmoon","sym":"REMAPPLE","age":30.5,"why":"liquidity","liq":0}
+{"t":1793422860772,"addr":"FBtcwovjgYCySW2GHzotKAQ7u3rayhEx4PEdyj7b7PFV","sym":"\u5927A","age":30.0,"why":"liquidity","liq":0}
