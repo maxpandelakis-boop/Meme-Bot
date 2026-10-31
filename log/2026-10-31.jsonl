@@ -11,3 +11,7 @@
 {"t":1793405520754,"addr":"FWatMYieKhRuJ1yuTcmVG1njRhZWwqHwjR11pBympump","sym":"Leverhedge","age":30.8,"score":0.03983,"px":0.000121,"liq":27409,"p0":0.00011599881576462437,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.3866,"c_peak":1.6179,"c_vol":5.4119,"c_act":1.0,"c_r5":-0.0287,"c_r15":-0.1836,"c_mc":5.0645}}
 {"t":1793405760448,"addr":"4poKLzPuwjKJgXM6eF3EqBbMzWgkapi96vbNSkZipump","sym":"George","age":30.3,"why":"liquidity","liq":9274}
 {"t":1793405820856,"addr":"7LV2N3LcfCtJRPs116qnoMgt7pBLMaJSs9NXqJRMyzC6","sym":"Pum Coin","age":30.2,"why":"liquidity","liq":0}
+{"t":1793405880920,"addr":"8WnQ5AHAiXBadXhtNXKYAjFmUtxnr8wYXWsP62hUPaFu","sym":"Ghost Dog","age":30.8,"why":"liquidity","liq":4}
+{"t":1793406000153,"addr":"xk7nxmRSYx6VBgWC5VMTDnUoT88DqhyxAJuNT7cpump","sym":"ChatGPT","age":30.5,"why":"liquidity","liq":1753}
+{"t":1793406120930,"addr":"CHE9Nh7ZuU9sKmBadFRGPniywgSKESsSWmTez7GNpump","sym":"Eminem","age":30.9,"why":"liquidity","liq":2400}
+{"t":1793406120930,"addr":"76kZcM3ifdahRUqFthewsQbrPcTXZaMVn28dS11Fpump","sym":"XTO","age":30.8,"score":0.00612,"px":0.1836,"liq":1114513,"p0":0.1835018171229218,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0178,"c_peak":1.0008,"c_vol":5.7433,"c_act":1.0,"c_r5":0.0039,"c_r15":0.0096,"c_mc":8.2636}}
