@@ -40,3 +40,4 @@
 {"t":1793409960999,"addr":"HQmAbPvLw5TMaVzzUYP9aGeATJ6GDPHTZptRDZNUNwXf","sym":"yabbi","age":30.2,"why":"liquidity","liq":3859}
 {"t":1793410020669,"addr":"5NXEdHB7Dg46HhzBfsCzCh96zdBSYo5WU3C3nEHnBAGS","sym":"Abbcrown","age":30.2,"why":"liquidity","liq":0}
 {"t":1793410140505,"addr":"9t4JYVrNW8pyjhSqAdSM57svukMFYmnrXziHtjaxpump","sym":"iApe","age":30.6,"score":0.01881,"px":2.023e-05,"liq":10735,"p0":1.8474831023855263e-05,"bars":6,"buy":false,"f":{"f_curve_min":98.05,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":2.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.9206,"c_peak":3.1181,"c_vol":4.9861,"c_act":1.0,"c_r5":-0.1845,"c_r15":-0.4011,"c_mc":4.2666}}
+{"t":1793410440411,"addr":"2FGmQEgZcWKqJxxB7ZWMwzcJyPGK3QGUfXba5zxNpump","sym":"Lumi","age":30.7,"why":"liquidity","liq":2789}
