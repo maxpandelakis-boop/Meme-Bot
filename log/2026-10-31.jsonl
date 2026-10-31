@@ -778,3 +778,6 @@
 {"t":1793484421089,"addr":"G1z3Eyt5AqHCmjnCL6wQSh6ySWpQann1CqT6K1NBxmGY","sym":"11/13","age":30.2,"why":"liquidity","liq":0}
 {"t":1793484541090,"addr":"5CpnZAHi8Tmm1nqnbAFtKEoJzFg9uwRPmXZuWtAv2rDB","sym":"AE","age":43.3,"why":"no candles"}
 {"t":1793484541090,"addr":"2bKsotEEJiVMvpx1num2xAkMn4spG1pu5WxAvqdKRBkC","sym":"11/13","age":30.1,"why":"liquidity","liq":0}
+{"t":1793484840647,"addr":"4ynAufCG832vbRc2mpxPDG1AJnSkiFR963Schy4Tpump","sym":"svmLLM","age":30.8,"why":"liquidity","liq":5656}
+{"t":1793484900762,"addr":"JDxLQGmxZu6CNLJeQ5TpoupALCcuELvip5LFhv3jbonk","sym":"SWIFTSAT","age":30.6,"why":"liquidity","liq":0}
+{"t":1793484900762,"addr":"Xt3USRosjS86fKAYGfHvkSAbSftNgYXjQY1u4vTZQd9","sym":"Halloween","age":30.1,"score":0.00986,"px":478.8,"liq":43554,"p0":95.97217059321433,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":113.0,"f_cjk":0.0,"c_ret":0.0028,"c_peak":1.001,"c_vol":4.884,"c_act":1.0,"c_r5":-0.0001,"c_r15":0.0026,"c_mc":10.9821}}
