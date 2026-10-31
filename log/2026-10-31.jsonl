@@ -696,3 +696,6 @@
 {"t":1793477280492,"addr":"C2cvbraEeQ27ptSozr8mSNhkiJ3hSfNNd4F3sVawbuTT","sym":"Ghost Dog","age":30.7,"why":"liquidity","liq":0}
 {"t":1793477341286,"addr":"Gip5JH2FC6uXaSt8TR7oRhKdsxuPwrn2La1wGckFpump","sym":"Gemini","age":30.8,"score":0.00297,"px":0.0002768,"liq":41575,"p0":0.00023580231155314533,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.6424,"c_peak":1.0148,"c_vol":4.4913,"c_act":1.0,"c_r5":0.1615,"c_r15":0.3446,"c_mc":5.3725}}
 {"t":1793477341286,"addr":"FYoUJ1d9MMyhoHAPtFvpYnVmHAaiZ6zmcwXraXvqpump","sym":"pumpjak","age":30.5,"why":"liquidity","liq":2111}
+{"t":1793477520330,"addr":"KGtu65aEVEjateDymxNWj6k2xrJsztt9zbVwPsXpump","sym":"Apple","age":30.6,"why":"liquidity","liq":1778}
+{"t":1793477581185,"addr":"FhdX7j4FLiSYiW9GyS55tXtEE122aw9gRRzQL83Apump","sym":"BabyPaws","age":30.0,"why":"liquidity","liq":2106}
+{"t":1793477640491,"addr":"Egc6g9ZvxptNeBARmrvVeD7yBgwsbXesGNqGTs4ZbS9R","sym":"The 0.001%","age":30.9,"score":0.01192,"px":1.1e-05,"liq":19097,"p0":1.1397902683701045e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0486,"c_peak":1.0765,"c_vol":4.7763,"c_act":1.0,"c_r5":0.0033,"c_r15":0.0691,"c_mc":4.0568}}
