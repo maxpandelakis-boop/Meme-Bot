@@ -94,3 +94,4 @@
 {"t":1793416020521,"addr":"EGFd15w3yRFfwKgGUsNutJ6onjJLLqRRZs7pJpjFbonk","sym":"PENFOX","age":30.1,"why":"liquidity","liq":0}
 {"t":1793416140776,"addr":"6u4MDHVvjHSfArUYbrBFESyZbmd2ajksZTSVTufrUxap","sym":"\u7ea2\u679c\u77ed\u5267","age":30.9,"score":0.01414,"px":2.81e-05,"liq":47311,"p0":2.500316385465422e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.2069,"c_peak":2.0007,"c_vol":4.9365,"c_act":1.0,"c_r5":-0.0212,"c_r15":0.0093,"c_mc":4.398}}
 {"t":1793416140776,"addr":"H2bWa3XdqSKcHUcL3d2BSmdNE38yXtXpdZihn7nV3isx","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":0}
+{"t":1793416261159,"addr":"7cTgPwSkK19smVEpUP4iTpfSq5gb2oxZ7EdZutU1ajkd","sym":"Pum Coin","age":30.3,"why":"liquidity","liq":0}
