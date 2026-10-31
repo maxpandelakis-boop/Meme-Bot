@@ -763,3 +763,5 @@
 {"t":1793482861467,"addr":"BFcmCZMaggkfH7SvCviHKufrd6kDX8nRhrud7fTq2Gt7","sym":"Pum Coin","age":30.8,"why":"liquidity","liq":0}
 {"addr":"GZB7PPGN6f5kZjjkHfi9XqcgXdg6LrWcsujvs5cgVgwH","sym":"LUCK Coin","pool":"6Ri9uzyBHo3QD9JKFahVMVehfuCwQKGMtdswecSASwmh","t":1793481120493,"px":5.849e-05,"score":0.0647,"cut":0.057,"best":2.763603,"last":2.763603,"tok":"base","seen":1793482920091,"now":2.773124,"lastT":1793482800000,"out":1793482920091,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793483101183,"addr":"EDQM17ie9QUHUn1bDa13TFKG13iKVdriiz9Yx6hpump","sym":"Claude AI","age":30.5,"why":"liquidity","liq":2163}
+{"t":1793483400271,"addr":"Hnkp3UBUdAv5DNGzeW7ArQgb3qUzbY6rda29CEegW2Q","sym":"KIM","age":30.3,"why":"liquidity","liq":0}
+{"t":1793483400271,"addr":"EpYm4qE68E6NnC41jW27NGqTZkLXbpSwVdb27acaCpq5","sym":"Halloween","age":30.2,"why":"liquidity","liq":27}
