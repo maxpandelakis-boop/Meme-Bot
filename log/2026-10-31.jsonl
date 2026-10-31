@@ -206,3 +206,6 @@
 {"t":1793427960695,"addr":"2kUY7c6dgg2jKKejvUpUvycUMrFVwg4LUUxfMp7apump","sym":"PK","age":30.5,"why":"liquidity","liq":8817}
 {"t":1793428080569,"addr":"4nxMpLH545m876CV5wYD9JuYzPA4pguPqjix9Hu9moon","sym":"Lamrock","age":30.6,"why":"liquidity","liq":0}
 {"t":1793428380704,"addr":"AFcVv3QtXnotKNbFt6KVL6SGsdEDdJ6t4NA2X49EiWxJ","sym":"FAPPY","age":30.5,"why":"liquidity","liq":0}
+{"t":1793428500723,"addr":"4rYEicv2uE1MnV6gB754MivhbXELEPRoykqTp6Mypump","sym":"TITTYVERSE","age":30.3,"score":0.0112,"px":0.0002069,"liq":37574,"p0":0.00023867940234372672,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":2.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":1.3699,"c_peak":1.4524,"c_vol":5.5162,"c_act":1.0,"c_r5":0.3497,"c_r15":0.8026,"c_mc":5.3778}}
+{"t":1793428500723,"addr":"C7gn7W5CBZ5tM4JQmGyKHVj7pZuaGQEqJEqyUtzupump","sym":"BOAR","age":30.2,"why":"liquidity","liq":1851}
+{"t":1793428740821,"addr":"BJJAYDPs3MWn5Rqs5m63QnnWx8VmDV8xDNpnX2impump","sym":"Gemini","age":30.6,"why":"liquidity","liq":1747}
