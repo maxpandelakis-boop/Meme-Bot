@@ -626,3 +626,5 @@
 {"t":1793470200315,"addr":"BziTigpHa9Wwq1zyuHMm2JMw9VNyiRhfHW6bgqhSjMLA","sym":"DOUGHBRIKS","age":30.6,"score":0.02201,"px":9.521e-06,"liq":15066,"p0":9.472929586444997e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.0227,"c_peak":2.808,"c_vol":5.1024,"c_act":1.0,"c_r5":-0.8401,"c_r15":-0.6379,"c_mc":3.9765}}
 {"t":1793470561053,"addr":"sPYv8sxCmhPZdnjL9S1DYoGqcXm4dQUbydyQtbypump","sym":"BARRON","age":30.9,"why":"liquidity","liq":1816}
 {"t":1793470561053,"addr":"FbQ93B2ms7pdZbr7Ef9x52tiQFY198qzCeKrctcamoon","sym":"Protom","age":30.5,"why":"liquidity","liq":0}
+{"t":1793470861074,"addr":"7E9F2d5SdTLf5MHiacs3U7dTPfZqbQiWCwCCupL7rcrX","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":38}
+{"t":1793470861074,"addr":"EjCPhwteDWfFx8TyWTZKz52Amnte7skUyHYgRe1hgcnW","sym":"BSTC","age":30.8,"why":"liquidity","liq":0}
