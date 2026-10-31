@@ -239,3 +239,4 @@
 {"t":1793431620969,"addr":"C2DVtRDAag1zmtFScczdT4MUoFABKLX3LtMNcB4Stqby","sym":"Pum Coin","age":30.0,"why":"liquidity","liq":0}
 {"t":1793431920468,"addr":"GQiBSQ82ZnatWdrT3dicFAUzooft7EEv3rjQ4aB9pump","sym":"MrBeast","age":30.3,"score":0.0037,"px":0.000205,"liq":35541,"p0":0.00019690559800278348,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.3948,"c_peak":1.0148,"c_vol":4.3697,"c_act":1.0,"c_r5":0.268,"c_r15":0.316,"c_mc":5.2943}}
 {"t":1793432040214,"addr":"2oMB1b6s9HPqrkxYrEHBLQkeebH1pYSMYVAE2J2xBAGS","sym":"PICVOY","age":30.7,"why":"liquidity","liq":0}
+{"t":1793432280360,"addr":"C9xpeBDyJBSSejiyCxvYjcggPrGya3YwR4bH9LcGko5","sym":"Pum Coin","age":30.1,"why":"liquidity","liq":0}
