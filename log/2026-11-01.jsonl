@@ -458,3 +458,4 @@
 {"t":1793543400514,"addr":"AvejHPmdBHkcykREmvcVgdwJqRyda38JLFg6FHewD7sK","sym":"NEX Ai","age":30.8,"score":0.03346,"px":6.159e-05,"liq":69620,"p0":5.188932512466975e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":19.0,"f_cjk":0.0,"c_ret":0.8468,"c_peak":1.0105,"c_vol":5.1741,"c_act":1.0,"c_r5":0.2077,"c_r15":0.4406,"c_mc":4.7151}}
 {"t":1793543520697,"addr":"DihEAeG7WcuyQwVcFccaRhvnGkdo5F6fmttmBfxopump","sym":"MrBeast","age":30.7,"why":"liquidity","liq":1732}
 {"t":1793543520697,"addr":"7TKQgMRhfJtS8vKA4HMWjLdWMPUyuzBszW3sTcYgpump","sym":"ChatGPT","age":30.4,"why":"liquidity","liq":1738}
+{"t":1793543701754,"addr":"bJWUJUJowP5u2r5kgNfC4ofsXwYyZBB9otgA5VyBAGS","sym":"HUBBOT","age":30.1,"why":"liquidity","liq":0}
