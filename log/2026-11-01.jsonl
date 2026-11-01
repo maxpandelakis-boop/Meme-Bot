@@ -478,3 +478,8 @@
 {"t":1793545261047,"addr":"M8qrDwGZLtYX87rGEWSmsENGvXXsmjeboS4jzEVpump","sym":"ELONBTC","age":30.8,"why":"liquidity","liq":2179}
 {"t":1793545381315,"addr":"FfXpLJbqpkKR6wNv6eWCVTHx9ku3k9tJRETP9Ypypump","sym":"BALLS","age":30.8,"why":"liquidity","liq":1883}
 {"t":1793545381315,"addr":"FUhV2wFVpFP7LXojzhqbr6XqEcsaqt38kfQqG1hfBAGS","sym":"PAYCLOCK","age":30.5,"why":"liquidity","liq":0}
+{"t":1793545560901,"addr":"91tVtNcCRkKBWUtJ8MsxG2FkzwRzjjQ1ZSk9Mg8i36fc","sym":"PREDICT","age":30.4,"score":0.05823,"px":4.79e-05,"liq":59032,"p0":4.7541603971520276e-05,"bars":6,"buy":true,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":18.0,"f_cjk":0.0,"c_ret":0.5914,"c_peak":1.0325,"c_vol":5.1297,"c_act":1.0,"c_r5":0.2793,"c_r15":0.4269,"c_mc":4.6771}}
+{"t":1793545560901,"addr":"FZwz8eSuKifw8UpzVCzG5NPRxUu6FpAFDRVggW9rpump","sym":"Gemini","age":30.4,"why":"liquidity","liq":1747}
+{"t":1793545560901,"addr":"HGg1gdgSw3RZ7UaZUokrvQGy5E1rVrv2EXHgDF4Kpump","sym":"BSIT","age":30.3,"why":"liquidity","liq":2422}
+{"t":1793545560901,"addr":"ABBo3iz2DRks7XWntviXHc3WuguFuRTa3ozCxdG128Wc","sym":"P C","age":30.0,"why":"liquidity","liq":0}
+{"addr":"DgkKGYiJZMCah6iphatZeqCGJ5S51ND7qxQZQdP5pump","sym":"SA","pool":"3PmNRczd8aTyNN9HV8b5KbyeUBB6ZyA3fg99x45zX6nC","t":1793536321016,"px":0.0004286,"score":0.0651,"cut":0.057,"best":1.58441,"last":0.258589,"tok":"base","seen":1793545560901,"now":1.553896,"lastT":1793545440000,"out":1793545500000,"mult":0.2586,"eur":-15.85,"why":"floor","g":1,"closed":true}
