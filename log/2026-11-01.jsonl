@@ -428,3 +428,6 @@
 {"t":1793540221232,"addr":"FSc2DLcigu86FYgDSKn4wVhA6HpGo5va1UjYNdkPpump","sym":"DeepSeek","age":30.8,"why":"liquidity","liq":1719}
 {"t":1793540221232,"addr":"6tYsMYmeaNbQVjGLE9zU7grPaKRUQ7gERYQ9GFH4KQb6","sym":"P C","age":30.5,"why":"liquidity","liq":0}
 {"t":1793540400626,"addr":"7CcgDGMMeWBvKBqtWmfSyNAnoQ3tzRJVsM6Pvx7HjET","sym":"REGRETAMINE","age":30.7,"why":"liquidity","liq":0}
+{"t":1793540580562,"addr":"DVDni8iUAkYwdeDtWTBDuZK43nKakSB3z5MQ6q5Kpump","sym":"shegoin","age":30.6,"score":0.027,"px":9.139e-05,"liq":23484,"p0":9.714725313883148e-05,"bars":6,"buy":false,"f":{"f_curve_min":812.1167,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.8404,"c_peak":1.0824,"c_vol":5.1801,"c_act":1.0,"c_r5":0.4371,"c_r15":0.7743,"c_mc":4.9874}}
+{"t":1793540580562,"addr":"9r2QAVLumrohuyBXFy8MJJtYBTzJDG1iQPSJh5Mbbonk","sym":"BTGHOST","age":30.1,"why":"liquidity","liq":0}
+{"t":1793540760992,"addr":"KUi6m4zvDF1qeVo9bQXm1KjptwxNnueotqKSXZxhhF6","sym":"REGRETAMINE","age":30.4,"score":0.01913,"px":1.075e-06,"liq":152918,"p0":1.1093971529516682e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.1833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.4511,"c_peak":1.0099,"c_vol":6.4269,"c_act":1.0,"c_r5":0.0341,"c_r15":0.2138,"c_mc":3.0451}}
