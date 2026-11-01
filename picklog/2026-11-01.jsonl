@@ -3,3 +3,4 @@
 {"at":1793506841727,"why":"time","mult":1.3059572854177819,"rule":"chart","sym":"Chameleon","t":1793506858633,"eur":64.0,"pnl":14.0,"entryAt":1793485241727,"id":"2026-10-31T215659-h-Chameleon-8crKqr"}
 {"at":1793525940000,"why":"drop","mult":0.8832248391362236,"rule":"chart","sym":"AAPLCAT","t":1793525969836,"eur":43.28,"pnl":-6.72,"entryAt":1793521263629,"id":"2026-11-01T075608-h-AAPLCAT-GYKnd6"}
 {"at":1793528843579,"why":"time","mult":1.0566593447711967,"rule":"chart","sym":"UNSAFU","t":1793528889338,"eur":51.78,"pnl":1.78,"entryAt":1793507243579,"id":"2026-11-01T040857-h-UNSAFU-4eq4Jf"}
+{"at":1793546160000,"why":"time","mult":1.5753983579800779,"late":true,"hitAt":1793546020960,"rule":"chart","sym":"ANTS","t":1793546193381,"eur":77.2,"pnl":27.2,"entryAt":1793524420960,"id":"2026-11-01T084857-h-ANTS-wMHBD2"}
