@@ -42,3 +42,4 @@
 {"t":1793496120319,"addr":"4TJvoegAFdSDMshafcWNBAmcK6HwsBSUssk59vs85UJj","sym":"Capybara","age":30.4,"why":"liquidity","liq":0}
 {"addr":"F18mVvZTtLXyFSy6xzd1oc6ARaETJjwU2XTLKzT9H7ip","sym":"Halloween","pool":"DxP3cnZhaAtFe2Ps2XP6TfeAxWDPzhmn4SYf14ngBSK8","t":1793493660525,"px":4.238e-05,"score":0.0839,"cut":0.057,"best":1.10493,"last":1.076884,"tok":"base","seen":1793496120319,"now":4.912695,"lastT":1793494140000,"out":1793496120319,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793496240863,"addr":"rFGJQKg5GafX7jN3LJVbMWSUaHKy3RTvGiFGSdtDyCR","sym":"RESERVE","age":30.5,"why":"liquidity","liq":1888}
+{"t":1793496540792,"addr":"J6DjXyn3RHAZNRJsSwaBMhd59b2MatCnMjP9sueApump","sym":"Amazon","age":30.6,"why":"liquidity","liq":1729}
