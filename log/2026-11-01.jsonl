@@ -217,3 +217,4 @@
 {"addr":"BqANtXVUR8tzUJatsN3vXYrszhxPcYwUHbXHRsiCyP6t","sym":"Pum Coin","pool":"CXiQXDkv5vpXyo5ZK78aaqocjtwXEBP4x2tj5NVQHqzQ","t":1793513520961,"px":4.628e-05,"score":0.0602,"cut":0.057,"best":1.331049,"last":1.310938,"tok":"base","seen":1793514540894,"now":0.000166,"lastT":1793514420000,"out":1793514540894,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
 {"t":1793515200375,"addr":"Be4urpp1fPfVqAKcjMz2nJb4HorFxPaCvC5herA3bonk","sym":"Atlmeth","age":31.0,"why":"liquidity","liq":0}
 {"t":1793515200375,"addr":"AsC6mTyrTUy2h7DBjBHknaz4vDu7j5n2UoZvWNgapump","sym":"YUME","age":30.3,"why":"liquidity","liq":1809}
+{"t":1793515500659,"addr":"9SsXwPe42HEQFYUteGy516hRi8cxgs9yyfmoCWpVpump","sym":"Claude","age":30.2,"why":"liquidity","liq":1737}
