@@ -684,3 +684,4 @@
 {"t":1793564760561,"addr":"CDAixD5VRn6ogH3K1iorg3a2n4SFH4HEZhSbhffktir6","sym":"FAGENT","age":30.1,"why":"liquidity","liq":0}
 {"t":1793564941150,"addr":"8BxKRVNTRzM7LTJ9Q6rqKQFwXtMjZjjSNYNDyjLSpump","sym":"BABYKIN","age":30.9,"score":0.00738,"px":9.191e-05,"liq":23529,"p0":0.0001140330081493734,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.1106,"c_peak":1.5143,"c_vol":5.4561,"c_act":1.0,"c_r5":-0.0163,"c_r15":0.1055,"c_mc":5.057}}
 {"t":1793565001037,"addr":"3Y6MtLKM7NeaBCAffACi8a94f7vvdrrawd4wkRt4pump","sym":"WaterMark","age":30.0,"why":"liquidity","liq":2951}
+{"t":1793565300786,"addr":"6cmsWWyLWAxbyJPFhjUfs3NBLYLH3UgbYP1dTVHspump","sym":"MrBeast","age":30.5,"why":"liquidity","liq":1717}
