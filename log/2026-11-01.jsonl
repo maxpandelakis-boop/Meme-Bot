@@ -262,3 +262,6 @@
 {"t":1793521380696,"addr":"6EKBUGCsP8CDszCf1H14REm621WoitFUkLb3ooyRpump","sym":"Coca-Cola","age":31.0,"why":"liquidity","liq":1774}
 {"t":1793521380696,"addr":"BCURaUFUDDbdDCbfWHAJ9bquHF4JZ3CJ3E2iitkVkTf5","sym":"nut","age":30.6,"score":0.02601,"px":2.944e-05,"liq":33628,"p0":2.4469735242746845e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.757,"c_peak":1.0773,"c_vol":5.8338,"c_act":1.0,"c_r5":0.087,"c_r15":0.2463,"c_mc":4.3886}}
 {"t":1793521621421,"addr":"BGwb3Yk2b3qfXtaw8rsUxWRbFe15iAXiGPxiYGvfbonk","sym":"Ctpanda","age":30.5,"why":"liquidity","liq":0}
+{"t":1793521980927,"addr":"LVenZwoXC5msvGCzPw6tkNWuhJhkVZzfCCs9wMbpump","sym":"YouTube","age":30.5,"why":"liquidity","liq":1744}
+{"t":1793522040268,"addr":"7W9tVMusuQuVafv16qG8A5GzK4QjDVVSDFzwrhB5Vuv","sym":"niketyson","age":30.4,"score":0.01871,"px":1.052e-06,"liq":140789,"p0":1.0351684621609096e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.8333,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.6806,"c_peak":1.0202,"c_vol":6.3834,"c_act":1.0,"c_r5":0.0659,"c_r15":0.265,"c_mc":3.015}}
+{"t":1793522101502,"addr":"CZFATPdGAhw4RwhqnUpRDnhKxrthDXpxGXm8wjCmpump","sym":"MrBeast","age":30.1,"why":"liquidity","liq":1746}
