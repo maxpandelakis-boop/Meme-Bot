@@ -259,3 +259,6 @@
 {"t":1793521140665,"addr":"ftxxxdfF8krrKwPBTSDNe2rLM28eXK4uu1jEinhpump","sym":"Claude","age":30.4,"why":"liquidity","liq":1811}
 {"t":1793521140665,"addr":"BwGMD47UH1qVwYxFV9UsDB59CwFvpATVVx29qGBNCFXC","sym":"WOFL","age":30.3,"why":"liquidity","liq":144}
 {"t":1793521200061,"addr":"72HcToR6UH89HA9e9WBechLwCy92j3inoYJfzGkwrnjG","sym":"PREDICT","age":30.3,"score":0.0281,"px":2.382e-05,"liq":41809,"p0":2.3757323941024473e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.1442,"c_peak":1.1066,"c_vol":5.1288,"c_act":1.0,"c_r5":0.0378,"c_r15":0.0385,"c_mc":4.3758}}
+{"t":1793521380696,"addr":"6EKBUGCsP8CDszCf1H14REm621WoitFUkLb3ooyRpump","sym":"Coca-Cola","age":31.0,"why":"liquidity","liq":1774}
+{"t":1793521380696,"addr":"BCURaUFUDDbdDCbfWHAJ9bquHF4JZ3CJ3E2iitkVkTf5","sym":"nut","age":30.6,"score":0.02601,"px":2.944e-05,"liq":33628,"p0":2.4469735242746845e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.757,"c_peak":1.0773,"c_vol":5.8338,"c_act":1.0,"c_r5":0.087,"c_r15":0.2463,"c_mc":4.3886}}
+{"t":1793521621421,"addr":"BGwb3Yk2b3qfXtaw8rsUxWRbFe15iAXiGPxiYGvfbonk","sym":"Ctpanda","age":30.5,"why":"liquidity","liq":0}
