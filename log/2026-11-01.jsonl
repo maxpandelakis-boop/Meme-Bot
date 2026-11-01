@@ -691,3 +691,6 @@
 {"t":1793565660403,"addr":"7fg42Xdvh58sVGYrZpDoV9gd1SkZcCKmt6ANTLbGpump","sym":"RAM ALTMAN","age":30.1,"why":"liquidity","liq":9680}
 {"t":1793565660403,"addr":"u21deLKB5kR86D7qDaNsS37PLyB14pgv36a5uHzpump","sym":"BRNBAR","age":30.1,"why":"liquidity","liq":0}
 {"t":1793565840866,"addr":"HQaU3FMTxpGshB1Epk1VVykugooNVypo9Atn6g6Lmoon","sym":"Vdninja","age":30.7,"why":"liquidity","liq":0}
+{"t":1793565960421,"addr":"4QJFnYFUfTiUcXDsgjbc3RGJaoGhFFw6mXjwnyjbLdnk","sym":"FAGENT","age":30.1,"why":"liquidity","liq":0}
+{"t":1793566020880,"addr":"D6NFva5hP7vmc9Xa1iNaE5mn9pWJGeiVT3on97C5pump","sym":"NONUT","age":30.4,"why":"liquidity","liq":9072}
+{"t":1793566140691,"addr":"7oZLDwgcM4L8MyRFX3kzv8yffzhZKdo6ovEQk6NEodqM","sym":"\u5927A\u80a1","age":30.4,"score":0.01935,"px":1.585e-05,"liq":20738,"p0":9.023316941782343e-06,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":19.0,"f_cjk":1.0,"c_ret":-0.5024,"c_peak":2.3334,"c_vol":5.0046,"c_act":1.0,"c_r5":-0.0877,"c_r15":-0.2848,"c_mc":3.9554}}
