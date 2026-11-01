@@ -370,3 +370,4 @@
 {"t":1793534100665,"addr":"HainqLN4GpjVeExdq85ciRJBEW1Vsn7jwqUeqeYrPG76","sym":"SA","age":33.6,"why":"liquidity","liq":6954}
 {"t":1793534100665,"addr":"AiiFM3GF77C1ry3B7N87TYjnNf7NDJiCpzefhZDrUkKs","sym":"MARVIN","age":30.7,"why":"liquidity","liq":9929}
 {"t":1793534100665,"addr":"4EKnSXEDdab7V1o2JB46QgsURbKZcQa32VVABKXEqFrC","sym":"NEX Ai","age":30.2,"why":"liquidity","liq":0}
+{"t":1793534160786,"addr":"Cjr6bx4Lb7i2uhKinQbzeuc7hDbHBThPCq1TUmFRpump","sym":"MrBeast","age":30.4,"score":0.01567,"px":0.000321,"liq":44784,"p0":0.00032027824172952443,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":18.0,"f_cjk":0.0,"c_ret":0.9539,"c_peak":1.0039,"c_vol":4.588,"c_act":1.0,"c_r5":0.1472,"c_r15":0.5865,"c_mc":5.5055}}
