@@ -637,3 +637,4 @@
 {"t":1793559900932,"addr":"8krRGbJnKnKXbopdiLY1f3eL42TkjbbdVmibpPTxBAGS","sym":"Swfire","age":30.5,"why":"liquidity","liq":0}
 {"t":1793559960347,"addr":"XhNvpz9f2ZD8KRzWWX1bcUCpmtySENMorY8vhUApump","sym":"Robinhood","age":30.8,"why":"liquidity","liq":1720}
 {"t":1793560320912,"addr":"CReY4v11JFpmKgVTzx1prV9NZFM82NLjhwR7wCrKAHCD","sym":"Katie","age":30.5,"score":0.01967,"px":1.335e-05,"liq":16888,"p0":1.2977044487871e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.5789,"c_peak":1.0311,"c_vol":4.9432,"c_act":1.0,"c_r5":0.1501,"c_r15":0.5051,"c_mc":4.1132}}
+{"t":1793560440992,"addr":"5RL3r8twTP1EdtVrrGQLwWkvrCLeQ38E9ebBKFCfbonk","sym":"Nypfox","age":31.0,"why":"liquidity","liq":0}
