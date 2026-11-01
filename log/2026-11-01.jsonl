@@ -805,3 +805,7 @@
 {"t":1793545199557.016,"addr":"jgikSLSgEwznRu1pFya9CmAFzc7Pq3rZLbEH3mppump","sym":"WOFI","pool":"34u9MSymSNMyzbD7KkAk1xcHZEd9tnczaXwmRbTsSSmf","age":660,"score":7e-05,"mc":1590367,"px":0.001593,"reach":28,"buy":false}
 {"t":1793545199557.016,"addr":"wWChmxk89F2LCs7xuAtUhPCBJy29sXR9wynVxNHpump","sym":"USDR","pool":"4EDJmBBgRfe7k47McYcSoLmtgJfxTyZnXPrBi95GrF1X","age":793,"score":5e-05,"mc":576383,"px":0.0005793,"reach":62,"buy":false}
 {"t":1793545199557.016,"addr":"oNy9G4RTFLyV7Qj9fGJCTAuXmHeaHPoAgEJ8feNpump","sym":"SPCX90K","pool":"6SgPs53LKBU4ym7c5L65FwiahYQCxAyk3j1J8X7ZoBdk","age":876,"score":4e-05,"mc":3500434,"px":0.003502,"reach":62,"buy":false}
+{"t":1793546099343.2363,"addr":"FgWQoowygmoSfsv9NwZxTuznsvFnEoPjFs5h9CZSqzeR","sym":"FOCO","pool":"8RU7cPTwGR5UimB5FniJkgmawGknzRBKcijsXuWrP7Co","age":358,"score":0.0058,"mc":460493,"px":0.0004604,"reach":15,"buy":false}
+{"t":1793546099343.2363,"addr":"jgikSLSgEwznRu1pFya9CmAFzc7Pq3rZLbEH3mppump","sym":"WOFI","pool":"34u9MSymSNMyzbD7KkAk1xcHZEd9tnczaXwmRbTsSSmf","age":675,"score":6e-05,"mc":1602068,"px":0.001605,"reach":42,"buy":false}
+{"t":1793546099343.2363,"addr":"oNy9G4RTFLyV7Qj9fGJCTAuXmHeaHPoAgEJ8feNpump","sym":"SPCX90K","pool":"6SgPs53LKBU4ym7c5L65FwiahYQCxAyk3j1J8X7ZoBdk","age":891,"score":4e-05,"mc":3509844,"px":0.003511,"reach":63,"buy":false}
+{"t":1793546099343.2363,"addr":"wWChmxk89F2LCs7xuAtUhPCBJy29sXR9wynVxNHpump","sym":"USDR","pool":"4EDJmBBgRfe7k47McYcSoLmtgJfxTyZnXPrBi95GrF1X","age":808,"score":4e-05,"mc":579451,"px":0.0005824,"reach":66,"buy":false}
