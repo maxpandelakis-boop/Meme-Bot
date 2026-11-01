@@ -17,3 +17,5 @@
 {"t":1793492281016,"addr":"6GNY1JLwQ8QWvFSrLRfsXWp75ciSBTvh2WsEVQzZpump","sym":"MrBeast","age":30.6,"why":"liquidity","liq":1786}
 {"t":1793492281016,"addr":"HE5M8TSGS8sQriGzAQC1xRF51yFDaRxHoL9CyZ2cvg7","sym":"Ghost Dog","age":30.4,"score":0.03923,"px":4.456e-05,"liq":44797,"p0":3.8937079705487324e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":112.0,"f_cjk":0.0,"c_ret":0.7687,"c_peak":1.153,"c_vol":5.1109,"c_act":1.0,"c_r5":0.1247,"c_r15":0.5156,"c_mc":4.5904}}
 {"t":1793492281016,"addr":"EkNbvrbwDAbXVbhQ7CXDt9FbyrR5gZmCdedhLbFrbonk","sym":"KRTOMAT","age":30.0,"why":"liquidity","liq":0}
+{"t":1793492460890,"addr":"7gEbPpbazpEm9CGmNc3GCanCBEfV4aVtCqcYtN2pump","sym":"LEGO","age":30.2,"why":"liquidity","liq":1762}
+{"t":1793492460890,"addr":"ow7CnSPKL7nassEghMnkDC2Nt45t4uDYQSXXg12pump","sym":"Robinhood","age":30.0,"why":"liquidity","liq":1756}
