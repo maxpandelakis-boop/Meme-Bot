@@ -909,3 +909,7 @@
 {"t":1793560291483.4067,"addr":"jgikSLSgEwznRu1pFya9CmAFzc7Pq3rZLbEH3mppump","sym":"WOFI","pool":"34u9MSymSNMyzbD7KkAk1xcHZEd9tnczaXwmRbTsSSmf","age":912,"score":7e-05,"mc":1251289,"px":0.001253,"reach":911,"buy":false}
 {"t":1793560291483.4067,"addr":"VtzzQCDppEzyZzZAiPjPfGi3mM3kJganthrty9Yymos","sym":"YMOS","pool":"EUFXsUuDXstC3KpzRAE7dKtzPHuaZHk314txNuNiUnGR","age":124,"score":7e-05,"mc":146800,"px":0.0001468,"reach":123,"buy":false}
 {"t":1793560291483.4067,"addr":"wWChmxk89F2LCs7xuAtUhPCBJy29sXR9wynVxNHpump","sym":"USDR","pool":"4EDJmBBgRfe7k47McYcSoLmtgJfxTyZnXPrBi95GrF1X","age":1045,"score":6e-05,"mc":588170,"px":0.0005912,"reach":66,"buy":false}
+{"t":1793561146782.777,"addr":"MAXXib7SQAQn4ymrwhhR9qMRUcYv8BNhbQxizJn5CCk","sym":"Maxxmas","pool":"5PMZkU7VN4xRM7ikmAXvdGkM8tNwnkebdbzGRHzAyubP","age":76,"score":0.00345,"mc":113111,"px":0.0001249,"reach":4,"buy":false}
+{"t":1793561146782.777,"addr":"FgWQoowygmoSfsv9NwZxTuznsvFnEoPjFs5h9CZSqzeR","sym":"FOCO","pool":"8RU7cPTwGR5UimB5FniJkgmawGknzRBKcijsXuWrP7Co","age":609,"score":0.00101,"mc":460284,"px":0.0004602,"reach":49,"buy":false}
+{"t":1793561146782.777,"addr":"VtzzQCDppEzyZzZAiPjPfGi3mM3kJganthrty9Yymos","sym":"YMOS","pool":"EUFXsUuDXstC3KpzRAE7dKtzPHuaZHk314txNuNiUnGR","age":138,"score":7e-05,"mc":146800,"px":0.0001468,"reach":137,"buy":false}
+{"t":1793561146782.777,"addr":"wWChmxk89F2LCs7xuAtUhPCBJy29sXR9wynVxNHpump","sym":"USDR","pool":"4EDJmBBgRfe7k47McYcSoLmtgJfxTyZnXPrBi95GrF1X","age":1059,"score":5e-05,"mc":601269,"px":0.0006044,"reach":67,"buy":false}
