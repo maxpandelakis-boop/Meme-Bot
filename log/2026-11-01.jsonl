@@ -767,3 +767,7 @@
 {"t":1793573400212,"addr":"67qKL8EvCSCcPQQgpWvtnHVpc5D6AeutuVuzddBmpump","sym":"airdrop","age":30.8,"why":"liquidity","liq":4448}
 {"t":1793573400212,"addr":"qndvv7XuoYDuqirZfxTY4WrTLz8XEDnCJaAsyUu51nX","sym":"PEV","age":30.5,"score":0.00212,"px":0.3711,"liq":53298,"p0":0.3718205021001957,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1398,"c_peak":1.0,"c_vol":4.5869,"c_act":0.6667,"c_r5":0.0,"c_r15":9.1932,"c_mc":8.5703}}
 {"t":1793573520782,"addr":"8qwiR6dhx1AoU1G11Bt7zkGqcfFALyjcfHq7xMLvF6Ar","sym":"WIMOK","age":30.8,"score":0.00528,"px":0.359,"liq":46860,"p0":0.35941314385595907,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1424,"c_peak":1.0,"c_vol":4.9998,"c_act":0.8333,"c_r5":0.0,"c_r15":9.0956,"c_mc":8.5556}}
+{"t":1793573581100,"addr":"F5TZ8Dv1FDLLuMP5qpmvk5JFXwxsEFvjcdN96dYvpump","sym":"Microsoft","age":30.1,"why":"liquidity","liq":1710}
+{"t":1793573640966,"addr":"EvhKJQXiLmmhjumnDvJ45fTuJbAJt1WrYGe1JGCpump","sym":"NVIDIA","age":30.1,"why":"liquidity","liq":1726}
+{"t":1793573760114,"addr":"EZLcbXRiQosC1LUGebVcBrQgrQf4mVAV4dAoe1o3pump","sym":"Gemini","age":31.0,"why":"liquidity","liq":1711}
+{"t":1793573760114,"addr":"76WydGc6CEC8d8KrnXPJ747Jtqw8NQ5ffPsnuEdKVkQs","sym":"Garfield","age":30.3,"why":"liquidity","liq":21}
