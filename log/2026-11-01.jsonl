@@ -10,3 +10,10 @@
 {"t":1793491860715,"addr":"3b2wRZUifgQbUzB5fgN5gfjyYFUGQvmqHGQvsYG868sv","sym":"BSTC","age":30.8,"score":0.03069,"px":8.38e-05,"liq":81366,"p0":8.440636942500349e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":22.0,"f_cjk":0.0,"c_ret":1.074,"c_peak":1.0,"c_vol":5.2793,"c_act":1.0,"c_r5":0.1388,"c_r15":0.7229,"c_mc":4.9264}}
 {"t":1793491920393,"addr":"5traYgbSiRcgXDjW6wbsug5rP7uvXDy16rUM9pCBmoon","sym":"GENZMSK","age":30.9,"why":"liquidity","liq":0}
 {"t":1793491980863,"addr":"DxTEjd7ta5eth2K7c4orhGVafTMpTVsB7oW1GatUpump","sym":"Gemini","age":30.4,"score":0.00807,"px":0.0001477,"liq":29870,"p0":0.00014353021319111884,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.4745,"c_peak":1.0,"c_vol":4.497,"c_act":1.0,"c_r5":0.0859,"c_r15":0.26,"c_mc":5.1569}}
+{"t":1793492040887,"addr":"3u2TRTZ5VnEevLYpJijmB4csP8aCMWNBNhpr4mxULKPm","sym":"phylax","age":30.6,"why":"liquidity","liq":0}
+{"t":1793492160220,"addr":"2x4k6MXyYHtrAXN8tDGrDajLFL82wViDqymRLiq5ZTa3","sym":"X","age":30.9,"why":"liquidity","liq":1725}
+{"t":1793492160220,"addr":"CYrftfVDgQzruEgjNvk5FKB9GDwgDuneKSgCHRmx6yRM","sym":"Ghost Dog","age":30.7,"why":"liquidity","liq":0}
+{"t":1793492220735,"addr":"4nHLRwziae6YxW4qYnaK7PHUU4KqdskX8LfrjCiKpump","sym":"Rocketman","age":30.5,"why":"liquidity","liq":2088}
+{"t":1793492281016,"addr":"6GNY1JLwQ8QWvFSrLRfsXWp75ciSBTvh2WsEVQzZpump","sym":"MrBeast","age":30.6,"why":"liquidity","liq":1786}
+{"t":1793492281016,"addr":"HE5M8TSGS8sQriGzAQC1xRF51yFDaRxHoL9CyZ2cvg7","sym":"Ghost Dog","age":30.4,"score":0.03923,"px":4.456e-05,"liq":44797,"p0":3.8937079705487324e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":112.0,"f_cjk":0.0,"c_ret":0.7687,"c_peak":1.153,"c_vol":5.1109,"c_act":1.0,"c_r5":0.1247,"c_r15":0.5156,"c_mc":4.5904}}
+{"t":1793492281016,"addr":"EkNbvrbwDAbXVbhQ7CXDt9FbyrR5gZmCdedhLbFrbonk","sym":"KRTOMAT","age":30.0,"why":"liquidity","liq":0}
