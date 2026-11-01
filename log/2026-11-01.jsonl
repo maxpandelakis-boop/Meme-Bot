@@ -717,3 +717,5 @@
 {"t":1793568840077,"addr":"aYSj97y4t8HSgR8m71PYssUXmNAnTMjvQ66KZBLpump","sym":"BARRON","age":30.0,"why":"liquidity","liq":1781}
 {"t":1793568960932,"addr":"7k2dv39SZRdRS22ducmFRYEfExXkxbEKhm3ttmsxpump","sym":"PHISHING","age":30.6,"why":"liquidity","liq":6504}
 {"t":1793569020831,"addr":"Dtj8HJxUgb3VBP5hvdGV2zb5nqKtKi8sdkP9hH8iNGjf","sym":"NEX Ai","age":30.1,"score":0.04415,"px":4.703e-05,"liq":60331,"p0":4.8771243282328356e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":29.0,"f_cjk":0.0,"c_ret":0.6231,"c_peak":1.025,"c_vol":5.2059,"c_act":1.0,"c_r5":0.0738,"c_r15":0.2294,"c_mc":4.6882}}
+{"t":1793569440398,"addr":"62dj3cmmAJ8NavSknP2qpLrJM1r7mhGLCk1uJGXCpump","sym":"We L Ansem","age":30.4,"why":"liquidity","liq":8737}
+{"t":1793569560279,"addr":"BbSRudkf71tMRfNz16gpsAk52w45JaisDDSnpWEgq8eF","sym":"FAGENT","age":30.9,"why":"liquidity","liq":43}
