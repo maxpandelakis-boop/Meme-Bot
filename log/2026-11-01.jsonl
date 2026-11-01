@@ -808,3 +808,4 @@
 {"t":1793577240875,"addr":"HYcnLPdY8E7tjPDQWEQPy126wayUuhziMqy1vwmFpump","sym":"Alexandra","age":30.3,"why":"liquidity","liq":3229}
 {"t":1793577301461,"addr":"GenVyoCdXqygevBsb7eVaZkM33BoyXTsp6yqvT3ebonk","sym":"Bydrgn","age":30.3,"why":"liquidity","liq":0}
 {"addr":"CBappT63qfoYU9PEFAhKti3aj681dcbPJnhUAAGNMtLn","sym":"NEX Ai","pool":"7iEEtTw2vohpZ2Mnbop9ViwAeVT9NuaYW7BrfDygSPQL","t":1793576820730,"px":0.0001098,"score":0.1235,"cut":0.057,"best":2.19376,"last":2.19376,"tok":"base","seen":1793577301461,"now":1.205829,"lastT":1793577240000,"out":1793577301461,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
+{"t":1793577480388,"addr":"EqzV82RfFhD8kH4dmufNLgyt9m8M65Mg4fRQF3empump","sym":"INUX","age":30.1,"why":"liquidity","liq":111}
