@@ -274,3 +274,4 @@
 {"t":1793522821330,"addr":"CQe46c1Mw8L7JrizbfPqiHrwDQyAPHkaPvpVLano439v","sym":"DPRK","age":30.8,"score":0.01641,"px":1.049e-05,"liq":15971,"p0":8.735479646857761e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.0833,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":-0.1299,"c_peak":2.3356,"c_vol":5.2594,"c_act":1.0,"c_r5":-0.4049,"c_r15":-0.809,"c_mc":3.9413}}
 {"t":1793523000166,"addr":"H11RMs417NJAC6x2VaQqPvpjNzW6TMyNMGJadU4jpump","sym":"HANDMON","age":31.0,"why":"liquidity","liq":0}
 {"t":1793523360455,"addr":"CMjodYintkvr8vHP1NDZeC6cCF7oxy628rXzhuQ1bonk","sym":"Swghost","age":31.0,"why":"liquidity","liq":0}
+{"t":1793523480675,"addr":"A87ceuUL4Ds1ZcWuFYDv25LY7qH3WBcFVWNuAqr1pump","sym":"DeepSeek","age":30.3,"why":"liquidity","liq":1731}
