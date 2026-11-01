@@ -609,3 +609,6 @@
 {"t":1793557200939,"addr":"72zoKPhxEyPkmQHCvua5Q5Z5eXAAYqWtt2EgE5JSpump","sym":"SEAGOD","age":30.4,"why":"liquidity","liq":0}
 {"t":1793557320553,"addr":"BNeozqHWTtGetbDgjdTVm1itpqCbp2K143w6BeWmjV5k","sym":"\ud83d\udc31Kitty","age":30.8,"why":"liquidity","liq":0}
 {"t":1793557320553,"addr":"TBxAk7xGvbTbgcQhDtCTx55m4rf93LCCKgtxWcypump","sym":"DeepSeek","age":30.4,"why":"liquidity","liq":1720}
+{"t":1793557381041,"addr":"puDHXbzE9ciu93usKsX1CNjNKEZpxZyYfiPNz5tpump","sym":"Speed","age":30.3,"why":"liquidity","liq":1767}
+{"t":1793557440840,"addr":"D4AnTZk3spQgCEMpC4iqtFp8U2qbiDvzrzdaq7Dopump","sym":"SLINGOOR","age":43.1,"why":"no candles"}
+{"t":1793557440840,"addr":"AHecefVLii28zRcJ9uw8eJrs72ZjVj3KkTAvwpZHnxuL","sym":"PREDICT","age":30.4,"why":"liquidity","liq":0}
