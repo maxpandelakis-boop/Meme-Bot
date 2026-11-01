@@ -565,3 +565,6 @@
 {"t":1793551920552,"addr":"9Nk821eq1FmqacbJy5i5wMARyuAVxQiZqRpmK1e6E6eL","sym":"\u5927A\u80a1","age":30.3,"why":"liquidity","liq":0}
 {"t":1793552101316,"addr":"JDdeLWcniP2P3n7vP3u5LLR8ynuP8mqcFVgAyi5Ecoyh","sym":"PREDICT","age":30.3,"why":"liquidity","liq":0}
 {"addr":"6skPGTJQs3aeYBnspLKPG6MZLBgW9J3GXAowVX74hDPj","sym":"NEX Ai","pool":"DYLSzLVN1AfcbUDrUM43pwTz6HFmAwvEvHmmiYb3PbrE","t":1793550781329,"px":7.337e-05,"score":0.08,"cut":0.057,"best":1.739895,"last":1.739895,"tok":"base","seen":1793552220538,"now":17.650266,"lastT":1793552100000,"out":1793552220538,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
+{"t":1793552280460,"addr":"2gcc72GFXVFiTa7VSnUuJVQEsDPduQza9SibAgqL7Gzc","sym":"NEX Ai","age":30.5,"why":"liquidity","liq":0}
+{"t":1793552341169,"addr":"6qhnbvdJuWVUQ7EQpgz5GNraV7pty7cqc8MmfQTEpump","sym":"Capri","age":30.8,"score":0.01549,"px":4.713e-05,"liq":16095,"p0":4.844189585473835e-05,"bars":6,"buy":false,"f":{"f_curve_min":60.0667,"f_creator_prior":0.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.2774,"c_peak":1.1242,"c_vol":4.3258,"c_act":1.0,"c_r5":0.1064,"c_r15":0.2273,"c_mc":4.6852}}
+{"t":1793552460734,"addr":"BQonEpoAacyJ5kn3dhfbRDkRorzcwQx3BLwcecBFbonk","sym":"NAVIC","age":31.0,"why":"liquidity","liq":0}
