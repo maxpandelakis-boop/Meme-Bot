@@ -340,3 +340,6 @@
 {"t":1793611740725,"addr":"12w4CpSDEx4H18Gmk3ShHb973cePFcRLbBmZWgHhRXXG","sym":"Warcoin","age":30.6,"score":0.01925,"px":9.736e-07,"liq":134980,"p0":9.574922483791114e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.8,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.5328,"c_peak":1.044,"c_vol":6.393,"c_act":1.0,"c_r5":0.002,"c_r15":0.2048,"c_mc":2.9811}}
 {"t":1793611740725,"addr":"HGTSAgxRG1c43cfp5Moh52YQ3vPpEdazJoA8ZJZupump","sym":"NVIDIA","age":30.6,"why":"liquidity","liq":1723}
 {"addr":"8atZ2Lkw89K3NeioqHBc1naXQAVkoiXgpEj6DqXwZ4WR","sym":"FAGENT","pool":"Am91vs82Nen8Mc76QfFdYpHJqYccYzNwDZtRnfCcETNt","t":1793610000594,"px":3.972e-05,"score":0.0931,"cut":0.057,"best":16.335383,"last":16.335383,"tok":"base","seen":1793611920580,"now":16.346928,"lastT":1793611800000,"out":1793611920580,"mult":0.0,"eur":-20.0,"why":"rug","g":1,"closed":true}
+{"t":1793612040548,"addr":"HrRVQRs7y2SyxT6TSfGHgXgNLsT1ftKptS4EHGTSpump","sym":"MrBeast","age":31.0,"why":"liquidity","liq":1716}
+{"t":1793612040548,"addr":"6fmvpbV4wC3RxmNMSfPKnwhyg2DLqFd5h1UzGJ67sNrS","sym":"CATO","age":30.6,"why":"liquidity","liq":0}
+{"t":1793612040548,"addr":"7mWGPMfPyoGV57GyeVK4ZiWkBCoDNeQxAHT8Fd2WduTQ","sym":"MEMES","age":30.2,"why":"liquidity","liq":0}
