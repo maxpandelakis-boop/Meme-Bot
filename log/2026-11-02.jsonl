@@ -174,3 +174,6 @@
 {"t":1793593260886,"addr":"4AxTh9eq6fXa2wP5giCRfG9HecrMyqDX6DfySy65uNMT","sym":"DPRK","age":30.6,"why":"liquidity","liq":0}
 {"t":1793593260886,"addr":"8fftxigNp7nLiq75JRC1LkFjV5Y9HBw735qCzH73pump","sym":"NADF","age":30.4,"score":0.00362,"px":0.006437,"liq":206420,"p0":0.0064367578399344445,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":29.0,"f_cjk":0.0,"c_ret":0.0138,"c_peak":1.0002,"c_vol":4.9923,"c_act":1.0,"c_r5":0.0018,"c_r15":0.0065,"c_mc":6.8087}}
 {"t":1793593320867,"addr":"89rEDYziZiN2GTBHfCGSj1TJVHpP3xzUoNYCeLaTpump","sym":"Microsoft","age":30.7,"why":"liquidity","liq":1739}
+{"t":1793593501534,"addr":"qyAuqXEZ7JP8Niz9b9BeimAmQJAvmmrzGS7Tkr5JpTh","sym":"Cryptocrat","age":30.8,"why":"liquidity","liq":0}
+{"t":1793593501534,"addr":"AdauPijnmf4hnjJZbuF2Ak4h24H4nDa4vubSvVcDpump","sym":"DOOMER","age":30.8,"why":"liquidity","liq":2315}
+{"t":1793593620790,"addr":"HcTzKJTHMWCtP3VrPheB8eeqJpKhWcYVvbrsYJGhWKrN","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":100}
