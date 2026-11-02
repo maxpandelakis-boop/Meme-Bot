@@ -414,3 +414,6 @@
 {"t":1793619180808,"addr":"GHmsemCWf3istseXYXzbfbng3De42JixAbSo3MMaBAGS","sym":"Falguard","age":30.5,"why":"liquidity","liq":0}
 {"t":1793619360498,"addr":"GSHPVvebr7g6wSFynkLUdPTpkuEfUqPBPsC7fsHQpump","sym":"BEAST","age":30.9,"why":"liquidity","liq":1695}
 {"t":1793619661004,"addr":"8rogfyeL6AnHm7pM1k1mxNTBy6rWUfUvBaVmtL4Ypump","sym":"LEGO","age":30.8,"why":"liquidity","liq":1736}
+{"t":1793620021051,"addr":"DZiK5TZMAgnZy9aGsXeRUtPtS9Rhq1bCSFBgMbCupump","sym":"egg","age":30.0,"why":"liquidity","liq":2002}
+{"t":1793620260598,"addr":"8MDG8GDfgLfmnqH1JRs84u7q4sdWzTdy1sd3bBPqmoon","sym":"Brndrgn","age":31.0,"why":"liquidity","liq":0}
+{"t":1793620260598,"addr":"3WHT9tu1LZMYQND6UkXNa67i5amhyzgEEY296PY7pump","sym":"BEAST","age":30.4,"score":0.0102,"px":0.0002356,"liq":37862,"p0":0.00023035847023658164,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":17.0,"f_cjk":0.0,"c_ret":0.6496,"c_peak":1.0152,"c_vol":4.499,"c_act":1.0,"c_r5":0.2168,"c_r15":0.5129,"c_mc":5.3624}}
