@@ -129,3 +129,7 @@
 {"t":1793589523930.0776,"addr":"3jAHcV6ZwmA3pnrR9MrWwNSbN5gDiM7rSM1RJradQ8xK","sym":"CHAD","pool":"4jNosyXHBnRLz7dUst6RMBED7F9T77UGXpXeWk3yKCy4","age":422,"score":0.0004,"mc":431744,"px":0.0004317,"reach":422,"buy":false}
 {"t":1793589523930.0776,"addr":"m3qDasmjYTVsi9UaDhLxdFwoLCgkMugvu43i9nEpump","sym":"NVIDIA","pool":"bHDJDC2uqULEaQyrzaEV7kwKKuXVU6DREm2Xmhw9EB8","age":57,"score":0.00024,"mc":650266,"px":0.0006583,"reach":0,"buy":false}
 {"t":1793589523930.0776,"addr":"VtzzQCDppEzyZzZAiPjPfGi3mM3kJganthrty9Yymos","sym":"YMOS","pool":"EUFXsUuDXstC3KpzRAE7dKtzPHuaZHk314txNuNiUnGR","age":611,"score":4e-05,"mc":146800,"px":0.0001468,"reach":610,"buy":false}
+{"t":1793590412819.0706,"addr":"GoDSW31bTxfkoup9yA1qcGGx9RMXdTEWgApv3xzBmoA","sym":"STEALTH","pool":"E6RfkJwDBJRyPe4xWNDYu4QyYH1nYwzhxZunUfeifyLX","age":211,"score":0.00074,"mc":382294,"px":0.000396,"reach":2,"buy":false}
+{"t":1793590412819.0706,"addr":"6g16UK4wHoFhC7PCmw8LYYCdt9q8m99fyoAwxeCrpump","sym":"VETOTRUMP","pool":"93mouQs3udoFXMe6thgfecSKjQ6ajBiU5BKLP5rF1LPA","age":366,"score":0.00066,"mc":321637,"px":0.000327,"reach":5,"buy":false}
+{"t":1793590412819.0706,"addr":"m3qDasmjYTVsi9UaDhLxdFwoLCgkMugvu43i9nEpump","sym":"NVIDIA","pool":"bHDJDC2uqULEaQyrzaEV7kwKKuXVU6DREm2Xmhw9EB8","age":72,"score":0.00014,"mc":1142626,"px":0.001156,"reach":0,"buy":false}
+{"t":1793590412819.0706,"addr":"VtzzQCDppEzyZzZAiPjPfGi3mM3kJganthrty9Yymos","sym":"YMOS","pool":"EUFXsUuDXstC3KpzRAE7dKtzPHuaZHk314txNuNiUnGR","age":626,"score":4e-05,"mc":146800,"px":0.0001468,"reach":625,"buy":false}
