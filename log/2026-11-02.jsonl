@@ -883,3 +883,4 @@
 {"addr":"FmFqGGrst9vmzbiRq7sW1iNkdz4QccUCjfpm3trjpump","sym":"tok","pool":"9GBccnKXNhBGY9W3yazNtjRfJz7SMpBcZhutgB75jqAW","t":1793660400624,"px":0.0001365,"score":0.0666,"cut":0.057,"best":1.0,"last":0.453777,"tok":"base","seen":1793660640431,"now":0.42967,"lastT":1793660580000,"out":1793660640000,"mult":0.4538,"eur":-12.1,"why":"floor","g":1,"closed":true}
 {"t":1793660700310,"addr":"AT1KqdzNHuJHDuVrTFCE8JLkSoaJb9Dq9dsChCHHpump","sym":"\u1453\u0b39\ua6a1\u0908","age":30.7,"why":"liquidity","liq":0}
 {"t":1793660941465,"addr":"BQ9fzb12MB6XuQdAYLSgZBG1myMY1xmoWW4Z2DFDpump","sym":"CAMPUS","age":30.2,"why":"liquidity","liq":2175}
+{"t":1793661420718,"addr":"7gCW1CcGr6CTH1QbY9F641PekwuYxhGL5zsreqw7yUvY","sym":"SAFU","age":31.0,"why":"liquidity","liq":0}
