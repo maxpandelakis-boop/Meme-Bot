@@ -132,3 +132,5 @@
 {"t":1793589960210,"addr":"6fxtKv4oq2yq4yqZZ43h58SNmcUuPcEubHSYkzMapump","sym":"MUTTAPE","age":30.9,"why":"liquidity","liq":1899}
 {"t":1793589960210,"addr":"7CqDQwYmntfXXknh8JphaadCP6KevKSVXHRQJRn2pump","sym":"TEC","age":30.3,"why":"liquidity","liq":3382}
 {"t":1793590020744,"addr":"5ZJksCtMPVbWmVJRhXEFg7AykSVMxJdcdxhEfC1nsdei","sym":"SAFU","age":30.9,"score":0.0112,"px":2.461e-05,"liq":43409,"p0":2.4302741118556927e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1167,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":22.0,"f_cjk":0.0,"c_ret":0.068,"c_peak":1.0253,"c_vol":4.8594,"c_act":1.0,"c_r5":0.0051,"c_r15":0.0614,"c_mc":4.3857}}
+{"t":1793590080701,"addr":"9DWihMAfpgvYV6wfjWZs6TcZxQCpkzLJJjAjA54ppump","sym":"Gemini","age":30.9,"why":"liquidity","liq":1718}
+{"t":1793590140638,"addr":"DTYhxKh5pQDzoeLfsBNQLtKSqmJF1Sei3grNtFWapump","sym":"Parock","age":30.9,"why":"liquidity","liq":0}
