@@ -11,3 +11,4 @@
 {"t":1793578800442,"addr":"AizyNwnSdN2GiozqBNtZbRz9pYM2xrza21hx3wqwn9B","sym":"DIH","age":30.2,"why":"liquidity","liq":0}
 {"t":1793578861052,"addr":"CnXW4yKbkcCUkCbiQPzj5EcVtskqsXETaFGjkkjU3Bw8","sym":"\u725b\u6765","age":30.8,"why":"liquidity","liq":0}
 {"t":1793578920394,"addr":"EQJmMuMqA9yE18kSrvgbJNmxzifu8PsJuFDNosmPFgrT","sym":"NEX Ai","age":30.2,"score":0.08007,"px":4.414e-05,"liq":58068,"p0":4.109800598603364e-05,"bars":6,"buy":true,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":35.0,"f_cjk":0.0,"c_ret":0.6661,"c_peak":1.0005,"c_vol":4.9736,"c_act":1.0,"c_r5":0.118,"c_r15":0.3877,"c_mc":4.6138}}
+{"t":1793578981204,"addr":"BQ7KA85EtgSWt52bYhZK4E6HfVe3enpiEaeQdA9Bbonk","sym":"GRIDBOT","age":30.1,"why":"liquidity","liq":0}
