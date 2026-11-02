@@ -71,3 +71,4 @@
 {"t":1793585101000,"addr":"8My5grZDPjFuN2jY5oTynP2HnLQUTCkFoNnV87jaAUTT","sym":"FAGENT","age":30.1,"why":"liquidity","liq":0}
 {"t":1793585160303,"addr":"Vns1EfGG4Yt4cwggPTrdCkGcGwsWyR77ThRd3KNpump","sym":"MUSKX","age":30.8,"why":"liquidity","liq":1751}
 {"t":1793585160303,"addr":"ybUnK1CTRWip2BuBjFDytZoraW3MvNXFT2pK2iJpump","sym":"USRP","age":30.6,"why":"liquidity","liq":1747}
+{"t":1793585280511,"addr":"kKAcjwG5ficTEdamNTLT7Zz6bChzkDFsj5LJUwHpump","sym":"Robinhood","age":30.6,"score":0.00954,"px":0.000263,"liq":40257,"p0":0.00025313540941422413,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.6918,"c_peak":1.0007,"c_vol":4.0924,"c_act":1.0,"c_r5":0.0867,"c_r15":0.3074,"c_mc":5.4034}}
