@@ -319,3 +319,5 @@
 {"t":1793609280526,"addr":"AgzxUdyi83NYUDKDgxsJKnNmCqW7PsudZQotmTZA8Qnr","sym":"\u7709\u7709","age":30.7,"why":"liquidity","liq":0}
 {"t":1793609341078,"addr":"zm9Y14PubGm7zcP9pXmv1odCnLNRwBDuPU1sy9saqaG","sym":"CATO","age":30.9,"score":0.02057,"px":4.297e-05,"liq":46728,"p0":4.0246264505184046e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.5871,"c_peak":1.0416,"c_vol":6.4652,"c_act":1.0,"c_r5":0.0973,"c_r15":0.2872,"c_mc":4.6047}}
 {"t":1793609400815,"addr":"4RDgsJrzFNWsAdacr4LD1rdXxYudjU9EhP9hopzRpump","sym":"Aicloud","age":30.3,"why":"liquidity","liq":0}
+{"t":1793609760691,"addr":"3c1WEVvhnr6QSzQ1RpbsW4W9Sz8ycDwqTbvMJG4Ubonk","sym":"NEUTRINO","age":30.4,"why":"liquidity","liq":0}
+{"t":1793609820295,"addr":"GEvq2RnySu52Yveb3LZRpwwqwM8DamFsSkRexuJGtpjo","sym":"PREDICT","age":30.2,"why":"liquidity","liq":0}
