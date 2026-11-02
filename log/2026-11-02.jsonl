@@ -392,3 +392,6 @@
 {"t":1793616781519,"addr":"43NWKE6sgSthRDwWdEmqycHuLUoPeoQjdC3cq6NQpump","sym":"VEILBOSS","age":30.7,"why":"liquidity","liq":2421}
 {"t":1793616840826,"addr":"7Vce7BaVkxjcp7Ua23Hpe1ixW4YYzWaAgt7m3fhypump","sym":"BT","age":30.5,"why":"liquidity","liq":2198}
 {"t":1793616840826,"addr":"5oC168LCQbHHtkDruUmSSQZrhKCpr3wLLs6XUxSrpump","sym":"Rockstar","age":30.4,"score":0.00658,"px":0.0004211,"liq":51265,"p0":0.00036407557429583544,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":0.0,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":1.015,"c_peak":1.0,"c_vol":4.5423,"c_act":1.0,"c_r5":0.2166,"c_r15":0.5662,"c_mc":5.5612}}
+{"t":1793616960581,"addr":"EF2415Lhs3MsghTUof7eUmu6qXzqF2rSAuPLLNojpump","sym":"ITCHAI","age":30.8,"why":"liquidity","liq":0}
+{"t":1793616960581,"addr":"QEGaTjEhLV5JHs8Vs7BxBEYgNPgxkAF81rYyS3vZ5CH","sym":"\u6211\u9760","age":30.7,"why":"liquidity","liq":0}
+{"t":1793617141400,"addr":"Fj4PDkh5wTn7Q3aKHGdcXtTJ7hhuLC7bGuSRHN3epump","sym":"ABTC","age":30.7,"why":"liquidity","liq":1924}
