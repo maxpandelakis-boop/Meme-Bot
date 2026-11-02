@@ -659,3 +659,7 @@
 {"t":1793639701204,"addr":"GnY6RSduqXgJ3nas2CKTDkNbrm2FXYExFxP7BXYEpump","sym":"PAUL","age":30.5,"score":0.01861,"px":3.497e-05,"liq":13582,"p0":4.4776065308226064e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.168,"c_peak":1.5535,"c_vol":4.721,"c_act":1.0,"c_r5":0.3212,"c_r15":0.0578,"c_mc":4.651}}
 {"t":1793639701204,"addr":"8E5MLTevxXYxx3GyLLgkfqhWavtxt8P9rUuoXKWypump","sym":"EMMIE","age":30.3,"why":"liquidity","liq":1920}
 {"t":1793639821009,"addr":"BFAoxgriRzuKYSPuS1q5cqidcge2sFdvXX2m7jXiUmX4","sym":"Learjet 60","age":31.0,"why":"liquidity","liq":0}
+{"t":1793639880567,"addr":"4uMFKLtaZcrJA4KFne1tpcmpvLWbGuWuKL9XMqhQpump","sym":"DOUBLOONS","age":30.9,"why":"liquidity","liq":2162}
+{"t":1793640000118,"addr":"9LPbtkXAhsCDin9h1ni9HbkkDHAAfapFX7x7Msoomgxw","sym":"NUVUC","age":30.3,"score":0.00471,"px":0.3714,"liq":115767,"p0":0.3715078452537415,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.2056,"c_peak":1.0,"c_vol":4.8326,"c_act":0.6667,"c_r5":0.0,"c_r15":9.2606,"c_mc":8.57}}
+{"t":1793640061304,"addr":"1tKidQL1Mx6r585fDDv3dA6QSMNehwBZiuS1kZ8pump","sym":"TEXR","age":30.7,"why":"liquidity","liq":2415}
+{"t":1793640120567,"addr":"Ek2DzBAd4bysNKEpy9Eqe3kP3nbdvGVmmk2oabCffZJJ","sym":"God's Frog","age":30.7,"why":"liquidity","liq":0}
