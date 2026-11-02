@@ -830,3 +830,5 @@
 {"t":1793654880660,"addr":"CUMPjXbasf76PccrHtDm1CnBjvkYJaMjThKf5pw6bonk","sym":"Tazebra","age":31.0,"why":"liquidity","liq":0}
 {"t":1793655240676,"addr":"CSGTuLtWhCfGZ5S5TvASQ6a5su91NCfRpNqfPczfpump","sym":"GODHOUSE","age":30.5,"score":0.02412,"px":2.129e-05,"liq":10327,"p0":2.6165846202858152e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.5882,"c_peak":3.5018,"c_vol":5.231,"c_act":1.0,"c_r5":0.2816,"c_r15":-0.8093,"c_mc":4.4177}}
 {"t":1793655360300,"addr":"79yGw1Swho5CcC1DDQDxKTAPm2Hn1gxEVSYMiYDgpump","sym":"LEGO","age":30.7,"why":"liquidity","liq":1904}
+{"t":1793655600690,"addr":"2hBggQD48BTNh9EqfukYgf1qRvXjLYPbYSk2SxYwKp53","sym":"NEX Ai","age":30.7,"why":"liquidity","liq":0}
+{"t":1793655720870,"addr":"CTYV1T3bhRUMATLjnj1fNzBJo44oqVjq1qT5PTpvpump","sym":"Tail","age":30.5,"why":"liquidity","liq":2027}
