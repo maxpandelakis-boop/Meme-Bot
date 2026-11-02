@@ -792,3 +792,6 @@
 {"t":1793651221180,"addr":"C8QBz1UnZVk4HPKJomeemMtbiRYexRcMCyHQGksRpump","sym":"Biscuit","age":30.8,"why":"liquidity","liq":1771}
 {"t":1793651341048,"addr":"7xFiq2jGJtafjinpdPtA37LVhDknUPFiXqsLYeG1pump","sym":"MOODMAXX","age":30.8,"why":"liquidity","liq":7801}
 {"t":1793651400340,"addr":"C3safLKUJf2enr4PFnZzgqvHcm61f3NjyKCfd2Y3dupo","sym":"WAM","age":30.3,"why":"liquidity","liq":7526}
+{"t":1793651640318,"addr":"9XSwMSWer3r98z2aQF5dRK58p3vfw35mwSqsv4P5GdYq","sym":"\u7709\u7709","age":30.8,"score":0.0333,"px":4.143e-05,"liq":53794,"p0":3.694060049054161e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":6.0,"f_cjk":1.0,"c_ret":0.5163,"c_peak":1.0182,"c_vol":4.9046,"c_act":1.0,"c_r5":0.0883,"c_r15":0.319,"c_mc":4.5675}}
+{"t":1793651700479,"addr":"CMsKL5JkgE5vhyjHAUpCsLKwiu2AQjZdyXSaRfGrpump","sym":"glyph","age":30.9,"why":"liquidity","liq":2800}
+{"t":1793651700479,"addr":"HfMRoVyBi49UuTZdFNtpu5C8vGeWNy8gqhJcYZUxBAGS","sym":"RYNPIL","age":30.6,"why":"liquidity","liq":0}
