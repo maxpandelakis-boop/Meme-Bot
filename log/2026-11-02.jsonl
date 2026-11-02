@@ -432,3 +432,5 @@
 {"t":1793621160218,"addr":"6kpyEUb7F15N1QPHKww46tWzTfwis6auJKETenS8MNg8","sym":"ROKID","age":30.6,"score":0.002,"px":0.3666,"liq":112364,"p0":0.36665279621085717,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1613,"c_peak":1.0,"c_vol":4.766,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":8.5643}}
 {"t":1793621280422,"addr":"EfpXdimFMonty2KEuktRy6KudfmQVdsyP2i2XnWCmoon","sym":"Patcow","age":30.1,"why":"liquidity","liq":0}
 {"t":1793621400234,"addr":"GASM6mwjYk7E3UJGpT7RnyojzAEdzAVvMWoJxycmpump","sym":"PEARSON","age":30.7,"why":"liquidity","liq":1863}
+{"t":1793621590771,"addr":"A7Q2SJzbimFLdn2Fb99N4MtSgYgTFkyo5h8yGEApump","sym":"YouTube","age":30.5,"why":"liquidity","liq":1724}
+{"t":1793621820390,"addr":"D3rXG8TJFGtFWdrniVHn9xtbuh2cy7jA9ajPiaKFbonk","sym":"SEOULBOT","age":30.0,"why":"liquidity","liq":0}
