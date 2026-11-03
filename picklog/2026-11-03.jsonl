@@ -5,3 +5,4 @@
 {"at":1793696460000,"why":"time","mult":0.623164773944948,"late":true,"hitAt":1793696123366,"rule":"chart","sym":"WOOP","t":1793696481801,"eur":30.54,"pnl":-19.46,"entryAt":1793674523366,"id":"2026-11-03T023706-h-WOOP-272423"}
 {"at":1793699160000,"why":"drop","mult":0.8548539956472644,"late":true,"hitAt":1793698860000,"rule":"chart","sym":"CAPY","t":1793699166393,"eur":41.89,"pnl":-8.11,"entryAt":1793696933003,"id":"2026-11-03T084458-h-CAPY-DBPTU2"}
 {"at":1793706120000,"why":"trail","mult":1.3096288734468862,"rule":"chart","sym":"MAMESUKE","t":1793706176135,"eur":64.18,"pnl":14.18,"entryAt":1793702050573,"id":"2026-11-03T101510-h-MAMESUKE-SCGBBn"}
+{"at":1793711820000,"why":"drop","mult":0.8870002160128343,"late":true,"hitAt":1793711760000,"rule":"chart","sym":"Ahsoka","t":1793711858002,"eur":43.47,"pnl":-6.53,"entryAt":1793708937308,"id":"2026-11-03T121108-h-Ahsoka-4nuj5N"}
