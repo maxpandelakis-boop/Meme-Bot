@@ -957,3 +957,6 @@
 {"t":1793749272145,"addr":"DGsKH42S5XzCSJBrpdyGqXM9QL3FkFjNp9GMkHggpump","sym":"Rockstar","age":31.2,"why":"liquidity","liq":1696}
 {"t":1793749272145,"addr":"AQw5UwXPpwK36FeN4odD22QQYKVMS6yLCbBZJJbpV7BE","sym":"\u7709\u7709","age":30.7,"score":0.01404,"px":5.323e-05,"liq":63456,"p0":5.382796711502969e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":15.0,"f_cjk":1.0,"c_ret":0.7593,"c_peak":1.0092,"c_vol":5.0984,"c_act":1.0,"c_r5":0.1255,"c_r15":0.5292,"c_mc":4.731}}
 {"t":1793749440544,"addr":"HGr4YDVrqWPwak5muw9WQRZMfMtygRan4JvY3V8xgcX","sym":"Stonkies","age":30.7,"why":"liquidity","liq":0}
+{"t":1793749560529,"addr":"6XnrbJaazQYvLYpGZrEJS5GvzkMbFwFH8VkquBV4pump","sym":"Qwiz","age":30.7,"why":"liquidity","liq":0}
+{"t":1793749741150,"addr":"CmVUuhJiJfDzu69K1B54U5WVfDvyigzx2kQjvZEKpump","sym":"FCM","age":30.7,"why":"liquidity","liq":5163}
+{"t":1793749741150,"addr":"14FH2R5e6hZWydVFvgnf1N3EaHmGrhfqTvEExo4Spump","sym":"LEGO","age":30.1,"score":0.00529,"px":0.0004798,"liq":54528,"p0":0.0004079555692844922,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":1.2374,"c_peak":1.0129,"c_vol":4.4069,"c_act":1.0,"c_r5":0.2818,"c_r15":0.8177,"c_mc":5.6106}}
