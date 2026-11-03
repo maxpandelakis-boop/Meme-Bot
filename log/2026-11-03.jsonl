@@ -421,3 +421,7 @@
 {"t":1793703061154,"addr":"AwfczUDhtqYdm3KyNVUuzFnJnbN5AYF45bUeWCJCaPzc","sym":"zClaude","age":31.0,"score":0.01576,"px":2.064e-05,"liq":20670,"p0":1.9470996961299816e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.5492,"c_peak":1.0,"c_vol":4.7705,"c_act":1.0,"c_r5":0.4321,"c_r15":0.7015,"c_mc":4.2894}}
 {"t":1793703061154,"addr":"6DuHVdEtoqgcLp8Z3uh39JassWEp5XbSmLfCBXMppump","sym":"Tesla","age":30.2,"why":"liquidity","liq":1705}
 {"t":1793703061154,"addr":"3K4ubBGzidQ56fHcDe4yaLdnKuWGrmA2e9Ph7EeYq86A","sym":"WIX","age":30.2,"why":"liquidity","liq":0}
+{"t":1793703120990,"addr":"4QTKbj4tnPTWFUa8wtMhWkafc9vT1h2yhiZuQeQHpump","sym":"FREK","age":30.9,"why":"liquidity","liq":2039}
+{"t":1793703180589,"addr":"GQoKu2GA91JvTAPcQTWKc1dz6JyVTvveM62rK5HCeMYH","sym":"NEX Ai","age":30.5,"score":0.04185,"px":4.661e-05,"liq":57376,"p0":4.6104298038741484e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":37.0,"f_cjk":0.0,"c_ret":0.7558,"c_peak":1.0,"c_vol":4.9314,"c_act":1.0,"c_r5":0.1956,"c_r15":0.3955,"c_mc":4.6637}}
+{"t":1793703240248,"addr":"UzAh8xTTGBThSFqDk7JHSFV4nunM6Vzpu8QzZRhpump","sym":"MUSKX","age":30.6,"why":"liquidity","liq":1679}
+{"t":1793703360118,"addr":"HtZQorTzdxb5VqiswDcDcYMT23enpErTLZ37ToXBmoon","sym":"SIEMLOCK","age":30.8,"why":"liquidity","liq":0}
