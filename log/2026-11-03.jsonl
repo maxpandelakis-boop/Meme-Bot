@@ -650,3 +650,7 @@
 {"t":1793722680498,"addr":"Fix8QUHZttVep8tJ8z6dTd3dAe1NLafigwgmVEoJsmEk","sym":"Intel AI","age":30.9,"why":"liquidity","liq":0}
 {"t":1793722800494,"addr":"AU4wDFt6DBaPJu2bfyBfg2B39SXsv5CZoZmeCfgfpump","sym":"Memecoins","age":30.9,"why":"liquidity","liq":2219}
 {"t":1793722861800,"addr":"6HmRwvh5UYDx4dgnabd6s11W57HPgBukZfNNEz9qpump","sym":"Memecoins","age":31.0,"why":"liquidity","liq":3054}
+{"t":1793722980953,"addr":"GsH3eizWNYfLzeYu15wzBBwXMkiYWSMKZGesQzBapump","sym":"SCREGHT","age":30.1,"why":"liquidity","liq":0}
+{"t":1793723101412,"addr":"B1GJzMXZrFSuRStaCL6j5kx3i3jeXEGaJmpAqr4i5ijX","sym":"\u5e01\u5b89\u9b42","age":30.8,"score":0.05112,"px":3.322e-05,"liq":50141,"p0":3.0788724066133084e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.48,"c_peak":1.0,"c_vol":5.0853,"c_act":1.0,"c_r5":0.3678,"c_r15":0.263,"c_mc":4.4884}}
+{"t":1793723160808,"addr":"DCB3iKiWTX8Kit4qM3NKVE2BuE6ymcgFbNLwB8MPm7Db","sym":"Green Cat","age":31.0,"why":"liquidity","liq":0}
+{"t":1793723223002,"addr":"HVAeepof5EQTNyPGwB2efEPvtj1fjwcX1vfCMnkdpump","sym":"Selicat","age":30.3,"why":"liquidity","liq":0}
