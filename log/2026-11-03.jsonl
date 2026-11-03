@@ -623,3 +623,8 @@
 {"t":1793720280787,"addr":"HxRBQeczAZun5TqsbpVvRXoJHMEjSapHspow2nQzpump","sym":"Coinbase","age":30.7,"why":"liquidity","liq":1713}
 {"t":1793720820600,"addr":"EPCLrA6iYdGA9qbmfLBGzvqx8A2ch9xNCF5abXZkpump","sym":"DanceKitty","age":30.3,"why":"liquidity","liq":1907}
 {"t":1793720880490,"addr":"75iYpEazk5HWnEnwffBnEDosyPdW4G1gFN7i9pPrCW62","sym":"SUHO","age":30.3,"score":0.00461,"px":0.3653,"liq":92125,"p0":0.36548180503552935,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.2028,"c_peak":1.0,"c_vol":4.9205,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":8.5629}}
+{"t":1793721181577,"addr":"ABdSW4tDpo3vUUXVQgatWouHBiygZb2AB2Wik4s8pump","sym":"FOTF","age":30.3,"why":"liquidity","liq":2433}
+{"t":1793721181577,"addr":"nMbeY3eRdwXDhbJfT2YAFVWfjw5G9TNZECq2fBZ9B6M","sym":"Intel AI","age":30.0,"why":"liquidity","liq":0}
+{"t":1793721240593,"addr":"A9mhrQRxvC29zdURVdHaXBEn3bLxGnKHSJ4oNrmv9vTS","sym":"FOREVER","age":30.7,"why":"liquidity","liq":7}
+{"t":1793721300843,"addr":"EeB1b7mcsQCYRpGqov93r9kV9fh3Bmh1Bq2haJ2ypump","sym":"Doomscroll","age":30.3,"why":"liquidity","liq":1938}
+{"addr":"CL45fL1rdFsDF4Vfm7knY7uFkbrJQNDy3WWVuzN4pjGi","sym":"Green Cat","pool":"AeFaetvxEyjjR6LeyLS36niHT1fe86kQJa3JTnSNb7d4","t":1793720040603,"px":4.528e-05,"score":0.0593,"cut":0.057,"best":1.731944,"last":0.023633,"tok":"base","seen":1793721300843,"now":1.684187,"lastT":1793721240000,"out":1793721300000,"mult":0.0236,"eur":-20.0,"why":"floor","g":1,"closed":true}
