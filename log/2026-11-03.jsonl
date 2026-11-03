@@ -90,3 +90,9 @@
 {"t":1793672520844,"addr":"DayjoyjxCA2SVTApEW7oBFG3WMvrYZRMjAnqsetLpump","sym":"SMUGLY","age":30.9,"score":0.01871,"px":0.0002176,"liq":36279,"p0":0.00020365622758715946,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":1.2762,"c_peak":1.1472,"c_vol":5.1048,"c_act":1.0,"c_r5":-0.0156,"c_r15":1.0019,"c_mc":5.3089}}
 {"t":1793672580957,"addr":"ARbeQnTRYCsvBeRWxaCSW516JWcS7say3vEhLS8pump","sym":"MUSKX","age":30.9,"score":0.00302,"px":0.001155,"liq":85029,"p0":0.0009680467087412218,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":2.0353,"c_peak":1.0002,"c_vol":4.6569,"c_act":1.0,"c_r5":0.2668,"c_r15":1.036,"c_mc":5.9859}}
 {"t":1793672580957,"addr":"CFSAGV391arXYrrCMmrw5y1RM8AiunAKcGCzJ7Vemoon","sym":"CYBSHLD","age":30.7,"why":"liquidity","liq":0}
+{"t":1793672880262,"addr":"4wLok3QXa7o58GFJ6sCuRVe7KjWJiEZuaxJPFpxQ1MLR","sym":"\u7709\u7709","age":30.6,"score":0.02663,"px":3.932e-05,"liq":52862,"p0":3.698056591383441e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":13.0,"f_cjk":1.0,"c_ret":0.4126,"c_peak":1.0114,"c_vol":5.2309,"c_act":1.0,"c_r5":0.1229,"c_r15":0.2929,"c_mc":4.568}}
+{"t":1793672940591,"addr":"6HefRg5KzucNd67wX6h5AFVjwKKCiYvhBxxXJTq2jM82","sym":"BUPE","age":30.3,"why":"liquidity","liq":0}
+{"t":1793673061379,"addr":"HnSNttoWXLAeokt7PF8j82EJYGEj6PsrNrHZ3S4ipump","sym":"HERONWARE","age":31.0,"why":"liquidity","liq":7133}
+{"t":1793673120664,"addr":"FFG9vDf1kMRPqV2kjVZjPqAwqUagmMs1NEvJRuCZpump","sym":"Riot Games","age":30.9,"why":"liquidity","liq":1654}
+{"t":1793673120664,"addr":"9RWFF7pLpNg3pBZfEaUdN7HvGJPhqkdE86WUtJU3BAGS","sym":"PLPUPPT","age":30.5,"why":"liquidity","liq":0}
+{"t":1793673120664,"addr":"HkEQsGq6TS82LrehyqfN546yRk4Ms5w1tQid2tS6pump","sym":"TikTok","age":30.2,"why":"liquidity","liq":1678}
