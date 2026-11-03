@@ -470,3 +470,5 @@
 {"t":1793708100657,"addr":"4d4Ams9uPhLw4r1B3Yho6oBrNrUtz6VFJMboQD1JJcC9","sym":"AGC","age":30.2,"score":0.01634,"px":4.46e-05,"liq":46329,"p0":4.3857340370423046e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.9956,"c_peak":1.0116,"c_vol":5.2011,"c_act":1.0,"c_r5":0.2685,"c_r15":0.6399,"c_mc":4.642}}
 {"t":1793708280557,"addr":"6rQUNZ9W6NvmVQbRJzAuWg1Umnf1mPrGA9YSzVEMbonk","sym":"MUONGHO","age":30.0,"why":"liquidity","liq":0}
 {"t":1793708821460,"addr":"9SdoKAvzmG6uURaxxi4NBsqgc5HuyZJWHsiFKxUs6juP","sym":"NOW","age":30.9,"why":"liquidity","liq":0}
+{"t":1793709060718,"addr":"Guyqfym4BG1qK7aBNCZMkHnAjcxyBMfZHPnsHhixpump","sym":"fomo block","age":30.6,"why":"liquidity","liq":2086}
+{"t":1793709120982,"addr":"BxBv9wrdWrKpBD8jSHru675yQRueKyVDFDj8wug2pump","sym":"WTC","age":30.9,"why":"liquidity","liq":2256}
