@@ -504,3 +504,6 @@
 {"t":1793711400388,"addr":"EsKJRPMEV1mw9ZU8N3eMunDebMGXcFdiH7D75tR6U3Br","sym":"Google AI","age":30.5,"why":"liquidity","liq":0}
 {"t":1793711581134,"addr":"GpEytRoYGDTQhJAKbLHqgpse23g57g3VPmG3cqx4pump","sym":"Confidence","age":30.6,"why":"liquidity","liq":2025}
 {"t":1793711581134,"addr":"DkFNK5a8hViuj6N8bQyrYVv2iq28g1NVtmZBmGzpump","sym":"poltik","age":30.6,"score":0.00694,"px":0.0002017,"liq":34659,"p0":0.0001913296440015276,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.4498,"c_peak":1.014,"c_vol":3.99,"c_act":1.0,"c_r5":0.0006,"c_r15":0.1402,"c_mc":5.2818}}
+{"t":1793711640194,"addr":"EAsQJGDGWP5wSjJrWLK6xD57ZoxAwpAGN55UxqGqHkMC","sym":"AMERICA","age":30.5,"why":"liquidity","liq":0}
+{"t":1793711701161,"addr":"cTUH3naG5BtwnNYHkNVycSp6bt5AjvqT2kHr57ppump","sym":"SPONGEBOB","age":30.8,"why":"liquidity","liq":1716}
+{"t":1793711701161,"addr":"BKZR6SpPVvA8PsFfApW4dWpA7PoqTvqNVs7KJ8hQmoon","sym":"SPARROW","age":30.7,"why":"liquidity","liq":0}
