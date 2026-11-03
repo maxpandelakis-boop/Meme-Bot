@@ -561,3 +561,4 @@
 {"t":1793715360149,"addr":"AZVWefnssUMG367QHngMEtDts9t1ynMimLTJGh6fBAGS","sym":"Lootking","age":30.3,"why":"liquidity","liq":0}
 {"t":1793715420740,"addr":"9Xxsoab47VknN15izoj2wE2x4BoYUfpnxQAUmroGpump","sym":"PWESIDENT","age":30.4,"score":0.0132,"px":2.139e-05,"liq":10247,"p0":1.9141151076026033e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-0.688,"c_peak":2.4627,"c_vol":5.0059,"c_act":1.0,"c_r5":-0.2019,"c_r15":-0.3519,"c_mc":4.282}}
 {"t":1793715420740,"addr":"7wRsN6UsTww2k2gankJnmSj3sZUvc5HXjjCPz8fYEyk2","sym":"BabySling","age":30.3,"why":"liquidity","liq":0}
+{"t":1793715600377,"addr":"Eu6v68VJb2gcS6AjX2PQUQzt2BxJQg8XKYrqsoqJ549W","sym":"BabySling","age":30.1,"why":"liquidity","liq":0}
