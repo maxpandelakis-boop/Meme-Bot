@@ -99,3 +99,10 @@
 {"t":1793673480382,"addr":"27rspbxDwYcCR3y3hT4ce29H4NQ2MXvesjsTie39pump","sym":"CAPYUS","age":30.2,"why":"liquidity","liq":1750}
 {"t":1793673600525,"addr":"12t4negXoxqMw5Rf7GxECL4pPJt8a6QU4DFKRK1fNXR6","sym":"ascend","age":30.1,"why":"liquidity","liq":0}
 {"t":1793673661182,"addr":"8SwRS1f8NH3DbEnu8hDb9EAXDveEB9YL2eFFBa5Ppump","sym":"MEMGOB","age":30.4,"why":"liquidity","liq":0}
+{"t":1793673781166,"addr":"7q2AxYdRBVqZmfxXEnhQHooivCN5UTtHsxNumi1vjPmd","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":104}
+{"t":1793673840463,"addr":"CRpvKXx8dw6FCpBce3gYfjuYSnKcEeRPLEn4UUuBpump","sym":"Gemini","age":30.2,"score":0.01152,"px":0.0003678,"liq":47278,"p0":0.00032180813707819047,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.9398,"c_peak":1.0014,"c_vol":4.5242,"c_act":1.0,"c_r5":0.2181,"c_r15":0.4631,"c_mc":5.5076}}
+{"t":1793673900603,"addr":"BTuZ1SKVSQX88B6G8auTm9Ue6bai3XSPu3qvL9t3pump","sym":"MAGACREW","age":30.5,"why":"liquidity","liq":1763}
+{"t":1793673960867,"addr":"31SYoqWFhx3i9UsfnoXTjFp4ZwJA8F8UPrMxymfDpump","sym":"SPHERE","age":30.7,"score":0.00795,"px":0.001155,"liq":87924,"p0":0.0013100771172245172,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":7.0,"f_cjk":0.0,"c_ret":1.0322,"c_peak":1.0235,"c_vol":6.0302,"c_act":1.0,"c_r5":0.2057,"c_r15":0.8858,"c_mc":6.1173}}
+{"t":1793673960867,"addr":"DR4H63Rhkud4AgdJNXYToJZKCvE81h2zpW94tCFBBAGS","sym":"PLTORCL","age":30.3,"why":"liquidity","liq":0}
+{"t":1793674020891,"addr":"tJFrD7KCppBwcXHfpnBCenDqrXeNSdtXjAyAhPTpump","sym":"GOODCREW","age":31.0,"why":"liquidity","liq":2148}
+{"t":1793674020891,"addr":"4q3z9JNdJza4p8aubCRm7PmczhhWcE4Z7RiRPYhSpump","sym":"Nike","age":30.3,"score":0.02688,"px":0.0001086,"liq":24983,"p0":0.00010517200370666092,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.272,"c_peak":2.216,"c_vol":4.6114,"c_act":1.0,"c_r5":0.1665,"c_r15":-0.5782,"c_mc":5.0219}}
