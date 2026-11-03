@@ -645,3 +645,5 @@
 {"t":1793722141127,"addr":"DmPFeFWN3eRDN3C2h5ETxFawzd3upKFmnEREy1aVpump","sym":"USOE","age":30.4,"score":0.00635,"px":0.1368,"liq":947530,"p0":0.13663921309844734,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.0145,"c_peak":1.0024,"c_vol":5.6712,"c_act":1.0,"c_r5":-0.0013,"c_r15":0.0016,"c_mc":8.1356}}
 {"t":1793722141127,"addr":"MrbpSzjJutGQyHyBKhVhnQcHpqU4qqxQZ8F8eXnDidh","sym":"\u6211\u753b\u5730\u4e3a\u7262","age":30.2,"why":"liquidity","liq":0}
 {"t":1793722201052,"addr":"nE1nbYV8xFuJPafuh3Ywctc8tWk5x33p9fTtJWaZPKk","sym":"CATEMAS","age":32.5,"why":"liquidity","liq":8940}
+{"t":1793722502728,"addr":"GLhWuWTMXKM6mzn3arhC1C12KcUrTmpsrmGm3DiBpump","sym":"trumpwolf","age":30.3,"why":"liquidity","liq":1874}
+{"t":1793722560071,"addr":"2HYiFuCDKz6oFdEwWJUswEsRaRJbNQ4piCAsMK5Fpump","sym":"ASML","age":30.8,"why":"liquidity","liq":1714}
