@@ -6,3 +6,4 @@
 {"at":1793699160000,"why":"drop","mult":0.8548539956472644,"late":true,"hitAt":1793698860000,"rule":"chart","sym":"CAPY","t":1793699166393,"eur":41.89,"pnl":-8.11,"entryAt":1793696933003,"id":"2026-11-03T084458-h-CAPY-DBPTU2"}
 {"at":1793706120000,"why":"trail","mult":1.3096288734468862,"rule":"chart","sym":"MAMESUKE","t":1793706176135,"eur":64.18,"pnl":14.18,"entryAt":1793702050573,"id":"2026-11-03T101510-h-MAMESUKE-SCGBBn"}
 {"at":1793711820000,"why":"drop","mult":0.8870002160128343,"late":true,"hitAt":1793711760000,"rule":"chart","sym":"Ahsoka","t":1793711858002,"eur":43.47,"pnl":-6.53,"entryAt":1793708937308,"id":"2026-11-03T121108-h-Ahsoka-4nuj5N"}
+{"at":1793714940000,"why":"trail","mult":1.3181451340453725,"late":true,"hitAt":1793714880000,"rule":"chart","sym":"SPHERE","t":1793714995792,"eur":64.6,"pnl":14.6,"entryAt":1793706182944,"id":"2026-11-03T111918-h-SPHERE-31SYoq"}
