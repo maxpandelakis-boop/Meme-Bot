@@ -337,3 +337,4 @@
 {"t":1793694000982,"addr":"BfD8okX5CPU4T73Ve9J33Z5sJrPcqh23oEojfWADpump","sym":"Gemini","age":30.5,"why":"liquidity","liq":1673}
 {"t":1793694000982,"addr":"bibgaL18y7uhQGxeUbq916G6r8wG5qoWFUEbcNqpump","sym":"ELON04","age":30.3,"why":"liquidity","liq":1757}
 {"t":1793694180658,"addr":"HjJqSu8vZfPrGeQWXkoDbTVQuBHfjdVzA34szoK1V5kj","sym":"FUPUG","age":30.9,"score":0.00298,"px":0.3651,"liq":199802,"p0":0.3648099178240711,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.2407,"c_peak":1.0,"c_vol":4.9091,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":8.5621}}
+{"t":1793694480937,"addr":"DWvDRuZwozPXhDJnxqMbo23Uq82hncV8ub9m8yR9jgiz","sym":"FLOWFI","age":30.0,"why":"liquidity","liq":0}
