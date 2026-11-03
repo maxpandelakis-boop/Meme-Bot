@@ -445,3 +445,4 @@
 {"t":1793705280928,"addr":"WHj8C2Y4jrSLhdh7n1svkfEVRWfKWwD2im39UbSpump","sym":"Speed","age":30.9,"score":0.01058,"px":7.429e-05,"liq":20402,"p0":6.601546157614761e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":-0.7455,"c_peak":2.2455,"c_vol":4.3975,"c_act":1.0,"c_r5":-0.6179,"c_r15":-0.3174,"c_mc":4.8196}}
 {"t":1793705280928,"addr":"FqXXfJ9EReKSxLrMDeFCzWkix2VHssVnZc6iSKMFzy7P","sym":"AGC","age":30.9,"why":"liquidity","liq":0}
 {"t":1793705400179,"addr":"DsJaaPf1Qk53ieHVxEGAKS9wpt22abVZJ3efpWhGTwFZ","sym":"AGC","age":30.9,"why":"liquidity","liq":4}
+{"t":1793705520199,"addr":"CWPG4Ao1EWZNcf7K2YWYZf2sW3FMzznCRVnp4dqCpump","sym":"N\u2588\u2588\u2588","age":30.9,"why":"liquidity","liq":2006}
