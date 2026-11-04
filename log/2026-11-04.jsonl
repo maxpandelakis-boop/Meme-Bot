@@ -510,3 +510,5 @@
 {"t":1793799420650,"addr":"5z64nbPAC6roYPmUMxzhpfTmqeZWpphBDEUXCmaBAGS","sym":"KORFOR","age":30.0,"why":"liquidity","liq":0}
 {"t":1793799480887,"addr":"7GZ2Qqpf1BTxHLhUNmRmzaCAbn28PJS62enThWVE1Fj","sym":"CUBE","age":30.6,"why":"liquidity","liq":0}
 {"t":1793799600939,"addr":"5ja9qQuE5V9g5TVAFZVdtVQQqoThkAWxEKUaPcC5jN3F","sym":"NEMO","age":30.9,"why":"liquidity","liq":8765}
+{"t":1793799840359,"addr":"2UxjHoidyefQxJrCS8qT23JsbqKFcpPCa8ywBYZupump","sym":"$LIBCOIN","age":30.9,"score":0.0109,"px":2.861e-05,"liq":12042,"p0":2.8360269454244663e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":16.0,"f_cjk":0.0,"c_ret":-0.413,"c_peak":1.6633,"c_vol":3.8308,"c_act":1.0,"c_r5":0.0018,"c_r15":-0.0053,"c_mc":4.4527}}
+{"t":1793799900978,"addr":"2bksXZauDZGvhgcWu1LZMGEPw9TRbczddaoHDaJpFhEM","sym":"Reboot","age":30.2,"why":"liquidity","liq":0}
