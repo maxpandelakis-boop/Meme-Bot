@@ -291,3 +291,7 @@
 {"t":1793775300619,"addr":"Unnki577dy7vFxYKkwWN2jYme3qtttKnFmCVT3Epump","sym":"AMAZON","age":30.4,"score":0.00691,"px":0.0001897,"liq":33711,"p0":0.00011865264701974442,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.0595,"c_peak":1.9068,"c_vol":4.6386,"c_act":1.0,"c_r5":0.4351,"c_r15":-0.1291,"c_mc":5.0743}}
 {"t":1793775360345,"addr":"ftQgCsPKoYMcy8DxtzcfZ1eFkKqJhgnScCENu74pump","sym":"Robinhood","age":30.9,"why":"liquidity","liq":1684}
 {"t":1793775600662,"addr":"7vqDrJwBr1CGne9ZLRqFKvZF2mvLHvJEncvP8fKspump","sym":"Psg6go","age":30.3,"why":"liquidity","liq":0}
+{"t":1793775780965,"addr":"FAzwgcRnsM7CCGy2tJNpggMDmaaKENxfAbGo3yCZcYPZ","sym":"GPE","age":30.5,"score":0.01635,"px":4.009e-05,"liq":51958,"p0":3.899724183297612e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.6561,"c_peak":1.0035,"c_vol":4.9775,"c_act":1.0,"c_r5":0.1473,"c_r15":0.5215,"c_mc":4.591}}
+{"t":1793775780965,"addr":"APGUH5UzVtFS1GXmRSLC1YZjwu92xPZu2nVXac5Kpump","sym":"USOE\u2728","age":30.4,"why":"liquidity","liq":1676}
+{"t":1793775960716,"addr":"41HetoWkrj49wx7hzeW2VVzsQC4tN11nQg7GD1JxHyzt","sym":"Elon Musk","age":30.8,"why":"liquidity","liq":0}
+{"t":1793776021129,"addr":"9BwhfKdbnCsw8i4h9wmnJRDXtjJJgsYWeGt1GgsoG967","sym":"\u8c37\u6b4c","age":30.5,"why":"liquidity","liq":3}
