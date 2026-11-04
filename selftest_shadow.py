@@ -84,7 +84,7 @@ def checks(check):
 def _sh1(check):
     import shadow as S, memebot as M
     print("== shadow SH1: the replay of every rule")
-    R = {r["id"]: r for r in S.RULES}
+    R = {r["id"]: r for r in S.RULES + S.RETIRED}      # D retired on Nov 4 2026, its replay still checked
     T = 1_800_000_000_000
     sale = lambda doc, k: (S.replay(doc, R[k]) or {}).get("sales")
     # a slide: 0.85 at minute 10, 0.75 at 20, 0.65 at 30, then flat at 0.65 to 12 h
@@ -282,9 +282,9 @@ def _sh3_sh4(check, tmp):
     print("== shadow SH4: the Pick's own rule is untouched")
     check(M.OLD_PAPER_RULE == "v2: top 50 / young 3 / +1000% / -30% / 6h" and (M.HOLD_STOP, M.HOLD_TP, M.HOLD_MAX_H, M.TOP_TICKET) == (0.30, 10.0, 6.0, 50.0)
           and (S.RULES[0]["id"], S.RULES[0]["stop"], S.RULES[0]["target"], S.RULES[0]["hours"]) == ("K", 0.30, 11.0, 6.0) and not S.RULES[0].get("half")
-          and not S.RULES[0].get("trail") and [r["id"] for r in S.RULES] == ["K", "A", "B", "C", "D", "X"] and S.RULES[-1].get("chart")
+          and not S.RULES[0].get("trail") and [r["id"] for r in S.RULES] == ["K", "A", "B", "C", "X"] and [r["id"] for r in S.RETIRED] == ["D"] and S.RULES[-1].get("chart")
           and M.PAPER_RULE in M.CHART_RULES,
-          "SH4 the fixed rule (-30 %, 11x, 6 h, 50 a pick) is what it was and K is that rule; A to D are the four shadow rules, X the chart exit "
+          "SH4 the fixed rule (-30 %, 11x, 6 h, 50 a pick) is what it was and K is that rule; A to C are the shadow rules (D retired), X the chart exit "
           "the Pick sells by since Oct 24 (memebot.CHART_RULES)")
     src = open(os.path.join(HERE, "shadow.py"), encoding="utf-8").read()
     check("memepos" not in src and "memeexit" not in src and "state.json\"), {}" in src and src.count("open(") == 1 and "json.dump(" in src
@@ -318,10 +318,10 @@ def _sh5(check, tmp):
     check("Shadow rules" in h0 and "starts with the next Pick buy" in h0 and "<script" not in h0,
           "SH5 before the first mirrored buy the fold says it starts with the next pick buy")
     check(all(x in h1 for x in ("Real Pick account", "K · Old fixed rule", "A · Tight stop", "B · Longer, no stop", "C · Half at 2x",
-                                "D · Trailing stop", "X · Chart exit, replayed", "against K", "Every buy", "no minute candles", "same 50 €",
+                                "X · Chart exit, replayed", "against K", "Every buy", "no minute candles", "same 50 €",
                                 "none better than K, the old fixed rule"))
-          and 'class="sh-chip"' not in h1 and "&lt;b&gt;x&lt;/b&gt;" in h1 and "<b>x</b>" not in h1 and "<script" not in h1 and 'id="schatten"' in h1,
-          "SH5 with buys: the real account, K (the old fixed rule), A to D and X (the chart exit) on the same buys, each buy, symbols escaped, no "
+          and "D · Trailing stop" not in h1 and 'class="sh-chip"' not in h1 and "&lt;b&gt;x&lt;/b&gt;" in h1 and "<b>x</b>" not in h1 and "<script" not in h1 and 'id="schatten"' in h1,
+          "SH5 with buys: the real account, K (the old fixed rule), A to C and X (the chart exit) on the same buys, each buy, symbols escaped, no "
           "script; no rule ahead of K, none marked")
     # the same buys, but p1 falls on to 0.6 after its dip: A's tight stop (sold at 0.75) is now ahead of K (stopped at 0.6)
     d2 = os.path.join(tmp, "db5b")

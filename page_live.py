@@ -314,7 +314,19 @@ def accounts(D, R, doc, S, lanes, sd=None):
                                                        int(me.get("open") or 0), E(ltk))
     else:
         bal, line = '<b class="lv-ab">–</b>', "waiting for its first buy · %s per buy" % E(ltk)
-    if S or lanes.get("lp"):
+    try:
+        import lernpick as L
+        lp_stopped = now >= L.STOPPED_AT
+    except Exception:
+        lp_stopped = False
+    if lp_stopped:      # Nov 4: the Learning Pick stopped (proven negative); the New rules test takes its place on Start
+        try:
+            import page_newrules as PNR
+            nb, nl, nrole, ngo = PNR.box(D, R)
+            out.append(acct("nr", PNR.NAME, nrole, nb, nl, "", ngo))
+        except Exception:
+            pass
+    elif S or lanes.get("lp"):
         out.append(acct("lp", "Learning Pick", ROLE["lp"], bal, line, "", lanes.get("lp", "")))
     try:
         import page_seeker as PSK
@@ -330,7 +342,12 @@ def accounts(D, R, doc, S, lanes, sd=None):
     else:
         bal, sp = '<b class="lv-ab">–</b>', ""
         line = ("checked %d coins, no buy yet · %s per buy" % (n["checked"], E(stk))) if n else "starts with its first look · %s per buy" % E(stk)
-    if sd or lanes.get("rs"):
+    try:
+        import seeker as SK
+        rs_stopped = now >= SK.STOPPED_AT
+    except Exception:
+        rs_stopped = False
+    if (sd or lanes.get("rs")) and not rs_stopped:      # Nov 4: stopped; its fold under Tests on the side keeps every trade
         out.append(acct("rs", "Rocket seeker 🔭", ROLE["rs"], bal, line, sp, lanes.get("rs", "")))
     return "".join(out)
 
@@ -549,6 +566,7 @@ LV_JS = r"""
 
 
 LV_CSS = r"""
+.lv-nrgo { display:inline-flex; align-items:center; min-height:44px; color:var(--accent); font-weight:500; cursor:pointer; font-size:var(--fs-s) }
 /* the live panel (page_live.py) on the Start tab: three account boxes, each with its bots' lanes and a clock each, then the feed; a dark stage like the brain's */
 .lv { --lv-pick:var(--accent); --lv-sell:var(--good); --lv-radar:var(--nn2); --lv-lp:var(--nn1); --lv-rs:var(--warn); --lv-scan:var(--muted);
   position:relative; display:grid; gap:12px; padding:14px; border-radius:18px; overflow:hidden; border:1px solid var(--line); scroll-margin-top:70px;

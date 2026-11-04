@@ -358,9 +358,12 @@ def _lp7(check, tmp):
           "LP7 the Start tab without its live panel: a Learning Pick row under the two accounts (balance, the sold trades' result, open), a tap opens the Pick tab with the fold open")
     import page_live as PLV
     with _no_numpy():
-        D1 = {"dir": d, "now": T0 + 30 * DAY}
+        D1 = {"dir": d, "now": T0 + 25 * DAY}           # before the stop of Nov 4 18:00 UTC (lernpick.STOPPED_AT)
         S1 = PLV.lp_summary(D1)
         box = PLV.accounts(D1, R, None, S1, {"lp": "<i>lane</i>"})
+        box_after = PLV.accounts({"dir": d, "now": L.STOPPED_AT}, R, None, S1, {"lp": "<i>lane</i>"})
+    check('lv-acct lv-a-lp"' not in box_after and 'lv-acct lv-a-nr"' in box_after,
+          "LP7 from the stop on (Nov 4) the Start tab shows the New rules test's box in the Learning Pick's place")
     lp_box = box[box.find('lv-acct lv-a-lp"'):]
     check(lp_box and "<b class=\"lv-an\">Learning Pick</b>" in lp_box and PH.de_eur(S1["me"]["pnl"], True) in lp_box and "<i>lane</i>" in lp_box
           and "%d sold %s · %d open" % (S1["me"]["sold"], PH.de_eur(S1["me"]["closedPnl"], True), S1["me"]["open"]) in lp_box,
@@ -375,21 +378,12 @@ def _lp8(check):
     print("== learning pick LP8: the workflows")
     fs = yaml.safe_load(open(os.path.join(HERE, ".github", "workflows", "filtersearch.yml"), encoding="utf-8"))
     st = fs["jobs"]["search"]["steps"]
-    names = [str(s.get("name") or "") for s in st]
-    i_fs = next(i for i, s in enumerate(st) if "filter_search.py run" in str(s.get("run")))
-    i_push = next(i for i, n in enumerate(names) if n.startswith("Push the result to the filtersearch branch"))
-    i_get = next(i for i, s in enumerate(st) if s.get("id") == "lpget")
-    i_tr = next(i for i, s in enumerate(st) if s.get("id") == "lptrain")
-    i_lp = next(i for i, n in enumerate(names) if "lernpick branch" in n)
     raw = open(os.path.join(HERE, ".github", "workflows", "filtersearch.yml"), encoding="utf-8").read()
     pushes = [l.strip() for l in raw.splitlines() if "git push" in l]
-    check(i_fs < i_push < i_get < i_tr < i_lp and all(st[i].get("continue-on-error") is True for i in (i_get, i_tr, i_lp))
-          and "!cancelled()" in str(st[i_get].get("if")) and "lpget.outcome == 'success'" in str(st[i_tr].get("if"))
-          and st[i_tr]["run"].strip() == "python3 lernpick.py train --snaps bt/memesnapres --res res --out lp --fs fs" and int(st[i_tr]["timeout-minutes"]) <= 15
-          and "GITHUB_TOKEN" not in str(st[i_tr].get("env")) and len(pushes) == 2 and pushes[1] == 'git push -q "$REPO_URL" HEAD:lernpick'
-          and not any("results" in p for p in pushes) and int(fs["jobs"]["search"]["timeout-minutes"]) <= 50,
-          "LP8 the nightly steps come after the filter search's push, soft (a failure never touches its result), even after a failed search; "
-          "the training without the token; the brain goes to its own branch lernpick, never to results")
+    # Nov 4 2026: the Learning Pick stopped (lernpick.STOPPED_AT, proven negative); its nightly training left filtersearch.yml
+    check(not any(s.get("id") in ("lpget", "lptrain") for s in st) and "lernpick.py" not in raw and pushes == ['git push -q "$REPO_URL" HEAD:filtersearch']
+          and int(fs["jobs"]["search"]["timeout-minutes"]) <= 50,
+          "LP8 the nightly training is gone since the Learning Pick stopped on Nov 4; the filter search pushes only to its own branch")
     scan = yaml.safe_load(open(os.path.join(HERE, ".github", "workflows", "scan.yml"), encoding="utf-8"))
     job = scan["jobs"]["scan"]
     steps = job["steps"]

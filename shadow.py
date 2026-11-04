@@ -5,7 +5,7 @@ trader, the training or the big test reads comes from here, and nothing here is 
 docs (db/memeshadow).
 
 The question (the user, 22 Oct 2026): which sell rule would hold for the Pick? Every real Pick buy (grp "hold" in the paper account,
-bought from SINCE on) is mirrored in four shadow accounts. Each sells the same coin, bought at the same minute for the same ticket with
+bought from SINCE on) is mirrored in the shadow accounts. Each sells the same coin, bought at the same minute for the same ticket with
 the same paper fees, by its own rule. After about two weeks the accounts say which rule did best on the same buys.
 
 The rules (RULES, fixed when the test started on SINCE; another rule would be a new test with its own start, never an edit):
@@ -19,7 +19,8 @@ The rules (RULES, fixed when the test started on SINCE; another rule would be a 
   B  no stop, target 2x, 12 h         the best on the training days of the longer-hold test (research/winlose/WINLOSE-2026-10-22.md,
                                       addendum 4: -1.85 per 20 on unseen days against -3.00 for the real rule)
   C  half at 2x, the rest as the real rule (-30 %, 11x, 6 h)   a partial sale (the 134-exit test's "1/2 at 2x, rest rule A")
-  D  a stop 30 % under the best close so far, 6 h, no target    a trailing stop (the 134-exit test's "trail 30% at once, 6 h")
+  D  a stop 30 % under the best close so far, 6 h, no target    a trailing stop (the 134-exit test's "trail 30% at once, 6 h"); RETIRED
+                                      on 4 Nov 2026 (-317.80 EUR against K), off the page, kept in RETIRED
 
 The prices: one 12-hour minute path per buy (entryAt to entryAt + 12 h), asked for once its 12 hours have passed, in the peaks job
 after peak.py (one GeckoTerminal request per buy on peak.py's client and pacing, peak.gt_get), and put through peak.py's own glitch
@@ -72,11 +73,15 @@ RULES = (
     {"id": "A", "name": "Tight stop", "text": "stop −20%, target 3x, 6 h", "stop": 0.20, "target": 3.0, "hours": 6.0},
     {"id": "B", "name": "Longer, no stop", "text": "no stop, target 2x, 12 h", "stop": None, "target": 2.0, "hours": 12.0},
     {"id": "C", "name": "Half at 2x", "text": "half at 2x, rest −30% / 11x / 6 h", "stop": 0.30, "target": 11.0, "half": 2.0, "hours": 6.0},
-    {"id": "D", "name": "Trailing stop", "text": "stop 30% under the best price, 6 h", "stop": 0.30, "target": None, "trail": 0.30, "hours": 6.0},
     {"id": "X", "name": "Chart exit, replayed", "text": "the Pick's rule since Oct 24: 15% under the high from 1.5x, −15% in 30 min, −50%, 11x, 6 h",
      "stop": M.CHART_STOP, "target": 1.0 + M.HOLD_TP, "chart": True, "hours": M.HOLD_MAX_H},
 )
 CONTROL = "K"
+# Retired (the user, 4 Nov 2026: "löschen was nicht relevant ist"): off the page and out of the accounts, kept so the rule stays readable
+# and replayable. D lost 317.80 EUR against K on the 4 Nov review (research/livesearch/PREREG-LIVESEARCH-2026-11-04.md).
+RETIRED = (
+    {"id": "D", "name": "Trailing stop", "text": "stop 30% under the best price, 6 h", "stop": 0.30, "target": None, "trail": 0.30, "hours": 6.0},
+)
 assert (RULES[0]["stop"], RULES[0]["target"], RULES[0]["hours"]) == (M.HOLD_STOP, 1.0 + M.HOLD_TP, M.HOLD_MAX_H)   # K is the real rule
 assert max(r["hours"] for r in RULES) <= PATH_H
 
@@ -232,7 +237,27 @@ def run(d, now, deadline_s=90.0, mock=None):
 
 
 # ---------------------------------------------------------------- the replay (pure)
+CHART_KEYS = ("CHART_STOP", "CHART_TRAIL", "CHART_ARM", "CHART_DROP", "CHART_DROP_MIN", "HOLD_MAX_H")
+
+
 def replay(doc, rule):
+    """replay_rule() with the rule's own chart-exit numbers (rule["cp"]: a chart-exit variant of the live-data search of 4 Nov 2026,
+    newrules.py) in memebot's CHART_* for the length of the replay, put back after it; a rule without "cp" replays as it is."""
+    cp = rule.get("cp")
+    if not cp:
+        return replay_rule(doc, rule)
+    old = {k: getattr(M, k) for k in CHART_KEYS}
+    try:
+        for k, v in cp.items():
+            if k in CHART_KEYS:
+                setattr(M, k, v)
+        return replay_rule(doc, rule)
+    finally:
+        for k, v in old.items():
+            setattr(M, k, v)
+
+
+def replay_rule(doc, rule):
     """One rule on one buy's path -> {"sales": [[ms, frac, mult, why], ...], "why": the last sale's reason} or None (not replayable: no
     close on real volume by the rule's time limit in a pool that did not die). mult is over the entry price (memebot books entry x
     level); why: "tp", "half", "stop", "trail", "time", "rug" (a dead pool without a stop or after a rug exit), "dead" (a dead pool,

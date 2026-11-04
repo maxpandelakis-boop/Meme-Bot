@@ -65,9 +65,10 @@ def num(v):
 
 
 # ---------------------------------------------------------------------------------------------------------------- the rows
-def load(snaps, features=FEATURES):
+def load(snaps, features=FEATURES, sink=None):
     """The big test's rows (liquidity at least MIN_LIQ, market cap at least MIN_MC), streamed file by file -> dict of numpy
-    columns: scan, t (scored), coin (int id), pass, rank, r (profit per 20), zero, hit3, and one column per features."""
+    columns: scan, t (scored), coin (int id), pass, rank, r (profit per 20), zero, hit3, and one column per features. sink(t0, coin):
+    called with every coin kept (the New rules test's B rules, newrules.BigSink); it never changes the rows."""
     import numpy as np
     cols = {k: [] for k in ("scan", "t", "a", "pass", "rank", "mult", "gone") + tuple(features)}
     for fn in sorted(glob.glob(os.path.join(snaps, "*.json"))):
@@ -87,6 +88,8 @@ def load(snaps, features=FEATURES):
             if not liq or liq < MIN_LIQ or not mc or mc < MIN_MC or any(str(w) in HARD_BLOCK for w in c.get("why") or []):
                 continue
             f, m = c["f"], num(c.get("mult")) or 0.0
+            if sink is not None:
+                sink(t0, c)
             cols["scan"].append(t0); cols["t"].append(t1); cols["a"].append(str(c.get("a")))
             cols["pass"].append(bool(c.get("pass"))); cols["rank"].append(num(c.get("rank")) or 0.0)
             cols["mult"].append(m); cols["gone"].append(bool(c.get("gone")) or m < 0.02)
@@ -296,7 +299,13 @@ def mistakes(R, rule, now):
 # ---------------------------------------------------------------------------------------------------------------- run
 def build(snaps, state, now, study=None):
     t0 = time.time()
-    R = load(snaps)
+    try:
+        import newrules as NR          # the New rules test (newrules.py): its B rules on the same rows, measured here each night
+        sink = NR.BigSink()
+    except Exception as e:             # never in the way of the search
+        print("newrules: %s" % e, file=sys.stderr)
+        sink = None
+    R = load(snaps, sink=sink)
     upto = float(R["t"][R["t"] <= now].max()) if len(R["t"]) else 0.0
     rule, st, tried = search(R, upto)
     chs = [c for c in (state.get("challengers") or []) if isinstance(c, dict) and isinstance(c.get("rule"), dict)]
@@ -321,6 +330,11 @@ def build(snaps, state, now, study=None):
            "nLive": len(chs), "mistakes": mistakes(R, lead_rule, now), "rules": {"minFwd": MIN_FWD, "minDays": MIN_DAYS, "minHalf": MIN_HALF}}
     if study:
         doc["study"] = study
+    if sink is not None:
+        try:
+            doc["newrules"] = sink.doc(now)
+        except Exception as e:
+            print("newrules: %s" % e, file=sys.stderr)
     doc["secs"] = round(time.time() - t0, 1)
     return doc, {"v": 1, "challengers": [{k: c[k] for k in ("id", "rule", "text", "frozenAt", "train", "tried")} for c in chs]}
 

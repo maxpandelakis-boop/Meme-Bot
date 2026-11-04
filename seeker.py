@@ -40,6 +40,11 @@ RUG_LIQ = 1_000             # $ of liquidity left in the coin's pools (DexScreen
                             # froze at 1.52x and 0.65x with no trade after it, and the 24-hour sale would have booked a price nobody could sell at
 NEAR_MS = 5 * MIN           # DexScreener's price now vouches for the closes of the last five minutes, and for the newest close of any age
                             # (no trade after it: the price now is its price; .AiTown's rug to 0.0001x, judged again hours later)
+# STOPPED (the user, 4 Nov 2026 16:14 UTC: "löschen was nicht relevant ist"): 75 trades, -1,259.65 EUR (-16.80 per 20 EUR), 53 of them
+# rugs, by 4 Nov; its 27 Nov verdict (PR #39 bar on the first 30 days) can no longer turn positive in practice. No buy from STOPPED_AT on;
+# the open positions are still watched and sold by the Rocket hold; every trade stays on the seeker-data branch.
+STOPPED_AT = 1793815200000  # Wed 4 Nov 2026 18:00 UTC
+STOPPED_WHY = "stopped on Nov 4: it lost 1,259.65 € on 75 trades, 53 of them rugs"
 nan = float("nan")
 
 # check_rockets.py (PR #55) word rules for the theme heat, its tweet id and CJK patterns, line by line
@@ -265,7 +270,7 @@ class Book:
         return a in self.open or any(p.get("addr") == a for p in self.closed)
 
     def buy(self, a, sym, pool, px, now, sc, cut):
-        if self.bought(a) or not px or px <= 0:
+        if self.bought(a) or not px or px <= 0 or now >= STOPPED_AT:
             return None
         p = {"addr": a, "sym": sym, "pool": pool, "t": int(now), "px": px, "score": round(sc, 4), "cut": round(cut, 4), "best": 1.0, "last": 1.0}
         self.open[a] = p
