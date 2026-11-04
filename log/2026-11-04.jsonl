@@ -372,3 +372,5 @@
 {"t":1793784840988,"addr":"EZyHgTnEXZX5n5ENzA5WrXUk8RDZ1U9newtpSwC3pump","sym":"ELON","age":30.9,"why":"liquidity","liq":1701}
 {"t":1793784840988,"addr":"SE9aBQgyVSnaNBCBeEVjDC78wJoe1UmFGmMtrnXZLeY","sym":"POOLS","age":30.7,"why":"liquidity","liq":0}
 {"t":1793784840988,"addr":"J7pamhtfSLq8p8rtnaSGoTEDg4heYFeev5puLoHzvme3","sym":"\ud06c\ub871","age":30.4,"why":"liquidity","liq":0}
+{"t":1793784960098,"addr":"E9y8E7aYKXTvXHEjyD7QSmQKQyxVM8aeTCv3wrXFNDmh","sym":"BEGI","age":30.4,"score":0.00287,"px":0.3672,"liq":159096,"p0":0.3669862922621968,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1481,"c_peak":1.0,"c_vol":4.9322,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":8.5646}}
+{"t":1793784960098,"addr":"BJX6AKfHQRg65XoZ8d7QWD9AiKjXjG3vVM7gvPyaXUM7","sym":"\ud06c\ub871","age":30.3,"why":"liquidity","liq":0}
