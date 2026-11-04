@@ -762,3 +762,4 @@
 {"t":1793821140318,"addr":"6B9bcnxTsFHQmPtUHTxW3FgBtLcXc447EFgpjEfMpump","sym":"FOTF","age":30.8,"score":0.00803,"px":0.139,"liq":964122,"p0":0.13898851212393737,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.0116,"c_peak":1.0019,"c_vol":5.6812,"c_act":1.0,"c_r5":-0.0014,"c_r15":0.0038,"c_mc":8.143}}
 {"t":1793821560081,"addr":"EiN69j8KVE5uYKheVkeVwptEVwRP5JtDhJDMGm1ppump","sym":"QORB","age":30.7,"why":"liquidity","liq":9434}
 {"t":1793821560081,"addr":"ELj1RsRTb2EYNtkPeXpvZ6fGLVMQ5w1ehaZQXrA9pump","sym":"HEART","age":30.2,"why":"liquidity","liq":8652}
+{"t":1793821860684,"addr":"ERdLaY8GBH2CGvpLw7xjbFesAuLQ6rtTvH6nsRrcpump","sym":"bor","age":30.7,"why":"liquidity","liq":2924}
