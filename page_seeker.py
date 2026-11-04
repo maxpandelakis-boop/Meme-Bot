@@ -152,12 +152,22 @@ def section(D, R):
             "".join(li), "{:,}".format(n["checked"]), "{:,}".format(int(num((d.get("counts") or {}).get("missed")) or 0))) if li else ""
         inner = lead + tiles + since + tr + how + checks
         head = "%s · %d sold · %d open · test bot" % (eur(n["bal"]), n["closed"], n["open"])
+    try:
+        import seeker as SK
+        stopped = now >= SK.STOPPED_AT
+    except Exception:
+        stopped = False
+    if stopped:      # Nov 4 (the user: "löschen was nicht relevant ist"): no new buys, its trades stay here
+        inner = ('<p class="rs-stop"><b>Stopped.</b> %s. It buys nothing new; coins it still holds are sold by its rule. '
+                 'All its trades stay below.</p>') % E(SK.STOPPED_WHY[0].upper() + SK.STOPPED_WHY[1:]) + inner
+        head = "stopped Nov 4 · " + head.replace(" · test bot", "")
     return ('<details class="fold rs-fold" id="rocket-seeker"><summary><span class="t">%s</span><span class="sum">%s</span></summary><div class="rs">%s</div></details>'
             '<style>%s</style>') % (E(NAME), E(head), inner, CSS)
 
 
 CSS = r"""
 /* the Rocket seeker's fold under Tests on the side (page_seeker.py) */
+.rs-stop { margin:0; padding:10px 12px; border-radius:10px; font-size:var(--fs-s); background:color-mix(in srgb,var(--bad) 10%,transparent) }
 .rs { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; min-width:0 } .rs > * { min-width:0 }
 .rs-lead { margin:0; color:var(--fg2); font-size:var(--fs-s); max-width:70ch }
 .rs-tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }

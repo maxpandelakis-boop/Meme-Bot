@@ -287,16 +287,21 @@ def section(D, R):
         tiles = '<div class="lp-tiles">%s%s%s</div><small class="lp-m">Since its first buy, %s. Sold trades only; the Radar buys other coins (minutes-old launches).</small>' % (
             tile("Learning Pick", "learns every night", S["me"], S["ticket"], "me"), tile("Pick", "the real one", S["pick"], M.TOP_TICKET),
             tile("Radar", "rocket hunter", S["radar"], S["radar"].get("ticket")), E(when(R, since)))
-    inner = ('<div class="lp"><p class="lp-lead">A second Pick with its own paper account (fake money). Every night it retrains on everything '
+    stopped = ((D or {}).get("now") or 0) >= L.STOPPED_AT
+    stop = ('<p class="lp-stop"><b>Stopped.</b> %s. It buys nothing new and no longer trains; coins it still holds are sold by its rule. '
+            'All its trades stay below.</p>') % E(L.STOPPED_WHY[0].upper() + L.STOPPED_WHY[1:]) if stopped else ""
+    inner = ('<div class="lp">%s<p class="lp-lead">A second Pick with its own paper account (fake money). Every night it retrains on everything '
              'seen so far, and a new brain takes over only when it beats the current one on days neither of them has seen. It never changes '
              'the Pick or the Radar and sends no push. It would only replace the real Pick if it holds up for weeks and you say yes.</p>'
-             '%s%s%s%s%s</div>') % (tiles, trades_table(S, R), brain_box(S, R), exams_table(S, R), learns_from(S))
+             '%s%s%s%s%s</div>') % (stop, tiles, trades_table(S, R), brain_box(S, R), exams_table(S, R), learns_from(S))
+    head = ("stopped Nov 4 · " if stopped else "") + head_line(S, R)
     return ('<details class="fold lp-fold" id="learning-pick"><summary><span class="t">Learning Pick</span><span class="sum">%s</span></summary>%s</details>'
-            '<style>%s</style>') % (E(head_line(S, R)), inner, CSS)
+            '<style>%s</style>') % (E(head), inner, CSS)
 
 
 CSS = r"""
 /* the Pick tab's Learning Pick (page_lernpick.py) */
+.lp-stop { margin:0; padding:10px 12px; border-radius:10px; font-size:var(--fs-s); background:color-mix(in srgb,var(--bad) 10%,transparent) }
 .lp { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; min-width:0 } .lp > * { min-width:0 }
 .lp-lead { margin:0; color:var(--fg2); font-size:var(--fs-s); max-width:70ch }
 .lp-tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }

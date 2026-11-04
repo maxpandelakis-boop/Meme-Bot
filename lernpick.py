@@ -54,6 +54,11 @@ if HERE not in sys.path:
 import memebot as M      # read only: num, load_json, load_docs, load_pairs, positions, pos_value, the paper rule, PAPER_RULE
 
 V = 1
+# STOPPED (the user, 4 Nov 2026 16:14 UTC: "löschen was nicht relevant ist"): proven negative on the 4 Nov review (275 trades, -897.62 EUR,
+# -8.03 % a trade after the allowance, every one of 10,000 re-draws at or under zero). No buy from STOPPED_AT on; the open positions are
+# still sold by their rule (run), every trade stays in db/memelern, the nightly training left filtersearch.yml.
+STOPPED_AT = 1793815200000           # Wed 4 Nov 2026 18:00 UTC
+STOPPED_WHY = "stopped on Nov 4: it lost 897.62 € on 275 trades (proven negative)"
 DOC = "lernpick.json"
 COLL = ("db", "memelern")
 H, MIN, DAY = 3_600_000, 60_000, 86_400_000
@@ -657,6 +662,9 @@ def this_scan(d, now):
 def buy(d, now):
     """This scan's buy (see the module doc) -> the summary line (dict). Never raises."""
     out = {"ok": True, "bought": None}
+    if now >= STOPPED_AT:
+        out["why"] = STOPPED_WHY
+        return out
     if os.environ.get("MEMEBOT_LERNPICK", "1").strip() == "0":
         out["why"] = "switched off (repository variable MEMEBOT_LERNPICK=0)"
         return out

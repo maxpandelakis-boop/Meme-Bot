@@ -6,7 +6,7 @@ the old fixed rule replayed (K; the Pick's rule until the chart exit of Oct 24, 
   - one sentence on what this is: every real Pick buy runs again under four other sell rules (same coin, minute, 50 €, fees); the real
     Pick rule stays as it is
   - the accounts on the same buys: the real Pick account, K (the real rule replayed: the yardstick, same prices and method as the
-    shadows), and A to D, each with its result, per buy, how many ended in profit, and how far it is from K
+    shadows), and A to C (D, the trailing stop, retired on Nov 4), each with its result, per buy, how many ended in profit, and how far it is from K
   - when the results come (about 12 hours after each buy), how many buys are still open or left out, since when
   - the buys one by one (newest first, at most TRADES_SHOWN) in a small table that scrolls sideways on a phone
 D: report.py's page data (D["dir"], D["now"]); R: report itself (local times). Reads shadow.summary only; every chain string is
@@ -118,7 +118,7 @@ def section(D, R):
              'Paper money only.</p>'
              '<div class="sh-scroll"><table class="sh-t"><thead><tr><th>Rule</th><th>Result</th><th>per buy</th><th>in profit</th></tr></thead>'
              '<tbody>%s</tbody></table></div>'
-             '<p class="sh-m">K is the old fixed rule, replayed on the same minute candles: X (the chart exit, replayed the same way) and A to D '
+             '<p class="sh-m">K is the old fixed rule, replayed on the same minute candles: X (the chart exit, replayed the same way) and A to C '
              'are measured against it. The results come '
              'about 12 hours after each buy (when the minute candles are in).%s</p><p class="sh-m">%s</p>%s</div>') % (
         E(("%g €" % S["ticket"]) if S["ticket"] == int(S["ticket"]) else PH.de_eur(S["ticket"])), "".join(rows), E(few), E(" · ".join(note)), trades_table(S, R))

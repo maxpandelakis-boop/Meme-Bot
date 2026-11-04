@@ -2042,13 +2042,23 @@ def shadow_block(D):
     return '<section>%s</section>' % PSH.section(D, sys.modules[__name__])
 
 
+def newrules_block(D):
+    """The New rules test (page_newrules.py, fake money: the 9 rules frozen from the live-data search of Nov 4, run on new days; the Pick,
+    the Sell bot and the Radar are untouched) at the top of Tests on the side. Nothing without the module."""
+    try:
+        import page_newrules as PNR
+    except ImportError:
+        return ""
+    return '<section>%s</section>' % PNR.section(D, sys.modules[__name__])
+
+
 def tests_block(inner):
     """The foot of the Pick tab: the shadow rules and the Learning Pick under one heading that says they are tests (Oct 26: the user wants
     the app "logisch und organisiert"; the Learning Pick's fold read like a part of the Pick account)."""
     if not inner:
         return ""
-    return section("Tests on the side", "Other sell rules, the Learning Pick and the Rocket seeker 🔭, each with fake money of its own. They never buy or sell "
-                   "for the Pick account or the Radar account.", inner)
+    return section("Tests on the side", "The New rules test 🧪, other sell rules, and the stopped Learning Pick and Rocket seeker 🔭, each with fake money of "
+                   "its own. They never buy or sell for the Pick account or the Radar account.", inner)
 
 
 def lernpick_block(D):
@@ -3530,8 +3540,8 @@ def render(data, fragment=False):
         details = fold("Research", "forecast, tip record, training, filter team, filter search, winners vs losers, candidates, run log", '<div class="rest">%s</div>' % "\n".join(x for x in rest if x))
         pane_pick = (strip_html + (safe("pick account", lambda: PH.pick_account(D, sys.modules[__name__])) if PH else "")
                      + safe("recommendations", lambda: rec_section(D, embed=not fragment)) + safe("history", lambda: history_section(D))
-                     + tests_block(safe("shadow rules", lambda: shadow_block(D)) + safe("learning pick", lambda: lernpick_block(D))
-                                   + safe("rocket seeker", lambda: seeker_block(D))))
+                     + tests_block(safe("new rules", lambda: newrules_block(D)) + safe("shadow rules", lambda: shadow_block(D))
+                                   + safe("learning pick", lambda: lernpick_block(D)) + safe("rocket seeker", lambda: seeker_block(D))))
         PT = traders_page()
         legacy = safe("new launches", lambda: young_section(D, "New launches (until %s)" % local(sw).strftime("%b %d"))) if now < sw else ""
         # the launch radar's old paper positions (10 € on every coin without traps) left the Radar tab on Oct 23: their account is off since Oct 22
