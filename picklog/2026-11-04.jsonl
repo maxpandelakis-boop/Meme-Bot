@@ -3,3 +3,4 @@
 {"at":1793763720000,"why":"time","mult":1.3443547167280174,"late":true,"hitAt":1793763419597,"rule":"chart","sym":"WASTED","t":1793763758786,"eur":65.88,"pnl":15.88,"entryAt":1793741819597,"id":"2026-11-03T211306-h-WASTED-5k2hka"}
 {"at":1793770920000,"why":"drop","mult":0.7762374599372153,"late":true,"hitAt":1793770860000,"rule":"chart","sym":"MEOWNERO","t":1793771024803,"eur":38.04,"pnl":-11.96,"entryAt":1793766912741,"id":"2026-11-04T041353-h-MEOWNERO-6gnB2H"}
 {"at":1793776380000,"why":"trail","mult":1.8812890792957304,"late":true,"hitAt":1793776320000,"rule":"chart","sym":"HIGH","t":1793776443699,"eur":92.19,"pnl":42.19,"entryAt":1793771223334,"id":"2026-11-04T052255-h-HIGH-7ymF66"}
+{"at":1793795880000,"why":"stop","mult":0.08980628076140021,"rule":"chart","sym":"WASTED","t":1793796015901,"eur":4.35,"pnl":-45.65,"entryAt":1793775218661,"id":"2026-11-04T062903-h-WASTED-5k2hka"}
