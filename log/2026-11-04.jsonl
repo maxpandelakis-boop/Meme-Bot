@@ -767,3 +767,5 @@
 {"t":1793822100583,"addr":"FFUNLYFMnUYN7AhrhJbc4dxBuUjyVZeeiexJSismbonk","sym":"BMLUTE","age":30.8,"why":"liquidity","liq":0}
 {"t":1793822640348,"addr":"4uzgTZgGrjxgymaA9odhwMVntpZTPuyyUSZ5rbf9pump","sym":"PAD","age":30.6,"score":0.00918,"px":0.0136,"liq":299157,"p0":0.013589660922021742,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.0117,"c_peak":1.0061,"c_vol":5.1537,"c_act":1.0,"c_r5":-0.0003,"c_r15":-0.0043,"c_mc":7.1332}}
 {"t":1793822640348,"addr":"EqbNnEgPCjZKAetdFmX5iaCfutWdCSfkY3XnkJb4pump","sym":"BOT+BAL","age":30.0,"why":"liquidity","liq":6197}
+{"t":1793822941071,"addr":"J28Ci28PHa2yrYTHhA9FhZwJuLhA2i1f8xpU4wt6pump","sym":"UNICORN","age":30.8,"why":"liquidity","liq":6544}
+{"t":1793823060913,"addr":"AxBkNMgC67z2jxT2VNBiaDXYqQR9Jmz7JsK8BJUCrfXH","sym":"\u7709\u7709","age":31.0,"why":"liquidity","liq":0}
