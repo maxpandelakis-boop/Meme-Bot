@@ -1,0 +1,257 @@
+{
+ "prereg": "research/otherplatforms/PREREG-PLATFORMS-2026-11-04.md",
+ "coins": {
+  "w1": 6830,
+  "w2": 10481,
+  "w5": 8427,
+  "w3": 22085,
+  "w4": 22437
+ },
+ "methods": {
+  "M1": {
+   "name": "Breakout, pullback, reclaim, buy the retest",
+   "all": {
+    "n": 6827,
+    "meanAfterAllowance": -6.17,
+    "lowerBound": -6.73,
+    "pBoot": 1.0,
+    "total": -42118.7,
+    "totalWithoutBest": -42858.5,
+    "inProfit": 22.8,
+    "bestTrade": 740.36,
+    "holds": false,
+    "grossMultipleMean": 0.792,
+    "grossMultipleMedian": 0.747
+   },
+   "byWindow": {
+    "w1": {
+     "n": 943,
+     "meanAfterAllowance": -4.49,
+     "inProfit": 11.3,
+     "grossMean": 0.891
+    },
+    "w2": {
+     "n": 922,
+     "meanAfterAllowance": -4.46,
+     "inProfit": 9.2,
+     "grossMean": 0.893
+    },
+    "w3": {
+     "n": 2201,
+     "meanAfterAllowance": -6.28,
+     "inProfit": 26.7,
+     "grossMean": 0.785
+    },
+    "w4": {
+     "n": 1995,
+     "meanAfterAllowance": -7.87,
+     "inProfit": 26.1,
+     "grossMean": 0.697
+    },
+    "w5": {
+     "n": 766,
+     "meanAfterAllowance": -5.56,
+     "inProfit": 33.0,
+     "grossMean": 0.821
+    }
+   },
+   "windowsPositive": 0
+  },
+  "M2": {
+   "name": "GMGN Migrated (mc >= $30k in the first hour) + Jekyll exits",
+   "all": {
+    "n": 45710,
+    "meanAfterAllowance": -8.04,
+    "lowerBound": -8.25,
+    "pBoot": 1.0,
+    "total": -367623.8,
+    "totalWithoutBest": -367653.6,
+    "inProfit": 22.8,
+    "bestTrade": 30.34,
+    "holds": false,
+    "grossMultipleMean": 0.701,
+    "grossMultipleMedian": 0.429
+   },
+   "byWindow": {
+    "w1": {
+     "n": 4093,
+     "meanAfterAllowance": -4.38,
+     "inProfit": 28.6,
+     "grossMean": 0.906
+    },
+    "w2": {
+     "n": 5464,
+     "meanAfterAllowance": -5.97,
+     "inProfit": 25.3,
+     "grossMean": 0.818
+    },
+    "w3": {
+     "n": 14614,
+     "meanAfterAllowance": -8.57,
+     "inProfit": 21.8,
+     "grossMean": 0.67
+    },
+    "w4": {
+     "n": 15587,
+     "meanAfterAllowance": -8.98,
+     "inProfit": 21.4,
+     "grossMean": 0.648
+    },
+    "w5": {
+     "n": 5952,
+     "meanAfterAllowance": -8.69,
+     "inProfit": 22.6,
+     "grossMean": 0.666
+    }
+   },
+   "windowsPositive": 0
+  },
+  "M3": {
+   "name": "Axiom Trending (mc >= $70k and >= $30k 5-min volume) + Jekyll exits",
+   "all": {
+    "n": 17742,
+    "meanAfterAllowance": -7.97,
+    "lowerBound": -8.29,
+    "pBoot": 1.0,
+    "total": -141346.2,
+    "totalWithoutBest": -141375.9,
+    "inProfit": 22.1,
+    "bestTrade": 30.34,
+    "holds": false,
+    "grossMultipleMean": 0.708,
+    "grossMultipleMedian": 0.467
+   },
+   "byWindow": {
+    "w1": {
+     "n": 1735,
+     "meanAfterAllowance": -3.49,
+     "inProfit": 32.2,
+     "grossMean": 0.953
+    },
+    "w2": {
+     "n": 2424,
+     "meanAfterAllowance": -5.42,
+     "inProfit": 27.6,
+     "grossMean": 0.846
+    },
+    "w3": {
+     "n": 5856,
+     "meanAfterAllowance": -9.25,
+     "inProfit": 18.4,
+     "grossMean": 0.637
+    },
+    "w4": {
+     "n": 5718,
+     "meanAfterAllowance": -9.05,
+     "inProfit": 20.2,
+     "grossMean": 0.649
+    },
+    "w5": {
+     "n": 2009,
+     "meanAfterAllowance": -8.06,
+     "inProfit": 22.6,
+     "grossMean": 0.702
+    }
+   },
+   "windowsPositive": 0
+  },
+  "M4": {
+   "name": "DexScreener new pairs (liq > $20k, FDV > $85k) + shared ladder",
+   "all": {
+    "n": 33040,
+    "meanAfterAllowance": -9.12,
+    "lowerBound": -9.36,
+    "pBoot": 1.0,
+    "total": -301320.9,
+    "totalWithoutBest": -301389.1,
+    "inProfit": 17.8,
+    "bestTrade": 68.72,
+    "holds": false,
+    "grossMultipleMean": 0.636,
+    "grossMultipleMedian": 0.418
+   },
+   "byWindow": {
+    "w1": {
+     "n": 2016,
+     "meanAfterAllowance": -4.51,
+     "inProfit": 27.6,
+     "grossMean": 0.894
+    },
+    "w2": {
+     "n": 2969,
+     "meanAfterAllowance": -5.48,
+     "inProfit": 24.1,
+     "grossMean": 0.838
+    },
+    "w3": {
+     "n": 11071,
+     "meanAfterAllowance": -9.7,
+     "inProfit": 16.8,
+     "grossMean": 0.602
+    },
+    "w4": {
+     "n": 12393,
+     "meanAfterAllowance": -9.87,
+     "inProfit": 16.0,
+     "grossMean": 0.594
+    },
+    "w5": {
+     "n": 4591,
+     "meanAfterAllowance": -10.08,
+     "inProfit": 17.0,
+     "grossMean": 0.585
+    }
+   },
+   "windowsPositive": 0
+  },
+  "B0": {
+   "name": "information, not pre-registered: every graduation at bar 1 + Jekyll exits",
+   "all": {
+    "n": 50647,
+    "meanAfterAllowance": -8.09,
+    "lowerBound": -8.24,
+    "pBoot": 1.0,
+    "total": -409606.8,
+    "totalWithoutBest": -409636.6,
+    "inProfit": 22.4,
+    "bestTrade": 30.34,
+    "holds": false,
+    "grossMultipleMean": 0.699,
+    "grossMultipleMedian": 0.445
+   },
+   "byWindow": {
+    "w1": {
+     "n": 4925,
+     "meanAfterAllowance": -4.68,
+     "inProfit": 28.2,
+     "grossMean": 0.889
+    },
+    "w2": {
+     "n": 6341,
+     "meanAfterAllowance": -6.13,
+     "inProfit": 24.8,
+     "grossMean": 0.81
+    },
+    "w3": {
+     "n": 16072,
+     "meanAfterAllowance": -8.56,
+     "inProfit": 21.4,
+     "grossMean": 0.672
+    },
+    "w4": {
+     "n": 16942,
+     "meanAfterAllowance": -9.08,
+     "inProfit": 20.8,
+     "grossMean": 0.644
+    },
+    "w5": {
+     "n": 6367,
+     "meanAfterAllowance": -8.82,
+     "inProfit": 22.1,
+     "grossMean": 0.659
+    }
+   },
+   "windowsPositive": 0
+  }
+ }
+}
