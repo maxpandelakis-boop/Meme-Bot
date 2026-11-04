@@ -824,3 +824,4 @@
 {"t":1793827740602,"addr":"E4brwTWpx8anGcsJ11REmwcP149UD1yfwyCRYEQppump","sym":"Aren","age":30.0,"score":0.01383,"px":4.081e-05,"liq":15047,"p0":4.303826587038514e-05,"bars":6,"buy":false,"f":{"f_curve_min":183.5667,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":-0.2903,"c_peak":2.0388,"c_vol":5.1883,"c_act":1.0,"c_r5":-0.0757,"c_r15":0.8367,"c_mc":4.6339}}
 {"t":1793828160916,"addr":"27Y4WwxHiconrfhwQKGotJ5nVEbrcFiDnJnoRBbCpump","sym":"tism","age":30.8,"why":"liquidity","liq":8942}
 {"t":1793828160916,"addr":"9vRLCMM3fZnwM2Dhb5rLwaCHjGTkzPa513H9cT6bbonk","sym":"ZAPBELL","age":30.5,"why":"liquidity","liq":0}
+{"t":1793828580915,"addr":"84sWQfNG5jBghw76FYdE5MpmtRPNEwZrxBZQ3KhQpump","sym":"ACHI","age":30.7,"why":"liquidity","liq":2794}
