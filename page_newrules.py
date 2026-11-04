@@ -121,6 +121,9 @@ def box(D, R):
     now = (D or {}).get("now") or 0
     if now < NR.FROM:
         bal, line = '<b class="lv-ab">–</b>', "%d rules frozen on Nov 4 · start %s · judged %s" % (total, E(when(R, NR.FROM)), E(NR.JUDGE_AT))
+    elif not any(a.get("n") for a in rules):
+        bal, line = '<b class="lv-ab">–</b>', "running since %s · first results about 12 h after the next Pick buy · judged %s" % (
+            E(when(R, NR.FROM, "%b %d %H:%M")), E(NR.JUDGE_AT))
     else:
         bal = '<b class="lv-ab">%d of %d</b>' % (up, total)
         line = "rules in profit · %d Pick buys compared · since %s · judged %s" % (S["n"], E(when(R, NR.FROM, "%b %d")), E(NR.JUDGE_AT))
