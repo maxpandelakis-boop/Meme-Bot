@@ -830,6 +830,7 @@ to show the picks, the charts and the links in chat.
 | `app.py` | the iPhone app: the live store (Supabase), push notifications, the installed app's script and `sw.js` |
 | `supabase/setup.sql` | the one-time setup of the Supabase project (tables, access rules); `supabase/test_setup.py` tests it on PostgreSQL; `supabase/push-requirements.txt` pins the push sender with hashes (`supabase/pin_push.py` makes it) |
 | `selftest.py` | end-to-end test on a local mock of all APIs with a fake clock |
+| `.claude/skills/watch`, `tools/video/` | research helper, not part of the bot: turns a video the user sends into frames and a transcript (`tools/video/README.md`) |
 | `.github/workflows/scan.yml` | the hourly GitHub Actions scan, the results branch and the website |
 
 All source files are plain text, one coin per line, fields separated by `|` (formats in the `memebot.py` docstring), so
