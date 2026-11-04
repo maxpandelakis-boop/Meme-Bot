@@ -844,3 +844,6 @@
 {"t":1793830860498,"addr":"9Y1F6dZ6HpjZDYZdYuUGwMbkUiPsyU7WPTqTQU4Tpump","sym":"Democat","age":30.6,"score":0.03013,"px":0.0005414,"liq":60652,"p0":0.0005286483042457932,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.3127,"c_peak":1.201,"c_vol":5.9554,"c_act":1.0,"c_r5":0.0394,"c_r15":0.1544,"c_mc":5.7232}}
 {"t":1793830920247,"addr":"a3ZEkFW2QePwii3EpCJaGPU9ovCEKWL4dpfspAApump","sym":"NoTilt","age":31.0,"why":"liquidity","liq":1921}
 {"t":1793830980969,"addr":"FfgJk7cM1ytfUsyTePDGAGu8PmRPQymbEDLqRmPCpump","sym":"NOWOKE","age":30.4,"why":"liquidity","liq":1982}
+{"t":1793831160363,"addr":"5qKLXuLZYKmMxnFcmvRJaQisTh5JgsQaUzFQxSqHEbkR","sym":"SAFU","age":30.5,"why":"liquidity","liq":54}
+{"t":1793831160363,"addr":"8H2jgwnkNZp3TDLwhD9Z9H7ynbNXBa3ZFRpw8NWzpump","sym":"Chiplon","age":30.4,"why":"liquidity","liq":1946}
+{"t":1793831160363,"addr":"6fDsTc6TKVVD6M8QRT88pQqjD6Z8BgVVSzmoyDcnmoon","sym":"BNBVAULT","age":30.1,"why":"liquidity","liq":0}
