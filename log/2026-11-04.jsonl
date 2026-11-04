@@ -475,3 +475,4 @@
 {"t":1793795280459,"addr":"8Fq2SFfDSnAedoxa8w9R9bbMGXGFZbZ5Dz9g9EbWrc8V","sym":"\ud83c\udf20Mete Cat","age":30.4,"why":"liquidity","liq":0}
 {"t":1793795581484,"addr":"4v6rCkXLo9mrkkzSaHJfxK7CdZDFQHNnzrYyfDhQpump","sym":"GF","age":30.1,"why":"liquidity","liq":1990}
 {"t":1793795581484,"addr":"GMee9Hr3KYqvB8ZtMXAzGhwp5Tsxm2kheCrnFQUVbonk","sym":"Novopill","age":30.0,"why":"liquidity","liq":0}
+{"addr":"3Y2TGH3AvFFEL48rZfCgtiNJZJ84Eu75akYWmhyXpump","sym":"Dumocrat","pool":"FScVM9xBHSaHRUjHoMkjtBN24tJUfrKg13Rs4WdhF17G","t":1793794141873,"px":0.0001224,"score":0.0776,"cut":0.057,"best":1.406345,"last":0.015171,"tok":"base","seen":1793795880587,"now":1.014706,"lastT":1793795820000,"out":1793795880000,"mult":0.0152,"eur":-20.0,"why":"floor","g":1,"closed":true}
