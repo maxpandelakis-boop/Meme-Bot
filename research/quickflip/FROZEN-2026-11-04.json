@@ -1,0 +1,137 @@
+{
+ "made": "fit on graduations before 10 Sep 2026 (w3)",
+ "be": {
+  "pick": 1.0356086113661873,
+  "radar": 1.1156852527357999
+ },
+ "cells": {
+  "G0/pick": {
+   "rule": "T_1",
+   "fit": {
+    "n": 18946,
+    "mean": -1.62,
+    "pctOfTicket": -3.24,
+    "total": -30691.1,
+    "inProfit": 0.331,
+    "grossMean": 1.0026,
+    "grossMedian": 1.0088,
+    "stopShare": 0.0,
+    "meanMinutes": 1.0,
+    "worst": -50.75,
+    "best": 583.3
+   }
+  },
+  "G0/radar": {
+   "rule": "T_1",
+   "fit": {
+    "n": 18946,
+    "mean": -2.17,
+    "pctOfTicket": -10.85,
+    "total": -41115.51,
+    "inProfit": 0.207,
+    "grossMean": 1.0026,
+    "grossMedian": 1.0088,
+    "stopShare": 0.0,
+    "meanMinutes": 1.0,
+    "worst": -20.6,
+    "best": 226.45
+   }
+  },
+  "G30/pick": {
+   "rule": "T_1",
+   "fit": {
+    "n": 8375,
+    "mean": -2.012,
+    "pctOfTicket": -4.02,
+    "total": -16853.35,
+    "inProfit": 0.157,
+    "grossMean": 0.9946,
+    "grossMedian": 1.0028,
+    "stopShare": 0.0,
+    "meanMinutes": 1.0,
+    "worst": -50.75,
+    "best": 97.46
+   }
+  },
+  "G30/radar": {
+   "rule": "T_1",
+   "fit": {
+    "n": 8375,
+    "mean": -2.321,
+    "pctOfTicket": -11.61,
+    "total": -19439.8,
+    "inProfit": 0.08,
+    "grossMean": 0.9946,
+    "grossMedian": 1.0028,
+    "stopShare": 0.0,
+    "meanMinutes": 1.0,
+    "worst": -20.6,
+    "best": 36.63
+   }
+  },
+  "P/pick": {
+   "rule": "T_2",
+   "fit": {
+    "n": 1805,
+    "mean": -1.751,
+    "pctOfTicket": -3.5,
+    "total": -3159.87,
+    "inProfit": 0.101,
+    "grossMean": 0.9999,
+    "grossMedian": 1.0006,
+    "stopShare": 0.0,
+    "meanMinutes": 2.0,
+    "worst": -50.75,
+    "best": 48.72
+   }
+  },
+  "P/radar": {
+   "rule": "T_2",
+   "fit": {
+    "n": 1805,
+    "mean": -2.22,
+    "pctOfTicket": -11.1,
+    "total": -4007.9,
+    "inProfit": 0.033,
+    "grossMean": 0.9999,
+    "grossMedian": 1.0006,
+    "stopShare": 0.0,
+    "meanMinutes": 2.0,
+    "worst": -20.6,
+    "best": 17.54
+   }
+  },
+  "R/pick": {
+   "rule": "T_1",
+   "fit": {
+    "n": 2972,
+    "mean": -2.045,
+    "pctOfTicket": -4.09,
+    "total": -6078.07,
+    "inProfit": 0.113,
+    "grossMean": 0.9939,
+    "grossMedian": 1.0027,
+    "stopShare": 0.0,
+    "meanMinutes": 1.0,
+    "worst": -50.75,
+    "best": 106.0
+   }
+  },
+  "R/radar": {
+   "rule": "T_1",
+   "fit": {
+    "n": 2972,
+    "mean": -2.333,
+    "pctOfTicket": -11.66,
+    "total": -6933.65,
+    "inProfit": 0.041,
+    "grossMean": 0.9939,
+    "grossMedian": 1.0027,
+    "stopShare": 0.0,
+    "meanMinutes": 1.0,
+    "worst": -20.6,
+    "best": 39.97
+   }
+  }
+ }
+}
