@@ -1,7 +1,7 @@
 # Live-data rule search, 4 Nov 2026: result
 
-Pre-registration: PREREG-LIVESEARCH-2026-11-04.md (commit 51a85f8, before any rule was scored). Candidates frozen in
-CANDIDATES-2026-11-04.json (commit d661e82, before going live). Scripts: ls_build.py, ls_sell.py (F1), ls_skip.py (F2), ls_buy.py
+Pre-registration: PREREG-LIVESEARCH-2026-11-04.md (commit 6f4b9b5, authored 4 Nov 16:23 UTC, before any rule was scored). Candidates frozen in
+CANDIDATES-2026-11-04.json (commit 13e39bf, authored 4 Nov 16:30 UTC, before going live). Scripts: ls_build.py, ls_sell.py (F1), ls_skip.py (F2), ls_buy.py
 (F3), ls_freeze.py. Live from 5 Nov 2026 00:00 UTC as the "New rules test 🧪" (newrules.py, page_newrules.py); judged once on
 22 Nov 2026 (newrules.judge, PR #39 bar).
 
