@@ -276,3 +276,8 @@
 {"t":1793774461451,"addr":"9jQ4X3krFBNCm8F3w3b5qBVg4fJRaJQcL2fXsNaYBAGS","sym":"CANTSEC","age":30.8,"why":"liquidity","liq":0}
 {"t":1793774461451,"addr":"9p9jGNVqD4UYm1rXg94LiK6f9Low8dvfuqLx3ftbJ2z","sym":"RAM","age":30.7,"why":"liquidity","liq":0}
 {"t":1793774521011,"addr":"KYuMNKf8HhefPhs2YMmGCgi4ByzEWeaxoG79aGapump","sym":"Speed","age":30.2,"why":"liquidity","liq":2380}
+{"t":1793774701385,"addr":"SNHLxPfS4ujfaDLR6JffTYUHYk1w17hS7srMXR7pump","sym":"Grok","age":30.6,"why":"liquidity","liq":1708}
+{"t":1793774760227,"addr":"HSCi1sNzy5g4tBmmHvNG4fm2Ke7kYNBRPGQZVesWDGJ5","sym":"DeepSeekAI","age":30.9,"why":"liquidity","liq":1679}
+{"t":1793774760227,"addr":"HgfbszehXHY4eUgz76kjW2fG1Xpp2QJtt3HDc5AJDt6","sym":"RAM","age":30.4,"why":"liquidity","liq":0}
+{"t":1793774821355,"addr":"GyvTYtDqSKCzsNdsgxLbuyRRczCyt4RuKr7LriTbpump","sym":"MrBeast","age":30.7,"score":0.01105,"px":0.0002113,"liq":35641,"p0":0.0002023605771477384,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":12.0,"f_cjk":0.0,"c_ret":0.5446,"c_peak":1.0015,"c_vol":4.6656,"c_act":1.0,"c_r5":0.1344,"c_r15":0.5718,"c_mc":5.3061}}
+{"t":1793774821355,"addr":"8uGs69sN3he3FVQUVyUP1hStb4YsKtTnmVBDgqS49n8i","sym":"Suica","age":30.6,"why":"liquidity","liq":9}
