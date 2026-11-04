@@ -582,3 +582,5 @@
 {"t":1793804520105,"addr":"QnL3WzT3dZzvcfVTfLe2rgptMbXuvoHKypdS2S4oXkF","sym":"JOHUJ","age":30.6,"score":0.00545,"px":0.37,"liq":105377,"p0":0.373287128684519,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1906,"c_peak":1.0,"c_vol":5.0192,"c_act":0.6667,"c_r5":0.0,"c_r15":9.1712,"c_mc":8.572}}
 {"t":1793804580775,"addr":"GeMZZtsVpQRhoofWMMB411cbXudvzrmcEjfpohJtBAGS","sym":"Uclcan","age":30.6,"why":"liquidity","liq":0}
 {"t":1793804700798,"addr":"8BMj1b5TcTEua5hXDyXAYL5BMRVCVZGAY96eU22sMHph","sym":"SHORT","age":30.3,"why":"liquidity","liq":0}
+{"t":1793805000424,"addr":"Kx141PsX7n8Hzgkx3FWucitU5tKmBJqmd1tjk6xZtFd","sym":"BOOTR","age":30.9,"why":"liquidity","liq":0}
+{"t":1793805061268,"addr":"72qpXFQLR5GgcCbFkMdQmo3EebcggD3z3HJhyLVRwdw8","sym":"\ud83c\udf20Mete Cat","age":30.1,"score":0.01729,"px":6.33e-05,"liq":69222,"p0":6.227452945412039e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.7063,"c_peak":1.0621,"c_vol":5.1792,"c_act":1.0,"c_r5":-0.015,"c_r15":0.268,"c_mc":4.7943}}
