@@ -616,3 +616,5 @@
 {"t":1793807040669,"addr":"2k8gdpNfVx5jgHRqQKkhjfiW6wZJJx9kak1BxMYVpump","sym":"Coca-Cola","age":30.2,"why":"liquidity","liq":1838}
 {"t":1793807101349,"addr":"8pa2v2YeBHeGB9RBnuQuAbV1UCvmqYXYHRAnYtSGpump","sym":"Tsunami","age":30.8,"why":"liquidity","liq":8122}
 {"t":1793807101349,"addr":"UL2QEbRw4pscHePoycVg4BRN6ibYMVK6a1iyCewcUKk","sym":"MarsCoin","age":30.7,"why":"liquidity","liq":0}
+{"t":1793807401006,"addr":"Any94UXGVmGSVxRMQswECH96YsA22B3eQbW1KHSNpump","sym":"Democat","age":30.7,"score":0.02835,"px":7.505e-05,"liq":22885,"p0":8.031834725528693e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.7398,"c_peak":1.2259,"c_vol":5.3542,"c_act":1.0,"c_r5":0.257,"c_r15":0.4546,"c_mc":4.9048}}
+{"t":1793807461264,"addr":"4bhYVkScUMVYvNUDsECf9rJxGpSLCzm1GEFEnNRopump","sym":"Democat","age":30.8,"why":"liquidity","liq":4568}
