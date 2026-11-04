@@ -966,3 +966,5 @@
 {"t":1793750040546,"addr":"7Uxr5x4yXHACuScZ7iSWtEm89yYrzZdrwQpoX2yqpump","sym":"Everett","age":30.9,"why":"liquidity","liq":2209}
 {"t":1793750040546,"addr":"6zsEddxaYPASZJQHLumNuaubWzxsojWXD75wyRD8uqb9","sym":"Fomogiving","age":30.4,"score":0.00677,"px":5.135e-05,"liq":16742,"p0":5.246911777092854e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.2443,"c_peak":1.0349,"c_vol":4.2877,"c_act":1.0,"c_r5":-0.0086,"c_r15":0.1608,"c_mc":4.7199}}
 {"t":1793750100893,"addr":"HF7bwB9QHxBdo6neaPKYkXwAJqbRXnXV6iHcqBHkbonk","sym":"BTCBAND","age":30.3,"why":"liquidity","liq":0}
+{"t":1793750221186,"addr":"BQ3yawMJwU7RCoFagJ3Go7AYMBDxzeNAKiRC2qTbpump","sym":"Pekka","age":30.6,"why":"liquidity","liq":7552}
+{"t":1793750280916,"addr":"FNpRKUtQhLYXTozbZrhN9Mtzdr6W9xyt6YXdZrKSpump","sym":"Rockstar","age":31.0,"why":"liquidity","liq":1712}
