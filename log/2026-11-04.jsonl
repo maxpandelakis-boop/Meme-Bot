@@ -711,3 +711,6 @@
 {"t":1793815680464,"addr":"6sBvfTnThBPUQsEWjiXdgCnHwxGZfEDqegtVu4vLpump","sym":"WANTED","age":43.4,"why":"no candles"}
 {"t":1793815740699,"addr":"5bicPVG8uk6Am9yR21g2vzvvEViMjgELDmRU4RQVWPCZ","sym":"KRILL","age":30.3,"score":0.01385,"px":4.218e-05,"liq":46351,"p0":3.957771900911003e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.6405,"c_peak":1.0172,"c_vol":6.4528,"c_act":1.0,"c_r5":0.0939,"c_r15":0.2944,"c_mc":4.5975}}
 {"t":1793815740699,"addr":"NCTa8rDpNNJoa8MoacKwVC3hEFP2PVapPjVhpNJne23","sym":"HIGH/ER","age":30.2,"why":"liquidity","liq":0}
+{"t":1793815861535,"addr":"KcbNHeitFoF8wbUwkrzrkjbRjaaZNE2uaVHtCR4pump","sym":"Impeach","age":30.9,"why":"liquidity","liq":1730}
+{"t":1793815980624,"addr":"B9BcdqTKg8RCg1NoNRSQXjT6vhkYLHyhpgrnaKaaWUX8","sym":"Intel AI","age":30.6,"why":"liquidity","liq":0}
+{"t":1793816040077,"addr":"12DfVrJDT6Zik54REqkTarmv77QcGgUMKkoRyF3CLfmo","sym":"VOLITION","age":30.5,"why":"liquidity","liq":0}
