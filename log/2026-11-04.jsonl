@@ -741,3 +741,4 @@
 {"t":1793818740556,"addr":"DonTGbrYh4cVxF7N6t4rwPsyvAAUAZMBqvzjsQisQ421","sym":"george","age":30.9,"why":"liquidity","liq":0}
 {"t":1793818800920,"addr":"6FJgA18rpMcQrQp8je1ovaRWQvrh6MvbGvJ3NRVypump","sym":"Google","age":30.7,"score":0.01604,"px":0.0002314,"liq":37762,"p0":0.00021953904734588179,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":12.0,"f_cjk":0.0,"c_ret":0.5927,"c_peak":1.0062,"c_vol":4.4205,"c_act":1.0,"c_r5":0.0557,"c_r15":0.1989,"c_mc":5.3415}}
 {"t":1793819040560,"addr":"GMzGxFt4tUBKuoinLkbhGLjbzgLmG3B8Q423w9ycpump","sym":"thesis","age":30.6,"why":"liquidity","liq":7232}
+{"t":1793819220900,"addr":"2XS8Etgh6PyAb9tAjk4EAF7wAvJDQN5Qcg3VfGeyrLJH","sym":"NEX Ai","age":43.2,"why":"no candles"}
