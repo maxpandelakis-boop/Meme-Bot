@@ -183,3 +183,4 @@
 {"t":1793766180517,"addr":"DhY6bhKM7zFJNtDHjCRGnE2X2qFSeixKXMw3oonLbonk","sym":"Cdwiz","age":30.2,"why":"liquidity","liq":0}
 {"t":1793766240219,"addr":"FUehm4ocJMUZqYJfVxJiC2L6AwsQm7KQA5UrHMcUpump","sym":"Newsom2028","age":30.5,"score":0.02162,"px":2.968e-05,"liq":12225,"p0":2.9690120222720785e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1025,"c_peak":1.5455,"c_vol":3.9714,"c_act":1.0,"c_r5":0.0009,"c_r15":0.0198,"c_mc":4.4726}}
 {"t":1793766300657,"addr":"8jfANEfezZCGVgs5LPvhcAdjdyM6uHPWfWURdmzMeCSq","sym":"\u5218\u4ea6\u83f2","age":30.8,"why":"liquidity","liq":51}
+{"t":1793766540489,"addr":"4M5DceVdRSz6Cxjix5uU7PXFL6vuG2hJhQrydbk1pump","sym":"assoff","age":30.9,"why":"liquidity","liq":8982}
