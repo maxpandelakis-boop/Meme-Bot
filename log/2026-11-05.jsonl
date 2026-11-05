@@ -209,3 +209,4 @@
 {"t":1793859240404,"addr":"BM8iiigMf2s3itw54bWRfFMWGstJrceCJuJuKdLorHjk","sym":"NEX Ai","age":30.4,"why":"liquidity","liq":7}
 {"t":1793859540412,"addr":"82eboTqeQqqShrS4wbB8kFWXkHfibLPt72qU3Foxbonk","sym":"LAZUZU","age":30.1,"why":"liquidity","liq":0}
 {"t":1793859661200,"addr":"3bghtzjqHrNMGzZnhckTRGTyvBBnbmSWM1Qnt91GtnXB","sym":"Buffett","age":30.6,"score":0.01085,"px":4.311e-05,"liq":58792,"p0":4.165689646566654e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.5178,"c_peak":1.0113,"c_vol":5.0919,"c_act":1.0,"c_r5":0.0919,"c_r15":0.3676,"c_mc":4.6197}}
+{"t":1793860080136,"addr":"5Yq3JCHKFGztXfBxbvkjPCLSGxpzonGCFss4mkqxr7H","sym":"CORLA","age":30.4,"why":"liquidity","liq":0}
