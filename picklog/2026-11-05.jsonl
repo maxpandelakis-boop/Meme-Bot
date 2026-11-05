@@ -12,3 +12,4 @@
 {"at":1793875740000,"why":"drop","mult":0.8629524347100609,"late":true,"hitAt":1793875500000,"rule":"chart","sym":"Democat","t":1793875762057,"eur":42.29,"pnl":-7.71,"entryAt":1793873762636,"id":"2026-11-05T095055-h-Democat-9Y1F6d"}
 {"at":1793877360000,"why":"drop","mult":0.8769350699070191,"late":true,"hitAt":1793877180000,"rule":"chart","sym":"VETO","t":1793877418667,"eur":42.97,"pnl":-7.03,"entryAt":1793868364678,"id":"2026-11-05T082052-h-VETO-SivBpe"}
 {"at":1793878320000,"why":"trail","mult":1.3869711514959588,"rule":"chart","sym":"higher","t":1793878374568,"eur":67.97,"pnl":17.97,"entryAt":1793877237334,"id":"2026-11-05T104853-h-higher-6Kphvj"}
+{"at":1793902020000,"why":"time","mult":0.8818893620691416,"late":true,"hitAt":1793901914814,"rule":"chart","sym":"MINTED","t":1793902105515,"eur":43.22,"pnl":-6.78,"entryAt":1793880314814,"id":"2026-11-05T114502-h-MINTED-8crRRo"}
