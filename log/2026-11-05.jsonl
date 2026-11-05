@@ -780,3 +780,6 @@
 {"t":1793922181200,"addr":"2ZAj6EJaMNqT1RoHUuW8jktRvTKMs9kRSYJm7273pump","sym":"BMW","age":30.1,"why":"liquidity","liq":1758}
 {"t":1793922240589,"addr":"CEbp63gstDbsw4a4NbARtMcLU7gc9xQ6DesmHAo1amBs","sym":"Punjimogui","age":30.1,"why":"liquidity","liq":0}
 {"t":1793922301522,"addr":"38XfD5FLmYTUwxpGKYbTGHcPTj5vQEDD5Seo9iF3pump","sym":"COPE","age":30.5,"why":"liquidity","liq":1647}
+{"t":1793922420962,"addr":"HFMrjD1LRVXhsUVCZdKMrY88bQSnAPodTuvQMQxCbonk","sym":"Txcrown","age":30.4,"why":"liquidity","liq":0}
+{"t":1793922600256,"addr":"DLPeij9Bbs1XS27Re7eGcfd19ScXFr3obAuZuXespump","sym":"LIFE","age":30.8,"why":"liquidity","liq":2777}
+{"t":1793922661041,"addr":"8FHnR65h9mwqKfd8RhsSgMSH6y3vox4aKsDMVmy7pump","sym":"OpenClaw","age":30.2,"score":0.00808,"px":0.0001554,"liq":29724,"p0":0.0001529879184852095,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.4345,"c_peak":1.0209,"c_vol":4.3977,"c_act":1.0,"c_r5":0.0776,"c_r15":0.2293,"c_mc":5.1847}}
