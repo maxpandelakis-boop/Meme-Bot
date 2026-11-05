@@ -689,3 +689,5 @@
 {"t":1793911981184,"addr":"F2AvkmDtZdXbWXaS1ja8Mjgjy54zsHhDErWzeFCNpump","sym":"GIVEST","age":30.5,"why":"liquidity","liq":9395}
 {"t":1793912040731,"addr":"CjSJ5FUAQTgMKRDYv5vgyPHPHrqefK5yDZjspdnwpump","sym":"MEGMIC","age":31.0,"why":"liquidity","liq":0}
 {"t":1793912040731,"addr":"2QyrUfc4yGzh8AKmLqVH1Fyeh8ELAXphDAKXAmZFpump","sym":"titcoin","age":30.7,"score":0.00764,"px":0.0001835,"liq":32600,"p0":0.0001686576119965355,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4743,"c_peak":1.0137,"c_vol":4.4075,"c_act":1.0,"c_r5":0.0801,"c_r15":0.2784,"c_mc":5.227}}
+{"t":1793912341364,"addr":"E339LCMzTWZXyM4hGGTKKcuFCJWJNtDkRshuLmVzpump","sym":"Punjimoguin","age":30.4,"why":"liquidity","liq":5061}
+{"t":1793912580497,"addr":"4B2odQV8H8UDJYE6ZxyXsVqNwM5Sf2iLd2BaoBheBAGS","sym":"Vegastim","age":30.6,"why":"liquidity","liq":0}
