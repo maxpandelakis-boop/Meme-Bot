@@ -571,3 +571,5 @@
 {"t":1793902981189,"addr":"Bodmi73gy4HQjSLxbz6AwuSbjKkndEJXAksMZhSyTrg7","sym":"NEX Ai","age":30.5,"why":"liquidity","liq":0}
 {"t":1793902981189,"addr":"Bmhp8nat7zTFu3Ct8HpQftiHHmB6dnf4B9ivvYYzpump","sym":"TIRED","age":30.1,"score":0.00819,"px":0.0001777,"liq":35722,"p0":0.00016072864816182216,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9488,"c_peak":1.1291,"c_vol":5.7878,"c_act":1.0,"c_r5":0.4293,"c_r15":1.0121,"c_mc":5.2061}}
 {"t":1793903100685,"addr":"H8NZ118BoeB88CG7vacvUEq9hb6hpVyZFs7sKDe4pump","sym":"Google","age":30.2,"why":"liquidity","liq":1636}
+{"t":1793903220530,"addr":"AiMmp771XSYoZcTbNE5mnHLFSrWEe4woo98yfgRxpump","sym":"CTO","age":30.6,"why":"liquidity","liq":1937}
+{"t":1793903280880,"addr":"FeiJNYgMZqYiWaJeQTRfzcZgsFtSRF2bpQEafxNXpump","sym":"FLTSRN","age":30.5,"why":"liquidity","liq":0}
