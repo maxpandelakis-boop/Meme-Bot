@@ -160,3 +160,10 @@
 {"t":1793854440449,"addr":"CubGUDyRQaUhefJeRosc9x96tyduvz1MoT3MncNFpump","sym":"OSSOFF2028","age":30.0,"score":0.00405,"px":4.297e-05,"liq":15376,"p0":4.3101656926606055e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.0438,"c_peak":1.0706,"c_vol":3.5801,"c_act":0.8333,"c_r5":0.0742,"c_r15":0.098,"c_mc":4.6345}}
 {"t":1793854500963,"addr":"FZcbX6uBkeACEg38cFBqvQgTJiL98aKovQT23AfCpump","sym":"UCI","age":30.1,"score":0.00197,"px":0.0009266,"liq":94117,"p0":0.0008007110711975738,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.4665,"c_peak":1.0217,"c_vol":4.0651,"c_act":1.0,"c_r5":-0.0214,"c_r15":0.347,"c_mc":5.9035}}
 {"t":1793854560386,"addr":"G677WED5adnQSiFf66uFhYypjn1gjDnTUDwh3tfsbonk","sym":"Aplsnip","age":30.2,"why":"liquidity","liq":0}
+{"t":1793854620484,"addr":"DZ9dLaqSBcF3TqLqhjfH43toKPcxrdTLDmWYvDzDMLqN","sym":"MOSQUE","age":30.2,"why":"liquidity","liq":0}
+{"t":1793854680385,"addr":"B2EWMuy5Jo8o5dkxAbBwpgHEZzohDmRFpQ1wLeFJamH2","sym":"Buffett","age":30.4,"why":"liquidity","liq":64}
+{"t":1793854680385,"addr":"CS6uetkcCinPvtYwMGrbyz6M3djZcaP3Zg1NddHMffsX","sym":"BUNNY","age":30.1,"why":"liquidity","liq":0}
+{"t":1793854740343,"addr":"HzMF5YvQGtyZCGGPGYiB2L1bFdk8sBuXDhodGF9Wpump","sym":"TRUMPDULLAH","age":43.5,"why":"no candles"}
+{"t":1793854740343,"addr":"43zBAs9iNSQ7h5BnEFYwP3AsyuX8NWLy2qfWf1rutjua","sym":"AGC","age":31.0,"why":"liquidity","liq":30}
+{"t":1793854801051,"addr":"D94WegC8rarAwW9MkkLopc58FvvqUgQmtqcv19ocAZuc","sym":"NEX Ai","age":30.1,"score":0.0285,"px":4.248e-05,"liq":58016,"p0":4.28227273549347e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":26.0,"f_cjk":0.0,"c_ret":0.5324,"c_peak":1.0243,"c_vol":5.0018,"c_act":0.8333,"c_r5":0.0588,"c_r15":0.3626,"c_mc":4.6317}}
+{"t":1793854860514,"addr":"6Z3Qvy5AyVwGCZcXbPt1JowZi6UVbFMKH5qz4Hppump","sym":"Robinhood","age":30.7,"why":"liquidity","liq":1770}
