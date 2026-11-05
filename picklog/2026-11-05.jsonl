@@ -8,3 +8,4 @@
 {"at":1793858280000,"why":"drop","mult":0.9982288593817702,"rule":"chart","sym":"FIX","t":1793858330159,"eur":48.92,"pnl":-1.08,"entryAt":1793854887292,"id":"2026-11-05T043657-h-FIX-LWSYx9"}
 {"at":1793863380000,"why":"drop","mult":0.8339839754292351,"late":true,"hitAt":1793863320000,"rule":"chart","sym":"Democat","t":1793863381982,"eur":40.87,"pnl":-9.13,"entryAt":1793861584245,"id":"2026-11-05T062850-h-Democat-9Y1F6d"}
 {"at":1793865900000,"why":"drop","mult":0.8517632238151284,"late":true,"hitAt":1793865480000,"rule":"chart","sym":"Democat","t":1793866032109,"eur":41.74,"pnl":-8.26,"entryAt":1793864641618,"id":"2026-11-05T072507-h-Democat-9Y1F6d"}
+{"at":1793869500000,"why":"drop","mult":0.9399420926418782,"late":true,"hitAt":1793869320000,"rule":"chart","sym":"GAVELDROP","t":1793869581367,"eur":46.06,"pnl":-3.94,"entryAt":1793858289196,"id":"2026-11-05T053254-h-GAVELDROP-9mWrj7"}
