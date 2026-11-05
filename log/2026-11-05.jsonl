@@ -243,3 +243,8 @@
 {"t":1793862960456,"addr":"BtSvtGREKtTWuc5YMQE1SVHJsGCb5YCyFS8G73sypump","sym":"WANTED","age":30.1,"why":"liquidity","liq":9992}
 {"t":1793863381093,"addr":"AfgGekDfZvUH6EAzC9gzCJAxtdTjXr2kjoeEzNuiikDS","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":19}
 {"t":1793863381093,"addr":"7THX6dQXVCvchYpyRdZ2JBW4eCq9ZYpwkXty99Rmpump","sym":"JACOBITA","age":30.3,"score":0.03357,"px":7.268e-05,"liq":20699,"p0":7.491296311157464e-05,"bars":6,"buy":false,"f":{"f_curve_min":2.1167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.7974,"c_peak":1.5422,"c_vol":4.9723,"c_act":1.0,"c_r5":-0.1522,"c_r15":0.3922,"c_mc":4.8746}}
+{"t":1793863560227,"addr":"GzxcqCs8PEF46f3YypvKPx1FqprPbrVXnGZed9p9pump","sym":"Palico","age":30.5,"why":"liquidity","liq":1887}
+{"t":1793863560227,"addr":"EHecTx473Nb5RbjhyiwNiLoZ6dJGKLHMpXJgSvLrrXdv","sym":"PIKACOIN","age":30.3,"why":"liquidity","liq":0}
+{"t":1793863620894,"addr":"9KASpPXxyL8DnV4Wrayg5dbae7GyV76YyJGpSK82pump","sym":"PIKACOIN","age":30.5,"why":"liquidity","liq":9904}
+{"t":1793863680219,"addr":"Ad8jHhxVsAJ1DHecFuZc2usXdKFJCPcgQhdiq2JYpump","sym":"\u30ad\u30e9","age":31.0,"why":"liquidity","liq":5506}
+{"t":1793863740742,"addr":"41Nh8bwqc4baZYdoYjf95foqP8nB3KnJS7LBRozgBAGS","sym":"Criflo","age":30.8,"why":"liquidity","liq":0}
