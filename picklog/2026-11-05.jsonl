@@ -1,3 +1,4 @@
 {"at":1793838360000,"why":"drop","mult":0.8184414354784897,"rule":"chart","sym":"DELUSIONAL","t":1793838420721,"eur":40.11,"pnl":-9.89,"entryAt":1793834797770,"id":"2026-11-04T230101-h-DELUSIONAL-5uY4RX"}
 {"at":1793838809864,"why":"time","mult":1.2677595507419799,"rule":"chart","sym":"MEMECOIN","t":1793838816698,"eur":62.13,"pnl":12.13,"entryAt":1793817209864,"id":"2026-11-04T181628-h-MEMECOIN-592Myu"}
 {"at":1793839260000,"why":"stop","mult":0.23667855550090341,"rule":"chart","sym":"AMD","t":1793839315196,"eur":11.6,"pnl":-38.4,"entryAt":1793837736561,"id":"2026-11-04T235604-h-AMD-5tdWkb"}
+{"at":1793841840000,"why":"drop","mult":0.7897745514472763,"late":true,"hitAt":1793841360000,"rule":"chart","sym":"WOKE3","t":1793841888165,"eur":38.7,"pnl":-11.3,"entryAt":1793840937721,"id":"2026-11-05T005259-h-WOKE3-9hbzrG"}
