@@ -274,3 +274,5 @@
 {"t":1793866560272,"addr":"3Jni3KcmMbesCJ5nX4mUpnGhCg2m62rZDnYZqMoUeKTw","sym":"POKEXS","age":30.9,"why":"liquidity","liq":0}
 {"t":1793866560272,"addr":"2f95ogiEqQjDgWV74ksPx68i83yHLUbzDv92be4Rpump","sym":"x","age":30.5,"why":"liquidity","liq":4641}
 {"t":1793866620813,"addr":"7p6JsCNDWFi3eefbsA4nyVDbDk6ZmJxyAKKYxunvvhTG","sym":"\u062d\u0644\u0627\u0644","age":30.7,"score":0.01243,"px":2.916e-05,"liq":30874,"p0":2.5112103013684886e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.5744,"c_peak":1.6055,"c_vol":5.488,"c_act":1.0,"c_r5":-0.0326,"c_r15":-0.1331,"c_mc":4.3999}}
+{"t":1793866872771,"addr":"3hN78yoqMTMhX9FoZvmxQywu5LTF4irunPUaVdyppump","sym":"NoNutInu","age":30.7,"why":"liquidity","liq":2937}
+{"t":1793866872771,"addr":"Akp1gMJZges3rF8e9K2n4MmGZTHXNgVjWwDpWQztpump","sym":"ELON","age":30.4,"why":"liquidity","liq":1798}
