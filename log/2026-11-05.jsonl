@@ -504,3 +504,7 @@
 {"t":1793896261354,"addr":"DgZfbGxG8mmpxgxZ5X2nuzdMMxo9pFMMfvkM39nApump","sym":"Dumocrat","age":30.6,"why":"liquidity","liq":4189}
 {"t":1793896320787,"addr":"FmrddF9ktWAs1g5hKwYBwWfYCwSwoHMX86eSr6PDgBH1","sym":"VAMP\ud83e\udddb","age":30.9,"score":0.01431,"px":5.112e-05,"liq":56827,"p0":4.5462645615968604e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.6463,"c_peak":1.1631,"c_vol":5.3983,"c_act":1.0,"c_r5":0.0117,"c_r15":0.0893,"c_mc":4.6577}}
 {"t":1793896320787,"addr":"8qJRDy4r3ohNZMPXTQCYvbzry2FZNqKjtm4pjWAcr2Ka","sym":"Pum Coin","age":30.3,"why":"liquidity","liq":0}
+{"t":1793896441064,"addr":"5hzQVFSY7XKFCbJ4KPq5TCuxMWC1zsV2XS4ujvDSM2Ak","sym":"Intel AI","age":30.8,"why":"liquidity","liq":0}
+{"t":1793896441064,"addr":"DaXLA8vqnVtd8mJVUkHUjuGCpdFrQkxwTwmD71iqBAGS","sym":"ZELOWL","age":30.5,"why":"liquidity","liq":0}
+{"t":1793896560800,"addr":"9ze7Z5iAAjzgZzGxrT6gowrfcuvF5wRLcL68k4yP4kcn","sym":"Microduck","age":30.6,"why":"liquidity","liq":49}
+{"t":1793896680873,"addr":"4TRZrjXxp84AmoWpspQYArrGEJoVppm1J7M9eCoBxWsA","sym":"XAL","age":30.1,"score":0.00208,"px":0.3751,"liq":50256,"p0":0.3777093041526407,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1297,"c_peak":1.0,"c_vol":4.3047,"c_act":0.5,"c_r5":0.0,"c_r15":9.2228,"c_mc":8.5772}}
