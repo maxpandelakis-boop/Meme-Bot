@@ -381,3 +381,4 @@
 {"t":1793883301378,"addr":"2FVwdv9kbqvBD48ey9ndWwKqtHUn4tz8kpofk5Q7CUjh","sym":"Banner\ud83e\uddcc","age":30.3,"why":"liquidity","liq":0}
 {"t":1793883360863,"addr":"zTZcvCrHmGWRiu4FmMtYbTv3a2VC6kZMxZWJTfvpump","sym":"NADF","age":30.7,"why":"liquidity","liq":3612}
 {"t":1793883480175,"addr":"7GVfanLENQkzaFHZpVB61KEwizF3C4SVeuLs4z9yjK5j","sym":"INDEX","age":30.4,"score":0.01554,"px":1.375e-05,"liq":20748,"p0":1.2293416819273665e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.4062,"c_peak":2.3025,"c_vol":4.967,"c_act":1.0,"c_r5":0.2189,"c_r15":0.2375,"c_mc":4.0897}}
+{"t":1793883672950,"addr":"3gSUJdvDMgctRCm62kBQ4fgiRzLUBWhJDT96NCvjW7Xt","sym":"Banner\ud83e\uddcc","age":30.3,"why":"liquidity","liq":0}
