@@ -756,3 +756,4 @@
 {"t":1793919660804,"addr":"APGAJUEewE2mvmV9poobQrwakiANMVQiZHkVDurCBAGS","sym":"Kylogby","age":30.3,"why":"liquidity","liq":0}
 {"t":1793919780664,"addr":"CZRzFFLy1uSpA6u9Fn9GPuNVoP8prWMzJZVPRSaCU1EA","sym":"Horny","age":31.0,"why":"liquidity","liq":0}
 {"t":1793919780664,"addr":"DLPHgMT6n1gj2MRTZouX6jrbmm8YwQC4TJTdnMEVpump","sym":"ENTREPRENEURS","age":30.8,"why":"liquidity","liq":1818}
+{"t":1793920200349,"addr":"2nyTdyadeAraPV2cpLdMRjoprLwQkqgWxWs7BJN4YePV","sym":"HABIBINALD","age":30.7,"score":0.00985,"px":2.294e-05,"liq":28213,"p0":2.2307871927420756e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9986,"c_peak":1.0088,"c_vol":5.7914,"c_act":1.0,"c_r5":0.0324,"c_r15":0.5005,"c_mc":4.3485}}
