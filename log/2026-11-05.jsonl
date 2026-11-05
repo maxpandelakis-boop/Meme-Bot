@@ -443,3 +443,7 @@
 {"t":1793890860645,"addr":"5odAuHE4tVf9TrKMoMhH1yryaRRHxuTFsve8wVqcmoon","sym":"SOLWING","age":30.6,"why":"liquidity","liq":0}
 {"t":1793890921026,"addr":"HjitSEGzUDxohSbHjr6ZW2VkbmBBNGxcbKn7HpA8WmXc","sym":"BTC\ud83d\udcb2","age":31.0,"why":"liquidity","liq":0}
 {"t":1793891040370,"addr":"J4rP3zhpvk3r2tFasTAecU4g9gnxDDpaR2xAXnz873fu","sym":"LIBRE","age":30.2,"score":0.02299,"px":2.412e-05,"liq":11075,"p0":2.1281109012531046e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.6951,"c_peak":5.0176,"c_vol":4.9038,"c_act":1.0,"c_r5":-0.5979,"c_r15":-1.0106,"c_mc":4.328}}
+{"t":1793891280349,"addr":"E6wCnAYkzicTGvcN8rx23iFRrempfXtUSM3FpHqRpump","sym":"Microsoft","age":30.8,"why":"liquidity","liq":1710}
+{"t":1793891280349,"addr":"3NhReMhpvqTi9FwfzBUBgaJ7U188C24KXDTpV8mxNak9","sym":"SAFU","age":30.6,"why":"liquidity","liq":0}
+{"t":1793891400854,"addr":"3RWWrY7FcyikEb9V2PFxR7PCBJU6ZW9kkE6pTSYqpump","sym":"titcoin","age":31.0,"score":0.03223,"px":6.611e-05,"liq":19791,"p0":0.00010935533527476012,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.138,"c_peak":1.3082,"c_vol":5.5763,"c_act":1.0,"c_r5":-0.0075,"c_r15":-0.086,"c_mc":5.0388}}
+{"t":1793891461189,"addr":"6bhfDuFDepW1mKyQhYAXk5L1j3hgJzTmqXK3cLnTNvPi","sym":"VAMP\ud83e\udddb","age":30.5,"why":"liquidity","liq":0}
