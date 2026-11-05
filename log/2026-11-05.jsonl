@@ -680,3 +680,10 @@
 {"t":1793911440088,"addr":"55agn7fXrQGzVHUc77jp9w35AD5o3FNadENpQGuTr7FM","sym":"BOFEW","age":30.0,"score":0.00194,"px":0.3492,"liq":54720,"p0":0.3496368558176525,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1091,"c_peak":1.0,"c_vol":4.3758,"c_act":0.5,"c_r5":0.0,"c_r15":9.1393,"c_mc":8.5436}}
 {"t":1793911500537,"addr":"Hgvq1Z96hgmU5PZkoek9MrTbv51X7Kn9iaDin8Nopump","sym":"PIERRE","age":31.0,"why":"liquidity","liq":0}
 {"t":1793911500537,"addr":"AY4QrVf9EhDR1Nx3b2RiUXYhfgtydf5vZXNyK8zrpump","sym":"WIRELYSS","age":30.8,"score":0.03222,"px":2.902e-05,"liq":12232,"p0":3.741728732645909e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-1.1646,"c_peak":4.4838,"c_vol":5.2757,"c_act":1.0,"c_r5":-0.45,"c_r15":-0.1613,"c_mc":4.5731}}
+{"t":1793911740885,"addr":"CFKQQnZHW9EopJsMcZdt3FK5ubLTKqWKgaKaGT4Bpump","sym":"PVE","age":30.3,"why":"liquidity","liq":3790}
+{"t":1793911800215,"addr":"9q9sgHS4rVQ6WWCrwGnZaQhLKLrC7DazrRMDJqPmNevq","sym":"STARBUCKS","age":30.4,"score":0.0215,"px":4.51e-05,"liq":58056,"p0":4.153888302283852e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.7156,"c_peak":1.0725,"c_vol":5.1566,"c_act":1.0,"c_r5":0.0001,"c_r15":0.1705,"c_mc":4.6185}}
+{"t":1793911800215,"addr":"54zSTXvPyjcASLHv5PDfCtbZb9Hjtqv5dsdQdJxLpump","sym":"PVE","age":30.3,"why":"liquidity","liq":1813}
+{"t":1793911861309,"addr":"Hu66v1R8t4dVSoRZRJ98Bi2GP4Wsh8HrfTCdiAEVSU7J","sym":"NEX Ai","age":30.4,"why":"liquidity","liq":0}
+{"t":1793911920568,"addr":"EyuBtUJnpZBAJfU9hh5bh2Gcnu4GvxrLyMSyuPwBpump","sym":"ATTENTION","age":30.9,"why":"liquidity","liq":3865}
+{"t":1793911981184,"addr":"BiLYEnxgWZU7ZuqC72iyW5BV3i2L1AbcQkjj9iuxjkTW","sym":"AI robot","age":30.9,"why":"liquidity","liq":4}
+{"t":1793911981184,"addr":"F2AvkmDtZdXbWXaS1ja8Mjgjy54zsHhDErWzeFCNpump","sym":"GIVEST","age":30.5,"why":"liquidity","liq":9395}
