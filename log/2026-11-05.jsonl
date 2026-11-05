@@ -365,3 +365,5 @@
 {"t":1793880180864,"addr":"EFf7PnG6UjANEnsqchz5Diof7qzGZBSwW1rLpe5xgs4k","sym":"INDEX","age":30.5,"score":0.01484,"px":9.411e-06,"liq":17275,"p0":9.552307227324948e-06,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.1147,"c_peak":1.3179,"c_vol":4.9609,"c_act":1.0,"c_r5":-0.0302,"c_r15":-0.0057,"c_mc":3.9801}}
 {"t":1793880240250,"addr":"D3y4tw4yXhxUakdLf8cGK7hFbgUTiFnb5couSnn6bonk","sym":"Boecrown","age":30.3,"why":"liquidity","liq":0}
 {"t":1793880480649,"addr":"DxekVwANbGyJNFU6sugFo8PRYGnt6xzSnncs7ZuY162w","sym":"NEX Ai","age":30.7,"why":"liquidity","liq":0}
+{"t":1793880600229,"addr":"AMYLaMCYEFoNgKgnLcjZFjHJe59P8MnQtXXVZgbJmoon","sym":"NOTHBOX","age":30.4,"why":"liquidity","liq":0}
+{"t":1793880720253,"addr":"G3HGYqDd7Pshoncc5hzfnuTXEBaESobMVebKDBDGpump","sym":"MOOHUN","age":30.3,"why":"liquidity","liq":7063}
