@@ -57,3 +57,4 @@ footer{text-align:center;margin:10px 0 4px}
 .list.log li{grid-template-columns:42px 1fr auto}
 .pulse{animation:pulse 1.4s infinite}@keyframes pulse{50%{opacity:.45}}
 .tabs button{white-space:nowrap}
+#mode button{flex:1}

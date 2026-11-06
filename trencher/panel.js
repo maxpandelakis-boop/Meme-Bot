@@ -1,7 +1,7 @@
 // Side panel of the Trencher: live data for one coin plus the paper account. Fake money only.
 import {
   START_CASH, FILL_DELAY_MS, newBook, buy, sell, equity, liquidationValue, breakEvenMove, avgEntry,
-  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS, tradesFromLogs,
+  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS, tradesFromLogs, parseEvent,
 } from "./sim.js";
 
 const $ = id => document.getElementById(id);
@@ -141,17 +141,17 @@ async function detect() {
   }
   const m = mints[0] || null;
   $("detected").textContent = m ? "Seite: " + short(m) : "Seite: keine Adresse erkannt";
-  if (m && $("follow").checked && (!S || S.mint !== m)) load(m);
+  if (m && $("follow").checked && !(botOn && mode === "auto") && (!S || S.mint !== m)) load(m);
 }
 chrome.tabs.onActivated.addListener(() => setTimeout(detect, 200));
 chrome.tabs.onUpdated.addListener((id, info) => { if (info.url || info.status === "complete") setTimeout(detect, 300); });
 
 // ---------- loading a coin ----------
-async function load(mint) {
+async function load(mint, keepBot = false) {
   mint = (mint || "").trim();
   if (!findMints(mint).includes(mint)) { status("Ungültige Adresse", "warn"); return; }
   stop();
-  botOff("Neuer Coin: Bot gestoppt");
+  if (!keepBot) botOff("Neuer Coin: Bot gestoppt");
   S = fresh(mint);
   $("mint").value = mint;
   S.book = await loadBook(mint);
@@ -212,6 +212,7 @@ function addTick(t, p, v) {
 const solUsd = me => me.solUsd || solUsdGlobal;
 function chainSay(me, t) { me.chainState = t; }
 function openChain(me) {
+  if (SCAN.ws && me.pair && me.pair.dexId === "pumpfun") { chainSay(me, "über den Auto-Scanner"); return; }   // one firehose is enough
   let ws;
   const url = RPC_WS[me.rpc % RPC_WS.length];
   chainSay(me, "verbinde " + url.replace("wss://", ""));
@@ -443,29 +444,152 @@ function logLine(side, text) {
 }
 
 function botStart() {
-  if (!S || !(S.price > 0)) { $("botWhy").textContent = "Erst einen Coin laden."; return; }
+  if (mode === "coin" && (!S || !(S.price > 0))) { $("botWhy").textContent = "Erst einen Coin laden."; return; }
   botOn = true;
   $("botBtn").textContent = "■ Bot stoppen"; $("botBtn").classList.add("on");
-  $("botState").innerHTML = `<b class="pos pulse">Bot läuft</b> auf ${$("name").textContent}`;
-  logLine("bot", "Bot gestartet");
+  $("botState").innerHTML = mode === "auto" ? `<b class="pos pulse">Auto-Trencher läuft</b>` : `<b class="pos pulse">Bot läuft</b> auf ${$("name").textContent}`;
+  logLine("bot", mode === "auto" ? "Auto-Trencher gestartet: sucht selbst pump.fun-Coins" : "Bot gestartet");
+  if (mode === "auto") { $("follow").checked = false; scanStart(); }
   botTimer = setInterval(botTick, 1000);
   botTick();
 }
 function botOff(why) {
   if (!botOn) return;
   botOn = false; clearInterval(botTimer);
+  scanStop();
   $("botBtn").textContent = "▶ Bot starten"; $("botBtn").classList.remove("on");
   $("botState").innerHTML = "<b>Bot aus</b>";
   $("botWhy").textContent = why;
   logLine("bot", why);
 }
 function botTick() {
-  if (!botOn || !S || busy) return;
+  if (!botOn || busy) return;
+  if (mode === "auto") return autoTick();
+  if (!S) return;
   const d = decide({ now: Date.now(), price: S.price, liq: S.liq, trades: S.feed, book: S.book, lastExitAt: S.lastExitAt }, P);
   $("botWhy").textContent = d.why;
   if (d.action === "buy") order("buy", 1, d.why, true);
   else if (d.action === "sell") order("sell", 1, d.why, true);
   else if (d.why === "kein Bargeld mehr") botOff("Kein Bargeld mehr: Bot gestoppt");
+}
+
+// ---------- Auto-Trencher: watches every pump.fun trade, picks a coin itself, trades it with a fresh 20 $, then looks again ----------
+let mode = "coin";                // the user's choice (2026-11-06): by default the bot trades only the coin that is open
+try { mode = localStorage.getItem("mode2") || "coin"; } catch {}
+for (const b of document.querySelectorAll("#mode button")) {
+  b.classList.toggle("on", b.dataset.m === mode);
+  b.onclick = () => {
+    if (botOn) botOff("Modus gewechselt: Bot gestoppt");
+    mode = b.dataset.m;
+    try { localStorage.setItem("mode2", mode); } catch {}
+    document.querySelectorAll("#mode button").forEach(x => x.classList.toggle("on", x === b));
+  };
+}
+const SCAN = { ws: null, coins: new Map(), msgs: 0, events: 0, since: 0, state: "aus", cool: new Map(), prune: null };
+const SCAN_KEEP_MS = 60000, MIN_BUYERS = 3, AUTO_COOL_MS = 120000;
+let auto = { trades: 0, pnl: 0, wins: 0 };
+chrome.storage.local.get("autoStats").then(r => { if (r.autoStats) auto = r.autoStats; showAuto(); });
+function showAuto() {
+  $("autoStats").innerHTML = auto.trades ? `Auto-Trencher bisher: ${auto.trades} Trades · <b class="${cls(auto.pnl)}">${sig(auto.pnl)}</b> · ${auto.wins}/${auto.trades} Gewinner (je 20 $ pro Coin)` : "";
+}
+
+function scanStart() {
+  if (SCAN.ws) return;
+  SCAN.since = Date.now(); SCAN.msgs = 0; SCAN.events = 0; SCAN.state = "verbinde…";
+  const ws = new WebSocket(RPC_WS[0]);
+  SCAN.ws = ws;
+  ws.onopen = () => { SCAN.state = "verbunden"; ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "logsSubscribe", params: [{ mentions: [PROGRAM.pumpfun] }, { commitment: "confirmed" }] })); };
+  ws.onmessage = ev => {
+    SCAN.msgs++;
+    const raw = ev.data;
+    if (typeof raw !== "string" || !raw.includes(EVENT_PREFIX[0])) return;
+    let m; try { m = JSON.parse(raw); } catch { return; }
+    const val = m.params && m.params.result && m.params.result.value;
+    if (!val || val.err) return;
+    const now = Date.now();
+    for (const line of val.logs || []) {
+      if (!line.startsWith(EVENT_PREFIX[0])) continue;
+      const e = parseEvent(line.slice(14).trim());
+      if (!e || !e.mint || !(e.vsol >= 25 && e.vsol <= 120)) continue;   // SOL-quoted bonding curves only (30 to ~115 virtual SOL)
+      SCAN.events++;
+      let c = SCAN.coins.get(e.mint);
+      if (!c) { c = { trades: [] }; SCAN.coins.set(e.mint, c); }
+      const tr = { t: now, side: e.side, sol: e.sol, priceSol: e.priceSol, wallet: e.wallet, sig: (val.signature || "") + ":" + c.trades.length };
+      c.trades.push(tr); c.vsol = e.vsol; c.last = now;
+      if (S && S.mint === e.mint && solUsdGlobal) {   // the coin on screen gets its live trades from here
+        const u = { ...tr, usd: tr.sol * solUsdGlobal, price: tr.priceSol * solUsdGlobal };
+        addTrade(u); S.price = u.price; S.lastTradeAt = now; S.chainAt = now; S.chainState = "live";
+      }
+    }
+  };
+  ws.onclose = () => { if (SCAN.ws === ws) { SCAN.ws = null; SCAN.state = "getrennt, neuer Versuch…"; if (botOn && mode === "auto") setTimeout(scanStart, 3000); } };
+  SCAN.prune = setInterval(() => {
+    const cut = Date.now() - SCAN_KEEP_MS;
+    for (const [k, c] of SCAN.coins) { c.trades = c.trades.filter(t => t.t >= cut); if (!c.trades.length) SCAN.coins.delete(k); }
+  }, 5000);
+}
+function scanStop() {
+  if (SCAN.ws) { const w = SCAN.ws; SCAN.ws = null; w.onclose = null; try { w.close(); } catch {} }
+  clearInterval(SCAN.prune); SCAN.coins.clear(); SCAN.state = "aus";
+}
+
+let autoHolding = false, autoBusy = false;
+async function autoTick() {
+  if (autoBusy) return;
+  autoBusy = true;
+  try { await autoStep(); } finally { autoBusy = false; }
+}
+async function autoStep() {
+  const now = Date.now();
+  // 1) a position is open: the normal sell rules
+  if (S && S.book.tokens > 0) {
+    autoHolding = true;
+    const d = decide({ now, price: S.price, liq: S.liq || (SCAN.coins.get(S.mint) || {}).vsol * 2 * solUsdGlobal, trades: S.feed, book: S.book, lastExitAt: 0 }, P);
+    $("botWhy").textContent = `${$("name").textContent}: ${d.why}`;
+    if (d.action === "sell") {
+      const before = S.book.realized;
+      await order("sell", 1, d.why, true);
+      if (S && !(S.book.tokens > 0)) {
+        const pnl = S.book.realized - before;
+        auto.trades++; auto.pnl += pnl; if (pnl > 0) auto.wins++;
+        chrome.storage.local.set({ autoStats: auto }); showAuto();
+        SCAN.cool.set(S.mint, Date.now() + AUTO_COOL_MS);
+        autoHolding = false;
+      }
+    }
+    return;
+  }
+  autoHolding = false;
+  // 2) no position: look at every coin the scanner saw and take the strongest that passes the buy rules
+  if (!solUsdGlobal) { $("botWhy").textContent = "warte auf den SOL-Preis…"; return; }
+  const secs = Math.max((now - SCAN.since) / 1000, 1);
+  let best = null, nearest = null;
+  for (const [mint, c] of SCAN.coins) {
+    if ((SCAN.cool.get(mint) || 0) > now || c.trades.length < 4) continue;
+    const trades = c.trades.map(t => ({ t: t.t, side: t.side, usd: t.sol * solUsdGlobal, price: t.priceSol * solUsdGlobal, wallet: t.wallet }));
+    const last = trades[trades.length - 1];
+    const liq = 2 * c.vsol * solUsdGlobal;
+    const d = decide({ now, price: last.price, liq, trades, book: newBook(), lastExitAt: 0 }, P);
+    const recent = trades.filter(t => now - t.t <= P.flowSec * 1000);
+    const buyers = new Set(recent.filter(t => t.side === "buy").map(t => t.wallet)).size;
+    const vol = recent.filter(t => t.side === "buy").reduce((x, t) => x + t.usd, 0);
+    if (d.action === "buy" && buyers >= MIN_BUYERS) { if (!best || vol > best.vol) best = { mint, d, vol, trades, buyers }; }
+    else if (!nearest || vol > nearest.vol) nearest = { mint, d, vol, buyers };
+  }
+  const head = `beobachte ${SCAN.coins.size} Coins · ${Math.round(SCAN.events / secs)} Trades/s · ${SCAN.state}`;
+  if (!best) {
+    $("botWhy").innerHTML = head + (nearest ? `<br>stärkster: ${short(nearest.mint)} (${nearest.buyers} Käufer) ${nearest.d.why.replace("wartet: ", "")}` : "");
+    return;
+  }
+  // 3) buy it: show the coin, fresh 20 $, fill on its last live price
+  logLine("bot", `Auto-Trencher wählt ${short(best.mint)}: ${best.buyers} verschiedene Käufer`);
+  await load(best.mint, true);
+  if (!S) return;
+  S.book = newBook(); saveBook();
+  for (const t of best.trades) addTrade({ ...t, sig: "scan" + t.t + t.wallet + t.usd });
+  S.price = best.trades[best.trades.length - 1].price; S.lastTradeAt = now; S.chainAt = now;
+  renderMine();
+  await order("buy", 1, best.d.why, true);
 }
 
 (async () => {

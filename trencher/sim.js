@@ -267,7 +267,8 @@ export function parseEvent(b64) {
     const sol = u64(40) / SOL_DEC, tok = u64(48) / TOK_DEC;
     if (!(sol > 0 && tok > 0)) return null;
     return { side: u[56] ? "buy" : "sell", sol, tok, priceSol: sol / tok, mint: b58(u.slice(8, 40)),
-             wallet: b58(u.slice(57, 89)), tChain: Number(v.getBigInt64(89, true)) * 1000 };
+             wallet: b58(u.slice(57, 89)), tChain: Number(v.getBigInt64(89, true)) * 1000,
+             vsol: u64(97) / SOL_DEC, vtok: u64(105) / TOK_DEC };   // the curve's virtual reserves after the trade
   }
   const buy = isDisc(u, DISC.buy), sell = isDisc(u, DISC.sell);
   if ((buy || sell) && u.length >= 184) {

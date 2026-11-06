@@ -36,10 +36,14 @@
 </section>
 
 <section class="card bot">
+  <div class="row seg" id="mode">
+    <button data-m="coin" class="on">Nur dieser Coin</button><button data-m="auto">🔎 Auto (sucht Coins selbst)</button>
+  </div>
   <div class="row">
     <button id="botBtn" class="botbtn">▶ Bot starten</button>
     <div class="botinfo"><div id="botState" class="tiny"><b>Bot aus</b></div><div id="botWhy" class="tiny muted">Der Bot kauft und verkauft allein mit deinem Spielgeld.</div></div>
   </div>
+  <div id="autoStats" class="tiny muted"></div>
   <details id="rules">
     <summary class="tiny">Regeln des Bots ändern</summary>
     <div class="rules" id="ruleForm"></div>
