@@ -514,3 +514,6 @@
 {"t":1793976420755,"addr":"JA48whDA4ioKWeQ2LzkZGHJ3Bj7X43sa77bE9oEHpump","sym":"Grok","age":30.8,"why":"liquidity","liq":1669}
 {"t":1793976420755,"addr":"DPXzD2qYLHD9B6JxiLHscD23J7oWAi4qRd62ZS8QqZh","sym":"St\u0435ve","age":30.8,"why":"liquidity","liq":0}
 {"t":1793976420755,"addr":"85mEALGuRCMmmMo7YD51pMfEjWisbHHRwZX8t7Bpump","sym":"0DAY","age":30.3,"score":0.01702,"px":0.0001494,"liq":29385,"p0":0.0001560118272565033,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0356,"c_peak":1.2026,"c_vol":4.5833,"c_act":1.0,"c_r5":-0.001,"c_r15":-0.0566,"c_mc":5.1932}}
+{"t":1793976480798,"addr":"FmNCuQ8RpxBJjW2Cq2G8aaDeuZiQo4sMR44B3oRUgEF","sym":"St\u0435ve","age":30.3,"why":"liquidity","liq":0}
+{"t":1793976480798,"addr":"Hm37KuDUUuDyZw9TAKmhdKkcKLWjZU4ozEJMh1mzBAGS","sym":"PAINTWIZ","age":30.1,"why":"liquidity","liq":0}
+{"t":1793976540531,"addr":"2NJNc63uFGiihgCTynmuBDkFwW5ikER1JasZ8ykv848H","sym":"elun","age":30.0,"why":"liquidity","liq":0}
