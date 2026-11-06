@@ -130,3 +130,6 @@
 {"t":1793936280574,"addr":"7RYeqVDdB6saUJrVhnGmYuiCM38gfZYSbncmmbwApump","sym":"TRUCROWN","age":30.8,"why":"liquidity","liq":0}
 {"t":1793936280574,"addr":"4AXjF3jd22SPq3W71nNhFCK8jv3oJrv1beHr9GbVqNtq","sym":"SIMER","age":30.4,"why":"liquidity","liq":7606}
 {"t":1793936341270,"addr":"4gqXaejDe1iDgFPsr4XCrbP9Ddu9RVtX5zDShxVGpump","sym":"FORKYU","age":30.1,"score":0.01234,"px":4.478e-05,"liq":15381,"p0":8.467502055347244e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.5088,"c_peak":1.2076,"c_vol":4.8878,"c_act":1.0,"c_r5":0.1303,"c_r15":0.6812,"c_mc":4.9278}}
+{"t":1793936821355,"addr":"DgbpTmCxQczf2mjFTpCi7u8W5Mie9tFW9DbdpT1Umoon","sym":"BAIPND","age":30.7,"why":"liquidity","liq":0}
+{"t":1793936821355,"addr":"Dj9PoVgXf5bnhaDc1RMPzQjutPupFQxBmVsYf1Kfpump","sym":"SALONA","age":30.1,"why":"liquidity","liq":4051}
+{"t":1793936941057,"addr":"3whYREakFEApYj3NxusS1MJNQRf1ZpeByVDi2NkFSEMu","sym":"BUK","age":30.2,"why":"liquidity","liq":0}
