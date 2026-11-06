@@ -68,3 +68,4 @@
 {"t":1793930400850,"addr":"987uRcVfkrowxrmD68G9DH3jovd2MKW5hBNzUkJJVkyJ","sym":"PUMU","age":30.9,"why":"liquidity","liq":0}
 {"t":1793930580581,"addr":"m5HMYZjQyTquyfonBm5aEQZm9gjJY5ryeWfVpMJpump","sym":"USDP","age":30.3,"score":0.0086,"px":0.1332,"liq":918430,"p0":0.1330343909362144,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0198,"c_peak":1.0005,"c_vol":5.6543,"c_act":1.0,"c_r5":0.0022,"c_r15":0.012,"c_mc":8.124}}
 {"t":1793930580581,"addr":"2pF1PN59YcUd12euMYSCoX6znwiJ1MTnEjThbtRPNe7y","sym":"Chika","age":30.1,"why":"liquidity","liq":0}
+{"t":1793930640826,"addr":"DmwJjVSdYnzXRceunouRTKc4UNrwL8PZ5m4CdHavcd3E","sym":"NEX Ai","age":30.1,"why":"liquidity","liq":0}
