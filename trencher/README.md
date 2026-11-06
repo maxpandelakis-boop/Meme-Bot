@@ -22,8 +22,9 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 - Die gelbe Zeile sagt, wie viel % der Kurs steigen muss, bis ein Rein-und-Raus überhaupt Gewinn macht.
 
 ## Datenquellen (kostenlos, ohne Schlüssel)
-- Trades live (unter 1 s): direkt von der Solana-Blockchain über den öffentlichen RPC-Websocket (`logsSubscribe` auf Coin und
-  PumpSwap-Pool). Gelesen werden die Trade-Events von pump.fun (Bonding Curve) und PumpSwap (nach dem Graduate).
+- Trades live (unter 1 s): direkt von der Solana-Blockchain über PublicNodes kostenlosen RPC-Websocket (`logsSubscribe` auf das
+  ganze pump.fun- bzw. PumpSwap-Programm, im Panel nach Coin/Pool gefiltert). Der offizielle RPC (api.mainnet-beta.solana.com)
+  lehnt Chrome-Erweiterungen mit 403 ab.
 - Preis, Liquidität, Market Cap: DexScreener jede Sekunde (dort einige Sekunden zwischengespeichert, ein frischer Trade gewinnt).
 - Chart-Verlauf beim Laden und Ersatz, wenn die Blockchain schweigt: GeckoTerminal alle 15 s (30 s zwischengespeichert, bei 429 eine Minute Pause).
 - Coins anderer Börsen (Raydium, Meteora …) bekommen nur die GeckoTerminal-Trades.

@@ -9,7 +9,13 @@ const DEX = mint => `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
 const GT = pool => `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pool}/trades`;
 const PRICE_EVERY_MS = 1000;      // DexScreener allows 300 requests a minute; one a second stays far below
 const GT_EVERY_MS = 15000;        // GeckoTerminal caches 30 s and answers 429 after a few fast calls (tested 2026-11-06)
-const RPC_WS = ["wss://api.mainnet-beta.solana.com", "wss://solana-rpc.publicnode.com"];   // live trades: public Solana RPCs, logsSubscribe
+// Live trades: PublicNode's free Solana RPC, logsSubscribe on the whole pump.fun or PumpSwap program, filtered here by coin/pool.
+// (Tested 2026-11-06 on the user's PC: api.mainnet-beta.solana.com refuses chrome-extension origins with 403, and Chrome's
+// declarativeNetRequest cannot strip the Origin of a websocket; PublicNode accepts the extension but only delivers program-wide
+// subscriptions, about 150 messages a second for pump.fun, so each one is pre-filtered on its raw text before parsing.)
+const RPC_WS = ["wss://solana-rpc.publicnode.com"];
+const PROGRAM = { pumpfun: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", pumpswap: "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA" };
+const EVENT_PREFIX = ["Program data: vdt/007mYe", "Program data: Z/RSHyz1d3", "Program data: Pi83CqUD3C"];   // TradeEvent, BuyEvent, SellEvent
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 let solUsdGlobal = 0;             // SOL in USD, from DexScreener's biggest SOL pair, refreshed every minute
 async function pollSol() {
@@ -33,7 +39,7 @@ try { tf = Number(localStorage.getItem("tf")) || 5; } catch {}
 
 function fresh(mint) {
   return { mint, pair: null, price: 0, liq: 0, ticks: [], feed: [], seen: new Set(), timers: [],
-           book: newBook(), lastTradeAt: 0, gtOn: false, solUsd: 0, ws: null, chainAt: 0, gtBackoff: 0, rpc: 0, chainMsgs: 0, chainState: "aus", entryLine: null, lastExitAt: 0, log: [] };
+           book: newBook(), lastTradeAt: 0, gtOn: false, solUsd: 0, decAdj: 0, ws: null, chainAt: 0, gtBackoff: 0, rpc: 0, chainMsgs: 0, chainState: "aus", entryLine: null, lastExitAt: 0, log: [] };
 }
 
 // ---------- formatting ----------
@@ -184,8 +190,11 @@ async function pollPrice() {
     me.liq = (p.liquidity && p.liquidity.usd) || 0;
     $("name").textContent = p.baseToken.symbol || short(me.mint);
     const pu = Number(p.priceUsd), pn = Number(p.priceNative);
-    if (p.quoteToken && /^W?SOL$/i.test(p.quoteToken.symbol) && pu > 0 && pn > 0) me.solUsd = pu / pn;
-    if (!me.ws) openChain(me);
+    // the pair's quote in USD (SOL for most coins, but some pump.fun coins trade against another token)
+    if (pu > 0 && pn > 0) me.solUsd = pu / pn;
+    me.priceNative = pn;
+    if (!me.ws && PROGRAM[p.dexId]) openChain(me);
+    if (!PROGRAM[p.dexId]) me.chainState = `nur pump.fun/PumpSwap (${p.dexId})`;
     if (pu > 0 && Date.now() - me.lastTradeAt > TRADE_FRESH_MS) { me.price = pu; addTick(Date.now(), pu, 0); }
     status("live", "pos");
     if (!me.gtOn) { me.gtOn = true; pollGt(); me.timers.push(setInterval(pollGt, GT_EVERY_MS)); }
@@ -199,7 +208,7 @@ function addTick(t, p, v) {
   if (S.ticks.length > TICK_MAX) S.ticks.splice(0, S.ticks.length - TICK_MAX);
 }
 
-// ---------- trades: GeckoTerminal every 2.5 s (its last 300 trades also fill the chart's history at once) ----------
+// ---------- trades: live from the chain; GeckoTerminal fills the chart history and stands in when the chain is silent ----------
 const solUsd = me => me.solUsd || solUsdGlobal;
 function chainSay(me, t) { me.chainState = t; }
 function openChain(me) {
@@ -208,25 +217,30 @@ function openChain(me) {
   chainSay(me, "verbinde " + url.replace("wss://", ""));
   try { ws = new WebSocket(url); } catch (e) { chainSay(me, "Fehler: " + e.message); return; }
   me.ws = ws;
-  // the mint catches pump.fun curve trades; a PumpSwap pool's swaps often name only the pool, so that is subscribed too
-  const sub = (id, addr) => ws.send(JSON.stringify({ jsonrpc: "2.0", id, method: "logsSubscribe", params: [{ mentions: [addr] }, { commitment: "confirmed" }] }));
   ws.onopen = () => {
     chainSay(me, "verbunden, abonniere…");
-    sub(1, me.mint);
-    const pool = me.pair && me.pair.pairAddress;
-    if (pool && pool !== me.mint && me.pair.dexId !== "pumpfun") sub(2, pool);
+    ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "logsSubscribe", params: [{ mentions: [PROGRAM[me.pair.dexId]] }, { commitment: "confirmed" }] }));
   };
   ws.onmessage = ev => {
     if (me !== S) return;
-    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    const raw = ev.data;
+    if (typeof raw === "string" && raw.length > 300 && !EVENT_PREFIX.some(x => raw.includes(x))) { me.chainMsgs++; return; }
+    let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.error) { chainSay(me, "Fehler: " + (m.error.message || JSON.stringify(m.error)).slice(0, 80)); return; }
     if (m.id && typeof m.result === "number") { chainSay(me, "abonniert, warte auf Trades"); return; }
     const val = m.params && m.params.result && m.params.result.value;
     if (!val) return;
     me.chainMsgs++;
     if (val.err) return;
-    const list = tradesFromLogs(val.logs, me.mint, me.pair && me.pair.pairAddress, solUsd(me), val.signature);
+    const list = tradesFromLogs(val.logs, me.mint, me.pair && me.pair.pairAddress, 1, val.signature);
     if (!list.length) return;
+    // amounts are read with SOL's 9 decimals; a quote token with other decimals is off by a power of ten: calibrate once on DexScreener
+    if (!me.decAdj && me.priceNative > 0 && list[0].price > 0) {
+      const k = Math.round(Math.log10(me.priceNative / list[0].price));
+      me.decAdj = Math.abs(k) <= 4 ? 10 ** k : 1;
+    }
+    const mult = solUsd(me) * (me.decAdj || 1);
+    for (const tr of list) { tr.price *= mult; tr.usd *= mult; }
     me.chainAt = Date.now();
     chainSay(me, "live");
     for (const tr of list) addTrade(tr);
@@ -237,7 +251,6 @@ function openChain(me) {
   ws.onclose = ev => {
     if (me !== S) return;
     me.ws = null;
-    if (!me.chainAt || Date.now() - me.chainAt > 60000) me.rpc++;   // never or long not live here: try the next RPC
     chainSay(me, `getrennt (${ev.code}), neuer Versuch…`);
     setTimeout(() => { if (me === S && !me.ws) openChain(me); }, 3000);
   };
