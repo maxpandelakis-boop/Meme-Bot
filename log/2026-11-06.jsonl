@@ -428,3 +428,4 @@
 {"t":1793965320102,"addr":"rAxD9RpFienq6zfq8yZSakZXjewZqTXD9jRd2UEpump","sym":"ATM","age":30.8,"why":"liquidity","liq":2908}
 {"t":1793965380804,"addr":"2wVVWE3N76NUWh4rUTuToN2YTsWjXWDueCjwXebBY3BX","sym":"CZ","age":30.7,"score":0.02099,"px":4.847e-05,"liq":60960,"p0":4.496969649146399e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.6033,"c_peak":1.0375,"c_vol":5.1795,"c_act":1.0,"c_r5":0.049,"c_r15":0.1935,"c_mc":4.6529}}
 {"t":1793965440639,"addr":"4PUDrs1H1eTErxyD7mBFEWftMg9KAACguV3exe3mpump","sym":"CHILLAKIN","age":31.0,"why":"liquidity","liq":2015}
+{"t":1793965740831,"addr":"3gbLSXSxp7wHoxTbx7Y55jp9qeRSJF44ZjFenG6ABAGS","sym":"SOLCAR","age":30.2,"why":"liquidity","liq":0}
