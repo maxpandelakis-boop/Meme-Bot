@@ -625,3 +625,6 @@
 {"t":1793984880228,"addr":"GjcZqTEepBCGm69kWAzW8T5c7RpUBBhCMpjNnBdR7RAh","sym":"Green Cat","age":30.9,"score":0.0184,"px":4.97e-05,"liq":60544,"p0":4.4872939128404356e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.6685,"c_peak":1.0154,"c_vol":5.2527,"c_act":1.0,"c_r5":0.105,"c_r15":0.2005,"c_mc":4.652}}
 {"t":1793984880228,"addr":"ChSYXS9mUfyfLmw4uV7JsBPNzrTuSMnSFww63WLxVb4v","sym":"Microsoft","age":30.9,"why":"liquidity","liq":0}
 {"t":1793985000439,"addr":"9KEWi64aXVv582kUvFuF7xJLJgpfWpSk4wqmQ98J5zFF","sym":"elun","age":30.5,"why":"liquidity","liq":0}
+{"t":1793985061319,"addr":"A9X187z7tuARePU3jszX5kKXgviPADQjA2uyvpHspump","sym":"CORNE","age":30.3,"why":"liquidity","liq":2115}
+{"t":1793985061319,"addr":"W6ygcFvh9veAWELtWNJoH7DG984UW5pUu9JrHCqdRsp","sym":"Fitn Cat","age":30.3,"why":"liquidity","liq":0}
+{"t":1793985300607,"addr":"98VSU8usPP5oqGi7cui48mFBk1JCqB93eVQasAhzLnr3","sym":"Green cat","age":30.2,"why":"liquidity","liq":0}
