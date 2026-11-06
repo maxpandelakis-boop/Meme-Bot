@@ -193,7 +193,13 @@ function openChain(me) {
   let ws;
   try { ws = new WebSocket(RPC_WS); } catch { return; }
   me.ws = ws;
-  ws.onopen = () => ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "logsSubscribe", params: [{ mentions: [me.mint] }, { commitment: "confirmed" }] }));
+  // the mint catches pump.fun curve trades; a PumpSwap pool's swaps often name only the pool, so that is subscribed too
+  const sub = (id, addr) => ws.send(JSON.stringify({ jsonrpc: "2.0", id, method: "logsSubscribe", params: [{ mentions: [addr] }, { commitment: "confirmed" }] }));
+  ws.onopen = () => {
+    sub(1, me.mint);
+    const pool = me.pair && me.pair.pairAddress;
+    if (pool && pool !== me.mint && me.pair.dexId !== "pumpfun") sub(2, pool);
+  };
   ws.onmessage = ev => {
     if (me !== S) return;
     let m; try { m = JSON.parse(ev.data); } catch { return; }

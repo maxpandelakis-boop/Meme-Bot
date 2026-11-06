@@ -22,9 +22,11 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 - Die gelbe Zeile sagt, wie viel % der Kurs steigen muss, bis ein Rein-und-Raus überhaupt Gewinn macht.
 
 ## Datenquellen (kostenlos, ohne Schlüssel)
-- Preis: DexScreener, jede Sekunde.
-- Trades: GeckoTerminal alle 2,5 s (der letzte Trade gibt auch den frischesten Preis). PumpPortal schickt Trades pro Coin nur mit bezahltem API-Schlüssel; ohne Schlüssel wird es übersprungen.
-- DexScreener speichert den Preis einige Sekunden zwischen, deshalb gewinnt ein frischer Trade-Preis.
+- Trades live (unter 1 s): direkt von der Solana-Blockchain über den öffentlichen RPC-Websocket (`logsSubscribe` auf Coin und
+  PumpSwap-Pool). Gelesen werden die Trade-Events von pump.fun (Bonding Curve) und PumpSwap (nach dem Graduate).
+- Preis, Liquidität, Market Cap: DexScreener jede Sekunde (dort einige Sekunden zwischengespeichert, ein frischer Trade gewinnt).
+- Chart-Verlauf beim Laden und Ersatz, wenn die Blockchain schweigt: GeckoTerminal alle 15 s (30 s zwischengespeichert, bei 429 eine Minute Pause).
+- Coins anderer Börsen (Raydium, Meteora …) bekommen nur die GeckoTerminal-Trades.
 
 ## Test
 `node trencher/test_sim.mjs` prüft die Geldrechnung.
