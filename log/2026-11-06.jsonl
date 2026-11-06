@@ -777,3 +777,5 @@
 {"t":1794001320074,"addr":"CQ1napYmWJ3ucHkbKzkXsd4EXexb4sX2UUu48wvpump","sym":"SQRL","age":30.8,"score":0.00834,"px":0.000107,"liq":24498,"p0":0.00010138386973429054,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":-0.2283,"c_peak":2.8412,"c_vol":4.5773,"c_act":1.0,"c_r5":0.2536,"c_r15":-0.8192,"c_mc":5.006}}
 {"t":1794001381231,"addr":"4c4Ev2wq145Haqe9nb67pYn3GQDX9KaApBoXUX2ppump","sym":"ANIME","age":31.0,"why":"liquidity","liq":4446}
 {"t":1794001381231,"addr":"3CSPSEStyvwG8DQwUDD9gJJsi4NbHwdAsUS41BkTUTEJ","sym":"A blue cat","age":30.2,"why":"liquidity","liq":3}
+{"t":1794001680744,"addr":"HKA7cFMrEnBprEa9soT6G24mjZbmg2iSbLhyWmL3BAGS","sym":"VICROC","age":30.9,"why":"liquidity","liq":0}
+{"t":1794001800683,"addr":"135tJXaUfPhnEpinbKLJuh6UYQzDPf3HiV353HfjXvY","sym":"INCOME","age":30.9,"why":"liquidity","liq":0}
