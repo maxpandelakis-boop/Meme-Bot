@@ -502,3 +502,7 @@
 {"t":1793975461357,"addr":"CcDy8iKbWd2kN4TRSDwA5HrLuxf9xHtx1EQFNeV3pump","sym":"RAGEBAIT","age":30.4,"why":"liquidity","liq":1978}
 {"t":1793975640440,"addr":"FnNpGFmigbHriPg9oBkSE2f2fX8FYb14QoSiianApump","sym":"Ancdrum","age":30.0,"why":"liquidity","liq":0}
 {"t":1793975700688,"addr":"HCKPrRsRdVgt3n9wws8CBTgJkYYZy18EiRsiyVpEtBNT","sym":"SIVO","age":30.8,"why":"liquidity","liq":21}
+{"t":1793975880629,"addr":"A4oL7WDF3nw9TWtuVP5uVaJ9CVR3u4a9j2htqZKQpump","sym":"St\u0435ve","age":30.2,"score":0.02205,"px":2.717e-05,"liq":11643,"p0":2.1089510762879874e-05,"bars":6,"buy":false,"f":{"f_curve_min":28.8333,"f_creator_prior":4.0,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.6116,"c_peak":3.3895,"c_vol":5.0211,"c_act":1.0,"c_r5":-0.173,"c_r15":-0.7862,"c_mc":4.3241}}
+{"t":1793975941252,"addr":"AN9GYe3h9L4CpK13WQWHw66Psm1xFAN6P6KwjEKVpump","sym":"Coal","age":43.2,"why":"no candles"}
+{"t":1793976000518,"addr":"EZsKWU49mGqaGKRx8aq8T1CU8Sj2gFRa7vDVz1W1JYrG","sym":"elun","age":30.1,"why":"liquidity","liq":0}
+{"t":1793976120570,"addr":"Kd6F1LRm8C7BdQg22V5TX5Nu8hojQM1AAwHH27Tpump","sym":"HANDOFF","age":30.6,"why":"liquidity","liq":1877}
