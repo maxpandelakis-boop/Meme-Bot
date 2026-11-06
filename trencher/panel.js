@@ -381,6 +381,14 @@ $("go").onclick = () => { $("follow").checked = false; load($("mint").value); };
 $("mint").onkeydown = e => { if (e.key === "Enter") $("go").click(); };
 $("buyAll").onclick = () => order("buy", 1);
 $("botBtn").onclick = () => (botOn ? botOff("Von dir gestoppt") : botStart());
+$("testTrade").onclick = async () => {
+  if (!S || !(S.price > 0) || busy) { $("botWhy").textContent = "Erst einen Coin laden."; return; }
+  if (S.book.tokens > 0) { $("botWhy").textContent = "Test-Trade: es läuft schon eine Position."; return; }
+  $("botWhy").textContent = "Test-Trade: kaufe…";
+  await order("buy", 1, "Test-Trade (ohne Regeln)", true);
+  const me = S;
+  setTimeout(() => { if (me === S && S.book.tokens > 0) order("sell", 1, "Test-Trade: 15 s um", true); }, 15000);
+};
 $("rulesReset").onclick = () => { P = { ...BOT_DEFAULTS }; saveRules(); buildRuleForm(); };
 $("buyHalf").onclick = () => order("buy", 0.5);
 $("sellAll").onclick = () => order("sell", 1);
