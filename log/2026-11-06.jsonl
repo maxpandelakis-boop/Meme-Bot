@@ -270,3 +270,6 @@
 {"t":1793950260286,"addr":"CDNvcCHPVkiHP5wusYyiYCYpo36VYDoaj5gJWyLrmoon","sym":"Zlock","age":30.2,"why":"liquidity","liq":0}
 {"t":1793950440779,"addr":"4mQS5vUtVLfg35brEgiAFLH65thjPeF5MPWp75tQwgBF","sym":"NAN","age":30.3,"why":"liquidity","liq":3464}
 {"t":1793950680349,"addr":"7bBLsGPpccRDkeEsYQEqeRA5tM2XsYDqo6ZSVqW5iPQZ","sym":"Death","age":30.3,"score":0.02715,"px":4.328e-05,"liq":57247,"p0":4.101231276560205e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.5476,"c_peak":1.0582,"c_vol":5.179,"c_act":1.0,"c_r5":0.0288,"c_r15":0.1477,"c_mc":4.6129}}
+{"t":1793950873225,"addr":"B3Yx8FZGQMdH7Nw1PEiSb7qQ8VZSaYfgDozLaLwaBAGS","sym":"APVAULT","age":30.7,"why":"liquidity","liq":0}
+{"t":1793951040567,"addr":"BLbQ4zLPQL1ecGM8WAfKD8pXSkxn69uR6vkD9mD5MhT","sym":"RM","age":30.3,"why":"liquidity","liq":0}
+{"t":1793951040567,"addr":"g45wQyfbv4UT4E19E7XxiQAyWua7GyrxVB5oca3pump","sym":"Claude","age":30.0,"score":0.01155,"px":0.0001271,"liq":26837,"p0":6.683172246213333e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.1584,"c_peak":1.9558,"c_vol":4.5218,"c_act":1.0,"c_r5":-0.1807,"c_r15":-0.3042,"c_mc":4.825}}
