@@ -213,3 +213,7 @@
 {"t":1793944560092,"addr":"4Ju16hcPL7wHhrg82v9nDmGmjmmnJiuNG34xAw2E3gKC","sym":"B.Duck","age":30.8,"why":"liquidity","liq":0}
 {"t":1793944620724,"addr":"E12GySDy2EeqgHnQapGWSRgfhnBuPnSv2uibMzjwZd6o","sym":"\ud83d\udc24Chick","age":31.0,"why":"liquidity","liq":0}
 {"t":1793944620724,"addr":"23e8Xs22b4fEidGhefomKD36XZQqroy6ngdWxP5f7YjG","sym":"Redflag","age":30.9,"why":"liquidity","liq":0}
+{"t":1793944740641,"addr":"E2VroH3GvtkxFtB83VtgnbPo359HCCP6RCamqrUfs51S","sym":"\ud83d\udc24Chick","age":30.8,"why":"liquidity","liq":3}
+{"t":1793944740641,"addr":"DfQQ81frDoXz1Qppo4oMXXfGLAvRPgwLkbeyecdEpump","sym":"A","age":30.2,"why":"liquidity","liq":4898}
+{"t":1793944800936,"addr":"5soCV4kbAtXo6AWpbbbdWd62iFMBiAJCBquKrRnDpump","sym":"XTruth Oil","age":30.3,"score":0.00686,"px":0.006064,"liq":193776,"p0":0.006058755122550633,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0504,"c_peak":1.0002,"c_vol":4.9589,"c_act":1.0,"c_r5":0.0038,"c_r15":0.0078,"c_mc":6.7824}}
+{"t":1793944861069,"addr":"EnPzHGvvrbKSqb7pQ65k4HdPi5AG1qjxjALKf8gFan1p","sym":"B.Duck","age":30.5,"why":"liquidity","liq":0}
