@@ -729,3 +729,4 @@
 {"t":1793995441030,"addr":"HxUB9Le4WMfdpWuq4irYkaB2cTSTxiP45iLXwP8zmoon","sym":"METHCLK","age":30.4,"why":"liquidity","liq":0}
 {"t":1793995500401,"addr":"2ki34auhdr5V2qchPNu9vDd3KPyWUSV2NtAsZunmkc5x","sym":"FAFI","age":30.7,"why":"liquidity","liq":11}
 {"t":1793995500401,"addr":"AD2TBq5fP6mmGFnciRbofH93PJwkpd2mYTFBY3eRpump","sym":"SQRL","age":30.0,"score":0.03113,"px":0.0001917,"liq":39212,"p0":0.00016597480474168832,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.2674,"c_peak":1.5885,"c_vol":5.7272,"c_act":0.6667,"c_r5":0.139,"c_r15":-0.2674,"c_mc":5.22}}
+{"t":1793995800507,"addr":"3TGbWztLfh6XVskAnsTqtXq9cbLyjmeqm4jMTQkcpump","sym":"CNUT","age":30.7,"why":"liquidity","liq":1822}
