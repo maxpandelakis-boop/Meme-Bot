@@ -491,3 +491,5 @@
 {"t":1793973600996,"addr":"BJtgPVqYNx3NWKbfUb9hGfYYZMsEF4XaVu7oZDN9Y6KG","sym":"SAFU","age":30.8,"why":"liquidity","liq":0}
 {"t":1793973720063,"addr":"2D88NTW3ND7gGYRXpZvsD9jkYn9yN3Qm8CVyprHLpump","sym":"POMBERT","age":30.8,"score":0.00787,"px":4.927e-05,"liq":16142,"p0":4.798133219273037e-05,"bars":6,"buy":false,"f":{"f_curve_min":22.7167,"f_creator_prior":null,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0263,"c_peak":1.122,"c_vol":4.1739,"c_act":1.0,"c_r5":-0.0626,"c_r15":0.1016,"c_mc":4.6811}}
 {"t":1793973720063,"addr":"7F4f7d4LY7mjwgDqTvy9BoHqDM3L1eFkAVL7V9rdRoKY","sym":"GAMOV","age":30.8,"why":"liquidity","liq":0}
+{"t":1793974501619,"addr":"9xsB1z5J6jwmpQ1NY3PNinTjdEnYfdZJzjG9xJGppump","sym":"Copheat","age":30.6,"why":"liquidity","liq":0}
+{"t":1793974561013,"addr":"NHz7ogS1UrwqkUGgZZRz3pyRJyjKRW1VtKautfcFwAM","sym":"elun","age":30.0,"why":"liquidity","liq":0}
