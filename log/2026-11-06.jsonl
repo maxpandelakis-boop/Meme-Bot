@@ -389,3 +389,7 @@
 {"t":1793962200437,"addr":"AdvrTVftPgP7qknK4F5aBC3ztkGMJWWLa5GpkUPYZWib","sym":"APPLEPAID","age":30.7,"why":"liquidity","liq":105}
 {"t":1793962380821,"addr":"6snhZnqJHfjtjmxcPRFAS4jHV5gL7b3rjmpgY82m7vf8","sym":"GEX","age":30.6,"why":"liquidity","liq":0}
 {"t":1793962380821,"addr":"bnVKo2ezdzZBYgyFWujdpKcgTxKmcp7Jqdd9Pr1pump","sym":"BRUGRID","age":30.3,"why":"liquidity","liq":0}
+{"t":1793962500622,"addr":"G2apw4XQdSfTv9836JHWhRZGyqG43m93eMEF4zjnpump","sym":"HALO","age":30.7,"score":0.00602,"px":0.0001123,"liq":28464,"p0":0.00010255711605798946,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":2.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1243,"c_peak":1.2634,"c_vol":4.6155,"c_act":0.3333,"c_r5":-0.1243,"c_r15":null,"c_mc":5.011}}
+{"t":1793962620770,"addr":"137Mt9HrgiFf7ikCDzG9D2KGTRzQ8N2r5C8hNEfspump","sym":"GPT","age":30.8,"why":"liquidity","liq":1646}
+{"t":1793962620770,"addr":"AqPHeF9FHC15amwj8Ya34QL3gifpEXJCdM194Rkzqcrv","sym":"CHUDBOB","age":30.4,"why":"liquidity","liq":0}
+{"t":1793962680122,"addr":"CL6jM8Lzb2WkxZQ3rCqCg96g2MKbqKBoZAE7Wu4BBA5K","sym":"CHUDBOB","age":30.4,"why":"liquidity","liq":0}
