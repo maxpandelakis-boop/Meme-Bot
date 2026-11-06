@@ -50,3 +50,5 @@
 {"t":1793928661142,"addr":"96yBcd5eDhHve1uaMfTqBLADbhMhUQQTKsZ784npPt2b","sym":"Mootun","age":30.2,"why":"liquidity","liq":4231}
 {"t":1793928901092,"addr":"hdyyQPDM6mtgcLKGZyBsCefFY3jhUzgMFiKdHXcQ3iq","sym":"\u5468\u6df1","age":30.0,"why":"liquidity","liq":0}
 {"t":1793929021323,"addr":"bH7Zzj8c7AX9iUkX5DbNw59p52HrcZy23acsFaPpump","sym":"ConConAI","age":30.4,"score":0.00452,"px":0.003161,"liq":139837,"p0":0.003170347953295351,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.04,"c_peak":1.0,"c_vol":4.8026,"c_act":1.0,"c_r5":0.0053,"c_r15":0.0059,"c_mc":6.5011}}
+{"t":1793929260698,"addr":"BFc8ggKvdKhVDnzYtYikFDa4QzffNC1rYZwUdFNgpump","sym":"Mootoon","age":30.2,"why":"liquidity","liq":2411}
+{"t":1793929380551,"addr":"RkRJHVK6Z1Ysrhp4Mp4sES7FWSPWyV6X6VRu5KfSr2N","sym":"Chika","age":30.8,"why":"liquidity","liq":0}
