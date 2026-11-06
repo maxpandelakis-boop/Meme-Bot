@@ -1,28 +1,47 @@
-:root{--bg:#0f1115;--card:#171a21;--fg:#e8eaed;--mut:#8a919e;--buy:#16c784;--sell:#ea3943;--warn:#f0b90b;--line:#262a33}
+:root{--bg:#0b0d12;--card:#141821;--card2:#1a1f2b;--fg:#eef0f4;--mut:#8b93a3;--buy:#22c55e;--sell:#ef4444;--warn:#f5b70a;--line:#232836;--acc:#6d7cff}
 *{box-sizing:border-box}
-body{margin:0;padding:8px;background:var(--bg);color:var(--fg);font:13px/1.35 system-ui,-apple-system,Segoe UI,sans-serif}
-header{position:sticky;top:0;background:var(--bg);padding-bottom:6px;z-index:2}
+body{margin:0;padding:8px 10px;background:var(--bg);color:var(--fg);font:13px/1.35 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{position:sticky;top:0;background:var(--bg);padding:2px 0 6px;z-index:5}
 .row{display:flex;gap:8px;align-items:center;margin:4px 0}
-.right{margin-left:auto}
-.small{font-size:11.5px}.muted{color:var(--mut)}.warn{color:var(--warn)}.big{font-size:16px;font-weight:600}
-.tag{background:var(--warn);color:#000;border-radius:4px;padding:0 5px;font-size:10px;font-weight:700}
-input#mint{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px;font:12px monospace}
-button{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:7px 8px;cursor:pointer;font-weight:600}
-button:disabled{opacity:.45;cursor:default}
-button.buy{background:var(--buy);border-color:var(--buy);color:#000}
-button.sell{background:var(--sell);border-color:var(--sell);color:#fff}
-button.ghost{background:none;color:var(--mut);font-weight:400;padding:3px 6px}
-kbd{margin-left:6px;font-size:10px;opacity:.7;border:1px solid currentColor;border-radius:3px;padding:0 3px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;margin:8px 0}
-canvas{width:100%;display:block;margin:6px 0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-bottom:6px}
-.stats span{display:block;color:var(--mut);font-size:11px}.stats b{font-size:14px}
-.pos{color:var(--buy)}.neg{color:var(--sell)}
-.list{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;font:11.5px/1.5 ui-monospace,monospace}
-.list li{display:flex;gap:6px;border-bottom:1px solid var(--line);padding:1px 0}
-.list li .s{width:34px;font-weight:700}.list li.buy .s{color:var(--buy)}.list li.sell .s{color:var(--sell)}
-.list li .r{margin-left:auto;color:var(--mut)}
-.list li.new{animation:flash .6s}
-@keyframes flash{from{background:#2a3140}to{background:none}}
-footer{text-align:center;margin:10px 0}
+.right{margin-left:auto}.ta-r{text-align:right}
+.tiny{font-size:11px}.muted{color:var(--mut)}.hidden{display:none!important}
+.logo{font-weight:800;letter-spacing:.2px}
+.tag{background:var(--warn);color:#000;border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:800}
+.dot::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px}
+.pos{color:var(--buy)}.neg{color:var(--sell)}.warn{color:var(--warn)}
+input#mint{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:7px 8px;font:11.5px ui-monospace,monospace}
+button{font:inherit;background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;cursor:pointer;font-weight:700}
+button:disabled{opacity:.35;cursor:default}
+.small-btn{padding:7px 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0}
+.sym{font-size:17px;font-weight:800}.price{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.seg{gap:4px}.seg button{padding:3px 8px;font-size:11px;border-radius:6px;background:none;color:var(--mut)}
+.seg button.on{background:var(--card2);color:var(--fg);border-color:var(--acc)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 3px 0 6px;vertical-align:0}
+.legend .b{background:var(--buy)}.legend .s{background:var(--sell)}.legend .e{background:var(--warn);height:2px;vertical-align:3px}
+#chart{height:270px;margin:6px -4px 4px;border-radius:8px;overflow:hidden}
+.flow{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--line);margin-top:4px}
+.fb{background:var(--buy);width:50%}.fs{background:var(--sell);flex:1}
+.hero .lbl{font-size:11px;color:var(--mut)}.hero .big{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.posline{background:var(--card2);border-radius:8px;padding:6px 8px;margin:6px 0 8px;font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button.buy{background:var(--buy);border-color:var(--buy);color:#04140a;padding:11px 8px}
+button.sell{background:var(--sell);border-color:var(--sell);color:#fff;padding:11px 8px}
+button.alt{filter:saturate(.7) brightness(.85)}
+kbd{margin-left:6px;font-size:9.5px;opacity:.75;border:1px solid currentColor;border-radius:3px;padding:0 3px}
+.order{margin:7px 0 4px;min-height:28px}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:6px 0}
+.chips div{background:var(--card2);border-radius:8px;padding:5px 6px}
+.chips span{display:block;font-size:10px;color:var(--mut)}.chips b{font-size:12.5px;font-variant-numeric:tabular-nums}
+.be{color:var(--warn);background:rgba(245,183,10,.08);border-radius:8px;padding:5px 8px}
+.tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:4px 2px;margin-right:8px;color:var(--mut)}
+.tabs button.on{color:var(--fg);border-bottom-color:var(--acc)}
+.tabs .link{font-weight:400;font-size:11px;margin-right:0}
+.list{list-style:none;margin:6px 0 0;padding:0;max-height:300px;overflow:auto;font:11.5px/1.6 ui-monospace,monospace}
+.list li{display:grid;grid-template-columns:42px 70px 1fr auto;gap:6px;border-bottom:1px solid var(--line);padding:2px 0;align-items:center}
+.list li .s{font-weight:800}.list li.buy .s{color:var(--buy)}.list li.sell .s{color:var(--sell)}
+.list li .r{color:var(--mut);text-align:right}
+.list li.new{animation:flash .7s}
+.list .empty{display:block;color:var(--mut);font-family:inherit;padding:6px 0}
+@keyframes flash{from{background:#25304a}to{background:none}}
+footer{text-align:center;margin:10px 0 4px}

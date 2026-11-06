@@ -3,7 +3,7 @@
 
 export const START_CASH = 20;        // fake USD per coin
 export const FEE_PCT = 0.005;        // FOMO-like fee per trade (same as memebot.py FEE_PCT)
-export const FEE_MIN = 0.81;         // ... at least this per trade (memebot.py FEE_MIN)
+export const FEE_MIN = 0.50;         // ... at least this per trade: FOMO showed "$0.50 fee" on a $25.22 buy (screenshot of 2026-11-06)
 export const BASE_SLIP = 0.003;      // 0.3% on top of the pool's price impact (other bots, price moving within the block)
 export const FILL_DELAY_MS = 1000;   // a click fills on the price about one second later, not the price you clicked on
 export const FALLBACK_LIQ = 5000;    // USD liquidity assumed when the data source gives none (bonding-curve coins)
@@ -133,4 +133,35 @@ export function parseGeckoTrade(item) {
     t: Date.parse(a.block_timestamp) || 0, side: a.kind, usd: Number(a.volume_in_usd) || 0, sol: 0,
     price: price > 0 ? price : 0, wallet: a.tx_from_address || "", sig: a.tx_hash || "",
   };
+}
+
+// Price ticks {t (ms), p, v (USD volume, 0 for a polled price)} -> candles {time (s), open, high, low, close, value} of `sec` seconds.
+// A tick under half or over twice the median of the last 9 kept ticks is dropped as a bad print (one wrong trade price would
+// otherwise draw a spike to zero across the chart).
+export function buildCandles(ticks, sec) {
+  const sorted = ticks.filter(k => k.p > 0).sort((a, b) => a.t - b.t);
+  const kept = [];
+  for (const k of sorted) {
+    const w = kept.slice(-9).map(x => x.p).sort((a, b) => a - b);
+    const med = w.length >= 3 ? w[w.length >> 1] : 0;
+    if (med && (k.p < med / 2 || k.p > med * 2)) continue;
+    kept.push(k);
+  }
+  const out = [];
+  for (const k of kept) {
+    const time = Math.floor(k.t / 1000 / sec) * sec;
+    const c = out[out.length - 1];
+    if (c && c.time === time) {
+      c.high = Math.max(c.high, k.p); c.low = Math.min(c.low, k.p); c.close = k.p; c.value += k.v || 0;
+    } else {
+      const open = c ? c.close : k.p;            // gapless: a bar opens where the last one closed
+      out.push({ time, open, high: Math.max(open, k.p), low: Math.min(open, k.p), close: k.p, value: k.v || 0 });
+    }
+  }
+  return out;
+}
+
+// Average entry price of the open position (what the tokens cost per token, fees included).
+export function avgEntry(book) {
+  return book.tokens > 0 ? book.cost / book.tokens : 0;
 }

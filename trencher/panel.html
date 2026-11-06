@@ -7,61 +7,67 @@
 </head>
 <body>
 <header>
-  <div class="row">
-    <strong>Meme Trencher</strong><span class="tag">SPIELGELD</span>
-    <span id="status" class="muted">bereit</span>
+  <div class="row top">
+    <span class="logo">Meme Trencher</span><span class="tag">SPIELGELD</span>
+    <span id="status" class="dot muted">bereit</span>
   </div>
   <div class="row">
     <input id="mint" placeholder="Coin-Adresse (CA) einfügen" spellcheck="false">
-    <button id="go">Laden</button>
+    <button id="go" class="small-btn">Laden</button>
   </div>
-  <div class="row small">
-    <span id="detected" class="muted">Seite: keine Adresse erkannt</span>
+  <div class="row tiny muted">
+    <span id="detected">Seite: keine Adresse erkannt</span>
     <label class="right"><input type="checkbox" id="follow" checked> Seite folgen</label>
   </div>
 </header>
 
-<section id="coin" class="card">
-  <div class="row"><span id="name" class="big">–</span><span id="price" class="big right">–</span></div>
-  <div class="row small muted"><span id="mc">MC –</span><span id="liq">Liq –</span><span id="chg">–</span></div>
-  <canvas id="chart" height="110"></canvas>
-  <div class="row small"><span id="flow">Käufe/Verkäufe (10 s): –</span><span id="src" class="right muted">–</span></div>
+<section class="card coin">
+  <div class="row">
+    <div><div id="name" class="sym">–</div><div id="sub" class="tiny muted">–</div></div>
+    <div class="right ta-r"><div id="price" class="price">–</div><div id="chg" class="tiny">–</div></div>
+  </div>
+  <div class="row seg" id="tf">
+    <button data-s="1">1s</button><button data-s="5" class="on">5s</button><button data-s="15">15s</button><button data-s="60">1m</button>
+    <span class="right tiny muted legend"><i class="b"></i>Kauf <i class="s"></i>Verkauf <i class="e"></i>Einstieg</span>
+  </div>
+  <div id="chart"></div>
+  <div class="flow"><div id="flowB" class="fb"></div><div id="flowS" class="fs"></div></div>
+  <div class="row tiny"><span id="flow" class="muted">Käufe/Verkäufe (30 s): –</span><span id="src" class="right muted">–</span></div>
 </section>
 
-<section class="card">
+<section class="card hero">
+  <div class="row">
+    <div><div class="lbl">Konto</div><div id="equity" class="big">–</div></div>
+    <div class="right ta-r"><div class="lbl">Gewinn / Verlust</div><div id="pnl" class="big">–</div></div>
+  </div>
+  <div id="posline" class="posline muted">Keine Position</div>
   <div class="grid">
-    <button id="buyAll" class="buy">Kaufen (alles)<kbd>B</kbd></button>
-    <button id="buyHalf" class="buy">Kaufen 50 %</button>
-    <button id="sellAll" class="sell">Verkaufen (alles)<kbd>S</kbd></button>
-    <button id="sellHalf" class="sell">Verkaufen 50 %</button>
+    <button id="buyAll" class="buy">Kaufen alles<kbd>B</kbd></button>
+    <button id="buyHalf" class="buy alt">Kaufen 50 %</button>
+    <button id="sellAll" class="sell">Verkaufen alles<kbd>S</kbd></button>
+    <button id="sellHalf" class="sell alt">Verkaufen 50 %</button>
   </div>
-  <div id="order" class="small muted">Füllung ca. 1 s nach dem Klick, mit FOMO-Gebühr und Slippage.</div>
-</section>
-
-<section class="card">
-  <div class="stats">
-    <div><span>Konto</span><b id="equity">–</b></div>
-    <div><span>Gewinn/Verlust</span><b id="pnl">–</b></div>
+  <div id="order" class="order tiny muted">Füllung ca. 1 s nach dem Klick, mit FOMO-Gebühr und Slippage.</div>
+  <div class="chips">
     <div><span>Bargeld</span><b id="cash">–</b></div>
-    <div><span>Position</span><b id="pos">–</b></div>
-    <div><span>Gebühren bezahlt</span><b id="fees">–</b></div>
-    <div><span>Trades (Gewinner)</span><b id="ntr">–</b></div>
+    <div><span>Gebühren</span><b id="fees">–</b></div>
+    <div><span>Trades</span><b id="ntr">–</b></div>
+    <div><span>Gewinner</span><b id="wins">–</b></div>
   </div>
-  <div id="be" class="small warn">–</div>
-  <div class="row small"><button id="reset" class="ghost">Coin zurücksetzen (20 $)</button></div>
+  <div id="be" class="be tiny">–</div>
 </section>
 
 <section class="card">
-  <div class="row small"><b>Meine Trades</b></div>
+  <div class="row tabs">
+    <button data-tab="mine" class="on">Meine Trades</button><button data-tab="feed">Live-Trades <span id="feedn" class="muted">0</span></button>
+    <button id="reset" class="right link">Coin zurücksetzen</button>
+  </div>
   <ol id="mine" class="list"></ol>
+  <ol id="feed" class="list hidden"></ol>
 </section>
 
-<section class="card">
-  <div class="row small"><b>Live-Trades</b><span class="right muted" id="feedn">0</span></div>
-  <ol id="feed" class="list"></ol>
-</section>
-
-<footer class="small muted">Nur Simulation. Keine Wallet, keine Schlüssel, kein echtes Geld.</footer>
+<footer class="tiny muted">Nur Simulation. Keine Wallet, keine Schlüssel, kein echtes Geld. Chart: TradingView Lightweight Charts™</footer>
+<script src="lib/lightweight-charts.standalone.production.js"></script>
 <script type="module" src="panel.js"></script>
 </body>
 </html>

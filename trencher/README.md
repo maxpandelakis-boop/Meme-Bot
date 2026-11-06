@@ -15,7 +15,7 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 - „Coin zurücksetzen" setzt nur diesen Coin wieder auf 20 $.
 
 ## Wie die Füllung gerechnet wird (damit der Gewinn nicht geschönt ist)
-- Gebühr wie bei FOMO angenommen: 0,5 % pro Trade, mindestens 0,81 $ (dieselben Zahlen wie `memebot.py`). Bei 20 $ sind das ca. 4 % pro Trade.
+- Gebühr wie bei FOMO: 0,5 % pro Trade, mindestens 0,50 $ (FOMO zeigte 0,50 $ Gebühr bei einem Kauf über 25,22 $). Bei 20 $ sind das 2,5 % pro Trade.
 - Die Order wird **1 Sekunde nach dem Klick** zum dann aktuellen Preis gefüllt.
 - Slippage: Preiswirkung am Pool (Betrag ÷ halbe Liquidität) plus 0,3 %. Ohne Liquiditätsangabe wird 5.000 $ angenommen.
 - Der Kontowert rechnet die Position so, als würdest du jetzt alles verkaufen (mit Slippage und Gebühr).
@@ -28,3 +28,8 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 
 ## Test
 `node trencher/test_sim.mjs` prüft die Geldrechnung.
+
+## Chart
+Kerzen (1 s, 5 s, 15 s, 1 m) aus den echten Trades, mit Volumen. Deine Spielgeld-Käufe (grüner Pfeil „K") und Verkäufe
+(Pfeil „V" mit Gewinn/Verlust) stehen direkt im Chart, dein Einstiegspreis als gelbe gestrichelte Linie.
+Chart-Bibliothek: TradingView Lightweight Charts™ 4.2.3 (Apache 2.0, `lib/`).
