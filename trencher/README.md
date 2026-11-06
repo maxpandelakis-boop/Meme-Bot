@@ -29,6 +29,13 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 ## Test
 `node trencher/test_sim.mjs` prüft die Geldrechnung.
 
+## Auto-Bot
+Auf **▶ Bot starten** klicken: der Bot kauft und verkauft den geladenen Coin allein mit dem Spielgeld, jede Sekunde eine Entscheidung.
+Standard-Regeln (unter „Regeln des Bots ändern" einstellbar): kaufen, wenn in den letzten 15 s mind. 65 % des Volumens Käufe
+waren (mind. 150 $) und der Kurs um +1,5 bis +15 % stieg, bei mind. 5.000 $ Liquidität. Verkaufen bei +5 % netto, bei -8 % netto,
+wenn der Kurs im Gewinn 4 % vom Hoch fällt, bei 70 % Verkaufsdruck in 10 s im Gewinn oder nach 90 s. Danach 10 s Pause.
+Jede Entscheidung steht mit Grund im Bot-Log, Bot-Trades im Chart mit 🤖.
+
 ## Chart
 Kerzen (1 s, 5 s, 15 s, 1 m) aus den echten Trades, mit Volumen. Deine Spielgeld-Käufe (grüner Pfeil „K") und Verkäufe
 (Pfeil „V" mit Gewinn/Verlust) stehen direkt im Chart, dein Einstiegspreis als gelbe gestrichelte Linie.

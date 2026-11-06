@@ -35,6 +35,18 @@
   <div class="row tiny"><span id="flow" class="muted">Käufe/Verkäufe (30 s): –</span><span id="src" class="right muted">–</span></div>
 </section>
 
+<section class="card bot">
+  <div class="row">
+    <button id="botBtn" class="botbtn">▶ Bot starten</button>
+    <div class="botinfo"><div id="botState" class="tiny"><b>Bot aus</b></div><div id="botWhy" class="tiny muted">Der Bot kauft und verkauft allein mit deinem Spielgeld.</div></div>
+  </div>
+  <details id="rules">
+    <summary class="tiny">Regeln des Bots ändern</summary>
+    <div class="rules" id="ruleForm"></div>
+    <button id="rulesReset" class="link tiny">Standard-Regeln</button>
+  </details>
+</section>
+
 <section class="card hero">
   <div class="row">
     <div><div class="lbl">Konto</div><div id="equity" class="big">–</div></div>
@@ -59,11 +71,12 @@
 
 <section class="card">
   <div class="row tabs">
-    <button data-tab="mine" class="on">Meine Trades</button><button data-tab="feed">Live-Trades <span id="feedn" class="muted">0</span></button>
-    <button id="reset" class="right link">Coin zurücksetzen</button>
+    <button data-tab="mine" class="on">Meine</button><button data-tab="log">Bot-Log</button><button data-tab="feed">Live <span id="feedn" class="muted">0</span></button>
+    <button id="reset" class="right link" title="Coin auf 20 $ zurücksetzen">↺ 20 $</button>
   </div>
   <ol id="mine" class="list"></ol>
   <ol id="feed" class="list hidden"></ol>
+  <ol id="log" class="list log hidden"></ol>
 </section>
 
 <footer class="tiny muted">Nur Simulation. Keine Wallet, keine Schlüssel, kein echtes Geld. Chart: TradingView Lightweight Charts™</footer>

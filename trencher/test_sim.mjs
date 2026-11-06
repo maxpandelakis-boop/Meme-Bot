@@ -47,3 +47,22 @@ assert.equal(c5.reduce((a, c) => a + c.value, 0), 60);
 for (let i = 1; i < c5.length; i++) { assert.equal(c5[i].open, c5[i - 1].close); assert.ok(c5[i].time > c5[i - 1].time); }
 assert.ok(Math.abs(S.avgEntry({ tokens: 4, cost: 2 }) - 0.5) < 1e-12);
 console.log("ok: candles");
+// bot rules
+{
+  const now = 1_000_000_000;
+  const up = [0, 3, 6, 9, 12].map((s, i) => ({ t: now - 14000 + s * 1000, side: "buy", usd: 60, price: 1 + i * 0.01 }));
+  let d = S.decide({ now, price: 1.04, liq: 20000, trades: up, book: S.newBook() });
+  assert.equal(d.action, "buy", d.why);
+  d = S.decide({ now, price: 1.04, liq: 2000, trades: up, book: S.newBook() });
+  assert.equal(d.action, "wait");
+  const sells = up.map(t => ({ ...t, side: "sell" }));
+  assert.equal(S.decide({ now, price: 1.04, liq: 20000, trades: sells, book: S.newBook() }).action, "wait");
+  let bk = S.buy(S.newBook(), 20, 1, 20000, now).book;
+  assert.equal(bk.entryAt, now);
+  assert.equal(S.decide({ now: now + 5000, price: 1.0, liq: 20000, trades: [], book: bk }).action, "wait");
+  assert.match(S.decide({ now: now + 5000, price: 1.15, liq: 20000, trades: [], book: bk }).why, /Gewinnziel/);
+  assert.match(S.decide({ now: now + 5000, price: 0.9, liq: 20000, trades: [], book: bk }).why, /Stop-Loss/);
+  assert.match(S.decide({ now: now + 100000, price: 1.0, liq: 20000, trades: [], book: bk }).why, /Haltezeit/);
+  assert.equal(S.decide({ now: now + 5000, price: 1.04, liq: 20000, trades: up, book: S.sell(bk, 1, 1, 20000).book, lastExitAt: now + 1000 }).action, "wait");
+  console.log("ok: bot rules");
+}

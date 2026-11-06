@@ -34,6 +34,7 @@ export function buy(book, usd, price, liqUsd, t = Date.now()) {
   const fillPrice = price * (1 + slip);
   const qty = net / fillPrice;
   const b = { ...book, trades: book.trades.slice() };
+  if (!(b.tokens > 0)) { b.entryAt = t; b.peak = price; }   // a new position: the bot's hold time and trailing stop start here
   b.cash -= usd;
   b.tokens += qty;
   b.cost += usd;                       // what these tokens cost, fee included
@@ -164,4 +165,58 @@ export function buildCandles(ticks, sec) {
 // Average entry price of the open position (what the tokens cost per token, fees included).
 export function avgEntry(book) {
   return book.tokens > 0 ? book.cost / book.tokens : 0;
+}
+
+// ---------- the auto bot: a simple scalping rule, one decision per second ----------
+// Paper money only. Every decision says why, in German, for the bot log.
+export const BOT_DEFAULTS = {
+  flowSec: 15,        // window for buy pressure and momentum
+  minBuyShare: 0.65,  // enter only when at least this share of the window's volume was buys ...
+  minVolUsd: 150,     // ... on at least this much volume (USD)
+  minMove: 0.015,     // ... and the price rose at least +1.5 % in the window ...
+  maxMove: 0.15,      // ... but not more than +15 % (no chasing a spike)
+  minLiq: 5000,       // pools under this liquidity are skipped
+  takeProfit: 0.05,   // sell at +5 % net (after both fees and slippage)
+  trail: 0.04,        // or, once in profit, when the price falls 4 % from its high since the buy
+  stopLoss: 0.08,     // sell at -8 % net
+  maxHoldSec: 90,     // sell after 90 s whatever happens
+  flipShare: 0.7,     // sell in profit when 70 % of the last 10 s volume were sells
+  cooldownSec: 10,    // wait this long after a sale before buying again
+};
+
+// ctx: {now (ms), price, liq, trades: [{t, side, usd, price}], book, lastExitAt}
+// -> {action: "buy" | "sell" | "wait", why}
+export function decide(ctx, P = BOT_DEFAULTS) {
+  const { now, price, liq, trades, book } = ctx;
+  if (!(price > 0)) return { action: "wait", why: "kein Preis" };
+  const win = trades.filter(t => now - t.t <= P.flowSec * 1000);
+  const vb = win.filter(t => t.side === "buy").reduce((x, t) => x + t.usd, 0);
+  const vs = win.filter(t => t.side === "sell").reduce((x, t) => x + t.usd, 0);
+  const share = vb + vs > 0 ? vb / (vb + vs) : 0;
+  const old = win.filter(t => t.price > 0).sort((a, b) => a.t - b.t)[0];
+  const move = old ? price / old.price - 1 : 0;
+  const f = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + " %";
+
+  if (book.tokens > 0) {
+    const value = liquidationValue(book, price, liq), net = value / book.cost - 1;
+    const held = (now - (book.entryAt || now)) / 1000;
+    const fromPeak = book.peak > 0 ? price / book.peak - 1 : 0;
+    const last10 = trades.filter(t => now - t.t <= 10000);
+    const s10 = last10.filter(t => t.side === "sell").reduce((x, t) => x + t.usd, 0);
+    const a10 = last10.reduce((x, t) => x + t.usd, 0);
+    if (net >= P.takeProfit) return { action: "sell", why: `Gewinnziel erreicht: ${f(net)} netto` };
+    if (net <= -P.stopLoss) return { action: "sell", why: `Stop-Loss: ${f(net)} netto` };
+    if (net > 0 && fromPeak <= -P.trail) return { action: "sell", why: `Kurs ${f(fromPeak)} vom Hoch, Gewinn sichern (${f(net)})` };
+    if (net > 0 && a10 > 0 && s10 / a10 >= P.flipShare) return { action: "sell", why: `Verkaufsdruck ${Math.round(100 * s10 / a10)} % in 10 s, Gewinn sichern (${f(net)})` };
+    if (held >= P.maxHoldSec) return { action: "sell", why: `Haltezeit ${Math.round(held)} s um (${f(net)})` };
+    return { action: "wait", why: `halte: ${f(net)} netto, ${Math.round(held)} s` };
+  }
+  if (!(book.cash > 1)) return { action: "wait", why: "kein Bargeld mehr" };
+  if (ctx.lastExitAt && now - ctx.lastExitAt < P.cooldownSec * 1000) return { action: "wait", why: "Pause nach Verkauf" };
+  if ((liq || 0) < P.minLiq) return { action: "wait", why: `Liquidität zu klein (${Math.round(liq || 0)} $)` };
+  if (vb + vs < P.minVolUsd) return { action: "wait", why: `zu wenig Volumen (${Math.round(vb + vs)} $ in ${P.flowSec} s)` };
+  if (share < P.minBuyShare) return { action: "wait", why: `Käufe nur ${Math.round(share * 100)} %` };
+  if (move < P.minMove) return { action: "wait", why: `Kurs ${f(move)} in ${P.flowSec} s, zu wenig Schwung` };
+  if (move > P.maxMove) return { action: "wait", why: `Kurs ${f(move)} in ${P.flowSec} s, zu spät` };
+  return { action: "buy", why: `Käufe ${Math.round(share * 100)} % (${Math.round(vb)} $), Kurs ${f(move)} in ${P.flowSec} s` };
 }

@@ -1,7 +1,7 @@
 // Side panel of the Trencher: live data for one coin plus the paper account. Fake money only.
 import {
   START_CASH, FILL_DELAY_MS, newBook, buy, sell, equity, liquidationValue, breakEvenMove, avgEntry,
-  findMints, bestPair, parseGeckoTrade, buildCandles,
+  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS,
 } from "./sim.js";
 
 const $ = id => document.getElementById(id);
@@ -21,7 +21,7 @@ try { tf = Number(localStorage.getItem("tf")) || 5; } catch {}
 
 function fresh(mint) {
   return { mint, pair: null, price: 0, liq: 0, ticks: [], feed: [], seen: new Set(), timers: [],
-           book: newBook(), lastTradeAt: 0, gtOn: false, entryLine: null };
+           book: newBook(), lastTradeAt: 0, gtOn: false, entryLine: null, lastExitAt: 0, log: [] };
 }
 
 // ---------- formatting ----------
@@ -75,6 +75,7 @@ function drawChart() {
     marks.push(f.side === "buy"
       ? { time, position: "belowBar", color: "#22c55e", shape: "arrowUp", text: "K " + usd(f.usd, 0) }
       : { time, position: "aboveBar", color: f.pnl >= 0 ? "#22c55e" : "#ef4444", shape: "arrowDown", text: "V " + sig(f.pnl) });
+    if (f.bot) marks[marks.length - 1].text = "🤖 " + marks[marks.length - 1].text;
   }
   marks.sort((a, b) => a.time - b.time);
   candles.setMarkers(marks);
@@ -132,6 +133,7 @@ async function load(mint) {
   mint = (mint || "").trim();
   if (!findMints(mint).includes(mint)) { status("Ungültige Adresse", "warn"); return; }
   stop();
+  botOff("Neuer Coin: Bot gestoppt");
   S = fresh(mint);
   $("mint").value = mint;
   S.book = await loadBook(mint);
@@ -220,7 +222,7 @@ function addTrade(tr) {
 }
 
 // ---------- paper orders ----------
-async function order(side, share) {
+async function order(side, share, why = "", bot = false) {
   if (!S || busy) return;
   if (!(S.price > 0)) { $("order").textContent = "Noch kein Preis."; return; }
   busy = true; setButtons();
@@ -232,6 +234,9 @@ async function order(side, share) {
   busy = false;
   if (res.error) { $("order").textContent = res.error; setButtons(); return; }
   me.book = res.book; saveBook();
+  res.fill.why = why; res.fill.bot = bot;
+  if (side === "sell" && !(me.book.tokens > 0)) me.lastExitAt = Date.now();
+  logLine(side, (bot ? "" : "Hand: ") + (why || (side === "buy" ? "gekauft" : "verkauft")) + ` · ${usd(res.fill.usd)}` + (res.fill.pnl !== undefined ? ` · ${sig(res.fill.pnl)}` : ""));
   const f = res.fill, moved = me.price / clicked - 1;
   $("order").innerHTML = `<b class="${side === "buy" ? "pos" : "neg"}">${side === "buy" ? "Gekauft" : "Verkauft"}</b> ${usd(f.usd)} bei ${px(f.fillPrice)} · ` +
     `Kurs in 1 s ${pct(moved)} · Slippage ${pct(f.slip)} · Gebühr ${usd(f.fee)}` +
@@ -250,6 +255,7 @@ function render() {
   setButtons();
   if (!S) return;
   const b = S.book, p = S.pair;
+  if (b.tokens > 0 && S.price > (b.peak || 0)) b.peak = S.price;
   $("price").textContent = px(S.price);
   $("sub").textContent = `MC ${big(p && (p.marketCap || p.fdv))} · Liq ${big(S.liq)}${S.liq ? "" : " (angen. $5K)"}${p ? " · " + p.dexId : ""}`;
   const ch = p && p.priceChange;
@@ -298,6 +304,8 @@ function renderMine() {
 $("go").onclick = () => { $("follow").checked = false; load($("mint").value); };
 $("mint").onkeydown = e => { if (e.key === "Enter") $("go").click(); };
 $("buyAll").onclick = () => order("buy", 1);
+$("botBtn").onclick = () => (botOn ? botOff("Von dir gestoppt") : botStart());
+$("rulesReset").onclick = () => { P = { ...BOT_DEFAULTS }; saveRules(); buildRuleForm(); };
 $("buyHalf").onclick = () => order("buy", 0.5);
 $("sellAll").onclick = () => order("sell", 1);
 $("sellHalf").onclick = () => order("sell", 0.5);
@@ -308,6 +316,7 @@ for (const t of document.querySelectorAll(".tabs [data-tab]")) {
     document.querySelectorAll(".tabs [data-tab]").forEach(x => x.classList.toggle("on", x === t));
     $("mine").classList.toggle("hidden", t.dataset.tab !== "mine");
     $("feed").classList.toggle("hidden", t.dataset.tab !== "feed");
+    $("log").classList.toggle("hidden", t.dataset.tab !== "log");
   };
 }
 document.addEventListener("keydown", e => {
@@ -315,6 +324,65 @@ document.addEventListener("keydown", e => {
   if (e.key === "b" || e.key === "B") order("buy", 1);
   if (e.key === "s" || e.key === "S") order("sell", 1);
 });
+
+// ---------- the auto bot ----------
+let botOn = false, botTimer = null;
+let P = { ...BOT_DEFAULTS };
+const RULES = [   // [key, label, shown as percent?]
+  ["minBuyShare", "Einstieg: Anteil Käufe mind. (%)", true], ["minVolUsd", "Einstieg: Volumen mind. ($)", false],
+  ["minMove", "Einstieg: Kursanstieg mind. (%)", true], ["maxMove", "Einstieg: Kursanstieg höchstens (%)", true],
+  ["flowSec", "Einstieg: Zeitfenster (s)", false], ["minLiq", "Liquidität mind. ($)", false],
+  ["takeProfit", "Verkauf: Gewinnziel netto (%)", true], ["stopLoss", "Verkauf: Stop-Loss netto (%)", true],
+  ["trail", "Verkauf: Rückgang vom Hoch (%)", true], ["flipShare", "Verkauf: Verkaufsdruck 10 s (%)", true],
+  ["maxHoldSec", "Verkauf: max. Haltezeit (s)", false], ["cooldownSec", "Pause nach Verkauf (s)", false],
+];
+function buildRuleForm() {
+  const box = $("ruleForm"); box.innerHTML = "";
+  for (const [k, label, isPct] of RULES) {
+    const l = document.createElement("label"); l.textContent = label;
+    const i = document.createElement("input"); i.type = "number"; i.step = "any";
+    i.value = isPct ? +(P[k] * 100).toFixed(2) : P[k];
+    i.onchange = () => { const v = Number(i.value); if (isFinite(v) && v >= 0) { P[k] = isPct ? v / 100 : v; saveRules(); } };
+    box.append(l, i);
+  }
+}
+function saveRules() { chrome.storage.local.set({ botRules: P }); }
+chrome.storage.local.get("botRules").then(r => { if (r.botRules) P = { ...BOT_DEFAULTS, ...r.botRules }; buildRuleForm(); });
+
+function logLine(side, text) {
+  if (!S) return;
+  const li = document.createElement("li");
+  li.className = side + " new";
+  li.innerHTML = `<span class="s">${side === "buy" ? "KAUF" : side === "sell" ? "VERK" : "BOT"}</span><span>${text}</span><span class="r">${hhmmss(Date.now())}</span>`;
+  $("log").prepend(li);
+  while ($("log").children.length > 200) $("log").lastChild.remove();
+}
+
+function botStart() {
+  if (!S || !(S.price > 0)) { $("botWhy").textContent = "Erst einen Coin laden."; return; }
+  botOn = true;
+  $("botBtn").textContent = "■ Bot stoppen"; $("botBtn").classList.add("on");
+  $("botState").innerHTML = `<b class="pos pulse">Bot läuft</b> auf ${$("name").textContent}`;
+  logLine("bot", "Bot gestartet");
+  botTimer = setInterval(botTick, 1000);
+  botTick();
+}
+function botOff(why) {
+  if (!botOn) return;
+  botOn = false; clearInterval(botTimer);
+  $("botBtn").textContent = "▶ Bot starten"; $("botBtn").classList.remove("on");
+  $("botState").innerHTML = "<b>Bot aus</b>";
+  $("botWhy").textContent = why;
+  logLine("bot", why);
+}
+function botTick() {
+  if (!botOn || !S || busy) return;
+  const d = decide({ now: Date.now(), price: S.price, liq: S.liq, trades: S.feed, book: S.book, lastExitAt: S.lastExitAt }, P);
+  $("botWhy").textContent = d.why;
+  if (d.action === "buy") order("buy", 1, d.why, true);
+  else if (d.action === "sell") order("sell", 1, d.why, true);
+  else if (d.why === "kein Bargeld mehr") botOff("Kein Bargeld mehr: Bot gestoppt");
+}
 
 (async () => {
   await detect();
