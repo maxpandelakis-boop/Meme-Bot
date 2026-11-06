@@ -170,12 +170,13 @@ export function avgEntry(book) {
 // ---------- the auto bot: a simple scalping rule, one decision per second ----------
 // Paper money only. Every decision says why, in German, for the bot log.
 export const BOT_DEFAULTS = {
-  flowSec: 15,        // window for buy pressure and momentum
-  minBuyShare: 0.65,  // enter only when at least this share of the window's volume was buys ...
-  minVolUsd: 150,     // ... on at least this much volume (USD)
-  minMove: 0.015,     // ... and the price rose at least +1.5 % in the window ...
-  maxMove: 0.15,      // ... but not more than +15 % (no chasing a spike)
-  minLiq: 5000,       // pools under this liquidity are skipped
+  flowSec: 20,        // window for buy pressure and momentum (ending at the newest trade: the feed lags a few seconds)
+  minBuyShare: 0.6,   // enter only when at least this share of the window's volume was buys ...
+  minVolUsd: 100,     // ... on at least this much volume (USD)
+  minMove: 0.005,     // ... and the price rose at least +0.5 % in the window ...
+  maxMove: 0.25,      // ... but not more than +25 % (no chasing a spike)
+  minLiq: 3000,       // pools under this liquidity are skipped (unknown liquidity, e.g. pump.fun curve coins, is not skipped)
+  maxLagSec: 60,      // the newest trade must be at most this old
   takeProfit: 0.05,   // sell at +5 % net (after both fees and slippage)
   trail: 0.04,        // or, once in profit, when the price falls 4 % from its high since the buy
   stopLoss: 0.08,     // sell at -8 % net
@@ -189,7 +190,10 @@ export const BOT_DEFAULTS = {
 export function decide(ctx, P = BOT_DEFAULTS) {
   const { now, price, liq, trades, book } = ctx;
   if (!(price > 0)) return { action: "wait", why: "kein Preis" };
-  const win = trades.filter(t => now - t.t <= P.flowSec * 1000);
+  const newest = trades.reduce((m, t) => Math.max(m, t.t), 0);
+  const lag = newest ? (now - newest) / 1000 : Infinity;
+  const end = Math.min(now, newest || now);
+  const win = trades.filter(t => end - t.t <= P.flowSec * 1000);
   const vb = win.filter(t => t.side === "buy").reduce((x, t) => x + t.usd, 0);
   const vs = win.filter(t => t.side === "sell").reduce((x, t) => x + t.usd, 0);
   const share = vb + vs > 0 ? vb / (vb + vs) : 0;
@@ -213,10 +217,15 @@ export function decide(ctx, P = BOT_DEFAULTS) {
   }
   if (!(book.cash > 1)) return { action: "wait", why: "kein Bargeld mehr" };
   if (ctx.lastExitAt && now - ctx.lastExitAt < P.cooldownSec * 1000) return { action: "wait", why: "Pause nach Verkauf" };
-  if ((liq || 0) < P.minLiq) return { action: "wait", why: `Liquidität zu klein (${Math.round(liq || 0)} $)` };
-  if (vb + vs < P.minVolUsd) return { action: "wait", why: `zu wenig Volumen (${Math.round(vb + vs)} $ in ${P.flowSec} s)` };
-  if (share < P.minBuyShare) return { action: "wait", why: `Käufe nur ${Math.round(share * 100)} %` };
-  if (move < P.minMove) return { action: "wait", why: `Kurs ${f(move)} in ${P.flowSec} s, zu wenig Schwung` };
-  if (move > P.maxMove) return { action: "wait", why: `Kurs ${f(move)} in ${P.flowSec} s, zu spät` };
+  // every entry check at once, so the panel can show which one is missing
+  const ok = (c, txt) => (c ? "✓ " : "✗ ") + txt;
+  const checks = [
+    ok(lag <= P.maxLagSec, `Daten ${isFinite(lag) ? Math.round(lag) + " s" : "keine"}`),
+    ok(!(liq > 0) || liq >= P.minLiq, `Liq ${liq > 0 ? Math.round(liq / 1000) + "K" : "?"}`),
+    ok(vb + vs >= P.minVolUsd, `Vol ${Math.round(vb + vs)} $`),
+    ok(share >= P.minBuyShare, `Käufe ${Math.round(share * 100)} %`),
+    ok(move >= P.minMove && move <= P.maxMove, `Kurs ${f(move)}`),
+  ];
+  if (checks.some(c => c.startsWith("✗"))) return { action: "wait", why: "wartet: " + checks.join(" · ") };
   return { action: "buy", why: `Käufe ${Math.round(share * 100)} % (${Math.round(vb)} $), Kurs ${f(move)} in ${P.flowSec} s` };
 }

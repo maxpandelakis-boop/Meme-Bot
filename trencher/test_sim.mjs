@@ -66,3 +66,13 @@ console.log("ok: candles");
   assert.equal(S.decide({ now: now + 5000, price: 1.04, liq: 20000, trades: up, book: S.sell(bk, 1, 1, 20000).book, lastExitAt: now + 1000 }).action, "wait");
   console.log("ok: bot rules");
 }
+{
+  // the feed lags: trades 20 s old still count, unknown liquidity is not a reason to skip
+  const now = 2_000_000_000;
+  const lagged = [0, 4, 8, 12].map((s, i) => ({ t: now - 35000 + s * 1000, side: "buy", usd: 40, price: 1 + i * 0.01 }));
+  const d = S.decide({ now, price: 1.03, liq: 0, trades: lagged, book: S.newBook() });
+  assert.equal(d.action, "buy", d.why);
+  const w = S.decide({ now, price: 1.0, liq: 0, trades: lagged.map(t => ({ ...t, side: "sell" })), book: S.newBook() });
+  assert.match(w.why, /✗ Käufe 0 %/);
+  console.log("ok: lagged feed");
+}

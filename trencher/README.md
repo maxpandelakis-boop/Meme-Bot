@@ -31,8 +31,9 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 
 ## Auto-Bot
 Auf **▶ Bot starten** klicken: der Bot kauft und verkauft den geladenen Coin allein mit dem Spielgeld, jede Sekunde eine Entscheidung.
-Standard-Regeln (unter „Regeln des Bots ändern" einstellbar): kaufen, wenn in den letzten 15 s mind. 65 % des Volumens Käufe
-waren (mind. 150 $) und der Kurs um +1,5 bis +15 % stieg, bei mind. 5.000 $ Liquidität. Verkaufen bei +5 % netto, bei -8 % netto,
+Standard-Regeln (unter „Regeln des Bots ändern" einstellbar): kaufen, wenn in den letzten 20 s mind. 60 % des Volumens Käufe
+waren (mind. 100 $) und der Kurs um +0,5 bis +25 % stieg, bei mind. 3.000 $ Liquidität (unbekannt zählt nicht dagegen).
+Neben dem Start-Knopf steht live, welche Bedingung gerade fehlt (✓/✗). Verkaufen bei +5 % netto, bei -8 % netto,
 wenn der Kurs im Gewinn 4 % vom Hoch fällt, bei 70 % Verkaufsdruck in 10 s im Gewinn oder nach 90 s. Danach 10 s Pause.
 Jede Entscheidung steht mit Grund im Bot-Log, Bot-Trades im Chart mit 🤖.
 

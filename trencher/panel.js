@@ -346,8 +346,8 @@ function buildRuleForm() {
     box.append(l, i);
   }
 }
-function saveRules() { chrome.storage.local.set({ botRules: P }); }
-chrome.storage.local.get("botRules").then(r => { if (r.botRules) P = { ...BOT_DEFAULTS, ...r.botRules }; buildRuleForm(); });
+function saveRules() { chrome.storage.local.set({ botRules2: P }); }
+chrome.storage.local.get("botRules2").then(r => { if (r.botRules2) P = { ...BOT_DEFAULTS, ...r.botRules2 }; buildRuleForm(); });
 
 function logLine(side, text) {
   if (!S) return;
