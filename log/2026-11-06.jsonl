@@ -743,3 +743,5 @@
 {"t":1793997360906,"addr":"5Yyxt95UsHtmu2CoxjtgRBuKdF7Zyjff9Pig5R2cpump","sym":"gPAID","age":30.9,"why":"liquidity","liq":7772}
 {"t":1793997360906,"addr":"6uyJRUZpMkcbJ1f2poYKMikF4nEQmMHCXuf3KEubpump","sym":"MMC","age":30.7,"why":"liquidity","liq":2019}
 {"t":1793997420522,"addr":"Atev9ysSW824yC1Y54HuJoGhJfVbH3mUkTA5vVgCtFxy","sym":"SQRL","age":30.8,"score":0.00996,"px":1.055e-05,"liq":16661,"p0":9.965882493733822e-06,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.2991,"c_peak":1.1432,"c_vol":5.7544,"c_act":1.0,"c_r5":0.0427,"c_r15":0.0233,"c_mc":3.9985}}
+{"t":1793997780666,"addr":"2DQNid7psyH1SbzuVvsVTjHWhhJXQfb3GVkwrNiApump","sym":"HOPE","age":30.4,"why":"liquidity","liq":2014}
+{"t":1793997780666,"addr":"8JrYUPMZYLyChcBJYkK2KCmm72H68hjyZv8zKK1ZQ2g","sym":"SQRL","age":30.1,"why":"liquidity","liq":0}
