@@ -98,3 +98,7 @@
 {"t":1793932920181,"addr":"4mJpTUoM54sXxtQgFzUD53NUdWyaJvEu8j5TTTdppump","sym":"GOYSLOP","age":30.0,"why":"liquidity","liq":8772}
 {"t":1793933040173,"addr":"GCodc4ESvRKAxxdeWBvgxhhEQ6Vgru73KSD8RC41pump","sym":"BBC","age":40.6,"why":"liquidity","liq":9659}
 {"t":1793933040173,"addr":"Fs1Tk9vW2PSn8ZiJT4gnzs6J9QxVHxWLpeuKkB1spump","sym":"CocaCola","age":30.6,"score":0.01863,"px":9.758e-05,"liq":23375,"p0":9.090925271332712e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.4341,"c_peak":2.0345,"c_vol":4.6275,"c_act":1.0,"c_r5":0.1101,"c_r15":0.3127,"c_mc":4.9586}}
+{"t":1793933101183,"addr":"H5Pfn44SeVZZb68cegJm6eNK69S5Nfd9EUFHreVo6cPq","sym":"Microduck","age":31.0,"why":"liquidity","liq":0}
+{"t":1793933160538,"addr":"GEmo5v5EHsBcRL8jztD4ZW4wy66x4VogYRSkw4WVmoon","sym":"GRIDGOB","age":30.1,"why":"liquidity","liq":0}
+{"t":1793933221298,"addr":"2B3XTVFAPnkGZf7aPG6PHsQrP5BAAycdmbrWKm1XAXnQ","sym":"Moo Noom","age":30.4,"why":"liquidity","liq":0}
+{"t":1793933280607,"addr":"A1DiM8kbCgDEKfiVDYa3bbutUWoEqWaVuZQkZxbuTu3x","sym":"Cats","age":30.1,"why":"liquidity","liq":0}
