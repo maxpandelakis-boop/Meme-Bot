@@ -250,7 +250,13 @@ function openChain(me) {
     if (typeof raw === "string" && raw.length > 300 && !EVENT_PREFIX.some(x => raw.includes(x))) { me.chainMsgs++; return; }
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.error) { chainSay(me, "Fehler: " + (m.error.message || JSON.stringify(m.error)).slice(0, 80)); return; }
-    if (m.id && typeof m.result === "number") { chainSay(me, "abonniert, warte auf Trades"); return; }
+    if (m.id && typeof m.result === "number") {
+      chainSay(me, "abonniert, warte auf Trades");
+      // watchdog: PublicNode sometimes accepts the subscription and then sends nothing (seen 2026-11-06): reconnect after 15 s of silence
+      const seen = me.chainMsgs;
+      setTimeout(() => { if (me === S && me.ws === ws && me.chainMsgs === seen) { chainSay(me, "Server schweigt, neuer Versuch…"); try { ws.close(); } catch {} } }, 15000);
+      return;
+    }
     const val = m.params && m.params.result && m.params.result.value;
     if (!val) return;
     me.chainMsgs++;
