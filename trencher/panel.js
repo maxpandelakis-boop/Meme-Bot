@@ -9,8 +9,10 @@ const DEX = mint => `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
 const GT = pool => `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pool}/trades`;
 const PUMP_WS = "wss://pumpportal.fun/api/data";
 const PRICE_EVERY_MS = 1000;      // DexScreener allows 300 requests a minute; one a second stays far below
-const GT_EVERY_MS = 3000;         // GeckoTerminal allows about 30 a minute
-const WS_QUIET_MS = 12000;        // no PumpPortal trade this long: also poll GeckoTerminal for the trade feed
+const GT_EVERY_MS = 2500;         // GeckoTerminal allows about 30 a minute; 24 a minute stays under it
+const WS_QUIET_MS = 12000;        // no PumpPortal trade this long: GeckoTerminal carries the trade feed
+// PumpPortal only sends per-coin trades to connections with a paid API key (tested 2026-11-06: "only available when connecting
+// with an API key funded with at least 0.02 SOL"). Without one the server refuses and GeckoTerminal is the trade feed from the start.
 const FEED_MAX = 80, HIST_MS = 5 * 60 * 1000;
 
 let S = null;                     // the loaded coin's live state
@@ -18,7 +20,7 @@ let busy = false;
 
 function fresh(mint) {
   return { mint, pair: null, price: 0, liq: 0, solUsd: 0, hist: [], feed: [], seen: new Set(),
-           ws: null, wsLast: 0, wsOk: false, timers: [], book: newBook(), lastPriceAt: 0, gtOn: false };
+           ws: null, wsLast: 0, wsOk: false, wsRefused: false, timers: [], book: newBook(), lastPriceAt: 0, gtOn: false };
 }
 
 const usd = (x, d = 2) => (x < 0 ? "-" : "") + "$" + Math.abs(x).toFixed(d);
@@ -111,8 +113,9 @@ async function pollPrice() {
     const pu = Number(p.priceUsd), pn = Number(p.priceNative);
     if (p.quoteToken && /^W?SOL$/i.test(p.quoteToken.symbol) && pu > 0 && pn > 0) me.solUsd = pu / pn;
     $("name").textContent = (p.baseToken.symbol || short(me.mint)) + " · " + (p.dexId || "");
-    // a live trade within the last 2 s is fresher than DexScreener's price
-    if (pu > 0 && Date.now() - me.lastPriceAt > 2000) setPrice(pu, Date.now());
+    // DexScreener caches its price for several seconds: a trade from the feed within the last 5 s wins over it
+    if (pu > 0 && Date.now() - me.lastPriceAt > 5000) setPrice(pu, Date.now());
+    if (!me.gtOn && !me.wsOk) startGt();
     if (status && $("status").textContent.startsWith("lädt")) status("live", "pos");
   } catch (e) {
     if (me === S) status("Preis-Abruf fehlgeschlagen", "warn");
@@ -137,6 +140,10 @@ function openWs() {
   ws.onmessage = ev => {
     if (me !== S) return;
     let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (!m.mint && /api key/i.test(JSON.stringify(m))) {      // refused without a paid key: stop asking, use GeckoTerminal
+      me.wsRefused = true; try { ws.close(); } catch {}
+      startGt(); return;
+    }
     if (m.mint !== me.mint) return;
     const tr = parsePumpTrade(m, me.solUsd);
     if (!tr) return;
@@ -144,18 +151,21 @@ function openWs() {
     if (tr.price > 0) setPrice(tr.price, tr.t);
     addTrade(tr);
   };
-  ws.onclose = () => { if (me === S) setTimeout(() => { if (me === S) openWs(); }, 3000); };
+  ws.onclose = () => { if (me === S && !me.wsRefused) setTimeout(() => { if (me === S) openWs(); }, 3000); };
 }
 
 function checkFeed() {
   if (!S) return;
   const quiet = Date.now() - (S.wsLast || 0) > WS_QUIET_MS;
-  $("src").textContent = S.wsOk && !quiet ? "Trades: PumpPortal (live)" : S.gtOn ? "Trades: GeckoTerminal (~3 s)" : "Trades: warte…";
-  if (quiet && S.pair && !S.gtOn) {
-    S.gtOn = true;
-    pollGt();
-    S.timers.push(setInterval(pollGt, GT_EVERY_MS));
-  }
+  $("src").textContent = S.wsOk && !quiet ? "Trades: PumpPortal (live)" : S.gtOn ? "Trades: GeckoTerminal (~2,5 s)" : "Trades: warte…";
+  if (quiet) startGt();
+}
+
+function startGt() {
+  if (!S || S.gtOn || !S.pair) return;
+  S.gtOn = true;
+  pollGt();
+  S.timers.push(setInterval(pollGt, GT_EVERY_MS));
 }
 
 async function pollGt() {
@@ -169,6 +179,8 @@ async function pollGt() {
     if (me !== S) return;
     const list = (j.data || []).map(parseGeckoTrade).filter(Boolean).reverse();
     for (const tr of list) addTrade(tr);
+    const newest = list[list.length - 1];       // the last trade's price is fresher than DexScreener's cached one
+    if (newest && newest.price > 0 && newest.t > me.lastPriceAt - 5000) setPrice(newest.price, Math.max(newest.t, Date.now() - 1000));
   } catch {}
 }
 

@@ -23,7 +23,8 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 
 ## Datenquellen (kostenlos, ohne Schlüssel)
 - Preis: DexScreener, jede Sekunde.
-- Trades: PumpPortal-Websocket (pump.fun und PumpSwap, live). Kommt dort 12 s nichts, GeckoTerminal alle 3 s.
+- Trades: GeckoTerminal alle 2,5 s (der letzte Trade gibt auch den frischesten Preis). PumpPortal schickt Trades pro Coin nur mit bezahltem API-Schlüssel; ohne Schlüssel wird es übersprungen.
+- DexScreener speichert den Preis einige Sekunden zwischen, deshalb gewinnt ein frischer Trade-Preis.
 
 ## Test
 `node trencher/test_sim.mjs` prüft die Geldrechnung.
