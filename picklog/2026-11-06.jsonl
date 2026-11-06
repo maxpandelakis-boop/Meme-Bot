@@ -2,3 +2,4 @@
 {"at":1793932342411,"why":"time","mult":0.9600703229581146,"rule":"chart","sym":"MINTED","t":1793932352717,"eur":47.05,"pnl":-2.95,"entryAt":1793910742411,"id":"2026-11-05T200806-h-MINTED-8crRRo"}
 {"at":1793937676090,"why":"time","mult":0.9679479170377132,"rule":"chart","sym":"PAWKET","t":1793937692358,"eur":47.43,"pnl":-2.57,"entryAt":1793916076090,"id":"2026-11-05T214111-h-PAWKET-ECNQSQ"}
 {"at":1793950020000,"why":"drop","mult":0.8985126190727224,"late":true,"hitAt":1793949840000,"rule":"chart","sym":"Rocco","t":1793950034705,"eur":44.03,"pnl":-5.97,"entryAt":1793947438854,"id":"2026-11-06T062505-h-Rocco-HZbiEp"}
+{"at":1793959114888,"why":"time","mult":1.0100695960504704,"rule":"chart","sym":"PAWKET","t":1793959160490,"eur":49.5,"pnl":-0.5,"entryAt":1793937514888,"id":"2026-11-06T033715-h-PAWKET-ECNQSQ"}
