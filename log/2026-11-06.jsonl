@@ -468,3 +468,4 @@
 {"t":1793970300815,"addr":"N53RKSSceHt1dNM8QTByFbT1xpD61UjJgSBv4ospump","sym":"NVIDIA","age":31.0,"why":"liquidity","liq":1632}
 {"t":1793970300815,"addr":"HqCfXW5ZbJKHXPJahRb1nws3J9x57P5e5bzVTJ8jmoon","sym":"Hzcrown","age":30.9,"why":"liquidity","liq":0}
 {"t":1793970300815,"addr":"8gzRJceTfUqtuHNLFCYaGZ3YLFrrzgHjkhB1H5eXnzak","sym":"FMINING","age":30.6,"why":"liquidity","liq":0}
+{"t":1793970720202,"addr":"pDmJ9fVMET1Vrafaid98XcnvvEiAs3d7nSStznRpump","sym":"USPR","age":30.2,"score":0.0093,"px":0.1371,"liq":931197,"p0":0.13704731829238095,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0153,"c_peak":1.0008,"c_vol":5.6647,"c_act":1.0,"c_r5":0.0046,"c_r15":0.0093,"c_mc":8.1369}}
