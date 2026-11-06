@@ -294,3 +294,4 @@
 {"t":1793952541386,"addr":"ZLXbjqaKwViWQWjQB3fx3Ms72krJWtbMTAQnWPmpump","sym":"0DAY","age":30.4,"why":"liquidity","liq":1621}
 {"t":1793952600814,"addr":"4NJUaqS6eY6BagcZa48DHhqJ8tJhTZJj5sUBDM13pgWr","sym":"NIKE","age":30.1,"why":"liquidity","liq":0}
 {"t":1793952600814,"addr":"D9HENuftU2jNF8VPb4FX1XQ6x2QTDgSUgALzcreXpump","sym":"HEATTENT","age":30.0,"why":"liquidity","liq":0}
+{"t":1793952840705,"addr":"5KAzp8cQKXZCBtbrk7FaX7GFsGuDzeyRudY2f3BQpump","sym":"Capiboo","age":30.5,"score":0.01289,"px":3.135e-05,"liq":12541,"p0":2.8408400875131538e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":-0.3955,"c_peak":2.1807,"c_vol":4.6238,"c_act":1.0,"c_r5":-0.1097,"c_r15":-0.3538,"c_mc":4.4534}}
