@@ -705,3 +705,5 @@
 {"t":1793993341032,"addr":"GpmBbJY8Hpa9BPwfnH5UV7ReAK4wNnhUoGQmhUqxdk1n","sym":"\u82b1","age":30.6,"score":0.02414,"px":6.249e-05,"liq":36951,"p0":4.99017342924774e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":12.0,"f_cjk":1.0,"c_ret":1.7688,"c_peak":1.0,"c_vol":4.6297,"c_act":1.0,"c_r5":0.6145,"c_r15":1.2535,"c_mc":4.6981}}
 {"t":1793993400740,"addr":"H2HfjDrb7k7YA5mFt2ZvRBSPLQ5umwskxDPnEKvkjxRQ","sym":"BOMBERS","age":30.3,"why":"liquidity","liq":0}
 {"t":1793993461305,"addr":"AZwkqWtPg485GAq2GYPob6yHVebicrRXmCZZ2gNpump","sym":"YouTube","age":30.2,"why":"liquidity","liq":1641}
+{"t":1793993581211,"addr":"Aj8BR4MBPg2eBYSf82AnfAs24xdXLPFdnSyaUBUFWKex","sym":"\u7709\u7709","age":30.3,"why":"liquidity","liq":0}
+{"t":1793993760096,"addr":"9PW3J87r1dvf7UtxwWt4DUgHtsaL8xbaBrmYMzZeBAGS","sym":"Eltpiano","age":30.0,"why":"liquidity","liq":0}
