@@ -208,9 +208,15 @@ const fomoFresh = me => me && me.fomoAt && Date.now() - me.fomoAt < 3000;
 const chainLive = me => me && me.chainAt && Date.now() - me.chainAt < CHAIN_LIVE_MS;
 chrome.runtime.onMessage.addListener(msg => {
   if (!msg || msg.type !== "fomo" || !S || S.mint !== msg.mint) return;
-  const p = parseFomoNumber(msg.price), l = parseFomoNumber(msg.liq), mc = parseFomoNumber(msg.mc);
-  if (!(p > 0)) return;
   const now = Date.now();
+  S.fomoSeen = now;
+  if (msg.debug) S.fomoDebug = msg.debug;
+  const l = parseFomoNumber(msg.liq), mc = parseFomoNumber(msg.mc);
+  let p = parseFomoNumber(msg.price);
+  // no readable price: market cap / supply (supply from DexScreener's market cap and price)
+  const pr = S.pair, supply = pr && Number(pr.priceUsd) > 0 ? (pr.marketCap || pr.fdv || 0) / Number(pr.priceUsd) : 0;
+  if (!(p > 0) && mc > 0 && supply > 0) p = mc / supply;
+  if (!(p > 0)) return;
   S.fomoAt = now; S.fomoLiq = l; S.fomoMc = mc;
   if (l > 0) S.liq = l;
   if (!chainLive(S)) {                       // live chain trades are exact; otherwise FOMO's own price is the one to trade on
@@ -354,6 +360,7 @@ function render() {
   const now = Date.now(), last = S.feed.filter(t => now - t.t < 30000);
   const live = S.chainAt && now - S.chainAt < CHAIN_LIVE_MS;
   $("src").innerHTML = live ? `<span class="pos">● Live von Solana</span>` : fomoFresh(S) ? `<span class="pos">● Preis live von der FOMO-Seite</span> (Trades: ${S.chainState})` :
+    S.fomoSeen && now - S.fomoSeen < 3000 ? `<span class="warn">FOMO-Seite erkannt, Preis nicht lesbar</span>: ${(S.fomoDebug || "").replace(/</g, "&lt;").slice(0, 160)}` :
     `Solana: ${S.chainState} (${S.chainMsgs} Meldungen) · Trades von GeckoTerminal, bis 30 s alt`;
   const vb = last.filter(t => t.side === "buy").reduce((x, t) => x + t.usd, 0);
   const vs = last.filter(t => t.side === "sell").reduce((x, t) => x + t.usd, 0);
@@ -393,6 +400,7 @@ function renderMine() {
   }
 }
 
+$("ver").textContent = "v" + chrome.runtime.getManifest().version;
 // ---------- wiring ----------
 $("go").onclick = () => { $("follow").checked = false; load($("mint").value); };
 $("mint").onkeydown = e => { if (e.key === "Enter") $("go").click(); };
