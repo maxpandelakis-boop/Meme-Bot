@@ -176,7 +176,7 @@ export const BOT_DEFAULTS = {
   minMove: 0.005,     // ... and the price rose at least +0.5 % in the window ...
   maxMove: 0.25,      // ... but not more than +25 % (no chasing a spike)
   minLiq: 3000,       // pools under this liquidity are skipped (unknown liquidity, e.g. pump.fun curve coins, is not skipped)
-  maxLagSec: 60,      // the newest trade must be at most this old
+  maxLagSec: 90,      // the newest trade must be at most this old (GeckoTerminal alone can be 75 s behind)
   takeProfit: 0.05,   // sell at +5 % net (after both fees and slippage)
   trail: 0.04,        // or, once in profit, when the price falls 4 % from its high since the buy
   stopLoss: 0.08,     // sell at -8 % net
@@ -228,4 +228,67 @@ export function decide(ctx, P = BOT_DEFAULTS) {
   ];
   if (checks.some(c => c.startsWith("✗"))) return { action: "wait", why: "wartet: " + checks.join(" · ") };
   return { action: "buy", why: `Käufe ${Math.round(share * 100)} % (${Math.round(vb)} $), Kurs ${f(move)} in ${P.flowSec} s` };
+}
+
+// ---------- live trades straight from the chain (Solana RPC logsSubscribe) ----------
+// pump.fun (bonding curve) and PumpSwap (graduated) write each trade as an Anchor event into the logs ("Program data: <base64>").
+// Discriminator = first 8 bytes of sha256("event:<Name>").
+const DISC = {
+  trade: [189, 219, 127, 211, 78, 230, 97, 238],   // pump.fun TradeEvent
+  buy: [103, 244, 82, 31, 44, 245, 119, 119],      // PumpSwap BuyEvent
+  sell: [62, 47, 55, 10, 165, 3, 220, 42],         // PumpSwap SellEvent
+};
+const B58A = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+export function b58(bytes) {
+  let n = 0n;
+  for (const b of bytes) n = n * 256n + BigInt(b);
+  let s = "";
+  while (n > 0n) { s = B58A[Number(n % 58n)] + s; n /= 58n; }
+  for (const b of bytes) { if (b === 0) s = "1" + s; else break; }
+  return s;
+}
+function b64bytes(s) {
+  const bin = atob(s);
+  const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+const isDisc = (u, d) => d.every((x, i) => u[i] === x);
+const SOL_DEC = 1e9, TOK_DEC = 1e6;
+
+// One "Program data:" payload -> {side, sol, tok, priceSol, wallet, mint|pool, tChain} or null.
+export function parseEvent(b64) {
+  let u;
+  try { u = b64bytes(b64); } catch { return null; }
+  if (u.length < 64) return null;
+  const v = new DataView(u.buffer);
+  const u64 = o => Number(v.getBigUint64(o, true));
+  if (isDisc(u, DISC.trade) && u.length >= 113) {
+    const sol = u64(40) / SOL_DEC, tok = u64(48) / TOK_DEC;
+    if (!(sol > 0 && tok > 0)) return null;
+    return { side: u[56] ? "buy" : "sell", sol, tok, priceSol: sol / tok, mint: b58(u.slice(8, 40)),
+             wallet: b58(u.slice(57, 89)), tChain: Number(v.getBigInt64(89, true)) * 1000 };
+  }
+  const buy = isDisc(u, DISC.buy), sell = isDisc(u, DISC.sell);
+  if ((buy || sell) && u.length >= 184) {
+    const tok = u64(16) / TOK_DEC, sol = u64(64) / SOL_DEC;   // base_amount_out/in, quote_amount_in/out
+    if (!(sol > 0 && tok > 0)) return null;
+    return { side: buy ? "buy" : "sell", sol, tok, priceSol: sol / tok, pool: b58(u.slice(120, 152)),
+             wallet: b58(u.slice(152, 184)), tChain: Number(v.getBigInt64(8, true)) * 1000 };
+  }
+  return null;
+}
+
+// A logsNotification's log lines -> the trades in it that belong to this coin (by mint for pump.fun, by pool for PumpSwap).
+export function tradesFromLogs(logs, mint, pool, solUsd, sig, now = Date.now()) {
+  const out = [];
+  for (const line of logs || []) {
+    if (!line.startsWith("Program data: ")) continue;
+    const e = parseEvent(line.slice(14).trim());
+    if (!e) continue;
+    if (e.mint ? e.mint !== mint : !(pool && e.pool === pool)) continue;
+    out.push({ t: now, side: e.side, sol: e.sol, usd: e.sol * (solUsd || 0), price: e.priceSol * (solUsd || 0),
+               wallet: e.wallet, sig: (sig || "") + ":" + out.length });
+  }
+  return out;
 }

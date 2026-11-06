@@ -76,3 +76,19 @@ console.log("ok: candles");
   assert.match(w.why, /✗ Käufe 0 %/);
   console.log("ok: lagged feed");
 }
+{
+  // a synthetic pump.fun TradeEvent round-trips through the parser
+  const u = new Uint8Array(129); const v = new DataView(u.buffer);
+  u.set([189, 219, 127, 211, 78, 230, 97, 238]);
+  const mintBytes = new Uint8Array(32).map((_, i) => i + 1); u.set(mintBytes, 8);
+  v.setBigUint64(40, 500_000_000n, true); v.setBigUint64(48, 1_000_000n * 1_000_000n, true); u[56] = 1;
+  v.setBigInt64(89, 1_700_000_000n, true);
+  const b64 = Buffer.from(u).toString("base64");
+  const e = S.parseEvent(b64);
+  assert.equal(e.side, "buy"); assert.equal(e.sol, 0.5); assert.equal(e.tok, 1_000_000); assert.equal(e.mint, S.b58(mintBytes));
+  const tr = S.tradesFromLogs(["Program log: x", "Program data: " + b64], e.mint, null, 100, "sig", 5);
+  assert.equal(tr.length, 1); assert.equal(tr[0].usd, 50); assert.ok(Math.abs(tr[0].price - 0.5 / 1e6 * 100) < 1e-15);
+  assert.equal(S.tradesFromLogs(["Program data: " + b64], "other", null, 100, "s").length, 0);
+  assert.equal(S.b58(new Uint8Array(32)), "11111111111111111111111111111111");
+  console.log("ok: chain events");
+}

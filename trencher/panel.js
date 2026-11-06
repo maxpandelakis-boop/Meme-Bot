@@ -1,16 +1,17 @@
 // Side panel of the Trencher: live data for one coin plus the paper account. Fake money only.
 import {
   START_CASH, FILL_DELAY_MS, newBook, buy, sell, equity, liquidationValue, breakEvenMove, avgEntry,
-  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS,
+  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS, tradesFromLogs,
 } from "./sim.js";
 
 const $ = id => document.getElementById(id);
 const DEX = mint => `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
 const GT = pool => `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pool}/trades`;
 const PRICE_EVERY_MS = 1000;      // DexScreener allows 300 requests a minute; one a second stays far below
-const GT_EVERY_MS = 2500;         // GeckoTerminal allows about 30 a minute; 24 a minute stays under it
-// Trades come from GeckoTerminal. PumpPortal only sends per-coin trades to connections with a paid API key (tested 2026-11-06:
-// "only available when connecting with an API key funded with at least 0.02 SOL"), so it is not used.
+const GT_EVERY_MS = 15000;        // GeckoTerminal caches 30 s and answers 429 after a few fast calls (tested 2026-11-06)
+const RPC_WS = "wss://api.mainnet-beta.solana.com";   // live trades: Solana's public RPC, logsSubscribe on the coin
+const CHAIN_LIVE_MS = 20000;      // chain events this recent: GeckoTerminal is not polled (it only fills the chart's history)
+// PumpPortal only sends per-coin trades to connections with a paid API key (tested 2026-11-06), so it is not used.
 const TRADE_FRESH_MS = 8000;      // a trade price this young wins over DexScreener's, which is cached for several seconds
 const FEED_MAX = 120, TICK_MAX = 4000;
 
@@ -21,7 +22,7 @@ try { tf = Number(localStorage.getItem("tf")) || 5; } catch {}
 
 function fresh(mint) {
   return { mint, pair: null, price: 0, liq: 0, ticks: [], feed: [], seen: new Set(), timers: [],
-           book: newBook(), lastTradeAt: 0, gtOn: false, entryLine: null, lastExitAt: 0, log: [] };
+           book: newBook(), lastTradeAt: 0, gtOn: false, solUsd: 0, ws: null, chainAt: 0, gtBackoff: 0, entryLine: null, lastExitAt: 0, log: [] };
 }
 
 // ---------- formatting ----------
@@ -150,6 +151,7 @@ async function load(mint) {
 function stop() {
   if (!S) return;
   S.timers.forEach(clearInterval);
+  if (S.ws) { S.ws.onclose = null; try { S.ws.close(); } catch {} }
   if (S.entryLine) candles.removePriceLine(S.entryLine);
   S = null;
 }
@@ -170,7 +172,9 @@ async function pollPrice() {
     me.pair = p;
     me.liq = (p.liquidity && p.liquidity.usd) || 0;
     $("name").textContent = p.baseToken.symbol || short(me.mint);
-    const pu = Number(p.priceUsd);
+    const pu = Number(p.priceUsd), pn = Number(p.priceNative);
+    if (p.quoteToken && /^W?SOL$/i.test(p.quoteToken.symbol) && pu > 0 && pn > 0) me.solUsd = pu / pn;
+    if (!me.ws && me.solUsd) openChain(me);
     if (pu > 0 && Date.now() - me.lastTradeAt > TRADE_FRESH_MS) { me.price = pu; addTick(Date.now(), pu, 0); }
     status("live", "pos");
     if (!me.gtOn) { me.gtOn = true; pollGt(); me.timers.push(setInterval(pollGt, GT_EVERY_MS)); }
@@ -185,11 +189,35 @@ function addTick(t, p, v) {
 }
 
 // ---------- trades: GeckoTerminal every 2.5 s (its last 300 trades also fill the chart's history at once) ----------
+function openChain(me) {
+  let ws;
+  try { ws = new WebSocket(RPC_WS); } catch { return; }
+  me.ws = ws;
+  ws.onopen = () => ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "logsSubscribe", params: [{ mentions: [me.mint] }, { commitment: "confirmed" }] }));
+  ws.onmessage = ev => {
+    if (me !== S) return;
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    const val = m.params && m.params.result && m.params.result.value;
+    if (!val || val.err) return;
+    const list = tradesFromLogs(val.logs, me.mint, me.pair && me.pair.pairAddress, me.solUsd, val.signature);
+    if (!list.length) return;
+    me.chainAt = Date.now();
+    for (const tr of list) addTrade(tr);
+    const last = list[list.length - 1];
+    if (last.price > 0) { me.price = last.price; me.lastTradeAt = last.t; }
+    $("src").textContent = "Trades: live von Solana · " + hhmmss(Date.now());
+  };
+  ws.onclose = () => { if (me === S) { me.ws = null; setTimeout(() => { if (me === S && !me.ws) openChain(me); }, 3000); } };
+}
+
 async function pollGt() {
   const me = S;
   if (!me || !me.pair) return;
+  if (me.feed.length && Date.now() - me.chainAt < CHAIN_LIVE_MS) return;   // live from the chain: no need
+  if (Date.now() < me.gtBackoff) return;
   try {
     const r = await fetch(GT(me.pair.pairAddress), { headers: { accept: "application/json" } });
+    if (r.status === 429) { me.gtBackoff = Date.now() + 60000; return; }
     if (!r.ok) return;
     const j = await r.json();
     if (me !== S) return;
@@ -198,7 +226,7 @@ async function pollGt() {
     for (const tr of list) if (addTrade(tr)) fresh++;
     const last = list[list.length - 1];
     if (last && last.price > 0 && last.t >= me.lastTradeAt) { me.lastTradeAt = Math.max(last.t, me.lastTradeAt); me.price = last.price; }
-    if (fresh) $("src").textContent = "Trades: GeckoTerminal · " + hhmmss(Date.now());
+    if (fresh && Date.now() - me.chainAt > CHAIN_LIVE_MS) $("src").textContent = "Trades: GeckoTerminal (bis 30 s alt)";
   } catch {}
 }
 
