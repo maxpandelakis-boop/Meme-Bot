@@ -1,0 +1,28 @@
+:root{--bg:#0f1115;--card:#171a21;--fg:#e8eaed;--mut:#8a919e;--buy:#16c784;--sell:#ea3943;--warn:#f0b90b;--line:#262a33}
+*{box-sizing:border-box}
+body{margin:0;padding:8px;background:var(--bg);color:var(--fg);font:13px/1.35 system-ui,-apple-system,Segoe UI,sans-serif}
+header{position:sticky;top:0;background:var(--bg);padding-bottom:6px;z-index:2}
+.row{display:flex;gap:8px;align-items:center;margin:4px 0}
+.right{margin-left:auto}
+.small{font-size:11.5px}.muted{color:var(--mut)}.warn{color:var(--warn)}.big{font-size:16px;font-weight:600}
+.tag{background:var(--warn);color:#000;border-radius:4px;padding:0 5px;font-size:10px;font-weight:700}
+input#mint{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px;font:12px monospace}
+button{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:7px 8px;cursor:pointer;font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+button.buy{background:var(--buy);border-color:var(--buy);color:#000}
+button.sell{background:var(--sell);border-color:var(--sell);color:#fff}
+button.ghost{background:none;color:var(--mut);font-weight:400;padding:3px 6px}
+kbd{margin-left:6px;font-size:10px;opacity:.7;border:1px solid currentColor;border-radius:3px;padding:0 3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;margin:8px 0}
+canvas{width:100%;display:block;margin:6px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-bottom:6px}
+.stats span{display:block;color:var(--mut);font-size:11px}.stats b{font-size:14px}
+.pos{color:var(--buy)}.neg{color:var(--sell)}
+.list{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;font:11.5px/1.5 ui-monospace,monospace}
+.list li{display:flex;gap:6px;border-bottom:1px solid var(--line);padding:1px 0}
+.list li .s{width:34px;font-weight:700}.list li.buy .s{color:var(--buy)}.list li.sell .s{color:var(--sell)}
+.list li .r{margin-left:auto;color:var(--mut)}
+.list li.new{animation:flash .6s}
+@keyframes flash{from{background:#2a3140}to{background:none}}
+footer{text-align:center;margin:10px 0}

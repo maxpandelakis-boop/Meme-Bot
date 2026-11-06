@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Meme Trencher</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<header>
+  <div class="row">
+    <strong>Meme Trencher</strong><span class="tag">SPIELGELD</span>
+    <span id="status" class="muted">bereit</span>
+  </div>
+  <div class="row">
+    <input id="mint" placeholder="Coin-Adresse (CA) einfügen" spellcheck="false">
+    <button id="go">Laden</button>
+  </div>
+  <div class="row small">
+    <span id="detected" class="muted">Seite: keine Adresse erkannt</span>
+    <label class="right"><input type="checkbox" id="follow" checked> Seite folgen</label>
+  </div>
+</header>
+
+<section id="coin" class="card">
+  <div class="row"><span id="name" class="big">–</span><span id="price" class="big right">–</span></div>
+  <div class="row small muted"><span id="mc">MC –</span><span id="liq">Liq –</span><span id="chg">–</span></div>
+  <canvas id="chart" height="110"></canvas>
+  <div class="row small"><span id="flow">Käufe/Verkäufe (10 s): –</span><span id="src" class="right muted">–</span></div>
+</section>
+
+<section class="card">
+  <div class="grid">
+    <button id="buyAll" class="buy">Kaufen (alles)<kbd>B</kbd></button>
+    <button id="buyHalf" class="buy">Kaufen 50 %</button>
+    <button id="sellAll" class="sell">Verkaufen (alles)<kbd>S</kbd></button>
+    <button id="sellHalf" class="sell">Verkaufen 50 %</button>
+  </div>
+  <div id="order" class="small muted">Füllung ca. 1 s nach dem Klick, mit FOMO-Gebühr und Slippage.</div>
+</section>
+
+<section class="card">
+  <div class="stats">
+    <div><span>Konto</span><b id="equity">–</b></div>
+    <div><span>Gewinn/Verlust</span><b id="pnl">–</b></div>
+    <div><span>Bargeld</span><b id="cash">–</b></div>
+    <div><span>Position</span><b id="pos">–</b></div>
+    <div><span>Gebühren bezahlt</span><b id="fees">–</b></div>
+    <div><span>Trades (Gewinner)</span><b id="ntr">–</b></div>
+  </div>
+  <div id="be" class="small warn">–</div>
+  <div class="row small"><button id="reset" class="ghost">Coin zurücksetzen (20 $)</button></div>
+</section>
+
+<section class="card">
+  <div class="row small"><b>Meine Trades</b></div>
+  <ol id="mine" class="list"></ol>
+</section>
+
+<section class="card">
+  <div class="row small"><b>Live-Trades</b><span class="right muted" id="feedn">0</span></div>
+  <ol id="feed" class="list"></ol>
+</section>
+
+<footer class="small muted">Nur Simulation. Keine Wallet, keine Schlüssel, kein echtes Geld.</footer>
+<script type="module" src="panel.js"></script>
+</body>
+</html>
