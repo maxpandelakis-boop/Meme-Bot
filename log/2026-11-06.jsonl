@@ -797,3 +797,5 @@
 {"t":1794003600235,"addr":"FhDZpWYKtgCFKeybadxjzme2Y8KhUqDj993VWQs1pump","sym":"BLDWITCH","age":30.0,"why":"liquidity","liq":0}
 {"t":1794003961032,"addr":"F8XXtaCPBwew71a8jy2qRUzxShTacbEskzG7KkU5ejMW","sym":"UEHI","age":30.9,"why":"liquidity","liq":2483}
 {"t":1794004200679,"addr":"PgKNd27UcZCdawjzyUCXLsest4kDtiCFQskojU9pump","sym":"Leonida","age":30.8,"score":0.01175,"px":0.0001234,"liq":26466,"p0":0.00011633085547992515,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0436,"c_peak":1.1768,"c_vol":4.4703,"c_act":1.0,"c_r5":0.079,"c_r15":0.3185,"c_mc":5.0657}}
+{"t":1794004440911,"addr":"AGafUs8DmJmVnyd4LDUBRSBdPaG1yBGztyzTZEXYpump","sym":"SEASHELL","age":30.5,"why":"liquidity","liq":3361}
+{"t":1794004500657,"addr":"8WGYW1W77em7mb7zgGchE7ATjNri2tyys3LuhvxMpump","sym":"SEASHELL","age":30.8,"why":"liquidity","liq":2581}
