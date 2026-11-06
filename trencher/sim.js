@@ -108,8 +108,25 @@ export function findMints(text) {
 // Pick the pair to price a coin by: the Solana pair of this token with the most liquidity.
 export function bestPair(pairs, mint) {
   const sol = (pairs || []).filter(p => p && p.chainId === "solana" && p.baseToken && p.baseToken.address === mint);
-  sol.sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0));
+  // most 24 h volume first (a dead pool with a stale liquidity figure must not win), then liquidity
+  const vol = p => (p.volume && p.volume.h24) || 0, liq = p => (p.liquidity && p.liquidity.usd) || 0;
+  sol.sort((a, b) => vol(b) - vol(a) || liq(b) - liq(a));
   return sol[0] || null;
+}
+
+// FOMO's number formats: "$0.0₄2159" (the subscript counts the zeros after the point: 0.00002159), "$12.5K", "$1.2M", "$0.773".
+const SUB = "₀₁₂₃₄₅₆₇₈₉";
+export function parseFomoNumber(str) {
+  if (!str) return 0;
+  let t = String(str).replace(/[$,\s]/g, "");
+  const m = t.match(/^0\.0([₀-₉]+)(\d+)/);
+  if (m) {
+    const zeros = Number([...m[1]].map(c => SUB.indexOf(c)).join(""));
+    return Number("0." + "0".repeat(zeros) + m[2]);
+  }
+  const k = t.match(/^(-?[\d.]+)([KMB]?)/i);
+  if (!k) return 0;
+  return Number(k[1]) * ({ "": 1, K: 1e3, M: 1e6, B: 1e9 }[k[2].toUpperCase()] || 1);
 }
 
 // A PumpPortal trade message -> {t, side, usd, sol, price, wallet} (price in USD per token), or null.
@@ -190,15 +207,24 @@ export const BOT_DEFAULTS = {
 export function decide(ctx, P = BOT_DEFAULTS) {
   const { now, price, liq, trades, book } = ctx;
   if (!(price > 0)) return { action: "wait", why: "kein Preis" };
+  // priceOnly: no trade tape for this coin (only the price, e.g. read off the FOMO page): age and momentum come from the ticks,
+  // the volume and buy-share checks are skipped
+  const priceOnly = !!ctx.priceOnly;
+  if (priceOnly) {
+    const ticks = (ctx.ticks || []).filter(k => k.p > 0).sort((a, b) => a.t - b.t);
+    const lastT = ticks.length ? ticks[ticks.length - 1].t : 0;
+    const startP = (ticks.find(k => lastT - k.t <= P.flowSec * 1000) || {}).p;
+    ctx = { ...ctx, trades: [], _lag: lastT ? (now - lastT) / 1000 : Infinity, _move: startP ? price / startP - 1 : 0 };
+  }
   const newest = trades.reduce((m, t) => Math.max(m, t.t), 0);
-  const lag = newest ? (now - newest) / 1000 : Infinity;
+  const lag = priceOnly ? ctx._lag : newest ? (now - newest) / 1000 : Infinity;
   const end = Math.min(now, newest || now);
   const win = trades.filter(t => end - t.t <= P.flowSec * 1000);
   const vb = win.filter(t => t.side === "buy").reduce((x, t) => x + t.usd, 0);
   const vs = win.filter(t => t.side === "sell").reduce((x, t) => x + t.usd, 0);
   const share = vb + vs > 0 ? vb / (vb + vs) : 0;
   const old = win.filter(t => t.price > 0).sort((a, b) => a.t - b.t)[0];
-  const move = old ? price / old.price - 1 : 0;
+  const move = priceOnly ? ctx._move : old ? price / old.price - 1 : 0;
   const f = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + " %";
 
   if (book.tokens > 0) {
@@ -222,11 +248,13 @@ export function decide(ctx, P = BOT_DEFAULTS) {
   const checks = [
     ok(lag <= P.maxLagSec, `Daten ${isFinite(lag) ? Math.round(lag) + " s" : "keine"}`),
     ok(!(liq > 0) || liq >= P.minLiq, `Liq ${liq > 0 ? Math.round(liq / 1000) + "K" : "?"}`),
-    ok(vb + vs >= P.minVolUsd, `Vol ${Math.round(vb + vs)} $`),
-    ok(share >= P.minBuyShare, `Käufe ${Math.round(share * 100)} %`),
+    ...(priceOnly ? ["– Vol/Käufe (nur Preis)"] : [
+      ok(vb + vs >= P.minVolUsd, `Vol ${Math.round(vb + vs)} $`),
+      ok(share >= P.minBuyShare, `Käufe ${Math.round(share * 100)} %`)]),
     ok(move >= P.minMove && move <= P.maxMove, `Kurs ${f(move)}`),
   ];
   if (checks.some(c => c.startsWith("✗"))) return { action: "wait", why: "wartet: " + checks.join(" · ") };
+  if (priceOnly) return { action: "buy", why: `Kurs ${f(move)} in ${P.flowSec} s (Preis von FOMO)` };
   return { action: "buy", why: `Käufe ${Math.round(share * 100)} % (${Math.round(vb)} $), Kurs ${f(move)} in ${P.flowSec} s` };
 }
 

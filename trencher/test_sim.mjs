@@ -107,3 +107,20 @@ console.log("ok: candles");
   for (const e of g) { assert.equal(e.pool, "66LitXo66TC7G8kYg52C5kYqNuLosrUL6QoD4DcxCZVt"); assert.ok(e.priceSol > 1.9e-8 && e.priceSol < 2.1e-8); }
   console.log("ok: real chain events");
 }
+{
+  assert.equal(S.parseFomoNumber("$0.0₄2159"), 0.00002159);
+  assert.equal(S.parseFomoNumber("$0.0₅6362"), 0.000006362);
+  assert.equal(S.parseFomoNumber("$12.5K"), 12500);
+  assert.equal(S.parseFomoNumber("$1.2M"), 1200000);
+  assert.equal(S.parseFomoNumber("$0.773"), 0.773);
+  assert.equal(S.parseFomoNumber("$65.71"), 65.71);
+  const pairs = [{ chainId: "solana", baseToken: { address: "M" }, liquidity: { usd: 9 }, volume: { h24: 3 } },
+                 { chainId: "solana", baseToken: { address: "M" }, liquidity: {}, volume: { h24: 67000 } }];
+  assert.equal(S.bestPair(pairs, "M").volume.h24, 67000);
+  const now = 3_000_000_000;
+  const ticks = Array.from({ length: 21 }, (_, i) => ({ t: now - 20000 + i * 1000, p: 1 + i * 0.002 }));
+  const d = S.decide({ now, price: 1.04, liq: 12500, trades: [], ticks, priceOnly: true, book: S.newBook() });
+  assert.equal(d.action, "buy", d.why);
+  assert.match(S.decide({ now, price: 1.0, liq: 12500, trades: [], ticks, priceOnly: true, book: S.newBook() }).why, /✗ Kurs/);
+  console.log("ok: FOMO numbers, pair choice, price-only bot");
+}

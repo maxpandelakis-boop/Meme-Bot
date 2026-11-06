@@ -1,7 +1,7 @@
 // Side panel of the Trencher: live data for one coin plus the paper account. Fake money only.
 import {
   START_CASH, FILL_DELAY_MS, newBook, buy, sell, equity, liquidationValue, breakEvenMove, avgEntry,
-  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS, tradesFromLogs, parseEvent,
+  findMints, bestPair, parseGeckoTrade, buildCandles, decide, BOT_DEFAULTS, tradesFromLogs, parseEvent, parseFomoNumber,
 } from "./sim.js";
 
 const $ = id => document.getElementById(id);
@@ -187,7 +187,7 @@ async function pollPrice() {
     const p = bestPair(j.pairs, me.mint);
     if (!p) { if (!me.price) status("Kein Pool gefunden", "warn"); return; }
     me.pair = p;
-    me.liq = (p.liquidity && p.liquidity.usd) || 0;
+    me.liq = fomoFresh(me) && me.fomoLiq > 0 ? me.fomoLiq : (p.liquidity && p.liquidity.usd) || 0;
     $("name").textContent = p.baseToken.symbol || short(me.mint);
     const pu = Number(p.priceUsd), pn = Number(p.priceNative);
     // the pair's quote in USD (SOL for most coins, but some pump.fun coins trade against another token)
@@ -195,13 +195,29 @@ async function pollPrice() {
     me.priceNative = pn;
     if (!me.ws && PROGRAM[p.dexId]) openChain(me);
     if (!PROGRAM[p.dexId]) me.chainState = `nur pump.fun/PumpSwap (${p.dexId})`;
-    if (pu > 0 && Date.now() - me.lastTradeAt > TRADE_FRESH_MS) { me.price = pu; addTick(Date.now(), pu, 0); }
+    if (pu > 0 && Date.now() - me.lastTradeAt > TRADE_FRESH_MS && !fomoFresh(me)) { me.price = pu; addTick(Date.now(), pu, 0); }
     status("live", "pos");
     if (!me.gtOn) { me.gtOn = true; pollGt(); me.timers.push(setInterval(pollGt, GT_EVERY_MS)); }
   } catch {
     if (me === S) status("Preis-Abruf fehlgeschlagen", "warn");
   } finally { priceInFlight = false; }
 }
+
+// ---------- the FOMO page itself: price, liquidity and market cap as FOMO shows them (fomo.js), twice a second ----------
+const fomoFresh = me => me && me.fomoAt && Date.now() - me.fomoAt < 3000;
+const chainLive = me => me && me.chainAt && Date.now() - me.chainAt < CHAIN_LIVE_MS;
+chrome.runtime.onMessage.addListener(msg => {
+  if (!msg || msg.type !== "fomo" || !S || S.mint !== msg.mint) return;
+  const p = parseFomoNumber(msg.price), l = parseFomoNumber(msg.liq), mc = parseFomoNumber(msg.mc);
+  if (!(p > 0)) return;
+  const now = Date.now();
+  S.fomoAt = now; S.fomoLiq = l; S.fomoMc = mc;
+  if (l > 0) S.liq = l;
+  if (!chainLive(S)) {                       // live chain trades are exact; otherwise FOMO's own price is the one to trade on
+    S.price = p; S.lastTradeAt = now;
+    if (msg.changed || !S.ticks.length || now - S.ticks[S.ticks.length - 1].t > 1000) addTick(now, p, 0);
+  }
+});
 
 function addTick(t, p, v) {
   S.ticks.push({ t, p, v });
@@ -331,13 +347,13 @@ function render() {
   const b = S.book, p = S.pair;
   if (b.tokens > 0 && S.price > (b.peak || 0)) b.peak = S.price;
   $("price").textContent = px(S.price);
-  $("sub").textContent = `MC ${big(p && (p.marketCap || p.fdv))} · Liq ${big(S.liq)}${S.liq ? "" : " (angen. $5K)"}${p ? " · " + p.dexId : ""}`;
+  $("sub").textContent = `MC ${big(fomoFresh(S) && S.fomoMc ? S.fomoMc : p && (p.marketCap || p.fdv))} · Liq ${big(S.liq)}${S.liq ? "" : " (angen. $5K)"}${p ? " · " + p.dexId : ""}`;
   const ch = p && p.priceChange;
   $("chg").innerHTML = ch ? `<span class="${cls(ch.m5 || 0)}">5m ${ch.m5 ?? "–"} %</span> · <span class="${cls(ch.h1 || 0)}">1h ${ch.h1 ?? "–"} %</span>` : "–";
 
   const now = Date.now(), last = S.feed.filter(t => now - t.t < 30000);
   const live = S.chainAt && now - S.chainAt < CHAIN_LIVE_MS;
-  $("src").innerHTML = live ? `<span class="pos">● Live von Solana</span>` :
+  $("src").innerHTML = live ? `<span class="pos">● Live von Solana</span>` : fomoFresh(S) ? `<span class="pos">● Preis live von der FOMO-Seite</span> (Trades: ${S.chainState})` :
     `Solana: ${S.chainState} (${S.chainMsgs} Meldungen) · Trades von GeckoTerminal, bis 30 s alt`;
   const vb = last.filter(t => t.side === "buy").reduce((x, t) => x + t.usd, 0);
   const vs = last.filter(t => t.side === "sell").reduce((x, t) => x + t.usd, 0);
@@ -466,7 +482,8 @@ function botTick() {
   if (!botOn || busy) return;
   if (mode === "auto") return autoTick();
   if (!S) return;
-  const d = decide({ now: Date.now(), price: S.price, liq: S.liq, trades: S.feed, book: S.book, lastExitAt: S.lastExitAt }, P);
+  const priceOnly = !chainLive(S) && fomoFresh(S);   // no live trade tape for this coin: trade on FOMO's price alone
+  const d = decide({ now: Date.now(), price: S.price, liq: S.liq, trades: S.feed, ticks: S.ticks, priceOnly, book: S.book, lastExitAt: S.lastExitAt }, P);
   $("botWhy").textContent = d.why;
   if (d.action === "buy") order("buy", 1, d.why, true);
   else if (d.action === "sell") order("sell", 1, d.why, true);

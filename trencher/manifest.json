@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meme Trencher (Paper)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Live Solana meme coin trades in a side panel, with fake-money buy and sell. Never touches a wallet.",
   "permissions": [
     "sidePanel",
@@ -23,5 +23,16 @@
   },
   "action": {
     "default_title": "Meme Trencher öffnen"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://fomo.family/*"
+      ],
+      "js": [
+        "fomo.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

@@ -27,7 +27,10 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
   lehnt Chrome-Erweiterungen mit 403 ab.
 - Preis, Liquidität, Market Cap: DexScreener jede Sekunde (dort einige Sekunden zwischengespeichert, ein frischer Trade gewinnt).
 - Chart-Verlauf beim Laden und Ersatz, wenn die Blockchain schweigt: GeckoTerminal alle 15 s (30 s zwischengespeichert, bei 429 eine Minute Pause).
-- Coins anderer Börsen (Raydium, Meteora …) bekommen nur die GeckoTerminal-Trades.
+- Auf einer FOMO-Coinseite liest `fomo.js` Preis, Liquidität und Market Cap direkt aus FOMOs Kopfzeile (2x pro Sekunde, nur lesen).
+  Für Coins auf Raydium, Meteora usw. (ohne Live-Trades von der Blockchain) handelt der Bot dann nur nach FOMOs Preis:
+  Volumen- und Käufer-Regeln entfallen, es zählt der Kursanstieg.
+- DexScreener-Pool: der mit dem meisten 24-h-Volumen (ein toter Pool mit alter Liquiditätsangabe gewinnt nicht mehr).
 
 ## Test
 `node trencher/test_sim.mjs` prüft die Geldrechnung.
