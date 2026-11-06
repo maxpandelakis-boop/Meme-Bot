@@ -361,3 +361,6 @@
 {"t":1793959500673,"addr":"BhEfSbPL6xgozd644us2UYXESSR1gip3m9r1qep6moon","sym":"FOXSENT","age":30.2,"why":"liquidity","liq":0}
 {"t":1793959800632,"addr":"2C7WYsybjLtvuq2ir1aBNmgY4rwAG9ecmE6GTyvDAtXx","sym":"\ud83d\udc24Chick","age":30.6,"score":0.02347,"px":4.316e-05,"liq":58791,"p0":3.58220063769745e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.4645,"c_peak":1.0021,"c_vol":4.9923,"c_act":1.0,"c_r5":0.2023,"c_r15":0.2892,"c_mc":4.5541}}
 {"t":1793959860722,"addr":"Berk1mwwwV7obmWfMaEwkh63T1ntLZ5pPN4f4NX6pump","sym":"november","age":30.6,"why":"liquidity","liq":8319}
+{"t":1793959980500,"addr":"68oxwKtEz1kRDy49vjQvdRrZ1osoSsbqg7JXpPbGpump","sym":"Kuro","age":30.6,"why":"liquidity","liq":1788}
+{"t":1793960101293,"addr":"2MY9WPtehyCpsgZM7R4ozWs7t4e2xzcCntaqtzqUmoon","sym":"Hormuz","age":30.7,"why":"liquidity","liq":0}
+{"t":1793960160562,"addr":"4kcD9SiDvemD6QnHPJpHdjEcHdbkAXXm7rpDpvXt5ZsL","sym":"SEZ","age":30.6,"score":0.00321,"px":0.3562,"liq":206286,"p0":0.35629324156832726,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1739,"c_peak":1.0,"c_vol":4.9805,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":8.5518}}
