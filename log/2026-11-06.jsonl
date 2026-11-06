@@ -56,3 +56,5 @@
 {"t":1793929441025,"addr":"3Eu8kC4DTLbUsZ36nuz4cUPtZgRNfpwaGwT5wXirpump","sym":"ChillVrax","age":30.1,"why":"liquidity","liq":1736}
 {"t":1793929500721,"addr":"4LbSwJFUbppyD9me5zE8HtkfjxJrd9aFqXH8SUctKWqc","sym":"GUPI","age":30.9,"score":0.00317,"px":0.3481,"liq":199820,"p0":0.34770809928784,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":9.1006,"c_peak":1.0,"c_vol":5.0458,"c_act":0.6667,"c_r5":0.0,"c_r15":9.1615,"c_mc":8.5412}}
 {"t":1793929560464,"addr":"ahDZeGFW9A5rusTPYXNkSirDeXuu29wDNKcHpbypump","sym":"NATF","age":30.0,"score":0.0088,"px":0.04842,"liq":552127,"p0":0.04853252620930086,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0104,"c_peak":1.0004,"c_vol":5.4402,"c_act":1.0,"c_r5":0.0026,"c_r15":0.0068,"c_mc":7.686}}
+{"t":1793929800942,"addr":"C63BxGGTdPxRtxSwdRSrFFzPU2pnTgpt1anyRYKspump","sym":"BMW","age":30.1,"why":"liquidity","liq":1688}
+{"t":1793929860928,"addr":"Ckwesb4n4n4EirTNPbeQPG65oKKSFgsBT3TbWaJAd5HQ","sym":"A-shares","age":30.9,"why":"liquidity","liq":0}
