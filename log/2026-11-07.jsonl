@@ -818,3 +818,5 @@
 {"t":1794093360751,"addr":"7UNE46ZSFAgMwAoe7Eoh61qhqzjVgfMepw8Gmsrvpump","sym":"MHCGA","age":30.7,"why":"liquidity","liq":556}
 {"t":1794093540906,"addr":"FSSpoCrx5vh8GBcZeDk5jWw8XgoUK5UcBirdpon57Vdn","sym":"Democat","age":30.7,"why":"liquidity","liq":0}
 {"t":1794093540906,"addr":"Hby6diXG1jhAV1MsxNwo7UbwFLVWYazKuxzuyYS3Cp7S","sym":"DANA","age":30.6,"why":"liquidity","liq":0}
+{"t":1794093780477,"addr":"22xUt4i2bogmxcbhnq1nh4KthanfJQi8NuzmmwKMpump","sym":"DANA","age":30.2,"score":0.03308,"px":5.76e-05,"liq":18283,"p0":7.757052927531172e-05,"bars":6,"buy":false,"f":{"f_curve_min":5.4833,"f_creator_prior":1.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.9543,"c_peak":1.3582,"c_vol":5.2845,"c_act":1.0,"c_r5":0.7218,"c_r15":1.6942,"c_mc":4.8897}}
+{"t":1794093960422,"addr":"Gfzb8U3FpfgFfidXFe3baKcQbnDoo3BcuNtUnGCNU3wL","sym":"NVIDIA","age":30.1,"why":"liquidity","liq":0}
