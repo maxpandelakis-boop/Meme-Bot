@@ -1,0 +1,1222 @@
+{
+ "chosen": {
+  "model": "bR",
+  "q": 0.02,
+  "plan": "V3",
+  "win": "w3late",
+  "n": 30,
+  "mean": -4.949,
+  "rockets": 0,
+  "base_n": 1523,
+  "base_rocketPct": 0.35
+ },
+ "base_w3": {
+  "buys": 5644,
+  "mean": -17.24,
+  "pos": 30.7,
+  "rocket": 0.91,
+  "zero": 52.6
+ },
+ "cases": [
+  {
+   "case": 1,
+   "row": 47835,
+   "eid": "38CdHy924MyVdFaoFV1mrw2657UJ38g9sEu9Czp8TivF:60",
+   "taken": true,
+   "mult": 1.529190242631309,
+   "eur": 24.937967840147294,
+   "rocket": false,
+   "high24": 1.9020705223083496
+  },
+  {
+   "case": 2,
+   "row": 48481,
+   "eid": "7xFarxRLx5YN42johxZ75ADLU4CmPbBWxdo2ymWnUxrg:600",
+   "taken": true,
+   "mult": 3.0845352018164824,
+   "eur": 101.1576475650167,
+   "rocket": true,
+   "high24": 14.530814170837402
+  },
+  {
+   "case": 3,
+   "row": 41602,
+   "eid": "FDgS5fuuxzf7ozL125TTP2oGxMwFQBWETXo23eN1PzBY:60",
+   "taken": false,
+   "mult": 0.6507374706637833,
+   "eur": -18.1106102501213,
+   "rocket": false,
+   "high24": 2.1737098693847656
+  },
+  {
+   "case": 4,
+   "row": 48946,
+   "eid": "7jtrRtcZiC679aPtSZeui6iUTaUyrTrQbD5d8GYnPK4Z:60",
+   "taken": true,
+   "mult": 0.7685361347804095,
+   "eur": -12.337886715086036,
+   "rocket": false,
+   "high24": 1.443386435508728
+  },
+  {
+   "case": 5,
+   "row": 53316,
+   "eid": "CotDm1LxjyYz7raogRYT4xsGTuBXA28LhSWrw4FKV8Yp:60",
+   "taken": true,
+   "mult": 0.8419492111111145,
+   "eur": -8.740278909499828,
+   "rocket": false,
+   "high24": 1.2111632823944092
+  },
+  {
+   "case": 6,
+   "row": 45735,
+   "eid": "BrnPB471GnWSgVD641jwPvSKKx5HYB1EEfoUdx6mLpMd:60",
+   "taken": false,
+   "mult": 1.0,
+   "eur": -0.9949999999999974,
+   "rocket": false,
+   "high24": 1.0
+  },
+  {
+   "case": 7,
+   "row": 48858,
+   "eid": "GTvvGrNGHKQwWcR3KTPYZ9yLcus4AWArpAgVePJiXqtZ:60",
+   "taken": false,
+   "mult": 0.0012488141263805226,
+   "eur": -50.03818370074416,
+   "rocket": false,
+   "high24": 1.6768293380737305
+  },
+  {
+   "case": 8,
+   "row": 51709,
+   "eid": "BQ3gvDP8cbMZXPKtqGdzxjAWujBVLDQySJzRDgEr6C2Y:60",
+   "taken": true,
+   "mult": 0.4406049662671,
+   "eur": -28.408153628080765,
+   "rocket": false,
+   "high24": 6.105578422546387
+  },
+  {
+   "case": 9,
+   "row": 54465,
+   "eid": "3hKiH7vjBYhVXxTm1hF4MDgyLmVDgCPEWgwjF791bd6e:840",
+   "taken": false,
+   "mult": 0.6421262559895937,
+   "eur": -18.53260282522996,
+   "rocket": false,
+   "high24": 7.812856674194336
+  },
+  {
+   "case": 10,
+   "row": 52554,
+   "eid": "3LXjhey3gKt6BfR98ajhoQUr6YwCajzSLS7qHZSMXs8z:60",
+   "taken": true,
+   "mult": 0.021630941239318396,
+   "eur": -49.02926840865374,
+   "rocket": false,
+   "high24": 0.022355573251843452
+  },
+  {
+   "case": 11,
+   "row": 47754,
+   "eid": "G2cpUAwChtRPHX4RbijBdG9SagjQWeTy7iw41mS8D6rU:60",
+   "taken": false,
+   "mult": 1.4779032105577588,
+   "eur": 22.424646833382965,
+   "rocket": false,
+   "high24": 1.744314193725586
+  },
+  {
+   "case": 12,
+   "row": 41870,
+   "eid": "DZ3kGFbxBZLbrTNPeeHrLA52Xb72XxvvU7hmxwAqm3im:60",
+   "taken": false,
+   "mult": 0.00024304546761996405,
+   "eur": -50.08796924935281,
+   "rocket": false,
+   "high24": 1.33091139793396
+  },
+  {
+   "case": 13,
+   "row": 43375,
+   "eid": "CoQRShKZytcQkZJLKRdPEUVAk3ZmoHPbfBWaP92TY2An:60",
+   "taken": false,
+   "mult": 0.02984395962161451,
+   "eur": -48.62272399873008,
+   "rocket": false,
+   "high24": 0.03553593531250954
+  },
+  {
+   "case": 14,
+   "row": 41550,
+   "eid": "suQHMZZNrzxRJWQtUcSSRkwNYLhL3MmvCwnmVqopTqv:60",
+   "taken": false,
+   "mult": 1.94124433881259,
+   "eur": 45.13067882351096,
+   "rocket": false,
+   "high24": 3.3295204639434814
+  },
+  {
+   "case": 15,
+   "row": 49114,
+   "eid": "FGXMnchTt8tQc8mEHgWiWhrUHHUHcMAzCvgaYuaCmghz:600",
+   "taken": true,
+   "mult": 1.2835934969466614,
+   "eur": 12.90249931787114,
+   "rocket": true,
+   "high24": 13.50463581085205
+  },
+  {
+   "case": 16,
+   "row": 50708,
+   "eid": "3VYS32Xnz8JVPJgbLLd1gwEjBsL5ahaRmeNkaGe6vk2W:60",
+   "taken": true,
+   "mult": 0.8560042049353593,
+   "eur": -8.051513937142715,
+   "rocket": false,
+   "high24": 2.0475449562072754
+  },
+  {
+   "case": 17,
+   "row": 40681,
+   "eid": "DE8GkczXhseL6Y1Di5H6SQWPrwVMHFZ4vSUPcarmvgkd:60",
+   "taken": false,
+   "mult": 11.0,
+   "eur": 489.05499999999995,
+   "rocket": true,
+   "high24": 11.473843574523926
+  },
+  {
+   "case": 18,
+   "row": 45022,
+   "eid": "AWJQnkxDDAdX8PdiQKgosRmMzKXeRFuHToWBctCqh6o4:60",
+   "taken": false,
+   "mult": 1.319695674868681,
+   "eur": 14.67168654693971,
+   "rocket": false,
+   "high24": 2.0655980110168457
+  },
+  {
+   "case": 19,
+   "row": 41171,
+   "eid": "ExaBTmv6AMrDYijABcpsBngNyrDBQ8MRfS8ijW7QCQU2:60",
+   "taken": false,
+   "mult": 0.00022016055001612656,
+   "eur": -50.0891020527742,
+   "rocket": false,
+   "high24": 1.1251112222671509
+  },
+  {
+   "case": 20,
+   "row": 48632,
+   "eid": "9gPBj7g1nLdfjMi87du2wXZXRkGzzh6H7UsUwzyq6Rpf:60",
+   "taken": false,
+   "mult": 0.00042471557312522684,
+   "eur": -50.0789765791303,
+   "rocket": false,
+   "high24": 1.275848627090454
+  },
+  {
+   "case": 21,
+   "row": 44131,
+   "eid": "8Fj3NbqCToszVLBSFu2bW2Yc4kcaUqNsbEEw2BTk7uma:60",
+   "taken": false,
+   "mult": 0.7299879374101663,
+   "eur": -14.2269411272148,
+   "rocket": false,
+   "high24": 1.147483468055725
+  },
+  {
+   "case": 22,
+   "row": 48959,
+   "eid": "4qzuTwzN2eXKZixU3L7UcVYyPqUBhLNL1tjfJwYdYP41:60",
+   "taken": false,
+   "mult": 0.0008290609163001577,
+   "eur": -50.05896148464314,
+   "rocket": false,
+   "high24": 1.0815742015838623
+  },
+  {
+   "case": 23,
+   "row": 48077,
+   "eid": "CKvk5EmLjjyTkzQsLDswtn8PP8Fh3NBd68bKMGbRYbch:60",
+   "taken": false,
+   "mult": 1.6899352401229446,
+   "eur": 32.8152764422249,
+   "rocket": false,
+   "high24": 2.389880657196045
+  },
+  {
+   "case": 24,
+   "row": 43280,
+   "eid": "77ZZ83FtcT54iRgafFeRrEYydvojocdMpiVJre69YnUQ:60",
+   "taken": false,
+   "mult": 0.000645675675261555,
+   "eur": -50.06803905407455,
+   "rocket": false,
+   "high24": 1.697647213935852
+  },
+  {
+   "case": 25,
+   "row": 48503,
+   "eid": "6sCKfP4A5ZCi4ESAEAXJKbTJfry5EpL4ywMoViYrsn7h:60",
+   "taken": true,
+   "mult": 2.6578671219344305,
+   "eur": 80.24877831039677,
+   "rocket": false,
+   "high24": 3.5383636951446533
+  },
+  {
+   "case": 26,
+   "row": 43850,
+   "eid": "2V56c2GxbTxJYhujVMYHznFWewXhrURAeLZNQQShQrkX:60",
+   "taken": false,
+   "mult": 0.6412860111978236,
+   "eur": -18.573779021250658,
+   "rocket": false,
+   "high24": 1.0243281126022339
+  },
+  {
+   "case": 27,
+   "row": 48350,
+   "eid": "3HnGsakVrjzcoYHHkdArRguXpVnKuv66p55pkLJUzKAq:60",
+   "taken": true,
+   "mult": 0.22445100594030115,
+   "eur": -39.00077845389554,
+   "rocket": false,
+   "high24": 1.179978847503662
+  },
+  {
+   "case": 28,
+   "row": 48306,
+   "eid": "9fnKXpZ4Em6UEn2Et8SnJdbw7Mdqxsxxnv7d3xPRkMrv:120",
+   "taken": true,
+   "mult": 0.7200803974161384,
+   "eur": -14.71246012462214,
+   "rocket": false,
+   "high24": 0.8564428687095642
+  },
+  {
+   "case": 29,
+   "row": 40738,
+   "eid": "8eCge8xNh77LXhH9R3hSXNm6ww3kUW6PGvwWDZ9UpuFx:60",
+   "taken": false,
+   "mult": 0.00037222337031986226,
+   "eur": -50.081574943169166,
+   "rocket": false,
+   "high24": 1.3502894639968872
+  },
+  {
+   "case": 30,
+   "row": 48060,
+   "eid": "8XaHRBqF6jGjsB7sMEzpNfvAJeCusTvhzK1WcF3AkUGw:60",
+   "taken": true,
+   "mult": 0.4569254951298367,
+   "eur": -27.60836611116235,
+   "rocket": false,
+   "high24": 1.487329125404358
+  },
+  {
+   "case": 31,
+   "row": 49318,
+   "eid": "CbR2UL7ktBr8MUUTj3FYcURZerp28GA2p1vPuMeKy1Je:60",
+   "taken": true,
+   "mult": 3.5485829936884423,
+   "eur": 123.89830960570211,
+   "rocket": false,
+   "high24": 8.541386604309082
+  },
+  {
+   "case": 32,
+   "row": 47110,
+   "eid": "7pZusSzceyWSnCwxRc3Bf4TZvTCfPjAaRcgiPKm2kxjt:60",
+   "taken": true,
+   "mult": 1.4326795911406471,
+   "eur": 20.2084633638474,
+   "rocket": false,
+   "high24": 4.7575764656066895
+  },
+  {
+   "case": 33,
+   "row": 54778,
+   "eid": "Bnf84yYNCoYsQP6pc3QN1yHfgdCMfU99AQuqzUwZAkQH:60",
+   "taken": false,
+   "mult": 1.3375392498329302,
+   "eur": 15.54611093806274,
+   "rocket": false,
+   "high24": 2.1156527996063232
+  },
+  {
+   "case": 34,
+   "row": 42707,
+   "eid": "HQ2BK47t41zud1twD8UyneXg2u9Aj6zKYJB8xxvedzrL:240",
+   "taken": false,
+   "mult": 0.011787572440105523,
+   "eur": -49.51651516421477,
+   "rocket": false,
+   "high24": 0.011787572875618935
+  },
+  {
+   "case": 35,
+   "row": 52979,
+   "eid": "GxodNdWwPFdZAqwN7WoDSayHVSDttrpSLYCnCkAH2Wbr:60",
+   "taken": true,
+   "mult": 1.346040637324595,
+   "eur": 15.962721432091783,
+   "rocket": false,
+   "high24": 1.9918615818023682
+  },
+  {
+   "case": 36,
+   "row": 49330,
+   "eid": "6CLFzoqjeP8SMWhX2AeJwQGot4cwfs86NCYnuVKzYXtk:60",
+   "taken": true,
+   "mult": 1.3934035361958794,
+   "eur": 18.283740291279074,
+   "rocket": false,
+   "high24": 1.7125681638717651
+  },
+  {
+   "case": 37,
+   "row": 49247,
+   "eid": "CvvmkRhRseWTy9hpBAcVQUujnyVSsjegq5wD75vk9KhV:60",
+   "taken": true,
+   "mult": 0.8275287806530358,
+   "eur": -9.446952104097974,
+   "rocket": false,
+   "high24": 1.2617602348327637
+  },
+  {
+   "case": 38,
+   "row": 47614,
+   "eid": "3zNqsnvwf5CNxQu1YdMDYnAe31MUCPKwigZpxWyqKQK3:60",
+   "taken": true,
+   "mult": 0.296329941696088,
+   "eur": -35.47835120718321,
+   "rocket": false,
+   "high24": 0.8938606381416321
+  },
+  {
+   "case": 39,
+   "row": 41084,
+   "eid": "2Wo89T9koQXC56VU2jbEP574yvQy8Q1g91wpzyq8urt9:60",
+   "taken": false,
+   "mult": 0.0003424834026014724,
+   "eur": -50.08304707157123,
+   "rocket": false,
+   "high24": 1.3078877925872803
+  },
+  {
+   "case": 40,
+   "row": 51202,
+   "eid": "GntVxwXdqX35325f8M95SxxZMF7vzgt9wFMrH8SmdMrr:60",
+   "taken": true,
+   "mult": 1.090005825366697,
+   "eur": 3.415735472094987,
+   "rocket": false,
+   "high24": 1.1925716400146484
+  },
+  {
+   "case": 41,
+   "row": 55134,
+   "eid": "5VWcHSNUj5uMbhW59ecNf5sMDt4zyzSBMQS93HYEwK2Y:60",
+   "taken": true,
+   "mult": 0.7304668470191871,
+   "eur": -14.203472161824735,
+   "rocket": false,
+   "high24": 0.9035710692405701
+  },
+  {
+   "case": 42,
+   "row": 53634,
+   "eid": "4eY6m9BYbNiCtmTU8QSEXfrSu6s7HS78RAwx9gE7BMK6:60",
+   "taken": true,
+   "mult": 0.5792721466094718,
+   "eur": -21.612768455402833,
+   "rocket": false,
+   "high24": 1.0722646713256836
+  },
+  {
+   "case": 43,
+   "row": 52705,
+   "eid": "Dodxevz4KpapUwFMeKLvgj4zJ8bPnUFey6Gr2UpGtVUf:60",
+   "taken": true,
+   "mult": 0.7672006214301459,
+   "eur": -12.403333546815702,
+   "rocket": false,
+   "high24": 1.971367359161377
+  },
+  {
+   "case": 44,
+   "row": 54717,
+   "eid": "8JZiCe7yzUJphDdKsj2eSyErBja5xdhB23ziewyqVPpy:60",
+   "taken": false,
+   "mult": 2.6989636087638535,
+   "eur": 82.26271164747266,
+   "rocket": false,
+   "high24": 3.594463348388672
+  },
+  {
+   "case": 45,
+   "row": 54927,
+   "eid": "6Ri3bSncKVPUozdt3hCBHNc7uoonSBGeT5wDVpT89Vh8:60",
+   "taken": false,
+   "mult": 0.005392673645939943,
+   "eur": -49.833062654525975,
+   "rocket": false,
+   "high24": 1.1612412929534912
+  },
+  {
+   "case": 46,
+   "row": 42029,
+   "eid": "8UPZWYcAZojKcX8hGiwWS2U4RjAbzzoPXRagii8o48sD:60",
+   "taken": false,
+   "mult": 0.0002875660791382398,
+   "eur": -50.08576547908266,
+   "rocket": false,
+   "high24": 1.2625657320022583
+  },
+  {
+   "case": 47,
+   "row": 45790,
+   "eid": "6SBnbgqYA1kcWfqY7s2MXbvBaJSizVKVtKKibsFqo3Z:60",
+   "taken": false,
+   "mult": 0.7024727825501766,
+   "eur": -15.575321291128596,
+   "rocket": false,
+   "high24": 1.6428769826889038
+  },
+  {
+   "case": 48,
+   "row": 47918,
+   "eid": "Gg87CHiLhfMPHZFPXEHCZ3Mz6kiZ7F1zBuhtUXhuFSkD:60",
+   "taken": false,
+   "mult": 0.0010333483403502496,
+   "eur": -50.04884925715266,
+   "rocket": false,
+   "high24": 0.001033348380587995
+  },
+  {
+   "case": 49,
+   "row": 55010,
+   "eid": "9XpP7VwFv3LsYYuGJhuBxbMLAQr81UaKscV8h4xas4pB:300",
+   "taken": false,
+   "mult": 0.7703741132440657,
+   "eur": -12.247816580474563,
+   "rocket": false,
+   "high24": 1.0848734378814697
+  },
+  {
+   "case": 50,
+   "row": 49230,
+   "eid": "EXiFdYnwHEZ38rRZ68X8T81BVgFHc9kuYc7cd5eq4JEQ:60",
+   "taken": true,
+   "mult": 1.081904815250966,
+   "eur": 3.0187454713735917,
+   "rocket": false,
+   "high24": 1.2167227268218994
+  },
+  {
+   "case": 51,
+   "row": 52782,
+   "eid": "DktJ5Q5iSSbys1We2tkWrqG2FBnTTbNcPV3BdHMrysqr:60",
+   "taken": true,
+   "mult": 0.5597564164180412,
+   "eur": -22.569136813433893,
+   "rocket": false,
+   "high24": 0.9340693950653076
+  },
+  {
+   "case": 52,
+   "row": 51821,
+   "eid": "9xVi3514hnzQa8VCq3VfLeRqsyqd3havAu1efdnLxNoB:60",
+   "taken": true,
+   "mult": 1.2145184393513508,
+   "eur": 9.517476120412951,
+   "rocket": false,
+   "high24": 1.687549352645874
+  },
+  {
+   "case": 53,
+   "row": 45367,
+   "eid": "cygwKBkv7etZp2YTQDa4TJXRjeJykmcY5WCw1ZDJ27U:840",
+   "taken": false,
+   "mult": 1.0,
+   "eur": -0.9949999999999974,
+   "rocket": false,
+   "high24": 1.0
+  },
+  {
+   "case": 54,
+   "row": 53610,
+   "eid": "J8nQ85p84cz44LvjbcVB5qdpyPcng2QK1QvCJ8f5fzqZ:180",
+   "taken": true,
+   "mult": 0.8237728391961185,
+   "eur": -9.631012015194216,
+   "rocket": false,
+   "high24": 1.161110758781433
+  },
+  {
+   "case": 55,
+   "row": 51111,
+   "eid": "FqegzzBsTiUr93vSD5BdoJGuSmrR469FWuKzS8ftjcPT:60",
+   "taken": false,
+   "mult": 0.431495110959122,
+   "eur": -28.854582087448225,
+   "rocket": false,
+   "high24": 0.723171055316925
+  },
+  {
+   "case": 56,
+   "row": 46628,
+   "eid": "iHUk34q3C97c61edpqwtmESucdqWRKpmXKrGfsG1fsa:60",
+   "taken": true,
+   "mult": 0.22718914907374327,
+   "eur": -38.86659574964121,
+   "rocket": false,
+   "high24": 0.5850090384483337
+  },
+  {
+   "case": 57,
+   "row": 47076,
+   "eid": "GRopJwAV6FmmdP3Jd5cLhJeY5qTudVatHgUYW1yqVsf2:60",
+   "taken": true,
+   "mult": 0.5861688919046848,
+   "eur": -21.274793452210922,
+   "rocket": false,
+   "high24": 1.390846848487854
+  },
+  {
+   "case": 58,
+   "row": 42093,
+   "eid": "EPnAd1SzVJRWyVdGk8fh2apuVW1WtgLCNZreJokWvyzc:60",
+   "taken": false,
+   "mult": 1.017612015538815,
+   "eur": -0.13192317852036695,
+   "rocket": false,
+   "high24": 1.1099109649658203
+  },
+  {
+   "case": 59,
+   "row": 49340,
+   "eid": "8X65G996GZAiUeuH6A9hJxJWaSzoAcez5aX98wD1NqFT:60",
+   "taken": true,
+   "mult": 0.6894567227017556,
+   "eur": -16.21317330400047,
+   "rocket": false,
+   "high24": 1.3076376914978027
+  },
+  {
+   "case": 60,
+   "row": 45365,
+   "eid": "6MWrTvnzghdFR4yZkJ5PGewgCp9Rmoi6rJs4Hu2iaRPL:60",
+   "taken": false,
+   "mult": 0.7450662057319697,
+   "eur": -13.488030588104827,
+   "rocket": false,
+   "high24": 0.9738764762878418
+  },
+  {
+   "case": 61,
+   "row": 48354,
+   "eid": "EP88Ktqm6491WEm1ZJsEryXYYjuoLh5cEyz5exyxr1Cb:60",
+   "taken": true,
+   "mult": 1.554221728106729,
+   "eur": 26.16463578587026,
+   "rocket": false,
+   "high24": 2.136291742324829
+  },
+  {
+   "case": 62,
+   "row": 48565,
+   "eid": "7M8AWv8Voj6jobvWnJm4mdjfvSvdDEaA2Fd2FsX1LDvm:420",
+   "taken": true,
+   "mult": 2.30420210041971,
+   "eur": 62.91742393106789,
+   "rocket": false,
+   "high24": 2.7993388175964355
+  },
+  {
+   "case": 63,
+   "row": 47728,
+   "eid": "9n4wnEvNn8476Bk346bQxcdbBZEZBrYd7nDsLwtwQTh6:60",
+   "taken": true,
+   "mult": 0.6412679808652033,
+   "eur": -18.574662597700712,
+   "rocket": false,
+   "high24": 1.1980986595153809
+  },
+  {
+   "case": 64,
+   "row": 53518,
+   "eid": "BZ3tBPcTd3eKExg3Vq8E8JdZw92XhBNxDxRecGtCQunC:60",
+   "taken": true,
+   "mult": 0.7269290105806493,
+   "eur": -14.376843836495276,
+   "rocket": false,
+   "high24": 1.4266574382781982
+  },
+  {
+   "case": 65,
+   "row": 46285,
+   "eid": "4fgHcEacrySH73frFAfZwvebSKMex2baFMcuKZ38CTmM:60",
+   "taken": false,
+   "mult": 0.00029885860794655203,
+   "eur": -50.08520649890664,
+   "rocket": false,
+   "high24": 1.2733391523361206
+  },
+  {
+   "case": 66,
+   "row": 53235,
+   "eid": "Bus8tCJ2b72NzCJrVe5odw8eCCG6VFm3S1Pk4R8RzfvJ:840",
+   "taken": true,
+   "mult": 0.8282694570051278,
+   "eur": -9.410655259463717,
+   "rocket": false,
+   "high24": 1.4816416501998901
+  },
+  {
+   "case": 67,
+   "row": 43392,
+   "eid": "9EuJwMT4dFt4ZHkLdj7wNdAjfx7BjybWRt4iKF6Jynzu:60",
+   "taken": true,
+   "mult": 0.6353711114417214,
+   "eur": -18.86363868379844,
+   "rocket": false,
+   "high24": 1.1776866912841797
+  },
+  {
+   "case": 68,
+   "row": 48749,
+   "eid": "8zSaho3M6CkegL3Nu4bhECQsfCn6fMPnJo43mKn2Efj4:60",
+   "taken": true,
+   "mult": 1.1637757562999085,
+   "eur": 7.03083093747702,
+   "rocket": false,
+   "high24": 1.9918580055236816
+  },
+  {
+   "case": 69,
+   "row": 48338,
+   "eid": "5YtqenEWMTv8uBwW7YYyw1cmKR9t1oTAyK2yyzrpEdSB:60",
+   "taken": false,
+   "mult": 0.6925208795784549,
+   "eur": -16.06301429625782,
+   "rocket": false,
+   "high24": 1.3418099880218506
+  },
+  {
+   "case": 70,
+   "row": 48969,
+   "eid": "2vZ8xpjSgvF3wy9Vd11GirEEP7o4J6gArVs6nBzocjDK:60",
+   "taken": true,
+   "mult": 0.8378615809091838,
+   "eur": -8.940593227545449,
+   "rocket": false,
+   "high24": 1.0066947937011719
+  },
+  {
+   "case": 71,
+   "row": 42973,
+   "eid": "Epr4G9KNKg9WoVHY8Mo7kaKCETxcjGXk6SbsDBBkVCL5:60",
+   "taken": false,
+   "mult": 1.0463922531071899,
+   "eur": 1.278452363517843,
+   "rocket": false,
+   "high24": 1.2517552375793457
+  },
+  {
+   "case": 72,
+   "row": 49823,
+   "eid": "89iJxkmq9iSr9ivpfqn8sEn7SW1nMk1YqhNQaKikWXzw:60",
+   "taken": false,
+   "mult": 0.46897168824594243,
+   "eur": -27.01804241750759,
+   "rocket": false,
+   "high24": 1.2735799551010132
+  },
+  {
+   "case": 73,
+   "row": 48440,
+   "eid": "9LeVx1BRBS4WXzug5wWDrD3N675Ar7uu5wjjmNdZ5bPm:60",
+   "taken": true,
+   "mult": 0.8424683534135076,
+   "eur": -8.714838340971063,
+   "rocket": false,
+   "high24": 1.0617021322250366
+  },
+  {
+   "case": 74,
+   "row": 44377,
+   "eid": "AvXQDZzThzxemZju1jDKYsUPqnUrMVXdmtPesnLgu3pj:60",
+   "taken": true,
+   "mult": 0.8015717943256649,
+   "eur": -10.718974219070788,
+   "rocket": false,
+   "high24": 1.297126293182373
+  },
+  {
+   "case": 75,
+   "row": 47221,
+   "eid": "FuoAdKjc1B2XeL6uKkXfeiyGTKuRgjtA4NtAkzhgnqu6:60",
+   "taken": true,
+   "mult": 0.7941882906103582,
+   "eur": -11.080802818639398,
+   "rocket": false,
+   "high24": 2.260650157928467
+  },
+  {
+   "case": 76,
+   "row": 49847,
+   "eid": "5fPMykyh2Gc3HC3Rpj2TJQR2LnNuEm2tEEN6Nz9HMBv:60",
+   "taken": false,
+   "mult": 0.717794324553309,
+   "eur": -14.824489125265089,
+   "rocket": false,
+   "high24": 1.5021144151687622
+  },
+  {
+   "case": 77,
+   "row": 55391,
+   "eid": "B7qcpi3ksavHvN63VoGfSt7qSv5YB7QJGAVc397WV4ER:60",
+   "taken": true,
+   "mult": 0.036037464112640846,
+   "eur": -48.31614552642428,
+   "rocket": false,
+   "high24": 0.03815682604908943
+  },
+  {
+   "case": 78,
+   "row": 54737,
+   "eid": "GVJuj1N6MJnT1gzg2xe2tbiHM4ZY5nfFnKPTt4hKmfLZ:60",
+   "taken": true,
+   "mult": 0.9948724219023382,
+   "eur": -1.2462769646759213,
+   "rocket": false,
+   "high24": 2.017223358154297
+  },
+  {
+   "case": 79,
+   "row": 54006,
+   "eid": "4J8C1JeciELohWhw3pU5Uo7TuSBaNpJisJqieQPhdYK7:60",
+   "taken": false,
+   "mult": 1.0302930748560908,
+   "eur": 0.4895121333227337,
+   "rocket": false,
+   "high24": 1.198928713798523
+  },
+  {
+   "case": 80,
+   "row": 48393,
+   "eid": "6gZzwVpG5eyicVrRtgxDCvohKESUKkgywYKYeCoVUfZs:60",
+   "taken": false,
+   "mult": 0.0009687535860939375,
+   "eur": -50.05204669748835,
+   "rocket": false,
+   "high24": 1.3680888414382935
+  },
+  {
+   "case": 81,
+   "row": 45900,
+   "eid": "BExc3NXHApjkasVqyeAEG3MbWaMqF2GZTiQgxNGtyCFG:60",
+   "taken": false,
+   "mult": 0.0008565068312652269,
+   "eur": -50.05760291185237,
+   "rocket": false,
+   "high24": 1.3669860363006592
+  },
+  {
+   "case": 82,
+   "row": 48623,
+   "eid": "AZvuEGCYsqAmezK9MxryDME5oVVu28Zqa6PUkLdt42P8:60",
+   "taken": true,
+   "mult": 0.7796758115412461,
+   "eur": -11.791986855421236,
+   "rocket": false,
+   "high24": 0.9288243651390076
+  },
+  {
+   "case": 83,
+   "row": 54068,
+   "eid": "4HPnRSbQa1jPkxoYi9hKTUnTv5aUj77G2ereaAYdAgmm:60",
+   "taken": true,
+   "mult": 1.6333931044426415,
+   "eur": 30.04442908321164,
+   "rocket": false,
+   "high24": 3.4228410720825195
+  },
+  {
+   "case": 84,
+   "row": 45299,
+   "eid": "BpXTDh6K8TBXUxqbJ6mDxsYC7EaGJAe3fiTtejU7Ri4r:60",
+   "taken": true,
+   "mult": 2.0603121854971413,
+   "eur": 50.96559865028742,
+   "rocket": false,
+   "high24": 2.82315993309021
+  },
+  {
+   "case": 85,
+   "row": 55149,
+   "eid": "5FzQpTL6w8QXFhn4bR5RDRfK2CM2DNSrLhBC1JBTydrz:60",
+   "taken": false,
+   "mult": 0.0014231551899095802,
+   "eur": -50.02955381809947,
+   "rocket": false,
+   "high24": 2.612605094909668
+  },
+  {
+   "case": 86,
+   "row": 49718,
+   "eid": "DYG4zXD9AkHQ9ujbctr2xTh4H5L559WtiyuayY3xJGSt:420",
+   "taken": false,
+   "mult": 0.7878090932564662,
+   "eur": -11.393415384966879,
+   "rocket": false,
+   "high24": 0.867149293422699
+  },
+  {
+   "case": 87,
+   "row": 47779,
+   "eid": "4XFYzJJhFMAmmhRRh5kAKtoSuXio16p8UBNUCAinG1rT:60",
+   "taken": true,
+   "mult": 0.6204590721423309,
+   "eur": -19.594403169665075,
+   "rocket": false,
+   "high24": 1.1239546537399292
+  },
+  {
+   "case": 88,
+   "row": 48643,
+   "eid": "EMyZjvbmZLAjx3apVcSMADBaH7XsoakmhciBS36dAkpx:60",
+   "taken": false,
+   "mult": 1.5629314149063973,
+   "eur": 26.59145398748801,
+   "rocket": false,
+   "high24": 3.1591503620147705
+  },
+  {
+   "case": 89,
+   "row": 47658,
+   "eid": "5cNAPAsWFynaW911GMquyQPZ9p5YYK416t59ki3LEg3Q:60",
+   "taken": true,
+   "mult": 0.7569705869845755,
+   "eur": -12.904656384820875,
+   "rocket": false,
+   "high24": 1.1058019399642944
+  },
+  {
+   "case": 90,
+   "row": 41044,
+   "eid": "CzDGGB2ztpddqDb2YVE4JqhSWob6gWowBQ2zVCQvsWzx:60",
+   "taken": true,
+   "mult": 0.014365948488840964,
+   "eur": -49.388885549802374,
+   "rocket": false,
+   "high24": 0.014365948736667633
+  },
+  {
+   "case": 91,
+   "row": 48631,
+   "eid": "8iFiCyv6stFFKMeXJnZdSf9QMaz48PwPZu3tmU7Wge7U:60",
+   "taken": true,
+   "mult": 0.7355323773734226,
+   "eur": -13.955235846815427,
+   "rocket": false,
+   "high24": 1.1676961183547974
+  },
+  {
+   "case": 92,
+   "row": 46222,
+   "eid": "23Lq1zkj6JQCnQ3qjNFuPfWz4i9iGPH5Jyhn2No7L5fy:60",
+   "taken": false,
+   "mult": 0.0023606272092377293,
+   "eur": -49.98314895314273,
+   "rocket": false,
+   "high24": 1.806287407875061
+  },
+  {
+   "case": 93,
+   "row": 53710,
+   "eid": "AtZdn4fc9p9X6suMfZn3Q9i4c4arRdh2UMFkUA9H1j1s:60",
+   "taken": false,
+   "mult": 0.8248614920363465,
+   "eur": -9.57766258275884,
+   "rocket": false,
+   "high24": 1.3676773309707642
+  },
+  {
+   "case": 94,
+   "row": 53461,
+   "eid": "D8nuqnmh95eaHwKnGBj8bzrwg37HTSRdXjvKEB2UmpxG:60",
+   "taken": true,
+   "mult": 0.7816525879198393,
+   "eur": -11.695114928988275,
+   "rocket": false,
+   "high24": 1.284256100654602
+  },
+  {
+   "case": 95,
+   "row": 54748,
+   "eid": "5pJqCgyp5u4RLzM15R2PYc1xhpf1vz3o7L4YnaLnhuFJ:60",
+   "taken": false,
+   "mult": 1.037919663748196,
+   "eur": 0.8632531219803496,
+   "rocket": false,
+   "high24": 1.056466817855835
+  },
+  {
+   "case": 96,
+   "row": 41061,
+   "eid": "B1uFrZmypAUFfeuhrCcm1etoT4RN3KG7hnZki1CgpDnA:60",
+   "taken": false,
+   "mult": 0.7692562103081952,
+   "eur": -12.302599413846892,
+   "rocket": false,
+   "high24": 1.100083589553833
+  },
+  {
+   "case": 97,
+   "row": 49366,
+   "eid": "4jjGNBCGUhckzTXX6CkTgetZkXCqFwMLPsCC4o29fCN5:60",
+   "taken": false,
+   "mult": 0.6884568965552522,
+   "eur": -16.26216978430987,
+   "rocket": false,
+   "high24": 0.961557924747467
+  },
+  {
+   "case": 98,
+   "row": 52842,
+   "eid": "2guNCTutvXyBQiAiPcBnJ9JCk4TD8yb6kyesgdRk7pFx:60",
+   "taken": true,
+   "mult": 0.7668760189050541,
+   "eur": -12.419240693557825,
+   "rocket": false,
+   "high24": 1.3618441820144653
+  },
+  {
+   "case": 99,
+   "row": 48138,
+   "eid": "5FsHtvu7PD5W42hqHd8qMTQmiFzkb7bi4F82F1MevCGx:60",
+   "taken": false,
+   "mult": 0.0018419377212064254,
+   "eur": -50.00882408280028,
+   "rocket": false,
+   "high24": 1.6870886087417603
+  },
+  {
+   "case": 100,
+   "row": 53333,
+   "eid": "8Vn8swLfBH8wuZ7Y2FdAeAaxPQynBDP37tCRsoca6eNY:60",
+   "taken": false,
+   "mult": 0.00023362754488747046,
+   "eur": -50.08843543652807,
+   "rocket": false,
+   "high24": 1.1164785623550415
+  },
+  {
+   "case": 101,
+   "row": 46885,
+   "eid": "Csk3doqF84JJURhRPtm1KjC9oaExTmFvrqrccTBEvoyK:60",
+   "taken": false,
+   "mult": 1.2288833967066763,
+   "eur": 10.22143085561067,
+   "rocket": false,
+   "high24": 1.5070048570632935
+  },
+  {
+   "case": 102,
+   "row": 52768,
+   "eid": "EfV2XaBqxdcRgTAfzhdKCwaYm6EHzUgUMdfG3rTY28tj:60",
+   "taken": false,
+   "mult": 1.0223131686055662,
+   "eur": 0.09845682751576845,
+   "rocket": false,
+   "high24": 1.3313353061676025
+  },
+  {
+   "case": 103,
+   "row": 53690,
+   "eid": "7FMstDyWNvDdG78m8mrGWVwc4MWMCuFybAe6nF1sZFpo:60",
+   "taken": true,
+   "mult": 0.7770045692524569,
+   "eur": -11.922891083783348,
+   "rocket": false,
+   "high24": 3.6485254764556885
+  },
+  {
+   "case": 104,
+   "row": 42970,
+   "eid": "FHbVXhvS9jekorrKXhLuycJyUdwUubPdqQYMpGnGaELJ:60",
+   "taken": false,
+   "mult": 0.00019224998520054102,
+   "eur": -50.090483625732574,
+   "rocket": false,
+   "high24": 1.2045178413391113
+  },
+  {
+   "case": 105,
+   "row": 48238,
+   "eid": "4uKYQe34uq4eyNNrhJMCMNrPNnnvFy8qhACLzQU55LDR:60",
+   "taken": false,
+   "mult": 0.9882871042167592,
+   "eur": -1.5689904578577085,
+   "rocket": false,
+   "high24": 1.024396300315857
+  },
+  {
+   "case": 106,
+   "row": 52908,
+   "eid": "DA2NaTeg7D2yntNFbBGE9fR3M6uXEKizZPiy8DdJGEiG:60",
+   "taken": true,
+   "mult": 0.5946198053949426,
+   "eur": -20.860656436620836,
+   "rocket": false,
+   "high24": 0.7783499360084534
+  },
+  {
+   "case": 107,
+   "row": 48099,
+   "eid": "Apxyd8rVyQBrDa9SPJBbXzszzKxwsHAMede5LD51u4H2:60",
+   "taken": true,
+   "mult": 0.7273129708080798,
+   "eur": -14.358027865550056,
+   "rocket": false,
+   "high24": 2.7779030799865723
+  },
+  {
+   "case": 108,
+   "row": 55397,
+   "eid": "HwvS3tMrhGEBmxEa69Dnw4kSqoNo3etHuwNZB1s6ShDC:60",
+   "taken": false,
+   "mult": 1.1853776929284694,
+   "eur": 8.089433841959647,
+   "rocket": false,
+   "high24": 2.34102201461792
+  },
+  {
+   "case": 109,
+   "row": 52767,
+   "eid": "CZotdc3zBMPH14cY1HW6YiyG75ogt57F1B5fNcDdgY6c:60",
+   "taken": false,
+   "mult": 0.015999026194800797,
+   "eur": -49.30804820335736,
+   "rocket": false,
+   "high24": 3.1411170959472656
+  },
+  {
+   "case": 110,
+   "row": 44857,
+   "eid": "GzsKj94UHR7NzRML4pcXwAUucFohojtAmuAeD2CCuoas:540",
+   "taken": true,
+   "mult": 0.8325930029342563,
+   "eur": -9.198779891206769,
+   "rocket": false,
+   "high24": 1.0625693798065186
+  },
+  {
+   "case": 111,
+   "row": 49503,
+   "eid": "c6rsMaJoAkphgbwYr8crhy6LuKYzm6jQdfLWcrXuUPo:60",
+   "taken": false,
+   "mult": 0.004400159450453915,
+   "eur": -49.882192107202535,
+   "rocket": false,
+   "high24": 0.004400159232318401
+  },
+  {
+   "case": 112,
+   "row": 52413,
+   "eid": "EPX71kVLpJMkkkvr6bz93cVbQJpfDEYtKTK8shEG1n8S:60",
+   "taken": false,
+   "mult": 0.001132293979896493,
+   "eur": -50.04395144799513,
+   "rocket": false,
+   "high24": 1.2296894788742065
+  },
+  {
+   "case": 113,
+   "row": 42593,
+   "eid": "AroiDG1L2sES1exBydtTpF4NkaEZqP6oXUrufTXbgZde:60",
+   "taken": false,
+   "mult": 1.223508845371021,
+   "eur": 9.958050967406884,
+   "rocket": false,
+   "high24": 1.9325599670410156
+  },
+  {
+   "case": 114,
+   "row": 53552,
+   "eid": "3NmEADNsEH7Pxfo7hs62wcywueSqYUZ3fzsy1VrbFcq1:60",
+   "taken": true,
+   "mult": 0.24204960789714308,
+   "eur": -38.138358965000506,
+   "rocket": false,
+   "high24": 0.9316381216049194
+  },
+  {
+   "case": 115,
+   "row": 48670,
+   "eid": "FqRtMr65yuueikwgoNDb2YAzPp3mQnwphyguqZUzo6vE:60",
+   "taken": true,
+   "mult": 1.2263537464802559,
+   "eur": 10.09746534626494,
+   "rocket": false,
+   "high24": 1.8965630531311035
+  },
+  {
+   "case": 116,
+   "row": 47073,
+   "eid": "GBbTHtc2LRTnny8HQNKKjZf3VxjmjCjzyeKpHeHjEUAJ:60",
+   "taken": false,
+   "mult": 0.0597705616063356,
+   "eur": -47.14135720048639,
+   "rocket": false,
+   "high24": 1.3581199645996094
+  },
+  {
+   "case": 117,
+   "row": 46181,
+   "eid": "BiUx5HcDLPNZxyauNbktN1QduJfMX2oddSmV6FxRXJ5T:60",
+   "taken": false,
+   "mult": 0.847139700562541,
+   "eur": -8.485918973932684,
+   "rocket": false,
+   "high24": 1.3842869997024536
+  },
+  {
+   "case": 118,
+   "row": 48544,
+   "eid": "CmcL1kMybybZV5tKAwz34xnsRMpxpDfuWAMPSU53bJAq:60",
+   "taken": true,
+   "mult": 0.8181191633201094,
+   "eur": -9.908070401498037,
+   "rocket": false,
+   "high24": 1.3294137716293335
+  },
+  {
+   "case": 119,
+   "row": 52834,
+   "eid": "3o7KEqKqBY33n8vCw6jyvFnsBSnRUE6GSTCHhmDHp5Br:60",
+   "taken": true,
+   "mult": 0.39200229751681825,
+   "eur": -30.789927410188323,
+   "rocket": false,
+   "high24": 0.8481215834617615
+  },
+  {
+   "case": 120,
+   "row": 52850,
+   "eid": "DreMAMRc83uJtbvWuWrDqDaQUGHDbFGopmbTYbM3tJFW:60",
+   "taken": true,
+   "mult": 1.359840815587928,
+   "eur": 16.63899916788641,
+   "rocket": false,
+   "high24": 8.71532154083252
+  }
+ ]
+}
