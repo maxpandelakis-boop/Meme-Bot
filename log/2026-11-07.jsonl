@@ -412,3 +412,4 @@
 {"t":1794053941204,"addr":"4YbLWpDnZ5Z9GK881JdbHYUEDjrbWiL81pDD786rmoon","sym":"SOFTBOT","age":30.7,"why":"liquidity","liq":0}
 {"t":1794054000569,"addr":"9DXvWqAuLv9jPsMhvXTWXkfJbACJgNw3LK57tMjpump","sym":"1","age":30.1,"score":0.00981,"px":0.0001652,"liq":30788,"p0":0.0002473661989095564,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.842,"c_peak":1.0001,"c_vol":4.2144,"c_act":1.0,"c_r5":0.1602,"c_r15":0.4514,"c_mc":5.3933}}
 {"t":1794054300872,"addr":"41FmmXq5H3BLtnhw5yjh8pX6zwxx5g5eyREiEVjSNzsF","sym":"GOMO","age":30.3,"why":"liquidity","liq":0}
+{"t":1794054480114,"addr":"AbKHxu8QvWizhQCcsXXCsEMbs8H38ktj6n5UBgVHmoon","sym":"ALLCROWN","age":30.0,"why":"liquidity","liq":0}
