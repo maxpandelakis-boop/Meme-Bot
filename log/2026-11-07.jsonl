@@ -372,3 +372,5 @@
 {"t":1794049440554,"addr":"Dhn4L2fCue27f3VD4YSgr5p8xEPza7tK6ToTgJ5aqHwR","sym":"BQC","age":30.1,"score":0.05622,"px":5.036e-05,"liq":60504,"p0":3.997957762486003e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":0.0,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.6106,"c_peak":1.0,"c_vol":5.144,"c_act":1.0,"c_r5":0.0378,"c_r15":0.4761,"c_mc":4.6018}}
 {"t":1794049560925,"addr":"BbR7t39n1UoGvsbw94Ro125cUzgxuhV9XyYDxUXnaepG","sym":"\u5927A","age":30.8,"why":"liquidity","liq":159}
 {"t":1794049741223,"addr":"3RVna6kKn6SRf6rj7rjjNC8qne9EBYkAC9GQsdCteMsr","sym":"\u82b1","age":30.7,"why":"liquidity","liq":0}
+{"t":1794049981219,"addr":"6iMd2JeruCUBhQwTMqnsNzHnWf3iJkPCZNa3t52FmAw","sym":"GTAfi","age":30.3,"why":"liquidity","liq":0}
+{"t":1794050040529,"addr":"AixM4Kew7MXLAbxnSQw3Ku8JwzxbXj6o5Yq51sWQKhdH","sym":"\u82b1","age":30.8,"score":0.03356,"px":1.096e-05,"liq":15916,"p0":1.3287361948537548e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":24.0,"f_cjk":1.0,"c_ret":0.7146,"c_peak":1.4899,"c_vol":5.2922,"c_act":1.0,"c_r5":0.0887,"c_r15":0.2009,"c_mc":4.1234}}
