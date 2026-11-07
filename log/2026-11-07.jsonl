@@ -688,3 +688,5 @@
 {"t":1794079020290,"addr":"4cw9zaqgsvp9F4sq3xSgBLe8WSvRXateecBswknLbonk","sym":"FRZHACK","age":30.9,"why":"liquidity","liq":0}
 {"t":1794079200670,"addr":"7WUFLHdTqQbj6vGU5z4wgmb2jxsVtoes5L5AFVoAbonk","sym":"FLARED","age":30.1,"why":"liquidity","liq":0}
 {"t":1794079320668,"addr":"FSQ2imLFDBdkjCHnTNPvc3geV5dw5xrJU39KG24t71Z5","sym":"SharkNinja","age":30.5,"why":"liquidity","liq":0}
+{"t":1794079621260,"addr":"2SLd54qWHDdmL9bog44ytQV6bSrjs4qCyAVvH7vFk1HF","sym":"SharkNinja","age":31.0,"why":"liquidity","liq":0}
+{"t":1794079621260,"addr":"EU6bvkgzxk6L4z6W1X6dDsNiVy5mbwUojhePD964pump","sym":"jose","age":30.4,"why":"liquidity","liq":7149}
