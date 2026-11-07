@@ -128,3 +128,5 @@
 {"t":1794025020602,"addr":"74u9wpySXNEgrMTdUbZeKiT7fYRJXUJPTcnzXw4xbonk","sym":"Stardon","age":30.3,"why":"liquidity","liq":0}
 {"t":1794025260865,"addr":"AB61YSKA8VfPa33mG1QNLVVip71Vpb4AfbasfAsiaNj","sym":"Alice","age":30.7,"score":0.01678,"px":9.923e-07,"liq":139512,"p0":1.013396070866106e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.5667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.4484,"c_peak":1.03,"c_vol":6.4285,"c_act":1.0,"c_r5":0.0507,"c_r15":0.224,"c_mc":3.0058}}
 {"t":1794025320722,"addr":"xNG4NySJ2M7GoYNTsrcWqiFkjGk5BR31pbsZWBYpump","sym":"MUSKX","age":30.5,"why":"liquidity","liq":1630}
+{"t":1794025440554,"addr":"9162ritsMpMQU5E2x9SWHn36Q82nkDebi7uNpPtJMZFU","sym":"\ud83d\udc24Chick","age":30.6,"why":"liquidity","liq":0}
+{"t":1794025560253,"addr":"7j75sRodqFV2oabucH2jHM1BKZeFCNqM6DSmdNQBpump","sym":"Funny","age":30.8,"why":"liquidity","liq":2953}
