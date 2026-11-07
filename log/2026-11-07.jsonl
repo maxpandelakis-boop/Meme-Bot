@@ -820,3 +820,7 @@
 {"t":1794093540906,"addr":"Hby6diXG1jhAV1MsxNwo7UbwFLVWYazKuxzuyYS3Cp7S","sym":"DANA","age":30.6,"why":"liquidity","liq":0}
 {"t":1794093780477,"addr":"22xUt4i2bogmxcbhnq1nh4KthanfJQi8NuzmmwKMpump","sym":"DANA","age":30.2,"score":0.03308,"px":5.76e-05,"liq":18283,"p0":7.757052927531172e-05,"bars":6,"buy":false,"f":{"f_curve_min":5.4833,"f_creator_prior":1.0,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.9543,"c_peak":1.3582,"c_vol":5.2845,"c_act":1.0,"c_r5":0.7218,"c_r15":1.6942,"c_mc":4.8897}}
 {"t":1794093960422,"addr":"Gfzb8U3FpfgFfidXFe3baKcQbnDoo3BcuNtUnGCNU3wL","sym":"NVIDIA","age":30.1,"why":"liquidity","liq":0}
+{"t":1794094080160,"addr":"E8SYLvZrdD4GN3idZ97vsH835iLChdJDsSuLgN5ciNLV","sym":"Intel AI","age":30.8,"why":"liquidity","liq":0}
+{"t":1794094200091,"addr":"C5EDzQANVUf4XqwDNurSMuz9YKiF7BE7SBRhsZ2spump","sym":"CHARLIEKIRK","age":30.8,"why":"liquidity","liq":1899}
+{"t":1794094320930,"addr":"CM5ZLrUH1iTqeEn3Q23P6FGYwq9DprLiHZpNY53rboob","sym":"ABTC","age":43.9,"why":"no candles"}
+{"t":1794094320930,"addr":"J5wNnWbmgRpVRBKLNS2RVL5PtWA7WfModS3q2TH8pump","sym":"Austwo","age":30.8,"why":"liquidity","liq":0}
