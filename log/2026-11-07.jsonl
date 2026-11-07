@@ -73,3 +73,4 @@
 {"t":1794018960676,"addr":"DzuJq2AJNChKv3QnLKy4dEKWFrj11WoP84fdeJZkpump","sym":"TIMOTHY","age":30.1,"why":"liquidity","liq":2034}
 {"t":1794019440978,"addr":"4ou2k4dFnKd4VjXbgqFTNqAaTwYt2D9yJeumuPcumoon","sym":"CIPHOWL","age":31.0,"why":"liquidity","liq":0}
 {"t":1794019500895,"addr":"ApnvFSZeuW9UPtVkDUs8RhGQDZaxUwr6xEYec4syxptc","sym":"ROBINCAT","age":30.1,"why":"liquidity","liq":0}
+{"t":1794019680511,"addr":"7Gp18DH1fGshVTeEgSVLRghSxsAFJbZroradCX7epump","sym":"US\u200aOE","age":30.2,"score":0.01169,"px":0.0005421,"liq":59371,"p0":0.00014929041443261215,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":8.0,"f_cjk":0.0,"c_ret":-3.4765,"c_peak":40.3966,"c_vol":5.8653,"c_act":1.0,"c_r5":-0.7929,"c_r15":0.0823,"c_mc":5.174}}
