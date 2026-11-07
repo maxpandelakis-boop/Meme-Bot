@@ -6,3 +6,4 @@
 {"t":1794010920383,"addr":"EyJhGdWdKcE5LZzwq8UvWDQTC3yfEQQcYmsLb8Uypump","sym":"OFFICIAL","age":30.1,"why":"liquidity","liq":2634}
 {"t":1794010981075,"addr":"AvHUmUVh66yEutE7qKaeQnBGmru3nMexWD7WTRDDEHAe","sym":"Dragon","age":30.2,"why":"liquidity","liq":2}
 {"t":1794011160350,"addr":"z17XKTitUumeFK4Xnd4HuL6R2KenKjnEjcvEqxipump","sym":"USDF","age":30.1,"score":0.00786,"px":0.1887,"liq":1093798,"p0":0.18885524718921234,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0104,"c_peak":1.0,"c_vol":5.7372,"c_act":1.0,"c_r5":0.0036,"c_r15":0.0074,"c_mc":8.2761}}
+{"t":1794011280595,"addr":"EnhQUtU1EwwnvpMLmTWhBKfq9yR3NCZdtbXpWNe8pump","sym":"ELON","age":30.6,"why":"liquidity","liq":1875}
