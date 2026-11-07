@@ -107,3 +107,5 @@
 {"t":1794022560710,"addr":"BdouwEr3mwXkT6S6EmHNCjn9oEtykRKCKiUSTRF9pump","sym":"Alice","age":30.2,"score":0.02345,"px":0.0001954,"liq":39466,"p0":0.000187448197778373,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":4.0,"f_cjk":0.0,"c_ret":1.7293,"c_peak":1.178,"c_vol":5.8824,"c_act":1.0,"c_r5":0.0991,"c_r15":0.2371,"c_mc":5.2729}}
 {"t":1794022560710,"addr":"GXoe8D8SFDxs1WesVsSWj5w87bsCdHdKNdBugk9ubonk","sym":"PIXLAMP","age":30.2,"why":"liquidity","liq":0}
 {"t":1794022800085,"addr":"KeeX8JFBi8cUZeszp7kzP6R93vY7MxvNQdSKudXpump","sym":"BARRON","age":30.3,"why":"liquidity","liq":1651}
+{"t":1794022920266,"addr":"emtRZ3Cvz5V4SFNs9JKzJP11Ckbwe45gtXGKBF5pump","sym":"Amazon","age":30.7,"why":"liquidity","liq":1629}
+{"t":1794023100919,"addr":"FFJ5kru9RELJ9p3yPyDinbKuVUjZHSARJvthtuQYpump","sym":"MUTTAPE","age":30.7,"why":"liquidity","liq":1721}
