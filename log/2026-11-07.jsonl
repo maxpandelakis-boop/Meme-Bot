@@ -277,3 +277,6 @@
 {"t":1794040200523,"addr":"LLzYn4ZZ4anByo4Xud8jMvE7y9zCf2APwRsTCZcpump","sym":"NADF","age":30.4,"score":0.00597,"px":0.1321,"liq":914183,"p0":0.13130598679643768,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0469,"c_peak":1.0,"c_vol":5.6565,"c_act":1.0,"c_r5":0.008,"c_r15":0.0241,"c_mc":8.1183}}
 {"t":1794040381144,"addr":"BRJhPYkWFLWgqErgcET8wcTuJJ8MrZBzFPUB4uofkbpv","sym":"Garfield","age":30.0,"why":"liquidity","liq":0}
 {"t":1794040560518,"addr":"CmkaJVCRmrqQB7nEEFMWceDj7pSJEmorK42r2EFisy6V","sym":"Winged cat","age":30.1,"why":"liquidity","liq":0}
+{"t":1794040680765,"addr":"ozbsAkTXgkRntFoQyipz9V7yZb6anedp7HPgP1xpump","sym":"lucky","age":30.0,"why":"liquidity","liq":9759}
+{"t":1794040740501,"addr":"4w41uQPjVGi3Lf6JuaJ7YfhrWay7UyH1VoeoA1B3pump","sym":"ALLTHRN","age":30.6,"why":"liquidity","liq":0}
+{"t":1794040740501,"addr":"Au73YZ7kBeuRtqRU7MMgKn2KLKRusjQvrn8C82Yz7QT","sym":"trauma","age":30.4,"why":"liquidity","liq":0}
