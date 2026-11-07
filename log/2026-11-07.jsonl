@@ -71,3 +71,5 @@
 {"t":1794018300817,"addr":"QF6s25Eu4kZByqogBFRZmt8sPVWAmSKZmbzmNhpgHCf","sym":"scamsem","age":30.6,"why":"liquidity","liq":0}
 {"t":1794018780784,"addr":"yKKtcgHeyWULU53yxFfDmZ6M9MU4KpgyjC8CtG7pump","sym":"Microsoft","age":30.8,"score":0.00709,"px":0.0003849,"liq":47941,"p0":0.00033526724643122665,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":12.0,"f_cjk":0.0,"c_ret":1.0161,"c_peak":1.0001,"c_vol":4.2469,"c_act":1.0,"c_r5":0.303,"c_r15":0.575,"c_mc":5.5254}}
 {"t":1794018960676,"addr":"DzuJq2AJNChKv3QnLKy4dEKWFrj11WoP84fdeJZkpump","sym":"TIMOTHY","age":30.1,"why":"liquidity","liq":2034}
+{"t":1794019440978,"addr":"4ou2k4dFnKd4VjXbgqFTNqAaTwYt2D9yJeumuPcumoon","sym":"CIPHOWL","age":31.0,"why":"liquidity","liq":0}
+{"t":1794019500895,"addr":"ApnvFSZeuW9UPtVkDUs8RhGQDZaxUwr6xEYec4syxptc","sym":"ROBINCAT","age":30.1,"why":"liquidity","liq":0}
