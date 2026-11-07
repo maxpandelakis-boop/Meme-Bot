@@ -10,3 +10,4 @@
 {"t":1794011354443,"addr":"2rwNfv9tS82uvjZU9QCLUWcfUvPpAxsHFhiKYyBHpump","sym":"Memecoin","age":30.8,"why":"liquidity","liq":1967}
 {"t":1794011461423,"addr":"dMyGV4ptoPmJPQ6Cqh2j69AJRZU88mGL7JryMezpump","sym":"USDP","age":30.9,"score":0.00658,"px":0.1371,"liq":932053,"p0":0.13716241599379206,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.0098,"c_peak":1.0015,"c_vol":5.6651,"c_act":1.0,"c_r5":0.0015,"c_r15":0.0061,"c_mc":8.1372}}
 {"t":1794011520451,"addr":"3sHwwWx1BeJwnHooL726Eanz889yqff2YcFcgMfLpump","sym":"X","age":30.0,"why":"liquidity","liq":2589}
+{"t":1794011760801,"addr":"132SMEMzArQLbvrswy6Qh5gySwdFLgRbp7uQPR59pump","sym":"Memecoin","age":30.6,"why":"liquidity","liq":1669}
