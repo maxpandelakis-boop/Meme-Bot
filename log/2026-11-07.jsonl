@@ -89,3 +89,4 @@
 {"t":1794020460933,"addr":"2fAnUZorfTy7pQ1m8q8EVAntZPMkHFQh2Ks6FXzepump","sym":"DIC","age":30.0,"score":0.00713,"px":2.579e-05,"liq":11219,"p0":2.5594841874340114e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":2.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.2622,"c_peak":1.6527,"c_vol":3.8122,"c_act":0.8333,"c_r5":0.0,"c_r15":0.1299,"c_mc":4.4082}}
 {"t":1794020580690,"addr":"BLoaUV7Xe6sJLgNx6KPQMyy3ckQsD6Wkvn1PNLk3pump","sym":"ASTEX","age":30.3,"why":"liquidity","liq":1796}
 {"t":1794020700714,"addr":"HqJrBin7u3ikdZLLg4rTZwdMxXXg5cqqozV929aAbonk","sym":"KYLOBYE","age":30.9,"why":"liquidity","liq":0}
+{"t":1794020880280,"addr":"aa6vqwpC97g8xrf9spUbaFRcnC1fnvj1SbZx4nWpump","sym":"MUTTAPE","age":30.1,"why":"liquidity","liq":1714}
