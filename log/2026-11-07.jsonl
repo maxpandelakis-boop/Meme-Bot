@@ -543,3 +543,7 @@
 {"t":1794065520115,"addr":"oBhig7oQbh9VNbAPw3XnJRtNvJhJS5VVcLJm3QzeFg6","sym":"Koop","age":30.7,"why":"liquidity","liq":0}
 {"t":1794065760498,"addr":"LpmU8CNwjWCYpXLrVUgZw61iT31HUdA1biw9Y1pNPqQ","sym":"TRUMPCOIN","age":30.3,"why":"liquidity","liq":0}
 {"t":1794065821302,"addr":"GFc2b6AosFpAizM2L1GbJruauqKnh72twPe6Lus6wkaa","sym":"Koop","age":30.3,"why":"liquidity","liq":0}
+{"t":1794066120635,"addr":"CFxxQDnQxwF9BuRysPbPHy1X3kBxMR9piEkeUeszpump","sym":"homo","age":30.7,"why":"liquidity","liq":1948}
+{"t":1794066120635,"addr":"CMLJLxxFYGzYGvsZhgR3963VzZ87pdKCYCTaFSr4pump","sym":"K9 Neo","age":30.4,"why":"liquidity","liq":1803}
+{"t":1794066120635,"addr":"75VDY6P9kJyAp7QGYRzq7o85oKBSXpR9XmaWVHcspump","sym":"IMAM","age":30.3,"score":0.03308,"px":0.0004385,"liq":104540,"p0":0.00045511984648702704,"bars":6,"buy":false,"f":{"f_curve_min":5.8833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":1.7927,"c_peak":1.1516,"c_vol":5.9897,"c_act":1.0,"c_r5":0.1362,"c_r15":0.4152,"c_mc":5.6581}}
+{"t":1794066180929,"addr":"9xYFmm8YH1r2qY3wA1c5PVpo2XV5vfJgsHYHDwJTpump","sym":"Go go coin","age":30.5,"why":"liquidity","liq":1838}
