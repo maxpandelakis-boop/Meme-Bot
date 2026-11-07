@@ -701,3 +701,6 @@
 {"t":1794080220709,"addr":"6MidA49VWEJaYoyDGTcDKxmFFxrq3ohyCYgZQWfbpump","sym":"BOOBIE","age":30.7,"why":"liquidity","liq":2069}
 {"t":1794080280552,"addr":"GtP5cE5RHL4ZXYJkrK745PFWcXW9n9X5F1ZmhMdWbonk","sym":"RUBPAR","age":30.4,"why":"liquidity","liq":0}
 {"t":1794080580670,"addr":"6wvCv3sEurB3KmUkNeZP6KjXhczuYysmu9rfdkiupump","sym":"Jarothy","age":30.9,"why":"liquidity","liq":2027}
+{"t":1794080640432,"addr":"RwGMxw4LzU5ZjtdxA7S4qLwLtCT4xHZUHeAtupCpump","sym":"FOMO","age":30.6,"score":0.01341,"px":0.0001957,"liq":33625,"p0":0.00016003751234770254,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":13.0,"f_cjk":0.0,"c_ret":0.3421,"c_peak":1.0002,"c_vol":4.4529,"c_act":1.0,"c_r5":0.259,"c_r15":0.4497,"c_mc":5.2042}}
+{"t":1794080700748,"addr":"EyvmSJy7z7VLj8158NNnJizKSH1rekfbnx1wSgMVpump","sym":"Millioners","age":30.1,"why":"liquidity","liq":5873}
+{"t":1794080820282,"addr":"9PPMpwduf92BGy52pPef7gceC3T54H2SJac36Brxpump","sym":":3","age":43.1,"why":"no candles"}
