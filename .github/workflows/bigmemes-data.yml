@@ -1,0 +1,30 @@
+# Big meme coins on Binance spot (research only, fake money): the universe list (CoinGecko's meme category and Binance ticker
+# list) and one-hour candles from Binance's public data mirror. Runs only on a push of this file or the fetch script on this
+# research branch; writes only the data branch "bigmemes". No key, no secret; the bot and its results branch are not touched.
+name: bigmemes-data
+on:
+  push:
+    branches: [claude/project-thread-mwk6t5]
+    paths: [.github/workflows/bigmemes-data.yml, research/bigmemes/fetch.py]
+permissions:
+  contents: write
+concurrency:
+  group: bigmemes-data
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Universe list and one-hour candles
+        run: python3 research/bigmemes/fetch.py out && du -sh out && ls out/klines | wc -l
+      - name: Push to the bigmemes branch (one commit, replaced each run)
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b bigmemes && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "big memes data $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" bigmemes
