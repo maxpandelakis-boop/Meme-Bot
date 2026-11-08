@@ -45,3 +45,15 @@ console.log("ok: copy engine");
   assert.equal(r[0].wins, 2);
   console.log("ok: rank wallets");
 }
+
+// hot coins: reddit mentions and score
+{
+  const coins = [{ mint: "MintA111", symbol: "PONS" }, { mint: "MintB222", symbol: "SOL" }, { mint: "MintC333", symbol: "cat" }];
+  const posts = [{ title: "PONS to the moon", selftext: "" }, { title: "just bought $cat", selftext: "" }, { title: "ca: MintA111", selftext: "" },
+                 { title: "sol is up", selftext: "" }, { title: "pons lowercase", selftext: "" }];
+  assert.deepEqual(C.redditMentions(coins, posts), { MintA111: 2, MintC333: 1 });
+  const s = C.scoreHot([{ mint: "a", liq: 50000, gtRank: 0, vol1h: 1e5, buys1h: 80, sells1h: 20, reddit: 3, socials: 2 },
+                        { mint: "b", liq: 50000, vol1h: 1e3, buys1h: 10, sells1h: 90 }, { mint: "c", liq: 500, gtRank: 0 }]);
+  assert.deepEqual(s.map(x => x.mint), ["a", "b"]); assert.ok(s[0].score > 80, String(s[0].score));
+  console.log("ok: hot coins");
+}

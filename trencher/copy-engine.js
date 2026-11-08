@@ -139,3 +139,41 @@ export function rankWallets(pools, { maxTradesPerPool = 25, minPnl = 0, top = 12
   return [...W.values()].filter(r => !r.bot && r.coins.length && r.pnl > minPnl)
     .sort((a, b) => b.pnl - a.pnl || b.wins - a.wins).slice(0, top);
 }
+
+// ---------- hot coins from several free sources ----------
+// coins: [{mint, symbol, ...}]; posts: Reddit posts [{title, selftext, created_utc}] -> {mint: count of posts naming the coin
+// by its address, its $TICKER, or (for tickers of 4+ letters that are not common words) the bare ticker}.
+const COMMON = new Set(["THE", "SOL", "PUMP", "MEME", "COIN", "MOON", "BUY", "SELL", "USDC", "USDT", "JUST", "THIS", "WITH", "LIKE", "WHAT", "HOLD", "BULL", "BEAR", "TOKEN"]);
+export function redditMentions(coins, posts) {
+  const out = {};
+  for (const c of coins) {
+    const sym = String(c.symbol || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const reTicker = sym.length >= 2 ? new RegExp("\\$" + sym + "\\b", "i") : null;
+    const reBare = sym.length >= 4 && !COMMON.has(sym) ? new RegExp("\\b" + sym + "\\b") : null;   // case-sensitive: "PONS", not "pons"
+    let n = 0;
+    for (const p of posts) {
+      const t = (p.title || "") + "\n" + (p.selftext || "");
+      if ((c.mint && t.includes(c.mint)) || (reTicker && reTicker.test(t)) || (reBare && reBare.test(t))) n++;
+    }
+    if (n) out[c.mint] = n;
+  }
+  return out;
+}
+
+// One score per coin from what the sources say (each part 0..1, weighted). Higher = hotter. Coins under minLiq are dropped.
+export function scoreHot(coins, { minLiq = 10000 } = {}) {
+  const max = k => Math.max(1, ...coins.map(c => c[k] || 0));
+  const mv = max("vol1h"), mb = max("boost"), mr = max("reddit");
+  return coins.filter(c => (c.liq || 0) >= minLiq).map(c => {
+    const parts = {
+      trend: c.gtRank != null ? 1 - c.gtRank / 20 : 0,                  // GeckoTerminal trending position
+      volume: Math.sqrt((c.vol1h || 0) / mv),                            // DexScreener 1 h volume
+      boost: (c.boost || 0) / mb,                                         // DexScreener paid boosts (also a hype signal)
+      buyers: c.buys1h + c.sells1h > 0 ? c.buys1h / (c.buys1h + c.sells1h) : 0,
+      reddit: (c.reddit || 0) / mr,
+      socials: Math.min((c.socials || 0) / 2, 1),                         // has X / Telegram / website
+    };
+    const score = 30 * parts.trend + 25 * parts.volume + 10 * parts.boost + 15 * parts.buyers + 15 * parts.reddit + 5 * parts.socials;
+    return { ...c, score: Math.round(score), parts };
+  }).sort((a, b) => b.score - a.score);
+}

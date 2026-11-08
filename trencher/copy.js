@@ -1,7 +1,7 @@
 // Copy-Bot screen of the Trencher (paper money only): follows Solana wallets of traders, buys what they buy `delaySec` later,
 // sells when they sell (or at the take-profit), and shows it like the video: balance chart, copy grid, agents, activity, account.
 // Data, all free and keyless: PublicNode's Solana JSON-RPC (the traders' transactions) and DexScreener (prices).
-import { COPY_DEFAULTS, rankWallets, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, stats } from "./copy-engine.js";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, stats } from "./copy-engine.js";
 import { bestPair } from "./sim.js";
 
 const $ = id => document.getElementById(id);
@@ -423,25 +423,84 @@ async function gt(path) {
   }
   throw new Error("GeckoTerminal: zu viele Anfragen, gleich nochmal versuchen");
 }
+// Hot coins from every free source: GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions.
+const DS = "https://api.dexscreener.com";
+const REDDIT = "https://www.reddit.com/r/solana+memecoins+SolanaMemeCoins+CryptoMoonShots+pumpfun/new.json?limit=100&raw_json=1";
+let hot = [];
+async function getJson(url) { const r = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
+async function hotCoins(msg) {
+  const coins = new Map(), add = (mint, x) => { if (!mint) return; const c = coins.get(mint) || coins.set(mint, { mint, src: [] }).get(mint); Object.assign(c, x); };
+  const tag = (mint, s) => { const c = coins.get(mint); if (c && !c.src.includes(s)) c.src.push(s); };
+  msg("Hole Trends von GeckoTerminal …");
+  try {
+    const tp = await gt("/trending_pools?page=1");
+    (tp.data || []).forEach((d, i) => {
+      const mint = String(d.relationships?.base_token?.data?.id || "").replace(/^solana_/, "");
+      add(mint, { gtRank: i, pool: d.attributes.address, symbol: String(d.attributes.name || "").split(" / ")[0] }); tag(mint, "GT #" + (i + 1));
+    });
+  } catch {}
+  msg("Hole Boosts und neue Coins von DexScreener …");
+  for (const [url, label] of [[DS + "/token-boosts/top/v1", "Boost"], [DS + "/token-profiles/latest/v1", "Neu"]]) {
+    try {
+      const list = await getJson(url);
+      for (const t of (Array.isArray(list) ? list : []).filter(t => t.chainId === "solana").slice(0, 20)) {
+        add(t.tokenAddress, label === "Boost" ? { boost: t.totalAmount || t.amount || 0 } : {}); tag(t.tokenAddress, label);
+      }
+    } catch {}
+  }
+  msg(`Hole Preise und Käufe von ${coins.size} Coins (DexScreener) …`);
+  const mints = [...coins.keys()];
+  for (let i = 0; i < mints.length; i += 30) {
+    try {
+      const j = await getJson(DEX(mints.slice(i, i + 30)));
+      for (const m of mints.slice(i, i + 30)) {
+        const p = bestPair(j.pairs, m); if (!p) continue;
+        const info = p.info || {}, h1 = (p.txns && p.txns.h1) || {};
+        add(m, { symbol: p.baseToken.symbol, pool: p.pairAddress, liq: (p.liquidity && p.liquidity.usd) || 0, vol1h: (p.volume && p.volume.h1) || 0,
+                 buys1h: h1.buys || 0, sells1h: h1.sells || 0, chg1h: (p.priceChange && p.priceChange.h1) || 0, mc: p.marketCap || p.fdv || 0,
+                 img: info.imageUrl || "", socials: (info.socials || []).length + (info.websites || []).length,
+                 links: (info.socials || []).map(x => x.type), url: p.url });
+        prices[m] = { price: Number(p.priceUsd) || 0, liq: (p.liquidity && p.liquidity.usd) || 0, mc: p.marketCap || p.fdv || 0, symbol: p.baseToken.symbol, img: info.imageUrl || "", t: Date.now() };
+      }
+    } catch {}
+  }
+  msg("Lese Reddit (r/solana, r/memecoins, r/SolanaMemeCoins, r/CryptoMoonShots, r/pumpfun) …");
+  try {
+    const j = await getJson(REDDIT);
+    const posts = (j.data?.children || []).map(c => c.data).filter(p => Date.now() / 1000 - p.created_utc < 86400);
+    const n = redditMentions([...coins.values()], posts);
+    for (const [m, k] of Object.entries(n)) { add(m, { reddit: k }); tag(m, "Reddit " + k); }
+  } catch { msg("Reddit gerade nicht erreichbar, mache ohne weiter …"); }
+  return scoreHot([...coins.values()]);
+}
+
 async function findTraders() {
   const btn = $("findBtn"), msg = t => { $("findMsg").textContent = t; };
   btn.disabled = true; found = []; renderFound();
   try {
-    msg("Suche heiße Coins …");
-    const tp = await gt("/trending_pools?page=1");
-    const pools = (tp.data || []).map(d => ({ addr: d.attributes.address, coin: String(d.attributes.name || "").split(" / ")[0], liq: Number(d.attributes.reserve_in_usd) || 0 }))
-      .filter(p => p.addr && p.liq >= 10000).slice(0, 8);
+    hot = await hotCoins(msg); renderHot();
+    const pools = hot.filter(c => c.pool).slice(0, 8);
     const got = [];
     for (let i = 0; i < pools.length; i++) {
-      msg(`Prüfe Trader von ${pools[i].coin} (${i + 1}/${pools.length}) …`);
+      msg(`Prüfe Trader von ${pools[i].symbol} (${i + 1}/${pools.length}) …`);
       await sleep(2200);
-      try { const j = await gt(`/pools/${pools[i].addr}/trades?trade_volume_in_usd_greater_than=20`); got.push({ coin: pools[i].coin, trades: (j.data || []).map(d => d.attributes) }); } catch {}
+      try { const j = await gt(`/pools/${pools[i].pool}/trades?trade_volume_in_usd_greater_than=20`); got.push({ coin: pools[i].symbol, trades: (j.data || []).map(d => d.attributes) }); } catch {}
     }
     found = rankWallets(got);
-    msg(found.length ? `${found.length} Wallets mit Gewinn in den letzten Trades von ${got.length} heißen Coins. Glück oder Können? Erst mit Spielgeld testen.`
+    msg(found.length ? `${hot.length} heiße Coins aus 4 Quellen, ${found.length} Wallets mit Gewinn in den Top ${got.length}. Glück oder Können? Erst mit Spielgeld testen.`
                      : "Gerade keine klaren Gewinner gefunden. In ein paar Minuten nochmal versuchen.");
   } catch (e) { msg("Suche fehlgeschlagen: " + (e.message || e)); }
   btn.disabled = false; renderFound();
+}
+function renderHot() {
+  $("hotHead").style.display = hot.length ? "" : "none";
+  $("hotList").innerHTML = hot.slice(0, 10).map(c => {
+    const soc = (c.links || []).map(x => x === "twitter" ? "𝕏" : x === "telegram" ? "TG" : x === "discord" ? "DC" : "").filter(Boolean).join(" ");
+    return `<li>${avatar(c.symbol || "?", c.img)}<div class="mid"><b>${esc(c.symbol || short(c.mint))} <span class="score">${c.score}</span></b>
+      <code>${esc(c.src.join(" · "))}${soc ? " · " + soc : ""}</code></div>
+      <div class="amt"><b class="${c.chg1h >= 0 ? "pos" : "neg"}">${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}%</b><span>${big(c.vol1h)} Vol 1h · ${c.buys1h}/${c.sells1h}</span></div>
+      ${c.url ? `<a class="link tiny" href="${esc(c.url)}" target="_blank" rel="noopener">↗</a>` : ""}</li>`;
+  }).join("");
 }
 function renderFound() {
   $("findList").innerHTML = found.map((r, i) => {

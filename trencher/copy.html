@@ -38,9 +38,12 @@
   <!-- AGENTS -->
   <section id="agents" class="page">
     <h2>Trader zum Kopieren</h2>
-    <p class="muted tiny">Name und Solana-Wallet des Traders. Kauft er, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
+    <p class="muted tiny">Der Knopf sucht heiße Coins (GeckoTerminal, DexScreener, Reddit) und darin die Wallets mit dem meisten Gewinn. Oder Name und Solana-Wallet selbst eintragen. Kauft ein Trader, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
     <button id="findBtn" class="find">🔍 Gute Trader finden</button>
     <div id="findMsg" class="tiny muted"></div>
+    <h2 id="hotHead" style="display:none">Heiße Coins <span class="muted tiny">GeckoTerminal · DexScreener · Reddit</span></h2>
+    <ol id="hotList" class="traders"></ol>
+    <h2>Gefundene Trader</h2>
     <ol id="findList" class="traders"></ol>
     <h2>Deine Trader</h2>
     <ol id="traderList" class="traders"></ol>
