@@ -258,3 +258,6 @@
 {"t":1794125820530,"addr":"NrCU89BaPria3WX7YLX25gJkf3fbcjTCL1oMbTU2qE7","sym":"CALLCAT","age":30.4,"score":0.02501,"px":9.853e-07,"liq":142238,"p0":1.0066433918238261e-06,"bars":6,"buy":false,"f":{"f_curve_min":0.6,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.4331,"c_peak":1.0056,"c_vol":6.4387,"c_act":1.0,"c_r5":0.0609,"c_r15":0.1755,"c_mc":3.0029}}
 {"t":1794125940746,"addr":"CcREPFdEa2tJnk3a6qht2Lnh335qk7wDdXNATrZcijfX","sym":"Horned cat","age":30.2,"why":"liquidity","liq":0}
 {"t":1794126060893,"addr":"ctMpaPiXjiUN86BoYbdE1G5QtjvTjkdyBbGkZHepump","sym":"CALLCAT","age":37.7,"why":"liquidity","liq":9377}
+{"t":1794126181145,"addr":"Ee9tP4xjC92m6nKLLs9qBXnTg1daiLFR7xH1yLL6bonk","sym":"SUNOMIC","age":31.0,"why":"liquidity","liq":0}
+{"t":1794126181145,"addr":"BDkyza3oudZW774JU9kraUMJzb7g1JjfYSzCZwFF2y8u","sym":"\u5927A","age":30.7,"why":"liquidity","liq":0}
+{"t":1794126301218,"addr":"8nNCQovgyn6z7z9vgTEbqaGo9JXN8Ni2pac9agKHwTsJ","sym":"\u82b1","age":30.8,"score":0.03442,"px":1.822e-05,"liq":20346,"p0":1.8683192594786196e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":38.0,"f_cjk":1.0,"c_ret":0.9329,"c_peak":1.0532,"c_vol":5.2547,"c_act":1.0,"c_r5":0.2849,"c_r15":0.3665,"c_mc":4.2715}}
