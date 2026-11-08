@@ -679,3 +679,6 @@
 {"t":1794173520163,"addr":"7GUPbwwPs8uQqtBjSXdut1dqQ7oF3GvX93uBgiDsvmby","sym":"Flying Pig","age":30.6,"score":0.02889,"px":6.045e-05,"liq":72903,"p0":6.0869860268297004e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.7323,"c_peak":1.0298,"c_vol":5.229,"c_act":1.0,"c_r5":0.1235,"c_r15":0.3833,"c_mc":4.7844}}
 {"t":1794173581310,"addr":"E6bFN4GsrnQFLTwK3MWCpwb7b4d7eVrhcoXaNqmWpump","sym":"Porsche","age":30.6,"why":"liquidity","liq":1677}
 {"t":1794173581310,"addr":"Dx5cRHFjocoMLapfrzDUeScqHUrw9Tozkg8rUGvCvzG","sym":"\u97e9\u56fd\u4eba\u4f1a\u98de","age":30.6,"why":"liquidity","liq":0}
+{"t":1794173821365,"addr":"AvgXW4hP7ozPe8P2VVnyEcCgfyKGotsKsKTzVhHSpump","sym":"Elysium","age":30.4,"why":"liquidity","liq":1613}
+{"t":1794173941276,"addr":"7BUGFSqRgfAySkizzVftdEKRYUPsnZ1QW2HL12R4a4s5","sym":"Nubbo","age":30.7,"score":0.00938,"px":0.0006095,"liq":14909,"p0":0.0005372685889285289,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.7991,"c_peak":1.0,"c_vol":4.7039,"c_act":1.0,"c_r5":0.0172,"c_r15":0.4272,"c_mc":5.7302}}
+{"t":1794174000343,"addr":"5b8LGwj96DedD5HzzDskfsd2BqTQQ4pFdQganEW9pump","sym":"NVIDIH","age":30.3,"why":"liquidity","liq":6321}
