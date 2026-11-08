@@ -576,3 +576,4 @@
 {"t":1794162120068,"addr":"DWSm4Lf2S7FCjAFAcQ7FeKYdMWaHKQYC5bHzLzEpump","sym":"USNR","age":30.3,"score":0.00484,"px":0.006991,"liq":208240,"p0":0.006965358255526268,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.0371,"c_peak":1.0062,"c_vol":4.9877,"c_act":1.0,"c_r5":0.0036,"c_r15":0.0021,"c_mc":6.8429}}
 {"t":1794162300698,"addr":"FDakUG7p13Hws8he3H1Q5DRgeB6WhBF1uRRWicwTpump","sym":"SCAMCOIN","age":30.5,"why":"liquidity","liq":2260}
 {"t":1794162360958,"addr":"BGze7jrh7FbgAsTPRDk3E1Fcd1SchnFGGmASLPMvtxvb","sym":"\u5927A","age":30.8,"why":"liquidity","liq":0}
+{"t":1794162480926,"addr":"2szQaGD9svH5giULEFuNwy6YJsYZ9NvjxMkfkx9Hn5YE","sym":"\u548c\u5e73\u7cbe\u82f1","age":30.5,"why":"liquidity","liq":0}
