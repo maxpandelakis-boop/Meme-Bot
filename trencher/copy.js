@@ -450,8 +450,8 @@ async function redditPosts() {
     let dev = await load("redditDevice", "");
     if (!dev) { dev = Array.from(crypto.getRandomValues(new Uint8Array(15)), b => b.toString(16).padStart(2, "0")).join(""); save("redditDevice", dev); }
     const r = await fetch("https://www.reddit.com/api/v1/access_token", { method: "POST",
-      headers: { Authorization: "Basic " + btoa(id + ":"), "Content-Type": "application/x-www-form-urlencoded" },
-      body: "grant_type=" + encodeURIComponent("https://oauth.reddit.com/grants/installed_client") + "&device_id=" + dev });
+      headers: { Authorization: "Basic " + btoa(id + ":") },   // form body via URLSearchParams: Reddit's CORS allows only Authorization
+      body: new URLSearchParams({ grant_type: "https://oauth.reddit.com/grants/installed_client", device_id: dev }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.access_token) throw new Error("Reddit-Anmeldung: " + (j.error || r.status));
     redditTok = { token: j.access_token, until: Date.now() + ((j.expires_in || 3600) - 60) * 1000 };
