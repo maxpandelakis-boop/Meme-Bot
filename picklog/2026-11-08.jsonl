@@ -6,3 +6,5 @@
 {"at":1794142440000,"why":"stop","mult":0.003094740261364476,"late":true,"hitAt":1794142140000,"rule":"chart","sym":"ORBIT","t":1794142521102,"eur":0.05,"pnl":-49.95,"entryAt":1794135406991,"id":"2026-11-08T103106-h-ORBIT-DSAKMZ"}
 {"at":1794153613767,"why":"time","mult":0.9864157061509382,"rule":"chart","sym":"CHILL","t":1794153638851,"eur":48.34,"pnl":-1.66,"entryAt":1794132013767,"id":"2026-11-08T093454-h-CHILL-9RZeok"}
 {"at":1794155040000,"why":"drop","mult":0.9785734894008102,"late":true,"hitAt":1794154860000,"rule":"chart","sym":"Whitehouse","t":1794155062800,"eur":47.95,"pnl":-2.05,"entryAt":1794145134628,"id":"2026-11-08T131908-h-Whitehouse-5UWfbq"}
+{"at":1794178020000,"why":"drop","mult":1.1052171765064176,"late":true,"hitAt":1794177960000,"rule":"chart","sym":"HEREWEGO","t":1794178025628,"eur":54.16,"pnl":4.16,"entryAt":1794175388106,"id":"2026-11-08T214319-h-HEREWEGO-483npr"}
+{"at":1794178100094,"why":"time","mult":1.076072965349076,"rule":"chart","sym":"CHILL","t":1794178150403,"eur":52.73,"pnl":2.73,"entryAt":1794156500094,"id":"2026-11-08T162542-h-CHILL-9RZeok"}
