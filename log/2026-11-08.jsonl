@@ -60,3 +60,5 @@
 {"t":1794103020644,"addr":"HuZ6dVQWgBJgigd194b3qWzKA2r5AjJDkYJknBAZpump","sym":"POTI","age":30.3,"why":"liquidity","liq":2733}
 {"t":1794103080957,"addr":"8Qu8RS8TAef3bUAMU2NupizA9zaiSe3FiiL4KaHDziKe","sym":"AGC","age":31.0,"why":"liquidity","liq":0}
 {"t":1794103200083,"addr":"6SETihHbrfmTXEGwcdLt6Lz2V5B9pVkgM648WCopFTtA","sym":"Satan-Cat","age":30.1,"why":"liquidity","liq":0}
+{"t":1794103381079,"addr":"kkG92W4S366opoPHsSdqNrkVcNvh3aJ7e374269pump","sym":"USDA","age":30.1,"score":0.0102,"px":0.1275,"liq":892881,"p0":0.12750280473711656,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0238,"c_peak":1.0005,"c_vol":5.6458,"c_act":1.0,"c_r5":0.0014,"c_r15":0.005,"c_mc":8.1055}}
+{"t":1794103500680,"addr":"GUbUTuHGU21PA9bdPF8B4C6fp36vgrC88mCtR1RkV7Ya","sym":"Satan-Cat","age":31.0,"why":"liquidity","liq":0}
