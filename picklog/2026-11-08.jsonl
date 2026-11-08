@@ -5,3 +5,4 @@
 {"at":1794130140000,"why":"drop","mult":0.6980744248693169,"late":true,"hitAt":1794129180000,"rule":"chart","sym":"ORBIT","t":1794130188760,"eur":34.21,"pnl":-15.79,"entryAt":1794128718108,"id":"2026-11-08T083904-h-ORBIT-DSAKMZ"}
 {"at":1794142440000,"why":"stop","mult":0.003094740261364476,"late":true,"hitAt":1794142140000,"rule":"chart","sym":"ORBIT","t":1794142521102,"eur":0.05,"pnl":-49.95,"entryAt":1794135406991,"id":"2026-11-08T103106-h-ORBIT-DSAKMZ"}
 {"at":1794153613767,"why":"time","mult":0.9864157061509382,"rule":"chart","sym":"CHILL","t":1794153638851,"eur":48.34,"pnl":-1.66,"entryAt":1794132013767,"id":"2026-11-08T093454-h-CHILL-9RZeok"}
+{"at":1794155040000,"why":"drop","mult":0.9785734894008102,"late":true,"hitAt":1794154860000,"rule":"chart","sym":"Whitehouse","t":1794155062800,"eur":47.95,"pnl":-2.05,"entryAt":1794145134628,"id":"2026-11-08T131908-h-Whitehouse-5UWfbq"}
