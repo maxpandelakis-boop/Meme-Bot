@@ -556,3 +556,7 @@
 {"t":1794159840710,"addr":"tNWeVo9rjVRT4ScajxEwPitPX552nJcqUWu3g6Wpump","sym":"BLACKSKY","age":30.9,"why":"liquidity","liq":1695}
 {"t":1794160080291,"addr":"UCRTdFYQNijy3gRrQMwm1hvDoPkShvdrfexrfHKpump","sym":"Slinguur","age":30.0,"score":0.00674,"px":0.0002234,"liq":35863,"p0":0.00020731371867752148,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.5606,"c_peak":1.0,"c_vol":4.0434,"c_act":1.0,"c_r5":0.1211,"c_r15":0.3046,"c_mc":5.3166}}
 {"t":1794160680228,"addr":"9TMQammtzF71oJhBiTZjTY9sFwxSZGJr3q4BaWvBpump","sym":"SOB","age":30.9,"why":"liquidity","liq":2381}
+{"t":1794161040633,"addr":"5CNYAjy2isBex5nTAFphYMXUXxLxbUGMTtsLtKGmsEP5","sym":"Democat","age":30.8,"why":"liquidity","liq":0}
+{"t":1794161040633,"addr":"9MzqvFYz9CtuDQ5RYBtBawkw1QqjQBDscrdu52uwpump","sym":"Rugski","age":30.8,"why":"liquidity","liq":6040}
+{"t":1794161160237,"addr":"AutMmQ6u76bERyATYXpz74BYdjc4Bje9ZE9NmMv8Eet1","sym":"Democat","age":30.5,"why":"liquidity","liq":0}
+{"t":1794161160237,"addr":"GHoij5iRD2n56TE9t4eCLBUvPFw6AKjkzfSjfRe1USas","sym":"MARS INU","age":30.0,"why":"liquidity","liq":0}
