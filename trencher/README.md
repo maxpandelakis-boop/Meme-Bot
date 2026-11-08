@@ -59,3 +59,10 @@ Das Seitenfenster öffnet jetzt den Copy-Bot (`copy.html`). Der alte Coin-Trench
 Daten: Trades der Wallets kommen von der Solana-Blockchain (PublicNode, kostenlos), Preise von DexScreener. Der Bot läuft nur, solange das Seitenfenster offen ist. Keine Wallet, keine Schlüssel, kein echtes Geld.
 
 **Reddit (optional):** Reddit sperrt anonyme Abrufe. Unter reddit.com/prefs/apps eine App vom Typ „installed app“ anlegen (Redirect-URI z. B. `http://localhost`) und ihre ID unter **Agents → Reddit** eintragen. Der Bot zählt dann, wie oft die heißen Coins in r/solana, r/memecoins, r/SolanaMemeCoins, r/CryptoMoonShots und r/pumpfun genannt werden.
+
+## Webseite und Handy-App (ab v0.6.0)
+
+Derselbe Copy-Bot läuft auch ohne Chrome-Erweiterung als Webseite:
+https://raw.githack.com/maxpandelakis-boop/Meme-Bot/trencher-extension/trencher/copy.html
+
+Am Handy: Seite öffnen → Teilen/Menü → „Zum Startbildschirm hinzufügen“. Dann startet sie wie eine App. Der Bot läuft, solange die Seite offen ist (der Bildschirm bleibt dafür an). Konto und Trader bleiben nur in diesem Browser gespeichert.

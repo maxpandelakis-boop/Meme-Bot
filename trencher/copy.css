@@ -85,3 +85,9 @@ button.find:disabled{opacity:.6;cursor:wait}
 .score{font-size:10px;font-weight:800;color:var(--orange);border:1px solid rgba(245,158,11,.45);border-radius:999px;padding:0 6px;margin-left:4px}
 #hotList li .amt{text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
 #hotList li .amt span{display:block;font-size:10.5px;color:var(--mut)}
+/* web and phone app: centered column on wide screens, safe areas on phones */
+@media (min-width:560px){header.top,main{max-width:520px;margin:0 auto}nav.bottom{max-width:520px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+nav.bottom{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+header.top{padding-top:calc(8px + env(safe-area-inset-top))}
+.webnote{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:8px 0;font-size:11.5px;color:var(--mut)}

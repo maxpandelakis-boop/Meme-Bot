@@ -2,6 +2,15 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07080b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trencher">
+<link rel="manifest" href="app.webmanifest">
+<link rel="icon" href="icons/app-192.png">
+<link rel="apple-touch-icon" href="icons/app-180.png">
 <title>Trencher Copy-Bot</title>
 <link rel="stylesheet" href="copy.css">
 </head>
@@ -10,7 +19,8 @@
   <span class="brand">Trencher Bot</span>
   <span id="live" class="pill">● PAPER</span>
   <span id="ver" class="muted tiny"></span>
-  <a href="panel.html" class="right tiny link" title="Der alte Bildschirm: ein Coin, eigener Bot">Coin-Trencher ↗</a>
+  <button id="installBtn" class="right tiny link" style="display:none">⬇ Als App installieren</button>
+  <a id="panelLink" href="panel.html" class="right tiny link" title="Der alte Bildschirm: ein Coin, eigener Bot">Coin-Trencher ↗</a>
 </header>
 
 <main>

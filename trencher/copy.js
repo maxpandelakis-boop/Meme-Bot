@@ -201,11 +201,22 @@ function drawChart() {
   const now = Date.now(), from = now - RANGE_MS[range];
   const pts = acc.curve.filter(p => p.t >= from).concat([{ t: now, v: value() }]);
   if (pts.length === 1) pts.unshift({ t: Math.max(acc.since, from), v: acc.curve.filter(p => p.t < from).pop()?.v ?? acc.deposit });
-  const data = [];
-  for (const p of pts) {
-    const time = Math.floor(p.t / 1000);
-    if (data.length && data[data.length - 1].time >= time) data[data.length - 1].value = p.v; else data.push({ time, value: p.v });
+  else if (pts[0].t > from && acc.curve.some(p => p.t < from)) pts.unshift({ t: from, v: acc.curve.filter(p => p.t < from).pop().v });
+  // the chart spans the whole range: a flat start line at the first value, then evenly spaced steps (the chart library spreads bars,
+  // not times, so a few points far apart would otherwise sit squeezed on the right)
+  const t0 = range === "all" ? Math.min(acc.since, pts[0].t) : from;
+  if (pts[0].t > t0) pts.unshift({ t: t0, v: pts[0].v });
+  const N = 120, step = Math.max(1000, (now - t0) / N), data = [];
+  let j = 0;
+  for (let t = t0; t <= now + 1; t += step) {
+    while (j + 1 < pts.length && pts[j + 1].t <= t) j++;
+    data.push({ time: Math.floor(t / 1000), value: pts[j].v });
   }
+  for (const p of pts) {   // keep every real point exactly, so markers and the last value are precise
+    const time = Math.floor(p.t / 1000), k = data.findIndex(d => d.time >= time);
+    if (k < 0) data.push({ time, value: p.v }); else if (data[k].time === time) data[k].value = p.v; else data.splice(k, 0, { time, value: p.v });
+  }
+  for (let k = data.length - 1; k > 0; k--) if (data[k].time <= data[k - 1].time) data.splice(k - 1, 1);
   const up = data[data.length - 1].value >= data[0].value;
   const col = up ? "#22c55e" : "#ef4444";
   area.applyOptions({ lineColor: col, topColor: up ? "rgba(34,197,94,.28)" : "rgba(239,68,68,.25)", bottomColor: "rgba(0,0,0,0)" });
@@ -333,7 +344,8 @@ function toast(text, bad = false) {
 }
 
 function setRunning(on) {
-  running = on; save("copyRunning", on);
+  running = on;
+  if (typeof keepAwake === "function") keepAwake(on && !IS_EXT); save("copyRunning", on);
   $("runBtn").textContent = on ? "■ Bot stoppen" : "▶ Bot starten";
   $("runBtn").classList.toggle("on", on);
   $("live").textContent = on ? "● PAPER LIVE" : "● PAPER";
@@ -540,9 +552,32 @@ $("findList").addEventListener("click", e => {
   save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
 });
 
+// ---------- website / phone app (the same page outside the Chrome extension) ----------
+const IS_EXT = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.id);
+let wakeLock = null;
+async function keepAwake(on) {   // a phone stops the page when the screen goes off: keep it on while the bot runs
+  try {
+    if (on && !wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); }
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running) keepAwake(true); });
+function webApp() {
+  $("panelLink").style.display = "none";
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  let prompt = null;
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); prompt = e; $("installBtn").style.display = ""; });
+  $("installBtn").addEventListener("click", async () => { if (!prompt) return; prompt.prompt(); await prompt.userChoice.catch(() => {}); prompt = null; $("installBtn").style.display = "none"; });
+  const note = document.createElement("div");
+  note.className = "webnote";
+  note.textContent = "Web-Version: Der Bot läuft, solange diese Seite offen ist (am Handy bleibt der Bildschirm dafür an). Daten bleiben nur in diesem Browser.";
+  $("account").appendChild(note);
+}
+
 // ---------- start ----------
 (async () => {
   try { $("ver").textContent = "v" + chrome.runtime.getManifest().version; } catch { $("ver").textContent = "web"; }
+  if (!IS_EXT) webApp();
   P = { ...COPY_DEFAULTS, ...(await load("copyRules", {})) };
   traders = await load("copyTraders", []);
   acc = await load("copyAcc", null) || newAccount(P);
