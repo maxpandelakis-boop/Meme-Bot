@@ -29,11 +29,16 @@ export function walletTrades(tx, wallet) {
   const keys = (tx.transaction && tx.transaction.message && tx.transaction.message.accountKeys) || [];
   const idx = keys.findIndex(k => (k.pubkey || k) === wallet);
   const solDelta = idx >= 0 ? ((meta.postBalances[idx] || 0) - (meta.preBalances[idx] || 0)) / 1e9 : 0;
+  // what the wallet paid or got in SOL/USDC/USDT: a token arriving with nothing paid is a transfer or airdrop, not a buy (and
+  // tokens leaving with nothing received are a transfer, not a sell). SOL and dollars are mixed here; the bar is tiny either way.
+  let quoteDelta = solDelta;
+  for (const q of QUOTE_MINTS) quoteDelta += (post.get(q) || 0) - (pre.get(q) || 0);
   const out = [];
   for (const mint of new Set([...pre.keys(), ...post.keys()])) {
     if (QUOTE_MINTS.has(mint)) continue;
     const a = pre.get(mint) || 0, b = post.get(mint) || 0, d = b - a;
     if (Math.abs(d) <= 1e-9 * Math.max(a, b, 1)) continue;
+    if (d > 0 ? !(quoteDelta < -0.003) : !(quoteDelta > 0.003)) continue;   // 0.003: more than fees and account rent
     out.push(d > 0 ? { mint, side: "buy", tokens: d, frac: 0, solDelta }
                    : { mint, side: "sell", tokens: -d, frac: a > 0 ? Math.min(-d / a, 1) : 1, solDelta });
   }

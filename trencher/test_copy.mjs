@@ -12,6 +12,11 @@ assert.deepEqual(t.map(x => [x.side, x.mint]), [["buy", M]]); assert.equal(t[0].
 // partial sell
 t = C.walletTrades(tx([tb(W, M, 1000)], [tb(W, M, 250)], 1e9, 2e9), W);
 assert.equal(t[0].side, "sell"); assert.equal(t[0].frac, 0.75);
+// a transfer in (nothing paid) and a transfer out (nothing received) are not trades
+assert.equal(C.walletTrades(tx([], [tb(W, M, 1000)], 1e9, 1e9 - 5000), W).length, 0);
+assert.equal(C.walletTrades(tx([tb(W, M, 1000)], [], 1e9, 1e9 + 2039280 - 5000), W).length, 0);   // rent of the closed account back
+assert.equal(C.walletTrades(tx([], [tb(W, M, 1000), tb(W, "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 0)], 1e9, 1e9), W).length, 0);
+assert.equal(C.walletTrades(tx([tb(W, "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 50)], [tb(W, M, 1000), tb(W, "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 0)], 1e9, 1e9), W)[0].side, "buy");   // paid in USDC
 // other owners and WSOL ignored, failed tx ignored
 assert.equal(C.walletTrades(tx([tb("x", M, 1)], [tb("x", M, 5)], 0, 0), W).length, 0);
 assert.equal(C.walletTrades(tx([], [tb(W, "So11111111111111111111111111111111111111112", 5)], 0, 0), W).length, 0);
