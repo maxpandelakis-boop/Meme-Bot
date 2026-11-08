@@ -134,3 +134,12 @@
 {"t":1794112620784,"addr":"EjwxwjJeG2W1juQ2vAU36wP9hUVGjjrfoZGPKPmGH2GD","sym":"GORP","age":30.7,"why":"liquidity","liq":0}
 {"t":1794112800128,"addr":"ARa7STzeug8ckiCjuZqT9gy7M6cDx2MXP1jss43ABAGS","sym":"Alcrack","age":30.5,"why":"liquidity","liq":0}
 {"t":1794113280281,"addr":"iPDUUUE5NJv7ck5TBhHMcrGGtLuaPeBzHkxDMo5vcMG","sym":"FEZ","age":30.7,"score":0.01972,"px":3.4e-05,"liq":15219,"p0":3.2911196260414086e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.0526,"c_peak":1.2176,"c_vol":5.3685,"c_act":1.0,"c_r5":0.0126,"c_r15":-0.0499,"c_mc":4.5173}}
+{"t":1794113340624,"addr":"DqtGxP1rNWTyMGT1cKa957PC6LTiXLFGRoYmuyVwfgKB","sym":"DUMBBEL","age":30.9,"why":"liquidity","liq":0}
+{"t":1794113340624,"addr":"Esa4Frf4yxhyG5CR3gyvY9qCXz2tF2itPpT4nhLWpump","sym":"onkey","age":30.1,"why":"liquidity","liq":3740}
+{"t":1794113400065,"addr":"8XgwDsydAyE1Sy3ZfM2jRhf9zWCoqA65HCNoSCNNmoon","sym":"XAJET","age":30.8,"why":"liquidity","liq":0}
+{"t":1794113400065,"addr":"Eyk5nNXLMu1FGJF1yjRPJCowJfeSFQ7bKMnFcAfGgvmm","sym":"Pepetide","age":30.6,"why":"liquidity","liq":9}
+{"t":1794113520213,"addr":"4omxCFcMqFiLEKNQnZ4PBizSnTc9eWG9dTiqo5vKMUeD","sym":"NEX Ai","age":31.0,"why":"liquidity","liq":0}
+{"t":1794113520213,"addr":"9TKAwpsiHPDiiLsiVV2k63TgF3RjWuaDnAXsdtsAa6g5","sym":"Foresight","age":30.7,"why":"liquidity","liq":0}
+{"t":1794113520213,"addr":"6a7jTH6Nu7915RMyvctECMYNVbXZ7p6yD1hNredkhkMP","sym":"DUMBBEL","age":30.3,"why":"liquidity","liq":0}
+{"t":1794113581107,"addr":"CTB7cibWFNbwwpKKy1r3udBAceVeYG4h9cyZd3f84QZg","sym":"Pepetide","age":30.8,"why":"liquidity","liq":0}
+{"t":1794113581107,"addr":"PzQhvSJparzuD7dxtBrVWoAQVX9dtQULSFFqnDTGD1W","sym":"HABIBI","age":30.5,"score":0.0124,"px":9.17e-07,"liq":135879,"p0":9.060968847417787e-07,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.3582,"c_peak":1.063,"c_vol":6.4452,"c_act":1.0,"c_r5":-0.0188,"c_r15":0.1233,"c_mc":2.9572}}
