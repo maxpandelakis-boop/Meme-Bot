@@ -57,3 +57,5 @@ Das Seitenfenster öffnet jetzt den Copy-Bot (`copy.html`). Der alte Coin-Trench
 3. Regeln (Einsatz, Sekunden, 10x, Stop-Loss, Startgeld) stehen unter **Agents**.
 
 Daten: Trades der Wallets kommen von der Solana-Blockchain (PublicNode, kostenlos), Preise von DexScreener. Der Bot läuft nur, solange das Seitenfenster offen ist. Keine Wallet, keine Schlüssel, kein echtes Geld.
+
+**Reddit (optional):** Reddit sperrt anonyme Abrufe. Unter reddit.com/prefs/apps eine App vom Typ „installed app“ anlegen (Redirect-URI z. B. `http://localhost`) und ihre ID unter **Agents → Reddit** eintragen. Der Bot zählt dann, wie oft die heißen Coins in r/solana, r/memecoins, r/SolanaMemeCoins, r/CryptoMoonShots und r/pumpfun genannt werden.

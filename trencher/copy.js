@@ -395,6 +395,8 @@ $("rules").addEventListener("change", e => {
   else if (el.dataset.k) { const v = Number(el.value); if (v >= 0) P[el.dataset.k] = v / Number(el.dataset.f); }
   save("copyRules", P); render();
 });
+load("redditAppId", "").then(v => { $("redditId").value = v; });
+$("redditId").addEventListener("change", () => { save("redditAppId", $("redditId").value.trim()); redditTok = null; $("redditMsg").textContent = "Gespeichert. Wird bei der nächsten Suche benutzt."; });
 $("rulesReset").addEventListener("click", () => { P = { ...COPY_DEFAULTS }; save("copyRules", P); renderRules(); render(); });
 $("openPos").addEventListener("click", async e => {
   const b = e.target.closest("button[data-sell]"); if (!b) return;
@@ -425,7 +427,27 @@ async function gt(path) {
 }
 // Hot coins from every free source: GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions.
 const DS = "https://api.dexscreener.com";
-const REDDIT = "https://www.reddit.com/r/solana+memecoins+SolanaMemeCoins+CryptoMoonShots+pumpfun/new.json?limit=100&raw_json=1";
+const SUBS = "solana+memecoins+SolanaMemeCoins+CryptoMoonShots+pumpfun";
+// Reddit blocks anonymous .json reads (403, tested 2026-11-08), so it goes through the user's own free Reddit app of type
+// "installed app": app-only OAuth with just the app's ID (no secret, no Reddit password), token cached until it expires.
+let redditTok = null;
+async function redditPosts() {
+  const id = (await load("redditAppId", "")).trim();
+  if (!id) throw new Error("keine Reddit-App-ID");
+  if (!redditTok || redditTok.until < Date.now()) {
+    let dev = await load("redditDevice", "");
+    if (!dev) { dev = Array.from(crypto.getRandomValues(new Uint8Array(15)), b => b.toString(16).padStart(2, "0")).join(""); save("redditDevice", dev); }
+    const r = await fetch("https://www.reddit.com/api/v1/access_token", { method: "POST",
+      headers: { Authorization: "Basic " + btoa(id + ":"), "Content-Type": "application/x-www-form-urlencoded" },
+      body: "grant_type=" + encodeURIComponent("https://oauth.reddit.com/grants/installed_client") + "&device_id=" + dev });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.access_token) throw new Error("Reddit-Anmeldung: " + (j.error || r.status));
+    redditTok = { token: j.access_token, until: Date.now() + ((j.expires_in || 3600) - 60) * 1000 };
+  }
+  const r = await fetch(`https://oauth.reddit.com/r/${SUBS}/new?limit=100&raw_json=1`, { headers: { Authorization: "Bearer " + redditTok.token } });
+  if (!r.ok) { if (r.status === 401) redditTok = null; throw new Error("Reddit " + r.status); }
+  return ((await r.json()).data?.children || []).map(c => c.data);
+}
 let hot = [];
 async function getJson(url) { const r = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
 async function hotCoins(msg) {
@@ -466,11 +488,10 @@ async function hotCoins(msg) {
   }
   msg("Lese Reddit (r/solana, r/memecoins, r/SolanaMemeCoins, r/CryptoMoonShots, r/pumpfun) …");
   try {
-    const j = await getJson(REDDIT);
-    const posts = (j.data?.children || []).map(c => c.data).filter(p => Date.now() / 1000 - p.created_utc < 86400);
+    const posts = (await redditPosts()).filter(p => Date.now() / 1000 - p.created_utc < 86400);
     const n = redditMentions([...coins.values()], posts);
     for (const [m, k] of Object.entries(n)) { add(m, { reddit: k }); tag(m, "Reddit " + k); }
-  } catch { msg("Reddit gerade nicht erreichbar, mache ohne weiter …"); }
+  } catch (e) { msg(`Reddit übersprungen (${e.message || e}), mache ohne weiter …`); await sleep(1200); }
   return scoreHot([...coins.values()]);
 }
 
