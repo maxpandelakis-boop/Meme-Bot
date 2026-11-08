@@ -32,3 +32,16 @@ const s = C.stats(acc); assert.equal(s.copies, 1); assert.equal(s.wins, 1); asse
 const a2 = C.newAccount({ ...P, deposit: 500, stake: 100 }, 0);
 C.copyBuy(a2, { mint: M, price: 1, liq: 1e6, now: 1 }, { ...P, stake: 100 }); assert.equal(a2.cash, 400);
 console.log("ok: copy engine");
+
+// rankWallets: winner first, bots and buy-only wallets dropped
+{
+  const tr = (w, kind, usd, tok) => ({ tx_from_address: w, kind, volume_in_usd: usd, [kind === "buy" ? "to_token_amount" : "from_token_amount"]: tok });
+  const pools = [{ coin: "A", trades: [tr("win", "buy", 10, 100), tr("win", "sell", 30, 100), tr("lose", "buy", 10, 100), tr("lose", "sell", 5, 100),
+                                       tr("hold", "buy", 50, 10), ...Array.from({ length: 30 }, () => tr("bot", "sell", 9, 1)), tr("bot", "buy", 1, 1)] },
+                 { coin: "B", trades: [tr("win", "buy", 10, 100), tr("win", "sell", 15, 50)] }];
+  const r = C.rankWallets(pools);
+  assert.deepEqual(r.map(x => x.wallet), ["win"]);
+  assert.ok(Math.abs(r[0].pnl - 30) < 1e-9, String(r[0].pnl));   // 20 on A + (15 - 5) on B
+  assert.equal(r[0].wins, 2);
+  console.log("ok: rank wallets");
+}

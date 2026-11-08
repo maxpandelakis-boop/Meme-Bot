@@ -1,7 +1,7 @@
 // Copy-Bot screen of the Trencher (paper money only): follows Solana wallets of traders, buys what they buy `delaySec` later,
 // sells when they sell (or at the take-profit), and shows it like the video: balance chart, copy grid, agents, activity, account.
 // Data, all free and keyless: PublicNode's Solana JSON-RPC (the traders' transactions) and DexScreener (prices).
-import { COPY_DEFAULTS, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, stats } from "./copy-engine.js";
+import { COPY_DEFAULTS, rankWallets, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, stats } from "./copy-engine.js";
 import { bestPair } from "./sim.js";
 
 const $ = id => document.getElementById(id);
@@ -311,7 +311,7 @@ function renderAccount() {
 function renderTraders() {
   $("traderList").innerHTML = traders.map((t, i) => `<li>${avatar(t.name)}<div class="mid"><b>${esc(t.name)}</b><code>${esc(t.wallet)}</code></div>
     <button data-tog="${i}">${t.on ? "An" : "Aus"}</button><button data-del="${i}">✕</button></li>`).join("")
-    || `<li class="muted tiny" style="display:block">Noch keine Trader. Wallet-Adresse unten eintragen.</li>`;
+    || `<li class="muted tiny" style="display:block">Noch keine Trader. Oben „Gute Trader finden“ drücken oder eine Wallet unten eintragen.</li>`;
 }
 
 const RULES = [
@@ -408,6 +408,56 @@ $("openPos").addEventListener("click", async e => {
 $("resetAcc").addEventListener("click", () => {
   if (!confirm(`Konto zurücksetzen? Alle Positionen und die Activity werden gelöscht, du startest mit ${money(P.deposit)} Spielgeld.`)) return;
   acc = newAccount(P); queue = []; persist(); render();
+});
+
+// ---------- "Gute Trader finden": hot coins on GeckoTerminal -> their recent trades -> wallets that took the most profit ----------
+const GT = "https://api.geckoterminal.com/api/v2/networks/solana";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let found = [];
+async function gt(path) {
+  for (let i = 0; i < 3; i++) {
+    const r = await fetch(GT + path, { headers: { Accept: "application/json" }, cache: "no-store" });
+    if (r.status === 429) { await sleep(8000); continue; }   // free limit: about 30 calls a minute
+    if (!r.ok) throw new Error("GeckoTerminal " + r.status);
+    return r.json();
+  }
+  throw new Error("GeckoTerminal: zu viele Anfragen, gleich nochmal versuchen");
+}
+async function findTraders() {
+  const btn = $("findBtn"), msg = t => { $("findMsg").textContent = t; };
+  btn.disabled = true; found = []; renderFound();
+  try {
+    msg("Suche heiße Coins …");
+    const tp = await gt("/trending_pools?page=1");
+    const pools = (tp.data || []).map(d => ({ addr: d.attributes.address, coin: String(d.attributes.name || "").split(" / ")[0], liq: Number(d.attributes.reserve_in_usd) || 0 }))
+      .filter(p => p.addr && p.liq >= 10000).slice(0, 8);
+    const got = [];
+    for (let i = 0; i < pools.length; i++) {
+      msg(`Prüfe Trader von ${pools[i].coin} (${i + 1}/${pools.length}) …`);
+      await sleep(2200);
+      try { const j = await gt(`/pools/${pools[i].addr}/trades?trade_volume_in_usd_greater_than=20`); got.push({ coin: pools[i].coin, trades: (j.data || []).map(d => d.attributes) }); } catch {}
+    }
+    found = rankWallets(got);
+    msg(found.length ? `${found.length} Wallets mit Gewinn in den letzten Trades von ${got.length} heißen Coins. Glück oder Können? Erst mit Spielgeld testen.`
+                     : "Gerade keine klaren Gewinner gefunden. In ein paar Minuten nochmal versuchen.");
+  } catch (e) { msg("Suche fehlgeschlagen: " + (e.message || e)); }
+  btn.disabled = false; renderFound();
+}
+function renderFound() {
+  $("findList").innerHTML = found.map((r, i) => {
+    const have = traders.some(t => t.wallet === r.wallet);
+    return `<li>${avatar(r.wallet)}<div class="mid"><b>${short(r.wallet)}</b><code>${esc(r.coins.slice(0, 4).join(", "))} · ${r.wins}W ${r.losses}L</code></div>
+      <div class="amt"><b class="pos">${signed(r.pnl)}</b><span>Gewinn</span></div>
+      <a class="link tiny" href="https://solscan.io/account/${esc(r.wallet)}" target="_blank" rel="noopener">↗</a>
+      <button class="follow" data-follow="${i}" ${have ? "disabled" : ""}>${have ? "✓" : "Folgen"}</button></li>`;
+  }).join("");
+}
+$("findBtn").addEventListener("click", findTraders);
+$("findList").addEventListener("click", e => {
+  const b = e.target.closest("button[data-follow]"); if (!b) return;
+  const r = found[+b.dataset.follow];
+  if (!traders.some(t => t.wallet === r.wallet)) traders.push({ name: "Top-" + r.wallet.slice(0, 4), wallet: r.wallet, on: true });
+  save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
 });
 
 // ---------- start ----------

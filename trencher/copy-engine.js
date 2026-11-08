@@ -110,3 +110,32 @@ export function stats(acc) {
   return { copies, closed: acc.closed.length, wins, losses: acc.closed.length - wins, best,
            profit: acc.closed.reduce((x, c) => x + c.pnl, 0) };
 }
+
+// "Trader finden": GeckoTerminal trades of several hot pools ([{coin, trades: [attributes...]}]) -> wallets ranked by the profit
+// they took in those trades. Per coin, sold tokens are matched against the average buy price inside the window; coins they
+// only bought or only sold are not scored. Wallets with very many trades in one pool are bots (MEV, volume bots) and dropped.
+export function rankWallets(pools, { maxTradesPerPool = 25, minPnl = 0, top = 12 } = {}) {
+  const W = new Map();
+  for (const { coin, trades } of pools) {
+    const per = new Map();
+    for (const a of trades || []) {
+      const w = a.tx_from_address; if (!w || (a.kind !== "buy" && a.kind !== "sell")) continue;
+      const x = per.get(w) || per.set(w, { n: 0, bt: 0, bu: 0, st: 0, su: 0 }).get(w);
+      const usd = Number(a.volume_in_usd) || 0;
+      x.n++;
+      if (a.kind === "buy") { x.bt += Number(a.to_token_amount) || 0; x.bu += usd; } else { x.st += Number(a.from_token_amount) || 0; x.su += usd; }
+    }
+    for (const [w, x] of per) {
+      const r = W.get(w) || W.set(w, { wallet: w, pnl: 0, wins: 0, losses: 0, coins: [], bot: false, volume: 0 }).get(w);
+      if (x.n > maxTradesPerPool) r.bot = true;
+      r.volume += x.bu + x.su;
+      if (!(x.bt > 0 && x.st > 0)) continue;
+      const m = Math.min(x.bt, x.st);
+      const pnl = x.su * (m / x.st) - x.bu * (m / x.bt);
+      r.pnl += pnl; if (pnl > 0) r.wins++; else r.losses++;
+      r.coins.push(coin);
+    }
+  }
+  return [...W.values()].filter(r => !r.bot && r.coins.length && r.pnl > minPnl)
+    .sort((a, b) => b.pnl - a.pnl || b.wins - a.wins).slice(0, top);
+}

@@ -77,3 +77,8 @@ nav.bottom button.on{color:var(--fg)}
 .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-4deg)}
 .toast.bad{color:var(--dn);border-color:var(--dn);background:rgba(40,10,10,.92);box-shadow:0 0 30px rgba(239,68,68,.35)}
 body.won{box-shadow:inset 0 0 0 3px var(--up)}
+button.find{width:100%;background:linear-gradient(90deg,#4f5dff,#a855f7);border:none;color:#fff;border-radius:12px;padding:11px;font:800 14px Inter,system-ui,sans-serif;cursor:pointer;margin:4px 0 6px}
+button.find:disabled{opacity:.6;cursor:wait}
+#findList li .amt{text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+#findList li .amt span{display:block;font-size:10.5px;color:var(--mut)}
+#findList li button.follow{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
