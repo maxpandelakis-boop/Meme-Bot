@@ -3,3 +3,4 @@
 {"at":1794125640000,"why":"time","mult":1.2614716637353047,"late":true,"hitAt":1794125530605,"rule":"chart","sym":"TTP","t":1794125784804,"eur":61.82,"pnl":11.82,"entryAt":1794103930605,"id":"2026-11-08T014656-h-TTP-E5c1Jv"}
 {"at":1794129300000,"why":"drop","mult":1.1646406679714423,"late":true,"hitAt":1794129120000,"rule":"chart","sym":"GIGAHUG","t":1794129338811,"eur":57.07,"pnl":7.07,"entryAt":1794110485687,"id":"2026-11-08T033915-h-GIGAHUG-BWh8q5"}
 {"at":1794130140000,"why":"drop","mult":0.6980744248693169,"late":true,"hitAt":1794129180000,"rule":"chart","sym":"ORBIT","t":1794130188760,"eur":34.21,"pnl":-15.79,"entryAt":1794128718108,"id":"2026-11-08T083904-h-ORBIT-DSAKMZ"}
+{"at":1794142440000,"why":"stop","mult":0.003094740261364476,"late":true,"hitAt":1794142140000,"rule":"chart","sym":"ORBIT","t":1794142521102,"eur":0.05,"pnl":-49.95,"entryAt":1794135406991,"id":"2026-11-08T103106-h-ORBIT-DSAKMZ"}
