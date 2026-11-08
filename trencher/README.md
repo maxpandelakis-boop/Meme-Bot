@@ -47,3 +47,13 @@ Jede Entscheidung steht mit Grund im Bot-Log, Bot-Trades im Chart mit 🤖.
 Kerzen (1 s, 5 s, 15 s, 1 m) aus den echten Trades, mit Volumen. Deine Spielgeld-Käufe (grüner Pfeil „K") und Verkäufe
 (Pfeil „V" mit Gewinn/Verlust) stehen direkt im Chart, dein Einstiegspreis als gelbe gestrichelte Linie.
 Chart-Bibliothek: TradingView Lightweight Charts™ 4.2.3 (Apache 2.0, `lib/`).
+
+## Copy-Bot (ab v0.5.0, Spielgeld)
+
+Das Seitenfenster öffnet jetzt den Copy-Bot (`copy.html`). Der alte Coin-Trencher ist oben rechts verlinkt.
+
+1. **Agents**: Name und Solana-Wallet eines Traders eintragen (eine Solscan- oder andere Adresse mit Link geht auch).
+2. **Home → Bot starten**: Kauft der Trader einen Coin, kauft der Bot 30 s später für 20 $ Spielgeld nach. Verkauft der Trader, verkauft der Bot auch. Spätestens bei 10x nimmt er den Gewinn mit.
+3. Regeln (Einsatz, Sekunden, 10x, Stop-Loss, Startgeld) stehen unter **Agents**.
+
+Daten: Trades der Wallets kommen von der Solana-Blockchain (PublicNode, kostenlos), Preise von DexScreener. Der Bot läuft nur, solange das Seitenfenster offen ist. Keine Wallet, keine Schlüssel, kein echtes Geld.

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Trencher Copy-Bot</title>
+<link rel="stylesheet" href="copy.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Trencher Bot</span>
+  <span id="live" class="pill">● PAPER</span>
+  <span id="ver" class="muted tiny"></span>
+  <a href="panel.html" class="right tiny link" title="Der alte Bildschirm: ein Coin, eigener Bot">Coin-Trencher ↗</a>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section id="home" class="page on">
+    <div class="balance"><span id="bal" class="bal">$0<span class="cents">.00</span></span></div>
+    <div id="since" class="since">–</div>
+    <div class="chartwrap"><div id="chart"></div></div>
+    <div class="ranges" id="ranges"><button data-r="live" class="on">● LIVE</button><button data-r="1h">1H</button><button data-r="4h">4H</button><button data-r="1d">1D</button><button data-r="1w">1W</button><button data-r="all">ALL</button></div>
+
+    <div class="sect"><b>Copy grid</b><span id="gridInfo" class="muted tiny">–</span></div>
+    <div id="grid" class="grid"></div>
+    <div class="agents" id="agentChips">
+      <div class="chip w"><i></i><b>Watcher</b><span id="agW">–</span></div>
+      <div class="chip c"><i></i><b>Copier</b><span id="agC">–</span></div>
+      <div class="chip e"><i></i><b>Executor</b><span id="agE">–</span></div>
+      <div class="chip r"><i></i><b>Risk</b><span id="agR">–</span></div>
+    </div>
+    <div class="row"><button id="runBtn" class="run">▶ Bot starten</button></div>
+
+    <div class="sect"><b>Activity</b><span id="actInfo" class="muted tiny">–</span></div>
+    <ol id="actHome" class="acts"></ol>
+  </section>
+
+  <!-- AGENTS -->
+  <section id="agents" class="page">
+    <h2>Trader zum Kopieren</h2>
+    <p class="muted tiny">Name und Solana-Wallet des Traders. Kauft er, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
+    <ol id="traderList" class="traders"></ol>
+    <div class="addrow">
+      <input id="tName" placeholder="Name (z. B. aiwass)">
+      <input id="tWallet" placeholder="Wallet-Adresse" spellcheck="false">
+      <button id="tAdd">+ Hinzufügen</button>
+    </div>
+    <div id="tMsg" class="tiny muted"></div>
+    <h2>Regeln</h2>
+    <div class="rules" id="rules"></div>
+    <button id="rulesReset" class="link tiny">Standard-Regeln</button>
+  </section>
+
+  <!-- ACTIVITY -->
+  <section id="activity" class="page">
+    <div class="sect"><b>Activity</b><span id="actInfo2" class="muted tiny"></span></div>
+    <div class="filters" id="filters"><button data-f="all" class="on">All</button><button data-f="copy">Copies</button><button data-f="exit">Exits</button><button data-f="rule">Rules</button></div>
+    <ol id="actAll" class="acts"></ol>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section id="account" class="page">
+    <div class="balance"><span id="bal2" class="bal">$0</span></div>
+    <div id="since2" class="since">–</div>
+    <div class="tiles">
+      <div><span>Copies</span><b id="sCopies">–</b></div>
+      <div><span>Profit</span><b id="sProfit">–</b></div>
+      <div><span>Best exit</span><b id="sBest">–</b></div>
+      <div><span>Behind traders</span><b id="sBehind">–</b></div>
+      <div><span>Bargeld</span><b id="sCash">–</b></div>
+      <div><span>Gebühren bezahlt</span><b id="sFees">–</b></div>
+    </div>
+    <h2>Pro Trader</h2>
+    <ol id="perTrader" class="acts"></ol>
+    <h2>Offene Positionen</h2>
+    <ol id="openPos" class="acts"></ol>
+    <div class="row"><button id="resetAcc" class="ghost">Neu starten mit <span id="depLbl">$100</span> Spielgeld</button></div>
+    <p class="muted tiny">Nur Simulation: keine Wallet, keine Schlüssel, kein echtes Geld. Gebühren wie FOMO (0,5 %, mind. 0,50 $), Slippage nach Pool-Größe.</p>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<nav class="bottom">
+  <button data-p="home" class="on"><span>⌂</span>Home</button>
+  <button data-p="agents"><span>☺</span>Agents</button>
+  <button data-p="activity"><span>∿</span>Activity</button>
+  <button data-p="account"><span>◉</span>Account</button>
+</nav>
+<script src="lib/lightweight-charts.standalone.production.js"></script>
+<script type="module" src="copy.js"></script>
+</body>
+</html>
