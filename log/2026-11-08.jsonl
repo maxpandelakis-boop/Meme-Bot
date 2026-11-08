@@ -369,3 +369,5 @@
 {"t":1794138901478,"addr":"SErvtWoP3S38q6EY9tFwth9ttuBnk8TnC74QXcwpump","sym":"coby","age":30.8,"why":"liquidity","liq":4037}
 {"t":1794139033827,"addr":"6LULn51s24qLuTTHGEBEYvKh3x2oiGGvBnxx1RBowKeG","sym":"Perfume","age":30.1,"why":"liquidity","liq":0}
 {"t":1794139200131,"addr":"7r7w57SUqCRoScfwo5yjAQ4pyRUrfLEgkVvrGNu28CMA","sym":"Perfume","age":30.7,"why":"liquidity","liq":0}
+{"t":1794139320510,"addr":"HGEBHBCeFGTFr9b96SkYsUyCQhd3SjuerizawECxbHwe","sym":"coby","age":30.4,"why":"liquidity","liq":0}
+{"t":1794139381370,"addr":"BRZ3ifPT779zjZq31xFtgWrtFivyNoDy2Fd61y7RP5pw","sym":"WNTD","age":30.5,"score":0.01495,"px":1.047e-05,"liq":18240,"p0":1.196739860704136e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.3063,"c_peak":1.1857,"c_vol":5.5386,"c_act":1.0,"c_r5":0.1056,"c_r15":0.1525,"c_mc":4.078}}
