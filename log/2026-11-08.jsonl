@@ -132,3 +132,4 @@
 {"t":1794112501006,"addr":"AxVwrg2rMh85gEGHezr8SBZGFTeLpQvC9MaEQ4pLpump","sym":"Slingpad","age":30.4,"score":0.01817,"px":2.602e-05,"liq":11283,"p0":2.020193642089492e-05,"bars":6,"buy":false,"f":{"f_curve_min":120.3333,"f_creator_prior":null,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.9698,"c_peak":2.9704,"c_vol":4.7845,"c_act":1.0,"c_r5":-0.3188,"c_r15":-0.7383,"c_mc":4.3054}}
 {"t":1794112501006,"addr":"EWXmXLRDAfV5Q5QdkwdRQhW1d4nMD637GDPc33Uepump","sym":"ASTEX","age":30.1,"why":"liquidity","liq":1777}
 {"t":1794112620784,"addr":"EjwxwjJeG2W1juQ2vAU36wP9hUVGjjrfoZGPKPmGH2GD","sym":"GORP","age":30.7,"why":"liquidity","liq":0}
+{"t":1794112800128,"addr":"ARa7STzeug8ckiCjuZqT9gy7M6cDx2MXP1jss43ABAGS","sym":"Alcrack","age":30.5,"why":"liquidity","liq":0}
