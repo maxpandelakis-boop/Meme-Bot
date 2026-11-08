@@ -507,3 +507,7 @@
 {"t":1794153421589,"addr":"2LgpbBroKxErfsgr3unzTqbNAyefLTcthS4tTMDbpump","sym":"Porsche","age":30.8,"why":"liquidity","liq":1634}
 {"t":1794153781037,"addr":"ijbW2UP8WcYpV8FXV4ih8d4n49ugDKABrrzi2VDpump","sym":"FLOAT","age":30.3,"score":0.00876,"px":0.01756,"liq":331370,"p0":0.01750245281637986,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.0144,"c_peak":1.0051,"c_vol":5.2023,"c_act":1.0,"c_r5":-0.003,"c_r15":0.001,"c_mc":7.2431}}
 {"t":1794153900697,"addr":"BhBbboPqJcFtibFAvgXfNjcP6KAA8LhFdFbCWL3Rzung","sym":"Kittenbus","age":30.2,"why":"liquidity","liq":0}
+{"t":1794154021493,"addr":"CT7mgsbH2ihtQJsrcs3BZHZqRHBAV2KzkS6yKQsemaas","sym":"SAFU","age":30.9,"why":"liquidity","liq":0}
+{"t":1794154021493,"addr":"Gj3kDahskHg2N6CqFd3ivF9zmJSpZQ7eN3MbSC3AMAtX","sym":"MOCHI","age":30.4,"why":"liquidity","liq":9}
+{"t":1794154140583,"addr":"BLYpAynq3SRZaKTfpVU72TwsKq18r3XdcKxEEcu4SFD6","sym":"ZUVA","age":30.4,"score":0.02922,"px":3.174e-05,"liq":14740,"p0":3.602153581722283e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1033,"c_peak":1.1302,"c_vol":5.3286,"c_act":1.0,"c_r5":0.0745,"c_r15":0.0384,"c_mc":4.5566}}
+{"t":1794154140583,"addr":"Gw5CJpxzcmzmi5zoc8j4Jd1uGkLe25KVSRFZVWQoFThh","sym":"Green cat","age":30.0,"why":"liquidity","liq":0}
