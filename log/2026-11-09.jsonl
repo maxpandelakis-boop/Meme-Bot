@@ -785,3 +785,4 @@
 {"t":1794259441058,"addr":"4TZBt4q5CC1uQzvrrrNdB1wwRTpJ1BzcVFUpT7P8H2tQ","sym":"USYC","age":30.8,"score":0.03066,"px":3.241e-05,"liq":48537,"p0":2.949266185044358e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":27.0,"f_cjk":0.0,"c_ret":0.2857,"c_peak":1.0633,"c_vol":4.8445,"c_act":1.0,"c_r5":0.0097,"c_r15":0.0859,"c_mc":4.4697}}
 {"t":1794259501148,"addr":"Dr1YvEFNL4kUjPBWUwtMa81DcanQeMNHyTstFpHLpump","sym":"TAPCAT","age":31.0,"why":"liquidity","liq":3013}
 {"t":1794259560477,"addr":"By1Nd4iQ3dwdfS6SSepg5PmMXifghR8skw3p2p6Bpump","sym":"SUNK","age":30.6,"why":"liquidity","liq":9269}
+{"t":1794259741098,"addr":"4x5kncbKnzNWfzkHo9cFqqMwKH4PhSZuJPP7Qfrzpump","sym":"TAPCAT","age":31.0,"why":"liquidity","liq":1774}
