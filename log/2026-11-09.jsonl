@@ -426,3 +426,8 @@
 {"t":1794219408992.0532,"addr":"8MuTFfgeFCYa7BKMkKzRbxPLjgdEZFfHtNM2XWSfdtH2","sym":"BUIDL","pool":"5HofHb5Sn1TgoXwre7HC17dKpuzeXPFbMCEFL44nX5rV","age":305,"score":0.00022,"mc":108717,"px":0.0001087,"reach":66,"buy":false}
 {"t":1794219408992.0532,"addr":"ZJCoyfKAMAuJHtbfQSgXYe6Agi4sLVXU4oD8J5Apump","sym":"OIF","pool":"EVFJMwmkBGNUnASsmgNcHcZig19WxkgDRomLHUXAS56x","age":915,"score":5e-05,"mc":3048223,"px":0.00305,"reach":60,"buy":false}
 {"t":1794219408992.0532,"addr":"oE3p8x3DTz5WGued23Qij21Bzs7XX9PNSnts6Kzpump","sym":"TENEX","pool":"FGHP6fonFoELwrFuvULroMgPtz6ThFWo9ceGMVPaCPHN","age":575,"score":5e-05,"mc":2369363,"px":0.002371,"reach":59,"buy":false}
+{"t":1794220309312.501,"addr":"Fs77e8bSMnFfdzfkoqFQe6fFn3MLUvtE58hkMUNGpump","sym":"YouTube","pool":"8x3Pd9tfcHogocGDAN5hzaq4e7E67oKc8Jtwz3arFdnZ","age":41,"score":0.01455,"mc":161849,"px":0.0001642,"reach":1,"buy":false}
+{"t":1794220309312.501,"addr":"H2ZViwA4dwxHd3bctARCUDUqTwTqfVrbmKQMrwBmpump","sym":"BAWSAQ","pool":"FTNkgRH5fqqgQQLR1MeApHhMHoQXoQpX95GWyRYyi13U","age":621,"score":0.00068,"mc":1118605,"px":0.001129,"reach":9,"buy":false}
+{"t":1794220309312.501,"addr":"3mPaWq3s4MoF7mXLHPo3N9ueRjG4oRQVPqnHTJLkpump","sym":"NVIDIH","pool":"A45t4ikrS5LyaN8ne8vTNvmZ3iebnfJ9kj1C5LuziY79","age":587,"score":0.00062,"mc":393604,"px":0.0003967,"reach":3,"buy":false}
+{"t":1794220309312.501,"addr":"ZJCoyfKAMAuJHtbfQSgXYe6Agi4sLVXU4oD8J5Apump","sym":"OIF","pool":"EVFJMwmkBGNUnASsmgNcHcZig19WxkgDRomLHUXAS56x","age":930,"score":8e-05,"mc":3068685,"px":0.00307,"reach":61,"buy":false}
+{"t":1794220309312.501,"addr":"oE3p8x3DTz5WGued23Qij21Bzs7XX9PNSnts6Kzpump","sym":"TENEX","pool":"FGHP6fonFoELwrFuvULroMgPtz6ThFWo9ceGMVPaCPHN","age":590,"score":6e-05,"mc":2380209,"px":0.002381,"reach":59,"buy":false}
