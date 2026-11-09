@@ -581,3 +581,5 @@
 {"t":1794245141142.5894,"addr":"8LRmPR2oMnFL2TXe77CdvSmXDkovuPZSYccTAAJFTjkA","sym":"\u5927A","pool":"7KNBNsjMpCTDgabAxHRtmiQLPrQ3x3AdD8BEHoXNvrW7","age":54,"score":0.01635,"mc":167876,"px":0.0001678,"reach":18,"buy":false}
 {"t":1794245141142.5894,"addr":"DZVTnTUtsHZJcjALZep6EjV8NtQpzktujkZ51yPxpump","sym":"Rockstar","pool":"7gMXNJ7HKP8yZJiPVTHrF6rYGStp9CHqXYKJsHybgMfx","age":73,"score":0.00111,"mc":118970,"px":0.0001215,"reach":72,"buy":false}
 {"t":1794245141142.5894,"addr":"6kmkcwKxxmoREhkxrbBvwDY3N2KSfpdMMtWtNoPpump","sym":"LASTTRUCK","pool":"GuDWFRhnDP882jnVU8yjDocFXS21zrVP3Dn4xDoeo9So","age":67,"score":0.0009,"mc":120201,"px":0.0001246,"reach":0,"buy":false}
+{"t":1794245996991.4734,"addr":"DZVTnTUtsHZJcjALZep6EjV8NtQpzktujkZ51yPxpump","sym":"Rockstar","pool":"7gMXNJ7HKP8yZJiPVTHrF6rYGStp9CHqXYKJsHybgMfx","age":87,"score":0.00245,"mc":148175,"px":0.0001513,"reach":1,"buy":false}
+{"t":1794245996991.4734,"addr":"6kmkcwKxxmoREhkxrbBvwDY3N2KSfpdMMtWtNoPpump","sym":"LASTTRUCK","pool":"GuDWFRhnDP882jnVU8yjDocFXS21zrVP3Dn4xDoeo9So","age":81,"score":0.0014,"mc":161009,"px":0.000167,"reach":1,"buy":false}
