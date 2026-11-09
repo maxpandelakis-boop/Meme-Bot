@@ -225,3 +225,4 @@
 {"t":1794206100614,"addr":"69a1ckuLgGWZqkM1QNvUXTWVABMMS2EiuAh4gwPhBAGS","sym":"CELCLO","age":30.7,"why":"liquidity","liq":0}
 {"t":1794206100614,"addr":"D3sPm59cdutjFRmafGD5a6DG2gRiiZU2YfaJuC9LFtZ8","sym":"Horned cat","age":30.5,"why":"liquidity","liq":0}
 {"t":1794206233990,"addr":"g7amtfC6hoTTCa5Yy3JLqJpKAkeCs79kLJ9hepLCcc9","sym":"Democat","age":30.8,"score":0.02891,"px":4.222e-05,"liq":52136,"p0":4.100941260744282e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":30.0,"f_cjk":0.0,"c_ret":0.719,"c_peak":1.0063,"c_vol":4.8646,"c_act":1.0,"c_r5":0.2943,"c_r15":0.5592,"c_mc":4.6129}}
+{"t":1794206640132,"addr":"4wvro11XSrHUyi1xuL2ihsuFYz528XQofvS9DphRbonk","sym":"LUNTRO","age":30.3,"why":"liquidity","liq":0}
