@@ -341,3 +341,10 @@
 {"t":1794219060618,"addr":"7fopJ1s2s9rDF2HzCc8iDACeNN9pFckNiRMM8qB3mk3S","sym":"GRILL","age":30.6,"score":0.00197,"px":1.727e-05,"liq":34425,"p0":1.7255164857388235e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":-0.0139,"c_peak":1.014,"c_vol":1.9706,"c_act":0.6667,"c_r5":-0.0097,"c_r15":-0.0053,"c_mc":4.2369}}
 {"t":1794219120227,"addr":"3saVroYunRQZMwUvERq2HcCkRpritwE47eiND1SZwvYF","sym":"Horned cat","age":30.9,"score":0.02114,"px":4.558e-05,"liq":57776,"p0":4.4914915315740476e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":10.0,"f_cjk":0.0,"c_ret":0.6384,"c_peak":1.0123,"c_vol":5.0868,"c_act":1.0,"c_r5":0.1421,"c_r15":0.4206,"c_mc":4.6524}}
 {"t":1794219240339,"addr":"EUZKgMoGQSEqYj5M8V84mBKwk4g4LcdsbnA8fL2qBAGS","sym":"Airduck","age":30.4,"why":"liquidity","liq":0}
+{"t":1794219672114,"addr":"27iaWc5qjQAubC7ENwqD2zYGmm1UWJyMpXNz3DFQpump","sym":"Anchor","age":31.2,"why":"liquidity","liq":4160}
+{"t":1794219672114,"addr":"5Rpo8ucC4ntMePf5hBZeFvtLWW1rN547QTbCqWfxmoon","sym":"Arkvault","age":31.1,"why":"liquidity","liq":0}
+{"t":1794219672114,"addr":"Fs77e8bSMnFfdzfkoqFQe6fFn3MLUvtE58hkMUNGpump","sym":"YouTube","age":30.6,"score":0.01849,"px":0.0001183,"liq":25332,"p0":0.00011759495871168738,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.0376,"c_peak":1.4832,"c_vol":4.5828,"c_act":1.0,"c_r5":0.218,"c_r15":-0.1997,"c_mc":5.0704}}
+{"t":1794219780368,"addr":"MqhAUPCAaCCyPVgXKpGMh5aa9dkg8Cw6pkj861uFpxQ","sym":"\u725b\u903c","age":30.3,"why":"liquidity","liq":0}
+{"t":1794219840682,"addr":"KZdHrWJUuaUpCbR4osrQZxTzzwEXBmMuYZ1u68yMyNU","sym":"\u725b\u903c","age":30.9,"why":"liquidity","liq":0}
+{"t":1794219840682,"addr":"FoMrtc7xdddNmFEup8j2yZFa4nMGVtP8Ek57FH41S145","sym":"BULLCA\ud835\uddb3","age":30.8,"why":"liquidity","liq":1519}
+{"t":1794219840682,"addr":"3VYWYUcXQjq4ZXNyTQgo7eukYZBS8x381q9GbnFwpump","sym":"JENSEN","age":30.2,"why":"liquidity","liq":1564}
