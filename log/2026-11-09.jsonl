@@ -566,3 +566,5 @@
 {"t":1794237600458,"addr":"6mLdUVudAXgsqK79fhhH1NnH9Bcv3BuwTz39NnjETry2","sym":"HYPEPE","age":30.9,"why":"liquidity","liq":0}
 {"t":1794237600458,"addr":"75P4RKUGERunfd7sfDmAkokF9KB8d1359ucFWFdGFagQ","sym":"ELON2028","age":30.7,"why":"liquidity","liq":0}
 {"t":1794237600458,"addr":"3Gu71YzmttGuTvexofLPkfXFD9Y9pYaMTQNwC423pump","sym":"ELON2028","age":30.1,"why":"liquidity","liq":1895}
+{"t":1794237661319,"addr":"GZ6YVpCHArcsVBV6ZWtzWmjHfY77g5ogbeNq72ejFTSQ","sym":"\u771f\u8bda","age":31.0,"score":0.0169,"px":3.363e-05,"liq":48640,"p0":3.318175408314932e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.4984,"c_peak":1.0,"c_vol":4.9058,"c_act":1.0,"c_r5":0.2299,"c_r15":0.4073,"c_mc":4.5209}}
+{"t":1794237840208,"addr":"2eQczAM2ggVkhvKQ6zK9TDB5fewh9LWgGrZaN5uJpump","sym":"Gemini","age":31.0,"why":"liquidity","liq":1606}
