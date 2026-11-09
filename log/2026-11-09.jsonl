@@ -735,3 +735,4 @@
 {"t":1794253020670,"addr":"23iYAq4Hx3JWgepWpYc6yuJi2cJsLFuWfvomQBqqpump","sym":"ELONDRY","age":30.3,"why":"liquidity","liq":1927}
 {"t":1794253080082,"addr":"6nAa3npCw8HHwDFVdC6y3a4LfGv87rZZ8KfkrxkJmoon","sym":"BONDTUX","age":30.4,"why":"liquidity","liq":0}
 {"t":1794253200496,"addr":"2sVyPPesT2SskXRdT7KXTcX57MqDESeZrCSCHqXPpump","sym":"LEVERAGE","age":30.6,"score":0.02851,"px":9.815e-05,"liq":22945,"p0":9.134941033861416e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.1566,"c_peak":1.6336,"c_vol":4.5432,"c_act":1.0,"c_r5":0.0874,"c_r15":0.4495,"c_mc":4.9607}}
+{"t":1794253680848,"addr":"Caq5k1cGGMyLbpMt5UfUaa3DbmND2Hx2Fi4QmYyRpump","sym":"Rockstar","age":30.4,"why":"liquidity","liq":1613}
