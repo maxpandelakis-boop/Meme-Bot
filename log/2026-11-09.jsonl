@@ -802,3 +802,4 @@
 {"t":1794260760362,"addr":"9LRpyqwx8Zz1TmVquGhYWUzPnM2CixKHFy5mYheepump","sym":"GASDRGN","age":30.1,"why":"liquidity","liq":0}
 {"t":1794260821060,"addr":"DvVrqAkLwSyaCaJbs8Z7AK8SGTnmEpKxzWBX3sCbpump","sym":"Tesla","age":30.2,"score":0.02158,"px":7.892e-05,"liq":20441,"p0":7.47600394842198e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":4.0,"f_cjk":0.0,"c_ret":-0.5934,"c_peak":2.3832,"c_vol":4.6388,"c_act":1.0,"c_r5":0.2155,"c_r15":-0.31,"c_mc":4.8737}}
 {"t":1794260821060,"addr":"7q6EBhFtfP1MP9wX5q1bgBkRFPU2mv8uhYxPH6DSpump","sym":"CHADLON","age":30.1,"why":"liquidity","liq":1762}
+{"t":1794260940710,"addr":"8qC2e7YxK2A4d8VLdZTo8jcMFDMQNDB9xdFdRZYMpump","sym":"Unison","age":30.9,"why":"liquidity","liq":5638}
