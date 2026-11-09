@@ -66,3 +66,14 @@ Derselbe Copy-Bot läuft auch ohne Chrome-Erweiterung als Webseite:
 https://raw.githack.com/maxpandelakis-boop/Meme-Bot/trencher-extension/trencher/copy.html
 
 Am Handy: Seite öffnen → Teilen/Menü → „Zum Startbildschirm hinzufügen“. Dann startet sie wie eine App. Der Bot läuft, solange die Seite offen ist (der Bildschirm bleibt dafür an). Konto und Trader bleiben nur in diesem Browser gespeichert.
+
+## Trading Desk (ab v0.7.0, Spielgeld)
+
+Wie im zweiten Video (2026-11-09), nur ohne echtes Geld:
+
+- **Scout** sucht jede Minute heiße Coins (GeckoTerminal-Trends, DexScreener-Boosts, neue Profile, Käufe/Verkäufe pro Stunde, Reddit) und gibt Punkte (0–100). Ab 60 Punkten, steigendem Kurs und mehr Käufern als Verkäufern kauft er den besten Coin.
+- **Compounder:** Start 20 $, jeder Kauf 40 % vom freien Geld, höchstens 2 offen, kein Nachkaufen.
+- **Risk:** −8 % = alles raus, solange 2× nie kam. Bei 2× wird der Einsatz zurückverkauft, der Rest verkauft 10 % unter seinem Hoch.
+- **Executor:** Spielgeld-Fills mit FOMO-Gebühren (0,5 %, mind. 0,50 $) und Slippage.
+- Antippen eines Eintrags öffnet die Coin-Seite: Kerzen-Chart mit Entry / „Sold half“, die Desk-Regeln für diesen Coin und die Position.
+- Wallets folgen geht weiter (Agents), die Desk-Regeln gelten auch für kopierte Käufe.

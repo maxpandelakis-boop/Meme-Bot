@@ -23,7 +23,7 @@ assert.equal(C.walletTrades(tx([], [tb(W, "So11111111111111111111111111111111111
 assert.equal(C.walletTrades({ meta: { err: {} } }, W).length, 0);
 
 // account: copy a buy, take profit at 10x
-const P = { ...C.COPY_DEFAULTS };
+const P = { ...C.COPY_DEFAULTS, deposit: 100, sizePct: 0, stake: 20, maxOpen: 6, takeProfitX: 10 };
 const acc = C.newAccount(P, 0);
 let r = C.copyBuy(acc, { mint: M, symbol: "C", price: 1e-5, liq: 50000, mc: 10000, trader: "aiwass", lagSec: 30, now: 1 }, P);
 assert.ok(r.ok); assert.equal(acc.cash, 80);
@@ -61,4 +61,27 @@ console.log("ok: copy engine");
                         { mint: "b", liq: 50000, vol1h: 1e3, buys1h: 10, sells1h: 90 }, { mint: "c", liq: 500, gtRank: 0 }]);
   assert.deepEqual(s.map(x => x.mint), ["a", "b"]); assert.ok(s[0].score > 80, String(s[0].score));
   console.log("ok: hot coins");
+}
+
+// desk rules: 40 % of free cash, max 2 open, stop -8 % before 2x, half at 2x (entry back), trail 10 % off the high
+{
+  const D = { ...C.COPY_DEFAULTS };
+  const a = C.newAccount(D, 0), L = 1e6;
+  assert.ok(C.copyBuy(a, { mint: "A", symbol: "A", price: 1, liq: L, now: 1 }, D).ok); assert.equal(a.cash, 12);   // 40 % of 20
+  assert.ok(C.copyBuy(a, { mint: "B", symbol: "B", price: 1, liq: L, now: 1 }, D).ok); assert.ok(Math.abs(a.cash - 7.2) < 1e-9);
+  assert.equal(C.copyBuy(a, { mint: "C", symbol: "C", price: 1, liq: L, now: 1 }, D).skip, "max. offene Positionen");
+  const eA = a.pos.A.entry, eB = a.pos.B.entry;
+  assert.deepEqual(C.deskExits(a, { A: { price: eA * 0.95 }, B: { price: eB * 0.91 } }, D).map(x => x.why), ["stop"]);
+  let ex = C.deskExits(a, { A: { price: eA * 2 } }, D);
+  assert.equal(ex[0].why, "half"); assert.equal(ex[0].frac, 0.5);
+  C.copySell(a, { mint: "A", price: eA * 2, liq: L, frac: ex[0].frac, why: "half", now: 2 });
+  assert.ok(a.pos.A.half && a.pos.A.book.tokens > 0);
+  assert.deepEqual(C.deskExits(a, { A: { price: eA * 0.9 } }, D).map(x => x.why), ["trail"]);   // after half: no hard stop, trail from the 2x high
+  assert.deepEqual(C.deskExits(a, { A: { price: eA * 3 } }, D), []);                              // new high 3x
+  assert.deepEqual(C.deskExits(a, { A: { price: eA * 2.75 } }, D), []);                           // -8 % off the high: still riding
+  assert.deepEqual(C.deskExits(a, { A: { price: eA * 2.69 } }, D).map(x => x.why), ["trail"]);   // -10.3 %
+  C.copySell(a, { mint: "A", price: eA * 2.69, liq: L, why: "trail", now: 3 });
+  assert.ok(!a.pos.A); assert.equal(a.closed[0].why, "trail"); assert.ok(a.closed[0].pnl > 0);
+  assert.equal(a.activity[0].kind, "trail"); assert.equal(a.activity.at(-1).kind, "buy");
+  console.log("ok: desk rules");
 }

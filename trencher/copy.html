@@ -11,12 +11,12 @@
 <link rel="manifest" href="app-manifest.json">
 <link rel="icon" href="icons/app-192.png">
 <link rel="apple-touch-icon" href="icons/app-180.png">
-<title>Trencher Copy-Bot</title>
+<title>Trencher Trading Desk</title>
 <link rel="stylesheet" href="copy.css">
 </head>
 <body>
 <header class="top">
-  <span class="brand">Trencher Bot</span>
+  <span class="brand">Trading Desk</span>
   <span id="live" class="pill">● PAPER</span>
   <span id="ver" class="muted tiny"></span>
   <button id="installBtn" class="right tiny link" style="display:none">⬇ Als App installieren</button>
@@ -26,28 +26,46 @@
 <main>
   <!-- HOME -->
   <section id="home" class="page on">
+    <div id="deskSub" class="muted tiny desksub">–</div>
     <div class="balance"><span id="bal" class="bal">$0<span class="cents">.00</span></span></div>
-    <div id="since" class="since">–</div>
+    <div class="since"><span id="since">–</span> <span id="mult" class="mult">1.00×</span></div>
     <div class="chartwrap"><div id="chart"></div></div>
     <div class="ranges" id="ranges"><button data-r="live" class="on">● LIVE</button><button data-r="1h">1H</button><button data-r="4h">4H</button><button data-r="1d">1D</button><button data-r="1w">1W</button><button data-r="all">ALL</button></div>
 
-    <div class="sect"><b>Copy grid</b><span id="gridInfo" class="muted tiny">–</span></div>
-    <div id="grid" class="grid"></div>
-    <div class="agents" id="agentChips">
-      <div class="chip w"><i></i><b>Watcher</b><span id="agW">–</span></div>
-      <div class="chip c"><i></i><b>Copier</b><span id="agC">–</span></div>
-      <div class="chip e"><i></i><b>Executor</b><span id="agE">–</span></div>
-      <div class="chip r"><i></i><b>Risk</b><span id="agR">–</span></div>
+    <div class="sect"><b>Agents</b><span id="agentsInfo" class="tiny">–</span></div>
+    <div class="acards" id="agentCards">
+      <div class="acard"><div class="ah"><span class="ai s">◉</span><div><b>Scout</b><span id="aScoutSub" class="dot">–</span></div></div><ol id="aScout" class="alist"></ol></div>
+      <div class="acard"><div class="ah"><span class="ai c">▲</span><div><b>Compounder</b><span id="aCompSub" class="dot y">–</span></div></div>
+        <div class="comp"><svg viewBox="0 0 64 64" class="ring"><circle cx="32" cy="32" r="27" class="rbg"/><circle id="ringFg" cx="32" cy="32" r="27" class="rfg"/><text x="32" y="37" text-anchor="middle">10×</text></svg>
+        <div><span class="muted tiny">nächstes Ziel</span><b id="aGoal">$200</b><span id="aNext" class="pos tiny">–</span></div></div></div>
+      <div class="acard"><div class="ah"><span class="ai e">◆</span><div><b>Executor</b><span id="aExecSub" class="dot">Spielgeld-Fills</span></div></div><ol id="aExec" class="alist"></ol></div>
+      <div class="acard"><div class="ah"><span class="ai r">■</span><div><b>Risk</b><span id="aRiskSub" class="dot r">–</span></div></div><ol id="aRisk" class="alist"></ol></div>
     </div>
     <div class="row"><button id="runBtn" class="run">▶ Bot starten</button></div>
 
-    <div class="sect"><b>Activity</b><span id="actInfo" class="muted tiny">–</span></div>
+    <div class="sect"><b>Activity</b><button id="seeAll" class="link tiny">Alle ansehen</button></div>
     <ol id="actHome" class="acts"></ol>
+    <span id="actInfo" hidden></span>
+  </section>
+
+  <!-- COIN -->
+  <section id="coin" class="page">
+    <button id="coinBack" class="link tiny">‹ Home</button>
+    <div class="who coinhead"><span id="cAv"></span><div><b id="cName">–</b><span id="cMeta" class="muted tiny">–</span></div><a id="cLink" class="right link tiny" target="_blank" rel="noopener">DexScreener ↗</a></div>
+    <div id="cMc" class="bal">–</div>
+    <div id="cSince" class="since">–</div>
+    <div class="chartwrap"><div id="cChart"></div></div>
+    <div class="sect"><b id="cRulesHead">Desk rules</b><span id="cRulesInfo" class="tiny muted">–</span></div>
+    <ol id="cRules" class="rules2"></ol>
+    <div class="posbox"><div class="row"><b>Position</b><b id="cPosVal" class="right">–</b></div><div id="cPosSub" class="muted tiny">–</div>
+      <div class="row"><button id="cSell" class="ghost">Jetzt verkaufen</button></div></div>
   </section>
 
   <!-- AGENTS -->
   <section id="agents" class="page">
-    <h2>Trader zum Kopieren</h2>
+    <h2>Wallets folgen (optional)</h2>
+    <div class="sect"><span class="muted tiny">Kauft eine Wallet, kauft der Desk nach (die Desk-Regeln gelten auch hier).</span><span id="gridInfo" class="muted tiny">–</span></div>
+    <div id="grid" class="grid"></div>
     <p class="muted tiny">Der Knopf sucht heiße Coins (GeckoTerminal, DexScreener, Reddit) und darin die Wallets mit dem meisten Gewinn. Oder Name und Solana-Wallet selbst eintragen. Kauft ein Trader, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
     <button id="findBtn" class="find">🔍 Gute Trader finden</button>
     <div id="findMsg" class="tiny muted"></div>
@@ -75,7 +93,7 @@
   <!-- ACTIVITY -->
   <section id="activity" class="page">
     <div class="sect"><b>Activity</b><span id="actInfo2" class="muted tiny"></span></div>
-    <div class="filters" id="filters"><button data-f="all" class="on">All</button><button data-f="copy">Copies</button><button data-f="exit">Exits</button><button data-f="rule">Rules</button></div>
+    <div class="filters" id="filters"><button data-f="all" class="on">All</button><button data-f="copy">Käufe</button><button data-f="exit">Verkäufe</button><button data-f="rule">Rules</button></div>
     <ol id="actAll" class="acts"></ol>
   </section>
 
@@ -84,18 +102,19 @@
     <div class="balance"><span id="bal2" class="bal">$0</span></div>
     <div id="since2" class="since">–</div>
     <div class="tiles">
-      <div><span>Copies</span><b id="sCopies">–</b></div>
+      <div><span>Trades</span><b id="sCopies">–</b></div>
       <div><span>Profit</span><b id="sProfit">–</b></div>
       <div><span>Best exit</span><b id="sBest">–</b></div>
-      <div><span>Behind traders</span><b id="sBehind">–</b></div>
+      <div><span>Regeln</span><b id="sBehind">–</b></div>
       <div><span>Bargeld</span><b id="sCash">–</b></div>
       <div><span>Gebühren bezahlt</span><b id="sFees">–</b></div>
     </div>
-    <h2>Pro Trader</h2>
+    <h2>Pro Quelle</h2>
     <ol id="perTrader" class="acts"></ol>
     <h2>Offene Positionen</h2>
     <ol id="openPos" class="acts"></ol>
-    <div class="row"><button id="resetAcc" class="ghost">Neu starten mit <span id="depLbl">$100</span> Spielgeld</button></div>
+    <div class="row"><button id="notifBtn" class="ghost">🔔 Benachrichtigungen an</button></div>
+    <div class="row"><button id="resetAcc" class="ghost">Neu starten mit <span id="depLbl">$20</span> Spielgeld</button></div>
     <p class="muted tiny">Nur Simulation: keine Wallet, keine Schlüssel, kein echtes Geld. Gebühren wie FOMO (0,5 %, mind. 0,50 $), Slippage nach Pool-Größe.</p>
   </section>
 </main>

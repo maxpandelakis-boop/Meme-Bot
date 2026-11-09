@@ -1,7 +1,11 @@
-// Copy-Bot screen of the Trencher (paper money only): follows Solana wallets of traders, buys what they buy `delaySec` later,
-// sells when they sell (or at the take-profit), and shows it like the video: balance chart, copy grid, agents, activity, account.
-// Data, all free and keyless: PublicNode's Solana JSON-RPC (the traders' transactions) and DexScreener (prices).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, stats } from "./copy-engine.js";
+// Trading Desk of the Trencher (paper money only), modelled on the user's second video (2026-11-09):
+//   Scout       finds hot coins by itself (GeckoTerminal trends, DexScreener boosts/profiles/pair stats, Reddit mentions -> score)
+//   Compounder  sizes each buy at 40 % of the free cash, max 2 open, never adds to a coin it holds
+//   Risk        hard stop -8 % while 2x never printed; at 2x sells the entry back; the rest trails 10 % off its high
+//   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
+// Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
+// GeckoTerminal, Reddit (the user's own app ID).
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js";
 import { bestPair } from "./sim.js";
 
 const $ = id => document.getElementById(id);
@@ -13,6 +17,8 @@ const WATCH_MS = 1500;      // one trader wallet checked per tick, round robin
 const COPY_MS = 1000;       // due copies executed
 const RISK_MS = 5000;       // open positions priced, take-profit / stop-loss checked
 const CURVE_MS = 10000;     // a point of the balance curve
+const SCOUT_MS = 60000;     // the Scout looks for hot coins once a minute (GeckoTerminal allows ~30 calls a minute)
+const COOLDOWN_MS = 30 * 60e3;   // a coin the desk just left is not bought again for 30 minutes
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 // ---------- storage (chrome.storage in the extension, localStorage on a plain web page) ----------
@@ -36,10 +42,10 @@ let running = false;
 const cursor = {};          // wallet -> newest signature already handled
 const seen = {};            // wallet -> {text, t} last thing the trader did (for the grid card)
 const prices = {};          // mint -> {price, liq, mc, symbol, img, t}
-const agent = { w: "aus", c: "–", e: "–", r: "–", rpc: 0, rpcErr: 0 };
+const agent = { w: "aus", c: "–", e: "–", r: "–", rpc: 0, rpcErr: 0, checked: 0, top: [], scoutAt: 0, scoutMsg: "" };
 let watchIdx = 0, filter = "all", range = "live", saveTimer = 0;
 
-function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { save("copyAcc", acc); save("copyQueue", queue); }, 300); }
+function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { save("deskAcc", acc); save("deskQueue", queue); }, 300); }
 
 // ---------- formatting ----------
 const money = x => (x < 0 ? "-$" : "$") + Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -83,7 +89,8 @@ async function priceCoins(mints) {
       const p = bestPair(j.pairs, m);
       if (!p || !(Number(p.priceUsd) > 0)) continue;
       prices[m] = { price: Number(p.priceUsd), liq: (p.liquidity && p.liquidity.usd) || 0, mc: p.marketCap || p.fdv || 0,
-                    symbol: (p.baseToken && p.baseToken.symbol) || short(m), img: (p.info && p.info.imageUrl) || "", t: Date.now() };
+                    symbol: (p.baseToken && p.baseToken.symbol) || short(m), img: (p.info && p.info.imageUrl) || "", pool: p.pairAddress, url: p.url,
+                    created: p.pairCreatedAt || 0, t: Date.now() };
     }
   }
 }
@@ -126,8 +133,9 @@ async function copyDue() {
     const lagSec = Math.round((Date.now() - q.at) / 1000);
     if (q.side === "buy") {
       if (!p) { rule(q, "kein Preis bei DexScreener"); continue; }
-      const r = copyBuy(acc, { mint: q.mint, symbol: p.symbol, price: p.price, liq: p.liq, mc: p.mc, trader: q.trader, lagSec, now: Date.now() }, P);
-      if (r.skip && r.skip !== "schon im Coin") rule(q, r.skip);
+      const r = copyBuy(acc, { mint: q.mint, symbol: p.symbol, price: p.price, liq: p.liq, mc: p.mc, trader: q.trader, lagSec, pool: p.pool, img: p.img, now: Date.now() }, P);
+      if (r.skip && !r.skip.startsWith("schon im Coin")) rule(q, r.skip);
+      if (r.ok) notify(`Kopiert: ${p.symbol}`, `${money(acc.activity[0].usd)} · ${lagSec}s nach ${q.trader} · ${big(p.mc)} MC`);
     } else if (P.sameExits && acc.pos[q.mint] && p) {
       copySell(acc, { mint: q.mint, price: p.price, liq: p.liq, mc: p.mc, frac: q.frac || 1, why: "trader", trader: q.trader, lagSec, now: Date.now() });
     }
@@ -142,19 +150,49 @@ function rule(q, why) {
   if (acc.activity.length > 400) acc.activity.length = 400;
 }
 
-// ---------- Risk: take-profit / stop-loss on the open copies ----------
+// ---------- Scout: hot coins from all free sources -> the best one is bought ----------
+async function scout() {
+  if (!P.scout || Date.now() - agent.scoutAt < SCOUT_MS) return;
+  agent.scoutAt = Date.now();
+  const list = await hotCoins(() => {});
+  hot = list; agent.checked += list.length; agent.top = list.slice(0, 3);
+  const recent = new Set(acc.closed.filter(c => Date.now() - c.out < COOLDOWN_MS).map(c => c.mint));
+  const pick = list.find(c => c.score >= P.minScore && c.pool && !acc.pos[c.mint] && !recent.has(c.mint)
+                              && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0));
+  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
+  if (!pick || Object.keys(acc.pos).length >= P.maxOpen) { render(); return; }
+  const p = prices[pick.mint];
+  if (!p || !(p.price > 0)) return;
+  const r = copyBuy(acc, { mint: pick.mint, symbol: pick.symbol, price: p.price, liq: p.liq, mc: p.mc, score: pick.score, pool: pick.pool, img: pick.img, now: Date.now() }, P);
+  if (r.ok) notify(`Gekauft: ${pick.symbol}`, `${money(acc.activity[0].usd)} (${Math.round(P.sizePct * 100)} % vom freien Geld) bei ${big(p.mc)} MC · Punkte ${pick.score}`);
+  point(); persist(); render();
+}
+
+// ---------- Risk: the desk rules (and the optional plain take-profit / stop-loss) on the open positions ----------
+const EXIT_TEXT = { half: "Einsatz zurück bei 2×", stop: "Hard Stop", trail: "Trailing-Stop", tp: "Take Profit", sl: "Stop-Loss" };
 async function riskCheck() {
   const open = Object.keys(acc.pos);
-  agent.r = `TP ${P.takeProfitX}x${P.stopLoss > 0 ? " · SL -" + Math.round(P.stopLoss * 100) + "%" : ""}`;
+  agent.r = `${open.length} offen`;
   if (!open.length) return;
   try { await priceCoins(open); } catch { return; }
-  for (const { mint, why } of riskExits(acc, prices, P)) {
+  const exits = deskExits(acc, prices, P);
+  if (P.takeProfitX > 1 || P.stopLoss > 0) for (const x of riskExits(acc, prices, P)) if (!exits.some(e => e.mint === x.mint)) exits.push({ ...x, frac: 1 });
+  for (const { mint, why, frac } of exits) {
     const p = prices[mint], pos = acc.pos[mint];
     const m = p.price / pos.entry;
-    const r = copySell(acc, { mint, price: p.price, liq: p.liq, mc: p.mc, why, now: Date.now() });
-    if (r.ok) toast(why === "tp" ? `TOOK PROFIT ${xs(m)}` : `STOP-LOSS ${pct(m - 1)}`, why !== "tp");
+    const r = copySell(acc, { mint, price: p.price, liq: p.liq, mc: p.mc, frac, why, now: Date.now() });
+    if (!r.ok) continue;
+    const pnl = r.fill.pnl;
+    const head = why === "half" ? `SOLD HALF ${xs(m)}` : why === "trail" ? `CLOSED ${xs(m)}` : why === "tp" ? `TOOK PROFIT ${xs(m)}` : `STOPPED ${pct(m - 1)}`;
+    toast(head, pnl < 0);
+    notify(`${EXIT_TEXT[why] || "Verkauft"}: ${pos.symbol}`, `${signed(pnl)} · ${xs(m)} · ${big(p.mc)} MC`);
   }
   point(); persist(); render();
+}
+
+// ---------- notifications (buy / sell, also when the page is in the background) ----------
+function notify(title, body) {
+  try { if (typeof Notification !== "undefined" && Notification.permission === "granted") new Notification("Trading Desk · " + title, { body, icon: "icons/app-192.png", silent: false }); } catch {}
 }
 
 // ---------- balance curve ----------
@@ -179,6 +217,7 @@ function loop(fn, ms) {
 loop(watchOne, WATCH_MS);
 loop(copyDue, COPY_MS);
 loop(riskCheck, RISK_MS);
+loop(scout, 5000);
 loop(async () => { point(); persist(); }, CURVE_MS);
 setInterval(() => { if (acc) renderTop(); }, 2000);
 
@@ -222,11 +261,11 @@ function drawChart() {
   area.applyOptions({ lineColor: col, topColor: up ? "rgba(34,197,94,.28)" : "rgba(239,68,68,.25)", bottomColor: "rgba(0,0,0,0)" });
   area.setData(data);
   const times = new Set(data.map(d => d.time));
-  const marks = acc.activity.filter(a => a.t >= from && (a.kind === "copy" || a.kind === "sell" || a.kind === "tp" || a.kind === "sl"))
+  const marks = acc.activity.filter(a => a.t >= from && BUY_KINDS.has(a.kind) || a.t >= from && EXIT_KINDS.has(a.kind))
     .map(a => {
       let time = Math.floor(a.t / 1000);
       if (!times.has(time)) time = data.reduce((b, d) => Math.abs(d.time - time) < Math.abs(b - time) ? d.time : b, data[0].time);
-      return a.kind === "copy" ? { time, position: "belowBar", color: "#4f5dff", shape: "circle", size: 0.6 }
+      return BUY_KINDS.has(a.kind) ? { time, position: "belowBar", color: "#4f5dff", shape: "circle", size: 0.6 }
                                : { time, position: "aboveBar", color: a.pnl >= 0 ? "#22c55e" : "#ef4444", shape: "circle", size: 0.6 };
     }).sort((a, b) => a.time - b.time);
   area.setMarkers(marks);
@@ -234,49 +273,72 @@ function drawChart() {
 }
 
 // ---------- rendering ----------
+const BUY_KINDS = new Set(["buy", "copy"]), EXIT_KINDS = new Set(["sell", "tp", "sl", "half", "stop", "trail"]);
 function renderTop() {
-  const v = value(), d = v - acc.deposit;
+  const v = value(), d = v - acc.deposit, x = acc.deposit > 0 ? v / acc.deposit : 1;
   const [w, c] = money(v).split(".");
   $("bal").innerHTML = `${w}<span class="cents">.${c}</span>`;
   $("bal2").textContent = money(v);
-  const sinceTxt = `${signed(d)} (${pct(d / acc.deposit)}) since deposit`;
-  for (const id of ["since", "since2"]) { $(id).textContent = sinceTxt; $(id).className = "since " + (d >= 0 ? "pos" : "neg"); }
+  const sinceTxt = `${d >= 0 ? "▲" : "▼"} ${money(Math.abs(d))} (${pct(d / acc.deposit)})`;
+  for (const id of ["since", "since2"]) { $(id).textContent = sinceTxt; $(id).className = (id === "since2" ? "since " : "") + (d >= 0 ? "pos" : "neg"); }
+  $("mult").textContent = x.toFixed(2) + "×"; $("mult").classList.toggle("neg", x < 1);
+  const open = Object.keys(acc.pos).length;
+  $("deskSub").textContent = `Spielgeld · Compounder ${Math.round(P.sizePct * 100)}% · ${open} offen · max ${P.maxOpen}`;
   drawChart();
-  $("agW").textContent = running ? agent.w : "aus"; $("agC").textContent = running ? agent.c : "aus";
-  $("agE").textContent = running ? agent.e : "aus"; $("agR").textContent = running ? agent.r : "aus";
-  for (const el of $("agentChips").children) el.classList.toggle("on", running);
+  // agent cards
+  $("agentsInfo").textContent = running ? `${P.scout ? 4 : 3} laufen` : "aus";
+  $("aScoutSub").textContent = !P.scout ? "aus" : agent.checked ? `${agent.checked.toLocaleString("de-DE")} Coins geprüft` : running ? "sucht …" : "wartet";
+  $("aScout").innerHTML = agent.top.map(c => `<li>${avatar(c.symbol, c.img)}<b>${esc(c.symbol)}</b> <span class="${c.chg1h >= 0 ? "pos" : "neg"}">${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}%</span><span class="sc">${c.score}</span></li>`).join("")
+    || `<li class="muted">${running ? "erste Suche läuft …" : "Bot starten"}</li>`;
+  if (agent.scoutMsg) $("aScout").insertAdjacentHTML("beforeend", `<li class="muted">→ ${esc(agent.scoutMsg)}</li>`);
+  const ring = Math.min(1, Math.max(0, x / 10));
+  $("ringFg").style.strokeDashoffset = String(169.6 * (1 - ring));
+  $("aCompSub").textContent = x.toFixed(2) + "× jetzt";
+  $("aGoal").textContent = money(acc.deposit * 10).replace(".00", "");
+  $("aNext").textContent = "Kauf " + money(Math.min(acc.cash, P.sizePct > 0 ? acc.cash * P.sizePct : P.stake));
+  const lastExec = acc.activity.filter(a => BUY_KINDS.has(a.kind) || EXIT_KINDS.has(a.kind)).slice(0, 3);
+  $("aExec").innerHTML = lastExec.map(a => `<li>${avatar(a.symbol, (prices[a.mint] || {}).img)}<span>${BUY_KINDS.has(a.kind) ? "kauft" : "verkauft"} ${esc(a.symbol)}</span><span class="st ${BUY_KINDS.has(a.kind) ? "" : "ok"}">${BUY_KINDS.has(a.kind) ? money(a.usd) : signed(a.pnl)}</span></li>`).join("")
+    || `<li class="muted">noch keine Fills</li>`;
+  $("aRiskSub").textContent = `${open} offen · ${Object.values(acc.pos).filter(p => p.half).length} trailing`;
+  const anyHalf = Object.values(acc.pos).some(p => p.half), anyNot = Object.values(acc.pos).some(p => !p.half);
+  $("aRisk").innerHTML = `<li>Stop −${Math.round(P.hardStop * 100)}%<span class="st ${anyNot ? "on" : ""}">${anyNot ? "scharf" : "–"}</span></li>
+    <li>Einsatz zurück bei ${P.halfAt}×<span class="st">${anyNot ? "wartet" : "–"}</span></li>
+    <li>Trail ${Math.round(P.trail * 100)}% vom Hoch<span class="st ${anyHalf ? "ok" : ""}">${anyHalf ? "aktiv" : "–"}</span></li>`;
+  if ($("coin").classList.contains("on")) renderCoin();
 }
 
 function actRow(a) {
   const p = prices[a.mint] || {};
-  const icon = avatar(a.symbol || "?", p.img);
-  if (a.kind === "copy")
-    return `<li>${icon}<div class="mid"><b>Copied ${esc(a.symbol)}</b><span>${a.lagSec}s after ${esc(a.trader)} · ${hm(a.t)}</span></div>
-            <div class="amt"><b>${money(a.usd)}</b><span>at ${big(a.mc)} MC</span></div></li>`;
-  if (a.kind === "rule")
-    return `<li>${icon}<div class="mid"><b>Skipped ${esc(a.symbol)}</b><span>${esc(a.why)} · ${esc(a.trader)} · ${hm(a.t)}</span></div>
-            <div class="amt"><span>Regel</span></div></li>`;
-  const title = a.kind === "tp" ? `Took profit ${xs(a.multiple)} · ${esc(a.symbol)}` : a.kind === "sl" ? `Stop-loss ${esc(a.symbol)}`
-              : `Sold ${a.frac < 0.999 ? Math.round(a.frac * 100) + "% " : ""}${esc(a.symbol)}`;
-  const sub = a.kind === "sell" ? (a.trader && a.lagSec != null ? `same exit as ${esc(a.trader)} · ${a.lagSec}s · ` : "von Hand · ") : "Risk-Agent · ";
-  const cost = a.usd - a.pnl;
-  return `<li>${icon}<div class="mid"><b>${title}</b><span>${sub}${hm(a.t)}</span></div>
-          <div class="amt"><b class="${a.pnl >= 0 ? "pos" : "neg"}">${signed(a.pnl)}</b><span>${cost > 0 ? pct(a.pnl / cost) : ""} · ${big(a.mc)} MC</span></div></li>`;
+  const icon = avatar(a.symbol || "?", p.img || (acc.pos[a.mint] || {}).img);
+  const li = (title, sub, amt, amtSub, cls = "") => `<li data-mint="${esc(a.mint)}">${icon}<div class="mid"><b>${title}</b><span>${sub} · ${hm(a.t)}</span></div>
+            <div class="amt"><b class="${cls}">${amt}</b><span>${amtSub}</span></div></li>`;
+  const sym = esc(a.symbol);
+  if (a.kind === "buy") return li(`Bought ${sym}`, `${Math.round((a.pct || P.sizePct) * 100)}% of free cash · ${big(a.mc)} MC`, money(a.usd), a.score ? `score ${a.score}` : "");
+  if (a.kind === "copy") return li(`Copied ${sym}`, `${a.lagSec}s after ${esc(a.trader)} · ${big(a.mc)} MC`, money(a.usd), "Wallet");
+  if (a.kind === "rule") return li(`Skipped ${sym}`, `${esc(a.why)}${a.trader ? " · " + esc(a.trader) : ""}`, "", "Regel");
+  const cost = a.usd - a.pnl, cls = a.pnl >= 0 ? "pos" : "neg";
+  if (a.kind === "half") return li(`Sold half ${sym}`, `${xs(a.multiple)} · entry back`, signed(a.pnl), "x" + (a.multiple || 0).toFixed(2), cls);
+  if (a.kind === "stop") return li(`Stopped ${sym}`, `hard stop −${Math.round(P.hardStop * 100)}%`, signed(a.pnl), cost > 0 ? pct(a.pnl / cost) : "", cls);
+  if (a.kind === "trail") return li(`Closed ${sym}`, `trail ${Math.round(P.trail * 100)}% off high`, signed(a.pnl), "x" + (a.multiple || 0).toFixed(2), cls);
+  if (a.kind === "tp") return li(`Took profit ${xs(a.multiple)} · ${sym}`, "Take Profit", signed(a.pnl), cost > 0 ? pct(a.pnl / cost) : "", cls);
+  if (a.kind === "sl") return li(`Stop-loss ${sym}`, "Stop-Loss", signed(a.pnl), cost > 0 ? pct(a.pnl / cost) : "", cls);
+  return li(`Sold ${a.frac < 0.999 ? Math.round(a.frac * 100) + "% " : ""}${sym}`, a.trader && a.lagSec != null ? `same exit as ${esc(a.trader)}` : "von Hand",
+            signed(a.pnl), cost > 0 ? pct(a.pnl / cost) : "", cls);
 }
 
 let shownTop = "";
 function renderActivity() {
   const list = acc.activity;
-  const home = list.slice(0, 8).map(actRow).join("") || `<li class="empty">Noch nichts. Trader hinzufügen und Bot starten.</li>`;
+  const home = list.filter(a => a.kind !== "rule").slice(0, 8).map(actRow).join("") || `<li class="empty">Noch nichts. Bot starten: der Scout sucht dann selbst.</li>`;
   const top = list[0] ? list[0].t + list[0].kind : "";
   $("actHome").innerHTML = home;
   if (top && top !== shownTop && shownTop) $("actHome").firstElementChild?.classList.add("new");
   shownTop = top;
-  const f = { all: () => true, copy: a => a.kind === "copy", exit: a => ["sell", "tp", "sl"].includes(a.kind), rule: a => a.kind === "rule" }[filter];
+  const f = { all: () => true, copy: a => BUY_KINDS.has(a.kind), exit: a => EXIT_KINDS.has(a.kind), rule: a => a.kind === "rule" }[filter];
   const all = list.filter(f);
   $("actAll").innerHTML = all.slice(0, 200).map(actRow).join("") || `<li class="empty">Keine Einträge.</li>`;
   const s = stats(acc);
-  $("actInfo").textContent = `${s.copies} copies · ${s.closed} exits`;
+  $("actInfo").textContent = `${s.copies} Käufe · ${s.closed} geschlossen`;
   $("actInfo2").textContent = `${all.length} Einträge`;
 }
 
@@ -303,18 +365,18 @@ function renderAccount() {
   $("sCopies").textContent = `${s.copies} · ${s.wins}W ${s.losses}L`;
   $("sProfit").textContent = signed(s.profit); $("sProfit").className = s.profit >= 0 ? "pos" : "neg";
   $("sBest").textContent = s.best ? `${xs(s.best.multiple)} ${esc(s.best.symbol)}` : "–";
-  $("sBehind").textContent = `${P.delaySec}s · ${P.sameExits ? "same exits" : "nur TP/SL"}`;
+  $("sBehind").textContent = `${Math.round(P.sizePct * 100)}% · max ${P.maxOpen} · −${Math.round(P.hardStop * 100)}% · ${P.halfAt}× · trail ${Math.round(P.trail * 100)}%`;
   $("sCash").textContent = money(acc.cash);
   $("sFees").textContent = money(acc.fees);
   $("depLbl").textContent = money(P.deposit).replace(".00", "");
   const per = {};
-  for (const c of acc.closed) { const x = per[c.trader] || (per[c.trader] = { n: 0, w: 0, pnl: 0 }); x.n++; x.pnl += c.pnl; if (c.pnl > 0) x.w++; }
+  for (const c of acc.closed) { const k = c.trader || "Scout"; const x = per[k] || (per[k] = { n: 0, w: 0, pnl: 0 }); x.n++; x.pnl += c.pnl; if (c.pnl > 0) x.w++; }
   $("perTrader").innerHTML = Object.entries(per).sort((a, b) => b[1].pnl - a[1].pnl).map(([name, x]) =>
     `<li>${avatar(name)}<div class="mid"><b>${esc(name)}</b><span>${x.n} Trades · ${x.w}W ${x.n - x.w}L</span></div>
      <div class="amt"><b class="${x.pnl >= 0 ? "pos" : "neg"}">${signed(x.pnl)}</b></div></li>`).join("") || `<li class="empty">Noch keine abgeschlossenen Trades.</li>`;
   $("openPos").innerHTML = Object.values(acc.pos).map(p => {
     const q = prices[p.mint], m = q ? q.price / p.entry : 1;
-    return `<li>${avatar(p.symbol, q && q.img)}<div class="mid"><b>${esc(p.symbol)} · ${xs(m)}</b><span>von ${esc(p.trader)} · seit ${hm(p.at)} · Einsatz ${money(p.book.cost)}</span></div>
+    return `<li data-mint="${esc(p.mint)}">${avatar(p.symbol, (q && q.img) || p.img)}<div class="mid"><b>${esc(p.symbol)} · ${xs(m)}${p.half ? " · trailing" : ""}</b><span>${p.trader ? "von " + esc(p.trader) : "Scout · Punkte " + p.score} · seit ${hm(p.at)} · Einsatz ${money(p.book.cost)}</span></div>
       <div class="amt"><button class="link tiny" data-sell="${esc(p.mint)}">Verkaufen</button></div></li>`;
   }).join("") || `<li class="empty">Keine offenen Positionen.</li>`;
 }
@@ -326,12 +388,15 @@ function renderTraders() {
 }
 
 const RULES = [
-  ["deposit", "Startgeld ($)", 1], ["stake", "Einsatz pro Kauf ($)", 1], ["delaySec", "Sekunden nach dem Trader", 1],
-  ["takeProfitX", "Gewinn mitnehmen bei (x)", 1], ["stopLoss", "Stop-Loss (%, 0 = aus)", 100], ["maxOpen", "Max. offene Positionen", 1],
+  ["deposit", "Startgeld ($)", 1], ["sizePct", "Kauf: % vom freien Geld", 100], ["maxOpen", "Max. offene Positionen", 1],
+  ["hardStop", "Hard Stop (%, solange nie 2×)", 100], ["halfAt", "Einsatz zurück bei (×)", 1], ["trail", "Trailing vom Hoch (%)", 100],
+  ["minScore", "Scout: Mindest-Punkte (0–100)", 1], ["delaySec", "Wallets: Sekunden danach", 1],
+  ["takeProfitX", "Extra: alles raus bei (×, 0 = aus)", 1], ["stopLoss", "Extra: Stop-Loss (%, 0 = aus)", 100],
 ];
 function renderRules() {
   $("rules").innerHTML = RULES.map(([k, label, f]) => `<label for="r_${k}">${label}</label><input id="r_${k}" data-k="${k}" data-f="${f}" type="number" min="0" step="any" value="${+(P[k] * f).toFixed(4)}">`).join("")
-    + `<label for="r_same">Mit dem Trader verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
+    + `<label for="r_scout">Scout kauft selbst</label><input id="r_scout" type="checkbox" ${P.scout ? "checked" : ""} style="width:auto;justify-self:end">`
+    + `<label for="r_same">Mit der Wallet verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
 }
 
 function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); }
@@ -345,12 +410,13 @@ function toast(text, bad = false) {
 
 function setRunning(on) {
   running = on;
-  if (typeof keepAwake === "function") keepAwake(on && !IS_EXT); save("copyRunning", on);
+  save("deskRunning", on);
+  if (typeof keepAwake === "function") keepAwake(on && !IS_EXT);
   $("runBtn").textContent = on ? "■ Bot stoppen" : "▶ Bot starten";
   $("runBtn").classList.toggle("on", on);
-  $("live").textContent = on ? "● PAPER LIVE" : "● PAPER";
+  $("live").textContent = on ? "● Live · Spielgeld" : "● Spielgeld";
   $("live").classList.toggle("live", on);
-  if (on) for (const k of Object.keys(cursor)) delete cursor[k];   // after a pause, only new trades are copied
+  if (on) { for (const k of Object.keys(cursor)) delete cursor[k]; agent.scoutAt = 0; }   // after a pause: only new trades, the Scout looks at once
   render();
 }
 
@@ -377,8 +443,17 @@ $("filters").addEventListener("click", e => {
   renderActivity();
 });
 $("runBtn").addEventListener("click", () => {
-  if (!running && !traders.some(t => t.on && B58.test(t.wallet))) { go("agents"); $("tMsg").textContent = "Füge zuerst einen Trader mit Wallet hinzu."; return; }
+  if (!running && !P.scout && !traders.some(t => t.on && B58.test(t.wallet))) { go("agents"); $("tMsg").textContent = "Scout ist aus: schalte ihn unter Regeln an oder füge eine Wallet hinzu."; return; }
   setRunning(!running);
+});
+$("seeAll").addEventListener("click", () => go("activity"));
+for (const id of ["actHome", "actAll", "openPos"]) $(id).addEventListener("click", e => {
+  if (e.target.closest("button")) return;
+  const li = e.target.closest("li[data-mint]"); if (li) openCoin(li.dataset.mint);
+});
+$("notifBtn").addEventListener("click", async () => {
+  try { const r = await Notification.requestPermission(); $("notifBtn").textContent = r === "granted" ? "🔔 Benachrichtigungen sind an" : "🔕 Benachrichtigungen blockiert (Browser-Einstellungen)"; }
+  catch { $("notifBtn").textContent = "Benachrichtigungen gehen hier nicht"; }
 });
 $("grid").addEventListener("click", e => {
   if (e.target.closest("#addCard")) { go("agents"); $("tName").focus(); return; }
@@ -404,12 +479,13 @@ $("traderList").addEventListener("click", e => {
 $("rules").addEventListener("change", e => {
   const el = e.target;
   if (el.id === "r_same") P.sameExits = el.checked;
+  else if (el.id === "r_scout") P.scout = el.checked;
   else if (el.dataset.k) { const v = Number(el.value); if (v >= 0) P[el.dataset.k] = v / Number(el.dataset.f); }
-  save("copyRules", P); render();
+  save("deskRules", P); render();
 });
 load("redditAppId", "").then(v => { $("redditId").value = v; });
 $("redditId").addEventListener("change", () => { save("redditAppId", $("redditId").value.trim()); redditTok = null; $("redditMsg").textContent = "Gespeichert. Wird bei der nächsten Suche benutzt."; });
-$("rulesReset").addEventListener("click", () => { P = { ...COPY_DEFAULTS }; save("copyRules", P); renderRules(); render(); });
+$("rulesReset").addEventListener("click", () => { P = { ...COPY_DEFAULTS }; save("deskRules", P); renderRules(); render(); });
 $("openPos").addEventListener("click", async e => {
   const b = e.target.closest("button[data-sell]"); if (!b) return;
   const mint = b.dataset.sell;
@@ -421,7 +497,7 @@ $("openPos").addEventListener("click", async e => {
 });
 $("resetAcc").addEventListener("click", () => {
   if (!confirm(`Konto zurücksetzen? Alle Positionen und die Activity werden gelöscht, du startest mit ${money(P.deposit)} Spielgeld.`)) return;
-  acc = newAccount(P); queue = []; persist(); render();
+  acc = newAccount(P); queue = []; agent.checked = 0; persist(); render();
 });
 
 // ---------- "Gute Trader finden": hot coins on GeckoTerminal -> their recent trades -> wallets that took the most profit ----------
@@ -552,6 +628,113 @@ $("findList").addEventListener("click", e => {
   save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
 });
 
+// ---------- coin page: candles with entry / exits, the desk rules for this coin, the position ----------
+let coinMint = "", coinChart = null, coinCandles = null, coinVol = null, coinLoadedAt = 0, coinOhlcv = [];
+function openCoin(mint) {
+  coinMint = mint; coinOhlcv = []; coinLoadedAt = 0;
+  for (const x of document.querySelectorAll("nav.bottom button")) x.classList.remove("on");
+  for (const sct of document.querySelectorAll(".page")) sct.classList.toggle("on", sct.id === "coin");
+  window.scrollTo(0, 0);
+  if (!coinChart) {
+    coinChart = LWC.createChart($("cChart"), {
+      autoSize: true, layout: { background: { color: "transparent" }, textColor: "#8a90a0", fontSize: 10 },
+      grid: { vertLines: { visible: false }, horzLines: { color: "#151924" } },
+      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.28 } }, timeScale: { borderVisible: false, timeVisible: true },
+      localization: { locale: "de-DE", priceFormatter: big }, crosshair: { mode: 0 },
+    });
+    coinCandles = coinChart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444",
+                                                   priceFormat: { type: "custom", formatter: big, minMove: 0.01 } });
+    coinVol = coinChart.addHistogramSeries({ priceScaleId: "v", color: "#f59e0b", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false });
+    coinChart.priceScale("v").applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
+  }
+  coinCandles.setData([]); coinVol.setData([]); coinCandles.setMarkers([]);
+  priceCoins([mint]).catch(() => {}).then(() => { loadCoinChart(); renderCoin(); });
+  renderCoin();
+}
+async function loadCoinChart() {
+  const p = prices[coinMint] || {}, pos = acc.pos[coinMint];
+  const pool = (pos && pos.pool) || p.pool;
+  if (!pool) return;
+  coinLoadedAt = Date.now();
+  try {
+    const j = await gt(`/pools/${pool}/ohlcv/minute?aggregate=1&limit=180&currency=usd`);
+    coinOhlcv = ((j.data && j.data.attributes && j.data.attributes.ohlcv_list) || []).slice().reverse();
+  } catch { coinOhlcv = []; }
+  drawCoinChart();
+}
+function drawCoinChart() {
+  const p = prices[coinMint] || {};
+  const k = p.price > 0 && p.mc > 0 ? p.mc / p.price : 1;   // price -> market cap (the video shows MC)
+  const seenT = new Set(), c = [], v = [];
+  for (const [t, o, h, l, cl, vol] of coinOhlcv) { if (seenT.has(t)) continue; seenT.add(t); c.push({ time: t, open: o * k, high: h * k, low: l * k, close: cl * k }); v.push({ time: t, value: vol }); }
+  coinCandles.setData(c); coinVol.setData(v);
+  if (!c.length) return;
+  const nearest = ts => c.reduce((b, d) => Math.abs(d.time - ts) < Math.abs(b - ts) ? d.time : b, c[0].time);
+  const marks = acc.activity.filter(a => a.mint === coinMint && (BUY_KINDS.has(a.kind) || EXIT_KINDS.has(a.kind)) && a.t / 1000 >= c[0].time - 60)
+    .map(a => BUY_KINDS.has(a.kind) ? { time: nearest(a.t / 1000), position: "belowBar", color: "#60a5fa", shape: "arrowUp", text: "Entry " + money(a.usd) }
+      : { time: nearest(a.t / 1000), position: "aboveBar", color: a.pnl >= 0 ? "#22c55e" : "#ef4444", shape: "arrowDown",
+          text: a.kind === "half" ? `Sold half · ${xs(a.multiple)}` : a.kind === "stop" ? "Stop" : a.kind === "trail" ? `Closed ${xs(a.multiple)}` : "Sold" })
+    .sort((a, b) => a.time - b.time);
+  coinCandles.setMarkers(marks);
+  coinChart.timeScale().fitContent();
+}
+function renderCoin() {
+  if (!coinMint) return;
+  if (Date.now() - coinLoadedAt > 30000) loadCoinChart();
+  const p = prices[coinMint] || {}, pos = acc.pos[coinMint];
+  const acts = acc.activity.filter(a => a.mint === coinMint);
+  const buyA = acts.filter(a => BUY_KINDS.has(a.kind))[0];   // the latest buy of this coin
+  const closed = acc.closed.find(c => c.mint === coinMint);
+  const sym = p.symbol || (pos && pos.symbol) || (acts[0] && acts[0].symbol) || short(coinMint);
+  $("cAv").innerHTML = avatar(sym, p.img || (pos && pos.img));
+  $("cName").textContent = sym;
+  $("cMeta").textContent = `$${sym} · Solana${p.created ? " · " + ago(p.created) + " alt" : ""}`;
+  $("cLink").href = p.url || `https://dexscreener.com/solana/${coinMint}`;
+  $("cMc").textContent = big(p.mc);
+  const mcIn = (pos && pos.mcIn) || (buyA && buyA.mc) || 0;
+  const ch = mcIn > 0 && p.mc > 0 ? p.mc / mcIn - 1 : null;
+  $("cSince").textContent = ch == null ? "Der Bot hat diesen Coin nicht gekauft" : `${ch >= 0 ? "▲" : "▼"} ${pct(ch)} seit der Bot gekauft hat`;
+  $("cSince").className = "since " + (ch == null ? "muted" : ch >= 0 ? "pos" : "neg");
+  $("cRulesHead").textContent = `Desk rules · $${sym}`;
+  const x = pos && p.price > 0 ? p.price / pos.entry : 0;
+  const k = pos && p.price > 0 && p.mc > 0 ? p.mc / p.price : 0;
+  const rows = [];
+  if (pos || buyA) {
+    const half = acts.find(a => a.kind === "half"), stop = acts.find(a => a.kind === "stop"), trail = acts.find(a => a.kind === "trail");
+    const entryMc = pos && k ? pos.entry * k : mcIn;
+    rows.push(["Hard stop −" + Math.round(P.hardStop * 100) + "%", `verkauft bei ${big(entryMc * (1 - P.hardStop))} MC, nur wenn ${P.halfAt}× nie kommt`,
+               stop ? ["ausgelöst", "armed"] : pos && !pos.half ? ["scharf", "armed"] : ["aus", ""]]);
+    rows.push([`Exit bei ${P.halfAt}×`, half ? `${money(half.usd)} zurück · ${signed(half.pnl)}` : `bei ${big(entryMc * P.halfAt)} MC kommt der Einsatz zurück`,
+               half ? ["Einsatz zurück", "done"] : pos ? ["wartet", ""] : ["–", ""]]);
+    rows.push([`Trailing ${Math.round(P.trail * 100)}%`, pos && pos.half && k ? `Hoch ${big(pos.high * k)} → verkauft unter ${big(pos.high * k * (1 - P.trail))}` : "nach dem Einsatz-zurück folgt der Rest dem Hoch",
+               trail ? ["geschlossen", "done"] : pos && pos.half ? ["aktiv", "armed"] : ["wartet", ""]]);
+    if (buyA) rows.push(["Compounder", `${Math.round((buyA.pct || P.sizePct) * 100)}% vom freien Geld · ${money(buyA.usd)} · max ${P.maxOpen} offen`, ["sized", "sized"]]);
+    if (buyA) rows.push(["Executor", `${buyA.kind === "copy" ? "kopiert von " + esc(buyA.trader) : "Scout · Punkte " + (buyA.score || "–")} · gekauft bei ${big(buyA.mc)} MC (Spielgeld)`, ["gekauft", "bought"]]);
+  }
+  $("cRules").innerHTML = rows.map(([b, sub, [st, cls]]) => `<li><div class="mid"><b>${b}</b><span>${sub}</span></div><span class="st ${cls}">${st}</span></li>`).join("")
+    || `<li><div class="mid"><span>Keine Trades in diesem Coin.</span></div></li>`;
+  $("cRulesInfo").textContent = pos ? (pos.half ? "Trailing aktiv" : `${xs(x)} · ${P.halfAt}× steht aus`) : closed ? "geschlossen" : "";
+  if (pos) {
+    const val = p.price > 0 ? accountValue({ cash: 0, pos: { [pos.mint]: pos } }, { [pos.mint]: p }) : pos.book.cost;
+    $("cPosVal").textContent = money(val);
+    $("cPosSub").textContent = `${xs(x)} · Einsatz ${money(pos.book.cost)} · schon verkauft: ${signed(pos.book.realized)} · seit ${hm(pos.at)}`;
+    $("cSell").style.display = "";
+  } else {
+    $("cPosVal").textContent = closed ? signed(closed.pnl) : "–";
+    $("cPosSub").textContent = closed ? `geschlossen ${hm(closed.out)} · ${xs(closed.multiple)}` : "keine Position";
+    $("cSell").style.display = "none";
+  }
+}
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + " min" : m < 2880 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : Math.floor(m / 1440) + " Tage"; };
+$("coinBack").addEventListener("click", () => go("home"));
+$("cSell").addEventListener("click", async () => {
+  try { await priceCoins([coinMint]); } catch {}
+  const p = prices[coinMint];
+  if (!p || !acc.pos[coinMint]) return;
+  copySell(acc, { mint: coinMint, price: p.price, liq: p.liq, mc: p.mc, why: "hand", now: Date.now() });
+  point(); persist(); render(); renderCoin(); drawCoinChart();
+});
+
 // ---------- website / phone app (the same page outside the Chrome extension) ----------
 const IS_EXT = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.id);
 let wakeLock = null;
@@ -578,14 +761,15 @@ function webApp() {
 (async () => {
   try { $("ver").textContent = "v" + chrome.runtime.getManifest().version; } catch { $("ver").textContent = "web"; }
   if (!IS_EXT) webApp();
-  P = { ...COPY_DEFAULTS, ...(await load("copyRules", {})) };
+  P = { ...COPY_DEFAULTS, ...(await load("deskRules", {})) };
   traders = await load("copyTraders", []);
-  acc = await load("copyAcc", null) || newAccount(P);
-  queue = await load("copyQueue", []);
+  acc = await load("deskAcc", null) || newAccount(P);   // the desk starts a fresh $20 account (the old copy account stays stored)
+  queue = await load("deskQueue", []);
   range = await load("copyRange", "live");
   for (const x of $("ranges").children) x.classList.toggle("on", x.dataset.r === range);
   renderRules(); renderTraders();
   const open = Object.keys(acc.pos);
   if (open.length) priceCoins(open).then(render).catch(() => {});
-  setRunning(!!(await load("copyRunning", false)));
+  try { if (Notification.permission === "granted") $("notifBtn").textContent = "🔔 Benachrichtigungen sind an"; } catch {}
+  setRunning(!!(await load("deskRunning", false)));
 })();
