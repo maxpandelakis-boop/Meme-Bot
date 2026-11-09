@@ -591,3 +591,5 @@
 {"t":1794239700997,"addr":"9CrK2WKEsLmF635yAtbqLxDQV1wJCTzna4JGY24Wpump","sym":"JENSEN","age":30.6,"why":"liquidity","liq":1772}
 {"t":1794240000587,"addr":"7gK4Y64iCSaW8qyKZep2kaUwGeXBkHQQrANxuw1Ypump","sym":"SpongeBob","age":30.7,"score":0.02286,"px":4.535e-05,"liq":15746,"p0":4.238692766221069e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":-0.2528,"c_peak":1.8045,"c_vol":5.3085,"c_act":1.0,"c_r5":-0.1557,"c_r15":-0.1566,"c_mc":4.6272}}
 {"t":1794240061034,"addr":"59C1VXy1zpmAjEeXCHJybL3GPQdk9E2LUwMcu2QZLSJ","sym":"GORP","age":30.8,"why":"liquidity","liq":0}
+{"t":1794240180746,"addr":"4H4SWKdt1y7mXwTcV7muVuJDM9iiSsjtvK2tD1yi93bL","sym":"ELON2028","age":30.9,"why":"liquidity","liq":0}
+{"t":1794240300839,"addr":"wYewRBJUiUH9VmXsCsDbsrf64JL42hSmeXcjhAzpump","sym":"Gseven","age":30.5,"why":"liquidity","liq":0}
