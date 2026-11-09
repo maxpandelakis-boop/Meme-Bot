@@ -164,3 +164,5 @@
 {"t":1794200280939,"addr":"AJ5v5qXnQuscHvhmYT7s15hn3GWESzB9DrQU9YhnecYE","sym":"S16","age":30.9,"why":"liquidity","liq":0}
 {"t":1794200280939,"addr":"H8bQuy5s1bTERihxzkmcpLvpopxXptCUSRhZ2tnPXt5y","sym":"NEX Ai","age":30.7,"why":"liquidity","liq":0}
 {"t":1794200340551,"addr":"8q6ciwq6YkVYSRewnC4y5bwDHfsnGUvCV1kSWKGpump","sym":"\u725b\u903c","age":30.7,"why":"liquidity","liq":1587}
+{"t":1794200400898,"addr":"6bV2xfo5C1caRp7hQr6UK52qJcmfnVmeSjtqtv83pump","sym":"CRUDE","age":30.6,"why":"liquidity","liq":4231}
+{"t":1794200581209,"addr":"2gtegkqGnoFTKLKsRxmU4zTECixoFaLA5NSDdSKkpump","sym":"RAM","age":31.0,"why":"liquidity","liq":3727}
