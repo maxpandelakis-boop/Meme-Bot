@@ -614,3 +614,7 @@
 {"t":1794255784088.1228,"addr":"6USthxiSZFoCJWhd5bUTcStagAJ2rFd8q8SiF2kupump","sym":"ORBIT","pool":"9jXtNZwzuk3Z2ieQoexeL39MLCQn8FecDqcyGMGHW97o","age":54,"score":0.01,"mc":459413,"px":0.0004617,"reach":1,"buy":false}
 {"t":1794255784088.1228,"addr":"DNYkY5gwbhFfXMr1JdqKai55pgqPK1jgyDNUzssEcwoe","sym":"BLG","pool":"AuJXFLapsrt1X3qKGt2N4puJnMA54BFbJeArCCefjZGC","age":83,"score":0.00365,"mc":139568,"px":0.0001395,"reach":9,"buy":false}
 {"t":1794255784088.1228,"addr":"KX8ykaE9bwrdA7PHNfSSTjX2qkUB9sBXotoPaV9pump","sym":"USDF","pool":"4X9VFfHiS9dRpkjCuFh85NGXKM5yqHRJNb54fpKcSN75","age":43,"score":0.00087,"mc":505419,"px":0.000512,"reach":0,"buy":false}
+{"t":1794256642767.3223,"addr":"2HbbwKyQqRE2mhhPXd48ehYpGQufY2xGe5vTQaZTpump","sym":"CAT","pool":"9ESnjGDAkxzirJKUajJyKKbzF91s9m6hG2C3hWSvfdXb","age":32,"score":0.01121,"mc":146856,"px":0.0001469,"reach":1,"buy":false}
+{"t":1794256642767.3223,"addr":"Gi8vpPaRzC6m8qvb8tdUHfJxX2GfJe5Gf1h8niiRpump","sym":"Grok Bot","pool":"EPGTe8mgUw5uieXq5n9cksJycahxbcHGNvajkfs6zdif","age":37,"score":0.01113,"mc":186607,"px":0.0001892,"reach":1,"buy":false}
+{"t":1794256642767.3223,"addr":"6USthxiSZFoCJWhd5bUTcStagAJ2rFd8q8SiF2kupump","sym":"ORBIT","pool":"9jXtNZwzuk3Z2ieQoexeL39MLCQn8FecDqcyGMGHW97o","age":69,"score":0.00503,"mc":467577,"px":0.0004699,"reach":1,"buy":false}
+{"t":1794256642767.3223,"addr":"FairDR2UmRqHxsVPdPcetePCjFaDqVYv3oQX9fcQTpTg","sym":"FAIR","pool":"54GtpHJaEGKsfq6pWSRJa656zRgVFhkC5fzQBmp7qXmS","age":67,"score":0.00419,"mc":136916,"px":0.0001372,"reach":2,"buy":false}
