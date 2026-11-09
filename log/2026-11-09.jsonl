@@ -712,3 +712,4 @@
 {"t":1794249781014,"addr":"UjqLousEiyuC7cUgHyF5z5ko7uHihPoyKUSrajmpump","sym":"bmw","age":30.8,"why":"liquidity","liq":1614}
 {"t":1794249914914,"addr":"AGjwhdDmQvAmY164nRqv89MjXkfZFZEQ7rF5NovNUgh8","sym":"shiken","age":31.1,"score":0.02649,"px":1.711e-05,"liq":22767,"p0":1.5432255085815135e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.4898,"c_peak":1.3574,"c_vol":5.5,"c_act":1.0,"c_r5":0.0667,"c_r15":-0.2283,"c_mc":4.1884}}
 {"t":1794250081016,"addr":"7aG9LVUrxeqpv6BAce6YY23AjP7dB2sC2EL45F4FrcGE","sym":"NVIDIOT","age":30.3,"why":"liquidity","liq":0}
+{"t":1794250440857,"addr":"6WkNDcadyhhcf34hrR38hNHP2GXAkjySg8jy6i1Apump","sym":"HONEYPOT","age":30.9,"why":"liquidity","liq":2439}
