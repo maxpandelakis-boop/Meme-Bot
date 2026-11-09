@@ -166,3 +166,7 @@
 {"t":1794200340551,"addr":"8q6ciwq6YkVYSRewnC4y5bwDHfsnGUvCV1kSWKGpump","sym":"\u725b\u903c","age":30.7,"why":"liquidity","liq":1587}
 {"t":1794200400898,"addr":"6bV2xfo5C1caRp7hQr6UK52qJcmfnVmeSjtqtv83pump","sym":"CRUDE","age":30.6,"why":"liquidity","liq":4231}
 {"t":1794200581209,"addr":"2gtegkqGnoFTKLKsRxmU4zTECixoFaLA5NSDdSKkpump","sym":"RAM","age":31.0,"why":"liquidity","liq":3727}
+{"t":1794200701057,"addr":"6nWSmiP3eaw9KD5biU4cCKMgoRcAGnmWPoC1EXpVtCzB","sym":"Democat","age":30.4,"why":"liquidity","liq":0}
+{"t":1794200701057,"addr":"As4vTVxzhWT4NKSmhzJYaKRr7hn2tr6HnqCFcb9ytDvm","sym":"S16","age":30.0,"why":"liquidity","liq":0}
+{"t":1794200760451,"addr":"5FvExy7MFGBA57NWE74hVz5aW3LgNE9mPn73NAWJBAGS","sym":"Barcrown","age":30.7,"why":"liquidity","liq":0}
+{"t":1794200940715,"addr":"JD1i2iDxqeMQZUUmwzrK5bi8PnjsmjNTKbh97oxFpump","sym":"LIMEKUMA","age":30.7,"score":0.03251,"px":8.264e-05,"liq":21074,"p0":9.79038669040727e-05,"bars":6,"buy":false,"f":{"f_curve_min":88.2667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.8206,"c_peak":1.0,"c_vol":4.4764,"c_act":1.0,"c_r5":0.1734,"c_r15":0.6238,"c_mc":4.9908}}
