@@ -329,3 +329,4 @@
 {"t":1794217740851,"addr":"82MiZG7R4XruVdUyRSLYbKjvUMtrmTEwwVEuduTnC2pE","sym":"Democat","age":30.8,"score":0.01688,"px":2.562e-05,"liq":40714,"p0":2.4518537815214805e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":33.0,"f_cjk":0.0,"c_ret":0.2957,"c_peak":1.0208,"c_vol":4.8546,"c_act":1.0,"c_r5":0.0781,"c_r15":0.016,"c_mc":4.3895}}
 {"t":1794217740851,"addr":"9w5j6KmQSUZDDDX67F8UXVgBFiK49LPZgrYyyYyyBAv","sym":"\u725b\u903c","age":30.2,"why":"liquidity","liq":0}
 {"t":1794217860856,"addr":"4vgHT4eon6QBHx6mnf8KVC99uyJGb92hQqKe5x6Tpump","sym":"Aifence","age":30.6,"why":"liquidity","liq":0}
+{"t":1794218280674,"addr":"5SdggERLxF3b2fvoz2CaW8i1G4JNqGiBbFeppnEcswur","sym":"BULLCA\ud835\uddb3","age":30.6,"why":"liquidity","liq":1535}
