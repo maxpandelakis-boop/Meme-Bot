@@ -348,3 +348,5 @@
 {"t":1794219840682,"addr":"KZdHrWJUuaUpCbR4osrQZxTzzwEXBmMuYZ1u68yMyNU","sym":"\u725b\u903c","age":30.9,"why":"liquidity","liq":0}
 {"t":1794219840682,"addr":"FoMrtc7xdddNmFEup8j2yZFa4nMGVtP8Ek57FH41S145","sym":"BULLCA\ud835\uddb3","age":30.8,"why":"liquidity","liq":1519}
 {"t":1794219840682,"addr":"3VYWYUcXQjq4ZXNyTQgo7eukYZBS8x381q9GbnFwpump","sym":"JENSEN","age":30.2,"why":"liquidity","liq":1564}
+{"t":1794220440199,"addr":"CXWJLMmC27ybco4imXwbsMUt5oTHDZ8UxALfzP8DMa1j","sym":"Christmas","age":30.7,"score":0.02224,"px":3.563e-05,"liq":49858,"p0":3.537757090204351e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.6384,"c_peak":1.0112,"c_vol":4.9553,"c_act":1.0,"c_r5":0.0585,"c_r15":0.3004,"c_mc":4.5487}}
+{"t":1794220501051,"addr":"83cNCTZPSw2RqGoBWCtaEBTQ3DnaViaHTSq91bhzpump","sym":"RBAKANG","age":30.5,"why":"liquidity","liq":0}
