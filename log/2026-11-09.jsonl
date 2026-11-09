@@ -808,3 +808,4 @@
 {"t":1794261540463,"addr":"EefHNF6PT64LhMLkmMsJc7iKAZfFaAvabMSdj4rnpump","sym":"Elysium","age":30.3,"why":"liquidity","liq":1605}
 {"t":1794261600875,"addr":"C3dWd1JPCB9h6EhugV1YUYGU1GYFJeanHhLD5xcFpump","sym":"Rockstar","age":30.8,"why":"liquidity","liq":1596}
 {"t":1794261600875,"addr":"4jwNPBjerrGSBHXyeYJ51K6JqhQp2JLfJP6CLAYVpump","sym":"BABYCATE","age":30.5,"score":0.0331,"px":5.769e-05,"liq":17292,"p0":0.00011484989419208696,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":-0.1054,"c_peak":1.592,"c_vol":4.6178,"c_act":1.0,"c_r5":0.2344,"c_r15":-0.3999,"c_mc":5.0601}}
+{"t":1794262020670,"addr":"4UkvQVsg24Uib8u2vXQsaF3Dqx7uasGPEhm56iJWpump","sym":"GitHub","age":31.0,"why":"liquidity","liq":1615}
