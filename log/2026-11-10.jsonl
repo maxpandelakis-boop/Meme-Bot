@@ -37,3 +37,5 @@
 {"t":1794272880574,"addr":"3PGWjyWuMKnYTAxjjBev69EwjY6ZieBYch84ybRSMx3E","sym":"Google AI","age":30.6,"why":"liquidity","liq":0}
 {"t":1794272941177,"addr":"SuiKhqAXdSXmxtEyGMrysWs6Px9mLmFDi3fKcompump","sym":"NVIDIOT","age":30.9,"score":0.02984,"px":5.834e-05,"liq":17974,"p0":6.387894469142916e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.2486,"c_peak":1.58,"c_vol":5.2378,"c_act":1.0,"c_r5":-0.1281,"c_r15":-0.0022,"c_mc":4.8054}}
 {"t":1794272941177,"addr":"DJmHV336iEsAv8vDYhxLH8pAhvm6W8vhMJBRaJLuSPWN","sym":"SPAWN","age":30.8,"why":"liquidity","liq":1838}
+{"t":1794273180331,"addr":"GVi9mCEeUo2uAUdQByMA33Yf1q7D8dFci8Nwj3nAkWTj","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.2,"why":"liquidity","liq":0}
+{"t":1794273240679,"addr":"6Ycs929tNdtFVGdi7qUG55ZR7hrAYe9AZfmyeo1i3EAG","sym":"Google AI","age":30.9,"why":"liquidity","liq":0}
