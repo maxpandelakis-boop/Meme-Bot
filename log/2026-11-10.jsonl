@@ -393,3 +393,5 @@
 {"t":1794308101266,"addr":"6Vp2HYHDiYkfw7WaBftMLDFLZDkw6Eyhu8fPJd5opump","sym":"Sakura","age":31.0,"why":"liquidity","liq":9675}
 {"t":1794308101266,"addr":"7GPM48ufesHEwhdBygiKFs3hgCgjQvRcP5scy17ZQVHi","sym":"yoki\u9171","age":30.7,"why":"liquidity","liq":0}
 {"t":1794308101266,"addr":"CKZxY3JA8YqKriZeGQTFgUrSq3bJ37TgNDkQkc6Vvujj","sym":"GTA 6","age":30.3,"why":"liquidity","liq":0}
+{"t":1794308341518,"addr":"5N4C6gdyhR7YprYxsn4wvMnPAaQSXpbBRmPs7NR289jS","sym":"ZIWU","age":30.5,"score":0.02914,"px":3.215e-05,"liq":14421,"p0":3.516369712430813e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0127,"c_peak":1.095,"c_vol":5.3117,"c_act":1.0,"c_r5":0.1376,"c_r15":0.071,"c_mc":4.5461}}
+{"t":1794308400415,"addr":"88HsJ77CEgxREvVavGMtsanQJaYsUNcpvvQwENVXeazC","sym":"\u5927A","age":30.9,"why":"liquidity","liq":0}
