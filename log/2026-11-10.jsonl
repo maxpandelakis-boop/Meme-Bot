@@ -829,3 +829,7 @@
 {"t":1794352680676,"addr":"4zZmvZeM8yqjcrT57HCdCNW2jq6bvtpokFE762UWpump","sym":"GTA 6","age":31.0,"score":0.01552,"px":6.589e-05,"liq":18199,"p0":6.0882427251375376e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":16.0,"f_cjk":0.0,"c_ret":-0.605,"c_peak":2.6811,"c_vol":4.6092,"c_act":1.0,"c_r5":-0.2349,"c_r15":-0.8723,"c_mc":4.7845}}
 {"t":1794352680676,"addr":"B6B85fWhFnHZxpdjZnc7y9wfQJV2X85EFpQzr8o4kxbx","sym":"\u9ec4\u4ec1\u52cb","age":30.6,"why":"liquidity","liq":0}
 {"t":1794352740688,"addr":"Muc9XEs1JpCaWyhSFEN7TXvHQe1DG12UbZW5UXdmJTp","sym":"HOLD","age":30.4,"why":"liquidity","liq":0}
+{"t":1794352800366,"addr":"99WJjBXWVDNHkxvzNTnsXADUW1MDaoXtVSHvAjWfFh4","sym":"HOLD","age":30.6,"why":"liquidity","liq":0}
+{"t":1794352860927,"addr":"FnDbSdf8qjxzvbyomeBdw5g7n1nPukLyeSHnjtSGmoon","sym":"Turcere","age":30.8,"why":"liquidity","liq":0}
+{"t":1794352920267,"addr":"F82boUrQYV5AFMTrrcXaZEFcWLChhty8QXs2jtBLdAxe","sym":"Superdog","age":31.0,"why":"liquidity","liq":0}
+{"t":1794353040121,"addr":"NpLd5x6mfDkiuRm8Ykn4wRnS5GdhEVdfejruoumed8V","sym":"HOLD","age":30.7,"why":"liquidity","liq":0}
