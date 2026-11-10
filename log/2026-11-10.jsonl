@@ -826,3 +826,6 @@
 {"t":1794352200178,"addr":"DfHwfjtQokzY3DicXjtVNCcdeANK7aHFR91aUncdpump","sym":"UFJ","age":30.3,"why":"liquidity","liq":2149}
 {"t":1794352380430,"addr":"5MwCCnpLM7X6EXsjWaV6CB4v1CJ1MeWdeGUJD1cLpump","sym":"Porsche","age":30.8,"score":0.01276,"px":6.833e-05,"liq":18554,"p0":6.026261951706103e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-0.5936,"c_peak":2.4762,"c_vol":4.6605,"c_act":1.0,"c_r5":-0.5695,"c_r15":-0.6476,"c_mc":4.78}}
 {"t":1794352440188,"addr":"AG6xb4zZ8VuoSKLFDLXDBwp52XotV3Qq9AbuS47Tpump","sym":"LosHamster","age":30.7,"why":"liquidity","liq":1654}
+{"t":1794352680676,"addr":"4zZmvZeM8yqjcrT57HCdCNW2jq6bvtpokFE762UWpump","sym":"GTA 6","age":31.0,"score":0.01552,"px":6.589e-05,"liq":18199,"p0":6.0882427251375376e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":16.0,"f_cjk":0.0,"c_ret":-0.605,"c_peak":2.6811,"c_vol":4.6092,"c_act":1.0,"c_r5":-0.2349,"c_r15":-0.8723,"c_mc":4.7845}}
+{"t":1794352680676,"addr":"B6B85fWhFnHZxpdjZnc7y9wfQJV2X85EFpQzr8o4kxbx","sym":"\u9ec4\u4ec1\u52cb","age":30.6,"why":"liquidity","liq":0}
+{"t":1794352740688,"addr":"Muc9XEs1JpCaWyhSFEN7TXvHQe1DG12UbZW5UXdmJTp","sym":"HOLD","age":30.4,"why":"liquidity","liq":0}
