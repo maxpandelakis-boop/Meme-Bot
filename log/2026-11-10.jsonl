@@ -787,3 +787,4 @@
 {"t":1794348001035,"addr":"EJa6BZtm58avq1fqoDHi5pn1SnfM2ep5NSKV736i3Sj6","sym":"hopecoin","age":30.4,"score":0.00261,"px":1.899e-05,"liq":36281,"p0":1.901107991103181e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-0.0045,"c_peak":1.0055,"c_vol":2.925,"c_act":0.3333,"c_r5":0.0,"c_r15":0.0,"c_mc":4.279}}
 {"t":1794348120652,"addr":"HcgpPoSQCPGuayB4iCKppm5qQ1wVEcU1homGBeZxyHv3","sym":"KOOP","age":30.8,"why":"liquidity","liq":0}
 {"t":1794348181484,"addr":"FRVBMhR8XT68JFtJAsAn6urPGDCUpEBgU8jq1ZQmp39t","sym":"KOOP","age":30.5,"why":"liquidity","liq":0}
+{"t":1794348240131,"addr":"9CUQfFW65KRGYa51icu9q3fgFkD6PVVmXFj5TEjEpump","sym":"JAZZ","age":30.4,"why":"liquidity","liq":1831}
