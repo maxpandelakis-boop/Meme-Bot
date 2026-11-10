@@ -664,3 +664,4 @@
 {"t":1794335880565,"addr":"RcKtq5tKapkd4qhRq7YnfzmLn9U3PMAyxvnJ9u817mt","sym":"PPP","age":30.3,"why":"liquidity","liq":0}
 {"t":1794335880565,"addr":"DPviHzYCJd7CoD4Ms1ogNKvsEydpJnGfqtaxto5pump","sym":"PPP","age":30.1,"why":"liquidity","liq":1518}
 {"t":1794335941170,"addr":"4AY5yHJSvYtQ7ao65vcBf92xhM2kjTezTVKxXo1SJmd1","sym":"USHP","age":30.7,"why":"liquidity","liq":3087}
+{"t":1794336060759,"addr":"6mwuYnY3fHdxed9GnrdY5BkXhJwMi1uz39MPsYUcpump","sym":"BULLHARIS","age":30.4,"score":0.0249,"px":0.000298,"liq":40841,"p0":0.00030349996068598334,"bars":6,"buy":false,"f":{"f_curve_min":1.0741,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":-0.2941,"c_peak":2.2851,"c_vol":5.3888,"c_act":1.0,"c_r5":-0.3142,"c_r15":-0.2657,"c_mc":5.4822}}
