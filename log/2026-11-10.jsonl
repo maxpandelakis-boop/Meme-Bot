@@ -315,3 +315,4 @@
 {"t":1794300120122,"addr":"BBRgG2GifeKNB1hSmzD2BwHMPK8wnDtcuE4NzxgHpump","sym":"BORLY","age":30.6,"score":0.05255,"px":0.000779,"liq":67056,"p0":0.00077777541806302,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.2411,"c_peak":1.4224,"c_vol":4.6035,"c_act":1.0,"c_r5":0.023,"c_r15":-0.0356,"c_mc":5.8909}}
 {"t":1794300120122,"addr":"4Prb4Fs2DgFeUKdUit9PY3P1CxTC1tPaBUYYCvHYmoon","sym":"Ninoheat","age":30.4,"why":"liquidity","liq":0}
 {"t":1794300240907,"addr":"BfcteUYjBw5u18KbbK33qureJN8SpENpG2vri3QxXacj","sym":"GETA","age":30.7,"why":"liquidity","liq":0}
+{"t":1794300540504,"addr":"9GLdwASTbbw18RJyP5Mt3irWP1Raa2wGDX48WnBBpump","sym":"Apple","age":30.6,"why":"liquidity","liq":1542}
