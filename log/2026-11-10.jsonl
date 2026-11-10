@@ -357,3 +357,6 @@
 {"t":1794304140676,"addr":"D7rXvihLcVsAyakCauwepJy4m62zJk6PfKgURMG2ZVXc","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.9,"why":"liquidity","liq":0}
 {"t":1794304381386,"addr":"6S8tKRSRegV23t5RHrXB5ocHsrtXFj7gBkpX2NFvpump","sym":"FOMO","age":30.1,"score":0.01646,"px":7.611e-05,"liq":19958,"p0":7.279317523144012e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":13.0,"f_cjk":0.0,"c_ret":-0.3199,"c_peak":1.4289,"c_vol":4.4639,"c_act":1.0,"c_r5":0.1431,"c_r15":0.4598,"c_mc":4.8621}}
 {"t":1794304500637,"addr":"HoYpwMuZrVXxtzZb9Kyvy7Gob2H6wtVPTsxr4eK99dVF","sym":"X","age":30.8,"why":"liquidity","liq":0}
+{"t":1794304800787,"addr":"7WMdQX15h6XHNPLf6JjcP8XjTMQJPamteB36GxNiFRqE","sym":"OpenClaw","age":30.9,"why":"liquidity","liq":0}
+{"t":1794304800787,"addr":"3iBW8nX1DHzUpNc9RCZP9CgPZQNP3s7e3nASkuFucvjX","sym":"X","age":30.7,"why":"liquidity","liq":0}
+{"t":1794304800787,"addr":"8NJ2XxpYHbM7sHchTsJyoahFWP6rcHantYbWeu2TojmW","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.1,"score":0.00956,"px":2.555e-05,"liq":41883,"p0":2.263658496569336e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.2461,"c_peak":1.0344,"c_vol":4.7601,"c_act":0.8333,"c_r5":0.1162,"c_r15":0.1736,"c_mc":4.3548}}
