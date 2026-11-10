@@ -39,3 +39,5 @@
 {"t":1794272941177,"addr":"DJmHV336iEsAv8vDYhxLH8pAhvm6W8vhMJBRaJLuSPWN","sym":"SPAWN","age":30.8,"why":"liquidity","liq":1838}
 {"t":1794273180331,"addr":"GVi9mCEeUo2uAUdQByMA33Yf1q7D8dFci8Nwj3nAkWTj","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.2,"why":"liquidity","liq":0}
 {"t":1794273240679,"addr":"6Ycs929tNdtFVGdi7qUG55ZR7hrAYe9AZfmyeo1i3EAG","sym":"Google AI","age":30.9,"why":"liquidity","liq":0}
+{"t":1794273360767,"addr":"2ZLU8yV2mgG9M3PFNDskTeJRcfWYFQ86Byhmk3Jppump","sym":"HABIBI","age":30.5,"score":0.04185,"px":7.881e-05,"liq":20653,"p0":7.267617203739517e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.4628,"c_peak":2.1304,"c_vol":5.1581,"c_act":1.0,"c_r5":-0.5646,"c_r15":-0.1614,"c_mc":4.8614}}
+{"t":1794273360767,"addr":"3XREgxTXJ2Uv5KF3VykcB6g4M8oQfxZLXoJCJXhi5YyR","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":0}
