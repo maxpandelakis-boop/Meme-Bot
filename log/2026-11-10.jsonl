@@ -807,3 +807,8 @@
 {"t":1794350220874,"addr":"DXiChMGpiokKzJys1mwaSvbX32pVyB4AAmL7qEC6pump","sym":"work","age":30.2,"why":"liquidity","liq":7173}
 {"t":1794350400253,"addr":"2XkF5daqaRdaGHvhsLscgbvygLDSjp72dfq1fTbdpump","sym":"PSYOPHODL","age":30.6,"why":"liquidity","liq":1658}
 {"t":1794350400253,"addr":"FN64qiGh7d2MNnGG1vpZRFRoDfU3gzHezpx4BLVSpump","sym":"FIGHTDT","age":30.1,"why":"liquidity","liq":1654}
+{"t":1794350712613,"addr":"YVXNB9TrNbEzUkLUPdjgNvdZEKeUWbzhd5Z3Gg7pump","sym":"MUSKX","age":31.0,"why":"liquidity","liq":1543}
+{"t":1794350760991,"addr":"8ZRcGPA2dBakaBZnqPQCV3kmkM3eG3A5GKCu6KsPpump","sym":"ATTENTION","age":30.1,"why":"liquidity","liq":1662}
+{"t":1794350880858,"addr":"wDyaM7sxbTTBYw5gX2gow4C3sGwKQ8nJycLtAXEjCqx","sym":"\u82b1","age":30.9,"why":"liquidity","liq":0}
+{"t":1794350880858,"addr":"DUSD2Re8vU9piKeb74okNfsKwQaZXxxGkPKigULdKXHY","sym":"Jeni Ai","age":30.1,"score":0.01474,"px":3.614e-05,"liq":49269,"p0":3.182799318193265e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.5919,"c_peak":1.0581,"c_vol":4.923,"c_act":1.0,"c_r5":0.2491,"c_r15":0.5813,"c_mc":4.5028}}
+{"t":1794350940891,"addr":"A8ZV6s2wEHNgBgPwDiHnYBsQkUNN9wDpg2gBPZeJpump","sym":"GTA 6","age":30.5,"why":"liquidity","liq":1545}
