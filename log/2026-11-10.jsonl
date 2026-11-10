@@ -106,3 +106,7 @@
 {"t":1794279901196,"addr":"6WppJSiXQPbC3trujHPPpfyR9J9fymte4p1NADHEbonk","sym":"PARFRG","age":30.2,"why":"liquidity","liq":0}
 {"t":1794280080837,"addr":"dVtLRADcoSmswp7BrNrGHGwUxSpht7ERQtjMi9rpump","sym":"Claude AI","age":30.4,"why":"liquidity","liq":1616}
 {"t":1794280080837,"addr":"H9QJovsyFbZi2Zi62s5PFVcwms4SZzWQgPTCMMR7ESE3","sym":"WEEB","age":30.3,"why":"liquidity","liq":9968}
+{"t":1794280151881,"addr":"7M75ruqt3go2oXJDMc6bbdSwRRLzXLdq8Y6zsZzSYScM","sym":"SEPPUKU","age":30.3,"score":0.01221,"px":4.546e-05,"liq":54577,"p0":4.4688218424287734e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.795,"c_peak":1.0173,"c_vol":4.8364,"c_act":1.0,"c_r5":0.1222,"c_r15":0.4133,"c_mc":4.6502}}
+{"t":1794280200552,"addr":"GaPKqkD4DDdGybMenNBRNXbFDpKbvCQpovzUT7EywXCa","sym":"OpenClaw","age":30.1,"why":"liquidity","liq":0}
+{"t":1794280261067,"addr":"D1uniynqT3GTJPtC6F9TRr8NKTM1p7tgkQKEh9H8pump","sym":"GTA 6","age":30.9,"why":"liquidity","liq":1597}
+{"t":1794280380715,"addr":"481upwoBVCU92LGDBifvaz8E3Nz9Rbcg7D37mS3pnA32","sym":"Democat","age":30.4,"score":0.03645,"px":4.636e-05,"liq":57918,"p0":4.325670490618946e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":25.0,"f_cjk":0.0,"c_ret":0.6781,"c_peak":1.0148,"c_vol":4.8495,"c_act":1.0,"c_r5":0.0729,"c_r15":0.365,"c_mc":4.6361}}
