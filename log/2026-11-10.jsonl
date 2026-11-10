@@ -645,3 +645,6 @@
 {"t":1794334320566,"addr":"16k9V2Fu18Xpe67HU8zDatccufJurzY4Dz7iWa6mUAj","sym":"FALE","age":30.5,"score":0.03511,"px":3.011e-05,"liq":13710,"p0":3.215765062998142e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1046,"c_peak":1.1372,"c_vol":5.3015,"c_act":1.0,"c_r5":0.0107,"c_r15":-0.0506,"c_mc":4.5073}}
 {"t":1794334440152,"addr":"9zLsWgXg6cA28jhZhAZY7usDtNhzyiyFZzsdNX9Zpump","sym":"Speed","age":31.0,"why":"liquidity","liq":1496}
 {"t":1794334440152,"addr":"73yCT84vz9nZtj44b8fLUsinSqZWc7QZ94r3XN4opump","sym":"NATE","age":30.2,"why":"liquidity","liq":1649}
+{"t":1794334560225,"addr":"HRifw4Rm5jPQv8iDVUgeQorUGe5aP6AMeizXUdXqpump","sym":"LEONIDA","age":30.2,"why":"liquidity","liq":1599}
+{"t":1794334620868,"addr":"GhfQrWTpTQS3efneJYaNfnn28QUAaBLyxFXLxqU8pump","sym":"Amazon","age":30.9,"why":"liquidity","liq":1496}
+{"t":1794334680237,"addr":"H1aWzDcWVU2bY8bqiwXzeNADA7LHSzYRc6Tk6M1pump","sym":"UDTF","age":30.1,"why":"liquidity","liq":2639}
