@@ -469,3 +469,4 @@
 {"t":1794316800442,"addr":"9d8RAoTEPDvoFNAR2XF7PPBuZHmdDZEsJ4HCKgnLJsyK","sym":"\uba38\uc2a4\ud06c","age":30.9,"score":0.04279,"px":4.031e-05,"liq":52671,"p0":3.56973528360673e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":29.0,"f_cjk":1.0,"c_ret":0.6859,"c_peak":1.0109,"c_vol":4.9863,"c_act":1.0,"c_r5":0.1414,"c_r15":0.3729,"c_mc":4.5526}}
 {"t":1794316800442,"addr":"F92DawsxDySkoWeuxWrLCVC62ZhWjgzv47TSRxoGBAGS","sym":"Nvspy","age":30.3,"why":"liquidity","liq":0}
 {"t":1794316920932,"addr":"AriRVvDA6bJLvTM8htnyECdRskwkJzJdWWD6SScupump","sym":"Amazon","age":30.6,"why":"liquidity","liq":1552}
+{"t":1794317040369,"addr":"7aCpN5WMpL6xVvzZpBtNKoAWtH3Ecjiq5XHQvEa3ejA4","sym":"KYTRO","age":30.5,"why":"liquidity","liq":0}
