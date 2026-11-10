@@ -683,3 +683,4 @@
 {"t":1794337920202,"addr":"7k9hwYFF47f436kbai25BtcR9qXCuiMhzFE2udQmTsEP","sym":"FRONK","age":31.0,"why":"liquidity","liq":4083}
 {"t":1794338041003,"addr":"9hNjvZVyXvaysvvthMw8Z82w2a95JwT2Z2PNoZBJBAGS","sym":"ESCASHT","age":30.6,"why":"liquidity","liq":0}
 {"t":1794338041003,"addr":"JDijKLRAYhV15FVEj7YbqAMjR46PofhY5PDtCCg1PX8w","sym":"ZDOG","age":30.4,"why":"liquidity","liq":0}
+{"t":1794338220611,"addr":"FuZvG332mnmmxBdrj79qjPCoLz8uD1CYeHckPSjNzFdG","sym":"NEX Ai","age":30.7,"score":0.07573,"px":4.356e-05,"liq":53977,"p0":4.2107108249861916e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":20.0,"f_cjk":0.0,"c_ret":0.7901,"c_peak":1.0,"c_vol":4.9593,"c_act":1.0,"c_r5":0.1751,"c_r15":0.3651,"c_mc":4.6244}}
