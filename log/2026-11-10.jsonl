@@ -416,3 +416,7 @@
 {"t":1794310501610,"addr":"RygTPez3BHZ4k8SP3dezmNZj6qbq8N7qakyg3C7owes","sym":"Tilly","age":31.0,"score":0.01262,"px":6.556e-05,"liq":91138,"p0":6.439572379342061e-05,"bars":6,"buy":false,"f":{"f_curve_min":1.1,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.5733,"c_peak":1.1588,"c_vol":6.1531,"c_act":1.0,"c_r5":0.0112,"c_r15":0.1353,"c_mc":4.8089}}
 {"t":1794310501610,"addr":"GMGvShxMuoGmTi3ZXmPZm9th9gVMd1sDiAqEsWN5BAGS","sym":"GENSGHT","age":31.0,"why":"liquidity","liq":0}
 {"t":1794310620614,"addr":"2rJ6nrphJC1yf13y777NeFdwj61m4LLMKXEFkZ6hQAiA","sym":"Bufo","age":30.2,"why":"liquidity","liq":0}
+{"t":1794310680268,"addr":"2btzfvgpqZXNbpxwbv3XQmr52R2Py2PsdCpau8VWzLES","sym":"KYTRO","age":30.9,"why":"liquidity","liq":0}
+{"t":1794310800718,"addr":"DD3caEgZNKHNfvYZgGfPRVbvMa3Eu6ca52qbb7nvM3HY","sym":"Tilly","age":30.5,"why":"liquidity","liq":3597}
+{"t":1794310921046,"addr":"6EqX797pEdVqfZqW99UuJohmds3He6Qwo5xenUcgxCPj","sym":"Bufo","age":30.7,"why":"liquidity","liq":0}
+{"t":1794310921046,"addr":"8LLZG2gGv37xMtGEFZdQ5X3CMSkz4Bd9BXAo11H1aUK4","sym":"\u5927A","age":30.2,"why":"liquidity","liq":0}
