@@ -51,3 +51,4 @@
 {"t":1794274081058,"addr":"HxFQioh5WpL2WNScC5xPUruLEFK9LpQV6XLudRx1BAGS","sym":"WSBULL","age":30.5,"why":"liquidity","liq":0}
 {"t":1794274141290,"addr":"5mdDpeNRHWrRgVjF5GndrzgPJrjFFhBkE6MS4bcgSnf","sym":"MONTRA","age":30.4,"score":0.01264,"px":9.549e-07,"liq":132274,"p0":9.266354777482848e-07,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.5983,"c_peak":1.0266,"c_vol":6.2888,"c_act":1.0,"c_r5":0.1008,"c_r15":0.2901,"c_mc":2.9669}}
 {"t":1794274261125,"addr":"8QysTaQitZTvS2u4en6H5SzwPDms2A2zwr4fK3JMyUV","sym":"MONTRA","age":30.3,"why":"liquidity","liq":0}
+{"t":1794274320935,"addr":"2ECeFpEh8HC8pvumAPDJKPPpEKVLvMBtbVFAmsDHpump","sym":"CBR","age":30.0,"why":"liquidity","liq":4404}
