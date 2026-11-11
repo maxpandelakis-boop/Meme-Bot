@@ -1,6 +1,6 @@
 // node trencher/test_sim.mjs : checks the paper engine's money math.
 import assert from "node:assert/strict";
-import * as S from "./sim.js?v=0.9.3";
+import * as S from "./sim.js?v=0.9.4";
 
 assert.equal(S.fee(20), 0.4);                  // 2 % band
 assert.equal(S.fee(3), 0.1);                   // flat under $5

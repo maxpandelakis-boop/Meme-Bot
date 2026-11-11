@@ -7,8 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.3";
-import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins } from "./scout.js?v=0.9.3";
+import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.4";
+import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshFillCheck } from "./scout.js?v=0.9.4";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);
@@ -174,7 +174,8 @@ async function freshScout() {
   if (!pick) return;
   await sleep(LATENCY_MS);
   const now = (await priceMap(getJson, [pick.mint]).catch(() => ({})))[pick.mint];
-  if (!now) { say("risk", `[Frisch] $${pick.symbol} nach ${LATENCY_MS / 1000}s kein Preis bei DexScreener → skip`); return; }
+  const bad = freshFillCheck(pick, now);
+  if (bad) { say("risk", `[Frisch] $${pick.symbol} nach ${LATENCY_MS / 1000}s: ${bad} → skip`); return; }
   Object.assign(prices, { [pick.mint]: now });
   const free = facc.cash;
   const res = copyBuy(facc, { mint: pick.mint, symbol: pick.symbol, price: now.price, liq: now.liq || pick.liq, mc: now.mc || pick.mc, score: pick.buyers5, pool: pick.pool, img: now.img }, P);

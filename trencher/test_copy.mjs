@@ -1,6 +1,6 @@
 // node trencher/test_copy.mjs : checks the copy-trading engine.
 import assert from "node:assert/strict";
-import * as C from "./copy-engine.js?v=0.9.3";
+import * as C from "./copy-engine.js?v=0.9.4";
 
 const W = "Trader1111111111111111111111111111111111111", M = "Coin1111111111111111111111111111111111pump";
 const tb = (owner, mint, amt) => ({ owner, mint, uiTokenAmount: { uiAmount: amt } });
@@ -88,7 +88,7 @@ console.log("ok: copy engine");
 
 // fresh-coin Scout filter
 {
-  const S = await import("./scout.js?v=0.9.3");
+  const S = await import("./scout.js?v=0.9.4");
   const now = Date.now();
   const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } } }, attributes: { address: "P" + id, name: id + " / SOL",
     pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
@@ -113,7 +113,7 @@ console.log("ok: copy engine");
 
 // the Scout's words match its pick: a coin just sold is on a 30 minute pause, not "size check"
 {
-  const S = await import("./scout.js?v=0.9.3");
+  const S = await import("./scout.js?v=0.9.4");
   const now = 1e12, P = { minScore: 60 };
   const acc = { pos: {}, closed: [{ mint: "A", out: now - 10 * 60e3 }] };
   const a = { mint: "A", symbol: "A", score: 61, chg1h: 5, buys1h: 9, sells1h: 3, pool: "p" }, b = { mint: "B", symbol: "B", score: 67, chg1h: 5, buys1h: 3, sells1h: 9, pool: "p" };
@@ -123,4 +123,18 @@ console.log("ok: copy engine");
   if (S.scoutVerdict(a, acc, P, 30 * 60e3, now + 21 * 60e3) !== "size check") throw new Error("after pause");
   if (!S.scoutNone([b, a], acc, P, 30 * 60e3, now).startsWith("$B (67)")) throw new Error("none");
   console.log("ok: scout words");
+}
+
+// fresh desk: no buy when the two price sources disagree or the coin left the filter
+{
+  const S = await import("./scout.js?v=0.9.4");
+  const pick = { price: 1e-5 };
+  const ok = { price: 1.1e-5, mc: 30000, liq: 9000 };
+  if (S.freshFillCheck(pick, ok) !== "") throw new Error("ok fill");
+  if (!S.freshFillCheck(pick, { ...ok, price: 3.09e-5 }).includes("+209%")) throw new Error("gap up");
+  if (!S.freshFillCheck(pick, { ...ok, price: 0.24e-5 }).includes("-76%")) throw new Error("gap down");
+  if (!S.freshFillCheck(pick, { ...ok, mc: 2000 }).includes("MC")) throw new Error("mc");
+  if (!S.freshFillCheck(pick, { ...ok, liq: 0 }).includes("Liquidität")) throw new Error("liq");
+  if (!S.freshFillCheck(pick, undefined)) throw new Error("none");
+  console.log("ok: fresh fill check");
 }

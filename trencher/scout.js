@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.3";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.3";
+import { bestPair } from "./sim.js?v=0.9.4";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.4";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -147,4 +147,18 @@ export function scoutVerdict(c, acc, P, cooldownMs = 30 * 60e3, now = Date.now()
 export function scoutNone(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
   const best = list.find(c => c.score >= P.minScore && !acc.pos[c.mint]);
   return best ? `$${best.symbol} (${best.score}): ${scoutVerdict(best, acc, P, cooldownMs, now)}` : `nichts über ${P.minScore} Punkten`;
+}
+
+// The fresh pick was made on GeckoTerminal's numbers, the buy is priced by DexScreener a few seconds later. The two sources
+// can disagree wildly on a coin minutes old (seen 2026-11-11: +209 % and -76 % "in 3 s"), and a buy on such a pair of prices
+// is not a trade anyone could have made. So: no buy when the prices differ by more than 25 %, or when DexScreener's market
+// cap or liquidity is outside the filter the coin was picked by. Returns "" when the buy may go on, else the reason.
+export const FRESH_MAX_GAP = 0.25;
+export function freshFillCheck(pick, now, F = FRESH) {
+  if (!now || !(now.price > 0) || !(pick.price > 0)) return "kein Preis bei DexScreener";
+  const gap = now.price / pick.price - 1;
+  if (Math.abs(gap) > FRESH_MAX_GAP) return `Preise passen nicht zusammen (GeckoTerminal zu DexScreener ${gap >= 0 ? "+" : ""}${(gap * 100).toFixed(0)}%)`;
+  if (!(now.mc >= F.mcMin && now.mc <= F.mcMax)) return `MC bei DexScreener ${Math.round((now.mc || 0) / 1000)}k außerhalb ${F.mcMin / 1000}k–${F.mcMax / 1000}k`;
+  if (!(now.liq >= F.liqMin)) return `Liquidität bei DexScreener ${Math.round(now.liq || 0)} $ zu klein`;
+  return "";
 }
