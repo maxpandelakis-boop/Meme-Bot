@@ -555,3 +555,8 @@
 {"t":1794409980647,"addr":"7RwMgXsgt1icGsK4vH6cEZAvWWjFaEyQckRX9fVEpump","sym":"Corecld","age":30.6,"why":"liquidity","liq":0}
 {"t":1794409980647,"addr":"3zUvxLoW8bGuXyk52Lz6tveRqf7UKLB1Pas1RWN9pump","sym":"Robinhood","age":30.5,"why":"liquidity","liq":1559}
 {"t":1794410160181,"addr":"3nvs6NAKdzTPKdqTkLNxLHpkxGZGgfVTTrWbDatMmQWd","sym":"\u5927A","age":30.2,"why":"liquidity","liq":0}
+{"t":1794410281002,"addr":"A6jMmNqt8g1aPQr9xmvosiRt1vgNg96KJUj6YX9AT9xg","sym":"BROCAT","age":30.2,"score":0.03085,"px":3.382e-05,"liq":46757,"p0":2.9966700732571527e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.4256,"c_peak":1.0,"c_vol":5.1938,"c_act":1.0,"c_r5":0.2765,"c_r15":0.2591,"c_mc":4.4766}}
+{"t":1794410281002,"addr":"HSpHbD2gGJ4DWpVndPnJdMacr1xpNUZuuzYpTmyZpump","sym":"LCOUSINS","age":30.2,"why":"liquidity","liq":8158}
+{"t":1794410460656,"addr":"6NZ19rjVAh2nqU7hFDhHPwhE7smQzhxjNVcw53XEpump","sym":"GTA 6","age":31.0,"why":"liquidity","liq":1535}
+{"t":1794410460656,"addr":"6QRLZYtx3XHDwRmB6kY1MSFE6gmMZwrqvpHFimhypump","sym":"Inuployed","age":30.6,"why":"liquidity","liq":2009}
+{"t":1794410460656,"addr":"DcYvWuBKnLtdyACtSqV6Edj2N4cBDX7L2c7gwjcqpump","sym":"MrBeast","age":30.6,"why":"liquidity","liq":1529}
