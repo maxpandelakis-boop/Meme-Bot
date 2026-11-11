@@ -879,3 +879,4 @@
 {"t":1794440880627,"addr":"7fRe9jK2e81QBPbAbPuhA7UkbX78uq8V3ZAkGS4bndQV","sym":"Audacoin","age":30.1,"why":"liquidity","liq":4308}
 {"t":1794440941239,"addr":"97JvMQTgYVYQPMrwErVmJ5euyCz28hbZ9juNPTL2CWZd","sym":"civetcat","age":30.9,"why":"liquidity","liq":0}
 {"t":1794441000552,"addr":"D2xYkMmtVYqNTJnc5zZPeQ6BSjEwwmd6c3BMfj2Npump","sym":"FIRE","age":30.5,"score":0.0281,"px":2.536e-05,"liq":10715,"p0":2.6405831306699116e-05,"bars":6,"buy":false,"f":{"f_curve_min":36.75,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.2089,"c_peak":1.7254,"c_vol":3.9964,"c_act":1.0,"c_r5":-0.0046,"c_r15":-0.2555,"c_mc":4.4217}}
+{"t":1794441301365,"addr":"CjdWpihFWiUfETEmVY68t2NkFD3UH62FpoH5v1Hopump","sym":"stachecat","age":30.1,"why":"liquidity","liq":1685}
