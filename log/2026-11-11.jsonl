@@ -280,3 +280,4 @@
 {"t":1794384000712,"addr":"88eB7Roxeoujxx8mZov2zbSYKEt7wqXwtef15Ajg2SU9","sym":"X Cashtags","age":30.8,"why":"liquidity","liq":0}
 {"t":1794384000712,"addr":"KjodinNC5eMLjWwPwh4azMQmn9wXXdqvdWGNMP7pump","sym":"Coinbase","age":30.5,"why":"liquidity","liq":1513}
 {"t":1794384061212,"addr":"DAXS8EoE1rRPDTBZpaiXwURNxnY8mbLTDf5fFMVCdQgo","sym":"X Cashtags","age":30.6,"why":"liquidity","liq":0}
+{"t":1794384240175,"addr":"G2LNYKDtE78VLVdUwwaEvK7E71DCMHjjxzsVdKSDnLat","sym":"Claude AI","age":30.6,"score":0.01089,"px":1.71e-05,"liq":17943,"p0":1.3267949075262612e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":10.0,"f_cjk":0.0,"c_ret":0.4038,"c_peak":1.1914,"c_vol":4.8215,"c_act":1.0,"c_r5":0.4052,"c_r15":0.6111,"c_mc":4.1228}}
