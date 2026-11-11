@@ -7,7 +7,7 @@
 // GeckoTerminal, Reddit (the user's own app ID).
 import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js";
 import { bestPair } from "./sim.js";
-import { hotCoins as scoutHot, scoutPick } from "./scout.js";
+import { hotCoins as scoutHot, scoutPick, rugCheck } from "./scout.js";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -167,6 +167,9 @@ async function scout() {
   }
   if (pick && Object.keys(acc.pos).length >= P.maxOpen) say("risk", `max ${P.maxOpen} offen → $${pick.symbol} skip`);
   if (!pick || Object.keys(acc.pos).length >= P.maxOpen) { render(); return; }
+  const rug = await rugCheck(getJson, pick.mint);
+  say("risk", `RugCheck $${pick.symbol}: ${rug.bad ? "Gefahr: " + rug.why + " → skip" : rug.why}`);
+  if (rug.bad) { render(); return; }
   const p = prices[pick.mint];
   if (!p || !(p.price > 0)) return;
   const r = copyBuy(acc, { mint: pick.mint, symbol: pick.symbol, price: p.price, liq: p.liq, mc: p.mc, score: pick.score, pool: pick.pool, img: pick.img, now: Date.now() }, P);

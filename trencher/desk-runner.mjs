@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js";
-import { hotCoins, priceMap, scoutPick } from "./scout.js";
+import { hotCoins, priceMap, scoutPick, rugCheck } from "./scout.js";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);
@@ -113,6 +113,9 @@ async function scout() {
   agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
   if (!pick) return;
   if (Object.keys(acc.pos).length >= P.maxOpen) { say("risk", `max ${P.maxOpen} offen → $${pick.symbol} skip`); return; }
+  const rug = await rugCheck(getJson, pick.mint);
+  say("risk", `RugCheck $${pick.symbol}: ${rug.bad ? "Gefahr: " + rug.why + " → skip" : rug.why}`);
+  if (rug.bad) return;
   const p = prices[pick.mint];
   const free = acc.cash;
   const res = copyBuy(acc, { mint: pick.mint, symbol: pick.symbol, price: p.price, liq: p.liq, mc: p.mc, score: pick.score, pool: pick.pool, img: pick.img }, P);

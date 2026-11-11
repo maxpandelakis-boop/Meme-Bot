@@ -81,3 +81,20 @@ export function scoutPick(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()
   return list.find(c => c.score >= P.minScore && c.pool && !acc.pos[c.mint] && !recent.has(c.mint)
                         && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0)) || null;
 }
+
+// Rug check before a buy (free, no key): RugCheck's report summary. Any risk of level "danger" (mint or freeze authority
+// still on, LP not locked, top holders own most of it, ...) blocks the buy. When RugCheck cannot be reached the buy goes on,
+// and the log says so. Results are kept 30 minutes per coin.
+const rugCache = new Map();
+export async function rugCheck(getJson, mint, now = Date.now()) {
+  const hit = rugCache.get(mint);
+  if (hit && now - hit.t < 30 * 60e3) return hit.r;
+  let r;
+  try {
+    const j = await getJson(`https://api.rugcheck.xyz/v1/tokens/${mint}/report/summary`);
+    const danger = (j.risks || []).filter(x => String(x.level).toLowerCase() === "danger").map(x => x.name);
+    r = { known: true, bad: danger.length > 0, why: danger.length ? danger.slice(0, 3).join(", ") : `ok (Score ${j.score_normalised ?? j.score ?? "?"})` };
+  } catch (e) { r = { known: false, bad: false, why: "RugCheck nicht erreichbar" }; }
+  rugCache.set(mint, { t: now, r });
+  return r;
+}
