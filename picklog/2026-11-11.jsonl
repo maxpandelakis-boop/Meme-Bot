@@ -11,3 +11,4 @@
 {"at":1794417000000,"why":"drop","mult":1.001261649971015,"rule":"chart","sym":"NOBUSHIBA","t":1794417050742,"eur":49.07,"pnl":-0.93,"entryAt":1794405160833,"id":"2026-11-11T133108-h-NOBUSHIBA-8AAVuQ"}
 {"at":1794423300000,"why":"drop","mult":0.8499170092869891,"rule":"chart","sym":"\u54aa\u597d","t":1794423358067,"eur":41.65,"pnl":-8.35,"entryAt":1794422183529,"id":"2026-11-11T182123-h-X-Hg3w7G"}
 {"at":1794427680000,"why":"trail","mult":1.253554431785,"late":true,"hitAt":1794427620000,"rule":"chart","sym":"\u54aa\u597d","t":1794427714255,"eur":61.43,"pnl":11.43,"entryAt":1794425652297,"id":"2026-11-11T191634-h-X-Hg3w7G"}
+{"at":1794431760000,"why":"drop","mult":0.949858328739961,"late":true,"hitAt":1794431700000,"rule":"chart","sym":"NOBUSHIBA","t":1794431782284,"eur":46.55,"pnl":-3.45,"entryAt":1794429101281,"id":"2026-11-11T201322-h-NOBUSHIBA-8AAVuQ"}
