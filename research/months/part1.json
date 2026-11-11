@@ -1,0 +1,220 @@
+{
+ "planned": {
+  "w3": 22827,
+  "w4": 23397,
+  "w1": 6830,
+  "w2": 10497,
+  "w5": 8427
+ },
+ "fetched": {
+  "w3": 22085,
+  "w4": 22437,
+  "w1": 6830,
+  "w2": 10481,
+  "w5": 8427
+ },
+ "windows": {
+  "w1": {
+   "coins": 348,
+   "K": {
+    "n": 348,
+    "mean": -4.64,
+    "total": -1613.4,
+    "inProfit": 31.6,
+    "x3": 4.0,
+    "x11": 0.3,
+    "stopped": 52.9
+   },
+   "A": {
+    "n": 348,
+    "mean": -5.54,
+    "total": -1928.4,
+    "inProfit": 24.4
+   },
+   "B": {
+    "n": 348,
+    "mean": -4.45,
+    "total": -1550.1,
+    "inProfit": 39.4
+   },
+   "C": {
+    "n": 348,
+    "mean": -4.45,
+    "total": -1547.6,
+    "inProfit": 32.8
+   },
+   "D": {
+    "n": 348,
+    "mean": -5.79,
+    "total": -2015.5,
+    "inProfit": 29.9
+   },
+   "hoursWithCoin": 673,
+   "randomPerHour": -4.29
+  },
+  "w2": {
+   "coins": 394,
+   "K": {
+    "n": 394,
+    "mean": -3.95,
+    "total": -1558.1,
+    "inProfit": 27.7,
+    "x3": 5.6,
+    "x11": 0.0,
+    "stopped": 57.1
+   },
+   "A": {
+    "n": 394,
+    "mean": -3.83,
+    "total": -1509.2,
+    "inProfit": 22.8
+   },
+   "B": {
+    "n": 394,
+    "mean": -7.25,
+    "total": -2856.6,
+    "inProfit": 35.5
+   },
+   "C": {
+    "n": 394,
+    "mean": -4.61,
+    "total": -1816.4,
+    "inProfit": 29.4
+   },
+   "D": {
+    "n": 394,
+    "mean": -2.97,
+    "total": -1171.7,
+    "inProfit": 29.4
+   },
+   "hoursWithCoin": 689,
+   "randomPerHour": -2.95
+  },
+  "w3": {
+   "coins": 569,
+   "K": {
+    "n": 569,
+    "mean": -2.5,
+    "total": -1421.1,
+    "inProfit": 45.7,
+    "x3": 2.6,
+    "x11": 0.4,
+    "stopped": 32.2
+   },
+   "A": {
+    "n": 569,
+    "mean": -2.59,
+    "total": -1472.2,
+    "inProfit": 43.6
+   },
+   "B": {
+    "n": 569,
+    "mean": -5.28,
+    "total": -3001.9,
+    "inProfit": 46.9
+   },
+   "C": {
+    "n": 569,
+    "mean": -2.88,
+    "total": -1638.6,
+    "inProfit": 46.7
+   },
+   "D": {
+    "n": 569,
+    "mean": -2.67,
+    "total": -1516.7,
+    "inProfit": 44.8
+   },
+   "hoursWithCoin": 661,
+   "randomPerHour": -3.78
+  },
+  "w4": {
+   "coins": 356,
+   "K": {
+    "n": 356,
+    "mean": -4.34,
+    "total": -1546.0,
+    "inProfit": 34.3,
+    "x3": 2.2,
+    "x11": 0.0,
+    "stopped": 39.6
+   },
+   "A": {
+    "n": 356,
+    "mean": -4.19,
+    "total": -1490.2,
+    "inProfit": 31.7
+   },
+   "B": {
+    "n": 356,
+    "mean": -6.21,
+    "total": -2212.3,
+    "inProfit": 37.9
+   },
+   "C": {
+    "n": 356,
+    "mean": -4.14,
+    "total": -1473.2,
+    "inProfit": 36.0
+   },
+   "D": {
+    "n": 356,
+    "mean": -4.42,
+    "total": -1572.2,
+    "inProfit": 36.5
+   },
+   "hoursWithCoin": 623,
+   "randomPerHour": -3.25
+  },
+  "w5": {
+   "coins": 185,
+   "K": {
+    "n": 185,
+    "mean": -4.85,
+    "total": -897.3,
+    "inProfit": 39.5,
+    "x3": 2.2,
+    "x11": 0.0,
+    "stopped": 40.0
+   },
+   "A": {
+    "n": 185,
+    "mean": -5.67,
+    "total": -1049.4,
+    "inProfit": 36.2
+   },
+   "B": {
+    "n": 185,
+    "mean": -12.11,
+    "total": -2239.6,
+    "inProfit": 37.3
+   },
+   "C": {
+    "n": 185,
+    "mean": -5.09,
+    "total": -942.4,
+    "inProfit": 40.0
+   },
+   "D": {
+    "n": 185,
+    "mean": -5.35,
+    "total": -990.2,
+    "inProfit": 40.5
+   },
+   "hoursWithCoin": 302,
+   "randomPerHour": -4.56
+  }
+ },
+ "calib1min": {
+  "w3": {
+   "coins": 569,
+   "K5min": -2.5,
+   "K1min": -2.44
+  },
+  "w4": {
+   "coins": 356,
+   "K5min": -4.34,
+   "K1min": -4.39
+  }
+ }
+}
