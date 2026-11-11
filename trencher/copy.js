@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js";
-import { bestPair } from "./sim.js";
-import { hotCoins as scoutHot, scoutPick, rugCheck, DS, DEX } from "./scout.js";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.2";
+import { bestPair } from "./sim.js?v=0.9.2";
+import { hotCoins as scoutHot, scoutPick, rugCheck, DS, DEX } from "./scout.js?v=0.9.2";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -866,7 +866,7 @@ $("chatForm").addEventListener("submit", e => {
 // ---------- start ----------
 (async () => {
   try { $("ver").textContent = "v" + chrome.runtime.getManifest().version; } catch { $("ver").textContent = "web"; }
-  if (!IS_EXT) webApp();
+  try { if (!IS_EXT) webApp(); } catch (e) { console.warn("webApp", e); }
   P = { ...COPY_DEFAULTS, ...(await load("deskRules", {})) };
   traders = await load("copyTraders", []);
   acc = await load("deskAcc", null) || newAccount(P);   // the desk starts a fresh $20 account (the old copy account stays stored)

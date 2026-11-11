@@ -1,6 +1,6 @@
 // Service worker of the Trencher web app: keeps the app's own files so it opens without network and installs as an app.
 // Network first (an update shows up on the next start), cache only as fallback. Data APIs (prices, chain, Reddit) are never cached.
-const CACHE = "trencher-v10";
+const CACHE = "trencher-v11";
 const SHELL = ["copy.html", "copy.css", "copy.js", "copy-engine.js", "scout.js", "sim.js", "lib/lightweight-charts.standalone.production.js",
                "app-manifest.json", "icons/app-192.png", "icons/app-512.png", "icons/app-180.png"];
 // one by one, a file that fails (e.g. an icon the host redirects elsewhere) must not stop the install
@@ -13,7 +13,7 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;     // APIs: straight to the network
-  e.respondWith(fetch(e.request).then(r => {
+  e.respondWith(fetch(e.request, { cache: "no-cache" }).then(r => {      // always ask the server: no stale file from the browser's own cache
     if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); }
     return r;
   }).catch(() => caches.match(e.request, { ignoreSearch: true })));

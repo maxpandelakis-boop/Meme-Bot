@@ -1,6 +1,6 @@
 // node trencher/test_copy.mjs : checks the copy-trading engine.
 import assert from "node:assert/strict";
-import * as C from "./copy-engine.js";
+import * as C from "./copy-engine.js?v=0.9.2";
 
 const W = "Trader1111111111111111111111111111111111111", M = "Coin1111111111111111111111111111111111pump";
 const tb = (owner, mint, amt) => ({ owner, mint, uiTokenAmount: { uiAmount: amt } });
@@ -88,7 +88,7 @@ console.log("ok: copy engine");
 
 // fresh-coin Scout filter
 {
-  const S = await import("./scout.js");
+  const S = await import("./scout.js?v=0.9.2");
   const now = Date.now();
   const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } } }, attributes: { address: "P" + id, name: id + " / SOL",
     pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
@@ -97,4 +97,16 @@ console.log("ok: copy engine");
   const ok = l.filter(c => !c.why).map(c => c.symbol);
   if (ok.join() !== "D,A") throw new Error("fresh filter " + ok.join());
   console.log("ok: fresh scout");
+}
+
+// one version everywhere: every "?v=" in the app's files is the manifest's version (a browser must never mix old and new files)
+{
+  const fs = await import("node:fs");
+  const dir = new URL(".", import.meta.url);
+  const ver = JSON.parse(fs.readFileSync(new URL("manifest.json", dir), "utf8")).version;
+  for (const f of ["copy.html", "copy.js", "copy-engine.js", "scout.js", "desk-runner.mjs"]) {
+    const vs = [...fs.readFileSync(new URL(f, dir), "utf8").matchAll(/\.(?:js|css)\?v=([\d.]+)/g)].map(m => m[1]);
+    if (!vs.length || vs.some(v => v !== ver)) throw new Error(`${f}: ?v= ${vs.join(",")} is not ${ver}`);
+  }
+  console.log("ok: one version");
 }
