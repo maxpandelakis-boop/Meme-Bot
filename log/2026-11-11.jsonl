@@ -144,3 +144,5 @@
 {"t":1794369780872,"addr":"7kDy9qd6Wakjf9vUtnLxaeHgiFKyB7FLQBj4xaRupump","sym":"GMDOC","age":30.1,"why":"liquidity","liq":0}
 {"t":1794369840159,"addr":"5U8ov8XRF214WDABEyefdomgq5mwSK4Z4jqr3by6sR4u","sym":"X Cashtags","age":31.0,"score":0.03586,"px":4.367e-05,"liq":46440,"p0":3.613323938904129e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":10.0,"f_cjk":0.0,"c_ret":0.7726,"c_peak":1.0281,"c_vol":4.8999,"c_act":1.0,"c_r5":0.2091,"c_r15":0.656,"c_mc":4.5579}}
 {"t":1794369840159,"addr":"akv62KV4kEXdYxY9F3NtM9667MKhAVyH7k8qnFbpump","sym":"CATPEPE","age":30.6,"why":"liquidity","liq":1622}
+{"t":1794370080147,"addr":"AuKm4cmZdamR7gTzi9wiL9xraq6FmqYkhoteHFqY19VD","sym":"SKELETON\u2620\ufe0f","age":30.7,"why":"liquidity","liq":0}
+{"t":1794370140756,"addr":"FbkvjrRSeUG9WoU3uuXuAUeLYRUoZR34Xm4ZMeHDpump","sym":"ORVIX","age":30.8,"why":"liquidity","liq":1668}
