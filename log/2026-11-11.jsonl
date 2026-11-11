@@ -609,3 +609,5 @@
 {"t":1794413820830,"addr":"GEz83JBbzHfQWMt2n5T2JWTor3GJLoevsQq6Kaytpump","sym":"DANIELA","age":30.3,"why":"liquidity","liq":1725}
 {"t":1794413940791,"addr":"2MP28cjYJXS7QVrwdfXaXF6TL85yrbYwHhBHLeDMpump","sym":"DANIELA","age":30.4,"why":"liquidity","liq":3821}
 {"t":1794414000084,"addr":"FFz9ReR9Nh9n5Ny6bY7fvqekNpf4G3tLcG6y6NCevLQY","sym":"NEX Ai","age":30.1,"why":"liquidity","liq":0}
+{"t":1794414180695,"addr":"EeMWtqT5HHBJ9ptp56GMrCvETJG3WT5s5UkbKDuEpump","sym":"DANIELA","age":30.5,"score":0.01219,"px":8.2e-05,"liq":21330,"p0":6.661245157046224e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":-0.0521,"c_peak":2.1038,"c_vol":5.3305,"c_act":1.0,"c_r5":-0.5672,"c_r15":-0.6203,"c_mc":4.8236}}
+{"t":1794414420638,"addr":"6J7gkByaSjYTRASXLcUomMubVLt6mNisoN6eVYgUe11b","sym":"Google AI","age":30.4,"why":"liquidity","liq":0}
