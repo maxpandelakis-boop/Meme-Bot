@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.2";
-import { bestPair } from "./sim.js?v=0.9.2";
-import { hotCoins as scoutHot, scoutPick, rugCheck, DS, DEX } from "./scout.js?v=0.9.2";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.3";
+import { bestPair } from "./sim.js?v=0.9.3";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX } from "./scout.js?v=0.9.3";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -159,11 +159,9 @@ async function scout() {
   const list = await hotCoins(() => {});
   hot = list; agent.checked += list.length; agent.top = list.slice(0, 3);
   const pick = scoutPick(list, acc, P, COOLDOWN_MS);
-  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
-  for (const c of list.slice(0, 4)) {
-    const ok = c.score >= P.minScore && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0);
-    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${acc.pos[c.mint] ? "schon drin" : ok ? "size check" : "wait"}`);
-  }
+  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : scoutNone(list, acc, P, COOLDOWN_MS);
+  for (const c of list.slice(0, 4))
+    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${scoutVerdict(c, acc, P, COOLDOWN_MS)}`);
   if (pick && Object.keys(acc.pos).length >= P.maxOpen) say("risk", `max ${P.maxOpen} offen → $${pick.symbol} skip`);
   if (!pick || Object.keys(acc.pos).length >= P.maxOpen) { render(); return; }
   const rug = await rugCheck(getJson, pick.mint);

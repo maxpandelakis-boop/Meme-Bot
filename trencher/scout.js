@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.2";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.2";
+import { bestPair } from "./sim.js?v=0.9.3";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.3";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -129,4 +129,22 @@ export async function freshCoins(gt, now = Date.now()) {
   }
   const list = [...out.values()].map(c => ({ ...c, why: freshOk(c) }));
   return list.sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || b.buyers5 - a.buyers5);
+}
+
+// What the Scout says about one coin, in the log's words: the same checks as scoutPick, so the log never says "size check"
+// for a coin the Scout will not buy (e.g. one the desk left less than 30 minutes ago).
+export function scoutVerdict(c, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
+  if (acc.pos[c.mint]) return "schon drin";
+  const left = acc.closed.find(x => x.mint === c.mint && now - x.out < cooldownMs);
+  if (left) return `Pause nach Verkauf, noch ${Math.max(1, Math.ceil((cooldownMs - (now - left.out)) / 60e3))} min`;
+  if (c.score < P.minScore) return `wait (unter ${P.minScore} Punkten)`;
+  if (!((c.chg1h || 0) > 0)) return "wait (Kurs fällt)";
+  if (!((c.buys1h || 0) > (c.sells1h || 0))) return "wait (mehr Verkäufe als Käufe)";
+  if (!c.pool) return "wait (kein Pool)";
+  return "size check";
+}
+// The Scout card's line when nothing is bought: the reason of the best coin, not a blanket "nothing above N points".
+export function scoutNone(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
+  const best = list.find(c => c.score >= P.minScore && !acc.pos[c.mint]);
+  return best ? `$${best.symbol} (${best.score}): ${scoutVerdict(best, acc, P, cooldownMs, now)}` : `nichts über ${P.minScore} Punkten`;
 }

@@ -7,8 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.2";
-import { hotCoins, priceMap, scoutPick, rugCheck, freshCoins } from "./scout.js?v=0.9.2";
+import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.3";
+import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins } from "./scout.js?v=0.9.3";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);
@@ -116,11 +116,10 @@ async function scout() {
   Object.assign(prices, r.prices);
   agent.checked += r.list.length; agent.top = r.list.slice(0, 3).map(c => ({ mint: c.mint, symbol: c.symbol, score: c.score, chg1h: c.chg1h, img: c.img }));
   for (const c of r.list.slice(0, 4)) {
-    const ok = c.score >= P.minScore && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0);
-    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${acc.pos[c.mint] ? "schon drin" : ok ? "size check" : "wait"}`);
+    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${scoutVerdict(c, acc, P)}`);
   }
   const pick = scoutPick(r.list, acc, P);
-  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
+  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : scoutNone(r.list, acc, P);
   if (!pick) return;
   if (Object.keys(acc.pos).length >= P.maxOpen) { say("risk", `max ${P.maxOpen} offen → $${pick.symbol} skip`); return; }
   const rug = await rugCheck(getJson, pick.mint);
