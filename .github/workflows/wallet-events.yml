@@ -1,6 +1,6 @@
 # The wallet study, step 1 (research/wallets, fake money only): started by a push of this file to the thread branch
 # claude/project-thread-412hq7. It downloads public, openly licensed pump.fun data (Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and
-# public SOL/USD candles, keeps one event file per launch day as a run artifact, and writes the dev-days report to the branch
+# public SOL/USD candles (second start: mixed column types in two files fixed), keeps one event file per launch day as a run artifact, and writes the dev-days report to the branch
 # "walletdata", which nothing else writes. Nothing is bought.
 name: wallet-events
 on:

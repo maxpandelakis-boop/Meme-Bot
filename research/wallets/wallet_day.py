@@ -268,8 +268,18 @@ def main():
         tb = tb.filter(pc.is_in(tb.column("mint"), value_set=mints))
         parts.append(tb)
         log("trade", f.split("/")[-1], "rows kept", tb.num_rows)
-    tb = pa.concat_tables(parts)
+    tb = pa.concat_tables(parts, promote_options="permissive")
     del parts
+    nulls = {c: tb.column(c).null_count for c in cols if tb.column(c).null_count}
+    log("rows", tb.num_rows, "nulls per column", nulls)
+    need = [c for c in cols if c not in ("slot", "tx_index")]
+    okrow = None
+    for c in need:
+        v = pc.is_valid(tb.column(c))
+        okrow = v if okrow is None else pc.and_(okrow, v)
+    tb = tb.filter(okrow)
+    for c in ("slot", "tx_index"):                           # only the order inside one second hangs on them
+        tb = tb.set_column(tb.schema.get_field_index(c), c, pc.fill_null(pc.cast(tb.column(c), pa.int64()), 0))
     t_all = secs(tb.column("block_time"))
     keep = t_all < data_end
     tb = tb.filter(pa.array(keep)); t_all = t_all[keep]
@@ -286,7 +296,7 @@ def main():
     vs, vt, rs = num("virtual_sol_reserves", "float64"), num("virtual_token_reserves", "float64"), num("real_sol_reserves", "float64")
     del tb
     price = (vs / 1e9) / np.maximum(vt / 1e6, 1e-9)          # SOL per token, after the trade
-    order = np.lexsort((txi, slot, m_idx))
+    order = np.lexsort((txi, slot, t_all, m_idx))
     m_idx, t_all, u_idx, is_buy, sol, tok, price, rs = (a[order] for a in (m_idx, t_all, u_idx, is_buy, sol, tok, price, rs))
     del slot, txi, vs, vt, order
     back = int(np.sum((np.diff(t_all) < 0) & (np.diff(m_idx) == 0)))
