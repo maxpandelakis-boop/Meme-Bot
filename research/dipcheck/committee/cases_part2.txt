@@ -1,0 +1,1011 @@
+=== CASE 4424 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 105-115 min after the buy.
+At the buy: market cap $291k, liquidity $42k, volume last 24 h $1244k, last 1 h $108k; price change before the buy: 1 h 3%, 6 h -38%, 24 h 269%.
+Since the buy (before the touch): highest 106%, lowest 84%, last close 91% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #15): 97 97 88 80 83 91 101 95 99 102 96 108 97 100 100 95 92 89 92 98 98 95 96 94 93 95 94 92 99 100 102 95 98 101 104 91
+Their volumes in thousand USD: 13.0 9.8 8.3 9.3 10.3 9.6 7.2 9.3 8.3 10.1 10.2 8.8 8.9 8.2 8.1 7.9 9.0 7.9 7.6 8.3 8.5 8.4 7.4 8.5 8.7 7.1 8.4 9.2 7.8 7.8 9.2 7.2 1.4 0.4 0.5 8.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 21%; vs the lowest since graduation: 547%.
+Market: SOL -0.3% (1 h), -1.5% (24 h); BTC -1.5% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 53 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 4.2.
+
+=== CASE 5805 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $106k, liquidity $30k, volume last 24 h $335k, last 1 h $15k; price change before the buy: 1 h -4%, 6 h 44%, 24 h 163%.
+Since the buy (before the touch): highest 100%, lowest 87%, last close 87% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 91 91 91 91 91 90 89 92 91 96 101 111 121 125 126 109 113 108 110 100 102 106 104 97 96 94 97 96 100 108 109 111 102 101 100 87
+Their volumes in thousand USD: 1.8 1.5 1.6 1.7 1.5 1.6 1.4 1.4 1.7 1.6 2.1 2.7 2.8 2.2 1.8 3.4 1.7 1.5 1.5 2.1 1.8 1.4 1.5 2.1 1.7 1.6 1.9 1.3 1.4 2.1 1.1 0.1 1.3 0.1 0.1 1.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 66%; vs the lowest since graduation: 813%.
+Market: SOL -0.2% (1 h), -2.7% (24 h); BTC -1.6% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 0205 ===
+Coin age at the buy: 11 h after it left the bonding curve. The price touched -20% about 75-85 min after the buy.
+At the buy: market cap $195k, liquidity $38k, volume last 24 h $185k, last 1 h $4k; price change before the buy: 1 h 1%, 6 h 25%, 24 h -30%.
+Since the buy (before the touch): highest 100%, lowest 81%, last close 81% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #21): 89 89 89 89 89 89 100 99 99 101 103 104 106 108 107 105 111 110 110 100 100 100 99 100 84 82 82 82 83 85 85 84 83 84 83 81
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.0 0.8 0.2 0.0 0.0 0.4 0.1 0.1 0.2 0.0 0.3 1.4 0.1 0.0 1.0 0.0 0.1 0.5 0.0 2.0 0.3 0.1 0.0 0.2 0.0 0.0 0.1 0.2 0.2 0.2 0.2
+Five-minute candles without any trade in the last hour: 1 of 12. Price now vs the highest since graduation: 22%; vs the lowest since graduation: 141%.
+Market: SOL 0.2% (1 h), -3.2% (24 h); BTC -1.1% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 4.8.
+
+=== CASE 2560 ===
+Coin age at the buy: 13 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $149k, liquidity $30k, volume last 24 h $670k, last 1 h $18k; price change before the buy: 1 h 69%, 6 h 7%, 24 h 283%.
+Since the buy (before the touch): highest 100%, lowest 97%, last close 97% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 68 70 69 70 73 72 73 58 58 56 57 55 52 50 56 62 64 65 67 66 64 64 59 61 62 63 69 72 90 82 85 95 96 97 100 97
+Their volumes in thousand USD: 1.1 1.1 0.5 0.6 0.9 0.6 0.1 2.6 1.8 1.0 2.7 0.6 1.2 0.4 2.2 2.1 1.0 0.4 0.1 0.4 0.3 0.1 1.2 0.4 0.2 0.1 0.9 1.0 2.5 1.4 0.3 2.0 0.9 1.2 7.6 0.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 60%; vs the lowest since graduation: 2249%.
+Market: SOL -0.8% (1 h), -2.4% (24 h); BTC 0.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 3 min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 1292 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 230-240 min after the buy.
+At the buy: market cap $101k, liquidity $25k, volume last 24 h $288k, last 1 h $21k; price change before the buy: 1 h 14%, 6 h 32%, 24 h 65%.
+Since the buy (before the touch): highest 108%, lowest 89%, last close 93% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-10): 101 100 102 98 100 98 97 99 100 100 99 102 101 100 99 99 103 100 99 106 102 104 103 98 94 97 95 92 95 95 96 92 93 91 91 93
+Their volumes in thousand USD: 1.7 1.4 1.7 1.9 1.0 1.8 2.4 2.2 1.6 0.7 1.4 1.2 1.8 1.6 2.4 1.5 1.0 2.1 1.0 1.8 1.4 1.6 1.0 2.1 2.2 1.3 1.1 1.8 1.4 1.0 1.5 2.2 2.1 1.6 1.4 1.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 86%; vs the lowest since graduation: 230%.
+Market: SOL -0.6% (1 h), -0.9% (24 h); BTC 0.3% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 13 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 13 min.
+Hours left until the forced sale at 6 h after the buy: about 2.2.
+
+=== CASE 5347 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 5-15 min after the buy.
+At the buy: market cap $508k, liquidity $54k, volume last 24 h $3952k, last 1 h $317k; price change before the buy: 1 h 5%, 6 h -47%, 24 h 1081%.
+Since the buy (before the touch): highest 105%, lowest 97%, last close 101% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #35): 116 106 102 97 97 102 94 99 109 122 112 112 100 102 93 93 90 101 103 105 99 95 114 117 126 154 150 139 128 136 127 118 108 100 102 101
+Their volumes in thousand USD: 19.8 24.8 14.3 9.6 11.6 15.4 9.6 9.1 16.3 75.6 18.7 10.3 16.9 11.9 15.3 5.7 12.3 10.0 6.0 5.7 2.8 7.2 11.8 14.2 24.5 81.8 41.4 11.7 29.2 17.3 12.0 29.9 17.4 25.4 14.6 11.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 42%; vs the lowest since graduation: 1652%.
+Market: SOL 0.0% (1 h), -1.3% (24 h); BTC -0.2% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 21 min.
+Hours left until the forced sale at 6 h after the buy: about 5.9.
+
+=== CASE 2435 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 305-315 min after the buy.
+At the buy: market cap $1797k, liquidity $122k, volume last 24 h $607k, last 1 h $3k; price change before the buy: 1 h 1%, 6 h 22%, 24 h 2378%.
+Since the buy (before the touch): highest 117%, lowest 100%, last close 117% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-25): 112 110 112 112 112 113 113 113 113 113 113 114 114 112 114 114 114 114 114 112 114 113 115 115 115 114 114 116 116 116 116 115 115 115 117 117
+Their volumes in thousand USD: 0.3 0.3 0.2 0.3 0.3 0.3 0.3 0.3 0.4 0.2 0.3 0.3 0.4 0.3 0.4 0.3 0.3 0.2 0.3 0.3 0.2 0.2 0.3 0.3 0.3 0.3 0.2 0.2 0.2 0.3 0.3 0.4 0.2 0.2 0.3 0.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 100%; vs the lowest since graduation: 3153%.
+Market: SOL -0.2% (1 h), 1.3% (24 h); BTC -0.3% (24 h).
+Launch: X link no, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 0.9.
+
+=== CASE 6594 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 25-35 min after the buy.
+At the buy: market cap $140k, liquidity $35k, volume last 24 h $413k, last 1 h $47k; price change before the buy: 1 h 16%, 6 h 64%, 24 h 185%.
+Since the buy (before the touch): highest 100%, lowest 81%, last close 81% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #31): 67 70 71 77 79 71 70 63 76 83 84 88 80 86 90 90 84 86 98 103 104 103 105 97 88 85 87 94 94 100 96 94 88 84 84 81
+Their volumes in thousand USD: 0.2 0.3 0.3 2.9 1.0 1.3 0.2 1.0 2.3 2.3 1.0 0.3 0.8 6.5 9.7 5.5 5.2 4.7 7.4 6.7 5.7 5.6 4.8 5.2 4.5 4.4 0.6 1.0 0.2 0.9 0.6 0.1 0.8 0.3 1.0 0.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 74%; vs the lowest since graduation: 346%.
+Market: SOL 1.0% (1 h), 0.5% (24 h); BTC 1.4% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.6.
+
+=== CASE 3053 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 15-25 min after the buy.
+At the buy: market cap $114k, liquidity $28k, volume last 24 h $300k, last 1 h $12k; price change before the buy: 1 h 17%, 6 h 68%, 24 h 83%.
+Since the buy (before the touch): highest 100%, lowest 92%, last close 92% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #33): 130 127 138 162 166 122 121 111 122 111 109 106 109 107 90 94 89 89 89 85 122 120 98 100 103 103 97 107 105 114 100 100 102 100 97 92
+Their volumes in thousand USD: 0.3 0.4 1.6 1.4 1.2 4.3 0.7 2.3 1.4 0.7 0.3 0.1 0.1 0.2 4.1 0.5 0.4 0.0 2.1 0.3 3.0 0.6 1.9 0.1 0.2 0.0 0.5 0.9 0.3 2.3 1.9 0.0 0.0 0.0 0.2 0.4
+Five-minute candles without any trade in the last hour: 2 of 12. Price now vs the highest since graduation: 52%; vs the lowest since graduation: 532%.
+Market: SOL 0.6% (1 h), 3.2% (24 h); BTC 1.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 24 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 7787 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 25-35 min after the buy.
+At the buy: market cap $102k, liquidity $24k, volume last 24 h $794k, last 1 h $23k; price change before the buy: 1 h 31%, 6 h 76%, 24 h 138%.
+Since the buy (before the touch): highest 128%, lowest 95%, last close 96% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #31): 85 95 96 88 110 103 94 107 109 105 95 96 88 87 71 81 71 77 76 76 66 78 74 73 112 105 111 111 99 100 125 113 115 108 99 96
+Their volumes in thousand USD: 2.3 3.3 0.3 0.5 6.9 1.0 0.8 1.6 1.0 0.9 0.7 1.0 1.9 1.4 3.2 1.7 1.3 0.7 0.0 0.8 0.9 2.8 0.5 0.3 6.5 2.9 0.7 5.2 1.4 0.8 2.6 1.9 2.9 1.3 0.8 0.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 36%; vs the lowest since graduation: 485%.
+Market: SOL -0.1% (1 h), -1.1% (24 h); BTC -0.9% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 45 min.
+Hours left until the forced sale at 6 h after the buy: about 5.6.
+
+=== CASE 8937 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 125-135 min after the buy.
+At the buy: market cap $137k, liquidity $28k, volume last 24 h $648k, last 1 h $4k; price change before the buy: 1 h -6%, 6 h -40%, 24 h 215%.
+Since the buy (before the touch): highest 115%, lowest 82%, last close 84% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #11): 119 119 119 117 117 115 113 106 100 100 98 98 98 92 91 93 92 110 105 105 105 111 113 114 110 109 101 100 100 98 99 97 94 94 86 84
+Their volumes in thousand USD: 0.5 0.3 0.0 0.1 0.1 0.0 0.2 0.5 0.6 0.0 0.1 0.0 0.0 0.6 0.2 0.0 0.1 1.9 0.3 0.0 0.0 0.4 0.1 0.5 0.2 0.2 0.7 0.1 0.0 0.3 0.2 0.3 0.4 0.2 2.0 0.2
+Five-minute candles without any trade in the last hour: 1 of 12. Price now vs the highest since graduation: 23%; vs the lowest since graduation: 862%.
+Market: SOL 1.4% (1 h), -3.8% (24 h); BTC -2.6% (24 h).
+Launch: X link yes, Telegram yes, website yes, video no, description 60 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 1 min.
+Hours left until the forced sale at 6 h after the buy: about 3.9.
+
+=== CASE 6780 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 320-330 min after the buy.
+At the buy: market cap $1909k, liquidity $127k, volume last 24 h $56k, last 1 h $9k; price change before the buy: 1 h 1%, 6 h 11%, 24 h 11%.
+Since the buy (before the touch): highest 107%, lowest 99%, last close 106% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-28): 104 104 104 104 105 105 103 103 103 103 103 103 106 105 106 106 106 106 104 104 104 105 104 104 106 106 106 106 106 106 106 106 106 106 106 106
+Their volumes in thousand USD: 0.7 0.7 0.8 0.8 0.7 0.7 0.7 0.8 0.8 0.8 0.8 0.7 0.6 0.6 0.8 0.8 0.8 0.8 0.8 0.8 0.7 0.8 0.8 0.7 0.7 0.8 0.8 0.9 0.7 0.6 0.8 0.8 0.7 0.8 0.7 0.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 99%; vs the lowest since graduation: 118%.
+Market: SOL -0.1% (1 h), -0.1% (24 h); BTC -0.3% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 0.7.
+
+=== CASE 8216 ===
+Coin age at the buy: 11 h after it left the bonding curve. The price touched -20% about 40-50 min after the buy.
+At the buy: market cap $145k, liquidity $33k, volume last 24 h $416k, last 1 h $19k; price change before the buy: 1 h -1%, 6 h -19%, 24 h 8%.
+Since the buy (before the touch): highest 108%, lowest 81%, last close 81% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #28): 64 64 64 64 64 64 64 64 64 64 64 64 64 64 101 104 123 105 102 104 101 99 97 89 105 102 100 99 104 94 95 106 106 103 88 81
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.5 1.4 2.5 5.9 2.0 0.6 0.6 0.3 0.4 1.4 2.0 1.1 0.4 0.3 1.1 0.7 0.3 2.6 0.7 0.2 3.0 2.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 17%; vs the lowest since graduation: 591%.
+Market: SOL -0.4% (1 h), -3.7% (24 h); BTC -1.3% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 29 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.3.
+
+=== CASE 7682 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 70-80 min after the buy.
+At the buy: market cap $155k, liquidity $34k, volume last 24 h $260k, last 1 h $20k; price change before the buy: 1 h 17%, 6 h 4%, 24 h 215%.
+Since the buy (before the touch): highest 103%, lowest 82%, last close 88% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #22): 130 130 130 130 130 130 130 86 86 103 105 102 105 109 95 96 91 90 90 101 100 96 96 94 98 98 90 97 94 91 95 95 103 100 95 88
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.1 0.3 4.1 2.8 0.8 0.4 0.9 1.5 0.9 0.6 0.1 0.6 5.5 1.4 0.5 0.6 0.4 0.4 0.1 1.4 2.9 0.4 0.7 0.8 0.4 2.1 0.9 1.0 1.1
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 21%; vs the lowest since graduation: 296%.
+Market: SOL 0.2% (1 h), -3.2% (24 h); BTC -1.1% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 4.8.
+
+=== CASE 5532 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 220-230 min after the buy.
+At the buy: market cap $116k, liquidity $31k, volume last 24 h $516k, last 1 h $6k; price change before the buy: 1 h 15%, 6 h -40%, 24 h 68%.
+Since the buy (before the touch): highest 142%, lowest 86%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-8): 100 98 91 100 112 120 118 122 127 124 129 119 123 122 116 125 120 115 114 111 106 106 108 107 101 99 97 96 100 101 96 96 95 94 90 86
+Their volumes in thousand USD: 0.2 0.2 0.5 0.9 1.0 1.0 0.6 0.1 1.0 1.4 0.3 2.7 0.3 0.1 0.5 0.8 0.4 0.4 0.2 0.3 1.6 0.0 0.1 0.2 1.0 0.0 0.3 0.2 0.2 0.1 0.5 0.2 0.1 0.1 0.4 0.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 32%; vs the lowest since graduation: 169%.
+Market: SOL 0.5% (1 h), 0.4% (24 h); BTC -0.1% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 274 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.3.
+
+=== CASE 0874 ===
+Coin age at the buy: 13 h after it left the bonding curve. The price touched -20% about 15-25 min after the buy.
+At the buy: market cap $113k, liquidity $31k, volume last 24 h $873k, last 1 h $11k; price change before the buy: 1 h 57%, 6 h 21%, 24 h 134%.
+Since the buy (before the touch): highest 113%, lowest 80%, last close 82% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #33): 63 60 59 58 56 53 52 51 51 56 56 58 60 58 57 58 57 64 66 64 63 70 71 71 78 70 77 78 78 84 85 100 111 98 88 82
+Their volumes in thousand USD: 0.1 0.4 0.0 0.1 0.4 0.9 0.2 0.2 0.2 0.9 0.1 0.2 0.2 0.2 0.2 0.9 0.1 1.2 0.5 0.4 0.3 1.2 0.3 0.2 1.2 1.8 0.7 0.1 0.2 0.7 0.9 3.0 1.6 3.2 1.1 1.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 36%; vs the lowest since graduation: 490%.
+Market: SOL -0.2% (1 h), -2.6% (24 h); BTC -0.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 36 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 7076 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 60-70 min after the buy.
+At the buy: market cap $215k, liquidity $35k, volume last 24 h $418k, last 1 h $53k; price change before the buy: 1 h 62%, 6 h 56%, 24 h 440%.
+Since the buy (before the touch): highest 168%, lowest 83%, last close 89% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #24): 72 70 67 75 59 53 53 57 57 56 62 85 72 75 71 87 88 99 90 100 83 108 100 94 109 140 151 125 124 124 109 103 99 95 87 89
+Their volumes in thousand USD: 1.1 0.2 0.7 1.9 3.9 3.4 2.8 3.8 1.0 0.5 1.1 7.8 4.2 1.4 2.3 6.6 3.5 2.4 7.0 3.1 6.8 7.0 1.0 1.2 3.6 15.9 14.2 12.7 8.3 2.5 5.4 6.9 5.1 2.4 6.4 1.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 53%; vs the lowest since graduation: 2570%.
+Market: SOL -0.3% (1 h), -2.1% (24 h); BTC -1.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 42 min.
+Hours left until the forced sale at 6 h after the buy: about 5.0.
+
+=== CASE 5740 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 65-75 min after the buy.
+At the buy: market cap $675k, liquidity $75k, volume last 24 h $1549k, last 1 h $77k; price change before the buy: 1 h 2%, 6 h 28%, 24 h 713%.
+Since the buy (before the touch): highest 129%, lowest 85%, last close 95% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #23): 88 87 86 85 80 82 79 94 91 98 95 89 109 109 108 105 101 103 92 94 102 100 95 98 98 100 109 107 102 94 88 114 97 93 98 95
+Their volumes in thousand USD: 8.5 6.0 5.9 10.4 9.4 5.1 5.7 8.3 6.9 4.3 5.6 6.5 6.6 7.0 6.5 6.0 6.4 6.1 7.8 5.0 7.7 5.5 5.4 5.6 4.8 4.1 4.8 9.2 6.6 6.1 10.8 25.5 8.8 5.5 5.5 5.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 59%; vs the lowest since graduation: 772%.
+Market: SOL 0.4% (1 h), 0.8% (24 h); BTC 1.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 103 characters, creator's graduations in the 30 days before: 1, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 4.9.
+
+=== CASE 4949 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 75-85 min after the buy.
+At the buy: market cap $269k, liquidity $40k, volume last 24 h $791k, last 1 h $50k; price change before the buy: 1 h 117%, 6 h -29%, 24 h 489%.
+Since the buy (before the touch): highest 125%, lowest 88%, last close 89% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #21): 44 43 40 37 42 42 43 46 81 104 85 101 93 96 93 110 96 107 102 100 99 98 98 98 100 112 109 122 110 109 105 105 100 99 99 89
+Their volumes in thousand USD: 8.1 0.2 1.6 0.7 1.2 0.8 0.7 0.5 11.1 10.5 9.5 4.8 1.9 0.4 0.8 4.0 1.6 4.4 0.5 0.3 0.2 0.0 0.0 0.0 0.1 1.6 3.1 3.1 1.1 0.2 0.6 0.1 3.0 0.2 0.0 1.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 28%; vs the lowest since graduation: 244%.
+Market: SOL 0.1% (1 h), 3.0% (24 h); BTC 0.9% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 36 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 4.8.
+
+=== CASE 8689 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $170k, liquidity $37k, volume last 24 h $1246k, last 1 h $20k; price change before the buy: 1 h -5%, 6 h 68%, 24 h 205%.
+Since the buy (before the touch): highest 100%, lowest 83%, last close 89% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 73 65 66 66 73 83 92 103 96 101 109 104 93 101 106 105 103 102 104 116 111 109 115 113 107 100 100 100 86 94 98 98 94 86 85 89
+Their volumes in thousand USD: 2.0 1.4 1.3 1.8 3.5 3.0 3.3 6.4 1.1 1.8 3.2 1.3 1.4 2.6 1.3 0.5 0.5 0.3 1.7 1.9 6.7 0.8 1.1 0.7 0.7 0.8 0.3 4.5 2.7 2.5 0.5 0.1 0.6 1.0 0.5 0.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 50%; vs the lowest since graduation: 1052%.
+Market: SOL -0.3% (1 h), 3.9% (24 h); BTC 4.6% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 7415 ===
+Coin age at the buy: 15 h after it left the bonding curve. The price touched -20% about 120-130 min after the buy.
+At the buy: market cap $919k, liquidity $73k, volume last 24 h $5254k, last 1 h $115k; price change before the buy: 1 h 20%, 6 h -10%, 24 h 2087%.
+Since the buy (before the touch): highest 154%, lowest 85%, last close 92% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #12): 84 80 83 91 80 83 81 77 90 91 100 105 103 116 112 125 122 132 125 133 129 122 122 118 116 107 103 115 110 100 94 91 92 88 91 92
+Their volumes in thousand USD: 3.8 5.2 4.5 6.4 5.8 7.0 5.8 9.3 19.1 24.7 14.9 18.9 4.9 41.4 22.0 31.4 32.0 21.6 29.7 59.4 69.4 19.3 12.5 6.1 11.9 17.5 7.7 15.4 13.1 16.2 10.3 9.7 8.0 9.0 10.4 5.1
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 50%; vs the lowest since graduation: 7854%.
+Market: SOL 0.3% (1 h), 2.3% (24 h); BTC 1.1% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 33 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 2 min.
+Hours left until the forced sale at 6 h after the buy: about 4.0.
+
+=== CASE 8311 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 70-80 min after the buy.
+At the buy: market cap $930k, liquidity $89k, volume last 24 h $2943k, last 1 h $75k; price change before the buy: 1 h 4%, 6 h 42%, 24 h 343%.
+Since the buy (before the touch): highest 107%, lowest 81%, last close 83% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #22): 111 116 113 107 102 124 96 100 96 96 94 97 95 99 102 101 100 99 100 104 100 99 98 100 103 99 95 98 91 90 91 92 89 89 92 83
+Their volumes in thousand USD: 16.2 16.7 20.1 18.2 127.3 129.7 23.7 12.0 13.3 9.7 5.5 5.4 5.5 5.2 5.0 5.8 5.3 6.2 7.7 7.8 5.7 5.4 5.4 5.5 6.0 8.6 7.3 9.2 12.5 9.0 8.9 11.9 11.4 9.9 9.2 12.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 49%; vs the lowest since graduation: 699%.
+Market: SOL 1.0% (1 h), 0.5% (24 h); BTC 1.4% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 221 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 4.8.
+
+=== CASE 9936 ===
+Coin age at the buy: 15 h after it left the bonding curve. The price touched -20% about 25-35 min after the buy.
+At the buy: market cap $109k, liquidity $31k, volume last 24 h $326k, last 1 h $14k; price change before the buy: 1 h 36%, 6 h 81%, 24 h 118%.
+Since the buy (before the touch): highest 100%, lowest 82%, last close 82% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #31): 52 56 57 62 69 70 69 67 67 68 72 68 67 73 75 73 73 73 79 74 81 97 103 110 113 117 104 94 101 100 91 90 88 89 84 82
+Their volumes in thousand USD: 0.0 0.4 0.5 0.7 2.2 1.1 1.1 0.6 0.1 0.1 1.0 0.3 0.2 0.7 0.8 0.1 0.3 0.2 0.9 0.1 0.5 2.3 0.6 1.6 0.5 0.6 2.6 3.0 0.8 1.1 1.3 0.9 1.1 0.7 0.7 0.4
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 70%; vs the lowest since graduation: 296%.
+Market: SOL -0.1% (1 h), 2.2% (24 h); BTC 0.9% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 47 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.6.
+
+=== CASE 2116 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 300-310 min after the buy.
+At the buy: market cap $101k, liquidity $29k, volume last 24 h $641k, last 1 h $12k; price change before the buy: 1 h 5%, 6 h -18%, 24 h 136%.
+Since the buy (before the touch): highest 184%, lowest 83%, last close 85% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-24): 147 155 121 121 115 123 122 123 123 126 125 124 120 109 99 104 97 102 99 93 93 98 98 111 102 93 106 107 118 110 115 107 101 92 101 85
+Their volumes in thousand USD: 0.5 1.0 4.3 1.5 1.5 1.2 0.7 0.6 0.7 1.1 0.5 0.2 0.4 0.9 1.9 2.3 0.5 1.4 0.4 0.6 1.8 0.5 0.5 1.0 0.6 1.2 1.5 0.4 0.9 0.5 0.7 0.4 0.9 0.9 0.8 2.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 41%; vs the lowest since graduation: 403%.
+Market: SOL 0.6% (1 h), 1.2% (24 h); BTC 1.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 145 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 1.0.
+
+=== CASE 0818 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 40-50 min after the buy.
+At the buy: market cap $1116k, liquidity $80k, volume last 24 h $2603k, last 1 h $127k; price change before the buy: 1 h 2%, 6 h 44%, 24 h 613%.
+Since the buy (before the touch): highest 101%, lowest 85%, last close 93% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #28): 111 103 106 100 101 100 104 102 106 108 108 105 109 102 98 97 96 102 98 104 108 113 111 105 107 103 100 85 91 98 87 92 93 95 100 93
+Their volumes in thousand USD: 9.3 14.9 10.1 12.6 9.5 10.1 9.3 9.7 9.6 9.2 9.8 11.0 10.7 13.9 14.9 9.8 12.0 9.3 10.5 9.7 11.6 10.7 10.9 13.0 8.4 9.4 11.3 14.7 11.2 11.9 15.3 11.6 12.3 12.6 11.3 11.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 49%; vs the lowest since graduation: 664%.
+Market: SOL 1.8% (1 h), 0.8% (24 h); BTC 0.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 138 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 5.3.
+
+=== CASE 7671 ===
+Coin age at the buy: 18 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $1695k, liquidity $120k, volume last 24 h $6166k, last 1 h $495k; price change before the buy: 1 h 79%, 6 h 8%, 24 h 479%.
+Since the buy (before the touch): highest 100%, lowest 78%, last close 78% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 47 48 46 44 46 47 50 50 50 48 51 52 48 47 52 52 52 53 54 52 55 55 56 55 53 51 54 56 58 52 63 76 89 84 100 78
+Their volumes in thousand USD: 13.0 12.7 17.0 14.3 12.9 14.0 14.9 17.8 15.8 15.4 13.8 14.6 15.5 19.0 15.0 12.1 13.3 15.9 13.8 17.9 15.6 14.4 15.0 13.3 13.1 12.3 17.0 15.9 13.8 19.7 31.4 41.3 149.9 103.9 63.5 106.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 35%; vs the lowest since graduation: 1032%.
+Market: SOL 0.1% (1 h), -0.4% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 134 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 8332 ===
+Coin age at the buy: 12 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $136k, liquidity $29k, volume last 24 h $916k, last 1 h $18k; price change before the buy: 1 h -3%, 6 h 88%, 24 h 216%.
+Since the buy (before the touch): highest 100%, lowest 82%, last close 84% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 101 90 85 86 88 87 94 85 86 86 86 89 91 103 101 103 98 99 98 99 111 97 98 104 102 100 103 100 98 98 94 93 92 94 87 84
+Their volumes in thousand USD: 0.5 3.1 1.7 2.2 0.7 0.2 2.5 1.3 0.2 1.0 0.2 0.3 1.7 1.8 0.5 0.8 0.9 0.3 0.3 0.2 1.0 6.6 3.6 0.6 2.4 0.1 0.3 1.4 0.1 0.1 1.2 2.3 0.2 0.2 0.8 0.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 54%; vs the lowest since graduation: 792%.
+Market: SOL 0.3% (1 h), -1.0% (24 h); BTC -0.3% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 4 min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 4482 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 335-345 min after the buy.
+At the buy: market cap $268k, liquidity $40k, volume last 24 h $738k, last 1 h $44k; price change before the buy: 1 h 12%, 6 h 14%, 24 h 101%.
+Since the buy (before the touch): highest 131%, lowest 82%, last close 94% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-31): 96 86 82 85 87 86 90 91 91 91 91 95 93 100 97 96 102 102 103 104 107 102 100 104 103 103 104 101 103 99 104 108 109 107 109 94
+Their volumes in thousand USD: 2.1 3.1 1.9 1.9 1.5 1.9 1.9 1.7 1.8 1.8 2.1 2.0 2.0 2.1 2.0 1.8 1.6 2.0 2.0 1.8 2.0 2.6 2.1 1.7 1.7 2.0 1.9 1.8 2.4 2.3 1.6 1.6 2.3 2.0 1.7 3.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 65%; vs the lowest since graduation: 342%.
+Market: SOL 0.5% (1 h), -3.2% (24 h); BTC 0.7% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 84 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 0.4.
+
+=== CASE 8657 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 75-85 min after the buy.
+At the buy: market cap $106k, liquidity $30k, volume last 24 h $259k, last 1 h $13k; price change before the buy: 1 h 49%, 6 h 48%, 24 h 166%.
+Since the buy (before the touch): highest 132%, lowest 81%, last close 89% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #21): 60 60 62 62 68 65 71 67 65 69 68 71 73 76 74 79 85 89 90 100 102 128 114 91 111 114 107 101 95 90 100 107 100 94 89 89
+Their volumes in thousand USD: 1.1 0.9 1.6 0.4 1.9 1.0 1.5 1.3 0.7 1.1 0.9 0.9 0.7 0.9 0.8 1.1 1.6 1.4 1.4 1.4 1.5 6.0 2.1 6.1 6.1 1.0 1.7 0.9 2.4 1.2 2.4 2.5 0.8 0.8 3.0 0.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 67%; vs the lowest since graduation: 307%.
+Market: SOL 0.6% (1 h), -0.4% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 4.8.
+
+=== CASE 6713 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 85-95 min after the buy.
+At the buy: market cap $179k, liquidity $32k, volume last 24 h $473k, last 1 h $7k; price change before the buy: 1 h -1%, 6 h 10%, 24 h 282%.
+Since the buy (before the touch): highest 106%, lowest 80%, last close 80% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #19): 94 97 99 100 99 101 102 95 89 89 87 82 84 86 88 83 85 100 106 104 103 94 89 88 92 92 93 93 93 92 91 86 85 85 85 80
+Their volumes in thousand USD: 0.2 0.2 0.4 0.2 0.0 0.1 0.3 1.6 0.5 0.2 0.3 0.9 0.6 0.2 0.2 0.5 0.3 1.5 0.8 0.3 0.1 0.9 0.4 0.1 0.3 0.2 0.1 0.0 0.0 0.0 0.1 0.5 0.4 0.0 0.6 0.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 52%; vs the lowest since graduation: 334%.
+Market: SOL -0.1% (1 h), -1.3% (24 h); BTC -1.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 1 min.
+Hours left until the forced sale at 6 h after the buy: about 4.6.
+
+=== CASE 3304 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 70-80 min after the buy.
+At the buy: market cap $792k, liquidity $69k, volume last 24 h $1598k, last 1 h $124k; price change before the buy: 1 h -7%, 6 h 5%, 24 h 252%.
+Since the buy (before the touch): highest 119%, lowest 88%, last close 94% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #22): 84 84 69 71 91 92 96 113 107 140 120 111 111 121 108 116 120 122 100 101 100 103 101 102 105 103 106 115 101 108 113 108 106 108 105 94
+Their volumes in thousand USD: 5.7 6.3 9.1 14.5 14.7 9.9 11.2 15.7 11.4 21.9 12.1 11.4 7.0 4.6 8.6 8.4 9.5 11.6 10.6 9.6 8.5 9.2 9.2 9.0 12.0 9.6 4.8 6.5 8.3 6.2 6.0 5.7 7.8 6.8 7.0 9.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 64%; vs the lowest since graduation: 1567%.
+Market: SOL -0.3% (1 h), -1.4% (24 h); BTC 0.2% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 57 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 4.8.
+
+=== CASE 8635 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 150-160 min after the buy.
+At the buy: market cap $341k, liquidity $45k, volume last 24 h $659k, last 1 h $27k; price change before the buy: 1 h -5%, 6 h 23%, 24 h 432%.
+Since the buy (before the touch): highest 132%, lowest 88%, last close 90% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #6): 98 98 107 112 100 109 116 124 128 128 124 115 123 124 121 118 118 119 119 114 117 119 128 124 126 126 130 130 130 110 113 114 106 100 94 90
+Their volumes in thousand USD: 1.1 1.0 4.4 2.7 2.2 3.1 4.1 2.5 2.5 1.8 1.0 1.1 4.0 0.2 0.5 0.8 0.5 0.7 0.0 0.6 0.7 0.4 1.9 0.7 0.8 0.9 0.8 1.3 2.7 3.9 2.6 1.4 1.3 3.4 2.3 1.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 68%; vs the lowest since graduation: 580%.
+Market: SOL 0.7% (1 h), 0.3% (24 h); BTC 0.9% (24 h).
+Launch: X link yes, Telegram yes, website no, video no, description 26 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 3.5.
+
+=== CASE 7719 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 80-90 min after the buy.
+At the buy: market cap $262k, liquidity $40k, volume last 24 h $126k, last 1 h $17k; price change before the buy: 1 h 19%, 6 h 82%, 24 h 442%.
+Since the buy (before the touch): highest 116%, lowest 97%, last close 98% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #20): 74 76 75 76 80 84 84 89 105 109 99 111 104 103 111 109 117 112 100 99 98 98 100 111 110 111 110 112 114 112 115 114 103 102 103 98
+Their volumes in thousand USD: 0.1 0.4 0.2 0.0 0.5 0.5 0.0 0.8 2.0 1.5 1.6 3.0 1.2 0.2 0.9 0.0 1.7 2.3 1.6 0.5 0.2 0.1 0.2 1.2 0.2 0.3 0.5 0.3 0.5 0.1 0.2 0.3 1.3 0.1 0.1 0.4
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 80%; vs the lowest since graduation: 546%.
+Market: SOL -1.2% (1 h), -3.2% (24 h); BTC -1.1% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 22 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 48 min.
+Hours left until the forced sale at 6 h after the buy: about 4.7.
+
+=== CASE 4871 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 190-200 min after the buy.
+At the buy: market cap $200k, liquidity $41k, volume last 24 h $1124k, last 1 h $44k; price change before the buy: 1 h 2%, 6 h 58%, 24 h 285%.
+Since the buy (before the touch): highest 108%, lowest 80%, last close 80% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-2): 87 87 84 87 83 87 85 88 87 97 100 107 97 96 95 93 80 83 88 86 85 88 93 89 85 84 88 84 82 91 89 98 93 90 84 80
+Their volumes in thousand USD: 2.7 1.8 1.7 2.3 0.4 2.2 0.5 1.3 1.4 3.1 2.0 1.1 1.1 0.4 0.2 0.5 2.4 0.9 0.7 0.4 1.1 2.9 1.3 0.1 0.5 0.3 6.8 0.7 1.2 1.3 0.3 1.1 1.8 0.3 1.0 0.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 39%; vs the lowest since graduation: 514%.
+Market: SOL -0.0% (1 h), 1.6% (24 h); BTC 0.8% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 691 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.8.
+
+=== CASE 3543 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 60-70 min after the buy.
+At the buy: market cap $450k, liquidity $63k, volume last 24 h $3577k, last 1 h $67k; price change before the buy: 1 h 4%, 6 h -44%, 24 h 207%.
+Since the buy (before the touch): highest 103%, lowest 94%, last close 102% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #24): 97 98 98 98 97 96 97 97 95 96 96 97 96 100 99 100 97 98 98 94 99 99 100 100 99 99 98 99 98 98 98 98 98 100 97 102
+Their volumes in thousand USD: 6.2 5.5 5.3 5.7 5.8 5.9 4.2 5.8 5.6 5.1 4.4 5.3 5.7 5.9 5.6 6.2 6.5 6.8 6.0 6.4 4.4 4.2 4.1 4.2 5.5 4.9 4.3 5.5 4.5 4.8 5.5 5.9 4.6 4.5 5.4 5.1
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 33%; vs the lowest since graduation: 726%.
+Market: SOL 2.3% (1 h), 2.8% (24 h); BTC 0.8% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 78 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.0.
+
+=== CASE 6123 ===
+Coin age at the buy: 19 h after it left the bonding curve. The price touched -20% about 240-250 min after the buy.
+At the buy: market cap $1082k, liquidity $95k, volume last 24 h $1297k, last 1 h $62k; price change before the buy: 1 h -4%, 6 h 67%, 24 h 923%.
+Since the buy (before the touch): highest 138%, lowest 99%, last close 134% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-12): 108 111 109 108 107 109 110 110 112 112 111 111 112 111 113 113 104 108 112 113 120 122 122 121 123 131 131 132 131 132 137 135 136 136 136 134
+Their volumes in thousand USD: 4.8 5.8 5.4 5.0 4.9 4.6 4.6 5.1 3.2 5.2 5.0 5.0 5.3 4.8 4.6 3.9 5.4 5.6 4.6 4.7 5.9 5.4 8.1 5.4 4.8 6.4 5.4 4.9 5.4 4.6 4.5 4.7 5.2 4.9 5.1 7.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 98%; vs the lowest since graduation: 1522%.
+Market: SOL -0.1% (1 h), -0.2% (24 h); BTC -0.5% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 36 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.0.
+
+=== CASE 5856 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 140-150 min after the buy.
+At the buy: market cap $117k, liquidity $31k, volume last 24 h $486k, last 1 h $16k; price change before the buy: 1 h 9%, 6 h 49%, 24 h 49%.
+Since the buy (before the touch): highest 125%, lowest 80%, last close 83% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #8): 92 86 83 82 92 90 100 93 89 94 104 103 109 117 116 110 105 106 105 102 103 101 117 118 114 110 111 121 114 110 99 100 88 92 88 83
+Their volumes in thousand USD: 1.1 1.0 1.8 0.7 1.2 0.6 1.4 1.2 0.6 1.1 2.5 0.6 1.8 2.5 0.7 0.9 1.4 0.8 0.5 1.2 0.7 1.3 2.2 0.6 0.3 0.6 1.1 2.0 4.2 0.5 1.4 0.6 1.2 1.3 1.2 0.9
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 40%; vs the lowest since graduation: 167%.
+Market: SOL 0.4% (1 h), -2.8% (24 h); BTC -1.8% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 310 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 3.7.
+
+=== CASE 0545 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 205-215 min after the buy.
+At the buy: market cap $103k, liquidity $28k, volume last 24 h $232k, last 1 h $19k; price change before the buy: 1 h -3%, 6 h 84%, 24 h 84%.
+Since the buy (before the touch): highest 269%, lowest 88%, last close 99% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-5): 131 114 109 114 116 122 131 116 112 107 110 106 122 113 117 114 112 138 188 178 227 218 187 164 132 141 117 108 130 137 131 136 108 119 109 99
+Their volumes in thousand USD: 0.7 1.2 0.2 0.8 0.1 0.3 1.0 0.6 0.3 0.5 0.1 0.2 1.1 0.8 0.2 0.0 0.1 2.0 12.0 4.8 35.8 4.3 4.0 16.8 9.6 5.9 6.6 1.6 3.1 0.6 1.2 0.0 3.2 6.0 1.6 4.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 37%; vs the lowest since graduation: 242%.
+Market: SOL 0.5% (1 h), 10.2% (24 h); BTC 5.3% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 277 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.6.
+
+=== CASE 3206 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 55-65 min after the buy.
+At the buy: market cap $168k, liquidity $32k, volume last 24 h $304k, last 1 h $11k; price change before the buy: 1 h -0%, 6 h 50%, 24 h 261%.
+Since the buy (before the touch): highest 123%, lowest 84%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #25): 101 114 114 111 110 109 110 103 99 94 103 100 100 108 109 105 107 94 91 89 89 85 81 100 105 109 118 116 114 110 109 105 93 94 91 86
+Their volumes in thousand USD: 0.6 1.7 0.1 0.3 0.2 0.3 0.1 0.9 0.1 1.1 1.5 0.2 0.5 0.8 0.7 0.4 0.1 2.5 0.4 0.3 0.7 0.5 1.3 2.8 0.5 3.2 1.8 1.3 0.2 0.3 0.1 0.4 2.0 0.4 0.6 1.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 68%; vs the lowest since graduation: 542%.
+Market: SOL -0.1% (1 h), 2.1% (24 h); BTC 0.6% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 308 min.
+Hours left until the forced sale at 6 h after the buy: about 5.1.
+
+=== CASE 9895 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 260-270 min after the buy.
+At the buy: market cap $1848k, liquidity $126k, volume last 24 h $225k, last 1 h $0k; price change before the buy: 1 h 0%, 6 h -5%, 24 h 447%.
+Since the buy (before the touch): highest 100%, lowest 100%, last close 100% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-16): 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+Five-minute candles without any trade in the last hour: 12 of 12. Price now vs the highest since graduation: 95%; vs the lowest since graduation: 82609%.
+Market: SOL 0.5% (1 h), 0.5% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 1.7.
+
+=== CASE 9987 ===
+Coin age at the buy: 12 h after it left the bonding curve. The price touched -20% about 40-50 min after the buy.
+At the buy: market cap $190k, liquidity $34k, volume last 24 h $1141k, last 1 h $35k; price change before the buy: 1 h 17%, 6 h 29%, 24 h 347%.
+Since the buy (before the touch): highest 118%, lowest 81%, last close 85% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #28): 133 130 116 129 105 99 101 121 130 109 111 98 76 82 86 82 80 74 82 85 87 80 92 102 98 103 100 101 113 105 99 94 94 101 87 85
+Their volumes in thousand USD: 3.4 3.8 3.1 3.6 4.2 2.9 3.7 4.7 3.3 2.8 2.7 13.0 10.0 5.7 4.8 2.7 1.6 4.4 5.0 2.6 1.2 1.0 2.2 3.5 2.9 2.7 5.1 2.2 1.7 2.9 3.6 3.3 2.4 1.7 3.8 2.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 33%; vs the lowest since graduation: 3183%.
+Market: SOL -0.4% (1 h), 1.3% (24 h); BTC 1.2% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 14 min.
+Hours left until the forced sale at 6 h after the buy: about 5.3.
+
+=== CASE 7428 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 100-110 min after the buy.
+At the buy: market cap $1439k, liquidity $93k, volume last 24 h $2549k, last 1 h $162k; price change before the buy: 1 h -3%, 6 h 55%, 24 h 2023%.
+Since the buy (before the touch): highest 115%, lowest 81%, last close 84% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #16): 98 101 103 96 94 98 93 96 98 97 102 103 98 101 100 91 93 92 93 99 95 98 99 97 97 94 104 109 111 111 110 111 113 107 94 84
+Their volumes in thousand USD: 16.3 12.9 13.8 13.5 13.2 13.0 12.9 16.6 12.7 13.1 12.3 14.6 13.5 13.0 14.0 13.7 16.7 14.5 12.0 13.0 12.7 12.0 12.5 14.1 13.2 14.1 13.4 12.1 11.6 11.4 10.0 10.4 11.2 13.6 14.1 16.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 54%; vs the lowest since graduation: 1790%.
+Market: SOL 0.6% (1 h), 2.1% (24 h); BTC 1.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 118 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 4.3.
+
+=== CASE 7420 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 5-15 min after the buy.
+At the buy: market cap $1238k, liquidity $102k, volume last 24 h $8666k, last 1 h $914k; price change before the buy: 1 h 27%, 6 h 14%, 24 h 1635%.
+Since the buy (before the touch): highest 100%, lowest 84%, last close 92% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #35): 138 119 138 121 126 137 121 127 133 123 102 94 96 72 80 79 72 69 75 83 82 78 85 66 65 53 58 57 79 84 95 108 122 100 89 92
+Their volumes in thousand USD: 73.1 115.7 94.8 62.6 62.9 53.3 50.5 24.6 63.6 50.4 82.7 97.9 28.2 131.1 64.6 36.2 31.3 52.9 40.4 35.1 42.6 12.6 12.7 39.0 24.4 78.7 40.3 29.9 71.3 203.7 70.5 167.7 77.5 98.2 38.2 23.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 51%; vs the lowest since graduation: 3310%.
+Market: SOL -0.9% (1 h), -4.2% (24 h); BTC -1.7% (24 h).
+Launch: X link no, Telegram no, website yes, video no, description 354 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.9.
+
+=== CASE 2092 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $124k, liquidity $33k, volume last 24 h $275k, last 1 h $29k; price change before the buy: 1 h 40%, 6 h 52%, 24 h 84%.
+Since the buy (before the touch): highest 104%, lowest 100%, last close 104% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 75 78 75 77 79 78 73 79 78 79 79 82 80 80 77 77 66 61 72 73 80 73 72 71 69 72 71 79 81 78 77 83 87 85 100 104
+Their volumes in thousand USD: 1.5 1.3 3.5 1.9 0.6 1.6 1.1 3.4 1.1 0.8 1.2 1.2 1.6 1.8 1.7 1.0 2.2 2.0 3.1 1.6 2.6 2.5 1.4 1.3 1.4 1.5 1.4 2.1 1.2 3.3 2.3 2.5 1.3 2.4 8.9 2.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 98%; vs the lowest since graduation: 198%.
+Market: SOL -0.3% (1 h), 2.0% (24 h); BTC 0.6% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 7418 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 195-205 min after the buy.
+At the buy: market cap $178k, liquidity $38k, volume last 24 h $1056k, last 1 h $70k; price change before the buy: 1 h 2%, 6 h 15%, 24 h 86%.
+Since the buy (before the touch): highest 209%, lowest 80%, last close 80% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-3): 97 119 138 137 141 184 180 163 203 167 177 137 139 127 134 122 137 146 127 129 140 122 120 111 129 128 143 147 153 132 121 114 96 117 99 80
+Their volumes in thousand USD: 2.4 4.1 8.1 13.9 5.7 18.0 23.9 9.1 11.7 7.0 8.8 19.0 16.9 5.9 4.2 1.8 12.0 9.3 6.3 4.5 6.3 5.8 3.9 3.8 4.5 3.7 5.0 4.7 6.2 3.2 5.4 3.2 5.8 4.7 3.4 7.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 38%; vs the lowest since graduation: 321%.
+Market: SOL 0.0% (1 h), -1.6% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 35 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.8.
+
+=== CASE 4314 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 40-50 min after the buy.
+At the buy: market cap $494k, liquidity $59k, volume last 24 h $2080k, last 1 h $82k; price change before the buy: 1 h 20%, 6 h 52%, 24 h 117%.
+Since the buy (before the touch): highest 113%, lowest 81%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #28): 109 102 103 96 85 78 76 82 84 89 95 88 79 82 83 89 95 101 99 110 116 118 111 104 101 92 100 102 105 111 102 90 93 92 85 86
+Their volumes in thousand USD: 13.3 10.5 11.7 10.3 12.4 12.0 12.1 12.8 10.3 11.0 10.4 12.1 9.9 6.1 6.9 8.9 7.7 6.4 6.5 8.1 5.7 6.0 6.4 5.6 6.2 7.0 7.0 6.8 5.6 5.6 5.0 6.4 5.0 6.1 5.6 4.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 54%; vs the lowest since graduation: 193%.
+Market: SOL -1.6% (1 h), -1.9% (24 h); BTC -0.7% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 94 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.3.
+
+=== CASE 4296 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 295-305 min after the buy.
+At the buy: market cap $114k, liquidity $31k, volume last 24 h $381k, last 1 h $36k; price change before the buy: 1 h 10%, 6 h 22%, 24 h 22%.
+Since the buy (before the touch): highest 144%, lowest 84%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-23): 94 114 111 111 112 112 110 109 109 109 106 103 103 103 103 103 103 103 103 103 102 102 100 100 98 86 85 85 85 85 85 84 84 84 84 86
+Their volumes in thousand USD: 1.9 1.8 0.0 0.0 0.2 0.0 0.1 0.1 0.0 0.0 0.4 0.0 0.0 0.0 0.1 0.0 0.0 0.0 0.0 0.0 0.3 0.0 0.0 0.0 0.2 1.0 0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+Five-minute candles without any trade in the last hour: 3 of 12. Price now vs the highest since graduation: 60%; vs the lowest since graduation: 148%.
+Market: SOL 0.1% (1 h), -0.8% (24 h); BTC 0.1% (24 h).
+Launch: X link yes, Telegram yes, website yes, video no, description 226 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 1.1.
+
+=== CASE 1166 ===
+Coin age at the buy: 11 h after it left the bonding curve. The price touched -20% about 235-245 min after the buy.
+At the buy: market cap $1989k, liquidity $119k, volume last 24 h $3688k, last 1 h $172k; price change before the buy: 1 h 2%, 6 h -18%, 24 h 643%.
+Since the buy (before the touch): highest 120%, lowest 83%, last close 83% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-11): 92 92 95 101 99 100 101 101 103 103 98 100 105 111 112 111 115 111 109 118 118 110 107 110 109 103 106 100 102 100 94 91 89 91 87 83
+Their volumes in thousand USD: 13.7 11.9 11.5 14.2 11.6 15.0 17.1 18.0 9.6 10.8 12.6 9.4 7.9 8.7 9.8 9.7 6.6 8.5 10.2 11.9 9.0 9.3 9.6 6.0 7.7 9.2 7.9 8.4 6.0 6.2 7.3 8.6 7.6 6.6 7.0 6.4
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 53%; vs the lowest since graduation: 1559%.
+Market: SOL 0.2% (1 h), 1.9% (24 h); BTC -0.0% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 107 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.1.
+
+=== CASE 0261 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $203k, liquidity $41k, volume last 24 h $366k, last 1 h $4k; price change before the buy: 1 h -2%, 6 h -14%, 24 h 339%.
+Since the buy (before the touch): highest 109%, lowest 82%, last close 84% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 102 102 100 94 85 86 81 80 75 76 76 73 81 75 103 102 99 97 99 97 97 95 96 96 96 101 101 100 104 107 104 107 107 107 107 84
+Their volumes in thousand USD: 0.4 0.0 0.0 0.6 1.5 0.1 0.8 3.3 0.7 0.1 0.2 0.8 1.7 0.8 5.3 1.0 1.0 0.3 0.0 0.2 0.1 0.0 0.2 0.0 0.0 1.2 0.4 0.2 0.6 0.4 0.3 0.0 0.0 0.0 0.0 5.6
+Five-minute candles without any trade in the last hour: 3 of 12. Price now vs the highest since graduation: 53%; vs the lowest since graduation: 399%.
+Market: SOL -0.3% (1 h), -2.4% (24 h); BTC -1.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 21 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 6995 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 290-300 min after the buy.
+At the buy: market cap $351k, liquidity $53k, volume last 24 h $621k, last 1 h $6k; price change before the buy: 1 h 12%, 6 h 46%, 24 h 205%.
+Since the buy (before the touch): highest 109%, lowest 81%, last close 83% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-22): 105 104 97 100 97 99 97 100 88 91 93 93 92 91 93 93 95 97 98 98 96 93 95 94 95 92 93 92 91 86 83 85 86 85 85 83
+Their volumes in thousand USD: 0.5 0.1 1.3 0.1 0.4 0.4 0.1 0.1 2.5 2.5 0.5 0.4 0.1 0.0 0.1 0.0 0.8 0.1 0.2 0.0 0.0 0.4 0.0 0.0 0.0 0.1 0.2 0.0 0.0 1.0 0.3 0.2 0.0 0.1 0.0 0.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 75%; vs the lowest since graduation: 383%.
+Market: SOL -0.4% (1 h), 5.1% (24 h); BTC 4.0% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 576 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 1.2.
+
+=== CASE 2953 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 165-175 min after the buy.
+At the buy: market cap $150k, liquidity $30k, volume last 24 h $433k, last 1 h $5k; price change before the buy: 1 h -9%, 6 h -18%, 24 h -18%.
+Since the buy (before the touch): highest 119%, lowest 94%, last close 94% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #3): 102 100 98 100 100 103 103 104 103 104 105 104 111 110 109 109 107 105 105 109 110 110 112 106 107 107 107 107 107 106 106 105 107 102 100 94
+Their volumes in thousand USD: 0.6 0.4 0.3 0.3 0.1 0.3 0.0 0.0 0.1 0.1 0.0 0.0 0.9 0.0 0.2 0.0 0.3 0.1 0.0 0.2 0.2 0.0 0.2 0.3 0.0 0.0 0.0 0.0 0.0 0.0 0.1 0.0 1.8 1.2 0.8 2.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 74%; vs the lowest since graduation: 385%.
+Market: SOL -0.2% (1 h), -0.9% (24 h); BTC -0.8% (24 h).
+Launch: X link yes, Telegram yes, website yes, video no, description 35 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 3.2.
+
+=== CASE 7550 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 20-30 min after the buy.
+At the buy: market cap $197k, liquidity $41k, volume last 24 h $1310k, last 1 h $16k; price change before the buy: 1 h -9%, 6 h -27%, 24 h 134%.
+Since the buy (before the touch): highest 109%, lowest 88%, last close 88% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #32): 107 114 113 149 132 125 119 129 134 131 128 116 106 100 108 102 104 104 110 116 111 104 93 93 97 101 97 100 104 104 100 106 106 98 93 88
+Their volumes in thousand USD: 0.6 1.3 1.5 18.6 6.9 4.4 1.1 2.6 2.2 0.6 0.5 1.3 5.3 0.8 1.9 0.7 1.2 0.1 0.9 3.3 0.7 1.0 3.3 0.7 1.6 0.8 0.6 2.8 0.4 0.1 0.7 1.3 0.5 1.4 0.7 1.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 48%; vs the lowest since graduation: 634%.
+Market: SOL 0.3% (1 h), 3.7% (24 h); BTC 1.1% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.7.
+
+=== CASE 0386 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 20-30 min after the buy.
+At the buy: market cap $440k, liquidity $60k, volume last 24 h $2367k, last 1 h $64k; price change before the buy: 1 h 3%, 6 h -46%, 24 h 803%.
+Since the buy (before the touch): highest 104%, lowest 84%, last close 90% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #32): 99 104 116 107 87 76 66 70 71 59 67 86 91 85 83 100 81 89 97 109 108 92 91 103 105 115 111 114 123 104 100 97 98 100 85 90
+Their volumes in thousand USD: 9.3 3.3 4.4 4.2 24.9 23.5 11.2 7.2 7.8 10.5 5.0 15.0 8.2 3.0 3.6 9.2 5.7 3.7 3.7 7.9 4.3 7.2 1.7 4.1 2.7 2.8 12.4 4.2 2.4 5.7 8.4 5.8 3.5 1.0 3.2 2.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 38%; vs the lowest since graduation: 817%.
+Market: SOL 0.1% (1 h), -2.9% (24 h); BTC -2.6% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 105 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.7.
+
+=== CASE 9236 ===
+Coin age at the buy: 11 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $145k, liquidity $35k, volume last 24 h $573k, last 1 h $18k; price change before the buy: 1 h 76%, 6 h 42%, 24 h 129%.
+Since the buy (before the touch): highest 108%, lowest 80%, last close 82% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 83 84 83 83 64 67 67 61 53 56 53 54 64 62 58 57 44 52 53 51 73 66 80 70 69 67 81 100 110 96 96 87 82 95 87 82
+Their volumes in thousand USD: 0.2 0.1 0.3 0.0 3.1 0.4 0.0 2.6 5.2 1.2 0.9 0.5 1.5 0.7 0.3 0.1 3.6 1.8 0.0 0.7 3.6 1.1 1.9 0.2 0.3 0.2 1.7 2.8 1.4 3.6 0.1 1.0 0.4 2.3 1.0 0.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 74%; vs the lowest since graduation: 1070%.
+Market: SOL -0.8% (1 h), -0.6% (24 h); BTC -0.9% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 5159 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 60-70 min after the buy.
+At the buy: market cap $201k, liquidity $36k, volume last 24 h $635k, last 1 h $7k; price change before the buy: 1 h -4%, 6 h 16%, 24 h 198%.
+Since the buy (before the touch): highest 139%, lowest 95%, last close 117% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #24): 88 85 88 84 85 101 101 103 104 106 105 105 103 100 101 106 104 104 103 103 104 101 100 100 99 102 98 96 95 102 107 103 103 101 96 117
+Their volumes in thousand USD: 0.5 0.4 0.4 0.4 0.4 3.0 0.4 0.7 0.4 0.3 0.9 0.4 0.4 0.9 0.4 0.7 0.4 1.0 0.3 0.8 0.3 0.4 0.7 0.4 0.4 0.7 0.9 0.4 0.3 1.1 1.5 0.9 0.4 0.6 0.7 8.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 60%; vs the lowest since graduation: 452%.
+Market: SOL -0.3% (1 h), -4.4% (24 h); BTC -0.0% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 17 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 5.0.
+
+=== CASE 5241 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 65-75 min after the buy.
+At the buy: market cap $301k, liquidity $43k, volume last 24 h $1381k, last 1 h $26k; price change before the buy: 1 h 27%, 6 h -21%, 24 h 553%.
+Since the buy (before the touch): highest 174%, lowest 91%, last close 103% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #23): 81 81 81 78 76 64 69 72 69 79 86 78 80 82 87 83 85 90 85 90 98 100 93 99 110 122 103 110 107 123 115 160 142 118 104 103
+Their volumes in thousand USD: 1.6 0.3 1.8 3.0 1.7 11.1 1.1 3.7 1.1 2.8 3.7 2.1 2.2 0.3 1.5 1.0 1.0 0.9 1.6 4.9 5.8 1.0 1.3 1.6 17.2 5.7 6.3 9.9 4.2 6.9 2.3 43.9 26.6 25.3 10.9 4.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 40%; vs the lowest since graduation: 721%.
+Market: SOL 0.2% (1 h), 0.3% (24 h); BTC 0.2% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 115 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 1 min.
+Hours left until the forced sale at 6 h after the buy: about 4.9.
+
+=== CASE 2309 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 10-20 min after the buy.
+At the buy: market cap $1033k, liquidity $94k, volume last 24 h $7647k, last 1 h $266k; price change before the buy: 1 h -4%, 6 h 26%, 24 h 949%.
+Since the buy (before the touch): highest 131%, lowest 100%, last close 114% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #34): 174 159 173 163 148 137 153 139 129 117 96 96 100 100 96 97 84 80 89 89 104 104 108 118 166 153 152 144 146 131 129 111 100 113 118 114
+Their volumes in thousand USD: 21.2 13.1 16.5 12.8 14.5 17.1 21.9 16.1 29.0 19.5 50.7 102.3 28.2 20.0 14.9 7.3 25.6 34.9 11.3 8.4 24.6 12.1 5.8 26.3 57.1 28.4 31.8 14.1 20.7 20.8 7.5 22.8 18.3 22.8 15.3 27.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 27%; vs the lowest since graduation: 1238%.
+Market: SOL -0.2% (1 h), 1.1% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 125 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 2980 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 195-205 min after the buy.
+At the buy: market cap $1639k, liquidity $117k, volume last 24 h $52k, last 1 h $9k; price change before the buy: 1 h 1%, 6 h 15%, 24 h 15%.
+Since the buy (before the touch): highest 103%, lowest 99%, last close 101% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-3): 101 101 101 101 101 101 100 100 100 100 102 102 101 102 101 101 102 100 100 100 101 101 100 103 103 103 103 103 101 102 102 103 103 103 101 101
+Their volumes in thousand USD: 0.7 0.7 0.7 0.6 0.7 0.7 0.7 0.8 0.8 0.8 0.7 0.7 0.8 0.7 0.7 0.8 0.7 0.7 0.7 0.8 0.8 0.7 0.8 0.7 0.8 0.7 0.8 0.7 0.6 0.7 0.7 0.8 0.7 0.8 0.8 0.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 98%; vs the lowest since graduation: 116%.
+Market: SOL -0.4% (1 h), -1.5% (24 h); BTC -2.5% (24 h).
+Launch: X link no, Telegram no, website yes, video no, description 31 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.8.
+
+=== CASE 6474 ===
+Coin age at the buy: 22 h after it left the bonding curve. The price touched -20% about 170-180 min after the buy.
+At the buy: market cap $561k, liquidity $62k, volume last 24 h $191k, last 1 h $7k; price change before the buy: 1 h 6%, 6 h 34%, 24 h -69%.
+Since the buy (before the touch): highest 167%, lowest 98%, last close 167% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #2): 100 100 100 101 101 102 102 103 102 103 104 102 103 103 104 103 103 106 107 107 105 106 106 107 107 107 108 107 109 110 110 111 111 111 118 167
+Their volumes in thousand USD: 0.5 0.6 0.6 0.6 0.6 0.6 0.5 0.5 0.6 0.5 0.6 0.6 0.6 0.6 0.6 0.6 0.6 0.5 0.5 0.5 0.6 0.4 0.6 0.5 0.6 0.5 0.6 0.6 0.6 0.6 0.6 0.6 0.5 0.5 2.0 7.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 51%; vs the lowest since graduation: 701%.
+Market: SOL -0.4% (1 h), -3.4% (24 h); BTC -1.3% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 3.2.
+
+=== CASE 8098 ===
+Coin age at the buy: 12 h after it left the bonding curve. The price touched -20% about 10-20 min after the buy.
+At the buy: market cap $664k, liquidity $74k, volume last 24 h $5110k, last 1 h $89k; price change before the buy: 1 h 27%, 6 h -50%, 24 h 1001%.
+Since the buy (before the touch): highest 103%, lowest 86%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #34): 116 113 108 107 102 93 92 98 96 81 87 101 100 100 98 98 89 75 82 83 79 81 76 74 83 78 81 85 107 95 90 105 100 101 98 86
+Their volumes in thousand USD: 12.0 4.7 6.9 3.4 8.5 16.8 8.4 4.2 3.0 15.9 10.5 11.3 8.4 3.1 4.5 2.5 3.6 18.4 10.1 5.0 4.2 5.8 2.3 7.9 6.1 6.2 6.2 3.9 11.2 13.2 2.9 8.8 14.0 8.7 6.2 4.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 36%; vs the lowest since graduation: 1102%.
+Market: SOL 0.5% (1 h), -2.5% (24 h); BTC -0.8% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 1792 ===
+Coin age at the buy: 13 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $1575k, liquidity $114k, volume last 24 h $11655k, last 1 h $302k; price change before the buy: 1 h 57%, 6 h 12%, 24 h 2229%.
+Since the buy (before the touch): highest 100%, lowest 81%, last close 83% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 70 66 66 59 61 61 57 60 59 59 56 59 59 60 64 64 69 84 74 75 76 88 87 89 106 90 103 100 95 86 83 88 90 94 90 83
+Their volumes in thousand USD: 4.4 8.1 2.3 12.4 6.9 7.0 5.0 4.4 2.3 4.5 4.7 3.0 4.3 2.4 8.2 3.8 12.1 52.6 26.3 11.7 8.7 31.7 16.9 22.2 49.8 28.2 14.2 27.7 7.1 7.0 7.1 11.9 2.8 4.7 5.9 6.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 50%; vs the lowest since graduation: 494%.
+Market: SOL -0.4% (1 h), -1.5% (24 h); BTC -2.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 35 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 3924 ===
+Coin age at the buy: 12 h after it left the bonding curve. The price touched -20% about 10-20 min after the buy.
+At the buy: market cap $602k, liquidity $71k, volume last 24 h $4019k, last 1 h $81k; price change before the buy: 1 h 33%, 6 h 67%, 24 h 487%.
+Since the buy (before the touch): highest 100%, lowest 86%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #34): 51 53 55 53 56 54 51 58 64 75 67 65 64 65 62 60 63 60 59 59 75 76 76 81 74 82 91 90 94 95 98 104 100 92 92 86
+Their volumes in thousand USD: 1.0 3.3 2.1 1.0 2.3 1.3 3.6 4.2 3.8 7.4 2.7 0.6 0.8 1.1 0.7 0.4 2.6 0.9 0.3 0.6 8.4 5.3 2.2 4.7 12.1 6.3 6.2 6.9 3.1 6.2 18.9 7.7 1.2 3.5 0.5 1.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 46%; vs the lowest since graduation: 669%.
+Market: SOL -0.8% (1 h), -0.9% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 1314 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 10-20 min after the buy.
+At the buy: market cap $1536k, liquidity $97k, volume last 24 h $54k, last 1 h $2k; price change before the buy: 1 h 4%, 6 h 69%, 24 h 69%.
+Since the buy (before the touch): highest 102%, lowest 99%, last close 102% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #34): 83 84 84 86 86 87 87 87 89 89 90 91 92 91 93 94 95 94 96 96 96 97 96 96 98 97 98 99 98 99 99 99 100 100 100 102
+Their volumes in thousand USD: 0.3 0.3 0.3 0.4 0.4 0.4 0.4 0.4 0.3 0.4 0.3 0.4 0.4 0.4 0.4 0.4 0.4 0.4 0.4 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.1 0.1 0.1 0.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 100%; vs the lowest since graduation: 167%.
+Market: SOL -0.3% (1 h), 1.1% (24 h); BTC 2.3% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 40 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 2515 ===
+Coin age at the buy: 18 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $300k, liquidity $42k, volume last 24 h $642k, last 1 h $27k; price change before the buy: 1 h 18%, 6 h 23%, 24 h 444%.
+Since the buy (before the touch): highest 100%, lowest 72%, last close 72% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 85 83 79 78 78 66 79 75 76 67 63 70 69 70 68 71 72 87 89 85 85 85 85 82 79 77 79 79 78 67 66 69 76 83 100 72
+Their volumes in thousand USD: 0.1 0.3 0.3 2.8 0.1 1.9 6.1 1.7 1.5 3.9 0.8 3.6 2.4 0.0 0.4 2.8 0.4 7.4 3.2 2.0 0.2 0.9 0.4 0.3 0.4 1.5 3.4 0.4 0.1 2.4 0.2 0.7 3.1 4.7 10.2 9.1
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 55%; vs the lowest since graduation: 1553%.
+Market: SOL -0.1% (1 h), -1.4% (24 h); BTC 0.9% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 6314 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 155-165 min after the buy.
+At the buy: market cap $101k, liquidity $26k, volume last 24 h $118k, last 1 h $15k; price change before the buy: 1 h 16%, 6 h 43%, 24 h 51%.
+Since the buy (before the touch): highest 112%, lowest 82%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #5): 96 96 98 100 101 96 91 96 97 97 99 99 108 105 107 100 83 83 85 88 87 87 86 88 87 88 87 87 87 85 85 87 85 86 87 86
+Their volumes in thousand USD: 1.6 1.8 0.9 2.2 1.6 1.6 1.0 1.6 2.2 1.2 1.0 1.4 1.5 1.4 1.6 1.4 2.1 1.0 1.3 1.5 1.3 0.6 0.9 0.9 1.2 1.1 1.3 0.7 0.6 1.1 0.3 0.4 0.6 0.7 0.5 0.9
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 77%; vs the lowest since graduation: 153%.
+Market: SOL 1.2% (1 h), 1.8% (24 h); BTC 0.7% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 3.4.
+
+=== CASE 8429 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 30-40 min after the buy.
+At the buy: market cap $470k, liquidity $58k, volume last 24 h $3261k, last 1 h $61k; price change before the buy: 1 h 18%, 6 h -43%, 24 h 1256%.
+Since the buy (before the touch): highest 103%, lowest 82%, last close 84% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #30): 99 97 98 93 83 82 77 90 86 80 79 75 79 87 82 84 85 77 91 109 104 103 101 101 98 96 95 101 100 99 100 91 87 91 85 84
+Their volumes in thousand USD: 7.2 1.2 5.1 1.5 7.1 1.3 3.9 5.8 2.4 4.0 1.5 1.7 2.2 3.3 1.9 1.5 4.4 2.2 22.2 14.7 9.0 2.1 1.1 2.1 0.7 1.1 1.5 2.3 2.0 1.1 2.1 2.2 1.1 2.3 2.2 1.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 29%; vs the lowest since graduation: 1403%.
+Market: SOL -0.4% (1 h), 2.6% (24 h); BTC 0.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 53 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.5.
+
+=== CASE 3009 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $923k, liquidity $88k, volume last 24 h $2808k, last 1 h $809k; price change before the buy: 1 h 12%, 6 h 44%, 24 h 788%.
+Since the buy (before the touch): highest 143%, lowest 86%, last close 97% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 43 43 43 43 43 43 43 43 43 39 43 43 49 55 45 89 118 117 151 126 124 116 142 113 122 104 111 100 103 108 142 111 96 91 91 97
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 5.7 6.7 8.9 10.1 9.2 10.7 277.7 137.5 153.1 162.7 53.8 76.2 34.0 39.9 43.6 26.9 21.7 38.8 21.0 19.0 32.9 28.4 24.8 16.6 22.6 12.7 10.9
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 55%; vs the lowest since graduation: 1184%.
+Market: SOL 0.7% (1 h), 8.2% (24 h); BTC 7.3% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 281 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 0764 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 35-45 min after the buy.
+At the buy: market cap $111k, liquidity $26k, volume last 24 h $541k, last 1 h $16k; price change before the buy: 1 h 78%, 6 h 79%, 24 h 194%.
+Since the buy (before the touch): highest 112%, lowest 83%, last close 87% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #29): 46 48 51 46 45 47 61 57 50 51 55 58 55 65 57 56 74 73 71 70 69 84 92 92 90 92 93 100 109 105 105 101 102 97 84 87
+Their volumes in thousand USD: 0.5 0.1 0.8 0.7 0.2 0.4 3.2 0.6 2.0 0.9 1.6 1.1 1.5 2.3 1.3 0.1 2.3 0.7 0.3 0.4 0.4 1.7 0.9 1.0 0.7 0.8 3.3 3.4 3.7 0.9 1.0 0.3 0.6 0.2 1.2 0.3
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 63%; vs the lowest since graduation: 625%.
+Market: SOL -0.6% (1 h), -4.1% (24 h); BTC -0.2% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 27 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 1 min.
+Hours left until the forced sale at 6 h after the buy: about 5.4.
+
+=== CASE 5459 ===
+Coin age at the buy: 12 h after it left the bonding curve. The price touched -20% about 135-145 min after the buy.
+At the buy: market cap $311k, liquidity $51k, volume last 24 h $1843k, last 1 h $47k; price change before the buy: 1 h 23%, 6 h -28%, 24 h 1945%.
+Since the buy (before the touch): highest 121%, lowest 88%, last close 97% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #9): 89 87 83 102 105 94 98 100 112 106 104 96 90 99 98 98 96 107 110 113 114 113 112 110 98 98 99 97 102 95 106 109 103 102 95 97
+Their volumes in thousand USD: 3.2 0.6 2.9 12.2 6.2 1.7 4.9 4.2 4.4 1.0 1.1 2.3 2.4 3.3 0.8 0.4 0.4 2.3 0.9 0.7 1.2 2.6 1.0 1.9 1.5 0.4 0.6 1.3 1.5 1.2 2.2 2.3 0.7 1.3 0.9 1.9
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 44%; vs the lowest since graduation: 5491%.
+Market: SOL -0.0% (1 h), -2.2% (24 h); BTC -2.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 3.8.
+
+=== CASE 8736 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 45-55 min after the buy.
+At the buy: market cap $175k, liquidity $38k, volume last 24 h $250k, last 1 h $0k; price change before the buy: 1 h -1%, 6 h 10%, 24 h 228%.
+Since the buy (before the touch): highest 100%, lowest 100%, last close 100% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #27): 83 83 82 82 82 83 83 127 108 103 99 99 101 101 101 101 100 99 99 99 98 98 100 100 100 100 100 100 100 100 100 100 100 100 100 100
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.2 0.0 6.7 1.9 0.4 0.3 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+Five-minute candles without any trade in the last hour: 11 of 12. Price now vs the highest since graduation: 65%; vs the lowest since graduation: 392%.
+Market: SOL -0.8% (1 h), -0.9% (24 h); BTC 0.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 143 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.2.
+
+=== CASE 1967 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 45-55 min after the buy.
+At the buy: market cap $336k, liquidity $46k, volume last 24 h $989k, last 1 h $74k; price change before the buy: 1 h -2%, 6 h -7%, 24 h 482%.
+Since the buy (before the touch): highest 111%, lowest 83%, last close 90% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #27): 96 92 113 106 106 94 95 98 104 94 99 111 108 102 103 99 104 107 97 105 108 114 98 100 106 100 105 109 101 97 98 84 100 95 104 90
+Their volumes in thousand USD: 27.3 8.4 5.8 6.3 6.3 6.7 6.5 6.5 6.7 6.1 5.8 6.8 5.9 6.4 5.9 8.5 7.5 6.0 6.9 5.8 4.8 7.5 7.2 5.1 4.9 4.3 5.6 4.3 5.0 6.9 5.6 4.2 4.4 3.9 4.1 4.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 51%; vs the lowest since graduation: 633%.
+Market: SOL 0.5% (1 h), 0.5% (24 h); BTC 0.9% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 85 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 5.2.
+
+=== CASE 4177 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 115-125 min after the buy.
+At the buy: market cap $135k, liquidity $34k, volume last 24 h $133k, last 1 h $29k; price change before the buy: 1 h 29%, 6 h 57%, 24 h 89%.
+Since the buy (before the touch): highest 107%, lowest 83%, last close 85% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #13): 77 79 79 80 85 90 90 95 93 94 95 100 104 103 103 99 100 96 97 96 98 95 96 100 104 101 96 100 98 102 97 99 96 95 85 85
+Their volumes in thousand USD: 2.4 2.3 2.3 2.9 2.9 2.0 2.4 2.1 1.8 2.0 2.5 3.4 2.0 1.3 0.9 2.1 2.5 2.3 1.5 1.1 1.9 1.6 1.7 3.4 1.9 2.6 2.6 2.0 2.9 1.2 1.8 0.7 1.3 2.0 2.6 1.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 80%; vs the lowest since graduation: 179%.
+Market: SOL -0.1% (1 h), 8.4% (24 h); BTC 7.0% (24 h).
+Launch: X link unknown, Telegram unknown, website unknown, video unknown, description ? characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 4.1.
+
+=== CASE 0803 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 25-35 min after the buy.
+At the buy: market cap $802k, liquidity $82k, volume last 24 h $3468k, last 1 h $221k; price change before the buy: 1 h 4%, 6 h -30%, 24 h 166%.
+Since the buy (before the touch): highest 107%, lowest 85%, last close 90% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #31): 112 113 115 121 125 113 122 122 118 114 107 115 136 123 122 109 99 96 94 103 98 104 102 107 105 108 107 109 102 100 98 100 99 105 97 90
+Their volumes in thousand USD: 21.6 21.8 25.4 24.4 18.4 23.3 22.8 18.0 2.6 2.0 15.2 27.8 24.6 29.3 25.2 24.2 31.1 23.4 21.5 19.5 24.1 19.3 13.8 12.5 15.8 16.5 15.1 15.2 30.6 17.1 14.8 15.1 13.7 17.6 21.3 19.9
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 52%; vs the lowest since graduation: 243%.
+Market: SOL 0.9% (1 h), -0.5% (24 h); BTC -0.7% (24 h).
+Launch: X link yes, Telegram yes, website yes, video no, description 113 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.6.
+
+=== CASE 6409 ===
+Coin age at the buy: 21 h after it left the bonding curve. The price touched -20% about 5-15 min after the buy.
+At the buy: market cap $186k, liquidity $40k, volume last 24 h $656k, last 1 h $38k; price change before the buy: 1 h 50%, 6 h 41%, 24 h 275%.
+Since the buy (before the touch): highest 100%, lowest 93%, last close 93% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #35): 122 120 146 206 178 150 137 136 145 129 125 117 121 107 87 90 83 86 83 80 75 67 69 66 64 61 57 53 69 96 89 93 93 100 103 93
+Their volumes in thousand USD: 2.5 0.8 8.6 12.4 11.5 7.5 6.4 2.0 5.0 3.6 2.0 2.5 0.7 9.1 10.5 4.8 1.3 7.2 0.8 0.5 4.1 5.0 1.2 1.0 1.9 1.3 0.8 0.7 3.7 15.8 3.1 5.0 1.8 1.4 2.8 1.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 45%; vs the lowest since graduation: 1144%.
+Market: SOL -0.1% (1 h), 1.3% (24 h); BTC 1.4% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.9.
+
+=== CASE 7221 ===
+Coin age at the buy: 20 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $184k, liquidity $40k, volume last 24 h $1454k, last 1 h $63k; price change before the buy: 1 h 60%, 6 h 34%, 24 h 438%.
+Since the buy (before the touch): highest 100%, lowest 84%, last close 84% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 52 60 62 62 61 59 64 63 61 62 58 58 55 55 51 50 55 46 45 50 49 62 62 58 46 57 60 99 116 124 149 134 126 108 100 84
+Their volumes in thousand USD: 0.4 2.5 0.9 0.5 1.0 0.4 0.6 0.1 0.4 0.1 0.5 0.2 0.5 0.1 1.0 0.3 1.3 1.5 0.1 1.0 0.7 2.6 1.3 0.6 3.5 3.5 0.5 11.1 14.0 3.5 5.3 4.8 3.7 8.3 3.7 9.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 42%; vs the lowest since graduation: 2576%.
+Market: SOL -0.5% (1 h), 1.9% (24 h); BTC 0.9% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 33 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 0801 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 55-65 min after the buy.
+At the buy: market cap $265k, liquidity $47k, volume last 24 h $1018k, last 1 h $30k; price change before the buy: 1 h 72%, 6 h 63%, 24 h 679%.
+Since the buy (before the touch): highest 134%, lowest 91%, last close 95% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #25): 80 78 73 74 76 73 72 65 69 67 64 58 58 54 52 59 52 59 96 105 80 104 104 100 102 105 111 130 127 121 117 121 122 123 102 95
+Their volumes in thousand USD: 1.9 0.4 1.2 0.2 2.7 0.6 0.6 1.6 0.6 0.1 1.3 1.1 0.2 1.8 0.3 1.0 1.5 1.4 8.3 2.2 6.7 5.9 0.8 0.3 0.4 0.8 3.4 2.9 1.6 1.2 0.7 2.7 0.1 0.4 6.5 2.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 64%; vs the lowest since graduation: 3013%.
+Market: SOL -0.3% (1 h), 0.9% (24 h); BTC -0.0% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.1.
+
+=== CASE 4567 ===
+Coin age at the buy: 15 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $203k, liquidity $42k, volume last 24 h $1373k, last 1 h $44k; price change before the buy: 1 h 15%, 6 h 61%, 24 h 395%.
+Since the buy (before the touch): highest 100%, lowest 92%, last close 92% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 173 154 143 149 136 118 112 140 134 136 113 111 105 110 125 105 98 99 95 88 96 95 87 81 85 79 84 83 85 100 90 93 96 101 100 92
+Their volumes in thousand USD: 5.9 4.2 8.7 22.7 5.8 17.8 6.1 20.9 2.8 7.0 5.5 9.8 2.6 5.2 4.2 4.9 9.8 5.5 5.2 6.2 2.5 1.1 5.6 4.8 2.7 2.5 4.6 1.4 1.2 14.1 4.8 2.7 2.9 1.4 1.2 2.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 40%; vs the lowest since graduation: 2657%.
+Market: SOL 0.1% (1 h), 1.2% (24 h); BTC 1.3% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 72 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 1247 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $106k, liquidity $25k, volume last 24 h $268k, last 1 h $23k; price change before the buy: 1 h 7%, 6 h 89%, 24 h 126%.
+Since the buy (before the touch): highest 100%, lowest 93%, last close 93% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 74 77 83 78 71 101 97 83 88 87 94 90 87 84 83 98 107 97 88 95 87 91 93 107 117 100 116 125 113 105 108 90 96 97 100 93
+Their volumes in thousand USD: 3.5 2.0 1.1 4.5 2.6 7.7 3.6 2.5 2.1 0.4 1.5 1.5 0.8 0.7 0.6 2.0 3.4 1.2 1.8 1.1 0.6 0.3 0.9 1.3 2.8 2.0 1.6 1.7 1.3 2.6 0.4 2.3 3.7 1.4 2.1 1.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 73%; vs the lowest since graduation: 241%.
+Market: SOL 0.6% (1 h), 1.2% (24 h); BTC 0.8% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 135 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 270 min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 4742 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 15-25 min after the buy.
+At the buy: market cap $133k, liquidity $29k, volume last 24 h $503k, last 1 h $11k; price change before the buy: 1 h 2%, 6 h 31%, 24 h 31%.
+Since the buy (before the touch): highest 100%, lowest 95%, last close 95% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #33): 168 170 163 168 131 131 126 130 116 114 114 113 112 112 112 112 99 96 97 98 101 98 93 94 76 82 100 100 98 98 98 100 100 96 98 95
+Their volumes in thousand USD: 2.3 2.5 1.5 0.5 3.5 0.5 1.0 0.9 2.2 0.5 0.9 0.4 0.6 0.5 0.6 0.4 2.8 0.4 0.7 0.6 0.6 0.2 0.8 0.5 2.5 1.2 2.6 0.4 0.8 0.4 0.4 0.5 0.5 0.4 0.6 0.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 28%; vs the lowest since graduation: 206%.
+Market: SOL -0.0% (1 h), -3.6% (24 h); BTC -0.1% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 55 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
+
+=== CASE 2106 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 90-100 min after the buy.
+At the buy: market cap $987k, liquidity $78k, volume last 24 h $1373k, last 1 h $114k; price change before the buy: 1 h 22%, 6 h 15%, 24 h 1917%.
+Since the buy (before the touch): highest 121%, lowest 86%, last close 94% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #18): 80 72 70 83 82 89 92 86 95 90 88 99 92 99 105 100 100 108 102 92 105 100 110 113 105 104 104 100 98 104 105 101 100 100 89 94
+Their volumes in thousand USD: 9.9 17.4 10.6 9.6 9.0 10.7 10.8 10.9 12.2 10.7 10.6 7.8 8.3 6.6 7.0 9.1 9.3 5.7 9.5 12.6 10.6 9.8 10.0 11.2 10.6 8.1 7.3 7.6 7.8 7.3 7.3 8.8 10.1 11.9 15.4 13.1
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 73%; vs the lowest since graduation: 1886%.
+Market: SOL -0.2% (1 h), 2.4% (24 h); BTC 2.1% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 65 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 4.5.
+
+=== CASE 8348 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 0-10 min after the buy.
+At the buy: market cap $838k, liquidity $84k, volume last 24 h $5835k, last 1 h $163k; price change before the buy: 1 h -9%, 6 h 3%, 24 h 1201%.
+Since the buy (before the touch): highest 100%, lowest 89%, last close 89% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #36): 191 184 169 166 163 159 150 174 152 153 153 162 144 142 126 132 136 133 136 137 133 129 110 110 112 113 104 105 90 100 104 105 106 100 100 89
+Their volumes in thousand USD: 27.4 23.9 26.6 16.6 20.3 28.9 36.5 37.4 37.2 11.7 10.3 6.5 28.9 13.1 46.9 11.2 7.7 12.0 10.3 4.2 6.3 4.7 31.5 40.8 7.6 10.3 21.9 11.3 23.3 18.8 9.5 7.0 5.4 3.5 3.5 27.4
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 37%; vs the lowest since graduation: 6538%.
+Market: SOL 0.1% (1 h), 1.3% (24 h); BTC 0.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 6.0.
+
+=== CASE 8171 ===
+Coin age at the buy: 21 h after it left the bonding curve. The price touched -20% about 25-35 min after the buy.
+At the buy: market cap $152k, liquidity $35k, volume last 24 h $375k, last 1 h $24k; price change before the buy: 1 h 1%, 6 h 57%, 24 h -2%.
+Since the buy (before the touch): highest 102%, lowest 82%, last close 82% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #31): 45 46 46 42 42 44 43 53 58 61 70 66 66 62 65 116 114 99 100 90 112 103 98 108 94 90 96 91 103 100 100 99 98 90 84 82
+Their volumes in thousand USD: 1.1 0.2 0.8 0.8 0.2 0.8 0.4 2.0 1.3 0.4 1.3 0.7 1.4 1.1 0.7 20.4 7.8 6.3 4.6 4.0 3.3 2.4 1.2 1.1 2.1 1.6 0.9 0.6 1.2 0.8 0.6 0.9 0.2 1.3 0.6 0.2
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 53%; vs the lowest since graduation: 474%.
+Market: SOL 0.4% (1 h), -0.1% (24 h); BTC 1.0% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.6.
+
+=== CASE 8292 ===
+Coin age at the buy: 13 h after it left the bonding curve. The price touched -20% about 195-205 min after the buy.
+At the buy: market cap $519k, liquidity $56k, volume last 24 h $1202k, last 1 h $61k; price change before the buy: 1 h 11%, 6 h -33%, 24 h 310%.
+Since the buy (before the touch): highest 129%, lowest 81%, last close 87% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-3): 100 104 99 100 102 107 119 99 102 93 82 87 86 95 95 93 93 93 99 99 107 119 121 115 103 105 106 105 106 105 87 88 90 88 84 87
+Their volumes in thousand USD: 4.5 3.9 4.7 5.1 5.6 6.2 4.9 5.5 4.5 4.0 7.2 4.3 3.8 4.3 5.2 5.0 5.3 4.9 6.1 4.4 5.6 5.9 8.7 5.1 7.4 4.9 4.3 5.4 4.4 7.0 5.4 5.1 4.7 3.7 6.2 5.8
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 47%; vs the lowest since graduation: 1001%.
+Market: SOL 0.1% (1 h), 1.8% (24 h); BTC 1.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 84 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 2.8.
+
+=== CASE 3776 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 5-15 min after the buy.
+At the buy: market cap $171k, liquidity $33k, volume last 24 h $991k, last 1 h $48k; price change before the buy: 1 h 76%, 6 h 61%, 24 h 192%.
+Since the buy (before the touch): highest 100%, lowest 82%, last close 82% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #35): 45 46 39 45 62 60 59 57 63 56 58 52 54 51 52 51 48 57 55 51 51 57 59 63 59 61 62 64 63 85 90 110 102 100 83 82
+Their volumes in thousand USD: 1.4 0.7 3.1 4.4 6.3 0.7 1.0 2.0 1.0 3.0 0.5 0.9 0.8 0.7 0.6 0.5 0.6 1.7 1.4 0.8 0.2 1.1 0.5 0.9 0.6 0.2 0.3 0.4 0.2 2.7 6.4 25.1 10.1 1.1 4.9 1.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 59%; vs the lowest since graduation: 388%.
+Market: SOL 0.3% (1 h), -0.1% (24 h); BTC 0.6% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 156 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 1 min.
+Hours left until the forced sale at 6 h after the buy: about 5.9.
+
+=== CASE 1929 ===
+Coin age at the buy: 21 h after it left the bonding curve. The price touched -20% about 315-325 min after the buy.
+At the buy: market cap $117k, liquidity $31k, volume last 24 h $49k, last 1 h $14k; price change before the buy: 1 h 81%, 6 h 71%, 24 h 139%.
+Since the buy (before the touch): highest 113%, lowest 88%, last close 88% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-27): 103 103 103 103 103 100 100 100 102 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 99 88 88 88
+Their volumes in thousand USD: 0.0 0.0 0.0 0.0 0.0 0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.6 0.0 0.0
+Five-minute candles without any trade in the last hour: 11 of 12. Price now vs the highest since graduation: 70%; vs the lowest since graduation: 338%.
+Market: SOL 0.5% (1 h), 2.7% (24 h); BTC 0.2% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 900968 min.
+Hours left until the forced sale at 6 h after the buy: about 0.8.
+
+=== CASE 7524 ===
+Coin age at the buy: 13 h after it left the bonding curve. The price touched -20% about 210-220 min after the buy.
+At the buy: market cap $295k, liquidity $50k, volume last 24 h $133k, last 1 h $1k; price change before the buy: 1 h -6%, 6 h 8%, 24 h 509%.
+Since the buy (before the touch): highest 100%, lowest 82%, last close 82% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-6): 100 96 96 96 96 96 96 96 96 96 96 96 96 96 96 96 96 96 96 96 94 94 94 94 94 94 94 94 84 84 84 84 84 84 82 82
+Their volumes in thousand USD: 0.0 0.7 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.3 0.0 0.0 0.0 0.0 0.0 0.4 0.0
+Five-minute candles without any trade in the last hour: 10 of 12. Price now vs the highest since graduation: 57%; vs the lowest since graduation: 587%.
+Market: SOL -0.1% (1 h), -0.2% (24 h); BTC -0.5% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 15 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 2.5.
+
+=== CASE 1374 ===
+Coin age at the buy: 14 h after it left the bonding curve. The price touched -20% about 30-40 min after the buy.
+At the buy: market cap $345k, liquidity $53k, volume last 24 h $2752k, last 1 h $63k; price change before the buy: 1 h 21%, 6 h 37%, 24 h 679%.
+Since the buy (before the touch): highest 100%, lowest 84%, last close 86% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #30): 97 111 101 98 93 92 93 93 84 80 78 83 82 83 83 80 83 94 98 96 77 65 70 109 90 88 86 102 100 90 90 87 89 90 87 86
+Their volumes in thousand USD: 1.9 3.2 2.0 0.8 1.9 1.5 3.4 0.5 1.6 5.5 0.9 2.4 0.9 0.5 0.5 0.6 0.4 3.2 5.1 0.7 6.6 16.0 2.7 12.2 9.4 2.2 1.3 2.7 0.7 2.8 0.4 0.6 2.5 0.7 1.6 1.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 32%; vs the lowest since graduation: 1427%.
+Market: SOL 0.5% (1 h), -2.5% (24 h); BTC -0.8% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 28 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 574845 min.
+Hours left until the forced sale at 6 h after the buy: about 5.5.
+
+=== CASE 6320 ===
+Coin age at the buy: 9 h after it left the bonding curve. The price touched -20% about 50-60 min after the buy.
+At the buy: market cap $141k, liquidity $35k, volume last 24 h $993k, last 1 h $116k; price change before the buy: 1 h 117%, 6 h 28%, 24 h 226%.
+Since the buy (before the touch): highest 161%, lowest 89%, last close 161% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #26): 51 45 45 49 48 54 55 49 45 44 43 46 46 51 70 81 145 167 130 121 132 127 115 115 100 104 103 118 118 116 115 95 101 140 124 161
+Their volumes in thousand USD: 0.6 3.1 0.4 1.0 0.4 1.9 0.4 1.1 1.7 0.3 1.3 1.0 1.1 0.6 3.0 4.1 41.5 33.3 7.8 8.3 5.9 2.1 3.7 0.5 5.6 3.2 1.0 3.0 0.9 0.9 0.2 3.2 4.1 11.2 5.3 4.5
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 80%; vs the lowest since graduation: 606%.
+Market: SOL 0.8% (1 h), 3.9% (24 h); BTC -0.6% (24 h).
+Launch: X link yes, Telegram no, website yes, video no, description 47 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.2.
+
+=== CASE 0957 ===
+Coin age at the buy: 10 h after it left the bonding curve. The price touched -20% about 60-70 min after the buy.
+At the buy: market cap $102k, liquidity $29k, volume last 24 h $250k, last 1 h $13k; price change before the buy: 1 h 6%, 6 h 28%, 24 h 39%.
+Since the buy (before the touch): highest 102%, lowest 85%, last close 88% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #24): 94 92 89 91 94 89 93 95 95 93 94 91 93 91 91 95 92 93 94 96 98 97 100 100 99 96 95 93 93 95 91 91 92 89 91 88
+Their volumes in thousand USD: 1.1 0.3 1.3 1.6 1.3 1.5 0.3 0.2 1.3 1.5 1.8 0.7 1.0 1.6 1.7 0.7 1.6 1.1 1.0 1.2 0.7 1.2 0.8 1.3 1.5 0.6 0.6 0.9 0.7 0.5 1.2 1.6 1.0 1.1 1.2 1.7
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 79%; vs the lowest since graduation: 137%.
+Market: SOL 0.2% (1 h), 10.6% (24 h); BTC 5.6% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 12 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 5.0.
+
+=== CASE 9752 ===
+Coin age at the buy: 6 h after it left the bonding curve. The price touched -20% about 235-245 min after the buy.
+At the buy: market cap $1164k, liquidity $84k, volume last 24 h $78k, last 1 h $8k; price change before the buy: 1 h -0%, 6 h 19%, 24 h 19%.
+Since the buy (before the touch): highest 105%, lowest 99%, last close 103% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #-11): 100 100 101 100 100 101 102 102 102 102 102 101 102 101 101 101 101 103 103 104 104 104 104 103 104 104 104 105 103 103 103 103 103 103 104 103
+Their volumes in thousand USD: 0.6 0.6 0.6 0.7 0.7 0.7 0.7 0.6 0.6 0.7 0.6 0.7 0.7 0.8 0.7 0.6 0.6 0.5 0.7 0.6 0.7 0.7 0.6 0.7 0.6 0.6 0.6 0.6 0.7 0.7 0.7 0.7 0.7 0.7 0.5 0.6
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 98%; vs the lowest since graduation: 118%.
+Market: SOL 0.7% (1 h), 0.3% (24 h); BTC 0.9% (24 h).
+Launch: X link no, Telegram no, website no, video no, description 22 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 0 min.
+Hours left until the forced sale at 6 h after the buy: about 2.1.
+
+=== CASE 6213 ===
+Coin age at the buy: 7 h after it left the bonding curve. The price touched -20% about 160-170 min after the buy.
+At the buy: market cap $602k, liquidity $64k, volume last 24 h $1820k, last 1 h $97k; price change before the buy: 1 h 14%, 6 h 5%, 24 h 57%.
+Since the buy (before the touch): highest 130%, lowest 92%, last close 113% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #4): 97 99 100 92 92 99 106 107 100 105 112 119 107 110 110 111 111 110 113 112 118 118 115 113 111 111 111 111 114 113 120 121 128 119 114 113
+Their volumes in thousand USD: 6.6 4.1 4.5 4.7 1.6 3.4 4.6 2.5 3.8 3.0 4.1 4.2 4.4 6.6 3.2 4.0 3.1 2.2 1.6 3.1 4.2 6.1 6.5 4.6 4.5 4.1 3.7 3.8 4.6 5.3 4.6 6.9 5.6 5.5 5.0 5.0
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 73%; vs the lowest since graduation: 247%.
+Market: SOL 0.8% (1 h), -4.6% (24 h); BTC -2.6% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 51 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: ? min.
+Hours left until the forced sale at 6 h after the buy: about 3.3.
+
+=== CASE 9106 ===
+Coin age at the buy: 8 h after it left the bonding curve. The price touched -20% about 10-20 min after the buy.
+At the buy: market cap $144k, liquidity $34k, volume last 24 h $723k, last 1 h $34k; price change before the buy: 1 h 35%, 6 h 25%, 24 h 246%.
+Since the buy (before the touch): highest 100%, lowest 82%, last close 89% of the buy price.
+Last 36 five-minute closes in % of the buy price, oldest first (the buy happened in candle #34): 127 133 121 123 133 148 148 122 121 117 111 102 117 118 119 106 116 107 88 102 74 76 71 83 81 78 99 112 107 115 119 100 100 96 87 89
+Their volumes in thousand USD: 3.0 4.2 2.1 1.6 1.0 2.1 2.2 2.6 0.8 0.3 1.7 1.4 1.4 1.7 0.9 1.1 1.0 1.0 2.8 2.1 5.3 5.6 3.0 2.9 0.5 2.5 2.6 3.9 1.3 4.1 1.0 4.4 2.3 0.2 2.1 0.9
+Five-minute candles without any trade in the last hour: 0 of 12. Price now vs the highest since graduation: 35%; vs the lowest since graduation: 1336%.
+Market: SOL 0.4% (1 h), 9.7% (24 h); BTC 5.1% (24 h).
+Launch: X link yes, Telegram no, website no, video no, description 0 characters, creator's graduations in the 30 days before: 0, time on the bonding curve: 16 min.
+Hours left until the forced sale at 6 h after the buy: about 5.8.
