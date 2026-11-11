@@ -5,7 +5,7 @@ name: scout-study
 on:
   push:
     branches: [claude/project-thread-0y2vt9]
-    paths: [.github/workflows/scout-study.yml, research/scout/*.py]
+    paths: [.github/workflows/scout-study.yml]
 permissions:
   contents: write                    # the scoutdata branch only
 concurrency:

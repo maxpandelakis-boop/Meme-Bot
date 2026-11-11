@@ -141,6 +141,20 @@ def replay(t, p, i0, end_ms, fmin):
     return cash - TICKET - fees, hold, how, int(exit_ms), last / entry <= 0.02
 
 
+def hold_g(t, p, rs, i0, end_ms, fmin):
+    """Hold until the curve completes (sold at 10% under the last curve price: the move to PumpSwap) or until end_ms
+    (sold at the last curve trade before it)."""
+    entry = p[i0] * (1 + SLIP)
+    j_end = max(int(np.searchsorted(t, end_ms, side="left")) - 1, i0)
+    g = np.flatnonzero(rs[i0:j_end + 1] >= 80e9)
+    if len(g):
+        last, how = p[i0 + g[0]] * (1 - SLIP) * 0.90, "grad"
+    else:
+        last, how = p[j_end] * (1 - SLIP), "end"
+    v = TICKET / entry * last
+    return v - TICKET - fee(TICKET, fmin) - fee(v, fmin), how
+
+
 # ------------------------------------------------------------------------------------------------------------ main
 
 def main():
@@ -248,6 +262,8 @@ def main():
             r["pnl%d" % round(fmin * 100)] = round(pnl, 4); r["hold%d" % round(fmin * 100)] = round(hold, 4)
             sc, show = replay_scalp(c["t"], c["p"], i0, end + 1, fmin)
             r["scal%d" % round(fmin * 100)] = round(sc, 4); r["show"] = show
+            hg, ghow = hold_g(c["t"], c["p"], c["rs"], i0, end + 1, fmin)
+            r["holdg%d" % round(fmin * 100)] = round(hg, 4); r["ghow"] = ghow
         r.update(how=how, exit=xt, zero=bool(zero), entry_t=int(c["t"][i0]), entry_mc=round(float(c["mc"][i0]), 1),
                  grad=bool(c["rs"][i0:].max() >= 80e9))
         return r

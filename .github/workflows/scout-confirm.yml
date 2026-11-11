@@ -1,0 +1,68 @@
+# The scout confirmation test (research/scout/PREREG-CONFIRM-2026-11-11.md, fake money only): started by a push of this file or of research/scout/* to the thread branch
+# claude/project-thread-0y2vt9. It downloads public, openly licensed pump.fun data (Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and
+# public SOL/USD candles, and force-pushes compact results to the branch "scoutconfirm", which nothing else writes. Nothing is bought.
+name: scout-confirm
+on:
+  push:
+    branches: [claude/project-thread-0y2vt9]
+    paths: [.github/workflows/scout-confirm.yml]
+permissions:
+  contents: write                    # the scoutconfirm branch only
+concurrency:
+  group: scout-confirm
+  cancel-in-progress: true
+env:
+  PYTHONUTF8: '1'
+jobs:
+  day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        day: [2026-08-11, 2026-08-12, 2026-08-13, 2026-08-14, 2026-08-15, 2026-08-16, 2026-08-17, 2026-08-18, 2026-08-19, 2026-08-20, 2026-08-21, 2026-08-22, 2026-08-23, 2026-08-24, 2026-08-25, 2026-08-26, 2026-08-27, 2026-08-28, 2026-08-29, 2026-08-30, 2026-08-31, 2026-09-01, 2026-09-02, 2026-09-03, 2026-09-04, 2026-09-05, 2026-09-06, 2026-09-07, 2026-09-08, 2026-09-09, 2026-09-10, 2026-09-11, 2026-09-12, 2026-09-13, 2026-09-14, 2026-09-15, 2026-09-16, 2026-09-17, 2026-09-18, 2026-09-19, 2026-09-20, 2026-09-21, 2026-09-22, 2026-09-23]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4
+      - name: The file list of the probe
+        run: git clone -q --depth 1 --branch scoutdata https://github.com/${{ github.repository }}.git sd
+      - name: Day ${{ matrix.day }}
+        run: df -h . && python3 research/scout/scout_day.py sd/probe/files.json ${{ matrix.day }} out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: day-${{ matrix.day }}
+          path: out/trades_*.json
+          retention-days: 14
+
+  report:
+    needs: day
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet numpy==1.26.4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: day-*
+          path: days
+      - run: python3 research/scout/scout_confirm.py days days/report
+      - name: Push to scoutconfirm (its own branch)
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p sd/confirm && cp days/*/trades_*.json days/report/* sd/confirm/
+          cd sd && git init -q && git checkout -q -b scoutconfirm && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "scout confirm $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q --force "$URL" scoutconfirm
