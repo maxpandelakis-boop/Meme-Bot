@@ -7,6 +7,7 @@
 // GeckoTerminal, Reddit (the user's own app ID).
 import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js";
 import { bestPair } from "./sim.js";
+import { hotCoins as scoutHot, scoutPick } from "./scout.js";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -156,9 +157,7 @@ async function scout() {
   agent.scoutAt = Date.now();
   const list = await hotCoins(() => {});
   hot = list; agent.checked += list.length; agent.top = list.slice(0, 3);
-  const recent = new Set(acc.closed.filter(c => Date.now() - c.out < COOLDOWN_MS).map(c => c.mint));
-  const pick = list.find(c => c.score >= P.minScore && c.pool && !acc.pos[c.mint] && !recent.has(c.mint)
-                              && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0));
+  const pick = scoutPick(list, acc, P, COOLDOWN_MS);
   agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
   if (!pick || Object.keys(acc.pos).length >= P.maxOpen) { render(); return; }
   const p = prices[pick.mint];
@@ -539,48 +538,10 @@ async function redditPosts() {
 let hot = [];
 async function getJson(url) { const r = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
 async function hotCoins(msg) {
-  const coins = new Map(), add = (mint, x) => { if (!mint) return; const c = coins.get(mint) || coins.set(mint, { mint, src: [] }).get(mint); Object.assign(c, x); };
-  const tag = (mint, s) => { const c = coins.get(mint); if (c && !c.src.includes(s)) c.src.push(s); };
-  msg("Hole Trends von GeckoTerminal …");
-  try {
-    const tp = await gt("/trending_pools?page=1");
-    (tp.data || []).forEach((d, i) => {
-      const mint = String(d.relationships?.base_token?.data?.id || "").replace(/^solana_/, "");
-      add(mint, { gtRank: i, pool: d.attributes.address, symbol: String(d.attributes.name || "").split(" / ")[0] }); tag(mint, "GT #" + (i + 1));
-    });
-  } catch {}
-  msg("Hole Boosts und neue Coins von DexScreener …");
-  for (const [url, label] of [[DS + "/token-boosts/top/v1", "Boost"], [DS + "/token-profiles/latest/v1", "Neu"]]) {
-    try {
-      const list = await getJson(url);
-      for (const t of (Array.isArray(list) ? list : []).filter(t => t.chainId === "solana").slice(0, 20)) {
-        add(t.tokenAddress, label === "Boost" ? { boost: t.totalAmount || t.amount || 0 } : {}); tag(t.tokenAddress, label);
-      }
-    } catch {}
-  }
-  msg(`Hole Preise und Käufe von ${coins.size} Coins (DexScreener) …`);
-  const mints = [...coins.keys()];
-  for (let i = 0; i < mints.length; i += 30) {
-    try {
-      const j = await getJson(DEX(mints.slice(i, i + 30)));
-      for (const m of mints.slice(i, i + 30)) {
-        const p = bestPair(j.pairs, m); if (!p) continue;
-        const info = p.info || {}, h1 = (p.txns && p.txns.h1) || {};
-        add(m, { symbol: p.baseToken.symbol, pool: p.pairAddress, liq: (p.liquidity && p.liquidity.usd) || 0, vol1h: (p.volume && p.volume.h1) || 0,
-                 buys1h: h1.buys || 0, sells1h: h1.sells || 0, chg1h: (p.priceChange && p.priceChange.h1) || 0, mc: p.marketCap || p.fdv || 0,
-                 img: info.imageUrl || "", socials: (info.socials || []).length + (info.websites || []).length,
-                 links: (info.socials || []).map(x => x.type), url: p.url });
-        prices[m] = { price: Number(p.priceUsd) || 0, liq: (p.liquidity && p.liquidity.usd) || 0, mc: p.marketCap || p.fdv || 0, symbol: p.baseToken.symbol, img: info.imageUrl || "", t: Date.now() };
-      }
-    } catch {}
-  }
-  msg("Lese Reddit (r/solana, r/memecoins, r/SolanaMemeCoins, r/CryptoMoonShots, r/pumpfun) …");
-  try {
-    const posts = (await redditPosts()).filter(p => Date.now() / 1000 - p.created_utc < 86400);
-    const n = redditMentions([...coins.values()], posts);
-    for (const [m, k] of Object.entries(n)) { add(m, { reddit: k }); tag(m, "Reddit " + k); }
-  } catch (e) { msg(`Reddit übersprungen (${e.message || e}), mache ohne weiter …`); await sleep(1200); }
-  return scoreHot([...coins.values()]);
+  const id = (await load("redditAppId", "")).trim();
+  const r = await scoutHot({ getJson, gt, reddit: id ? redditPosts : null, msg });
+  for (const [m, x] of Object.entries(r.prices)) prices[m] = { ...x, t: Date.now() };
+  return r.list;
 }
 
 async function findTraders() {

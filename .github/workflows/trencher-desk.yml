@@ -1,0 +1,75 @@
+# The Trencher's Trading Desk around the clock (fake money only: nothing is bought anywhere, no wallet, no key).
+# The code lives on the branch trencher-extension (folder trencher/, repository variable TRENCHER_REF to use another branch);
+# this file only starts it: trencher/desk-runner.mjs runs the same engine as the Trencher page (Scout, Compounder 40 % / max 2,
+# hard stop -8 % until 2x, entry back at 2x, trail 10 %) for about 5 h 40 min and writes the one-commit branch desk-data
+# (desk.json for the page's "Server 24/7" view, config.json with the rules, which may be edited on GitHub).
+# How it keeps going: the run's last step starts the next one (when no other desk run is running or waiting); the cron below is
+# only a safety net that does nothing while a run is going. Research note: the desk's sell rules lost on the bot's stored candle paths
+# (research/DESK-2026-11-11.md on trencher-extension); this run measures the Scout's live choice.
+# Stop it: Actions -> "Trencher desk" -> ... -> Disable workflow, or the repository variable TRENCHER_DESK=0.
+name: Trencher desk
+run-name: "Trencher desk · ${{ inputs.source || 'safety net' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'manual (Run workflow) or auto (the run before)'
+        type: choice
+        options: ['manual', 'auto']
+        default: 'manual'
+  schedule:
+    - cron: '41 */2 * * *'           # safety net only: starts a run when none is running (GitHub's timed starts come late or not at all)
+permissions:
+  contents: write                    # the one-commit branch desk-data
+  actions: write                     # start the next run
+concurrency:
+  group: trencher-desk
+  cancel-in-progress: false
+jobs:
+  desk:
+    if: (vars.TRENCHER_DESK || '1') != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Is a desk run already going? (the safety net then does nothing)
+        id: busy
+        run: |
+          n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow trencher-desk.yml --json databaseId,status \
+               --jq "[.[] | select(.status != \"completed\" and (.databaseId|tostring) != \"$GITHUB_RUN_ID\")] | length" || echo 0)
+          echo "others=$n" >> "$GITHUB_OUTPUT"
+          echo "other desk runs running or waiting: $n"
+      - uses: actions/checkout@v4
+        if: steps.busy.outputs.others == '0'
+        with:
+          ref: ${{ vars.TRENCHER_REF || 'trencher-extension' }}
+          path: code
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        if: steps.busy.outputs.others == '0'
+        with:
+          node-version: '22'
+      - name: The desk's state (branch desk-data; a new one starts with $20 of fake money)
+        if: steps.busy.outputs.others == '0'
+        env:
+          URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          if git clone -q --depth 1 --branch desk-data "$URL" data 2>/dev/null; then
+            echo "desk-data: $(git -C data log -1 --format='%h %ci')"
+          else
+            git init -q -b desk-data data && git -C data remote add origin "$URL"
+            git -C data -c user.name=trencher-desk -c user.email=trencher-desk@users.noreply.github.com commit -q --allow-empty -m "desk start"
+            echo "desk-data: new"
+          fi
+      - name: Run the desk (about 5 h 40 min, a save every minute)
+        id: loop
+        if: steps.busy.outputs.others == '0'
+        run: node code/trencher/desk-runner.mjs --data data --minutes 340 --push
+      - name: Start the next run
+        if: steps.loop.outcome == 'success' && github.ref_name == github.event.repository.default_branch
+        continue-on-error: true
+        run: |
+          state=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/trencher-desk.yml" --jq .state || echo unknown)
+          if [ "$state" != "active" ]; then echo "workflow $state: no start"; exit 0; fi
+          gh workflow run trencher-desk.yml -R "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f source=auto && echo "next run started"

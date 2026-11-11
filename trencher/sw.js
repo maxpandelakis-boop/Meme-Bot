@@ -1,7 +1,7 @@
 // Service worker of the Trencher web app: keeps the app's own files so it opens without network and installs as an app.
 // Network first (an update shows up on the next start), cache only as fallback. Data APIs (prices, chain, Reddit) are never cached.
 const CACHE = "trencher-v4";
-const SHELL = ["copy.html", "copy.css", "copy.js", "copy-engine.js", "sim.js", "lib/lightweight-charts.standalone.production.js",
+const SHELL = ["copy.html", "copy.css", "copy.js", "copy-engine.js", "scout.js", "sim.js", "lib/lightweight-charts.standalone.production.js",
                "app-manifest.json", "icons/app-192.png", "icons/app-512.png", "icons/app-180.png"];
 // one by one, a file that fails (e.g. an icon the host redirects elsewhere) must not stop the install
 self.addEventListener("install", e => {
