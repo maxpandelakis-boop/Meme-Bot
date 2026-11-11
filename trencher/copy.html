@@ -12,7 +12,7 @@
 <link rel="icon" href="icons/app-192.png">
 <link rel="apple-touch-icon" href="icons/app-180.png">
 <title>Trencher Trading Desk</title>
-<link rel="stylesheet" href="copy.css?v=0.9.9">
+<link rel="stylesheet" href="copy.css?v=0.9.10">
 </head>
 <body>
 <header class="top">
@@ -81,10 +81,10 @@
     <p class="muted tiny">Der Knopf sucht heiße Coins (GeckoTerminal, DexScreener, Reddit) und darin die Wallets mit dem meisten Gewinn. Oder Name und Solana-Wallet selbst eintragen. Kauft ein Trader, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
     <button id="findBtn" class="find">🔍 Gute Trader finden</button>
     <div id="findMsg" class="tiny muted"></div>
-    <h2 id="hotHead" style="display:none">Heiße Coins <span class="muted tiny">GeckoTerminal · DexScreener · Reddit</span></h2>
-    <ol id="hotList" class="traders"></ol>
-    <h2>Gefundene Trader</h2>
-    <ol id="findList" class="traders"></ol>
+    <div class="sect"><h2 style="margin:0">Top Trader <span class="muted tiny">aus den heißen Coins</span></h2><button id="followTop" class="link tiny" style="display:none">Top 4 folgen</button></div>
+    <ol id="findList" class="traders"><li class="empty">Noch keine Suche. Oben „Gute Trader finden“ drücken (dauert ca. 30 Sekunden).</li></ol>
+    <details id="hotBox" style="display:none"><summary id="hotHead" class="tiny muted">Heiße Coins, in denen gesucht wurde (GeckoTerminal · DexScreener · Reddit)</summary>
+    <ol id="hotList" class="traders"></ol></details>
     <h2>Deine Trader</h2>
     <ol id="traderList" class="traders"></ol>
     <div class="addrow">
@@ -153,6 +153,6 @@
   <button data-p="account"><span>◉</span>Account</button>
 </nav>
 <script src="lib/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="copy.js?v=0.9.9"></script>
+<script type="module" src="copy.js?v=0.9.10"></script>
 </body>
 </html>

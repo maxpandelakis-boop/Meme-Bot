@@ -1,6 +1,6 @@
 // Copy-trading engine of the Trencher (paper money only): turns a followed wallet's on-chain transactions into its buys and sells,
 // and keeps the copy account (cash, positions, activity, equity curve). Pure functions, no browser APIs: node tests them (test_copy.mjs).
-import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.9";
+import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.10";
 
 export const COPY_DEFAULTS = {
   // the "Trading Desk" of the second video (2026-11-09): $20, 40 % of free cash per buy, max 2 open, no adding to losers,

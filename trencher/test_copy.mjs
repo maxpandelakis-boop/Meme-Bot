@@ -1,6 +1,6 @@
 // node trencher/test_copy.mjs : checks the copy-trading engine.
 import assert from "node:assert/strict";
-import * as C from "./copy-engine.js?v=0.9.9";
+import * as C from "./copy-engine.js?v=0.9.10";
 
 const W = "Trader1111111111111111111111111111111111111", M = "Coin1111111111111111111111111111111111pump";
 const tb = (owner, mint, amt) => ({ owner, mint, uiTokenAmount: { uiAmount: amt } });
@@ -88,7 +88,7 @@ console.log("ok: copy engine");
 
 // fresh-coin Scout filter
 {
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   const now = Date.now();
   const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } }, dex: { data: { id: "pump-fun" } } }, attributes: { address: "P" + id, name: id + " / SOL",
     pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
@@ -101,7 +101,7 @@ console.log("ok: copy engine");
 
 // fresh-coin veto: RugCheck dangers, a creator with another coin in 24 h, a whale that is not the curve
 {
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   const now = Date.parse("2026-11-11T13:00:00Z");
   const base = { score_normalised: 12, risks: [{ name: "Low Liquidity", level: "warn" }], creatorTokens: [],
     knownAccounts: { CURVE: { name: "Pump Fun", type: "AMM" }, DEV: { name: "Creator", type: "CREATOR" } },
@@ -136,7 +136,7 @@ console.log("ok: copy engine");
 
 // the Scout's words match its pick; a coin just sold is bought again only when the Prüfer says yes
 {
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   const now = 1e12, P = { minScore: 60 }, W = 30 * 60e3;
   const acc = { pos: {}, closed: [{ mint: "A", out: now - 10 * 60e3, px: 1.0 }] };
   const a = { mint: "A", symbol: "A", score: 61, chg1h: 5, buys1h: 9, sells1h: 3, pool: "p", price: 1.02, chg5m: 2, buys5m: 5, sells5m: 2 };
@@ -158,7 +158,7 @@ console.log("ok: copy engine");
 
 // fresh desk: one price source (the pool), no buy on a price jump or outside the filter
 {
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   const pick = { price: 1e-5 };
   const ok = { price: 1.1e-5, mc: 30000, liq: 9000 };
   if (S.freshFillCheck(pick, ok) !== "") throw new Error("ok fill");
@@ -177,7 +177,7 @@ console.log("ok: copy engine");
 
 // the strict fresh picker: watch first, buy only what is still strong
 {
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   const now = 1e12, w = { seen: now - 12 * 60e3, price0: 1e-5 };
   const good = { price: 1.3e-5, mc: 40000, liq: 12000, buyers5: 40, buys5: 60, sells5: 20, chg5: 12 };
   const v = (c, ww = w) => S.strictVerdict(ww, c, now);
@@ -201,7 +201,7 @@ console.log("ok: copy engine");
 
 // paying paper money in and out keeps the profit honest
 {
-  const C = await import("./copy-engine.js?v=0.9.9");
+  const C = await import("./copy-engine.js?v=0.9.10");
   const acc = C.newAccount({ deposit: 20 }, 1);
   if (!C.payIn(acc, 50).ok || acc.cash !== 70 || acc.deposit !== 70) throw new Error("pay in");
   if (C.accountProfit(acc, 70) !== 0) throw new Error("profit after pay in");
@@ -210,14 +210,14 @@ console.log("ok: copy engine");
   if (C.accountProfit(acc, 45) !== 5) throw new Error("profit after pay out");
   if (C.payIn(acc, 0).ok || C.payIn(acc, "x").ok) throw new Error("bad amount");
   if (acc.activity[0].kind !== "withdraw" || acc.activity[1].kind !== "deposit") throw new Error("activity");
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   if (!S.freshOk({ mint: "m", price: 1, dex: "meteora", ageMin: 2, mc: 20000, liq: 9000, buyers5: 50, buys5: 60, sells5: 10, chg5: 5 }).includes("nicht pump.fun")) throw new Error("dex");
   console.log("ok: pay in / out, pump.fun pools only");
 }
 
 // FIRST: at first sight, with the normal fresh numbers; a pool price far below the listed one is refused
 {
-  const S = await import("./scout.js?v=0.9.9");
+  const S = await import("./scout.js?v=0.9.10");
   const now = 1e12, w = { seen: now - 20e3, price0: 1e-5 };
   const c = { price: 1.02e-5, mc: 9000, liq: 3500, buyers5: 16, buys5: 30, sells5: 10, chg5: 300 };
   if (S.strictVerdict(w, c, now, S.FIRST) !== "") throw new Error("first sight: " + S.strictVerdict(w, c, now, S.FIRST));
