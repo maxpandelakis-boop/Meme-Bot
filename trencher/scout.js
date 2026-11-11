@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.10";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.10";
+import { bestPair } from "./sim.js?v=0.9.11";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.11";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -91,6 +91,9 @@ function judge(c, acc, P, windowMs, now) {
   if (!((c.chg1h || 0) > 0)) return { ok: false, text: "wait (Kurs fällt)" };
   if (!((c.buys1h || 0) > (c.sells1h || 0))) return { ok: false, text: "wait (mehr Verkäufe als Käufe)" };
   if (!c.pool) return { ok: false, text: "wait (kein Pool)" };
+  if (P.mcMin > 0 && !(c.mc >= P.mcMin)) return { ok: false, text: `wait (MC ${Math.round((c.mc || 0) / 1000)}k unter ${Math.round(P.mcMin / 1000)}k)` };
+  if (P.mcMax > 0 && !(c.mc <= P.mcMax)) return { ok: false, text: `wait (MC ${Math.round(c.mc / 1000)}k über ${Math.round(P.mcMax / 1000)}k)` };
+  if (P.minAgeH > 0 && !(c.created > 0 && now - c.created >= P.minAgeH * 3600e3)) return { ok: false, text: `wait (jünger als ${P.minAgeH} h)` };
   const left = acc.closed.filter(x => x.mint === c.mint && now - x.out < windowMs);
   if (!left.length) return { ok: true, text: "size check" };
   const no = why => ({ ok: false, text: `Prüfer: nein, ${why}` });

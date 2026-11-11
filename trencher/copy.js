@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit } from "./copy-engine.js?v=0.9.10";
-import { bestPair } from "./sim.js?v=0.9.10";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, FIRST, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.10";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit, PRESET_VIDEO3 } from "./copy-engine.js?v=0.9.11";
+import { bestPair } from "./sim.js?v=0.9.11";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, FIRST, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.11";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -472,7 +472,9 @@ function renderTraders() {
 const RULES = [
   ["deposit", "Startgeld ($)", 1], ["sizePct", "Kauf: % vom freien Geld", 100], ["maxOpen", "Max. offene Positionen", 1],
   ["hardStop", "Hard Stop (%, solange nie 2×)", 100], ["halfAt", "Einsatz zurück bei (×)", 1], ["trail", "Trailing vom Hoch (%)", 100],
-  ["minScore", "Scout: Mindest-Punkte (0–100)", 1], ["delaySec", "Wallets: Sekunden danach", 1],
+  ["trailFrom", "Ohne Teilverkauf: Trailing ab (×, 0 = aus)", 1],
+  ["minScore", "Scout: Mindest-Punkte (0–100)", 1], ["mcMin", "Scout: MC mindestens ($, 0 = egal)", 1], ["mcMax", "Scout: MC höchstens ($, 0 = egal)", 1],
+  ["minAgeH", "Scout: Coin mindestens so alt (Stunden)", 1], ["delaySec", "Wallets: Sekunden danach", 1],
   ["takeProfitX", "Extra: alles raus bei (×, 0 = aus)", 1], ["stopLoss", "Extra: Stop-Loss (%, 0 = aus)", 100],
 ];
 function renderRules() {
@@ -572,7 +574,17 @@ $("rules").addEventListener("change", e => {
 });
 load("redditAppId", "").then(v => { $("redditId").value = v; });
 $("redditId").addEventListener("change", () => { save("redditAppId", $("redditId").value.trim()); redditTok = null; $("redditMsg").textContent = "Gespeichert. Wird bei der nächsten Suche benutzt."; });
-$("rulesReset").addEventListener("click", () => { P = { ...COPY_DEFAULTS }; save("deskRules", P); renderRules(); render(); });
+function preset(rules, name, note) {
+  if (serverMode) { alert("Das sind die Regeln des Server-Desks. Bitte erst auf „Dieser Browser“ wechseln."); return; }
+  P = { ...COPY_DEFAULTS, deposit: P.deposit, ...rules };
+  save("deskRules", P); renderRules(); render();
+  $("presetNote").textContent = note;
+  say("rules", `Regeln gesetzt: ${name}`);
+  toast(name.toUpperCase());
+}
+$("rulesReset").addEventListener("click", () => preset({}, "Trading Desk", "Video 2: 40 % pro Kauf, max 2 offen, Stop −8 %, bei 2× Einsatz zurück, Rest trailt 10 %."));
+$("presetV3").addEventListener("click", () => preset(PRESET_VIDEO3, "FOMO Terminal",
+  "Video 3: EIN Coin, 90 % vom Geld, Stop −6 %, kein Teilverkauf, ab +15 % trailt alles 10 % unter dem Hoch. Nur Trend-Coins mit 150k bis 2,5M $ MC, mindestens 4 Stunden alt. Hohes Risiko: ein Stop kostet fast 6 % vom ganzen Konto plus Gebühren. Ungeprüft."));
 $("openPos").addEventListener("click", async e => {
   const b = e.target.closest("button[data-sell]"); if (!b) return;
   const mint = b.dataset.sell;
@@ -874,7 +886,7 @@ function renderLog() {
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
-const VERSION = "0.9.10";      // the same number as manifest.json (test_copy.mjs checks it)
+const VERSION = "0.9.11";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {

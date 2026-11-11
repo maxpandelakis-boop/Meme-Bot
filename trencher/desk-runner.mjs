@@ -7,8 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.10";
-import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshCheck, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.10";
+import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.11";
+import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshCheck, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.11";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);

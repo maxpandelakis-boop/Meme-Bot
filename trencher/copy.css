@@ -165,3 +165,4 @@ button.run:disabled{background:var(--card2);color:var(--up);border:1px solid rgb
 .quick button{background:var(--card2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:9px 0;font-weight:700;cursor:pointer}
 .sheetbox input{background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px;font:600 16px Inter,system-ui,sans-serif}
 @media (min-width:1000px){.sheet{place-items:center}.sheetbox{border-radius:18px}}
+.presets{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}.presets button.ghost{flex:none;padding:6px 10px}
