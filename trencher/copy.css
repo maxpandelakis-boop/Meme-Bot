@@ -86,7 +86,7 @@ button.find:disabled{opacity:.6;cursor:wait}
 #hotList li .amt{text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
 #hotList li .amt span{display:block;font-size:10.5px;color:var(--mut)}
 /* web and phone app: centered column on wide screens, safe areas on phones */
-@media (min-width:560px){header.top,main{max-width:520px;margin:0 auto}nav.bottom{max-width:520px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+@media (min-width:560px) and (max-width:999px){header.top,main{max-width:560px;margin:0 auto}nav.bottom{max-width:560px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
 body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 nav.bottom{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
 header.top{padding-top:calc(8px + env(safe-area-inset-top))}
@@ -96,9 +96,9 @@ header.top{padding-top:calc(8px + env(safe-area-inset-top))}
 .mult{display:inline-block;background:rgba(34,197,94,.18);color:var(--up);border-radius:6px;padding:0 6px;font-weight:800;font-size:12px;margin-left:4px}
 .mult.neg{background:rgba(239,68,68,.18);color:var(--dn)}
 #agentsInfo{color:var(--up)}
-.acards{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -12px;padding:0 12px 6px;scrollbar-width:none}
+.acards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 6px}
 .acards::-webkit-scrollbar{display:none}
-.acard{flex:0 0 46%;min-width:150px;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 10px;min-height:128px}
+.acard{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 10px;min-height:128px}
 .ah{display:flex;gap:7px;align-items:center;margin-bottom:6px}.ah b{display:block;font-size:13px}
 .ai{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:12px;color:#fff;flex:none}
 .ai.s{background:#0f766e}.ai.c{background:#b91c1c}.ai.e{background:#7c3aed}.ai.r{background:#9a3412}
@@ -142,3 +142,17 @@ button.run:disabled{background:var(--card2);color:var(--up);border:1px solid rgb
 .chatform{display:flex;gap:6px;margin:6px 0}
 .chatform input{flex:1;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:9px 12px;font:13px Inter,system-ui,sans-serif}
 .chatform button{width:38px;border-radius:50%;border:none;background:var(--fg);color:#000;font-weight:900;cursor:pointer}
+/* wide screens (laptop, desktop): a dashboard, money + agents left, activity right */
+@media (min-width:1000px){
+  header.top,main{max-width:1180px;margin:0 auto}
+  main{padding:10px 24px}
+  nav.bottom{max-width:1180px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+  #home.on{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:start}
+  .homeR{position:sticky;top:52px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 14px 10px;max-height:calc(100vh - 140px);overflow:auto}
+  .homeL .chartwrap{margin:8px 0 0}
+  #chart{height:300px}
+  .acards{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .acard{min-height:150px}
+  #agents.on,#activity.on,#account.on{max-width:760px;margin:0 auto}
+}
+.loghome{max-height:320px}

@@ -7,13 +7,12 @@
 // GeckoTerminal, Reddit (the user's own app ID).
 import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js";
 import { bestPair } from "./sim.js";
-import { hotCoins as scoutHot, scoutPick, rugCheck } from "./scout.js";
+import { hotCoins as scoutHot, scoutPick, rugCheck, DS, DEX } from "./scout.js";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
 // api.mainnet-beta.solana.com refuses extension origins with 403, so it is not used.
 const RPCS = ["https://solana-rpc.publicnode.com"];
-const DEX = mints => `https://api.dexscreener.com/latest/dex/tokens/${mints.join(",")}`;
 const WATCH_MS = 1500;      // one trader wallet checked per tick, round robin
 const COPY_MS = 1000;       // due copies executed
 const RISK_MS = 5000;       // open positions priced, take-profit / stop-loss checked
@@ -341,7 +340,7 @@ function actRow(a) {
 let shownTop = "";
 function renderActivity() {
   const list = acc.activity;
-  const home = list.filter(a => a.kind !== "rule").slice(0, 8).map(actRow).join("") || `<li class="empty">Noch nichts. Bot starten: der Scout sucht dann selbst.</li>`;
+  const home = list.filter(a => a.kind !== "rule").slice(0, 8).map(actRow).join("") || `<li class="empty">${serverMode ? "Noch keine Trades auf dem Server. Was der Desk gerade prüft, steht unten im Log." : "Noch nichts. Bot starten: der Scout sucht dann selbst."}</li>`;
   const top = list[0] ? list[0].t + list[0].kind : "";
   $("actHome").innerHTML = home;
   if (top && top !== shownTop && shownTop) $("actHome").firstElementChild?.classList.add("new");
@@ -415,7 +414,7 @@ function renderRules() {
     + `<label for="r_same">Mit der Wallet verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
 }
 
-function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); if (filter === "log") renderLog(); }
+function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); renderLog(); }
 
 function toast(text, bad = false) {
   const el = $("toast");
@@ -532,7 +531,6 @@ async function gt(path) {
   throw new Error("GeckoTerminal: zu viele Anfragen, gleich nochmal versuchen");
 }
 // Hot coins from every free source: GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions.
-const DS = "https://api.dexscreener.com";
 const SUBS = "solana+memecoins+SolanaMemeCoins+CryptoMoonShots+pumpfun";
 // Reddit blocks anonymous .json reads (403, tested 2026-11-08), so it goes through the user's own free Reddit app of type
 // "installed app": app-only OAuth with just the app's ID (no secret, no Reddit password), token cached until it expires.
@@ -726,7 +724,6 @@ async function keepAwake(on) {   // a phone stops the page when the screen goes 
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running) keepAwake(true); });
 function webApp() {
-  $("panelLink").style.display = "none";
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   let prompt = null;
   window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); prompt = e; $("installBtn").style.display = ""; });
@@ -746,8 +743,10 @@ function say(who, text) {
 }
 function renderLog() {
   const lines = ((serverMode ? serverDoc && serverDoc.log : acc.log) || []).filter(l => !serverMode || (serverKey === "fresh") === String(l.text).startsWith("[Frisch]"));
-  $("logBox").innerHTML = lines.slice(0, 200).map(l => `<div><span class="lt">${new Date(l.t).toLocaleTimeString("de-DE")}</span> <span class="lw w-${esc(l.who)}">${esc(l.who)}</span> ${esc(l.text)}</div>`).join("")
-    || `<div class="muted">Noch keine Einträge. Bot starten.</div>`;
+  const row = l => `<div><span class="lt">${new Date(l.t).toLocaleTimeString("de-DE")}</span> <span class="lw w-${esc(l.who)}">${esc(l.who)}</span> ${esc(String(l.text).replace(/^\[Frisch\] /, ""))}</div>`;
+  const none = `<div class="muted">Noch keine Einträge. ${serverMode ? "Der Server-Desk schreibt jede Minute." : "Bot starten."}</div>`;
+  $("logBox").innerHTML = lines.slice(0, 200).map(row).join("") || none;
+  $("logHome").innerHTML = lines.slice(0, 14).map(row).join("") || none;
 }
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------

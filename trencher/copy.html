@@ -21,12 +21,12 @@
   <span id="ver" class="muted tiny"></span>
   <button id="shareBtn" class="right tiny link" title="Stand teilen">⇪ Teilen</button>
   <button id="installBtn" class="tiny link" style="display:none">⬇ Als App installieren</button>
-  <a id="panelLink" href="panel.html" class="right tiny link" title="Der alte Bildschirm: ein Coin, eigener Bot">Coin-Trencher ↗</a>
 </header>
 
 <main>
   <!-- HOME -->
   <section id="home" class="page on">
+   <div class="homeL">
     <div class="modes" id="modes"><button data-m="local" class="on">Dieser Browser</button><button data-m="server">☁ Große 24/7</button><button data-m="fresh">☁ Frisch 24/7</button></div>
     <div id="serverInfo" class="tiny"></div>
     <div id="deskSub" class="muted tiny desksub">–</div>
@@ -45,10 +45,15 @@
       <div class="acard"><div class="ah"><span class="ai r">■</span><div><b>Risk</b><span id="aRiskSub" class="dot r">–</span></div></div><ol id="aRisk" class="alist"></ol></div>
     </div>
     <div class="row"><button id="runBtn" class="run">▶ Bot starten</button></div>
+   </div>
+   <div class="homeR">
 
     <div class="sect"><b>Activity</b><button id="seeAll" class="link tiny">Alle ansehen</button></div>
     <ol id="actHome" class="acts"></ol>
     <span id="actInfo" hidden></span>
+    <div class="sect"><b>Live-Log</b><span class="muted tiny">jede Entscheidung der Agents</span></div>
+    <div id="logHome" class="logbox loghome"></div>
+   </div>
   </section>
 
   <!-- COIN -->
