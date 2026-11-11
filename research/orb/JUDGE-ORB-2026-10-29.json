@@ -1,0 +1,640 @@
+{
+ "frozen": {
+  "N": 60,
+  "W": 6,
+  "R": 1,
+  "T": 6,
+  "name": "range 60 min, wait 6 h, target 1R, 6 h"
+ },
+ "holdout": {
+  "n": 1599,
+  "mean": -5.42,
+  "meanAfterAllowance": -6.02,
+  "lowerBound": -6.65,
+  "pBoot": 1.0,
+  "totalWithoutBest": -9641.4,
+  "inProfit": 39.5,
+  "bestTrade": 14.6,
+  "holds": false
+ },
+ "w5": {
+  "n": 1252,
+  "meanAfterAllowance": -5.69,
+  "total": -7120.8,
+  "inProfit": 40.6
+ },
+ "s1": {
+  "n": 347,
+  "meanAfterAllowance": -7.22,
+  "total": -2506.6,
+  "inProfit": 35.7
+ },
+ "delay": {
+  "n": 1599,
+  "meanAfterAllowance": -5.62,
+  "total": -8993.0,
+  "inProfit": 37.3
+ },
+ "allVariants": [
+  {
+   "N": 15,
+   "W": 2,
+   "R": 1,
+   "T": 6,
+   "name": "range 15 min, wait 2 h, target 1R, 6 h",
+   "n": 3772,
+   "meanAfterAllowance": -5.79,
+   "lowerBound": -6.45,
+   "pBoot": 1.0,
+   "inProfit": 46.9,
+   "w5": {
+    "n": 2803,
+    "meanAfterAllowance": -5.62,
+    "total": -15764.0,
+    "inProfit": 47.1
+   },
+   "s1": {
+    "n": 969,
+    "meanAfterAllowance": -6.26,
+    "total": -6066.8,
+    "inProfit": 46.2
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 2,
+   "R": 1,
+   "T": 24,
+   "name": "range 15 min, wait 2 h, target 1R, 24 h",
+   "n": 3772,
+   "meanAfterAllowance": -6.14,
+   "lowerBound": -6.83,
+   "pBoot": 1.0,
+   "inProfit": 49.2,
+   "w5": {
+    "n": 2803,
+    "meanAfterAllowance": -6.04,
+    "total": -16930.6,
+    "inProfit": 49.4
+   },
+   "s1": {
+    "n": 969,
+    "meanAfterAllowance": -6.44,
+    "total": -6243.5,
+    "inProfit": 48.3
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 2,
+   "R": 2,
+   "T": 6,
+   "name": "range 15 min, wait 2 h, target 2R, 6 h",
+   "n": 3772,
+   "meanAfterAllowance": -7.43,
+   "lowerBound": -8.21,
+   "pBoot": 1.0,
+   "inProfit": 32.4,
+   "w5": {
+    "n": 2803,
+    "meanAfterAllowance": -6.96,
+    "total": -19503.3,
+    "inProfit": 33.5
+   },
+   "s1": {
+    "n": 969,
+    "meanAfterAllowance": -8.79,
+    "total": -8518.0,
+    "inProfit": 29.2
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 2,
+   "R": 2,
+   "T": 24,
+   "name": "range 15 min, wait 2 h, target 2R, 24 h",
+   "n": 3772,
+   "meanAfterAllowance": -7.89,
+   "lowerBound": -8.72,
+   "pBoot": 1.0,
+   "inProfit": 33.4,
+   "w5": {
+    "n": 2803,
+    "meanAfterAllowance": -7.45,
+    "total": -20881.9,
+    "inProfit": 34.6
+   },
+   "s1": {
+    "n": 969,
+    "meanAfterAllowance": -9.17,
+    "total": -8883.0,
+    "inProfit": 29.8
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 6,
+   "R": 1,
+   "T": 6,
+   "name": "range 15 min, wait 6 h, target 1R, 6 h",
+   "n": 3825,
+   "meanAfterAllowance": -5.76,
+   "lowerBound": -6.41,
+   "pBoot": 1.0,
+   "inProfit": 46.7,
+   "w5": {
+    "n": 2848,
+    "meanAfterAllowance": -5.59,
+    "total": -15925.7,
+    "inProfit": 47.0
+   },
+   "s1": {
+    "n": 977,
+    "meanAfterAllowance": -6.27,
+    "total": -6123.2,
+    "inProfit": 46.0
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 6,
+   "R": 1,
+   "T": 24,
+   "name": "range 15 min, wait 6 h, target 1R, 24 h",
+   "n": 3825,
+   "meanAfterAllowance": -6.11,
+   "lowerBound": -6.83,
+   "pBoot": 1.0,
+   "inProfit": 49.1,
+   "w5": {
+    "n": 2848,
+    "meanAfterAllowance": -6.0,
+    "total": -17081.6,
+    "inProfit": 49.4
+   },
+   "s1": {
+    "n": 977,
+    "meanAfterAllowance": -6.45,
+    "total": -6298.3,
+    "inProfit": 48.1
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 6,
+   "R": 2,
+   "T": 6,
+   "name": "range 15 min, wait 6 h, target 2R, 6 h",
+   "n": 3825,
+   "meanAfterAllowance": -7.39,
+   "lowerBound": -8.18,
+   "pBoot": 1.0,
+   "inProfit": 32.3,
+   "w5": {
+    "n": 2848,
+    "meanAfterAllowance": -6.91,
+    "total": -19675.0,
+    "inProfit": 33.4
+   },
+   "s1": {
+    "n": 977,
+    "meanAfterAllowance": -8.79,
+    "total": -8589.5,
+    "inProfit": 29.0
+   },
+   "holm": false
+  },
+  {
+   "N": 15,
+   "W": 6,
+   "R": 2,
+   "T": 24,
+   "name": "range 15 min, wait 6 h, target 2R, 24 h",
+   "n": 3825,
+   "meanAfterAllowance": -7.83,
+   "lowerBound": -8.68,
+   "pBoot": 1.0,
+   "inProfit": 33.4,
+   "w5": {
+    "n": 2848,
+    "meanAfterAllowance": -7.38,
+    "total": -21009.3,
+    "inProfit": 34.6
+   },
+   "s1": {
+    "n": 977,
+    "meanAfterAllowance": -9.16,
+    "total": -8952.9,
+    "inProfit": 29.7
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 2,
+   "R": 1,
+   "T": 6,
+   "name": "range 30 min, wait 2 h, target 1R, 6 h",
+   "n": 2545,
+   "meanAfterAllowance": -6.07,
+   "lowerBound": -6.88,
+   "pBoot": 1.0,
+   "inProfit": 44.0,
+   "w5": {
+    "n": 1899,
+    "meanAfterAllowance": -5.43,
+    "total": -10309.1,
+    "inProfit": 45.8
+   },
+   "s1": {
+    "n": 646,
+    "meanAfterAllowance": -7.95,
+    "total": -5138.0,
+    "inProfit": 38.5
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 2,
+   "R": 1,
+   "T": 24,
+   "name": "range 30 min, wait 2 h, target 1R, 24 h",
+   "n": 2545,
+   "meanAfterAllowance": -6.61,
+   "lowerBound": -7.41,
+   "pBoot": 1.0,
+   "inProfit": 47.6,
+   "w5": {
+    "n": 1899,
+    "meanAfterAllowance": -6.04,
+    "total": -11468.9,
+    "inProfit": 49.7
+   },
+   "s1": {
+    "n": 646,
+    "meanAfterAllowance": -8.29,
+    "total": -5354.3,
+    "inProfit": 41.6
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 2,
+   "R": 2,
+   "T": 6,
+   "name": "range 30 min, wait 2 h, target 2R, 6 h",
+   "n": 2545,
+   "meanAfterAllowance": -7.74,
+   "lowerBound": -8.7,
+   "pBoot": 1.0,
+   "inProfit": 31.3,
+   "w5": {
+    "n": 1899,
+    "meanAfterAllowance": -6.89,
+    "total": -13076.0,
+    "inProfit": 33.3
+   },
+   "s1": {
+    "n": 646,
+    "meanAfterAllowance": -10.25,
+    "total": -6624.0,
+    "inProfit": 25.2
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 2,
+   "R": 2,
+   "T": 24,
+   "name": "range 30 min, wait 2 h, target 2R, 24 h",
+   "n": 2545,
+   "meanAfterAllowance": -8.5,
+   "lowerBound": -9.46,
+   "pBoot": 1.0,
+   "inProfit": 32.9,
+   "w5": {
+    "n": 1899,
+    "meanAfterAllowance": -7.66,
+    "total": -14552.3,
+    "inProfit": 35.1
+   },
+   "s1": {
+    "n": 646,
+    "meanAfterAllowance": -10.95,
+    "total": -7075.0,
+    "inProfit": 26.3
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 6,
+   "R": 1,
+   "T": 6,
+   "name": "range 30 min, wait 6 h, target 1R, 6 h",
+   "n": 2615,
+   "meanAfterAllowance": -6.01,
+   "lowerBound": -6.77,
+   "pBoot": 1.0,
+   "inProfit": 43.9,
+   "w5": {
+    "n": 1958,
+    "meanAfterAllowance": -5.36,
+    "total": -10503.2,
+    "inProfit": 45.7
+   },
+   "s1": {
+    "n": 657,
+    "meanAfterAllowance": -7.92,
+    "total": -5202.9,
+    "inProfit": 38.4
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 6,
+   "R": 1,
+   "T": 24,
+   "name": "range 30 min, wait 6 h, target 1R, 24 h",
+   "n": 2615,
+   "meanAfterAllowance": -6.52,
+   "lowerBound": -7.38,
+   "pBoot": 1.0,
+   "inProfit": 47.6,
+   "w5": {
+    "n": 1958,
+    "meanAfterAllowance": -5.95,
+    "total": -11642.2,
+    "inProfit": 49.7
+   },
+   "s1": {
+    "n": 657,
+    "meanAfterAllowance": -8.25,
+    "total": -5417.5,
+    "inProfit": 41.6
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 6,
+   "R": 2,
+   "T": 6,
+   "name": "range 30 min, wait 6 h, target 2R, 6 h",
+   "n": 2615,
+   "meanAfterAllowance": -7.64,
+   "lowerBound": -8.55,
+   "pBoot": 1.0,
+   "inProfit": 31.2,
+   "w5": {
+    "n": 1958,
+    "meanAfterAllowance": -6.79,
+    "total": -13299.8,
+    "inProfit": 33.2
+   },
+   "s1": {
+    "n": 657,
+    "meanAfterAllowance": -10.19,
+    "total": -6691.9,
+    "inProfit": 25.1
+   },
+   "holm": false
+  },
+  {
+   "N": 30,
+   "W": 6,
+   "R": 2,
+   "T": 24,
+   "name": "range 30 min, wait 6 h, target 2R, 24 h",
+   "n": 2615,
+   "meanAfterAllowance": -8.37,
+   "lowerBound": -9.33,
+   "pBoot": 1.0,
+   "inProfit": 33.0,
+   "w5": {
+    "n": 1958,
+    "meanAfterAllowance": -7.53,
+    "total": -14740.2,
+    "inProfit": 35.2
+   },
+   "s1": {
+    "n": 657,
+    "meanAfterAllowance": -10.87,
+    "total": -7141.2,
+    "inProfit": 26.3
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 2,
+   "R": 1,
+   "T": 6,
+   "name": "range 60 min, wait 2 h, target 1R, 6 h",
+   "n": 1520,
+   "meanAfterAllowance": -6.11,
+   "lowerBound": -7.07,
+   "pBoot": 1.0,
+   "inProfit": 39.8,
+   "w5": {
+    "n": 1185,
+    "meanAfterAllowance": -5.8,
+    "total": -6871.5,
+    "inProfit": 40.8
+   },
+   "s1": {
+    "n": 335,
+    "meanAfterAllowance": -7.19,
+    "total": -2408.9,
+    "inProfit": 36.4
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 2,
+   "R": 1,
+   "T": 24,
+   "name": "range 60 min, wait 2 h, target 1R, 24 h",
+   "n": 1520,
+   "meanAfterAllowance": -7.08,
+   "lowerBound": -8.13,
+   "pBoot": 1.0,
+   "inProfit": 47.0,
+   "w5": {
+    "n": 1185,
+    "meanAfterAllowance": -6.91,
+    "total": -8194.0,
+    "inProfit": 47.5
+   },
+   "s1": {
+    "n": 335,
+    "meanAfterAllowance": -7.64,
+    "total": -2560.5,
+    "inProfit": 45.1
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 2,
+   "R": 2,
+   "T": 6,
+   "name": "range 60 min, wait 2 h, target 2R, 6 h",
+   "n": 1520,
+   "meanAfterAllowance": -7.25,
+   "lowerBound": -8.32,
+   "pBoot": 1.0,
+   "inProfit": 31.3,
+   "w5": {
+    "n": 1185,
+    "meanAfterAllowance": -7.07,
+    "total": -8381.5,
+    "inProfit": 31.7
+   },
+   "s1": {
+    "n": 335,
+    "meanAfterAllowance": -7.9,
+    "total": -2646.0,
+    "inProfit": 29.9
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 2,
+   "R": 2,
+   "T": 24,
+   "name": "range 60 min, wait 2 h, target 2R, 24 h",
+   "n": 1520,
+   "meanAfterAllowance": -8.6,
+   "lowerBound": -9.78,
+   "pBoot": 1.0,
+   "inProfit": 34.9,
+   "w5": {
+    "n": 1185,
+    "meanAfterAllowance": -8.46,
+    "total": -10026.7,
+    "inProfit": 35.1
+   },
+   "s1": {
+    "n": 335,
+    "meanAfterAllowance": -9.09,
+    "total": -3043.6,
+    "inProfit": 34.3
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 6,
+   "R": 1,
+   "T": 6,
+   "name": "range 60 min, wait 6 h, target 1R, 6 h",
+   "n": 1599,
+   "meanAfterAllowance": -6.02,
+   "lowerBound": -6.9,
+   "pBoot": 1.0,
+   "inProfit": 39.5,
+   "w5": {
+    "n": 1252,
+    "meanAfterAllowance": -5.69,
+    "total": -7120.8,
+    "inProfit": 40.6
+   },
+   "s1": {
+    "n": 347,
+    "meanAfterAllowance": -7.22,
+    "total": -2506.6,
+    "inProfit": 35.7
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 6,
+   "R": 1,
+   "T": 24,
+   "name": "range 60 min, wait 6 h, target 1R, 24 h",
+   "n": 1599,
+   "meanAfterAllowance": -6.91,
+   "lowerBound": -7.97,
+   "pBoot": 1.0,
+   "inProfit": 46.8,
+   "w5": {
+    "n": 1252,
+    "meanAfterAllowance": -6.71,
+    "total": -8394.9,
+    "inProfit": 47.5
+   },
+   "s1": {
+    "n": 347,
+    "meanAfterAllowance": -7.67,
+    "total": -2661.2,
+    "inProfit": 44.1
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 6,
+   "R": 2,
+   "T": 6,
+   "name": "range 60 min, wait 6 h, target 2R, 6 h",
+   "n": 1599,
+   "meanAfterAllowance": -7.1,
+   "lowerBound": -8.15,
+   "pBoot": 1.0,
+   "inProfit": 31.1,
+   "w5": {
+    "n": 1252,
+    "meanAfterAllowance": -6.89,
+    "total": -8623.7,
+    "inProfit": 31.5
+   },
+   "s1": {
+    "n": 347,
+    "meanAfterAllowance": -7.87,
+    "total": -2729.7,
+    "inProfit": 29.4
+   },
+   "holm": false
+  },
+  {
+   "N": 60,
+   "W": 6,
+   "R": 2,
+   "T": 24,
+   "name": "range 60 min, wait 6 h, target 2R, 24 h",
+   "n": 1599,
+   "meanAfterAllowance": -8.39,
+   "lowerBound": -9.56,
+   "pBoot": 1.0,
+   "inProfit": 34.8,
+   "w5": {
+    "n": 1252,
+    "meanAfterAllowance": -8.21,
+    "total": -10277.4,
+    "inProfit": 35.1
+   },
+   "s1": {
+    "n": 347,
+    "meanAfterAllowance": -9.02,
+    "total": -3130.3,
+    "inProfit": 33.7
+   },
+   "holm": false
+  }
+ ]
+}
