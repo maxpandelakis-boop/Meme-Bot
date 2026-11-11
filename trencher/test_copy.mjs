@@ -1,6 +1,6 @@
 // node trencher/test_copy.mjs : checks the copy-trading engine.
 import assert from "node:assert/strict";
-import * as C from "./copy-engine.js?v=0.9.4";
+import * as C from "./copy-engine.js?v=0.9.5";
 
 const W = "Trader1111111111111111111111111111111111111", M = "Coin1111111111111111111111111111111111pump";
 const tb = (owner, mint, amt) => ({ owner, mint, uiTokenAmount: { uiAmount: amt } });
@@ -88,7 +88,7 @@ console.log("ok: copy engine");
 
 // fresh-coin Scout filter
 {
-  const S = await import("./scout.js?v=0.9.4");
+  const S = await import("./scout.js?v=0.9.5");
   const now = Date.now();
   const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } } }, attributes: { address: "P" + id, name: id + " / SOL",
     pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
@@ -111,23 +111,31 @@ console.log("ok: copy engine");
   console.log("ok: one version");
 }
 
-// the Scout's words match its pick: a coin just sold is on a 30 minute pause, not "size check"
+// the Scout's words match its pick; a coin just sold is bought again only when the Prüfer says yes
 {
-  const S = await import("./scout.js?v=0.9.4");
-  const now = 1e12, P = { minScore: 60 };
-  const acc = { pos: {}, closed: [{ mint: "A", out: now - 10 * 60e3 }] };
-  const a = { mint: "A", symbol: "A", score: 61, chg1h: 5, buys1h: 9, sells1h: 3, pool: "p" }, b = { mint: "B", symbol: "B", score: 67, chg1h: 5, buys1h: 3, sells1h: 9, pool: "p" };
-  if (S.scoutPick([b, a], acc, P, 30 * 60e3, now)) throw new Error("pick during pause");
-  if (S.scoutVerdict(a, acc, P, 30 * 60e3, now) !== "Pause nach Verkauf, noch 20 min") throw new Error(S.scoutVerdict(a, acc, P, 30 * 60e3, now));
-  if (!S.scoutVerdict(b, acc, P, 30 * 60e3, now).includes("mehr Verkäufe")) throw new Error("b");
-  if (S.scoutVerdict(a, acc, P, 30 * 60e3, now + 21 * 60e3) !== "size check") throw new Error("after pause");
-  if (!S.scoutNone([b, a], acc, P, 30 * 60e3, now).startsWith("$B (67)")) throw new Error("none");
-  console.log("ok: scout words");
+  const S = await import("./scout.js?v=0.9.5");
+  const now = 1e12, P = { minScore: 60 }, W = 30 * 60e3;
+  const acc = { pos: {}, closed: [{ mint: "A", out: now - 10 * 60e3, px: 1.0 }] };
+  const a = { mint: "A", symbol: "A", score: 61, chg1h: 5, buys1h: 9, sells1h: 3, pool: "p", price: 1.02, chg5m: 2, buys5m: 5, sells5m: 2 };
+  const b = { mint: "B", symbol: "B", score: 67, chg1h: 5, buys1h: 3, sells1h: 9, pool: "p" };
+  if (S.scoutPick([b, a], acc, P, W, now)) throw new Error("re-buy only +2 %");
+  if (!S.scoutVerdict(a, acc, P, W, now).startsWith("Prüfer: nein, Preis +2.0%")) throw new Error(S.scoutVerdict(a, acc, P, W, now));
+  if (!S.scoutVerdict(b, acc, P, W, now).includes("mehr Verkäufe")) throw new Error("b");
+  const a2 = { ...a, price: 1.08 };
+  if (S.scoutPick([b, a2], acc, P, W, now) !== a2 || !S.scoutVerdict(a2, acc, P, W, now).startsWith("Prüfer: ja, +8.0%")) throw new Error("re-buy +8 %");
+  if (!S.scoutVerdict({ ...a2, chg5m: -1 }, acc, P, W, now).includes("5 min fallen")) throw new Error("5 min falling");
+  if (!S.scoutVerdict({ ...a2, buys5m: 1 }, acc, P, W, now).includes("5 min mehr Verkäufe")) throw new Error("5 min sells");
+  const twice = { pos: {}, closed: [{ mint: "A", out: now - 60e3, px: 1 }, { mint: "A", out: now - 9 * 60e3, px: 1 }] };
+  if (!S.scoutVerdict(a2, twice, P, W, now).includes("schon 2× verkauft")) throw new Error("ping-pong");
+  if (!S.scoutVerdict(a2, { pos: {}, closed: [{ mint: "A", out: now - 60e3 }] }, P, W, now).includes("Verkaufspreis unbekannt")) throw new Error("old entry");
+  if (S.scoutVerdict(a, acc, P, W, now + 21 * 60e3) !== "size check") throw new Error("after the window");
+  if (!S.scoutNone([b, a], acc, P, W, now).startsWith("$B (67)")) throw new Error("none");
+  console.log("ok: scout words, Prüfer");
 }
 
 // fresh desk: no buy when the two price sources disagree or the coin left the filter
 {
-  const S = await import("./scout.js?v=0.9.4");
+  const S = await import("./scout.js?v=0.9.5");
   const pick = { price: 1e-5 };
   const ok = { price: 1.1e-5, mc: 30000, liq: 9000 };
   if (S.freshFillCheck(pick, ok) !== "") throw new Error("ok fill");

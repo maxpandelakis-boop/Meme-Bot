@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.4";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.4";
+import { bestPair } from "./sim.js?v=0.9.5";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.5";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -12,7 +12,8 @@ export function pairInfo(p) {
   const info = p.info || {}, h1 = (p.txns && p.txns.h1) || {};
   return { symbol: p.baseToken.symbol, pool: p.pairAddress, price: Number(p.priceUsd) || 0, liq: (p.liquidity && p.liquidity.usd) || 0,
            mc: p.marketCap || p.fdv || 0, vol1h: (p.volume && p.volume.h1) || 0, buys1h: h1.buys || 0, sells1h: h1.sells || 0,
-           chg1h: (p.priceChange && p.priceChange.h1) || 0, img: info.imageUrl || "", url: p.url, created: p.pairCreatedAt || 0,
+           chg1h: (p.priceChange && p.priceChange.h1) || 0,
+           chg5m: (p.priceChange && p.priceChange.m5) || 0, buys5m: ((p.txns && p.txns.m5) || {}).buys || 0, sells5m: ((p.txns && p.txns.m5) || {}).sells || 0, img: info.imageUrl || "", url: p.url, created: p.pairCreatedAt || 0,
            socials: (info.socials || []).length + (info.websites || []).length, links: (info.socials || []).map(x => x.type) };
 }
 
@@ -75,11 +76,40 @@ export async function hotCoins({ getJson, gt, reddit, msg = () => {} }) {
   return { list: scoreHot([...coins.values()]), prices, redditOk };
 }
 
-// The Scout's pick among the scored coins: score, a pool, not held, not just left, rising, more buyers than sellers.
-export function scoutPick(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
-  const recent = new Set(acc.closed.filter(c => now - c.out < cooldownMs).map(c => c.mint));
-  return list.find(c => c.score >= P.minScore && c.pool && !acc.pos[c.mint] && !recent.has(c.mint)
-                        && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0)) || null;
+// ---------- the Scout's verdict on one coin, and the "Prüfer" (re-buy checker) ----------
+// A coin the desk sold less than `windowMs` ago is not locked any more (Maxim, 2026-11-11): it may be bought again at once,
+// but only when the Prüfer says it is worth it. Its rules, written down before any result and not tuned:
+//   1. the coin passes the Scout's normal check again on fresh data (points, rising 1 h, more buys than sells, a pool);
+//   2. the last 5 minutes are up as well: price rising and more buys than sells;
+//   3. the price is at least REBUY_ABOVE over the price the desk sold at: a round trip costs about 4 % in fees plus slippage,
+//      so a re-buy below that is paying twice for the same move;
+//   4. at most REBUY_MAX sales of this coin inside the window (no ping-pong in a coin that keeps stopping the desk out).
+export const REBUY_ABOVE = 0.05, REBUY_MAX = 2;
+function judge(c, acc, P, windowMs, now) {
+  if (acc.pos[c.mint]) return { ok: false, text: "schon drin" };
+  if (c.score < P.minScore) return { ok: false, text: `wait (unter ${P.minScore} Punkten)` };
+  if (!((c.chg1h || 0) > 0)) return { ok: false, text: "wait (Kurs fällt)" };
+  if (!((c.buys1h || 0) > (c.sells1h || 0))) return { ok: false, text: "wait (mehr Verkäufe als Käufe)" };
+  if (!c.pool) return { ok: false, text: "wait (kein Pool)" };
+  const left = acc.closed.filter(x => x.mint === c.mint && now - x.out < windowMs);
+  if (!left.length) return { ok: true, text: "size check" };
+  const no = why => ({ ok: false, text: `Prüfer: nein, ${why}` });
+  const last = left[0];
+  if (left.length >= REBUY_MAX) return no(`schon ${left.length}× verkauft in ${Math.round(windowMs / 60e3)} min`);
+  if (!(last.px > 0) || !(c.price > 0)) return no("Verkaufspreis unbekannt, Pause 30 min");
+  if (!((c.chg5m || 0) > 0)) return no("letzte 5 min fallen");
+  if (!((c.buys5m || 0) > (c.sells5m || 0))) return no("letzte 5 min mehr Verkäufe als Käufe");
+  const up = c.price / last.px - 1;
+  if (up < REBUY_ABOVE) return no(`Preis ${up >= 0 ? "+" : ""}${(up * 100).toFixed(1)}% seit Verkauf, braucht +${REBUY_ABOVE * 100}% (Gebühren)`);
+  return { ok: true, text: `Prüfer: ja, +${(up * 100).toFixed(1)}% seit Verkauf und 5 min steigend → size check` };
+}
+// The Scout's pick among the scored coins: the first one the verdict lets through.
+export function scoutPick(list, acc, P, windowMs = 30 * 60e3, now = Date.now()) {
+  return list.find(c => judge(c, acc, P, windowMs, now).ok) || null;
+}
+// The same verdict in the log's words, so the log never says "size check" for a coin the Scout will not buy.
+export function scoutVerdict(c, acc, P, windowMs = 30 * 60e3, now = Date.now()) {
+  return judge(c, acc, P, windowMs, now).text;
 }
 
 // Rug check before a buy (free, no key): RugCheck's report summary. Any risk of level "danger" (mint or freeze authority
@@ -131,18 +161,6 @@ export async function freshCoins(gt, now = Date.now()) {
   return list.sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || b.buyers5 - a.buyers5);
 }
 
-// What the Scout says about one coin, in the log's words: the same checks as scoutPick, so the log never says "size check"
-// for a coin the Scout will not buy (e.g. one the desk left less than 30 minutes ago).
-export function scoutVerdict(c, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
-  if (acc.pos[c.mint]) return "schon drin";
-  const left = acc.closed.find(x => x.mint === c.mint && now - x.out < cooldownMs);
-  if (left) return `Pause nach Verkauf, noch ${Math.max(1, Math.ceil((cooldownMs - (now - left.out)) / 60e3))} min`;
-  if (c.score < P.minScore) return `wait (unter ${P.minScore} Punkten)`;
-  if (!((c.chg1h || 0) > 0)) return "wait (Kurs fällt)";
-  if (!((c.buys1h || 0) > (c.sells1h || 0))) return "wait (mehr Verkäufe als Käufe)";
-  if (!c.pool) return "wait (kein Pool)";
-  return "size check";
-}
 // The Scout card's line when nothing is bought: the reason of the best coin, not a blanket "nothing above N points".
 export function scoutNone(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
   const best = list.find(c => c.score >= P.minScore && !acc.pos[c.mint]);

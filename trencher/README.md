@@ -18,6 +18,7 @@ Oben wählt man, welchen Desk man sieht:
 - **Scout** prüft jede Minute rund 70 Coins: GeckoTerminal-Trends (Seite 1–3) und neue Pools, DexScreener-Boosts und neue
   Profile, Käufe/Verkäufe pro Stunde, Reddit (optional). Punkte 0–100. Ab 60 Punkten, steigendem Kurs und mehr Käufern als
   Verkäufern kauft er den besten Coin, wenn **RugCheck** keine Gefahr meldet.
+- **Prüfer:** einen Coin, den der Desk in den letzten 30 min verkauft hat, kauft er nur wieder, wenn der Coin die Scout-Prüfung neu besteht, die letzten 5 min steigen (mehr Käufe als Verkäufe), der Preis mindestens 5 % über dem Verkaufspreis liegt (Gebühren) und er ihn in der Zeit nicht schon 2× verkauft hat. Der Grund steht im Log.
 - **Compounder:** Start 20 $, jeder Kauf 40 % vom freien Geld, höchstens 2 offen, kein Nachkaufen.
 - **Risk:** −8 % = alles raus, solange 2× nie kam. Bei 2× wird der Einsatz zurückverkauft, der Rest verkauft 10 % unter seinem Hoch.
 - **Executor:** Spielgeld-Fills mit FOMO-Gebühren und Slippage.
@@ -29,7 +30,7 @@ Oben wählt man, welchen Desk man sieht:
 ## Frisch-Desk
 Eigene 20 $, gleiche Verkaufsregeln. Kauft nur Coins mit Pool höchstens 60 min alt, Marktwert 8k bis 250k $, in den letzten
 5 min mindestens 15 Käufer, 1,5× mehr Käufe als Verkäufe und steigendem Preis; dann RugCheck (die besten drei der Reihe nach).
-Gekauft wird erst **3 Sekunden** nach der Entscheidung zum Preis von dann, wie bei einem echten Bot.
+Gekauft wird erst **3 Sekunden** nach der Entscheidung zum Preis von dann, wie bei einem echten Bot. Weichen die Preise von GeckoTerminal und DexScreener dabei um mehr als 25 % ab, oder liegt der Coin bei DexScreener außerhalb des Filters, wird nicht gekauft.
 
 ## Wie gerechnet wird (damit der Gewinn nicht geschönt ist)
 - FOMO-Gebühr bei Kauf und Verkauf: unter 5 $ pauschal 0,10 $, 5 bis 47,50 $ 2 %, 47,50 bis 190 $ pauschal 0,95 $,

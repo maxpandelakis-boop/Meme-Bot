@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.4";
-import { bestPair } from "./sim.js?v=0.9.4";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX } from "./scout.js?v=0.9.4";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.5";
+import { bestPair } from "./sim.js?v=0.9.5";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX } from "./scout.js?v=0.9.5";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -18,7 +18,7 @@ const COPY_MS = 1000;       // due copies executed
 const RISK_MS = 5000;       // open positions priced, take-profit / stop-loss checked
 const CURVE_MS = 10000;     // a point of the balance curve
 const SCOUT_MS = 60000;     // the Scout looks for hot coins once a minute (GeckoTerminal allows ~30 calls a minute)
-const COOLDOWN_MS = 30 * 60e3;   // a coin the desk just left is not bought again for 30 minutes
+const COOLDOWN_MS = 30 * 60e3;   // a coin the desk left less than this ago is bought again only when the Prüfer (scout.js) says yes
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 // ---------- storage (chrome.storage in the extension, localStorage on a plain web page) ----------

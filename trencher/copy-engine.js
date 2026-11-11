@@ -1,6 +1,6 @@
 // Copy-trading engine of the Trencher (paper money only): turns a followed wallet's on-chain transactions into its buys and sells,
 // and keeps the copy account (cash, positions, activity, equity curve). Pure functions, no browser APIs: node tests them (test_copy.mjs).
-import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.4";
+import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.5";
 
 export const COPY_DEFAULTS = {
   // the "Trading Desk" of the second video (2026-11-09): $20, 40 % of free cash per buy, max 2 open, no adding to losers,
@@ -98,7 +98,7 @@ export function copySell(acc, { mint, price, liq, mc, frac = 1, why, trader, lag
   log(acc, { t: now, kind: ["tp", "sl", "half", "stop", "trail"].includes(why) ? why : "sell", mint, symbol: p.symbol, trader: trader || p.trader,
              usd: r.fill.usd, pnl: r.fill.pnl, multiple, mc, lagSec, frac });
   if (!(p.book.tokens > 0)) {
-    acc.closed.unshift({ mint, symbol: p.symbol, trader: p.trader, pnl: p.book.realized, at: p.at, out: now, multiple, why });
+    acc.closed.unshift({ mint, symbol: p.symbol, trader: p.trader, pnl: p.book.realized, at: p.at, out: now, multiple, why, px: price });
     if (acc.closed.length > 300) acc.closed.length = 300;
     delete acc.pos[mint];
   }
