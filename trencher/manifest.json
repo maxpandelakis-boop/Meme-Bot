@@ -16,7 +16,9 @@
     "https://api.geckoterminal.com/*",
     "https://solana-rpc.publicnode.com/*",
     "https://www.reddit.com/*",
-    "https://oauth.reddit.com/*"
+    "https://oauth.reddit.com/*",
+    "https://lite-api.jup.ag/*",
+    "https://api.jup.ag/*"
   ],
   "background": {
     "service_worker": "background.js"

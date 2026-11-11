@@ -85,3 +85,17 @@ Wie im zweiten Video (2026-11-09), nur ohne echtes Geld:
 - **Log (Activity → Log):** jede Entscheidung der Agenten als Zeile, wie das Terminal im Video.
 - **Teilen:** oben rechts, teilt den Stand als Text.
 - Prüfung der Desk-Regeln auf alten Daten: `research/DESK-2026-11-11.md` (Verlust, −2,34 pro 20).
+
+## Echtgeld-Schalter (standardmäßig AUS)
+In der Erweiterung oben im Trading Desk auf **Echtgeld ↗**. Nur in der Chrome-Erweiterung, nicht auf der Web-Seite.
+- **Eigene Bot-Wallet**: wird in der Erweiterung neu erzeugt, mit deinem Passwort verschlüsselt (AES-GCM, PBKDF2 600.000 Runden)
+  und nur in Chrome auf diesem Computer gespeichert. Entsperrt lebt der Schlüssel nur im Speicher der offenen Seite. Nie deine
+  Haupt-Wallet oder Phantom-Wörter benutzen. Die Sicherung (Phantom-Format) gehört auf Papier.
+- **Schalter**: AUS / Probelauf (echte Jupiter-Anfrage + Solana-Simulation, nichts wird gesendet) / ECHTGELD (Wort `ECHTGELD`
+  eintippen). Nach jedem Neuladen wieder AUS und gesperrt.
+- **Was er macht**: jeder neue Kauf/Verkauf des Desks (Seitenleiste muss laufen) wird mit der Bot-Wallet über Jupiter (kostenlos, keine
+  FOMO-Gebühr) nachgemacht. Signale älter als 2 Minuten werden nicht nachgeholt.
+- **Harte Grenzen**: max. 8 $ pro Kauf, keine Käufe unter 12 $ Wallet-Wert, max. 20 Trades/Tag, 5 % Slippage, Priority-Fee max. 0,0002 SOL.
+- Nur der lokale Desk im Browser wird nachgemacht, nie der Server-24/7-Desk (dort schaut niemand zu).
+- **NOT-AUS**: schaltet aus und verkauft alle Coins der Bot-Wallet zu SOL.
+- Test: `node trencher/test_live.mjs` (Schlüssel, Verschlüsselung, Signatur, Grenzen; ohne Netz).
