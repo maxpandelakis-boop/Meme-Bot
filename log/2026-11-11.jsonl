@@ -535,3 +535,6 @@
 {"t":1794408420471,"addr":"HE1RNhE9KKBFVtLhpz8x5YvpFEKRJQzJFXrNh1Ke7XJa","sym":"Gang Dog","age":30.7,"why":"liquidity","liq":0}
 {"t":1794408541177,"addr":"J7udkHVALc6MMjgQcFAHq2E81ohq1ZGb1APcDpv7pump","sym":"Boris","age":30.5,"score":0.02795,"px":7.846e-05,"liq":20541,"p0":7.496909733452323e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.4175,"c_peak":1.7287,"c_vol":5.3615,"c_act":1.0,"c_r5":-0.2222,"c_r15":-0.312,"c_mc":4.8749}}
 {"t":1794408541177,"addr":"BZVJ1anuskapCvDZPz2X13ThGJ5LqGh5U9tLFLWSvfRZ","sym":"ELPEPE","age":30.2,"why":"liquidity","liq":0}
+{"t":1794408720681,"addr":"ESKfHXiRAX3vECLyUZ7ikgjvD8fHgr2ctyg9GHKrVCXT","sym":"Cowboy Cat","age":30.1,"why":"liquidity","liq":0}
+{"t":1794408840680,"addr":"D8a4b7YpfgC9My1N8bbxRFjL1HnTDeJ8vwNwAYTRpump","sym":"GOLCRAB","age":30.2,"why":"liquidity","liq":0}
+{"t":1794408840680,"addr":"NrGSN4PBgJjf1tSco5RYhAT6xYof5ycH38qsc9zDuoK","sym":"bro","age":30.0,"why":"liquidity","liq":0}
