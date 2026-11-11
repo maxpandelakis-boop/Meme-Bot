@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.6";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.6";
+import { bestPair } from "./sim.js?v=0.9.7";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.7";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -152,13 +152,43 @@ export function freshOk(c, F = FRESH) {
   if (!(c.chg5 > 0)) return "Preis fällt";
   return "";
 }
-export async function freshCoins(gt, now = Date.now()) {
+export async function freshCoins(gt, now = Date.now(), pages = [1, 2, 3]) {
   const out = new Map();
-  for (const page of [1, 2, 3]) {
+  for (const page of pages) {
     try { for (const d of (await gt(`/new_pools?page=${page}`)).data || []) { const c = freshInfo(d, now); if (c.mint && !out.has(c.mint)) out.set(c.mint, c); } } catch {}
   }
   const list = [...out.values()].map(c => ({ ...c, why: freshOk(c) }));
   return list.sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || b.buyers5 - a.buyers5);
+}
+
+// Fresh-coin veto (free, no key): RugCheck's FULL report gives the danger risks plus two checks that held on hidden days in
+// research/filters/FILTERS-2026-11-11.md (51 days of pump.fun trades, 51,324 replayed Scout buys, FOMO fees):
+//   - the creator started another coin in the last 24 h: skip (kept coins lost 0.15 less per 20 $, better on 22 of 24 days);
+//   - one wallet other than the curve holds 20 % or more: skip (one sale falls far through the -8 % stop; +0.11, 22 of 24 days).
+// Together -0.52 instead of -0.80 per 20 $ on the hidden days: a smaller loss, not a profit.
+// freshVerdict is pure (tested); freshCheck fetches. When RugCheck cannot be reached the buy goes on and the log says so.
+export const FRESH_VETO = { creatorMax24h: 0, whalePct: 20 };
+export function freshVerdict(j, mint, now = Date.now(), V = FRESH_VETO) {
+  const danger = (j.risks || []).filter(x => String(x.level).toLowerCase() === "danger").map(x => x.name);
+  if (danger.length) return { known: true, bad: true, why: danger.slice(0, 3).join(", ") };
+  const others = (j.creatorTokens || []).filter(t => t.mint !== mint && now - Date.parse(t.createdAt) < 24 * 3600e3 && now >= Date.parse(t.createdAt)).length;
+  if (others > V.creatorMax24h) return { known: true, bad: true, why: `Ersteller hat in 24 h schon ${others}${others >= 50 ? "+" : ""} andere Coins gestartet` };
+  const known = j.knownAccounts || {};
+  const pool = o => ["AMM", "LOCKER"].includes(String((known[o] || {}).type).toUpperCase());
+  const whale = (j.topHolders || []).filter(h => !pool(h.owner)).reduce((m, h) => Math.max(m, Number(h.pct) || 0), 0);
+  if (whale >= V.whalePct) return { known: true, bad: true, why: `ein Wallet hält ${whale.toFixed(0)} % (Wal)` };
+  return { known: true, bad: false, why: `ok (Score ${j.score_normalised ?? j.score ?? "?"}, größter Halter ${whale.toFixed(1)} %, Ersteller ohne anderen Coin in 24 h)` };
+}
+const freshSeen = new Map();
+export async function freshCheck(getJson, mint, now = Date.now()) {
+  const hit = freshSeen.get(mint);
+  if (hit && now - hit.t < 60e3) return hit.r;              // holders change fast on a coin minutes old: one minute only
+  let r;
+  try { r = freshVerdict(await getJson(`https://api.rugcheck.xyz/v1/tokens/${mint}/report`), mint, now); }
+  catch (e) { r = { known: false, bad: false, why: "RugCheck nicht erreichbar" }; }
+  if (freshSeen.size > 500) freshSeen.clear();
+  freshSeen.set(mint, { t: now, r });
+  return r;
 }
 
 // The Scout card's line when nothing is bought: the reason of the best coin, not a blanket "nothing above N points".
@@ -191,9 +221,45 @@ export async function poolPrices(gt, pools, now = Date.now()) {
   const j = await gt(`/pools/multi/${pools.slice(0, 30).join(",")}`);
   for (const d of j.data || []) {
     const c = freshInfo(d, now);
-    if (c.pool && c.price > 0) out[c.pool] = { price: c.price, liq: c.liq, mc: c.mc, symbol: c.symbol, pool: c.pool };
+    if (c.pool && c.price > 0) out[c.pool] = c;        // price, liq, mc, symbol, pool + the last 5 minutes (buys5, sells5, buyers5, chg5)
   }
   return out;
 }
 // A fresh position whose pool has (almost) no money left cannot be sold: it is closed at what that pool would pay, a near-total loss.
 export const DEAD_LIQ = 500;
+
+// ---------- the strict fresh picker ("Dieser Browser", Maxim 2026-11-11: fresh coins yes, but only good ones) ----------
+// Most new coins die in their first minutes, so the strict picker does not buy at first sight. A coin that passes the normal
+// fresh filter goes on a watch list with the price it had then. It is bought only when, STRICT.waitMin to STRICT.maxMin
+// minutes later, it is still alive and stronger. Written down before any result, not tuned; no fresh-coin rule has tested
+// profitable so far (research/), this is the strictest sensible bar until the filter study is in:
+//   1. watched for at least 10 and at most 40 minutes;
+//   2. price not below the first-sight price (it did not dump in between);
+//   3. market cap 15k to 250k $, at least 8k $ in the pool;
+//   4. last 5 minutes: at least 25 buyers, buys at least 1.5 times the sells, price up, but not more than +60 % (no vertical spike);
+//   5. freshCheck passes: no RugCheck danger, the creator started no other coin in 24 h, no wallet holds 20 %+ (the two filters
+//      that held on hidden days in research/filters/FILTERS-2026-11-11.md); RugCheck unreachable = no buy;
+//   6. the fill 3 s later passes freshFillCheck on the same pool.
+export const STRICT = { waitMin: 10, maxMin: 40, mcMin: 15000, mcMax: 250000, liqMin: 8000, buyersMin: 25, buySellMin: 1.5, chgMax: 60 };
+// w: the watch-list entry {seen, price0}; c: the pool's numbers now (poolPrices). "" = buy candidate, else the reason.
+export function strictVerdict(w, c, now = Date.now(), S = STRICT) {
+  const min = (now - w.seen) / 60e3;
+  if (min < S.waitMin) return `beobachtet, noch ${Math.ceil(S.waitMin - min)} min`;
+  if (!c || !(c.price > 0)) return "kein Preis vom Pool";
+  if (c.price < w.price0) return `unter dem Preis vom ersten Blick (${((c.price / w.price0 - 1) * 100).toFixed(0)}%)`;
+  if (c.mc < S.mcMin || c.mc > S.mcMax) return `MC ${Math.round(c.mc / 1000)}k außerhalb ${S.mcMin / 1000}k–${S.mcMax / 1000}k`;
+  if (c.liq < S.liqMin) return `nur ${Math.round(c.liq)} $ im Pool`;
+  if (c.buyers5 < S.buyersMin) return `nur ${c.buyers5} Käufer in 5 min`;
+  if (c.buys5 < S.buySellMin * c.sells5) return `Käufe ${c.buys5} / Verkäufe ${c.sells5} zu schwach`;
+  if (!(c.chg5 > 0)) return "letzte 5 min fallen";
+  if (c.chg5 > S.chgMax) return `+${c.chg5.toFixed(0)}% in 5 min: zu steil`;
+  return "";
+}
+// Keep the watch list: add coins that pass the normal fresh filter now, drop those watched longer than maxMin, at most 30
+// (one GeckoTerminal call prices 30 pools), the ones with the most buyers at first sight stay.
+export function watchUpdate(watch, list, now = Date.now(), S = STRICT) {
+  for (const c of list) if (!c.why && c.pool && !watch.has(c.mint)) watch.set(c.mint, { mint: c.mint, pool: c.pool, symbol: c.symbol, seen: now, price0: c.price, buyers0: c.buyers5 });
+  for (const [m, w] of watch) if ((now - w.seen) / 60e3 > S.maxMin) watch.delete(m);
+  if (watch.size > 30) for (const w of [...watch.values()].sort((a, b) => b.buyers0 - a.buyers0).slice(30)) watch.delete(w.mint);
+  return watch;
+}
