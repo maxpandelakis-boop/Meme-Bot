@@ -1,0 +1,499 @@
+{
+ "configs": [
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.0,
+   "cad": 1,
+   "mean": -1.133,
+   "diffV3": 0.821,
+   "diffK": 1.679,
+   "modelSells": 552
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.0,
+   "cad": 3,
+   "mean": -1.431,
+   "diffV3": 0.523,
+   "diffK": 1.381,
+   "modelSells": 543
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.03,
+   "cad": 1,
+   "mean": -1.163,
+   "diffV3": 0.791,
+   "diffK": 1.649,
+   "modelSells": 533
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.03,
+   "cad": 3,
+   "mean": -1.529,
+   "diffV3": 0.424,
+   "diffK": 1.283,
+   "modelSells": 522
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.06,
+   "cad": 1,
+   "mean": -1.01,
+   "diffV3": 0.944,
+   "diffK": 1.802,
+   "modelSells": 480
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.06,
+   "cad": 3,
+   "mean": -1.474,
+   "diffV3": 0.479,
+   "diffK": 1.338,
+   "modelSells": 468
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.1,
+   "cad": 1,
+   "mean": -1.662,
+   "diffV3": 0.292,
+   "diffK": 1.15,
+   "modelSells": 362
+  },
+  {
+   "universe": "W",
+   "family": "A1",
+   "m": 0.1,
+   "cad": 3,
+   "mean": -1.973,
+   "diffV3": -0.019,
+   "diffK": 0.839,
+   "modelSells": 352
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.0,
+   "cad": 1,
+   "mean": -1.164,
+   "diffV3": 0.79,
+   "diffK": 1.648,
+   "modelSells": 404
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.0,
+   "cad": 3,
+   "mean": -0.489,
+   "diffV3": 1.465,
+   "diffK": 2.323,
+   "modelSells": 415
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.03,
+   "cad": 1,
+   "mean": -5.465,
+   "diffV3": -3.511,
+   "diffK": -2.653,
+   "modelSells": 93
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.03,
+   "cad": 3,
+   "mean": -3.649,
+   "diffV3": -1.695,
+   "diffK": -0.837,
+   "modelSells": 178
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.06,
+   "cad": 1,
+   "mean": -5.632,
+   "diffV3": -3.678,
+   "diffK": -2.82,
+   "modelSells": 0
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.06,
+   "cad": 3,
+   "mean": -5.24,
+   "diffV3": -3.287,
+   "diffK": -2.428,
+   "modelSells": 47
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.1,
+   "cad": 1,
+   "mean": -4.755,
+   "diffV3": -2.801,
+   "diffK": -1.943,
+   "modelSells": 55
+  },
+  {
+   "universe": "W",
+   "family": "A2",
+   "m": 0.1,
+   "cad": 3,
+   "mean": -5.313,
+   "diffV3": -3.359,
+   "diffK": -2.501,
+   "modelSells": 27
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.0,
+   "cad": 1,
+   "mean": -1.291,
+   "diffV3": 0.663,
+   "diffK": 1.521,
+   "modelSells": 545
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.0,
+   "cad": 3,
+   "mean": -1.525,
+   "diffV3": 0.429,
+   "diffK": 1.287,
+   "modelSells": 504
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.03,
+   "cad": 1,
+   "mean": -1.833,
+   "diffV3": 0.12,
+   "diffK": 0.979,
+   "modelSells": 212
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.03,
+   "cad": 3,
+   "mean": -1.677,
+   "diffV3": 0.276,
+   "diffK": 1.135,
+   "modelSells": 177
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.06,
+   "cad": 1,
+   "mean": -1.954,
+   "diffV3": -0.0,
+   "diffK": 0.858,
+   "modelSells": 0
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.06,
+   "cad": 3,
+   "mean": -1.954,
+   "diffV3": -0.0,
+   "diffK": 0.858,
+   "modelSells": 0
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.1,
+   "cad": 1,
+   "mean": -1.954,
+   "diffV3": -0.0,
+   "diffK": 0.858,
+   "modelSells": 0
+  },
+  {
+   "universe": "W",
+   "family": "B",
+   "m": 0.1,
+   "cad": 3,
+   "mean": -1.954,
+   "diffV3": -0.0,
+   "diffK": 0.858,
+   "modelSells": 0
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.0,
+   "cad": 1,
+   "mean": -1.247,
+   "diffV3": 0.707,
+   "diffK": 1.565,
+   "modelSells": 523
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.0,
+   "cad": 3,
+   "mean": -1.112,
+   "diffV3": 0.842,
+   "diffK": 1.7,
+   "modelSells": 510
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.03,
+   "cad": 1,
+   "mean": -1.265,
+   "diffV3": 0.688,
+   "diffK": 1.547,
+   "modelSells": 483
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.03,
+   "cad": 3,
+   "mean": -1.457,
+   "diffV3": 0.497,
+   "diffK": 1.355,
+   "modelSells": 470
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.06,
+   "cad": 1,
+   "mean": -1.505,
+   "diffV3": 0.449,
+   "diffK": 1.307,
+   "modelSells": 421
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.06,
+   "cad": 3,
+   "mean": -1.483,
+   "diffV3": 0.471,
+   "diffK": 1.329,
+   "modelSells": 411
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.1,
+   "cad": 1,
+   "mean": -1.038,
+   "diffV3": 0.916,
+   "diffK": 1.774,
+   "modelSells": 333
+  },
+  {
+   "universe": "ALL",
+   "family": "A1",
+   "m": 0.1,
+   "cad": 3,
+   "mean": -1.275,
+   "diffV3": 0.678,
+   "diffK": 1.537,
+   "modelSells": 316
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.0,
+   "cad": 1,
+   "mean": -1.438,
+   "diffV3": 0.516,
+   "diffK": 1.374,
+   "modelSells": 543
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.0,
+   "cad": 3,
+   "mean": -0.9,
+   "diffV3": 1.054,
+   "diffK": 1.912,
+   "modelSells": 531
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.03,
+   "cad": 1,
+   "mean": -5.632,
+   "diffV3": -3.678,
+   "diffK": -2.82,
+   "modelSells": 0
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.03,
+   "cad": 3,
+   "mean": -5.632,
+   "diffV3": -3.678,
+   "diffK": -2.82,
+   "modelSells": 0
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.06,
+   "cad": 1,
+   "mean": -5.632,
+   "diffV3": -3.678,
+   "diffK": -2.82,
+   "modelSells": 0
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.06,
+   "cad": 3,
+   "mean": -5.523,
+   "diffV3": -3.569,
+   "diffK": -2.711,
+   "modelSells": 9
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.1,
+   "cad": 1,
+   "mean": -5.632,
+   "diffV3": -3.678,
+   "diffK": -2.82,
+   "modelSells": 0
+  },
+  {
+   "universe": "ALL",
+   "family": "A2",
+   "m": 0.1,
+   "cad": 3,
+   "mean": -5.632,
+   "diffV3": -3.678,
+   "diffK": -2.82,
+   "modelSells": 0
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.0,
+   "cad": 1,
+   "mean": -1.605,
+   "diffV3": 0.348,
+   "diffK": 1.207,
+   "modelSells": 483
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.0,
+   "cad": 3,
+   "mean": -1.794,
+   "diffV3": 0.16,
+   "diffK": 1.018,
+   "modelSells": 438
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.03,
+   "cad": 1,
+   "mean": -1.988,
+   "diffV3": -0.034,
+   "diffK": 0.824,
+   "modelSells": 352
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.03,
+   "cad": 3,
+   "mean": -2.08,
+   "diffV3": -0.126,
+   "diffK": 0.732,
+   "modelSells": 301
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.06,
+   "cad": 1,
+   "mean": -2.052,
+   "diffV3": -0.098,
+   "diffK": 0.76,
+   "modelSells": 159
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.06,
+   "cad": 3,
+   "mean": -1.756,
+   "diffV3": 0.198,
+   "diffK": 1.056,
+   "modelSells": 110
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.1,
+   "cad": 1,
+   "mean": -1.916,
+   "diffV3": 0.038,
+   "diffK": 0.896,
+   "modelSells": 12
+  },
+  {
+   "universe": "ALL",
+   "family": "B",
+   "m": 0.1,
+   "cad": 3,
+   "mean": -1.936,
+   "diffV3": 0.017,
+   "diffK": 0.876,
+   "modelSells": 6
+  }
+ ],
+ "w3": {
+  "n": 569,
+  "V3": -1.95,
+  "K": -2.81
+ },
+ "chosen": {
+  "universe": "W",
+  "family": "A2",
+  "m": 0.0,
+  "cad": 3,
+  "mean": -0.489,
+  "diffV3": 1.465,
+  "diffK": 2.323,
+  "modelSells": 415
+ }
+}
