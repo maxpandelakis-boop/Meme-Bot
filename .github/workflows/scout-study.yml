@@ -1,0 +1,32 @@
+# The scout study (research/scout, fake money only): started by a push of this file or of research/scout/* to the thread branch
+# claude/project-thread-0y2vt9. It downloads public, openly licensed pump.fun data (Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and
+# public DexScreener answers, and force-pushes compact results to the branch "scoutdata", which nothing else writes. Nothing is bought.
+name: scout-study
+on:
+  push:
+    branches: [claude/project-thread-0y2vt9]
+    paths: [.github/workflows/scout-study.yml, research/scout/**]
+permissions:
+  contents: write                    # the scoutdata branch only
+concurrency:
+  group: scout-study
+  cancel-in-progress: false
+env:
+  PYTHONUTF8: '1'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - run: python3 research/scout/probe.py out/probe
+      - name: Push to scoutdata
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b scoutdata && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "scout probe $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" scoutdata
