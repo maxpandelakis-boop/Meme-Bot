@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.7";
-import { bestPair } from "./sim.js?v=0.9.7";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, STRICT, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.7";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit } from "./copy-engine.js?v=0.9.8";
+import { bestPair } from "./sim.js?v=0.9.8";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, STRICT, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.8";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -348,7 +348,7 @@ function drawChart() {
 // ---------- rendering ----------
 const BUY_KINDS = new Set(["buy", "copy"]), EXIT_KINDS = new Set(["sell", "tp", "sl", "half", "stop", "trail"]);
 function renderTop() {
-  const v = value(), d = v - acc.deposit, x = acc.deposit > 0 ? v / acc.deposit : 1;
+  const v = value(), d = accountProfit(acc, v), x = acc.deposit > 0 ? 1 + d / acc.deposit : 1;
   const [w, c] = money(v).split(".");
   $("bal").innerHTML = `${w}<span class="cents">.${c}</span>`;
   $("bal2").textContent = money(v);
@@ -387,6 +387,11 @@ function actRow(a) {
   const li = (title, sub, amt, amtSub, cls = "") => `<li data-mint="${esc(a.mint)}">${icon}<div class="mid"><b>${title}</b><span>${sub} · ${hm(a.t)}</span></div>
             <div class="amt"><b class="${cls}">${amt}</b><span>${amtSub}</span></div></li>`;
   const sym = esc(a.symbol);
+  if (a.kind === "deposit" || a.kind === "withdraw") {
+    const dep = a.kind === "deposit";
+    return `<li><span class="av" style="background:${dep ? "#16a34a" : "#475569"}">${dep ? "＋" : "－"}</span><div class="mid"><b>${dep ? "Eingezahlt" : "Ausgezahlt"}</b><span>Spielgeld · ${hm(a.t)}</span></div>
+            <div class="amt"><b>${dep ? "+" : "−"}${money(a.usd)}</b><span></span></div></li>`;
+  }
   if (a.kind === "buy") return li(`Bought ${sym}`, `${Math.round((a.pct || P.sizePct) * 100)}% of free cash · ${big(a.mc)} MC`, money(a.usd), a.score ? `score ${a.score}` : "");
   if (a.kind === "copy") return li(`Copied ${sym}`, `${a.lagSec}s after ${esc(a.trader)} · ${big(a.mc)} MC`, money(a.usd), "Wallet");
   if (a.kind === "rule") return li(`Skipped ${sym}`, `${esc(a.why)}${a.trader ? " · " + esc(a.trader) : ""}`, "", "Regel");
@@ -576,6 +581,30 @@ $("openPos").addEventListener("click", async e => {
   copySell(acc, { mint, price: p.price, liq: p.liq, mc: p.mc, why: "hand", now: Date.now() });
   point(); persist(); render();
 });
+// ---------- pay in / pay out (paper money, any time, the account keeps running) ----------
+let payDir = "in";
+function openPay(dir) {
+  if (serverMode) { alert("Das Server-Konto läuft auf GitHub. Ein- und Auszahlen geht nur bei „Dieser Browser“."); return; }
+  payDir = dir;
+  $("payTitle").textContent = $("payOk").textContent = dir === "in" ? "Einzahlen" : "Auszahlen";
+  $("payAmt").value = ""; $("payMsg").textContent = dir === "out" ? `frei: ${money(acc.cash)}` : ""; $("payMsg").className = "tiny muted";
+  $("paySheet").hidden = false; $("payAmt").focus();
+}
+$("payInBtn").addEventListener("click", () => openPay("in"));
+$("payOutBtn").addEventListener("click", () => openPay("out"));
+$("payCancel").addEventListener("click", () => { $("paySheet").hidden = true; });
+$("paySheet").addEventListener("click", e => { if (e.target === $("paySheet")) $("paySheet").hidden = true; });
+$("payQuick").addEventListener("click", e => { const b = e.target.closest("button[data-a]"); if (b) $("payAmt").value = b.dataset.a; });
+$("payForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const r = (payDir === "in" ? payIn : payOut)(acc, $("payAmt").value);
+  if (!r.ok) { $("payMsg").textContent = r.skip; $("payMsg").className = "tiny neg"; return; }
+  say("report", `${payDir === "in" ? "eingezahlt" : "ausgezahlt"} ${money(r.usd)} Spielgeld · frei ${money(acc.cash)}`);
+  $("paySheet").hidden = true;
+  toast(payDir === "in" ? "EINGEZAHLT" : "AUSGEZAHLT");
+  point(); persist(); render();
+});
+
 $("resetAcc").addEventListener("click", () => {
   if (serverMode) { alert("Das Server-Konto läuft auf GitHub. Zum Neustart dort den Branch desk-data löschen."); return; }
   if (!confirm(`Konto zurücksetzen? Alle Positionen und die Activity werden gelöscht, du startest mit ${money(P.deposit)} Spielgeld.`)) return;
@@ -832,7 +861,7 @@ function renderLog() {
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
-const VERSION = "0.9.7";      // the same number as manifest.json (test_copy.mjs checks it)
+const VERSION = "0.9.8";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {
@@ -875,7 +904,7 @@ $("modes").addEventListener("click", e => { const b = e.target.closest("button[d
 // ---------- share (like the video's Share button) ----------
 $("shareBtn").addEventListener("click", async () => {
   const v = value(), s = stats(acc);
-  const text = `Trading Desk (Spielgeld): ${money(v)} (${pct(v / acc.deposit - 1)} seit Start mit ${money(acc.deposit)}) · ${s.copies} Trades · ${s.wins}W ${s.losses}L`
+  const text = `Trading Desk (Spielgeld): ${money(v)} (${pct(accountProfit(acc, v) / acc.deposit)} auf ${money(acc.deposit)} eingezahlt) · ${s.copies} Trades · ${s.wins}W ${s.losses}L`
              + (serverMode ? " · läuft 24/7" : "");
   const url = IS_EXT ? "" : location.href.split("#")[0];
   try {
@@ -898,7 +927,7 @@ function understand(t) {
   let m;
   if (/\b(status|wie läuft|wie geht|how)\b/.test(s)) {
     const st = stats(acc);
-    return [ch, `${money(value())} (${pct(value() / acc.deposit - 1)}) · ${Object.keys(acc.pos).length} offen · ${st.copies} Trades · ${st.wins}W ${st.losses}L · Gebühren ${money(acc.fees)}.`];
+    return [ch, `${money(value())} (${pct(accountProfit(acc, value()) / acc.deposit)}) · ${Object.keys(acc.pos).length} offen · ${st.copies} Trades · ${st.wins}W ${st.losses}L · Gebühren ${money(acc.fees)}.`];
   }
   if (/(klein|small)/.test(s)) Object.assign(ch, { sizePct: COPY_DEFAULTS.sizePct, maxOpen: COPY_DEFAULTS.maxOpen });
   if ((m = s.match(/(\d+(?:[.,]\d+)?)\s*%\s*(?:vom|von|of)\s*(?:freien|free)/)) || (m = s.match(/(?:size|einsatz|kauf)\D{0,12}(\d+(?:[.,]\d+)?)\s*%/))) ch.sizePct = num(m[1]) / 100;

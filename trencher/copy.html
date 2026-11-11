@@ -12,7 +12,7 @@
 <link rel="icon" href="icons/app-192.png">
 <link rel="apple-touch-icon" href="icons/app-180.png">
 <title>Trencher Trading Desk</title>
-<link rel="stylesheet" href="copy.css?v=0.9.7">
+<link rel="stylesheet" href="copy.css?v=0.9.8">
 </head>
 <body>
 <header class="top">
@@ -127,6 +127,8 @@
     <ol id="perTrader" class="acts"></ol>
     <h2>Offene Positionen</h2>
     <ol id="openPos" class="acts"></ol>
+    <div class="row"><button id="payInBtn" class="ghost">＋ Einzahlen</button><button id="payOutBtn" class="ghost">－ Auszahlen</button></div>
+    <div id="payInfo" class="muted tiny"></div>
     <div class="row"><button id="notifBtn" class="ghost">🔔 Benachrichtigungen an</button></div>
     <div class="row"><button id="resetAcc" class="ghost">Neu starten mit <span id="depLbl">$20</span> Spielgeld</button></div>
     <p class="muted tiny">Nur Simulation: keine Wallet, keine Schlüssel, kein echtes Geld. Gebühren wie FOMO (unter 5 $: 0,10 $ · bis 47,50 $: 2 % · bis 190 $: 0,95 $ · darüber 0,5 %, bei Kauf und Verkauf), Slippage nach Pool-Größe.</p>
@@ -134,6 +136,15 @@
 </main>
 
 <div id="toast" class="toast"></div>
+<div id="paySheet" class="sheet" hidden>
+  <form id="payForm" class="sheetbox">
+    <b id="payTitle">Einzahlen</b><span class="muted tiny">Spielgeld. Es wird nichts echt bezahlt.</span>
+    <div class="quick" id="payQuick"><button type="button" data-a="10">$10</button><button type="button" data-a="25">$25</button><button type="button" data-a="50">$50</button><button type="button" data-a="100">$100</button></div>
+    <input id="payAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Betrag in $">
+    <div id="payMsg" class="tiny neg"></div>
+    <div class="row"><button type="button" id="payCancel" class="ghost">Abbrechen</button><button id="payOk" class="run">Einzahlen</button></div>
+  </form>
+</div>
 
 <nav class="bottom">
   <button data-p="home" class="on"><span>⌂</span>Home</button>
@@ -142,6 +153,6 @@
   <button data-p="account"><span>◉</span>Account</button>
 </nav>
 <script src="lib/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="copy.js?v=0.9.7"></script>
+<script type="module" src="copy.js?v=0.9.8"></script>
 </body>
 </html>

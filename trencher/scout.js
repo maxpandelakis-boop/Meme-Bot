@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.7";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.7";
+import { bestPair } from "./sim.js?v=0.9.8";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.8";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -133,7 +133,10 @@ export async function rugCheck(getJson, mint, now = Date.now()) {
 // Rules written down before any live result (2026-11-11), not tuned: pool at most 60 min old, market cap 8k to 250k $,
 // at least 3k $ liquidity, last 5 minutes: at least 15 different buyers, buys at least 1.5 times the sells, price rising.
 // Then RugCheck (danger risks block). The pick is the coin with the most buyers in the last 5 minutes.
-export const FRESH = { maxAgeMin: 60, mcMin: 8000, mcMax: 250000, liqMin: 3000, buyersMin: 15, buySellMin: 1.5 };
+// dexes: only pump.fun's own pools (bonding curve and PumpSwap). On 2026-11-11 the fresh desk lost 20 $ -> 8.45 $ in 25 minutes
+// on coins that fell to 0.04x-0.12x within minutes, far through the -8 % stop: pools whose owner can pull the money out
+// (this project's research already found other DEXes' new pools dead within the hour, see research/MOMENTUM-2026-10-21.md).
+export const FRESH = { maxAgeMin: 60, mcMin: 8000, mcMax: 250000, liqMin: 3000, buyersMin: 15, buySellMin: 1.5, dexes: ["pump-fun", "pumpswap"] };
 export function freshInfo(d, now = Date.now()) {
   const a = d.attributes || {}, t5 = (a.transactions && a.transactions.m5) || {}, ch = a.price_change_percentage || {};
   return { mint: String(d.relationships?.base_token?.data?.id || "").replace(/^solana_/, ""), pool: a.address,
@@ -144,6 +147,7 @@ export function freshInfo(d, now = Date.now()) {
 }
 export function freshOk(c, F = FRESH) {
   if (!(c.price > 0) || !c.mint) return "kein Preis";
+  if (F.dexes && !F.dexes.includes(c.dex)) return `Pool bei ${c.dex || "unbekannt"}, nicht pump.fun`;
   if (c.ageMin > F.maxAgeMin) return `zu alt (${Math.round(c.ageMin)} min)`;
   if (c.mc < F.mcMin || c.mc > F.mcMax) return `MC ${Math.round(c.mc / 1000)}k außerhalb ${F.mcMin / 1000}k–${F.mcMax / 1000}k`;
   if (c.liq < F.liqMin) return `Liquidität ${Math.round(c.liq)} $ zu klein`;
@@ -258,7 +262,7 @@ export function strictVerdict(w, c, now = Date.now(), S = STRICT) {
 // Keep the watch list: add coins that pass the normal fresh filter now, drop those watched longer than maxMin, at most 30
 // (one GeckoTerminal call prices 30 pools), the ones with the most buyers at first sight stay.
 export function watchUpdate(watch, list, now = Date.now(), S = STRICT) {
-  for (const c of list) if (!c.why && c.pool && !watch.has(c.mint)) watch.set(c.mint, { mint: c.mint, pool: c.pool, symbol: c.symbol, seen: now, price0: c.price, buyers0: c.buyers5 });
+  for (const c of list) if (!c.why && c.pool && !watch.has(c.mint)) watch.set(c.mint, { mint: c.mint, pool: c.pool, symbol: c.symbol, dex: c.dex, seen: now, price0: c.price, buyers0: c.buyers5 });
   for (const [m, w] of watch) if ((now - w.seen) / 60e3 > S.maxMin) watch.delete(m);
   if (watch.size > 30) for (const w of [...watch.values()].sort((a, b) => b.buyers0 - a.buyers0).slice(30)) watch.delete(w.mint);
   return watch;

@@ -1,6 +1,6 @@
 // Copy-trading engine of the Trencher (paper money only): turns a followed wallet's on-chain transactions into its buys and sells,
 // and keeps the copy account (cash, positions, activity, equity curve). Pure functions, no browser APIs: node tests them (test_copy.mjs).
-import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.7";
+import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.8";
 
 export const COPY_DEFAULTS = {
   // the "Trading Desk" of the second video (2026-11-09): $20, 40 % of free cash per buy, max 2 open, no adding to losers,
@@ -57,6 +57,25 @@ export function walletTrades(tx, wallet) {
 export function newAccount(P = COPY_DEFAULTS, now = Date.now()) {
   return { cash: P.deposit, deposit: P.deposit, since: now, pos: {}, closed: [], activity: [], curve: [{ t: now, v: P.deposit }], fees: 0 };
 }
+
+// Pay paper money in or out at any time, without restarting the account. `deposit` is everything ever paid in, `out`
+// everything paid out, so the profit stays honest: profit = value + out - deposit (accountProfit).
+export function payIn(acc, usd, now = Date.now()) {
+  usd = Math.round(Number(usd) * 100) / 100;
+  if (!(usd > 0)) return { skip: "Betrag fehlt" };
+  acc.cash += usd; acc.deposit += usd;
+  log(acc, { t: now, kind: "deposit", usd });
+  return { ok: true, usd };
+}
+export function payOut(acc, usd, now = Date.now()) {
+  usd = Math.round(Number(usd) * 100) / 100;
+  if (!(usd > 0)) return { skip: "Betrag fehlt" };
+  if (usd > acc.cash + 1e-9) return { skip: `nur ${acc.cash.toFixed(2)} $ frei (der Rest steckt in Coins)` };
+  acc.cash = Math.max(acc.cash - usd, 0); acc.out = (acc.out || 0) + usd;
+  log(acc, { t: now, kind: "withdraw", usd });
+  return { ok: true, usd };
+}
+export function accountProfit(acc, value) { return value + (acc.out || 0) - acc.deposit; }
 
 // What the account is worth at the given prices ({mint: {price, liq}}), selling every position after slippage and fees.
 export function accountValue(acc, prices) {

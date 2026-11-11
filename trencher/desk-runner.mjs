@@ -7,8 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.7";
-import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshCheck, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.7";
+import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.8";
+import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshCheck, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.8";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);
@@ -170,7 +170,8 @@ function riskOn(acc, prices, tag) {
   for (const { mint, why, frac } of exits) {
     const p = prices[mint], pos = acc.pos[mint], x = p.price / pos.entry;
     const r = copySell(acc, { mint, price: p.price, liq: p.liq, mc: p.mc, frac, why });
-    if (r.ok) say("exit", tag + `${why === "half" ? "Einsatz zurück bei " + x.toFixed(2) + "×" : why === "stop" ? "Hard Stop −" + Math.round(P.hardStop * 100) + "%" : why === "trail" ? "Trailing " + Math.round(P.trail * 100) + "% vom Hoch, " + x.toFixed(2) + "×" : why} · $${pos.symbol} ${r.fill.pnl >= 0 ? "+" : ""}${money(r.fill.pnl)}`);
+    const gone = why === "stop" && x < 1 - 2 * P.hardStop ? ` (Kurs fiel zwischen zwei Prüfungen auf ${x.toFixed(2)}×, ${Math.round(p.liq || 0)} $ im Pool)` : "";
+    if (r.ok) say("exit", tag + `${why === "half" ? "Einsatz zurück bei " + x.toFixed(2) + "×" : why === "stop" ? "Hard Stop −" + Math.round(P.hardStop * 100) + "%" : why === "trail" ? "Trailing " + Math.round(P.trail * 100) + "% vom Hoch, " + x.toFixed(2) + "×" : why} · $${pos.symbol} ${r.fill.pnl >= 0 ? "+" : ""}${money(r.fill.pnl)}${gone}`);
   }
 }
 
@@ -179,6 +180,7 @@ async function freshScout() {
   if (!P.scout) return;
   const list = await freshCoins(gt);
   fagent.checked += list.length;
+  fagent.dexes = list.reduce((m, c) => { m[c.dex || "?"] = (m[c.dex || "?"] || 0) + 1; return m; }, {});   // where the newest pools are (shown in desk.json)
   const ok = list.filter(c => !c.why);
   fagent.top = ok.slice(0, 3).map(c => ({ mint: c.mint, symbol: c.symbol, score: c.buyers5, chg1h: c.chg5 }));
   const recent = new Set(facc.closed.filter(c => Date.now() - c.out < 30 * 60e3).map(c => c.mint));
@@ -202,7 +204,7 @@ async function freshScout() {
   fprices[pick.mint] = now;
   const free = facc.cash;
   const res = copyBuy(facc, { mint: pick.mint, symbol: pick.symbol, price: now.price, liq: now.liq, mc: now.mc, score: pick.buyers5, pool: pick.pool, img: "" }, P);
-  if (res.ok) say("exec", `[Frisch] gekauft $${pick.symbol} ${money(facc.activity[0].usd)} (${Math.round(P.sizePct * 100)}% von ${money(free)}) bei ${Math.round((now.mc || pick.mc) / 1000)}k MC · Preis in ${LATENCY_MS / 1000}s ${now.price >= pick.price ? "+" : ""}${((now.price / pick.price - 1) * 100).toFixed(1)}% · Gebühr ${money(res.fill.fee)}`);
+  if (res.ok) say("exec", `[Frisch] gekauft $${pick.symbol} ${money(facc.activity[0].usd)} (${Math.round(P.sizePct * 100)}% von ${money(free)}) bei ${Math.round((now.mc || pick.mc) / 1000)}k MC · ${pick.dex} · ${Math.round(now.liq)} $ im Pool · Preis in ${LATENCY_MS / 1000}s ${now.price >= pick.price ? "+" : ""}${((now.price / pick.price - 1) * 100).toFixed(1)}% · Gebühr ${money(res.fill.fee)}`);
   else say("risk", `[Frisch] $${pick.symbol} → ${res.skip}`);
 }
 

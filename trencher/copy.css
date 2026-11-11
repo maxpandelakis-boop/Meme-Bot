@@ -156,3 +156,12 @@ button.run:disabled{background:var(--card2);color:var(--up);border:1px solid rgb
   #agents.on,#activity.on,#account.on{max-width:760px;margin:0 auto}
 }
 .loghome{max-height:320px}
+/* pay in / pay out sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.6);display:grid;place-items:end center}
+.sheet[hidden]{display:none}
+.sheetbox{width:min(440px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px;display:flex;flex-direction:column;gap:8px}
+.sheetbox b{font-size:16px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.quick button{background:var(--card2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:9px 0;font-weight:700;cursor:pointer}
+.sheetbox input{background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px;font:600 16px Inter,system-ui,sans-serif}
+@media (min-width:1000px){.sheet{place-items:center}.sheetbox{border-radius:18px}}
