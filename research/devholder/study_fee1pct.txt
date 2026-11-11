@@ -1,0 +1,81 @@
+P1 base disc (310314, -0.9023776127238864, 0.024929587450131158, 0.0005542772804320784) check (219616, -0.944669976904233, 0.02836314294040507, 0.0005509616785662247)
+ jup.devMints     > th=8 discGain=-0.02 | check gain=-0.02 CI[-0.03,-0.01] p=1.000 vetoCoins=381
+    disc kept n=285565 e=-0.92 rug=0.03 x3=0.0005 | veto n=24749 e=-0.71 rug=0.01 x3=0.0007
+    chk  kept n=201011 e=-0.97 rug=0.03 x3=0.0005 | veto n=18605 e=-0.70 rug=0.01 x3=0.0015
+ jup.top10Pct     > th=68.63 discGain=-0.03 | check gain=-0.03 CI[-0.04,-0.03] p=1.000 vetoCoins=156
+    disc kept n=290112 e=-0.94 rug=0.03 x3=0.0006 | veto n=20202 e=-0.43 rug=0.00 x3=0.0006
+    chk  kept n=205320 e=-0.98 rug=0.03 x3=0.0006 | veto n=14296 e=-0.45 rug=0.00 x3=0.0004
+ jup.mcPerHolder  > th=572.6 discGain=-0.03 | check gain=-0.03 CI[-0.04,-0.02] p=1.000 vetoCoins=244
+    disc kept n=290088 e=-0.93 rug=0.03 x3=0.0006 | veto n=20226 e=-0.53 rug=0.01 x3=0.0002
+    chk  kept n=205589 e=-0.97 rug=0.03 x3=0.0006 | veto n=14027 e=-0.50 rug=0.01 x3=0.0001
+ jup.holderChg24  < th=-0.5858 discGain=-0.01 | check gain=-0.00 CI[-0.01,+0.00] p=0.684 vetoCoins=540
+    disc kept n=294165 e=-0.91 rug=0.03 x3=0.0006 | veto n=16149 e=-0.79 rug=0.02 x3=0.0006
+    chk  kept n=208742 e=-0.95 rug=0.03 x3=0.0006 | veto n=10874 e=-0.92 rug=0.02 x3=0.0003
+ jup.organic      < th=55.55 discGain=-0.54 | check gain=-0.61 CI[-0.69,-0.54] p=1.000 vetoCoins=1724
+    disc kept n=128294 e=-1.44 rug=0.05 x3=0.0009 | veto n=182020 e=-0.52 rug=0.00 x3=0.0003
+    chk  kept n=88866 e=-1.55 rug=0.06 x3=0.0010 | veto n=130750 e=-0.53 rug=0.01 x3=0.0003
+ jup.holders      < th=577 discGain=-0.00 | check gain=-0.01 CI[-0.02,+0.00] p=0.924 vetoCoins=456
+    disc kept n=290094 e=-0.90 rug=0.03 x3=0.0005 | veto n=20220 e=-0.88 rug=0.02 x3=0.0008
+    chk  kept n=205448 e=-0.95 rug=0.03 x3=0.0005 | veto n=14168 e=-0.85 rug=0.02 x3=0.0013
+ jup.netBuyers24  < th=2 discGain=-0.04 | check gain=-0.04 CI[-0.05,-0.04] p=1.000 vetoCoins=574
+    disc kept n=286244 e=-0.94 rug=0.03 x3=0.0006 | veto n=24070 e=-0.44 rug=0.00 x3=0.0003
+    chk  kept n=201815 e=-0.99 rug=0.03 x3=0.0006 | veto n=17801 e=-0.44 rug=0.00 x3=0.0001
+ pf.replies       < th=909 discGain=+0.20 | check gain=+0.23 CI[+0.20,+0.27] p=0.000 vetoCoins=1969
+    disc kept n=243422 e=-0.70 rug=0.02 x3=0.0004 | veto n=66892 e=-1.64 rug=0.06 x3=0.0011
+    chk  kept n=168949 e=-0.71 rug=0.02 x3=0.0003 | veto n=50667 e=-1.72 rug=0.07 x3=0.0015
+ pf.athRatio      < th=8316 discGain=+0.18 | check gain=+0.22 CI[+0.18,+0.25] p=0.000 vetoCoins=1944
+    disc kept n=234809 e=-0.72 rug=0.02 x3=0.0004 | veto n=75505 e=-1.46 rug=0.05 x3=0.0010
+    chk  kept n=164671 e=-0.73 rug=0.02 x3=0.0002 | veto n=54945 e=-1.59 rug=0.06 x3=0.0015
+P2 base disc (1381, -5.100595528023172, 0.23678493845039827, 0.00724112961622013) check (717, -1.914765136122734, 0.07391910739191074, 0.001394700139470014)
+ rc.top1          > th=5.463 discGain=+3.24 | check gain=+1.08 CI[+0.04,+2.06] p=0.022 vetoCoins=150
+    disc kept n=277 e=-1.86 rug=0.08 x3=0.0000 | veto n=1104 e=-5.91 rug=0.28 x3=0.0091
+    chk  kept n=134 e=-0.84 rug=0.02 x3=0.0000 | veto n=583 e=-2.16 rug=0.09 x3=0.0017
+ rc.top10         > th=13.56 discGain=+1.70 | check gain=+0.60 CI[-0.63,+1.68] p=0.140 vetoCoins=145
+    disc kept n=277 e=-3.40 rug=0.17 x3=0.0000 | veto n=1104 e=-5.53 rug=0.25 x3=0.0091
+    chk  kept n=152 e=-1.31 rug=0.04 x3=0.0000 | veto n=565 e=-2.08 rug=0.08 x3=0.0018
+  rc.insiders no admissible threshold
+ rc.score         > th=7 discGain=+0.24 | check gain=+0.24 CI[-0.34,+0.83] p=0.203 vetoCoins=75
+    disc kept n=696 e=-4.86 rug=0.18 x3=0.0072 | veto n=685 e=-5.35 rug=0.30 x3=0.0073
+    chk  kept n=414 e=-1.67 rug=0.06 x3=0.0024 | veto n=303 e=-2.24 rug=0.10 x3=0.0000
+ dev.pct          > th=0.0048 discGain=+1.54 | check gain=+0.14 CI[-0.70,+0.87] p=0.348 vetoCoins=74
+    disc kept n=813 e=-3.56 rug=0.16 x3=0.0074 | veto n=568 e=-7.31 rug=0.35 x3=0.0070
+    chk  kept n=335 e=-1.78 rug=0.07 x3=0.0030 | veto n=382 e=-2.04 rug=0.08 x3=0.0000
+ dev.txs3h        > th=0 discGain=+3.67 | check gain=+0.54 CI[-0.40,+1.36] p=0.119 vetoCoins=138
+    disc kept n=365 e=-1.43 rug=0.05 x3=0.0000 | veto n=1016 e=-6.42 rug=0.31 x3=0.0098
+    chk  kept n=248 e=-1.38 rug=0.05 x3=0.0000 | veto n=469 e=-2.20 rug=0.09 x3=0.0021
+ fl.topBuyer      > th=0.985 discGain=-0.07 | check gain=+0.03 CI[-0.16,+0.24] p=0.359 vetoCoins=35
+    disc kept n=1260 e=-5.17 rug=0.24 x3=0.0079 | veto n=121 e=-4.40 rug=0.21 x3=0.0000
+    chk  kept n=634 e=-1.88 rug=0.08 x3=0.0016 | veto n=83 e=-2.16 rug=0.05 x3=0.0000
+ fl.flip          > th=0.25 discGain=-0.39 | check gain=-0.11 CI[-0.27,+0.01] p=0.961 vetoCoins=27
+    disc kept n=1243 e=-5.49 rug=0.25 x3=0.0080 | veto n=138 e=-1.62 rug=0.09 x3=0.0000
+    chk  kept n=629 e=-2.03 rug=0.08 x3=0.0016 | veto n=88 e=-1.12 rug=0.01 x3=0.0000
+ rc.holders       < th=3218 discGain=+1.76 | check gain=+0.25 CI[-0.86,+1.17] p=0.312 vetoCoins=127
+    disc kept n=277 e=-3.34 rug=0.11 x3=0.0000 | veto n=1104 e=-5.54 rug=0.27 x3=0.0091
+    chk  kept n=199 e=-1.67 rug=0.05 x3=0.0000 | veto n=518 e=-2.01 rug=0.08 x3=0.0019
+ rc.lp            < th=100 discGain=-0.82 | check gain=-0.12 CI[-0.43,+0.13] p=0.835 vetoCoins=30
+    disc kept n=1114 e=-5.92 rug=0.26 x3=0.0090 | veto n=267 e=-1.68 rug=0.15 x3=0.0000
+    chk  kept n=596 e=-2.04 rug=0.08 x3=0.0017 | veto n=121 e=-1.31 rug=0.05 x3=0.0000
+ dev.sold         > th=0.5 discGain=+2.70 | check gain=+0.44 CI[+0.06,+0.85] p=0.009 vetoCoins=49
+    disc kept n=984 e=-2.40 rug=0.08 x3=0.0030 | veto n=397 e=-11.79 rug=0.62 x3=0.0176
+    chk  kept n=645 e=-1.47 rug=0.04 x3=0.0000 | veto n=72 e=-5.87 rug=0.36 x3=0.0139
+
+Holm:
+ pf.athRatio      p=0.0000 thr=0.0026 PASS
+ pf.replies       p=0.0000 thr=0.0028 PASS
+ dev.sold         p=0.0090 thr=0.0029 
+ rc.top1          p=0.0225 thr=0.0031 
+ dev.txs3h        p=0.1195 thr=0.0033 
+ rc.top10         p=0.1400 thr=0.0036 
+ rc.score         p=0.2030 thr=0.0038 
+ rc.holders       p=0.3125 thr=0.0042 
+ dev.pct          p=0.3480 thr=0.0045 
+ fl.topBuyer      p=0.3590 thr=0.0050 
+ jup.holderChg24  p=0.6845 thr=0.0056 
+ rc.lp            p=0.8350 thr=0.0063 
+ jup.holders      p=0.9240 thr=0.0071 
+ fl.flip          p=0.9605 thr=0.0083 
+ jup.devMints     p=1.0000 thr=0.0100 
+ jup.mcPerHolder  p=1.0000 thr=0.0125 
+ jup.netBuyers24  p=1.0000 thr=0.0167 
+ jup.organic      p=1.0000 thr=0.0250 
+ jup.top10Pct     p=1.0000 thr=0.0500 
