@@ -7,8 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.5";
-import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshFillCheck } from "./scout.js?v=0.9.5";
+import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.6";
+import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.6";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);
@@ -48,9 +48,14 @@ let acc = st.acc || newAccount(P);
 const agent = { checked: 0, top: [], scoutMsg: "", ...(st.agent || {}) };
 const log = st.log || [];
 const prices = {};
+const fprices = {};          // the fresh desk's own prices: GeckoTerminal, by the pool the coin was picked from
 let queue = st.queue || [];
 // the fresh-coin desk: its own $20 of fake money, the same rules P (size, max open, stop, 2x, trail)
-const fr = st.fresh || {};
+// FRESH_V 2 (2026-11-11): trades before it were picked on one site's price and filled on another's (up to 3x apart), so that
+// account's results were not real; it starts again with $20.
+const FRESH_V = 2;
+const fr = (st.fresh && st.fresh.v === FRESH_V) ? st.fresh : {};
+const freshReset = !!st.fresh && st.fresh.v !== FRESH_V;
 const facc = fr.acc || newAccount(P);
 const fagent = { checked: 0, top: [], scoutMsg: "", ...(fr.agent || {}) };
 const LATENCY_MS = 3000;   // decision -> fill: a real bot needs 1 to 3 s to land a buy; on fresh coins that costs the most
@@ -65,7 +70,7 @@ function say(who, text) {
   console.log(`${hm(line.t)} ${who.padEnd(7)} ${text}`);
 }
 function value() { return accountValue(acc, prices); }
-function fvalue() { return accountValue(facc, prices); }
+function fvalue() { return accountValue(facc, fprices); }
 function point() {
   for (const [a, v] of [[acc, value()], [facc, fvalue()]]) {
     const t = Date.now(), c = a.curve, l = c[c.length - 1];
@@ -77,9 +82,9 @@ function point() {
 const started = Date.now();
 function save() {
   const s = stats(acc), fs2 = stats(facc);
-  const held = [...Object.keys(acc.pos), ...Object.keys(facc.pos)];
+  const held = Object.keys(acc.pos);
   fs.writeFileSync(STATE, JSON.stringify({ v: 1, updated: Date.now(), runStarted: started, P, acc, agent, log, queue, cursor, seen,
-    fresh: { acc: facc, agent: fagent, summary: { value: fvalue(), trades: fs2.copies, wins: fs2.wins, losses: fs2.losses, profit: fs2.profit, open: Object.keys(facc.pos).length } },
+    fresh: { v: FRESH_V, acc: facc, agent: fagent, prices: Object.fromEntries(Object.keys(facc.pos).map(m => [m, fprices[m]]).filter(([, x]) => x)), summary: { value: fvalue(), trades: fs2.copies, wins: fs2.wins, losses: fs2.losses, profit: fs2.profit, open: Object.keys(facc.pos).length } },
     summary: { value: value(), trades: s.copies, wins: s.wins, losses: s.losses, profit: s.profit, open: Object.keys(acc.pos).length },
     prices: Object.fromEntries(held.map(m => [m, prices[m]]).filter(([, x]) => x)) }));
 }
@@ -135,13 +140,31 @@ async function scout() {
 }
 
 async function risk() {
-  const open = [...Object.keys(acc.pos), ...Object.keys(facc.pos)];
+  const open = Object.keys(acc.pos);
   if (!open.length) return;
   Object.assign(prices, await priceMap(getJson, open));
-  riskOn(acc, "");
-  riskOn(facc, "[Frisch] ");
+  riskOn(acc, prices, "");
 }
-function riskOn(acc, tag) {
+// the fresh desk's positions: priced by their own pool (one GeckoTerminal call for all of them), then the same exit rules
+async function freshRisk() {
+  const pos = Object.values(facc.pos);
+  if (!pos.length) return;
+  const by = await poolPrices(gt, pos.map(p => p.pool));
+  for (const p of pos) {
+    const q = by[p.pool];
+    if (q) { fprices[p.mint] = q; p.noPrice = 0; continue; }
+    p.noPrice = (p.noPrice || 0) + 1;                       // the pool is gone from GeckoTerminal
+    if (p.noPrice >= 8) fprices[p.mint] = { price: (fprices[p.mint] || {}).price || p.entry, liq: 0, mc: 0, symbol: p.symbol };
+  }
+  for (const p of pos) {                                     // a pool with no money left: out, at what it would still pay
+    const q = fprices[p.mint];
+    if (!q || q.liq >= DEAD_LIQ) continue;
+    const r = copySell(facc, { mint: p.mint, price: q.price, liq: Math.max(q.liq, 1), mc: q.mc, frac: 1, why: "dead" });
+    if (r.ok) say("exit", `[Frisch] Pool leer (${Math.round(q.liq)} $ Liquidität) · $${p.symbol} ${money(r.fill.pnl)}`);
+  }
+  riskOn(facc, fprices, "[Frisch] ");
+}
+function riskOn(acc, prices, tag) {
   const exits = deskExits(acc, prices, P);
   if (P.takeProfitX > 1 || P.stopLoss > 0) for (const x of riskExits(acc, prices, P)) if (!exits.some(e => e.mint === x.mint)) exits.push({ ...x, frac: 1 });
   for (const { mint, why, frac } of exits) {
@@ -173,12 +196,12 @@ async function freshScout() {
   }
   if (!pick) return;
   await sleep(LATENCY_MS);
-  const now = (await priceMap(getJson, [pick.mint]).catch(() => ({})))[pick.mint];
+  const now = (await poolPrices(gt, [pick.pool]).catch(() => ({})))[pick.pool];
   const bad = freshFillCheck(pick, now);
   if (bad) { say("risk", `[Frisch] $${pick.symbol} nach ${LATENCY_MS / 1000}s: ${bad} → skip`); return; }
-  Object.assign(prices, { [pick.mint]: now });
+  fprices[pick.mint] = now;
   const free = facc.cash;
-  const res = copyBuy(facc, { mint: pick.mint, symbol: pick.symbol, price: now.price, liq: now.liq || pick.liq, mc: now.mc || pick.mc, score: pick.buyers5, pool: pick.pool, img: now.img }, P);
+  const res = copyBuy(facc, { mint: pick.mint, symbol: pick.symbol, price: now.price, liq: now.liq, mc: now.mc, score: pick.buyers5, pool: pick.pool, img: "" }, P);
   if (res.ok) say("exec", `[Frisch] gekauft $${pick.symbol} ${money(facc.activity[0].usd)} (${Math.round(P.sizePct * 100)}% von ${money(free)}) bei ${Math.round((now.mc || pick.mc) / 1000)}k MC · Preis in ${LATENCY_MS / 1000}s ${now.price >= pick.price ? "+" : ""}${((now.price / pick.price - 1) * 100).toFixed(1)}% · Gebühr ${money(res.fill.fee)}`);
   else say("risk", `[Frisch] $${pick.symbol} → ${res.skip}`);
 }
@@ -230,10 +253,12 @@ async function every(ms, last, fn, name) {
 }
 (async () => {
   say("report", `Desk startet · ${money(value())} · ${Object.keys(acc.pos).length} offen · Regeln ${Math.round(P.sizePct * 100)}% / max ${P.maxOpen} / −${Math.round(P.hardStop * 100)}% / ${P.halfAt}× / trail ${Math.round(P.trail * 100)}%`);
-  const last = { scout: 0, fresh: 0, risk: 0, wallets: 0, copy: 0, save: 0, report: Date.now() };
+  if (freshReset) say("report", "[Frisch] Konto neu gestartet mit $20: die Trades davor hatten falsche Preise (zwei Preisquellen gemischt)");
+  const last = { scout: 0, fresh: 0, risk: 0, freshRisk: 0, wallets: 0, copy: 0, save: 0, report: Date.now() };
   const end = started + MINUTES * 60e3;
   while (Date.now() < end) {
     await every(5000, last, risk, "risk");
+    await every(15000, last, freshRisk, "freshRisk");
     await every(60000, last, scout, "scout");
     await every(30000, last, freshScout, "fresh");
     await every(3000, last, wallets, "wallets");

@@ -1,6 +1,6 @@
 // node trencher/test_copy.mjs : checks the copy-trading engine.
 import assert from "node:assert/strict";
-import * as C from "./copy-engine.js?v=0.9.5";
+import * as C from "./copy-engine.js?v=0.9.6";
 
 const W = "Trader1111111111111111111111111111111111111", M = "Coin1111111111111111111111111111111111pump";
 const tb = (owner, mint, amt) => ({ owner, mint, uiTokenAmount: { uiAmount: amt } });
@@ -88,7 +88,7 @@ console.log("ok: copy engine");
 
 // fresh-coin Scout filter
 {
-  const S = await import("./scout.js?v=0.9.5");
+  const S = await import("./scout.js?v=0.9.6");
   const now = Date.now();
   const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } } }, attributes: { address: "P" + id, name: id + " / SOL",
     pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
@@ -108,12 +108,13 @@ console.log("ok: copy engine");
     const vs = [...fs.readFileSync(new URL(f, dir), "utf8").matchAll(/\.(?:js|css)\?v=([\d.]+)/g)].map(m => m[1]);
     if (!vs.length || vs.some(v => v !== ver)) throw new Error(`${f}: ?v= ${vs.join(",")} is not ${ver}`);
   }
+  if (!fs.readFileSync(new URL("copy.js", dir), "utf8").includes(`const VERSION = "${ver}";`)) throw new Error("copy.js VERSION is not " + ver);
   console.log("ok: one version");
 }
 
 // the Scout's words match its pick; a coin just sold is bought again only when the Prüfer says yes
 {
-  const S = await import("./scout.js?v=0.9.5");
+  const S = await import("./scout.js?v=0.9.6");
   const now = 1e12, P = { minScore: 60 }, W = 30 * 60e3;
   const acc = { pos: {}, closed: [{ mint: "A", out: now - 10 * 60e3, px: 1.0 }] };
   const a = { mint: "A", symbol: "A", score: 61, chg1h: 5, buys1h: 9, sells1h: 3, pool: "p", price: 1.02, chg5m: 2, buys5m: 5, sells5m: 2 };
@@ -133,9 +134,9 @@ console.log("ok: copy engine");
   console.log("ok: scout words, Prüfer");
 }
 
-// fresh desk: no buy when the two price sources disagree or the coin left the filter
+// fresh desk: one price source (the pool), no buy on a price jump or outside the filter
 {
-  const S = await import("./scout.js?v=0.9.5");
+  const S = await import("./scout.js?v=0.9.6");
   const pick = { price: 1e-5 };
   const ok = { price: 1.1e-5, mc: 30000, liq: 9000 };
   if (S.freshFillCheck(pick, ok) !== "") throw new Error("ok fill");
@@ -144,5 +145,10 @@ console.log("ok: copy engine");
   if (!S.freshFillCheck(pick, { ...ok, mc: 2000 }).includes("MC")) throw new Error("mc");
   if (!S.freshFillCheck(pick, { ...ok, liq: 0 }).includes("Liquidität")) throw new Error("liq");
   if (!S.freshFillCheck(pick, undefined)) throw new Error("none");
-  console.log("ok: fresh fill check");
+  const pool = (addr, price, liq) => ({ relationships: { base_token: { data: { id: "solana_M" + addr } } }, attributes: { address: addr, name: "X / SOL", base_token_price_usd: String(price), reserve_in_usd: String(liq), market_cap_usd: null, fdv_usd: "30000" } });
+  let asked = "";
+  const by = await S.poolPrices(async p => { asked = p; return { data: [pool("P1", 2e-5, 8000), pool("P2", 0, 5)] }; }, ["P1", "P2", "P1"]);
+  if (asked !== "/pools/multi/P1,P2") throw new Error(asked);
+  if (by.P1.price !== 2e-5 || by.P1.liq !== 8000 || by.P1.mc !== 30000 || by.P2) throw new Error(JSON.stringify(by));
+  console.log("ok: fresh fill check, pool prices");
 }

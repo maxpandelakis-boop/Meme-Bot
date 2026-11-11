@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.5";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.5";
+import { bestPair } from "./sim.js?v=0.9.6";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.6";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -167,16 +167,33 @@ export function scoutNone(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()
   return best ? `$${best.symbol} (${best.score}): ${scoutVerdict(best, acc, P, cooldownMs, now)}` : `nichts über ${P.minScore} Punkten`;
 }
 
-// The fresh pick was made on GeckoTerminal's numbers, the buy is priced by DexScreener a few seconds later. The two sources
-// can disagree wildly on a coin minutes old (seen 2026-11-11: +209 % and -76 % "in 3 s"), and a buy on such a pair of prices
-// is not a trade anyone could have made. So: no buy when the prices differ by more than 25 %, or when DexScreener's market
-// cap or liquidity is outside the filter the coin was picked by. Returns "" when the buy may go on, else the reason.
+// The fill of a fresh pick, LATENCY later, on the same pool's fresh numbers. No buy when the price moved more than 25 % in
+// those seconds (a spike nobody could have bought into at that price), or the coin left the filter it was picked by.
+// Returns "" when the buy may go on, else the reason.
 export const FRESH_MAX_GAP = 0.25;
 export function freshFillCheck(pick, now, F = FRESH) {
-  if (!now || !(now.price > 0) || !(pick.price > 0)) return "kein Preis bei DexScreener";
+  if (!now || !(now.price > 0) || !(pick.price > 0)) return "kein Preis vom Pool";
   const gap = now.price / pick.price - 1;
-  if (Math.abs(gap) > FRESH_MAX_GAP) return `Preise passen nicht zusammen (GeckoTerminal zu DexScreener ${gap >= 0 ? "+" : ""}${(gap * 100).toFixed(0)}%)`;
-  if (!(now.mc >= F.mcMin && now.mc <= F.mcMax)) return `MC bei DexScreener ${Math.round((now.mc || 0) / 1000)}k außerhalb ${F.mcMin / 1000}k–${F.mcMax / 1000}k`;
-  if (!(now.liq >= F.liqMin)) return `Liquidität bei DexScreener ${Math.round(now.liq || 0)} $ zu klein`;
+  if (Math.abs(gap) > FRESH_MAX_GAP) return `Preis springt (${gap >= 0 ? "+" : ""}${(gap * 100).toFixed(0)}% in Sekunden)`;
+  if (!(now.mc >= F.mcMin && now.mc <= F.mcMax)) return `MC ${Math.round((now.mc || 0) / 1000)}k außerhalb ${F.mcMin / 1000}k–${F.mcMax / 1000}k`;
+  if (!(now.liq >= F.liqMin)) return `Liquidität ${Math.round(now.liq || 0)} $ zu klein`;
   return "";
 }
+
+// The fresh desk lives on ONE price source: the GeckoTerminal pool it picked the coin from. Pick, fill (3 s later) and exits
+// all use that pool's price and reserve. (DexScreener often has no liquidity figure and a frozen price for coins minutes old:
+// on 2026-11-11 two such positions sat for an hour at their entry price and blocked both slots.)
+// pools -> {poolAddress: {price, liq, mc, symbol}}; up to 30 pools in one call.
+export async function poolPrices(gt, pools, now = Date.now()) {
+  const out = {};
+  pools = [...new Set(pools)].filter(Boolean);
+  if (!pools.length) return out;
+  const j = await gt(`/pools/multi/${pools.slice(0, 30).join(",")}`);
+  for (const d of j.data || []) {
+    const c = freshInfo(d, now);
+    if (c.pool && c.price > 0) out[c.pool] = { price: c.price, liq: c.liq, mc: c.mc, symbol: c.symbol, pool: c.pool };
+  }
+  return out;
+}
+// A fresh position whose pool has (almost) no money left cannot be sold: it is closed at what that pool would pay, a near-total loss.
+export const DEAD_LIQ = 500;

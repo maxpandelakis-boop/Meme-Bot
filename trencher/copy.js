@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.5";
-import { bestPair } from "./sim.js?v=0.9.5";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX } from "./scout.js?v=0.9.5";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.6";
+import { bestPair } from "./sim.js?v=0.9.6";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX } from "./scout.js?v=0.9.6";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -721,6 +721,22 @@ async function keepAwake(on) {   // a phone stops the page when the screen goes 
   } catch {}
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running) keepAwake(true); });
+// The web page keeps itself up to date. raw.githack.com serves the branch's files from a cache that can be hours old, but a
+// link with the commit in it is always exact. So: read the newest version number from GitHub; when it is newer than this
+// page, go to the page of the newest commit (same site, so the account and the rules stay). Once per commit, never in a loop.
+const newer = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+async function selfUpdate() {
+  try {
+    if (location.hostname !== "raw.githack.com") return;
+    const m = await (await fetch(`https://raw.githubusercontent.com/${REPO}/trencher-extension/trencher/manifest.json`, { cache: "no-store" })).json();
+    if (!newer(String(m.version), VERSION)) return;
+    const c = await getJson(`https://api.github.com/repos/${REPO}/commits/trencher-extension`);
+    if (!c.sha || location.pathname.includes(c.sha) || sessionStorage.getItem("updTried") === c.sha) return;
+    sessionStorage.setItem("updTried", c.sha);
+    save("deskAcc", acc); save("deskQueue", queue);
+    location.replace(`https://raw.githack.com/${REPO}/${c.sha}/trencher/copy.html`);
+  } catch {}
+}
 function webApp() {
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   let prompt = null;
@@ -749,6 +765,7 @@ function renderLog() {
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
+const VERSION = "0.9.6";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {
@@ -760,7 +777,7 @@ async function fetchServer() {
     const part = serverKey === "fresh" ? (d.fresh || {}) : d;
     acc = part.acc || newAccount(P); P = { ...COPY_DEFAULTS, ...(d.P || {}) };
     Object.assign(agent, { checked: (part.agent || {}).checked || 0, top: (part.agent || {}).top || [], scoutMsg: (part.agent || {}).scoutMsg || "" });
-    for (const [m, x] of Object.entries(d.prices || {})) prices[m] = { ...prices[m], ...x };
+    for (const [m, x] of Object.entries((serverKey === "fresh" ? part.prices : d.prices) || {})) prices[m] = { ...prices[m], ...x };
     $("serverInfo").textContent = `Stand ${hm(d.updated)} · läuft seit ${hm(d.runStarted)} auf GitHub`;
     $("serverInfo").className = "tiny " + (Date.now() - d.updated < 5 * 60e3 ? "pos" : "neg");
     if (Date.now() - d.updated >= 5 * 60e3) $("serverInfo").textContent += " · seit über 5 Minuten kein Stand (startet gerade neu?)";
@@ -863,7 +880,7 @@ $("chatForm").addEventListener("submit", e => {
 
 // ---------- start ----------
 (async () => {
-  try { $("ver").textContent = "v" + chrome.runtime.getManifest().version; } catch { $("ver").textContent = "web"; }
+  $("ver").textContent = (IS_EXT ? "v" : "web v") + VERSION;
   try { if (!IS_EXT) webApp(); } catch (e) { console.warn("webApp", e); }
   P = { ...COPY_DEFAULTS, ...(await load("deskRules", {})) };
   traders = await load("copyTraders", []);
@@ -878,4 +895,5 @@ $("chatForm").addEventListener("submit", e => {
   setRunning(!!(await load("deskRunning", false)));
   bubble("bot", "Hallo, ich bin dein Chief of Staff. Sag mir Regeln in Worten, z. B. „40% vom freien Geld, max 2 offen“, „stop 8%“ oder „status“.");
   { const m = await load("deskMode", "local"); if (m !== "local") setMode(m); }
+  if (!IS_EXT) { selfUpdate(); setInterval(selfUpdate, 10 * 60e3); }
 })();
