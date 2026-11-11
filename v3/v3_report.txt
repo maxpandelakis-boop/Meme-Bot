@@ -1,0 +1,68 @@
+Video 3 test, fake money. Per 20 $ ticket. Exits (stop, trail armed at, trail).
+best dev variation (of 120, Jupiter fees): top3 (0.06, 0.15, 0.1) dev avg -1.011
+
+P = P (0.06, 0.15, 0.1)   FAIL
+  dev     fomo20  n   799 avg  -1.94 95% [-2.214, -1.65] days+ 2/37 profit 21.3% w/o top3  -2.07 median -2.16 hold  -3.53 1/coin  -2.00
+  dev     fomo200 n   799 avg  -1.36 95% [-1.647, -1.073] days+ 2/37 profit 25.0% w/o top3  -1.49 median -1.58 hold  -2.97 1/coin  -1.42
+  dev     jup     n   799 avg  -1.27 95% [-1.552, -0.98] days+ 3/37 profit 25.7% w/o top3  -1.40 median -1.49 hold  -2.89 1/coin  -1.33
+  holdout fomo20  n   474 avg  -1.75 95% [-2.073, -1.405] days+ 1/22 profit 18.1% w/o top3  -1.86 median -2.16 hold  -2.13 1/coin  -1.70
+  holdout fomo200 n   474 avg  -1.16 95% [-1.494, -0.806] days+ 2/22 profit 22.4% w/o top3  -1.28 median -1.58 hold  -1.55 1/coin  -1.11
+  holdout jup     n   474 avg  -1.07 95% [-1.411, -0.701] days+ 2/22 profit 22.4% w/o top3  -1.18 median -1.49 hold  -1.46 1/coin  -1.02
+  minus control (holdout): {'fomo20': {'avg': 0.416, 'ci': [-0.002, 0.841]}, 'fomo200': {'avg': 0.423, 'ci': [-0.003, 0.854]}, 'jup': {'avg': 0.425, 'ci': [0.03, 0.843]}}
+  stopped share holdout: 0.7616033755274262
+
+L = L (0.06, 0.15, 0.1)   
+  dev     fomo20  n  6942 avg  -2.01 95% [-2.411, -1.604] days+ 2/37 profit 29.4% w/o top3  -2.06 median -2.16 hold  -3.06 1/coin  -1.92
+  dev     fomo200 n  6942 avg  -1.43 95% [-1.835, -1.015] days+ 4/37 profit 33.7% w/o top3  -1.48 median -1.58 hold  -2.50 1/coin  -1.34
+  dev     jup     n  6942 avg  -1.33 95% [-1.757, -0.91] days+ 4/37 profit 34.1% w/o top3  -1.39 median -1.49 hold  -2.41 1/coin  -1.24
+  holdout fomo20  n  4170 avg  -2.01 95% [-2.344, -1.713] days+ 0/22 profit 24.2% w/o top3  -2.07 median -2.16 hold  -2.62 1/coin  -1.43
+  holdout fomo200 n  4170 avg  -1.43 95% [-1.768, -1.128] days+ 0/22 profit 28.4% w/o top3  -1.49 median -1.58 hold  -2.04 1/coin  -0.84
+  holdout jup     n  4170 avg  -1.34 95% [-1.684, -0.999] days+ 1/22 profit 28.8% w/o top3  -1.40 median -1.49 hold  -1.95 1/coin  -0.75
+  minus control (holdout): {'fomo20': {'avg': 0.067, 'ci': [-0.319, 0.432]}, 'fomo200': {'avg': 0.068, 'ci': [-0.31, 0.423]}, 'jup': {'avg': 0.069, 'ci': [-0.31, 0.427]}}
+  stopped share holdout: 0.6896882494004796
+
+C = C (0.06, 0.15, 0.1)   
+  dev     fomo20  n  2253 avg  -2.53 95% [-3.149, -1.908] days+ 4/37 profit 36.2% w/o top3  -2.67 median -2.16 hold  -3.33 1/coin  -2.01
+  dev     fomo200 n  2253 avg  -1.96 95% [-2.587, -1.336] days+ 7/37 profit 40.3% w/o top3  -2.10 median -1.58 hold  -2.77 1/coin  -1.43
+  dev     jup     n  2253 avg  -1.87 95% [-2.496, -1.258] days+ 7/37 profit 40.9% w/o top3  -2.01 median -1.49 hold  -2.68 1/coin  -1.34
+  holdout fomo20  n  1374 avg  -2.15 95% [-2.611, -1.652] days+ 1/22 profit 25.8% w/o top3  -2.26 median -2.16 hold  -2.94 1/coin  -1.38
+  holdout fomo200 n  1374 avg  -1.57 95% [-2.029, -1.06] days+ 1/22 profit 30.9% w/o top3  -1.69 median -1.58 hold  -2.37 1/coin  -0.78
+  holdout jup     n  1374 avg  -1.47 95% [-1.937, -0.977] days+ 1/22 profit 31.1% w/o top3  -1.59 median -1.49 hold  -2.28 1/coin  -0.69
+  stopped share holdout: 0.6564774381368268
+
+B = top3 (0.06, 0.15, 0.1)   FAIL
+  dev     fomo20  n  2336 avg  -1.69 95% [-1.898, -1.467] days+ 1/37 profit 22.1% w/o top3  -1.78 median -2.16 hold  -3.14 1/coin  -1.88
+  dev     fomo200 n  2336 avg  -1.11 95% [-1.311, -0.886] days+ 2/37 profit 26.4% w/o top3  -1.20 median -1.58 hold  -2.57 1/coin  -1.29
+  dev     jup     n  2336 avg  -1.01 95% [-1.221, -0.785] days+ 2/37 profit 26.7% w/o top3  -1.10 median -1.49 hold  -2.48 1/coin  -1.20
+  holdout fomo20  n  1405 avg  -1.62 95% [-1.803, -1.443] days+ 0/22 profit 19.4% w/o top3  -1.67 median -2.16 hold  -1.84 1/coin  -1.67
+  holdout fomo200 n  1405 avg  -1.03 95% [-1.224, -0.839] days+ 0/22 profit 23.5% w/o top3  -1.08 median -1.58 hold  -1.26 1/coin  -1.08
+  holdout jup     n  1405 avg  -0.94 95% [-1.133, -0.748] days+ 0/22 profit 23.6% w/o top3  -0.98 median -1.49 hold  -1.17 1/coin  -0.98
+  minus control (holdout): {'fomo20': {'avg': 0.546, 'ci': [0.047, 0.991]}, 'fomo200': {'avg': 0.554, 'ci': [0.068, 1.033]}, 'jup': {'avg': 0.557, 'ci': [0.065, 1.036]}}
+  stopped share holdout: 0.7516014234875444
+
+C_for_B = C (0.06, 0.15, 0.1)   
+  dev     fomo20  n  2253 avg  -2.53 95% [-3.123, -1.933] days+ 4/37 profit 36.2% w/o top3  -2.67 median -2.16 hold  -3.33 1/coin  -2.01
+  dev     fomo200 n  2253 avg  -1.96 95% [-2.563, -1.346] days+ 7/37 profit 40.3% w/o top3  -2.10 median -1.58 hold  -2.77 1/coin  -1.43
+  dev     jup     n  2253 avg  -1.87 95% [-2.495, -1.252] days+ 7/37 profit 40.9% w/o top3  -2.01 median -1.49 hold  -2.68 1/coin  -1.34
+  holdout fomo20  n  1374 avg  -2.15 95% [-2.619, -1.645] days+ 1/22 profit 25.8% w/o top3  -2.26 median -2.16 hold  -2.94 1/coin  -1.38
+  holdout fomo200 n  1374 avg  -1.57 95% [-2.03, -1.077] days+ 1/22 profit 30.9% w/o top3  -1.69 median -1.58 hold  -2.37 1/coin  -0.78
+  holdout jup     n  1374 avg  -1.47 95% [-1.939, -1.007] days+ 1/22 profit 31.1% w/o top3  -1.59 median -1.49 hold  -2.28 1/coin  -0.69
+  stopped share holdout: 0.6564774381368268
+
+desk P fomo: 20 $ -> 0.94 $ in 44 trades (holdout, 22 days)
+desk P jup: 20 $ -> 0.95 $ in 64 trades (holdout, 22 days)
+desk B fomo: 20 $ -> 0.88 $ in 49 trades (holdout, 22 days)
+desk B jup: 20 $ -> 0.79 $ in 70 trades (holdout, 22 days)
+
+top dev grid rows (Jupiter fees):
+  top3|(0.06, 0.15, 0.1)             n  2336 jup  -1.01 fomo200  -1.11 fomo20  -1.69
+  top3|(0.1, 0.15, 0.1)              n  2336 jup  -1.10 fomo200  -1.20 fomo20  -1.78
+  top3|(0.06, 0.3, 0.1)              n  2336 jup  -1.12 fomo200  -1.22 fomo20  -1.80
+  top3|(0.3, 0.15, 0.1)              n  2336 jup  -1.17 fomo200  -1.26 fomo20  -1.85
+  top3|(0.2, 0.15, 0.1)              n  2336 jup  -1.18 fomo200  -1.27 fomo20  -1.85
+  top3|(0.1, 0.3, 0.1)               n  2336 jup  -1.26 fomo200  -1.35 fomo20  -1.94
+  P|(0.06, 0.15, 0.1)                n   799 jup  -1.27 fomo200  -1.36 fomo20  -1.94
+  top3|(0.06, 0.15, 0.2)             n  2336 jup  -1.27 fomo200  -1.37 fomo20  -1.95
+  worst mover3|(0.3, 1.0, 0.2)       n  2283 jup  -3.52
+  worst mover3|(0.3, 1.0, 0.1)       n  2283 jup  -3.42
+dev grid rows above 0 with Jupiter fees: 0 of 120; with FOMO 20 $: 0
