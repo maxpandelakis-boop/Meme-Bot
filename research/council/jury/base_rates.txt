@@ -1,0 +1,19 @@
+Training months only (Apr-May, Jun-Jul, Aug-Sep 2026), Pick-type buys, 50 EUR each, fees included.
+The Sell bot's own result: -2.67 EUR per trade on 1311 trades.
+If every sale had been vetoed and the plan taken instead (gain against selling, EUR per trade; share of cases where it gained):
+  H1: -0.43 EUR, gained in 51.2 %, ended at 2x+ 26, 5x+ 3, 10x+ 1 times
+  H3: -1.64 EUR, gained in 47.3 %, ended at 2x+ 48, 5x+ 6, 10x+ 2 times
+  H6: -3.35 EUR, gained in 42.6 %, ended at 2x+ 50, 5x+ 6, 10x+ 4 times
+  H12: -5.80 EUR, gained in 34.1 %, ended at 2x+ 61, 5x+ 9, 10x+ 6 times
+  H24: -9.87 EUR, gained in 22.9 %, ended at 2x+ 61, 5x+ 13, 10x+ 9 times
+  HE: -11.78 EUR, gained in 19.5 %, ended at 2x+ 59, 5x+ 15, 10x+ 10 times
+  HN: -12.93 EUR, gained in 25.2 %, ended at 2x+ 75, 5x+ 13, 10x+ 3 times
+  TR: -6.48 EUR, gained in 31.2 %, ended at 2x+ 52, 5x+ 3, 10x+ 0 times
+  BE: -2.57 EUR, gained in 57.0 %, ended at 2x+ 33, 5x+ 0, 10x+ 0 times
+  RS: -1.24 EUR, gained in 43.7 %, ended at 2x+ 36, 5x+ 1, 10x+ 0 times
+By the Sell bot's reason (number of cases, median sale price, gain of each plan against selling in EUR per trade):
+  floor: 54 cases, sold at 0.02; H1 +1.6, H3 +3.0, H6 +1.7, H12 -0.4, H24 +3.2, HE +2.6, HN +1.3, TR +0.1, BE +2.0, RS +0.9
+  trail_low: 112 cases, sold at 1.32; H1 -1.1, H3 -3.1, H6 -4.0, H12 -13.3, H24 -14.6, HE -16.6, HN -33.5, TR -6.7, BE -0.5, RS +1.9
+  trail_close: 47 cases, sold at 1.37; H1 -7.4, H3 -13.1, H6 -10.2, H12 -13.8, H24 -14.4, HE -15.1, HN -27.8, TR -9.9, BE -9.7, RS -6.7
+  drop: 717 cases, sold at 0.83; H1 -0.4, H3 -1.1, H6 -4.0, H12 -4.9, H24 -8.1, HE -10.0, HN -7.2, TR -3.6, BE -1.7, RS -1.3
+  time: 381 cases, sold at 1.06; H1 +0.3, H3 -1.4, H6 -1.8, H12 -5.1, H24 -13.1, HE -15.3, HN -17.9, TR -12.4, BE -4.6, RS -1.7
