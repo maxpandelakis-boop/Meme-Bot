@@ -98,3 +98,35 @@ export async function rugCheck(getJson, mint, now = Date.now()) {
   rugCache.set(mint, { t: now, r });
   return r;
 }
+
+// ---------- Fresh-coin Scout (the "trencher" way, like the video's ~14k to 28k $ coins): GeckoTerminal's newest pools ----------
+// Rules written down before any live result (2026-11-11), not tuned: pool at most 60 min old, market cap 8k to 250k $,
+// at least 3k $ liquidity, last 5 minutes: at least 15 different buyers, buys at least 1.5 times the sells, price rising.
+// Then RugCheck (danger risks block). The pick is the coin with the most buyers in the last 5 minutes.
+export const FRESH = { maxAgeMin: 60, mcMin: 8000, mcMax: 250000, liqMin: 3000, buyersMin: 15, buySellMin: 1.5 };
+export function freshInfo(d, now = Date.now()) {
+  const a = d.attributes || {}, t5 = (a.transactions && a.transactions.m5) || {}, ch = a.price_change_percentage || {};
+  return { mint: String(d.relationships?.base_token?.data?.id || "").replace(/^solana_/, ""), pool: a.address,
+           symbol: String(a.name || "").split(" / ")[0], dex: d.relationships?.dex?.data?.id || "",
+           ageMin: a.pool_created_at ? (now - Date.parse(a.pool_created_at)) / 60e3 : 1e9,
+           mc: Number(a.market_cap_usd) || Number(a.fdv_usd) || 0, liq: Number(a.reserve_in_usd) || 0, price: Number(a.base_token_price_usd) || 0,
+           buys5: t5.buys || 0, sells5: t5.sells || 0, buyers5: t5.buyers || 0, chg5: Number(ch.m5) || 0, vol5: Number((a.volume_usd || {}).m5) || 0 };
+}
+export function freshOk(c, F = FRESH) {
+  if (!(c.price > 0) || !c.mint) return "kein Preis";
+  if (c.ageMin > F.maxAgeMin) return `zu alt (${Math.round(c.ageMin)} min)`;
+  if (c.mc < F.mcMin || c.mc > F.mcMax) return `MC ${Math.round(c.mc / 1000)}k außerhalb ${F.mcMin / 1000}k–${F.mcMax / 1000}k`;
+  if (c.liq < F.liqMin) return `Liquidität ${Math.round(c.liq)} $ zu klein`;
+  if (c.buyers5 < F.buyersMin) return `nur ${c.buyers5} Käufer in 5 min`;
+  if (c.buys5 < F.buySellMin * c.sells5) return `Käufe ${c.buys5} / Verkäufe ${c.sells5} zu schwach`;
+  if (!(c.chg5 > 0)) return "Preis fällt";
+  return "";
+}
+export async function freshCoins(gt, now = Date.now()) {
+  const out = new Map();
+  for (const page of [1, 2, 3]) {
+    try { for (const d of (await gt(`/new_pools?page=${page}`)).data || []) { const c = freshInfo(d, now); if (c.mint && !out.has(c.mint)) out.set(c.mint, c); } } catch {}
+  }
+  const list = [...out.values()].map(c => ({ ...c, why: freshOk(c) }));
+  return list.sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || b.buyers5 - a.buyers5);
+}

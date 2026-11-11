@@ -745,7 +745,7 @@ function say(who, text) {
   if (acc.log.length > 300) acc.log.length = 300;
 }
 function renderLog() {
-  const lines = (serverMode ? serverDoc && serverDoc.log : acc.log) || [];
+  const lines = ((serverMode ? serverDoc && serverDoc.log : acc.log) || []).filter(l => !serverMode || (serverKey === "fresh") === String(l.text).startsWith("[Frisch]"));
   $("logBox").innerHTML = lines.slice(0, 200).map(l => `<div><span class="lt">${new Date(l.t).toLocaleTimeString("de-DE")}</span> <span class="lw w-${esc(l.who)}">${esc(l.who)}</span> ${esc(l.text)}</div>`).join("")
     || `<div class="muted">Noch keine Einträge. Bot starten.</div>`;
 }
@@ -760,8 +760,9 @@ async function fetchServer() {
     const d = await getJson(`https://raw.githubusercontent.com/${REPO}/${c.sha}/desk.json`);
     serverDoc = d;
     if (!serverMode) return;
-    acc = d.acc; P = { ...COPY_DEFAULTS, ...(d.P || {}) };
-    Object.assign(agent, { checked: (d.agent || {}).checked || 0, top: (d.agent || {}).top || [], scoutMsg: (d.agent || {}).scoutMsg || "" });
+    const part = serverKey === "fresh" ? (d.fresh || {}) : d;
+    acc = part.acc || newAccount(P); P = { ...COPY_DEFAULTS, ...(d.P || {}) };
+    Object.assign(agent, { checked: (part.agent || {}).checked || 0, top: (part.agent || {}).top || [], scoutMsg: (part.agent || {}).scoutMsg || "" });
     for (const [m, x] of Object.entries(d.prices || {})) prices[m] = { ...prices[m], ...x };
     $("serverInfo").textContent = `Stand ${hm(d.updated)} · läuft seit ${hm(d.runStarted)} auf GitHub`;
     $("serverInfo").className = "tiny " + (Date.now() - d.updated < 5 * 60e3 ? "pos" : "neg");
@@ -773,10 +774,11 @@ async function fetchServer() {
   }
   if (serverMode) { render(); renderLog(); renderRules(); }
 }
+let serverKey = "server";
 function setMode(m) {
-  const toServer = m === "server";
-  if (toServer === serverMode) return;
-  if (toServer) { local = { acc, P }; serverMode = true; }
+  const toServer = m !== "local";
+  if (toServer === serverMode && (!toServer || m === serverKey)) return;
+  if (toServer) { if (!serverMode) local = { acc, P }; serverMode = true; serverKey = m; }
   else { serverMode = false; if (local) { acc = local.acc; P = local.P; } }
   save("deskMode", m);
   for (const b of $("modes").children) b.classList.toggle("on", b.dataset.m === m);
@@ -878,5 +880,5 @@ $("chatForm").addEventListener("submit", e => {
   try { if (Notification.permission === "granted") $("notifBtn").textContent = "🔔 Benachrichtigungen sind an"; } catch {}
   setRunning(!!(await load("deskRunning", false)));
   bubble("bot", "Hallo, ich bin dein Chief of Staff. Sag mir Regeln in Worten, z. B. „40% vom freien Geld, max 2 offen“, „stop 8%“ oder „status“.");
-  if ((await load("deskMode", "local")) === "server") setMode("server");
+  { const m = await load("deskMode", "local"); if (m !== "local") setMode(m); }
 })();

@@ -85,3 +85,16 @@ console.log("ok: copy engine");
   assert.equal(a.activity[0].kind, "trail"); assert.equal(a.activity.at(-1).kind, "buy");
   console.log("ok: desk rules");
 }
+
+// fresh-coin Scout filter
+{
+  const S = await import("./scout.js");
+  const now = Date.now();
+  const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } } }, attributes: { address: "P" + id, name: id + " / SOL",
+    pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
+    transactions: { m5: { buys: b, sells: s, buyers: u } }, price_change_percentage: { m5: String(ch) } } });
+  const l = await S.freshCoins(async p => ({ data: p.includes("page=1") ? [mk("A", 10, 20000, 60, 20, 40, 12), mk("B", 90, 20000, 60, 20, 40, 5), mk("C", 5, 30000, 30, 25, 20, 3), mk("D", 3, 15000, 80, 10, 70, 30), mk("E", 3, 900000, 80, 10, 70, 30)] : [] }), now);
+  const ok = l.filter(c => !c.why).map(c => c.symbol);
+  if (ok.join() !== "D,A") throw new Error("fresh filter " + ok.join());
+  console.log("ok: fresh scout");
+}
