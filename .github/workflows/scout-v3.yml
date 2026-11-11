@@ -1,0 +1,43 @@
+# Video 3 test (research/scout/PREREG-V3-2026-11-11.md, fake money only): started by a push of this file to the thread branch.
+# Reads the history2 branch and the one-minute bars artifact of history-build run 39668736908 (both derived from the public
+# Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and force-pushes the report to the branch "scoutv3". Nothing is bought.
+name: scout-v3
+on:
+  push:
+    branches: [claude/project-thread-0y2vt9]
+    paths: [.github/workflows/scout-v3.yml]
+permissions:
+  contents: write                    # the scoutv3 branch only
+  actions: read                      # the bars artifact
+concurrency:
+  group: scout-v3
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4
+      - uses: actions/download-artifact@v4
+        with:
+          name: bars
+          path: bars
+          run-id: 39668736908
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: git clone -q --depth 1 --branch history2 https://github.com/${{ github.repository }}.git h2 && find bars -name '*.parquet' | head -3 && du -sh bars h2
+      - run: python3 research/scout/v3_test.py h2 bars out/v3
+      - name: Push to scoutv3
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out && git init -q && git checkout -q -b scoutv3 && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "scout v3 $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q --force "$URL" scoutv3
