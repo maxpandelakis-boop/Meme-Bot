@@ -124,3 +124,21 @@ header.top{padding-top:calc(8px + env(safe-area-inset-top))}
 .rules2 li .st{font-size:10px;border-radius:5px;padding:1px 6px;border:1px solid var(--line);color:var(--mut);white-space:nowrap}
 .rules2 li .st.armed{color:var(--dn);border-color:rgba(239,68,68,.5)}.rules2 li .st.done{color:var(--up);border-color:rgba(34,197,94,.5)}.rules2 li .st.sized{color:var(--gold);border-color:rgba(245,183,10,.5)}.rules2 li .st.bought{color:#60a5fa;border-color:rgba(96,165,250,.5)}
 .posbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin:12px 0}
+/* server mode, log, chat */
+.modes{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;margin-top:8px}
+.modes button{flex:1;background:none;border:none;color:var(--mut);border-radius:8px;padding:5px;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer}
+.modes button.on{background:var(--card2);color:var(--fg)}
+#serverInfo{margin-top:4px}
+button.run:disabled{background:var(--card2);color:var(--up);border:1px solid rgba(34,197,94,.4);cursor:default}
+.rules.ro input{pointer-events:none;opacity:.7}
+.logbox{background:#05060a;border:1px solid var(--line);border-radius:10px;padding:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#c9d1e0;max-height:70vh;overflow:auto}
+.logbox .lt{color:#5b6475}.logbox .lw{display:inline-block;min-width:44px;font-weight:700}
+.w-scout{color:#2dd4bf}.w-size{color:var(--gold)}.w-exec{color:#a78bfa}.w-exit{color:var(--up)}.w-risk{color:#fb923c}.w-rules{color:#60a5fa}.w-report{color:#f2f4f8}.w-wallet{color:#f472b6}
+.chatbox{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;padding:4px 0}
+.chatbox .msg{max-width:85%;font-size:12.5px}.chatbox .msg div{padding:7px 10px;border-radius:14px}
+.chatbox .msg span{display:block;font-size:9.5px;color:var(--mut);margin:2px 6px}
+.chatbox .msg.bot div{background:var(--card2);border:1px solid var(--line)}
+.chatbox .msg.me{align-self:flex-end;text-align:right}.chatbox .msg.me div{background:#f2f4f8;color:#0b0c10;text-align:left}
+.chatform{display:flex;gap:6px;margin:6px 0}
+.chatform input{flex:1;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:9px 12px;font:13px Inter,system-ui,sans-serif}
+.chatform button{width:38px;border-radius:50%;border:none;background:var(--fg);color:#000;font-weight:900;cursor:pointer}

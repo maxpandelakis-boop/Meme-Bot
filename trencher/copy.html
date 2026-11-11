@@ -19,13 +19,16 @@
   <span class="brand">Trading Desk</span>
   <span id="live" class="pill">● PAPER</span>
   <span id="ver" class="muted tiny"></span>
-  <button id="installBtn" class="right tiny link" style="display:none">⬇ Als App installieren</button>
+  <button id="shareBtn" class="right tiny link" title="Stand teilen">⇪ Teilen</button>
+  <button id="installBtn" class="tiny link" style="display:none">⬇ Als App installieren</button>
   <a id="panelLink" href="panel.html" class="right tiny link" title="Der alte Bildschirm: ein Coin, eigener Bot">Coin-Trencher ↗</a>
 </header>
 
 <main>
   <!-- HOME -->
   <section id="home" class="page on">
+    <div class="modes" id="modes"><button data-m="local" class="on">Dieser Browser</button><button data-m="server">☁ Server 24/7</button></div>
+    <div id="serverInfo" class="tiny"></div>
     <div id="deskSub" class="muted tiny desksub">–</div>
     <div class="balance"><span id="bal" class="bal">$0<span class="cents">.00</span></span></div>
     <div class="since"><span id="since">–</span> <span id="mult" class="mult">1.00×</span></div>
@@ -63,6 +66,10 @@
 
   <!-- AGENTS -->
   <section id="agents" class="page">
+    <h2>Chief of Staff</h2>
+    <div id="chatBox" class="chatbox"></div>
+    <form id="chatForm" class="chatform"><input id="chatIn" placeholder="z. B. halte den Desk klein · stop 8% · status" autocomplete="off"><button>↑</button></form>
+    <a id="chatLink" class="link tiny" target="_blank" rel="noopener" style="display:none">config.json auf GitHub öffnen ↗</a>
     <h2>Wallets folgen (optional)</h2>
     <div class="sect"><span class="muted tiny">Kauft eine Wallet, kauft der Desk nach (die Desk-Regeln gelten auch hier).</span><span id="gridInfo" class="muted tiny">–</span></div>
     <div id="grid" class="grid"></div>
@@ -82,6 +89,7 @@
     </div>
     <div id="tMsg" class="tiny muted"></div>
     <h2>Regeln</h2>
+    <p id="rulesServer" class="tiny muted" style="display:none">Das sind die Regeln des Server-Desks (nur ansehen). Ändern: im Chat schreiben oder <a class="link" target="_blank" rel="noopener" href="https://github.com/maxpandelakis-boop/Meme-Bot/edit/desk-data/config.json">config.json auf GitHub</a>.</p>
     <div class="rules" id="rules"></div>
     <button id="rulesReset" class="link tiny">Standard-Regeln</button>
     <h2>Reddit (optional, kostenlos)</h2>
@@ -93,8 +101,9 @@
   <!-- ACTIVITY -->
   <section id="activity" class="page">
     <div class="sect"><b>Activity</b><span id="actInfo2" class="muted tiny"></span></div>
-    <div class="filters" id="filters"><button data-f="all" class="on">All</button><button data-f="copy">Käufe</button><button data-f="exit">Verkäufe</button><button data-f="rule">Rules</button></div>
+    <div class="filters" id="filters"><button data-f="all" class="on">All</button><button data-f="copy">Käufe</button><button data-f="exit">Verkäufe</button><button data-f="rule">Regeln</button><button data-f="log">Log</button></div>
     <ol id="actAll" class="acts"></ol>
+    <div id="logBox" class="logbox" style="display:none"></div>
   </section>
 
   <!-- ACCOUNT -->

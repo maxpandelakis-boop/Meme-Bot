@@ -77,3 +77,11 @@ Wie im zweiten Video (2026-11-09), nur ohne echtes Geld:
 - **Executor:** Spielgeld-Fills mit FOMO-Gebühren (0,5 %, mind. 0,50 $) und Slippage.
 - Antippen eines Eintrags öffnet die Coin-Seite: Kerzen-Chart mit Entry / „Sold half“, die Desk-Regeln für diesen Coin und die Position.
 - Wallets folgen geht weiter (Agents), die Desk-Regeln gelten auch für kopierte Käufe.
+
+## Rund um die Uhr, Chat, Log, Teilen (ab v0.8.0)
+
+- **Server 24/7:** `.github/workflows/trencher-desk.yml` (auf dem Hauptbranch) startet `trencher/desk-runner.mjs` auf GitHub. Der Desk läuft dort mit Spielgeld weiter, auch wenn kein Gerät an ist, und schreibt seinen Stand in den Branch `desk-data`. In der App oben „☁ Server 24/7“ antippen: dann zeigt sie diesen Desk (Stand alle 90 Sekunden). Regeln des Server-Desks: `config.json` im Branch `desk-data` (auf GitHub bearbeiten oder im Chat schreiben, der Chat kopiert den Text). Stoppen: Actions → „Trencher desk“ → Disable workflow, oder Variable `TRENCHER_DESK=0`.
+- **Chief of Staff (Agents):** Regeln in Worten, z. B. „40% vom freien Geld, max 2 offen“, „stop 8%“, „trail 10%“, „hälfte bei 2x“, „punkte 70“, „halte den desk klein“, „status“, „start“, „stop“. Einfache Texterkennung, nichts wird verschickt.
+- **Log (Activity → Log):** jede Entscheidung der Agenten als Zeile, wie das Terminal im Video.
+- **Teilen:** oben rechts, teilt den Stand als Text.
+- Prüfung der Desk-Regeln auf alten Daten: `research/DESK-2026-11-11.md` (Verlust, −2,34 pro 20).

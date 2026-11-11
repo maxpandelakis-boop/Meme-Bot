@@ -46,7 +46,7 @@ const prices = {};          // mint -> {price, liq, mc, symbol, img, t}
 const agent = { w: "aus", c: "–", e: "–", r: "–", rpc: 0, rpcErr: 0, checked: 0, top: [], scoutAt: 0, scoutMsg: "" };
 let watchIdx = 0, filter = "all", range = "live", saveTimer = 0;
 
-function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { save("deskAcc", acc); save("deskQueue", queue); }, 300); }
+function persist() { if (serverMode) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => { save("deskAcc", acc); save("deskQueue", queue); }, 300); }
 
 // ---------- formatting ----------
 const money = x => (x < 0 ? "-$" : "$") + Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -136,6 +136,7 @@ async function copyDue() {
       if (!p) { rule(q, "kein Preis bei DexScreener"); continue; }
       const r = copyBuy(acc, { mint: q.mint, symbol: p.symbol, price: p.price, liq: p.liq, mc: p.mc, trader: q.trader, lagSec, pool: p.pool, img: p.img, now: Date.now() }, P);
       if (r.skip && !r.skip.startsWith("schon im Coin")) rule(q, r.skip);
+      if (r.ok) say("exec", `kopiert $${p.symbol} ${money(acc.activity[0].usd)} · ${lagSec}s nach ${q.trader}`);
       if (r.ok) notify(`Kopiert: ${p.symbol}`, `${money(acc.activity[0].usd)} · ${lagSec}s nach ${q.trader} · ${big(p.mc)} MC`);
     } else if (P.sameExits && acc.pos[q.mint] && p) {
       copySell(acc, { mint: q.mint, price: p.price, liq: p.liq, mc: p.mc, frac: q.frac || 1, why: "trader", trader: q.trader, lagSec, now: Date.now() });
@@ -147,6 +148,7 @@ async function copyDue() {
 
 function rule(q, why) {
   const p = prices[q.mint] || {};
+  say("risk", `$${p.symbol || short(q.mint)} von ${q.trader} → ${why}`);
   acc.activity.unshift({ t: Date.now(), kind: "rule", mint: q.mint, symbol: p.symbol || short(q.mint), trader: q.trader, why });
   if (acc.activity.length > 400) acc.activity.length = 400;
 }
@@ -159,10 +161,17 @@ async function scout() {
   hot = list; agent.checked += list.length; agent.top = list.slice(0, 3);
   const pick = scoutPick(list, acc, P, COOLDOWN_MS);
   agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
+  for (const c of list.slice(0, 4)) {
+    const ok = c.score >= P.minScore && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0);
+    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${acc.pos[c.mint] ? "schon drin" : ok ? "size check" : "wait"}`);
+  }
+  if (pick && Object.keys(acc.pos).length >= P.maxOpen) say("risk", `max ${P.maxOpen} offen → $${pick.symbol} skip`);
   if (!pick || Object.keys(acc.pos).length >= P.maxOpen) { render(); return; }
   const p = prices[pick.mint];
   if (!p || !(p.price > 0)) return;
   const r = copyBuy(acc, { mint: pick.mint, symbol: pick.symbol, price: p.price, liq: p.liq, mc: p.mc, score: pick.score, pool: pick.pool, img: pick.img, now: Date.now() }, P);
+  if (r.ok) { say("size", `${Math.round(P.sizePct * 100)}% vom freien Geld = ${money(acc.activity[0].usd)} → executor`); say("exec", `gekauft $${pick.symbol} ${money(acc.activity[0].usd)} bei ${big(p.mc)} MC (Spielgeld, Gebühr ${money(r.fill.fee)})`); }
+  else say("risk", `$${pick.symbol} → ${r.skip}`);
   if (r.ok) notify(`Gekauft: ${pick.symbol}`, `${money(acc.activity[0].usd)} (${Math.round(P.sizePct * 100)} % vom freien Geld) bei ${big(p.mc)} MC · Punkte ${pick.score}`);
   point(); persist(); render();
 }
@@ -182,6 +191,7 @@ async function riskCheck() {
     const r = copySell(acc, { mint, price: p.price, liq: p.liq, mc: p.mc, frac, why, now: Date.now() });
     if (!r.ok) continue;
     const pnl = r.fill.pnl;
+    say("exit", `${EXIT_TEXT[why] || why} · $${pos.symbol} ${xs(m)} · ${signed(pnl)}`);
     const head = why === "half" ? `SOLD HALF ${xs(m)}` : why === "trail" ? `CLOSED ${xs(m)}` : why === "tp" ? `TOOK PROFIT ${xs(m)}` : `STOPPED ${pct(m - 1)}`;
     toast(head, pnl < 0);
     notify(`${EXIT_TEXT[why] || "Verkauft"}: ${pos.symbol}`, `${signed(pnl)} · ${xs(m)} · ${big(p.mc)} MC`);
@@ -207,7 +217,7 @@ function point() {
 function loop(fn, ms) {
   let busy = false;
   setInterval(async () => {
-    if (!running || busy || !acc) return;
+    if (!running || serverMode || busy || !acc) return;
     busy = true;
     try { await fn(); } catch (e) { if (fn === watchOne) agent.w = "RPC-Fehler: " + String(e.message || e).slice(0, 40); }
     busy = false;
@@ -285,7 +295,7 @@ function renderTop() {
   $("deskSub").textContent = `Spielgeld · Compounder ${Math.round(P.sizePct * 100)}% · ${open} offen · max ${P.maxOpen}`;
   drawChart();
   // agent cards
-  $("agentsInfo").textContent = running ? `${P.scout ? 4 : 3} laufen` : "aus";
+  $("agentsInfo").textContent = running || serverMode ? `${P.scout ? 4 : 3} laufen` : "aus";
   $("aScoutSub").textContent = !P.scout ? "aus" : agent.checked ? `${agent.checked.toLocaleString("de-DE")} Coins geprüft` : running ? "sucht …" : "wartet";
   $("aScout").innerHTML = agent.top.map(c => `<li>${avatar(c.symbol, c.img)}<b>${esc(c.symbol)}</b> <span class="${c.chg1h >= 0 ? "pos" : "neg"}">${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}%</span><span class="sc">${c.score}</span></li>`).join("")
     || `<li class="muted">${running ? "erste Suche läuft …" : "Bot starten"}</li>`;
@@ -333,7 +343,9 @@ function renderActivity() {
   $("actHome").innerHTML = home;
   if (top && top !== shownTop && shownTop) $("actHome").firstElementChild?.classList.add("new");
   shownTop = top;
-  const f = { all: () => true, copy: a => BUY_KINDS.has(a.kind), exit: a => EXIT_KINDS.has(a.kind), rule: a => a.kind === "rule" }[filter];
+  $("actAll").style.display = filter === "log" ? "none" : ""; $("logBox").style.display = filter === "log" ? "" : "none";
+  if (filter === "log") renderLog();
+  const f = { log: () => true, all: () => true, copy: a => BUY_KINDS.has(a.kind), exit: a => EXIT_KINDS.has(a.kind), rule: a => a.kind === "rule" }[filter];
   const all = list.filter(f);
   $("actAll").innerHTML = all.slice(0, 200).map(actRow).join("") || `<li class="empty">Keine Einträge.</li>`;
   const s = stats(acc);
@@ -393,12 +405,14 @@ const RULES = [
   ["takeProfitX", "Extra: alles raus bei (×, 0 = aus)", 1], ["stopLoss", "Extra: Stop-Loss (%, 0 = aus)", 100],
 ];
 function renderRules() {
+  $("rulesServer").style.display = serverMode ? "" : "none";
+  $("rules").classList.toggle("ro", serverMode);
   $("rules").innerHTML = RULES.map(([k, label, f]) => `<label for="r_${k}">${label}</label><input id="r_${k}" data-k="${k}" data-f="${f}" type="number" min="0" step="any" value="${+(P[k] * f).toFixed(4)}">`).join("")
     + `<label for="r_scout">Scout kauft selbst</label><input id="r_scout" type="checkbox" ${P.scout ? "checked" : ""} style="width:auto;justify-self:end">`
     + `<label for="r_same">Mit der Wallet verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
 }
 
-function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); }
+function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); if (filter === "log") renderLog(); }
 
 function toast(text, bad = false) {
   const el = $("toast");
@@ -411,10 +425,11 @@ function setRunning(on) {
   running = on;
   save("deskRunning", on);
   if (typeof keepAwake === "function") keepAwake(on && !IS_EXT);
-  $("runBtn").textContent = on ? "■ Bot stoppen" : "▶ Bot starten";
-  $("runBtn").classList.toggle("on", on);
-  $("live").textContent = on ? "● Live · Spielgeld" : "● Spielgeld";
-  $("live").classList.toggle("live", on);
+  $("runBtn").textContent = serverMode ? "☁ läuft auf GitHub, rund um die Uhr" : on ? "■ Bot stoppen" : "▶ Bot starten";
+  $("runBtn").disabled = serverMode;
+  $("runBtn").classList.toggle("on", on && !serverMode);
+  $("live").textContent = serverMode ? "● Server 24/7 · Spielgeld" : on ? "● Live · Spielgeld" : "● Spielgeld";
+  $("live").classList.toggle("live", on || serverMode);
   if (on) { for (const k of Object.keys(cursor)) delete cursor[k]; agent.scoutAt = 0; }   // after a pause: only new trades, the Scout looks at once
   render();
 }
@@ -495,6 +510,7 @@ $("openPos").addEventListener("click", async e => {
   point(); persist(); render();
 });
 $("resetAcc").addEventListener("click", () => {
+  if (serverMode) { alert("Das Server-Konto läuft auf GitHub. Zum Neustart dort den Branch desk-data löschen."); return; }
   if (!confirm(`Konto zurücksetzen? Alle Positionen und die Activity werden gelöscht, du startest mit ${money(P.deposit)} Spielgeld.`)) return;
   acc = newAccount(P); queue = []; agent.checked = 0; persist(); render();
 });
@@ -718,6 +734,131 @@ function webApp() {
   $("account").appendChild(note);
 }
 
+// ---------- live log (like the terminal in the video): one line per decision of every agent ----------
+function say(who, text) {
+  if (serverMode || !acc) return;
+  if (!acc.log) acc.log = [];
+  acc.log.unshift({ t: Date.now(), who, text });
+  if (acc.log.length > 300) acc.log.length = 300;
+}
+function renderLog() {
+  const lines = (serverMode ? serverDoc && serverDoc.log : acc.log) || [];
+  $("logBox").innerHTML = lines.slice(0, 200).map(l => `<div><span class="lt">${new Date(l.t).toLocaleTimeString("de-DE")}</span> <span class="lw w-${esc(l.who)}">${esc(l.who)}</span> ${esc(l.text)}</div>`).join("")
+    || `<div class="muted">Noch keine Einträge. Bot starten.</div>`;
+}
+
+// ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
+const REPO = "maxpandelakis-boop/Meme-Bot";
+const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
+let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
+async function fetchServer() {
+  try {
+    const c = await getJson(`https://api.github.com/repos/${REPO}/commits/desk-data`);   // the newest commit: raw files by sha are never stale
+    const d = await getJson(`https://raw.githubusercontent.com/${REPO}/${c.sha}/desk.json`);
+    serverDoc = d;
+    if (!serverMode) return;
+    acc = d.acc; P = { ...COPY_DEFAULTS, ...(d.P || {}) };
+    Object.assign(agent, { checked: (d.agent || {}).checked || 0, top: (d.agent || {}).top || [], scoutMsg: (d.agent || {}).scoutMsg || "" });
+    for (const [m, x] of Object.entries(d.prices || {})) prices[m] = { ...prices[m], ...x };
+    $("serverInfo").textContent = `Stand ${hm(d.updated)} · läuft seit ${hm(d.runStarted)} auf GitHub`;
+    $("serverInfo").className = "tiny " + (Date.now() - d.updated < 5 * 60e3 ? "pos" : "neg");
+    if (Date.now() - d.updated >= 5 * 60e3) $("serverInfo").textContent += " · seit über 5 Minuten kein Stand (startet gerade neu?)";
+  } catch (e) {
+    $("serverInfo").textContent = String(e.message || e).includes("404") ? "Der Server-Desk hat noch nicht gestartet." : "Server gerade nicht erreichbar (" + (e.message || e) + ")";
+    $("serverInfo").className = "tiny neg";
+    if (serverMode && !serverDoc) { acc = newAccount(P); }
+  }
+  if (serverMode) { render(); renderLog(); renderRules(); }
+}
+function setMode(m) {
+  const toServer = m === "server";
+  if (toServer === serverMode) return;
+  if (toServer) { local = { acc, P }; serverMode = true; }
+  else { serverMode = false; if (local) { acc = local.acc; P = local.P; } }
+  save("deskMode", m);
+  for (const b of $("modes").children) b.classList.toggle("on", b.dataset.m === m);
+  document.body.classList.toggle("server", toServer);
+  $("serverInfo").textContent = toServer ? "lade …" : "";
+  clearInterval(serverTimer);
+  if (toServer) { fetchServer(); serverTimer = setInterval(fetchServer, 90000); }   // GitHub allows 60 API calls an hour without login
+  setRunning(running);
+  renderRules(); render(); renderLog();
+}
+$("modes").addEventListener("click", e => { const b = e.target.closest("button[data-m]"); if (b) setMode(b.dataset.m); });
+
+// ---------- share (like the video's Share button) ----------
+$("shareBtn").addEventListener("click", async () => {
+  const v = value(), s = stats(acc);
+  const text = `Trading Desk (Spielgeld): ${money(v)} (${pct(v / acc.deposit - 1)} seit Start mit ${money(acc.deposit)}) · ${s.copies} Trades · ${s.wins}W ${s.losses}L`
+             + (serverMode ? " · läuft 24/7" : "");
+  const url = IS_EXT ? "" : location.href.split("#")[0];
+  try {
+    if (navigator.share) await navigator.share({ title: "Trading Desk", text, url: url || undefined });
+    else { await navigator.clipboard.writeText(text + (url ? " " + url : "")); toast("KOPIERT"); }
+  } catch {}
+});
+
+// ---------- Chief of Staff: change the desk's rules in plain words ----------
+const chat = [];
+function bubble(who, text) {
+  chat.push({ who, text, t: Date.now() });
+  $("chatBox").innerHTML = chat.slice(-30).map(c => `<div class="msg ${c.who}"><div>${esc(c.text).replace(/\n/g, "<br>")}</div><span>${hm(c.t)}</span></div>`).join("");
+  $("chatBox").scrollTop = 1e9;
+}
+const num = s => Number(String(s).replace(",", "."));
+// "x %" / "x x" etc. -> rule changes; returns [changes {key: value}, answer] (pure text parsing, nothing is sent anywhere)
+function understand(t) {
+  const s = t.toLowerCase(), ch = {};
+  let m;
+  if (/\b(status|wie läuft|wie geht|how)\b/.test(s)) {
+    const st = stats(acc);
+    return [ch, `${money(value())} (${pct(value() / acc.deposit - 1)}) · ${Object.keys(acc.pos).length} offen · ${st.copies} Trades · ${st.wins}W ${st.losses}L · Gebühren ${money(acc.fees)}.`];
+  }
+  if (/(klein|small)/.test(s)) Object.assign(ch, { sizePct: COPY_DEFAULTS.sizePct, maxOpen: COPY_DEFAULTS.maxOpen });
+  if ((m = s.match(/(\d+(?:[.,]\d+)?)\s*%\s*(?:vom|von|of)\s*(?:freien|free)/)) || (m = s.match(/(?:size|einsatz|kauf)\D{0,12}(\d+(?:[.,]\d+)?)\s*%/))) ch.sizePct = num(m[1]) / 100;
+  if ((m = s.match(/(?:max(?:imal)?|höchstens|nur)\s*(\d+)\s*(?:offen|open|coins?|positionen)?/))) ch.maxOpen = Math.max(1, Math.round(num(m[1])));
+  if ((m = s.match(/stop\D{0,10}(\d+(?:[.,]\d+)?)\s*%/))) ch.hardStop = num(m[1]) / 100;
+  if ((m = s.match(/trail\w*\D{0,10}(\d+(?:[.,]\d+)?)\s*%/))) ch.trail = num(m[1]) / 100;
+  if ((m = s.match(/(?:bei|at|half at|hälfte bei)\s*(\d+(?:[.,]\d+)?)\s*[x×]/))) ch.halfAt = num(m[1]);
+  if ((m = s.match(/(?:punkte|score)\D{0,8}(\d+)/))) ch.minScore = num(m[1]);
+  if ((m = s.match(/(?:budget|startgeld|start mit)\D{0,6}(\d+(?:[.,]\d+)?)/))) ch.deposit = num(m[1]);
+  if (/scout\s*(aus|off)/.test(s)) ch.scout = false;
+  if (/scout\s*(an|on|ein)/.test(s)) ch.scout = true;
+  if (/(nicht mehr nachlegen|not adding|no adding|kein nachkauf)/.test(s) && !Object.keys(ch).length) return [ch, "Nachkaufen in einen Coin, den der Desk schon hält, macht er nie. Das ist fest eingebaut."];
+  if (!Object.keys(ch).length) {
+    if (/^(start|starte|los|go)\b/.test(s)) return [{ run: true }, "Desk startet."];
+    if (/^(stop|stopp|halt|pause)\b/.test(s)) return [{ run: false }, "Desk angehalten."];
+    return [ch, "Das habe ich nicht verstanden. Beispiele:\n„40% vom freien Geld, max 2 offen“\n„stop 8%“ · „trail 10%“ · „hälfte bei 2x“ · „punkte 70“\n„halte den desk klein“ · „status“ · „start“ / „stop“"];
+  }
+  const label = { sizePct: v => `${Math.round(v * 100)}% vom freien Geld`, maxOpen: v => `max ${v} offen`, hardStop: v => `Hard Stop −${Math.round(v * 100)}%`,
+                  trail: v => `Trailing ${Math.round(v * 100)}%`, halfAt: v => `Einsatz zurück bei ${v}×`, minScore: v => `Scout ab ${v} Punkten`,
+                  deposit: v => `Budget ${money(v)} (gilt beim nächsten Neustart des Kontos)`, scout: v => `Scout ${v ? "an" : "aus"}` };
+  return [ch, "Regeln gesetzt: " + Object.entries(ch).map(([k, v]) => label[k](v)).join(", ") + "."];
+}
+$("chatForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const t = $("chatIn").value.trim(); if (!t) return;
+  $("chatIn").value = "";
+  bubble("me", t);
+  const [ch, answer] = understand(t);
+  if ("run" in ch) {
+    if (serverMode) { bubble("bot", "Der Server-Desk läuft immer. Anhalten: auf GitHub unter Actions → Trencher desk → Disable workflow."); return; }
+    setRunning(ch.run); bubble("bot", answer); return;
+  }
+  if (!Object.keys(ch).length) { bubble("bot", answer); return; }
+  if (serverMode) {
+    const rules = { ...((serverDoc && serverDoc.P) || {}), ...ch };
+    const keep = Object.fromEntries(Object.entries(rules).filter(([k, v]) => k in COPY_DEFAULTS && v !== COPY_DEFAULTS[k]));
+    navigator.clipboard && navigator.clipboard.writeText(JSON.stringify({ rules: keep }, null, 2)).catch(() => {});
+    bubble("bot", answer.replace("Regeln gesetzt", "Für den Server-Desk") + "\nDer Text für config.json ist kopiert. Auf GitHub einfügen und speichern (Link unten), der Desk liest ihn in einer Minute.");
+    $("chatLink").href = CONFIG_EDIT; $("chatLink").style.display = "";
+    return;
+  }
+  Object.assign(P, ch); save("deskRules", P); renderRules(); render();
+  say("rules", answer);
+  bubble("bot", answer + " Gilt ab sofort.");
+});
+
 // ---------- start ----------
 (async () => {
   try { $("ver").textContent = "v" + chrome.runtime.getManifest().version; } catch { $("ver").textContent = "web"; }
@@ -733,4 +874,6 @@ function webApp() {
   if (open.length) priceCoins(open).then(render).catch(() => {});
   try { if (Notification.permission === "granted") $("notifBtn").textContent = "🔔 Benachrichtigungen sind an"; } catch {}
   setRunning(!!(await load("deskRunning", false)));
+  bubble("bot", "Hallo, ich bin dein Chief of Staff. Sag mir Regeln in Worten, z. B. „40% vom freien Geld, max 2 offen“, „stop 8%“ oder „status“.");
+  if ((await load("deskMode", "local")) === "server") setMode("server");
 })();
