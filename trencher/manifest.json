@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meme Trencher (Paper)",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Paper copy-trading bot for Solana meme coins: mirrors traders you follow with fake money. Never touches a wallet.",
   "permissions": [
     "sidePanel",

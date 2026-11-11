@@ -200,7 +200,7 @@ export function scoreHot(coins, { minLiq = 10000 } = {}) {
   const mv = max("vol1h"), mb = max("boost"), mr = max("reddit");
   return coins.filter(c => (c.liq || 0) >= minLiq).map(c => {
     const parts = {
-      trend: c.gtRank != null ? 1 - c.gtRank / 20 : 0,                  // GeckoTerminal trending position
+      trend: c.gtRank != null ? Math.max(0, 1 - c.gtRank / 20) : 0,      // GeckoTerminal trending position (top 20 only)
       volume: Math.sqrt((c.vol1h || 0) / mv),                            // DexScreener 1 h volume
       boost: (c.boost || 0) / mb,                                         // DexScreener paid boosts (also a hype signal)
       buyers: c.buys1h + c.sells1h > 0 ? c.buys1h / (c.buys1h + c.sells1h) : 0,

@@ -31,20 +31,31 @@ export async function priceMap(getJson, mints) {
 export async function hotCoins({ getJson, gt, reddit, msg = () => {} }) {
   const coins = new Map(), add = (mint, x) => { if (!mint) return; const c = coins.get(mint) || coins.set(mint, { mint, src: [] }).get(mint); Object.assign(c, x); };
   const tag = (mint, s) => { const c = coins.get(mint); if (c && !c.src.includes(s)) c.src.push(s); };
-  msg("Hole Trends von GeckoTerminal …");
-  try {
-    const tp = await gt("/trending_pools?page=1");
-    (tp.data || []).forEach((d, i) => {
-      const mint = String(d.relationships?.base_token?.data?.id || "").replace(/^solana_/, "");
-      add(mint, { gtRank: i, pool: d.attributes.address, symbol: String(d.attributes.name || "").split(" / ")[0] }); tag(mint, "GT #" + (i + 1));
-    });
-  } catch {}
+  msg("Hole Trends und frische Coins von GeckoTerminal …");
+  // trending pages 1 to 3 (only the top 20 get trend points, so the score of those stays as before) + the newest pools
+  const fromPool = d => String(d.relationships?.base_token?.data?.id || "").replace(/^solana_/, "");
+  for (const page of [1, 2, 3]) {
+    try {
+      const tp = await gt(`/trending_pools?page=${page}`);
+      (tp.data || []).forEach((d, i) => {
+        const rank = (page - 1) * 20 + i, mint = fromPool(d);
+        if (coins.has(mint)) return;
+        add(mint, { gtRank: rank, pool: d.attributes.address, symbol: String(d.attributes.name || "").split(" / ")[0] }); tag(mint, "GT #" + (rank + 1));
+      });
+    } catch {}
+  }
+  for (const page of [1, 2]) {
+    try {
+      const np = await gt(`/new_pools?page=${page}`);
+      for (const d of np.data || []) { const mint = fromPool(d); if (!coins.has(mint)) add(mint, { pool: d.attributes.address }); tag(mint, "Frisch"); }
+    } catch {}
+  }
   msg("Hole Boosts und neue Coins von DexScreener …");
-  for (const [url, label] of [[DS + "/token-boosts/top/v1", "Boost"], [DS + "/token-profiles/latest/v1", "Neu"]]) {
+  for (const [url, label] of [[DS + "/token-boosts/top/v1", "Boost"], [DS + "/token-boosts/latest/v1", "Boost"], [DS + "/token-profiles/latest/v1", "Neu"]]) {
     try {
       const list = await getJson(url);
-      for (const t of (Array.isArray(list) ? list : []).filter(t => t.chainId === "solana").slice(0, 20)) {
-        add(t.tokenAddress, label === "Boost" ? { boost: t.totalAmount || t.amount || 0 } : {}); tag(t.tokenAddress, label);
+      for (const t of (Array.isArray(list) ? list : []).filter(t => t.chainId === "solana").slice(0, 30)) {
+        add(t.tokenAddress, label === "Boost" ? { boost: Math.max(coins.get(t.tokenAddress)?.boost || 0, t.totalAmount || t.amount || 0) } : {}); tag(t.tokenAddress, label);
       }
     } catch {}
   }
