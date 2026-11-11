@@ -1,6 +1,6 @@
 // node trencher/test_copy.mjs : checks the copy-trading engine.
 import assert from "node:assert/strict";
-import * as C from "./copy-engine.js?v=0.9.6";
+import * as C from "./copy-engine.js?v=0.9.7";
 
 const W = "Trader1111111111111111111111111111111111111", M = "Coin1111111111111111111111111111111111pump";
 const tb = (owner, mint, amt) => ({ owner, mint, uiTokenAmount: { uiAmount: amt } });
@@ -88,7 +88,7 @@ console.log("ok: copy engine");
 
 // fresh-coin Scout filter
 {
-  const S = await import("./scout.js?v=0.9.6");
+  const S = await import("./scout.js?v=0.9.7");
   const now = Date.now();
   const mk = (id, age, mc, b, s, u, ch) => ({ relationships: { base_token: { data: { id: "solana_" + id } } }, attributes: { address: "P" + id, name: id + " / SOL",
     pool_created_at: new Date(now - age * 60e3).toISOString(), market_cap_usd: String(mc), reserve_in_usd: "9000", base_token_price_usd: "0.00002",
@@ -101,7 +101,7 @@ console.log("ok: copy engine");
 
 // fresh-coin veto: RugCheck dangers, a creator with another coin in 24 h, a whale that is not the curve
 {
-  const S = await import("./scout.js?v=0.9.6");
+  const S = await import("./scout.js?v=0.9.7");
   const now = Date.parse("2026-11-11T13:00:00Z");
   const base = { score_normalised: 12, risks: [{ name: "Low Liquidity", level: "warn" }], creatorTokens: [],
     knownAccounts: { CURVE: { name: "Pump Fun", type: "AMM" }, DEV: { name: "Creator", type: "CREATOR" } },
@@ -136,7 +136,7 @@ console.log("ok: copy engine");
 
 // the Scout's words match its pick; a coin just sold is bought again only when the Prüfer says yes
 {
-  const S = await import("./scout.js?v=0.9.6");
+  const S = await import("./scout.js?v=0.9.7");
   const now = 1e12, P = { minScore: 60 }, W = 30 * 60e3;
   const acc = { pos: {}, closed: [{ mint: "A", out: now - 10 * 60e3, px: 1.0 }] };
   const a = { mint: "A", symbol: "A", score: 61, chg1h: 5, buys1h: 9, sells1h: 3, pool: "p", price: 1.02, chg5m: 2, buys5m: 5, sells5m: 2 };
@@ -158,7 +158,7 @@ console.log("ok: copy engine");
 
 // fresh desk: one price source (the pool), no buy on a price jump or outside the filter
 {
-  const S = await import("./scout.js?v=0.9.6");
+  const S = await import("./scout.js?v=0.9.7");
   const pick = { price: 1e-5 };
   const ok = { price: 1.1e-5, mc: 30000, liq: 9000 };
   if (S.freshFillCheck(pick, ok) !== "") throw new Error("ok fill");
@@ -173,4 +173,28 @@ console.log("ok: copy engine");
   if (asked !== "/pools/multi/P1,P2") throw new Error(asked);
   if (by.P1.price !== 2e-5 || by.P1.liq !== 8000 || by.P1.mc !== 30000 || by.P2) throw new Error(JSON.stringify(by));
   console.log("ok: fresh fill check, pool prices");
+}
+
+// the strict fresh picker: watch first, buy only what is still strong
+{
+  const S = await import("./scout.js?v=0.9.7");
+  const now = 1e12, w = { seen: now - 12 * 60e3, price0: 1e-5 };
+  const good = { price: 1.3e-5, mc: 40000, liq: 12000, buyers5: 40, buys5: 60, sells5: 20, chg5: 12 };
+  const v = (c, ww = w) => S.strictVerdict(ww, c, now);
+  if (v(good) !== "") throw new Error("good: " + v(good));
+  if (!v(good, { ...w, seen: now - 4 * 60e3 }).startsWith("beobachtet, noch 6 min")) throw new Error("wait");
+  if (!v({ ...good, price: 0.8e-5 }).includes("unter dem Preis")) throw new Error("dumped");
+  if (!v({ ...good, mc: 9000 }).includes("MC")) throw new Error("mc");
+  if (!v({ ...good, liq: 3000 }).includes("im Pool")) throw new Error("liq");
+  if (!v({ ...good, buyers5: 10 }).includes("Käufer")) throw new Error("buyers");
+  if (!v({ ...good, sells5: 50 }).includes("zu schwach")) throw new Error("sells");
+  if (!v({ ...good, chg5: -1 }).includes("fallen")) throw new Error("falling");
+  if (!v({ ...good, chg5: 90 }).includes("zu steil")) throw new Error("spike");
+  if (!v(undefined)) throw new Error("no price");
+  const watch = new Map([["OLD", { mint: "OLD", seen: now - 50 * 60e3, buyers0: 99 }]]);
+  S.watchUpdate(watch, [{ mint: "A", pool: "PA", symbol: "A", price: 1, buyers5: 20, why: "" }, { mint: "B", pool: "PB", why: "zu alt" }], now);
+  if ([...watch.keys()].join() !== "A" || watch.get("A").price0 !== 1) throw new Error("watch " + [...watch.keys()]);
+  S.watchUpdate(watch, Array.from({ length: 40 }, (_, i) => ({ mint: "M" + i, pool: "P" + i, price: 1, buyers5: i, why: "" })), now);
+  if (watch.size !== 30 || watch.has("M0") || !watch.has("M39")) throw new Error("cap " + watch.size);
+  console.log("ok: strict fresh picker");
 }

@@ -1,6 +1,6 @@
 // Copy-trading engine of the Trencher (paper money only): turns a followed wallet's on-chain transactions into its buys and sells,
 // and keeps the copy account (cash, positions, activity, equity curve). Pure functions, no browser APIs: node tests them (test_copy.mjs).
-import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.6";
+import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.7";
 
 export const COPY_DEFAULTS = {
   // the "Trading Desk" of the second video (2026-11-09): $20, 40 % of free cash per buy, max 2 open, no adding to losers,
@@ -14,6 +14,7 @@ export const COPY_DEFAULTS = {
   trail: 0.10,        // after that: sell the rest 10 % below its highest price
   minScore: 60,       // Scout: buy coins with at least this hot score (0..100; without Reddit and boosts the top is about 85)
   scout: true,        // Scout buys hot coins by itself
+  fresh: true,        // ... and the strict fresh picker buys new small coins (browser desk; scout.js STRICT)
   delaySec: 30,       // wallets you follow: copy their buys this long after them
   sameExits: false,   // ... and sell when they sell (otherwise the desk rules decide)
   takeProfitX: 0,     // optional: sell all at this multiple (0 = off; the desk rules trail instead)

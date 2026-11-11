@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.6";
-import { bestPair } from "./sim.js?v=0.9.6";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX } from "./scout.js?v=0.9.6";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js?v=0.9.7";
+import { bestPair } from "./sim.js?v=0.9.7";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, STRICT, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.7";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -178,11 +178,74 @@ async function scout() {
 
 // ---------- Risk: the desk rules (and the optional plain take-profit / stop-loss) on the open positions ----------
 const EXIT_TEXT = { half: "Einsatz zurück bei 2×", stop: "Hard Stop", trail: "Trailing-Stop", tp: "Take Profit", sl: "Stop-Loss" };
+// ---------- the strict fresh picker: new small coins, watched first, bought only when still strong (rules: scout.js STRICT) ----------
+const watch = new Map();
+let freshAt = 0, poolAt = 0;
+const FRESH_MS = 30000, LATENCY_MS = 3000;
+async function freshScout() {
+  if (!P.fresh || Date.now() - freshAt < FRESH_MS) return;
+  freshAt = Date.now();
+  const list = await freshCoins(gt, Date.now(), [1, 2]);
+  agent.checked += list.length;
+  watchUpdate(watch, list);
+  const due = [...watch.values()].filter(w => (Date.now() - w.seen) / 60e3 >= STRICT.waitMin);
+  agent.freshMsg = `Frisch: ${watch.size} beobachtet, ${due.length} reif`;
+  if (!due.length) return;
+  const by = await poolPrices(gt, due.map(w => w.pool));
+  const now = Date.now(), recent = new Set(acc.closed.filter(c => now - c.out < COOLDOWN_MS).map(c => c.mint));
+  const rated = due.map(w => ({ w, c: by[w.pool], why: strictVerdict(w, by[w.pool], now) })).sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || ((b.c || {}).buyers5 || 0) - ((a.c || {}).buyers5 || 0));
+  for (const r of rated.slice(0, 3)) say("scout", `[Frisch] $${r.w.symbol} ${Math.round((now - r.w.seen) / 60e3)} min beobachtet${r.c ? ` · MC ${Math.round(r.c.mc / 1000)}k · ${r.c.buyers5} Käufer, ${r.c.buys5}/${r.c.sells5} in 5 min` : ""} → ${r.why || "size check"}`);
+  const cands = rated.filter(r => !r.why && !acc.pos[r.w.mint] && !recent.has(r.w.mint));
+  if (!cands.length) return;
+  if (Object.keys(acc.pos).length >= P.maxOpen) { say("risk", `[Frisch] max ${P.maxOpen} offen → $${cands[0].w.symbol} skip`); return; }
+  let pick = null;
+  for (const r of cands.slice(0, 3)) {
+    const rug = await freshCheck(getJson, r.w.mint);
+    const no = rug.bad || !rug.known;
+    say("risk", `[Frisch] Prüfung $${r.w.symbol}: ${rug.why}${no ? " → skip" : ""}`);
+    if (no) { if (rug.bad) watch.delete(r.w.mint); continue; }
+    pick = r; break;
+  }
+  if (!pick) return;
+  await sleep(LATENCY_MS);
+  const fill = (await poolPrices(gt, [pick.w.pool]).catch(() => ({})))[pick.w.pool];
+  const bad = freshFillCheck(pick.c, fill, STRICT);
+  if (bad) { say("risk", `[Frisch] $${pick.w.symbol} nach ${LATENCY_MS / 1000}s: ${bad} → skip`); return; }
+  if (!running || serverMode) return;
+  const m = pick.w.mint;
+  prices[m] = { ...prices[m], price: fill.price, liq: fill.liq, mc: fill.mc, symbol: fill.symbol, pool: fill.pool, t: Date.now() };
+  const r = copyBuy(acc, { mint: m, symbol: pick.w.symbol, price: fill.price, liq: fill.liq, mc: fill.mc, score: fill.buyers5, pool: fill.pool, img: "", now: Date.now() }, P);
+  if (!r.ok) { say("risk", `[Frisch] $${pick.w.symbol} → ${r.skip}`); return; }
+  acc.pos[m].fresh = true;          // priced by its GeckoTerminal pool from now on, not by DexScreener
+  watch.delete(m);
+  say("exec", `[Frisch] gekauft $${pick.w.symbol} ${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC · ${Math.round((Date.now() - pick.w.seen) / 60e3)} min beobachtet · Preis in ${LATENCY_MS / 1000}s ${fill.price >= pick.c.price ? "+" : ""}${((fill.price / pick.c.price - 1) * 100).toFixed(1)}% · Gebühr ${money(r.fill.fee)}`);
+  notify(`Gekauft (frisch): ${pick.w.symbol}`, `${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC`);
+  point(); persist(); render();
+}
+// Prices of the open positions: DexScreener, and for fresh positions their own GeckoTerminal pool (every 15 s, it wins).
+async function priceOpen(open) {
+  const freshPos = open.map(m => acc.pos[m]).filter(p => p && p.fresh && p.pool);
+  await priceCoins(open.filter(m => !(acc.pos[m] && acc.pos[m].fresh)));
+  if (!freshPos.length || Date.now() - poolAt < 15000) return;
+  poolAt = Date.now();
+  const by = await poolPrices(gt, freshPos.map(p => p.pool));
+  for (const p of freshPos) {
+    const q = by[p.pool];
+    if (q) { prices[p.mint] = { ...prices[p.mint], price: q.price, liq: q.liq, mc: q.mc, symbol: p.symbol, pool: p.pool, t: Date.now() }; p.noPrice = 0; }
+    else if ((p.noPrice = (p.noPrice || 0) + 1) >= 8) prices[p.mint] = { ...prices[p.mint], price: (prices[p.mint] || {}).price || p.entry, liq: 0, mc: 0, symbol: p.symbol, pool: p.pool, t: Date.now() };
+  }
+}
 async function riskCheck() {
   const open = Object.keys(acc.pos);
   agent.r = `${open.length} offen`;
   if (!open.length) return;
-  try { await priceCoins(open); } catch { return; }
+  try { await priceOpen(open); } catch { return; }
+  for (const p of Object.values(acc.pos)) {              // a fresh coin whose pool has no money left: out, at what it would still pay
+    const q = prices[p.mint];
+    if (!p.fresh || !q || !(q.t > p.at) || q.liq >= DEAD_LIQ) continue;
+    const r = copySell(acc, { mint: p.mint, price: q.price, liq: Math.max(q.liq, 1), mc: q.mc, frac: 1, why: "dead", now: Date.now() });
+    if (r.ok) { say("exit", `[Frisch] Pool leer (${Math.round(q.liq)} $) · $${p.symbol} ${signed(r.fill.pnl)}`); toast("POOL LEER", true); }
+  }
   const exits = deskExits(acc, prices, P);
   if (P.takeProfitX > 1 || P.stopLoss > 0) for (const x of riskExits(acc, prices, P)) if (!exits.some(e => e.mint === x.mint)) exits.push({ ...x, frac: 1 });
   for (const { mint, why, frac } of exits) {
@@ -227,6 +290,7 @@ loop(watchOne, WATCH_MS);
 loop(copyDue, COPY_MS);
 loop(riskCheck, RISK_MS);
 loop(scout, 5000);
+loop(freshScout, 5000);
 loop(async () => { point(); persist(); }, CURVE_MS);
 setInterval(() => { if (acc) renderTop(); }, 2000);
 
@@ -300,6 +364,7 @@ function renderTop() {
   $("aScout").innerHTML = agent.top.map(c => `<li>${avatar(c.symbol, c.img)}<b>${esc(c.symbol)}</b> <span class="${c.chg1h >= 0 ? "pos" : "neg"}">${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}%</span><span class="sc">${c.score}</span></li>`).join("")
     || `<li class="muted">${running ? "erste Suche läuft …" : "Bot starten"}</li>`;
   if (agent.scoutMsg) $("aScout").insertAdjacentHTML("beforeend", `<li class="muted">→ ${esc(agent.scoutMsg)}</li>`);
+  if (agent.freshMsg && P.fresh && !serverMode) $("aScout").insertAdjacentHTML("beforeend", `<li class="muted">→ ${esc(agent.freshMsg)}</li>`);
   const ring = Math.min(1, Math.max(0, x / 10));
   $("ringFg").style.strokeDashoffset = String(169.6 * (1 - ring));
   $("aCompSub").textContent = x.toFixed(2) + "× jetzt";
@@ -409,6 +474,7 @@ function renderRules() {
   $("rules").classList.toggle("ro", serverMode);
   $("rules").innerHTML = RULES.map(([k, label, f]) => `<label for="r_${k}">${label}</label><input id="r_${k}" data-k="${k}" data-f="${f}" type="number" min="0" step="any" value="${+(P[k] * f).toFixed(4)}">`).join("")
     + `<label for="r_scout">Scout kauft selbst</label><input id="r_scout" type="checkbox" ${P.scout ? "checked" : ""} style="width:auto;justify-self:end">`
+    + `<label for="r_fresh">Frische kleine Coins (strenger Filter)</label><input id="r_fresh" type="checkbox" ${P.fresh ? "checked" : ""} style="width:auto;justify-self:end">`
     + `<label for="r_same">Mit der Wallet verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
 }
 
@@ -494,6 +560,7 @@ $("rules").addEventListener("change", e => {
   const el = e.target;
   if (el.id === "r_same") P.sameExits = el.checked;
   else if (el.id === "r_scout") P.scout = el.checked;
+  else if (el.id === "r_fresh") P.fresh = el.checked;
   else if (el.dataset.k) { const v = Number(el.value); if (v >= 0) P[el.dataset.k] = v / Number(el.dataset.f); }
   save("deskRules", P); render();
 });
@@ -765,7 +832,7 @@ function renderLog() {
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
-const VERSION = "0.9.6";      // the same number as manifest.json (test_copy.mjs checks it)
+const VERSION = "0.9.7";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {
@@ -890,7 +957,7 @@ $("chatForm").addEventListener("submit", e => {
   for (const x of $("ranges").children) x.classList.toggle("on", x.dataset.r === range);
   renderRules(); renderTraders();
   const open = Object.keys(acc.pos);
-  if (open.length) priceCoins(open).then(render).catch(() => {});
+  if (open.length) priceOpen(open).then(render).catch(() => {});
   try { if (Notification.permission === "granted") $("notifBtn").textContent = "🔔 Benachrichtigungen sind an"; } catch {}
   setRunning(!!(await load("deskRunning", false)));
   bubble("bot", "Hallo, ich bin dein Chief of Staff. Sag mir Regeln in Worten, z. B. „40% vom freien Geld, max 2 offen“, „stop 8%“ oder „status“.");
