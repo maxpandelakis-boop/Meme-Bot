@@ -658,10 +658,11 @@ async function hotCoins(msg) {
 
 async function findTraders() {
   const btn = $("findBtn"), msg = t => { $("findMsg").textContent = t; };
-  btn.disabled = true; found = []; renderFound();
+  btn.disabled = true; found = []; searching = true; renderFound();
   try {
     hot = await hotCoins(msg); renderHot();
     const pools = hot.filter(c => c.pool).slice(0, 8);
+    $("findList").innerHTML = `<li class="empty">${hot.length} heiße Coins gefunden. Jetzt werden ihre Käufer und Verkäufer geprüft …</li>`;
     const got = [];
     for (let i = 0; i < pools.length; i++) {
       msg(`Prüfe Trader von ${pools[i].symbol} (${i + 1}/${pools.length}) …`);
@@ -672,10 +673,10 @@ async function findTraders() {
     msg(found.length ? `${hot.length} heiße Coins aus 4 Quellen, ${found.length} Wallets mit Gewinn in den Top ${got.length}. Glück oder Können? Erst mit Spielgeld testen.`
                      : "Gerade keine klaren Gewinner gefunden. In ein paar Minuten nochmal versuchen.");
   } catch (e) { msg("Suche fehlgeschlagen: " + (e.message || e)); }
-  btn.disabled = false; renderFound();
+  btn.disabled = false; searching = false; renderFound();
 }
 function renderHot() {
-  $("hotHead").style.display = hot.length ? "" : "none";
+  $("hotBox").style.display = hot.length ? "" : "none";
   $("hotList").innerHTML = hot.slice(0, 10).map(c => {
     const soc = (c.links || []).map(x => x === "twitter" ? "𝕏" : x === "telegram" ? "TG" : x === "discord" ? "DC" : "").filter(Boolean).join(" ");
     return `<li>${avatar(c.symbol || "?", c.img)}<div class="mid"><b>${esc(c.symbol || short(c.mint))} <span class="score">${c.score}</span></b>
@@ -684,20 +685,31 @@ function renderHot() {
       ${c.url ? `<a class="link tiny" href="${esc(c.url)}" target="_blank" rel="noopener">↗</a>` : ""}</li>`;
   }).join("");
 }
+let searching = false;
 function renderFound() {
+  $("followTop").style.display = found.some(r => !traders.some(t => t.wallet === r.wallet)) ? "" : "none";
+  if (!found.length) { $("findList").innerHTML = `<li class="empty">${searching ? "Suche läuft, Trader erscheinen hier …" : "Noch keine Trader gefunden."}</li>`; return; }
   $("findList").innerHTML = found.map((r, i) => {
-    const have = traders.some(t => t.wallet === r.wallet);
-    return `<li>${avatar(r.wallet)}<div class="mid"><b>${short(r.wallet)}</b><code>${esc(r.coins.slice(0, 4).join(", "))} · ${r.wins}W ${r.losses}L</code></div>
-      <div class="amt"><b class="pos">${signed(r.pnl)}</b><span>Gewinn</span></div>
+    const have = traders.some(t => t.wallet === r.wallet), n = r.wins + r.losses;
+    return `<li>${avatar(r.wallet)}<div class="mid"><b>#${i + 1} ${short(r.wallet)}</b><code>${n} Trades · ${r.wins}W ${r.losses}L · ${esc(r.coins.slice(0, 3).join(", "))}</code></div>
+      <div class="amt"><b class="pos">${signed(r.pnl)}</b><span>Gewinn zuletzt</span></div>
       <a class="link tiny" href="https://solscan.io/account/${esc(r.wallet)}" target="_blank" rel="noopener">↗</a>
-      <button class="follow" data-follow="${i}" ${have ? "disabled" : ""}>${have ? "✓" : "Folgen"}</button></li>`;
+      <button class="follow" data-follow="${i}" ${have ? "disabled" : ""}>${have ? "✓ folgt" : "Folgen"}</button></li>`;
   }).join("");
 }
+function follow(r) {
+  if (!traders.some(t => t.wallet === r.wallet)) traders.push({ name: "Top-" + r.wallet.slice(0, 4), wallet: r.wallet, on: true });
+}
+$("followTop").addEventListener("click", () => {
+  for (const r of found.slice(0, 4)) follow(r);
+  save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
+  $("grid").scrollIntoView({ behavior: "smooth", block: "center" });
+});
 $("findBtn").addEventListener("click", findTraders);
 $("findList").addEventListener("click", e => {
   const b = e.target.closest("button[data-follow]"); if (!b) return;
   const r = found[+b.dataset.follow];
-  if (!traders.some(t => t.wallet === r.wallet)) traders.push({ name: "Top-" + r.wallet.slice(0, 4), wallet: r.wallet, on: true });
+  follow(r);
   save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
 });
 
