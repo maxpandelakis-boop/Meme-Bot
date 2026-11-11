@@ -430,3 +430,5 @@
 {"t":1794399180964,"addr":"6JJ7ZG85sXhmAv3E8chuUpWQq7VbRwzJLuDuKXw3irdP","sym":"\u5927A","age":30.7,"why":"liquidity","liq":0}
 {"t":1794399301101,"addr":"5hkn7MqgPPVH8Eg6LeqjL2b1R6Ckim79LDMW5owGCm5j","sym":"WOT","age":30.5,"score":0.01665,"px":3.309e-05,"liq":14231,"p0":3.247795842728051e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.0725,"c_peak":1.1417,"c_vol":5.0278,"c_act":0.8333,"c_r5":-0.0211,"c_r15":-0.0549,"c_mc":4.5116}}
 {"t":1794399480251,"addr":"69svnWk3jUWVZzu5oj7c2t4VDfmGX6CLWGQRrGQtQ3di","sym":"\u5927A","age":30.0,"why":"liquidity","liq":0}
+{"t":1794399660359,"addr":"5PpxVVcwELssg2uKkcgZNTFtA8pdbnmcRVvTLBDTBAGS","sym":"Cnbrake","age":30.5,"why":"liquidity","liq":0}
+{"t":1794399660359,"addr":"88mW4eKbGG8hLU43WpJDq1JAVnuw6hc86RVGxfQNpump","sym":"Muskrat","age":30.4,"why":"liquidity","liq":3354}
