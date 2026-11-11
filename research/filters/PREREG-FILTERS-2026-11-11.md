@@ -96,3 +96,32 @@ said so); whether the filter can be computed live without a key (a filter that c
 A filter that "helps" and is computable live for free goes into the fresh Scout (paper desk only). RugCheck and GoPlus values
 have no history: they can only be logged by the live desk next to each candidate's later price and judged later.
 The real-money switch stays off and untouched.
+
+## Amendment 1 (2026-11-11): the freeze, written after discovery and before the holdout was opened
+
+Discovery (27 days, 23,478 base signals, 870 a day; research/filters/discovery.txt): the base Scout loses 1.35 per 20 with the
+desk exits (9.1% of trades in profit, 77% end at the -8% stop; median coin 1.4 minutes old at $10.8K), 5.76 held to completion,
+0.66 without FOMO's fee. Fees and slippage alone are about 1.20 per 20.
+
+Frozen (research/filters/frozen.json, made by discover.py; the selection rule was in the code before the data came: walk-forward
+interval above 0, direction never flipped, second exit agrees, not the same coins as an earlier pick):
+
+- **F5** median: 22.36 SOL per minute (frozen.json `f5_median`).
+- **D1** share of supply bought by other wallets in the create slot >= 26.46%.
+- **D2** share of the curve's SOL that came in the first 60 seconds <= 0.583.
+- **D3** creator launched no other coin in the 24 h before.
+- **M** the logistic score with the weights and threshold in frozen.json (walk-forward on discovery it showed no lift:
+  +0.02, interval -0.31..+0.41; it is judged anyway, as registered).
+
+Extras, information only, found by looking at discovery tables (so weaker than D1 to D3; three more tests, 12 in all, Bonferroni
+level 99.6% is approximated by the 99.4% interval already computed):
+
+- **X1 no whale:** skip when the largest holder (creator included) holds 20% of the supply or more. On discovery those coins
+  (13% of the signals) lose 3.5 to 4.7 per 20: one sale drops the price far through the -8% stop.
+- **X2:** creator bought at most 1 SOL and launched no other coin in the 24 h before (discovery: -0.62 per 20, 24% kept).
+- **X3:** creator bought at most 1 SOL (the best single feature for the desk exit, +0.79 walk-forward, but the hold exit did not
+  agree, so the selection rule left it out of D1 to D3).
+
+Seen on discovery and worth saying: rug-radar's "dev dumped" sign points the other way for the desk exit here. Coins whose
+creator had already sold 90% or more did better (-1.10) than coins whose creator had sold nothing (-1.97): a creator who still
+holds is the dump that is still to come.

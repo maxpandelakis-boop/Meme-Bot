@@ -1,0 +1,63 @@
+discovery days 27 2026-08-17 to 2026-09-12 base signals 23478 per day 870
+base: desk per 20 -1.35 hold -5.764 quick -1.384 desk jup -0.664 | in profit % 9.1 | completes % 25.6
+exits {'2x+end': 157, 'end': 3789, 'stop': 18042, 'trail': 1490}
+median age 1.38 median mc 10795.05
+
+== fixed filters on discovery (information; judged on the holdout)
+F1 no launch factory (creator <3 coins in 24 h) | kept 0.62 avg -1.109 lift 0.24 [0.141, 0.331] days beat [20, 27] | hold lift 0.373 [0.144, 0.604]
+F2 early demand (a non-creator buyer in 10 s) | kept 0.981 avg -1.318 lift 0.031 [0.015, 0.048] days beat [21, 27] | hold lift 0.033 [-0.0, 0.064]
+F3 dev did not dump (sold <90%) | kept 0.367 avg -1.778 lift -0.428 [-0.652, -0.198] days beat [9, 27] | hold lift 0.942 [0.494, 1.445]
+F4 none of F1-F3 | kept 0.283 avg -1.35 lift -0.001 [-0.153, 0.145] days beat [16, 27] | hold lift 1.686 [1.255, 2.174]
+F5 slow curve (SOL/min below discovery median) | kept 0.5 avg -1.415 lift -0.065 [-0.228, 0.1] days beat [15, 27] | hold lift -0.439 [-0.669, -0.211]
+
+== single features, walk-forward out of sample (days 2026-08-26 on)
+dev_buy_sol        lift +0.788 [0.561, 1.039] kept 0.32 avg -0.727 days beat [17, 18] | hold lift -0.113 [-0.856, 0.666] | dirs ------
+slot0_pct          lift +0.522 [0.114, 0.928] kept 0.22 avg -0.992 days beat [9, 18] | hold lift +1.309 [0.533, 2.188] | dirs ++++++
+first60_share      lift +0.441 [0.287, 0.59] kept 0.28 avg -1.074 days beat [15, 18] | hold lift +0.790 [0.452, 1.126] | dirs ------
+dev_sold_any       lift +0.408 [0.219, 0.568] kept 0.69 avg -1.107 days beat [14, 18] | hold lift -0.265 [-0.618, 0.057] | dirs ++++++
+cr_24h             lift +0.405 [0.232, 0.555] kept 0.49 avg -1.110 days beat [15, 18] | hold lift +0.281 [0.013, 0.543] | dirs ------
+cr_7d              lift +0.399 [0.212, 0.568] kept 0.45 avg -1.116 days beat [14, 18] | hold lift +0.060 [-0.242, 0.377] | dirs ------
+buys_per_buyer5    lift +0.394 [0.228, 0.528] kept 0.38 avg -1.121 days beat [14, 18] | hold lift -0.369 [-1.125, 0.138] | dirs ------
+dev_pct            lift +0.365 [0.188, 0.531] kept 0.75 avg -1.150 days beat [13, 18] | hold lift -0.374 [-0.67, -0.094] | dirs ------
+dev_sold_frac      lift +0.358 [0.183, 0.512] kept 0.60 avg -1.157 days beat [12, 18] | hold lift -0.428 [-0.846, -0.066] | dirs ++++++
+snipe4_pct         lift +0.356 [-0.035, 0.754] kept 0.24 avg -1.159 days beat [10, 18] | hold lift +1.495 [0.721, 2.344] | dirs ++++++
+slot0_buys         lift +0.343 [0.159, 0.524] kept 0.54 avg -1.172 days beat [13, 18] | hold lift -0.149 [-0.502, 0.151] | dirs ++++++
+med_buy5           lift +0.228 [-0.06, 0.485] kept 0.17 avg -1.286 days beat [10, 18] | hold lift +1.058 [0.507, 1.683] | dirs ++++++
+real5              lift +0.189 [-0.005, 0.367] kept 0.74 avg -1.325 days beat [14, 18] | hold lift -0.153 [-0.309, 0.011] | dirs -+++++
+buyers_all         lift +0.178 [-0.051, 0.358] kept 0.69 avg -1.337 days beat [13, 18] | hold lift -0.192 [-0.429, 0.033] | dirs -+++++
+wexp_new_share     lift +0.178 [-0.042, 0.351] kept 0.29 avg -1.337 days beat [10, 18] | hold lift +0.101 [-0.447, 0.515] | dirs ------
+top3_share5        lift +0.171 [-0.032, 0.349] kept 0.68 avg -1.344 days beat [14, 18] | hold lift -0.281 [-0.515, -0.056] | dirs +-----
+buyers5            lift +0.169 [-0.014, 0.331] kept 0.75 avg -1.345 days beat [13, 18] | hold lift -0.123 [-0.287, 0.04] | dirs -+++++
+sells5             lift +0.154 [0.001, 0.295] kept 0.77 avg -1.361 days beat [13, 18] | hold lift -0.216 [-0.396, -0.014] | dirs -+++++
+top1_pct           lift +0.139 [-0.056, 0.343] kept 0.70 avg -1.376 days beat [11, 18] | hold lift -0.239 [-0.595, 0.103] | dirs +-----
+top10_pct          lift +0.136 [-0.123, 0.353] kept 0.62 avg -1.379 days beat [13, 18] | hold lift -0.217 [-0.486, 0.039] | dirs +-----
+snipe4_buys        lift +0.105 [-0.02, 0.227] kept 0.72 avg -1.410 days beat [9, 18] | hold lift -0.009 [-0.212, 0.197] | dirs ++++++
+sellers5           lift +0.103 [-0.075, 0.248] kept 0.70 avg -1.412 days beat [14, 18] | hold lift -0.337 [-0.554, -0.113] | dirs -+++++
+wexp_5plus_share   lift +0.099 [-0.068, 0.294] kept 0.34 avg -1.416 days beat [12, 18] | hold lift -1.340 [-1.717, -0.963] | dirs ------
+vol5_sol           lift +0.098 [-0.114, 0.272] kept 0.69 avg -1.416 days beat [13, 18] | hold lift -0.225 [-0.549, 0.068] | dirs -+++++
+early10_buyers     lift +0.096 [-0.103, 0.263] kept 0.69 avg -1.419 days beat [11, 18] | hold lift +0.005 [-0.207, 0.205] | dirs -+++++
+max_slot_wallets   lift +0.087 [-0.081, 0.246] kept 0.74 avg -1.428 days beat [8, 18] | hold lift +0.262 [0.05, 0.475] | dirs -+++++
+wexp_med           lift +0.056 [-0.142, 0.301] kept 0.39 avg -1.459 days beat [12, 18] | hold lift -1.210 [-1.529, -0.877] | dirs ------
+age_min            lift +0.053 [-0.219, 0.294] kept 0.33 avg -1.461 days beat [6, 18] | hold lift +0.538 [0.039, 1.017] | dirs +-----
+buys5              lift +0.045 [-0.139, 0.176] kept 0.61 avg -1.470 days beat [9, 18] | hold lift -0.313 [-0.563, -0.092] | dirs -+++++
+sol_per_min        lift +0.041 [-0.191, 0.252] kept 0.52 avg -1.474 days beat [7, 18] | hold lift +0.458 [0.084, 0.815] | dirs -+++++
+chg5               lift +0.016 [-0.139, 0.21] kept 0.56 avg -1.498 days beat [6, 18] | hold lift +0.350 [0.07, 0.645] | dirs -+++++
+mc                 lift +0.008 [-0.142, 0.182] kept 0.67 avg -1.507 days beat [7, 18] | hold lift +0.164 [-0.124, 0.446] | dirs -+++++
+netflow5_sol       lift -0.002 [-0.149, 0.184] kept 0.56 avg -1.517 days beat [5, 18] | hold lift +0.422 [0.119, 0.739] | dirs -+++++
+rs_sol             lift -0.003 [-0.174, 0.195] kept 0.58 avg -1.518 days beat [7, 18] | hold lift +0.299 [0.014, 0.584] | dirs -+++++
+dd_high            lift -0.006 [-0.176, 0.207] kept 0.56 avg -1.521 days beat [8, 18] | hold lift +0.387 [0.075, 0.741] | dirs +-----
+n_trades           lift -0.009 [-0.265, 0.232] kept 0.47 avg -1.524 days beat [9, 18] | hold lift -0.262 [-0.547, 0.039] | dirs -+++++
+sellers_all        lift -0.038 [-0.29, 0.26] kept 0.36 avg -1.553 days beat [10, 18] | hold lift +0.079 [-0.254, 0.329] | dirs -+++++
+flip_share         lift -0.053 [-0.317, 0.191] kept 0.25 avg -1.568 days beat [8, 18] | hold lift -0.162 [-0.64, 0.327] | dirs -+++++
+hour               lift -0.062 [-0.268, 0.118] kept 0.32 avg -1.577 days beat [7, 17] | hold lift +0.691 [0.284, 1.113] | dirs ------
+cr_grad            lift -0.243 [-0.388, -0.107] kept 0.48 avg -1.758 days beat [5, 18] | hold lift +0.422 [-0.034, 0.968] | dirs --++++
+sym_copies         lift -0.248 [-0.397, -0.09] kept 0.40 avg -1.763 days beat [7, 18] | hold lift +0.267 [-0.15, 0.564] | dirs --++++
+
+D picks: [{"feat": "slot0_pct", "cut": 26.457250000000002, "dir": 1, "wf_lift": 0.522, "wf_ci": [0.114, 0.928]}, {"feat": "first60_share", "cut": 0.5831, "dir": -1, "wf_lift": 0.441, "wf_ci": [0.287, 0.59]}, {"feat": "cr_24h", "cut": 0.0, "dir": -1, "wf_lift": 0.405, "wf_ci": [0.232, 0.555]}]
+
+== score M walk-forward: kept 0.272 avg -1.493 lift 0.022 [-0.305, 0.407] days beat [10, 18] | hold lift -0.822 [-1.234, -0.35]
+  score pct 0-50: n 7311 desk -1.527 hold -5.771 in profit 6.2%
+  score pct 50-70: n 2924 desk -1.429 hold -5.836 in profit 8.5%
+  score pct 70-90: n 2924 desk -1.264 hold -6.918 in profit 12.1%
+  score pct 90-100: n 1463 desk -2.128 hold -6.557 in profit 15.7%
+weights (largest): rs_sol +0.48, chg5 -0.40, mc -0.38, buyers_all -0.35, sellers_all +0.30, cr_7d -0.29, buys_per_buyer5 -0.24, netflow5_sol +0.24, med_buy5 -0.24, real5 -0.23, dev_sold_any +0.21, cr_grad +0.21, vol5_sol +0.18, snipe4_buys -0.17
