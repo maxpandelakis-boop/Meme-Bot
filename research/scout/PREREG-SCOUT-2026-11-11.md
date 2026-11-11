@@ -74,3 +74,16 @@ at graduation; trades per day; the max-2-open portfolio of the video replayed on
   held 80 SOL or more after the entry. Its path ends at its last curve trade, so a graduated coin is sold at about the
   graduation price. That cuts the biggest runners short; the share is reported.
 - Checked minutes: a minute with no trade in the last 5 minutes is skipped (no V1 or V3 signal is possible then).
+
+## Amendment 2 (2026-11-11, before any outcome): Maxim's quick in-and-out, and a second fee case
+
+Maxim (11 Nov): stay out of the coins that go to zero, go into those still rising, trade often and get out fast, as long as the
+total is a profit. Added before any outcome:
+
+- **M+R Momentum (primary, 4th cell).** Coin at least 10 minutes old, price at least 30% above its price 5 minutes ago, at least
+  20 distinct buyer wallets of 0.05 SOL or more in the last 5 minutes, market cap $10K to $60K, rug filter R. Secondary: M
+  without R.
+- **Quick in-and-out exit** for every cell, information except for M+R, which is judged with it: sell all at +20% or at -10%
+  (the trade that crosses), or after 10 minutes at the last trade. Same pass bar as above.
+- **Fee cases:** FOMO 0.5% min 0.50 $ (judged), memebot min 0.81 $, and a Jupiter-like swap with no platform fee and 0.05 $
+  network cost per trade (information: what the same trades would make without FOMO's minimum). The 1% slippage a side stays.

@@ -5,7 +5,8 @@ import numpy as np
 
 DEV = ["2026-09-%02d" % d for d in range(24, 31)]
 HOLD = ["2026-10-%02d" % d for d in range(1, 8)]
-PRIMARY = ["V1", "V2+R", "V3+R"]
+PRIMARY = ["V1", "V2+R", "V3+R", "M+R"]   # M+R is judged with the quick in-and-out exit (scal50), the others with the desk rules (pnl50)
+KEYS = ["pnl50", "pnl81", "pnl5", "scal50", "scal81", "scal5"]
 BOOT, SEED = 4000, 7
 TICKET = 20.0
 
@@ -28,19 +29,20 @@ def stats(rows, key, rng):
     if not rows:
         return dict(n=0)
     v = np.array([r[key] for r in rows]); d = [r["day"] for r in rows]
+    hk = "how" if key.startswith("pnl") else "show"
     by_day = {}
     for x, dd in zip(v, d):
         by_day.setdefault(dd, []).append(x)
     best = int(np.argmax(v))
     paired = [(r[key] - r["ctl"][key], r["day"]) for r in rows if r.get("ctl")]
     out = dict(n=len(v), avg=round(float(v.mean()), 3), ci=[round(x, 3) for x in boot_by_day(list(v), d, rng)],
-               in_profit=round(float((v > 0).mean()) * 100, 1), days=len(by_day), days_pos=sum(np.mean(x) > 0 for x in by_day.values()),
+               in_profit=round(float((v > 0).mean()) * 100, 1), days=len(by_day), days_pos=int(sum(np.mean(x) > 0 for x in by_day.values())),
                without_best=round(float(np.delete(v, best).mean()), 3) if len(v) > 1 else None,
                best=dict(sym=rows[best]["sym"], mint=rows[best]["mint"], pnl=round(float(v[best]), 2)),
                zero_pct=round(float(np.mean([r["zero"] for r in rows])) * 100, 1),
-               how={h: sum(r["how"] == h for r in rows) for h in sorted(set(r["how"] for r in rows))},
+               how={h: sum(r[hk] == h for r in rows) for h in sorted(set(r[hk] for r in rows))},
                grad_pct=round(float(np.mean([r["grad"] for r in rows])) * 100, 1),
-               hold_avg=round(float(np.mean([r[key.replace("pnl", "hold")] for r in rows])), 3),
+               hold_avg=round(float(np.mean([r[key.replace("pnl", "hold")] for r in rows])), 3) if key.startswith("pnl") else None,
                per_day={dd: [len(x), round(float(np.mean(x)), 2)] for dd, x in sorted(by_day.items())})
     if by_day:
         worst_day = max(by_day, key=lambda dd: abs(sum(by_day[dd])))
@@ -99,8 +101,9 @@ def main():
         res["cells"][cell] = {}
         for part, days in (("dev", DEV), ("holdout", HOLD)):
             rr = [r for r in rows if r["cell"] == cell and r["day"] in days]
-            res["cells"][cell][part] = {k: stats(rr, k, rng) for k in ("pnl50", "pnl81")}
-        h = res["cells"][cell]["holdout"]["pnl50"]; dv = res["cells"][cell]["dev"]["pnl50"]
+            res["cells"][cell][part] = {k: stats(rr, k, rng) for k in KEYS}
+        jk = "scal50" if cell.startswith("M") else "pnl50"
+        h = res["cells"][cell]["holdout"][jk]; dv = res["cells"][cell]["dev"][jk]
         v = verdict(h) if cell in PRIMARY else "(secondary)"
         res["cells"][cell]["verdict"] = v
         if cell in PRIMARY or cell == "V1+R":
@@ -112,10 +115,12 @@ def main():
                                  cell, part, s["n"], s["avg"], s["ci"][0], s["ci"][1], s["in_profit"], s["days_pos"], s["days"], s["zero_pct"],
                                  s["without_best"] or 0, s.get("control", {}).get("avg", float("nan")),
                                  s.get("minus_control", {}).get("avg", float("nan")), *(s.get("minus_control", {}).get("ci", [float("nan")] * 2)),
-                                 s["hold_avg"], s["how"]))
-        lines.append("%-8s verdict: %s   pnl81 holdout avg %s" % (cell, v, res["cells"][cell]["holdout"]["pnl81"].get("avg")))
+                                 s["hold_avg"] or 0, s["how"]))
+        hh = res["cells"][cell]["holdout"]
+        lines.append("%-8s verdict (%s): %s   holdout avg: desk %s / min 0.81 %s / Jupiter %s ; quick in-out %s / %s / %s" % (
+            cell, jk, v, *(hh[k].get("avg") for k in KEYS)))
         lines.append("")
-    json.dump(res, open(os.path.join(out, "result.json"), "w"), indent=1)
+    json.dump(res, open(os.path.join(out, "result.json"), "w"), indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o))
     open(os.path.join(out, "report.txt"), "w").write("\n".join(lines) + "\n")
     print("\n".join(lines))
 

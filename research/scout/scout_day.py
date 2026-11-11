@@ -15,7 +15,8 @@ BIG = 50_000_000                       # 0.05 SOL in lamports: a "real" buyer
 BAND = (10_000.0, 60_000.0)            # market cap band, USD
 TICKET, SLIP, DELAY = 20.0, 0.01, 30_000
 WINDOW = 24 * H
-FEES = (0.50, 0.81)                    # FOMO minimum per trade, memebot minimum (both 0.5%)
+FEES = (0.50, 0.81, 0.05)              # FOMO 0.5% min 0.50; memebot 0.5% min 0.81; Jupiter-like: no platform fee, 0.05 $ network
+SCALP = (1.20, 0.90, 10 * MIN)          # quick in and out: +20% take profit, -10% stop, 10 minutes at most
 SEED = 20261111
 
 
@@ -83,7 +84,25 @@ def solusd(t0, t1):
 # ------------------------------------------------------------------------------------------------------------ the trade
 
 def fee(x, fmin):
-    return max(0.005 * x, fmin)
+    """FOMO-like (0.5%, minimum fmin) or, for the 0.05 case, a Jupiter-like swap with no platform fee (network cost only)."""
+    return fmin if fmin < 0.1 else max(0.005 * x, fmin)
+
+
+def replay_scalp(t, p, i0, end_ms, fmin):
+    """Quick in and out: sell all at +20% or -10% (at the trade that crosses), or after 10 minutes, or at the last trade."""
+    entry = p[i0] * (1 + SLIP)
+    tok = TICKET / entry
+    end_ms = min(end_ms, t[i0] + SCALP[2])
+    j_end = max(int(np.searchsorted(t, end_ms, side="left")) - 1, i0)
+    how, j_out = "time", j_end
+    for j in range(i0 + 1, j_end + 1):
+        q = p[j] * (1 - SLIP)
+        if q >= SCALP[0] * entry:
+            how, j_out = "tp", j; break
+        if q <= SCALP[1] * entry:
+            how, j_out = "sl", j; break
+    v = tok * p[j_out] * (1 - SLIP)
+    return v - TICKET - fee(TICKET, fmin) - fee(v, fmin), how
 
 
 def replay(t, p, i0, end_ms, fmin):
@@ -223,6 +242,8 @@ def main():
         for fmin in FEES:
             pnl, hold, how, xt, zero = replay(c["t"], c["p"], i0, end + 1, fmin)
             r["pnl%d" % round(fmin * 100)] = round(pnl, 4); r["hold%d" % round(fmin * 100)] = round(hold, 4)
+            sc, show = replay_scalp(c["t"], c["p"], i0, end + 1, fmin)
+            r["scal%d" % round(fmin * 100)] = round(sc, 4); r["show"] = show
         r.update(how=how, exit=xt, zero=bool(zero), entry_t=int(c["t"][i0]), entry_mc=round(float(c["mc"][i0]), 1),
                  grad=bool(c["rs"][i0:].max() >= 80e9))
         return r
@@ -235,7 +256,7 @@ def main():
         r = trade_at(coins[ci], m)
         if r is None:
             return None
-        return dict(mint=coins[ci]["name"], **{k: r[k] for k in ("pnl50", "pnl81", "how", "zero")})
+        return dict(mint=coins[ci]["name"], **{k: r[k] for k in r if k.startswith(("pnl", "scal", "hold")) or k in ("how", "zero", "show")})
 
     def rug_ok(c, k):
         """Creator sold nothing before index k, and the top 10 net holders hold under 35% of the supply."""
@@ -284,6 +305,10 @@ def main():
                 realall = len(np.unique(c["u"][:k][bigbuy[:k]]))
                 if realall >= 20:
                     hits.append(("V2", dict(real=realall)))
+            if inband and age >= 10 * MIN and real5 >= 20:
+                k5p = max(k5 - 1, 0)
+                if c["t"][k5p] < m - 5 * MIN and pnow >= 1.3 * c["p"][k5p]:
+                    hits.append(("M", dict(up5=round(pnow / c["p"][k5p], 3), real=real5)))
             if inband and age >= 30 * MIN and real5 >= 20:
                 high = c["p"][:k].max()
                 k30 = int(np.searchsorted(t, m - 30 * MIN, side="left"))
@@ -310,7 +335,7 @@ def main():
                         ctl = control(ci, m, 5 * MIN if name == "V2" else 10 * MIN)
                         rows.append(dict(cell=cell, day=day, mint=c["name"], sym=sym.get(c["name"]), sig=int(m), age_min=round(age / MIN, 1),
                                          sig_mc=round(float(mc), 1), **feat, **r, ctl=ctl))
-            if len(done) >= 14:
+            if len(done) >= 16:
                 break
             m += MIN
         if ci % 2000 == 0:
