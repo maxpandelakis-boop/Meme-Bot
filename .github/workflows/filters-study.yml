@@ -1,0 +1,88 @@
+# The filter study (research/filters, fake money only): started by a push of this file to the thread branch
+# claude/project-thread-by84vq. It downloads public, openly licensed pump.fun data (Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and
+# public SOL/USD candles, and force-pushes compact results to the branch "scoutfilters", which nothing else writes. Nothing is bought.
+name: filters-study
+on:
+  push:
+    branches: [claude/project-thread-by84vq]
+    paths: [.github/workflows/filters-study.yml]
+permissions:
+  contents: write                    # the scoutfilters branch only
+concurrency:
+  group: filters-study
+  cancel-in-progress: true
+env:
+  PYTHONUTF8: '1'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4 fsspec aiohttp requests
+      - run: git clone -q --depth 1 --branch scoutdata https://github.com/${{ github.repository }}.git sd
+      - run: python3 research/filters/probe.py sd/probe/files.json out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probe
+          path: out/probe.txt
+          retention-days: 14
+
+  day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        day: [2026-08-17, 2026-08-18, 2026-08-19, 2026-08-20, 2026-08-21, 2026-08-22, 2026-08-23, 2026-08-24, 2026-08-25,
+              2026-08-26, 2026-08-27, 2026-08-28, 2026-08-29, 2026-08-30, 2026-08-31,
+              2026-09-01, 2026-09-02, 2026-09-03, 2026-09-04, 2026-09-05, 2026-09-06, 2026-09-07, 2026-09-08, 2026-09-09,
+              2026-09-10, 2026-09-11, 2026-09-12, 2026-09-13, 2026-09-14, 2026-09-15, 2026-09-16, 2026-09-17, 2026-09-18,
+              2026-09-19, 2026-09-20, 2026-09-21, 2026-09-22, 2026-09-23, 2026-09-24, 2026-09-25, 2026-09-26, 2026-09-27,
+              2026-09-28, 2026-09-29, 2026-09-30,
+              2026-10-01, 2026-10-02, 2026-10-03, 2026-10-04, 2026-10-05, 2026-10-06]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 numpy==1.26.4
+      - name: The file list of the earlier probe
+        run: git clone -q --depth 1 --branch scoutdata https://github.com/${{ github.repository }}.git sd
+      - name: Day ${{ matrix.day }}
+        run: python3 research/filters/filters_day.py sd/probe/files.json ${{ matrix.day }} out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: day-${{ matrix.day }}
+          path: out/rows_*.json
+          retention-days: 14
+
+  collect:
+    needs: [day, probe]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Push to scoutfilters
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git init -q -b scoutfilters sf
+          mkdir -p sf/rows sf/probe
+          cp art/day-*/rows_*.json sf/rows/ || true
+          cp art/probe/probe.txt sf/probe/ || true
+          ls sf/rows | wc -l
+          cd sf && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "filter study rows $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q --force "$URL" scoutfilters
