@@ -29,7 +29,7 @@ Oben wählt man, welchen Desk man sieht:
 
 ## Frisch-Desk
 Eigene 20 $, gleiche Verkaufsregeln. Kauft nur Coins mit Pool höchstens 60 min alt, Marktwert 8k bis 250k $, in den letzten
-5 min mindestens 15 Käufer, 1,5× mehr Käufe als Verkäufe und steigendem Preis; dann RugCheck (die besten drei der Reihe nach).
+5 min mindestens 15 Käufer, 1,5× mehr Käufe als Verkäufe und steigendem Preis; dann die Prüfung (die besten drei der Reihe nach): RugCheck-Gefahren, Ersteller mit einem anderen Coin in den letzten 24 h, ein Wallet mit 20 % oder mehr. Die zwei letzten Regeln stammen aus `research/filters/FILTERS-2026-11-11.md`: kleinerer Verlust, kein Gewinn.
 Gekauft wird erst **3 Sekunden** nach der Entscheidung zum Preis von dann, wie bei einem echten Bot. Weichen die Preise von GeckoTerminal und DexScreener dabei um mehr als 25 % ab, oder liegt der Coin bei DexScreener außerhalb des Filters, wird nicht gekauft.
 
 ## Wie gerechnet wird (damit der Gewinn nicht geschönt ist)

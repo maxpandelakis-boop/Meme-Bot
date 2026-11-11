@@ -99,6 +99,28 @@ console.log("ok: copy engine");
   console.log("ok: fresh scout");
 }
 
+// fresh-coin veto: RugCheck dangers, a creator with another coin in 24 h, a whale that is not the curve
+{
+  const S = await import("./scout.js?v=0.9.6");
+  const now = Date.parse("2026-11-11T13:00:00Z");
+  const base = { score_normalised: 12, risks: [{ name: "Low Liquidity", level: "warn" }], creatorTokens: [],
+    knownAccounts: { CURVE: { name: "Pump Fun", type: "AMM" }, DEV: { name: "Creator", type: "CREATOR" } },
+    topHolders: [{ owner: "CURVE", pct: 72.5 }, { owner: "A", pct: 2.4 }, { owner: "DEV", pct: 1.1 }] };
+  const v = j => S.freshVerdict(j, "MINT", now);
+  if (v(base).bad || !v(base).why.includes("größter Halter 2.4")) throw new Error("clean coin " + v(base).why);
+  if (!v({ ...base, risks: [{ name: "Creator history of rugged tokens", level: "danger" }] }).why.includes("Creator history")) throw new Error("danger");
+  const ct = h => ({ mint: "X" + h, marketCap: 1, createdAt: new Date(now - h * 3600e3).toISOString() });
+  if (!v({ ...base, creatorTokens: [ct(2), ct(30)] }).why.includes("schon 1 andere")) throw new Error("serial creator");
+  if (v({ ...base, creatorTokens: [ct(30), { ...ct(1), mint: "MINT" }] }).bad) throw new Error("old coins and the coin itself do not count");
+  if (!v({ ...base, topHolders: [{ owner: "CURVE", pct: 60 }, { owner: "DEV", pct: 23.4 }] }).why.includes("23 %")) throw new Error("whale");
+  if (v({}).bad || !v({}).known) throw new Error("empty report");
+  let url = "";
+  const r = await S.freshCheck(async u => { url = u; return base; }, "MINT1", now);
+  if (r.bad || !url.endsWith("/tokens/MINT1/report")) throw new Error("fetch");
+  if ((await S.freshCheck(async () => { throw new Error("down"); }, "MINT2", now)).known) throw new Error("unreachable");
+  console.log("ok: fresh veto");
+}
+
 // one version everywhere: every "?v=" in the app's files is the manifest's version (a browser must never mix old and new files)
 {
   const fs = await import("node:fs");

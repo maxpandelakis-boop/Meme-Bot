@@ -161,6 +161,36 @@ export async function freshCoins(gt, now = Date.now()) {
   return list.sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || b.buyers5 - a.buyers5);
 }
 
+// Fresh-coin veto (free, no key): RugCheck's FULL report gives the danger risks plus two checks that held on hidden days in
+// research/filters/FILTERS-2026-11-11.md (51 days of pump.fun trades, 51,324 replayed Scout buys, FOMO fees):
+//   - the creator started another coin in the last 24 h: skip (kept coins lost 0.15 less per 20 $, better on 22 of 24 days);
+//   - one wallet other than the curve holds 20 % or more: skip (one sale falls far through the -8 % stop; +0.11, 22 of 24 days).
+// Together -0.52 instead of -0.80 per 20 $ on the hidden days: a smaller loss, not a profit.
+// freshVerdict is pure (tested); freshCheck fetches. When RugCheck cannot be reached the buy goes on and the log says so.
+export const FRESH_VETO = { creatorMax24h: 0, whalePct: 20 };
+export function freshVerdict(j, mint, now = Date.now(), V = FRESH_VETO) {
+  const danger = (j.risks || []).filter(x => String(x.level).toLowerCase() === "danger").map(x => x.name);
+  if (danger.length) return { known: true, bad: true, why: danger.slice(0, 3).join(", ") };
+  const others = (j.creatorTokens || []).filter(t => t.mint !== mint && now - Date.parse(t.createdAt) < 24 * 3600e3 && now >= Date.parse(t.createdAt)).length;
+  if (others > V.creatorMax24h) return { known: true, bad: true, why: `Ersteller hat in 24 h schon ${others}${others >= 50 ? "+" : ""} andere Coins gestartet` };
+  const known = j.knownAccounts || {};
+  const pool = o => ["AMM", "LOCKER"].includes(String((known[o] || {}).type).toUpperCase());
+  const whale = (j.topHolders || []).filter(h => !pool(h.owner)).reduce((m, h) => Math.max(m, Number(h.pct) || 0), 0);
+  if (whale >= V.whalePct) return { known: true, bad: true, why: `ein Wallet hält ${whale.toFixed(0)} % (Wal)` };
+  return { known: true, bad: false, why: `ok (Score ${j.score_normalised ?? j.score ?? "?"}, größter Halter ${whale.toFixed(1)} %, Ersteller ohne anderen Coin in 24 h)` };
+}
+const freshSeen = new Map();
+export async function freshCheck(getJson, mint, now = Date.now()) {
+  const hit = freshSeen.get(mint);
+  if (hit && now - hit.t < 60e3) return hit.r;              // holders change fast on a coin minutes old: one minute only
+  let r;
+  try { r = freshVerdict(await getJson(`https://api.rugcheck.xyz/v1/tokens/${mint}/report`), mint, now); }
+  catch (e) { r = { known: false, bad: false, why: "RugCheck nicht erreichbar" }; }
+  if (freshSeen.size > 500) freshSeen.clear();
+  freshSeen.set(mint, { t: now, r });
+  return r;
+}
+
 // The Scout card's line when nothing is bought: the reason of the best coin, not a blanket "nothing above N points".
 export function scoutNone(list, acc, P, cooldownMs = 30 * 60e3, now = Date.now()) {
   const best = list.find(c => c.score >= P.minScore && !acc.pos[c.mint]);

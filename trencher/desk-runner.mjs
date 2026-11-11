@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { COPY_DEFAULTS, newAccount, accountValue, copyBuy, copySell, deskExits, riskExits, walletTrades, stats } from "./copy-engine.js?v=0.9.6";
-import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.6";
+import { hotCoins, priceMap, scoutPick, scoutVerdict, scoutNone, rugCheck, freshCoins, freshCheck, freshFillCheck, poolPrices, DEAD_LIQ } from "./scout.js?v=0.9.6";
 
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : true); };
 const DATA = arg("data", "desk-data"), MINUTES = Number(arg("minutes", 340)), PUSH = !!arg("push", false);
@@ -189,9 +189,9 @@ async function freshScout() {
   if (!pick) return;
   if (Object.keys(facc.pos).length >= P.maxOpen) { say("risk", `[Frisch] max ${P.maxOpen} offen → $${pick.symbol} skip`); return; }
   pick = null;
-  for (const c of cands.slice(0, 3)) {      // the best three in turn, the first one RugCheck lets through
-    const rug = await rugCheck(getJson, c.mint);
-    say("risk", `[Frisch] RugCheck $${c.symbol}: ${rug.bad ? "Gefahr: " + rug.why + " → skip" : rug.why}`);
+  for (const c of cands.slice(0, 3)) {      // the best three in turn, the first one the veto lets through (RugCheck dangers, serial creator, whale)
+    const rug = await freshCheck(getJson, c.mint);
+    say("risk", `[Frisch] Prüfung $${c.symbol}: ${rug.bad ? rug.why + " → skip" : rug.why}`);
     if (!rug.bad) { pick = c; break; }
   }
   if (!pick) return;
