@@ -87,3 +87,10 @@ total is a profit. Added before any outcome:
   (the trade that crosses), or after 10 minutes at the last trade. Same pass bar as above.
 - **Fee cases:** FOMO 0.5% min 0.50 $ (judged), memebot min 0.81 $, and a Jupiter-like swap with no platform fee and 0.05 $
   network cost per trade (information: what the same trades would make without FOMO's minimum). The 1% slippage a side stays.
+
+## Amendment 3 (2026-11-11, before any outcome): FOMO's real fee
+
+The other thread found FOMO's real Solana fee (per buy and per sell, network included): under 5 $ 0.10 $; 5 to 47.50 $ 2%;
+47.50 to 190 $ 0.95 $; 190 $ and up 0.5%. It matches Maxim's screenshots (0.50 $ on 25.22 $, 0.95 $ on 65.71 $). The cells are
+now judged with these tiers (keys pnl2 / scal2); the old 0.5%-min-0.50 model, the 0.81 minimum and the Jupiter-like case stay
+for information. A correction of the fee model, made before any outcome was seen.

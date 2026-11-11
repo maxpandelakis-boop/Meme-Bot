@@ -15,7 +15,7 @@ BIG = 50_000_000                       # 0.05 SOL in lamports: a "real" buyer
 BAND = (10_000.0, 60_000.0)            # market cap band, USD
 TICKET, SLIP, DELAY = 20.0, 0.01, 30_000
 WINDOW = 24 * H
-FEES = (0.50, 0.81, 0.05)              # FOMO 0.5% min 0.50; memebot 0.5% min 0.81; Jupiter-like: no platform fee, 0.05 $ network
+FEES = (0.02, 0.50, 0.81, 0.05)  # 0.02 = FOMO tiers (judged);             # FOMO 0.5% min 0.50; memebot 0.5% min 0.81; Jupiter-like: no platform fee, 0.05 $ network
 SCALP = (1.20, 0.90, 10 * MIN)          # quick in and out: +20% take profit, -10% stop, 10 minutes at most
 SEED = 20261111
 
@@ -84,7 +84,11 @@ def solusd(t0, t1):
 # ------------------------------------------------------------------------------------------------------------ the trade
 
 def fee(x, fmin):
-    """FOMO-like (0.5%, minimum fmin) or, for the 0.05 case, a Jupiter-like swap with no platform fee (network cost only)."""
+    """fmin 0.02: FOMO's real Solana fee per buy and per sell, network included (under 5 $: 0.10 $; 5 to 47.50 $: 2%;
+    47.50 to 190 $: 0.95 $; from 190 $: 0.5%; it matches Maxim's screenshots 0.50 $ on 25.22 $ and 0.95 $ on 65.71 $).
+    fmin 0.05: a Jupiter-like swap, no platform fee, 0.05 $ network. Otherwise the old model 0.5%, minimum fmin."""
+    if fmin == 0.02:
+        return 0.10 if x < 5 else 0.02 * x if x < 47.5 else 0.95 if x < 190 else 0.005 * x
     return fmin if fmin < 0.1 else max(0.005 * x, fmin)
 
 

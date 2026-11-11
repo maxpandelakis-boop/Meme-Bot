@@ -6,7 +6,7 @@ import numpy as np
 DEV = ["2026-09-%02d" % d for d in range(24, 31)]
 HOLD = ["2026-10-%02d" % d for d in range(1, 8)]
 PRIMARY = ["V1", "V2+R", "V3+R", "M+R"]   # M+R is judged with the quick in-and-out exit (scal50), the others with the desk rules (pnl50)
-KEYS = ["pnl50", "pnl81", "pnl5", "scal50", "scal81", "scal5"]
+KEYS = ["pnl2", "pnl50", "pnl81", "pnl5", "scal2", "scal50", "scal81", "scal5"]
 BOOT, SEED = 4000, 7
 TICKET = 20.0
 
@@ -68,6 +68,10 @@ def verdict(h):
     return "FAIL"
 
 
+def fomo_fee(x):
+    return 0.10 if x < 5 else 0.02 * x if x < 47.5 else 0.95 if x < 190 else 0.005 * x
+
+
 def portfolio(rows, fmin=0.50):
     """For information: the video's desk (20 $, 40% of free cash a buy, max 2 open) over the trades in time order,
     using each trade's result per 20 as a multiple of the stake (fees scaled to the stake, minimum fmin per trade)."""
@@ -81,8 +85,8 @@ def portfolio(rows, fmin=0.50):
             continue
         stake = 0.4 * cash
         nfee = 3 if r["how"] in ("trail", "2x+end") else 2
-        gross = (r["pnl50"] + nfee * 0.50) / TICKET     # the 20 $ trade's result before its fees (each at the 0.50 minimum)
-        back = stake * (1 + gross) - nfee * max(0.005 * stake, fmin)
+        gross = (r["pnl50"] + nfee * 0.50) / TICKET     # the 20 $ trade's result before its fees (old model: each at the 0.50 minimum)
+        back = stake * (1 + gross) - nfee * fomo_fee(stake)
         cash -= stake; open_.append((r["exit"], max(back, 0.0))); n += 1
     cash += sum(o[1] for o in open_)
     return dict(trades=n, end_cash=round(cash, 2))
@@ -96,13 +100,13 @@ def main():
         js = json.load(open(f)); rows += js["rows"]; meta.append(dict(day=js["day"], launches=js["launches"], coins=js["coins"]))
     rng = np.random.default_rng(SEED)
     res = dict(days=meta, cells={})
-    lines = ["Scout study, fake money only. Ticket 20 $, FOMO fee 0.5% (min 0.50; pnl81 = min 0.81), 1% slippage a side.", ""]
+    lines = ["Scout study, fake money only. Ticket 20 $, 1% slippage a side. Judged with FOMO's real fee tiers (pnl2/scal2: 2% on 5 to 47.50 $, 0.95 $ to 190 $); old model 0.5% min 0.50 / 0.81 and Jupiter-like 0.05 $ for information.", ""]
     for cell in sorted(set(r["cell"] for r in rows)):
         res["cells"][cell] = {}
         for part, days in (("dev", DEV), ("holdout", HOLD)):
             rr = [r for r in rows if r["cell"] == cell and r["day"] in days]
             res["cells"][cell][part] = {k: stats(rr, k, rng) for k in KEYS}
-        jk = "scal50" if cell.startswith("M") else "pnl50"
+        jk = "scal2" if cell.startswith("M") else "pnl2"
         h = res["cells"][cell]["holdout"][jk]; dv = res["cells"][cell]["dev"][jk]
         v = verdict(h) if cell in PRIMARY else "(secondary)"
         res["cells"][cell]["verdict"] = v
@@ -117,7 +121,7 @@ def main():
                                  s.get("minus_control", {}).get("avg", float("nan")), *(s.get("minus_control", {}).get("ci", [float("nan")] * 2)),
                                  s["hold_avg"] or 0, s["how"]))
         hh = res["cells"][cell]["holdout"]
-        lines.append("%-8s verdict (%s): %s   holdout avg: desk %s / min 0.81 %s / Jupiter %s ; quick in-out %s / %s / %s" % (
+        lines.append("%-8s verdict (%s): %s   holdout avg: desk FOMO %s / old 0.50 %s / old 0.81 %s / Jupiter %s ; quick in-out %s / %s / %s / %s" % (
             cell, jk, v, *(hh[k].get("avg") for k in KEYS)))
         lines.append("")
     json.dump(res, open(os.path.join(out, "result.json"), "w"), indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o))
