@@ -13,7 +13,8 @@ UA = {"User-Agent": "memebot-research"}
 MIN, H, DAY = 60_000, 3_600_000, 86_400_000
 BIG = 50_000_000                       # 0.05 SOL in lamports: a "real" buyer
 BAND = (10_000.0, 60_000.0)            # market cap band, USD
-TICKET, SLIP, DELAY = 20.0, 0.01, 30_000
+TICKET, SLIP = 20.0, 0.01
+DELAY = int(os.environ.get("SCOUT_DELAY_MS", "30000"))   # FOMO-like copy delay; 2000 for the fast-bot check
 WINDOW = 24 * H
 FEES = (0.02, 0.50, 0.81, 0.05)  # 0.02 = FOMO tiers (judged);             # FOMO 0.5% min 0.50; memebot 0.5% min 0.81; Jupiter-like: no platform fee, 0.05 $ network
 SCALP = (1.20, 0.90, 10 * MIN)          # quick in and out: +20% take profit, -10% stop, 10 minutes at most
