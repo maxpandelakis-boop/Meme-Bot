@@ -1,0 +1,44 @@
+{
+ "1": {
+  "tests": 18,
+  "holm_unseen": 1,
+  "matters": 0,
+  "min_p": 0.00039
+ },
+ "2": {
+  "tests": 18,
+  "holm_unseen": 0,
+  "matters": 0,
+  "min_p": 0.0483
+ },
+ "3": {
+  "tests": 18,
+  "holm_unseen": 0,
+  "matters": 0,
+  "min_p": 0.116
+ },
+ "4": {
+  "tests": 18,
+  "holm_unseen": 0,
+  "matters": 0,
+  "min_p": 0.132
+ },
+ "5": {
+  "tests": 18,
+  "holm_unseen": 0,
+  "matters": 0,
+  "min_p": 0.0705
+ },
+ "6": {
+  "tests": 18,
+  "holm_unseen": 0,
+  "matters": 0,
+  "min_p": 0.0952
+ },
+ "7": {
+  "tests": 18,
+  "holm_unseen": 0,
+  "matters": 0,
+  "min_p": 0.00407
+ }
+}

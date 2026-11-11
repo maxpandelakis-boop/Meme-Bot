@@ -1,0 +1,33 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendment 4, fact F12 "news of the day"): the
+# days of wiki_top.json on branch rocketschain that Wikimedia's free pageview API answered with 429 are asked again, slowly
+# (research/rockets/meta_chain.py wikifill), and the file is written back next to chain.parquet. One short job. Nothing is
+# bought; no key or secret beyond the run's own token. Touches no bot branch and no paper account. Started by a push of this
+# file on this branch, or by hand.
+name: rockets-wiki
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-wiki.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rockets-chain
+  cancel-in-progress: false
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p out && git fetch -q --depth 1 origin rocketschain && git archive FETCH_HEAD | tar -x -C out
+          python3 research/rockets/meta_chain.py wikifill out/wiki_top.json
+          cd out && git init -q && git checkout -q -b rocketschain && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketschain wiki $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketschain

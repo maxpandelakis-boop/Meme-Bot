@@ -1,0 +1,49 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md): the final step of rockets-lmeta.yml run 2 again,
+# on that run's own shard files (artifacts of run 40178651356), after its final step stopped on a broken emoji in a metadata
+# file's name (fixed in research/rockets/launches.py mfinal). Merges them with run 1 (the run's plan file) -> branch
+# "rocketslmeta". One short job; no file is fetched again. Nothing is bought; no key or secret beyond the run's own token.
+# Touches no bot branch and no paper account. Started by a push of this file on this branch, or by hand.
+name: rockets-lmeta-final
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-lmeta-final.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: rockets-lmeta
+  cancel-in-progress: false
+jobs:
+  final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "lmeta-*"
+          merge-multiple: true
+          path: src
+          run-id: 40178651356
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: lplan
+          path: plan
+          run-id: 40178651356
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          ls -la src plan
+          python3 research/rockets/launches.py mfinal src out plan/prev.parquet
+          printf 'Metadata files (IPFS) and the curve complete flag of a random 600,000 launches of universe L (amendment 6), made by research/rockets/launches.py mshard. Fake money only.\n' > out/README.md
+          cd out && du -sh . && git init -q && git checkout -q -b rocketslmeta && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketslmeta $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketslmeta

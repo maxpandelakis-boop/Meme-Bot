@@ -1,0 +1,38 @@
+# Rocket study (fake money only; research/rockets/PREREG-ROCKETS-2026-10-24.md, amendments 6 and 8): universe L, one row per
+# pump.fun launch of w3-w4 from the free dataset that passed verify, verify2 and verify3 (SOURCES below: Slinky21's
+# Pumpfun_v2; amendment 9), with our graduation list -> branch "rocketslaunches" (research/rockets/launches.py build). One job. The metadata
+# files of a random 600,000 of them come after, in rockets-lmeta.yml. Nothing is bought. Touches no bot branch and no paper
+# account. Started by a push of this file on this branch (edit the run note below), or by hand.
+# Run note: first run 24 Oct.
+name: rockets-luniverse
+on:
+  push:
+    branches: [claude/project-thread-5blkl3]
+    paths: [.github/workflows/rockets-luniverse.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rockets-luniverse
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - env:
+          GIT_TERMINAL_PROMPT: '0'
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p md h2
+          git fetch -q --depth 1 origin monthsdata && git archive FETCH_HEAD | tar -x -C md
+          git fetch -q --depth 1 origin monthsh2 && git show FETCH_HEAD:meta_h2.parquet > h2/meta_h2.parquet
+          SOURCES=v2 python3 research/rockets/launches.py build work md h2 out
+          printf 'Universe L of the rocket study (amendments 6 and 8): every pump.fun launch of w3-w4 (10 Aug - 6 Oct 2026) from Slinky21/Pumpfun_v2_dataset (CC-BY-4.0, "Data provided by [Slink21]. Pumpfun Solana Dataset (2026)"), with our graduation list. Made by research/rockets/launches.py build. Fake money only.\n' > out/README.md
+          cd out && du -sh . && git init -q && git checkout -q -b rocketslaunches && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "rocketslaunches $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" rocketslaunches
