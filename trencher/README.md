@@ -15,7 +15,7 @@ Kaufen/Verkaufen mit **Spielgeld**. Keine Wallet, keine Schlüssel, nichts wird 
 - „Coin zurücksetzen" setzt nur diesen Coin wieder auf 20 $.
 
 ## Wie die Füllung gerechnet wird (damit der Gewinn nicht geschönt ist)
-- Gebühr wie bei FOMO: 0,5 % pro Trade, mindestens 0,50 $ (FOMO zeigte 0,50 $ Gebühr bei einem Kauf über 25,22 $). Bei 20 $ sind das 2,5 % pro Trade.
+- Gebühr wie bei FOMO, bei Kauf und Verkauf: unter 5 $ pauschal 0,10 $, 5 bis 47,50 $ 2 %, 47,50 bis 190 $ pauschal 0,95 $, ab 190 $ 0,5 % (FOMO zeigte 0,50 $ bei einem Kauf über 25,22 $). Bei 20 $ sind das 2 % pro Trade, rund 4 % hin und zurück.
 - Die Order wird **1 Sekunde nach dem Klick** zum dann aktuellen Preis gefüllt.
 - Slippage: Preiswirkung am Pool (Betrag ÷ halbe Liquidität) plus 0,3 %. Ohne Liquiditätsangabe wird 5.000 $ angenommen.
 - Der Kontowert rechnet die Position so, als würdest du jetzt alles verkaufen (mit Slippage und Gebühr).
@@ -74,7 +74,7 @@ Wie im zweiten Video (2026-11-09), nur ohne echtes Geld:
 - **Scout** sucht jede Minute heiße Coins (GeckoTerminal-Trends, DexScreener-Boosts, neue Profile, Käufe/Verkäufe pro Stunde, Reddit) und gibt Punkte (0–100). Ab 60 Punkten, steigendem Kurs und mehr Käufern als Verkäufern kauft er den besten Coin.
 - **Compounder:** Start 20 $, jeder Kauf 40 % vom freien Geld, höchstens 2 offen, kein Nachkaufen.
 - **Risk:** −8 % = alles raus, solange 2× nie kam. Bei 2× wird der Einsatz zurückverkauft, der Rest verkauft 10 % unter seinem Hoch.
-- **Executor:** Spielgeld-Fills mit FOMO-Gebühren (0,5 %, mind. 0,50 $) und Slippage.
+- **Executor:** Spielgeld-Fills mit FOMO-Gebühren (Stufen, siehe oben) und Slippage.
 - Antippen eines Eintrags öffnet die Coin-Seite: Kerzen-Chart mit Entry / „Sold half“, die Desk-Regeln für diesen Coin und die Position.
 - Wallets folgen geht weiter (Agents), die Desk-Regeln gelten auch für kopierte Käufe.
 

@@ -2,14 +2,18 @@
 // Fake money only. Nothing here signs, sends or touches a wallet.
 
 export const START_CASH = 20;        // fake USD per coin
-export const FEE_PCT = 0.005;        // FOMO-like fee per trade (same as memebot.py FEE_PCT)
-export const FEE_MIN = 0.50;         // ... at least this per trade: FOMO showed "$0.50 fee" on a $25.22 buy (screenshot of 2026-11-06)
+// FOMO's fee bands, charged on every buy and every sell (Datawallet's table, matches the screenshots: $0.50 on a $25.22 buy):
+// under $5 flat $0.10 · $5 to $47.50 2 % · $47.50 to $190 flat $0.95 · $190 and up 0.5 %
+export const FEE_PCT = 0.005;        // the top band (same as memebot.py FEE_PCT)
+export const FEE_MIN = 0.10;         // the smallest fee there is
 export const BASE_SLIP = 0.003;      // 0.3% on top of the pool's price impact (other bots, price moving within the block)
 export const FILL_DELAY_MS = 1000;   // a click fills on the price about one second later, not the price you clicked on
 export const FALLBACK_LIQ = 5000;    // USD liquidity assumed when the data source gives none (bonding-curve coins)
 
 export function fee(amountUsd) {
-  return amountUsd > 0 ? Math.max(FEE_PCT * amountUsd, FEE_MIN) : 0;
+  const x = amountUsd;
+  if (!(x > 0)) return 0;
+  return x < 5 ? FEE_MIN : x < 47.5 ? 0.02 * x : x < 190 ? 0.95 : FEE_PCT * x;
 }
 
 // Price impact of a trade of `usd` against a constant-product pool whose total liquidity is `liqUsd`
