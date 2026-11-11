@@ -1,0 +1,2370 @@
+{
+ "discovery": {
+  "F1 no launch factory (creator <3 coins in 24 h)": {
+   "desk": {
+    "n": 14549,
+    "share": 0.62,
+    "per_day": 538.9,
+    "avg": -1.109,
+    "ci": [
+     -1.258,
+     -0.956
+    ],
+    "base": -1.35,
+    "lift": 0.24,
+    "lift_ci": [
+     0.141,
+     0.331
+    ],
+    "lift_ci99": [
+     0.106,
+     0.371
+    ],
+    "days_beat": [
+     20,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -1.119,
+    "without_biggest_day": [
+     "2026-08-28",
+     -1.073
+    ],
+    "in_profit": 10.5,
+    "median": -2.561
+   },
+   "hold": {
+    "n": 14549,
+    "share": 0.62,
+    "per_day": 538.9,
+    "avg": -5.391,
+    "ci": [
+     -5.918,
+     -4.922
+    ],
+    "base": -5.764,
+    "lift": 0.373,
+    "lift_ci": [
+     0.144,
+     0.604
+    ],
+    "lift_ci99": [
+     0.055,
+     0.685
+    ],
+    "days_beat": [
+     19,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.406,
+    "without_biggest_day": [
+     "2026-08-24",
+     -5.364
+    ],
+    "in_profit": 17.7,
+    "median": -13.788
+   },
+   "jup": {
+    "n": 14549,
+    "share": 0.62,
+    "per_day": 538.9,
+    "avg": -0.42,
+    "ci": [
+     -0.571,
+     -0.263
+    ],
+    "base": -0.664,
+    "lift": 0.245,
+    "lift_ci": [
+     0.143,
+     0.337
+    ],
+    "lift_ci99": [
+     0.108,
+     0.378
+    ],
+    "days_beat": [
+     20,
+     27
+    ],
+    "days_pos": 4,
+    "without_best": -0.43,
+    "without_biggest_day": [
+     "2026-08-28",
+     -0.383
+    ],
+    "in_profit": 10.6,
+    "median": -1.897
+   }
+  },
+  "F2 early demand (a non-creator buyer in 10 s)": {
+   "desk": {
+    "n": 23041,
+    "share": 0.981,
+    "per_day": 853.4,
+    "avg": -1.318,
+    "ci": [
+     -1.449,
+     -1.178
+    ],
+    "base": -1.35,
+    "lift": 0.031,
+    "lift_ci": [
+     0.015,
+     0.048
+    ],
+    "lift_ci99": [
+     0.01,
+     0.054
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -1.324,
+    "without_biggest_day": [
+     "2026-08-27",
+     -1.297
+    ],
+    "in_profit": 9.1,
+    "median": -2.562
+   },
+   "hold": {
+    "n": 23041,
+    "share": 0.981,
+    "per_day": 853.4,
+    "avg": -5.731,
+    "ci": [
+     -6.137,
+     -5.386
+    ],
+    "base": -5.764,
+    "lift": 0.033,
+    "lift_ci": [
+     -0.0,
+     0.064
+    ],
+    "lift_ci99": [
+     -0.014,
+     0.077
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.742,
+    "without_biggest_day": [
+     "2026-08-27",
+     -5.799
+    ],
+    "in_profit": 16.3,
+    "median": -13.71
+   },
+   "jup": {
+    "n": 23041,
+    "share": 0.981,
+    "per_day": 853.4,
+    "avg": -0.632,
+    "ci": [
+     -0.766,
+     -0.489
+    ],
+    "base": -0.664,
+    "lift": 0.032,
+    "lift_ci": [
+     0.016,
+     0.049
+    ],
+    "lift_ci99": [
+     0.01,
+     0.055
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 2,
+    "without_best": -0.638,
+    "without_biggest_day": [
+     "2026-08-27",
+     -0.611
+    ],
+    "in_profit": 9.2,
+    "median": -1.898
+   }
+  },
+  "F3 dev did not dump (sold <90%)": {
+   "desk": {
+    "n": 8609,
+    "share": 0.367,
+    "per_day": 318.9,
+    "avg": -1.778,
+    "ci": [
+     -2.094,
+     -1.439
+    ],
+    "base": -1.35,
+    "lift": -0.428,
+    "lift_ci": [
+     -0.652,
+     -0.198
+    ],
+    "lift_ci99": [
+     -0.744,
+     -0.132
+    ],
+    "days_beat": [
+     9,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -1.786,
+    "without_biggest_day": [
+     "2026-08-27",
+     -1.707
+    ],
+    "in_profit": 10.6,
+    "median": -2.567
+   },
+   "hold": {
+    "n": 8609,
+    "share": 0.367,
+    "per_day": 318.9,
+    "avg": -4.822,
+    "ci": [
+     -5.317,
+     -4.305
+    ],
+    "base": -5.764,
+    "lift": 0.942,
+    "lift_ci": [
+     0.494,
+     1.445
+    ],
+    "lift_ci99": [
+     0.323,
+     1.663
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -4.847,
+    "without_biggest_day": [
+     "2026-08-27",
+     -4.806
+    ],
+    "in_profit": 18.4,
+    "median": -13.332
+   },
+   "jup": {
+    "n": 8609,
+    "share": 0.367,
+    "per_day": 318.9,
+    "avg": -1.101,
+    "ci": [
+     -1.424,
+     -0.755
+    ],
+    "base": -0.664,
+    "lift": -0.437,
+    "lift_ci": [
+     -0.664,
+     -0.202
+    ],
+    "lift_ci99": [
+     -0.759,
+     -0.134
+    ],
+    "days_beat": [
+     9,
+     27
+    ],
+    "days_pos": 2,
+    "without_best": -1.109,
+    "without_biggest_day": [
+     "2026-08-27",
+     -1.029
+    ],
+    "in_profit": 10.8,
+    "median": -1.903
+   }
+  },
+  "F4 none of F1-F3": {
+   "desk": {
+    "n": 6637,
+    "share": 0.283,
+    "per_day": 245.8,
+    "avg": -1.35,
+    "ci": [
+     -1.562,
+     -1.132
+    ],
+    "base": -1.35,
+    "lift": -0.001,
+    "lift_ci": [
+     -0.153,
+     0.145
+    ],
+    "lift_ci99": [
+     -0.208,
+     0.202
+    ],
+    "days_beat": [
+     16,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -1.361,
+    "without_biggest_day": [
+     "2026-08-28",
+     -1.303
+    ],
+    "in_profit": 11.6,
+    "median": -2.558
+   },
+   "hold": {
+    "n": 6637,
+    "share": 0.283,
+    "per_day": 245.8,
+    "avg": -4.078,
+    "ci": [
+     -4.56,
+     -3.592
+    ],
+    "base": -5.764,
+    "lift": 1.686,
+    "lift_ci": [
+     1.255,
+     2.174
+    ],
+    "lift_ci99": [
+     1.095,
+     2.403
+    ],
+    "days_beat": [
+     26,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -4.11,
+    "without_biggest_day": [
+     "2026-08-24",
+     -4.021
+    ],
+    "in_profit": 20.5,
+    "median": -13.099
+   },
+   "jup": {
+    "n": 6637,
+    "share": 0.283,
+    "per_day": 245.8,
+    "avg": -0.665,
+    "ci": [
+     -0.881,
+     -0.442
+    ],
+    "base": -0.664,
+    "lift": -0.001,
+    "lift_ci": [
+     -0.156,
+     0.147
+    ],
+    "lift_ci99": [
+     -0.212,
+     0.206
+    ],
+    "days_beat": [
+     16,
+     27
+    ],
+    "days_pos": 4,
+    "without_best": -0.676,
+    "without_biggest_day": [
+     "2026-08-28",
+     -0.617
+    ],
+    "in_profit": 11.7,
+    "median": -1.893
+   }
+  },
+  "F5 slow curve (SOL/min below discovery median)": {
+   "desk": {
+    "n": 11739,
+    "share": 0.5,
+    "per_day": 434.8,
+    "avg": -1.415,
+    "ci": [
+     -1.68,
+     -1.135
+    ],
+    "base": -1.35,
+    "lift": -0.065,
+    "lift_ci": [
+     -0.228,
+     0.1
+    ],
+    "lift_ci99": [
+     -0.303,
+     0.16
+    ],
+    "days_beat": [
+     15,
+     27
+    ],
+    "days_pos": 1,
+    "without_best": -1.421,
+    "without_biggest_day": [
+     "2026-08-27",
+     -1.365
+    ],
+    "in_profit": 9.5,
+    "median": -2.631
+   },
+   "hold": {
+    "n": 11739,
+    "share": 0.5,
+    "per_day": 434.8,
+    "avg": -6.203,
+    "ci": [
+     -6.689,
+     -5.767
+    ],
+    "base": -5.764,
+    "lift": -0.439,
+    "lift_ci": [
+     -0.669,
+     -0.211
+    ],
+    "lift_ci99": [
+     -0.777,
+     -0.12
+    ],
+    "days_beat": [
+     7,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -6.223,
+    "without_biggest_day": [
+     "2026-08-29",
+     -6.168
+    ],
+    "in_profit": 15.4,
+    "median": -14.004
+   },
+   "jup": {
+    "n": 11739,
+    "share": 0.5,
+    "per_day": 434.8,
+    "avg": -0.731,
+    "ci": [
+     -1.002,
+     -0.446
+    ],
+    "base": -0.664,
+    "lift": -0.067,
+    "lift_ci": [
+     -0.233,
+     0.102
+    ],
+    "lift_ci99": [
+     -0.309,
+     0.163
+    ],
+    "days_beat": [
+     15,
+     27
+    ],
+    "days_pos": 4,
+    "without_best": -0.738,
+    "without_biggest_day": [
+     "2026-08-29",
+     -0.67
+    ],
+    "in_profit": 9.5,
+    "median": -1.969
+   }
+  },
+  "D1 slot0_pct >= 26.46": {
+   "desk": {
+    "n": 5870,
+    "share": 0.25,
+    "per_day": 217.4,
+    "avg": -0.903,
+    "ci": [
+     -1.14,
+     -0.682
+    ],
+    "base": -1.35,
+    "lift": 0.447,
+    "lift_ci": [
+     0.196,
+     0.693
+    ],
+    "lift_ci99": [
+     0.081,
+     0.79
+    ],
+    "days_beat": [
+     18,
+     27
+    ],
+    "days_pos": 3,
+    "without_best": -0.927,
+    "without_biggest_day": [
+     "2026-09-01",
+     -0.87
+    ],
+    "in_profit": 9.9,
+    "median": -2.517
+   },
+   "hold": {
+    "n": 5870,
+    "share": 0.25,
+    "per_day": 217.4,
+    "avg": -4.405,
+    "ci": [
+     -5.12,
+     -3.71
+    ],
+    "base": -5.764,
+    "lift": 1.359,
+    "lift_ci": [
+     0.832,
+     1.918
+    ],
+    "lift_ci99": [
+     0.64,
+     2.163
+    ],
+    "days_beat": [
+     19,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -4.44,
+    "without_biggest_day": [
+     "2026-08-27",
+     -4.34
+    ],
+    "in_profit": 20.1,
+    "median": -12.74
+   },
+   "jup": {
+    "n": 5870,
+    "share": 0.25,
+    "per_day": 217.4,
+    "avg": -0.209,
+    "ci": [
+     -0.45,
+     0.017
+    ],
+    "base": -0.664,
+    "lift": 0.456,
+    "lift_ci": [
+     0.2,
+     0.707
+    ],
+    "lift_ci99": [
+     0.084,
+     0.806
+    ],
+    "days_beat": [
+     18,
+     27
+    ],
+    "days_pos": 7,
+    "without_best": -0.233,
+    "without_biggest_day": [
+     "2026-08-23",
+     -0.266
+    ],
+    "in_profit": 9.9,
+    "median": -1.852
+   }
+  },
+  "D2 first60_share <= 0.5831": {
+   "desk": {
+    "n": 7046,
+    "share": 0.3,
+    "per_day": 261.0,
+    "avg": -0.96,
+    "ci": [
+     -1.095,
+     -0.812
+    ],
+    "base": -1.35,
+    "lift": 0.39,
+    "lift_ci": [
+     0.269,
+     0.505
+    ],
+    "lift_ci99": [
+     0.224,
+     0.552
+    ],
+    "days_beat": [
+     23,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -0.968,
+    "without_biggest_day": [
+     "2026-08-27",
+     -0.941
+    ],
+    "in_profit": 8.7,
+    "median": -2.562
+   },
+   "hold": {
+    "n": 7046,
+    "share": 0.3,
+    "per_day": 261.0,
+    "avg": -5.083,
+    "ci": [
+     -5.499,
+     -4.728
+    ],
+    "base": -5.764,
+    "lift": 0.681,
+    "lift_ci": [
+     0.394,
+     0.974
+    ],
+    "lift_ci99": [
+     0.268,
+     1.094
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.116,
+    "without_biggest_day": [
+     "2026-08-17",
+     -5.081
+    ],
+    "in_profit": 16.7,
+    "median": -13.494
+   },
+   "jup": {
+    "n": 7046,
+    "share": 0.3,
+    "per_day": 261.0,
+    "avg": -0.267,
+    "ci": [
+     -0.405,
+     -0.117
+    ],
+    "base": -0.664,
+    "lift": 0.397,
+    "lift_ci": [
+     0.274,
+     0.515
+    ],
+    "lift_ci99": [
+     0.229,
+     0.563
+    ],
+    "days_beat": [
+     23,
+     27
+    ],
+    "days_pos": 7,
+    "without_best": -0.275,
+    "without_biggest_day": [
+     "2026-08-27",
+     -0.247
+    ],
+    "in_profit": 8.8,
+    "median": -1.898
+   }
+  },
+  "D3 cr_24h <= 0": {
+   "desk": {
+    "n": 12050,
+    "share": 0.513,
+    "per_day": 446.3,
+    "avg": -1.034,
+    "ci": [
+     -1.2,
+     -0.869
+    ],
+    "base": -1.35,
+    "lift": 0.315,
+    "lift_ci": [
+     0.186,
+     0.434
+    ],
+    "lift_ci99": [
+     0.137,
+     0.485
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 1,
+    "without_best": -1.046,
+    "without_biggest_day": [
+     "2026-08-28",
+     -1.004
+    ],
+    "in_profit": 10.9,
+    "median": -2.556
+   },
+   "hold": {
+    "n": 12050,
+    "share": 0.513,
+    "per_day": 446.3,
+    "avg": -5.478,
+    "ci": [
+     -6.024,
+     -4.999
+    ],
+    "base": -5.764,
+    "lift": 0.286,
+    "lift_ci": [
+     0.049,
+     0.523
+    ],
+    "lift_ci99": [
+     -0.023,
+     0.63
+    ],
+    "days_beat": [
+     18,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.496,
+    "without_biggest_day": [
+     "2026-08-24",
+     -5.467
+    ],
+    "in_profit": 17.4,
+    "median": -13.798
+   },
+   "jup": {
+    "n": 12050,
+    "share": 0.513,
+    "per_day": 446.3,
+    "avg": -0.343,
+    "ci": [
+     -0.512,
+     -0.175
+    ],
+    "base": -0.664,
+    "lift": 0.321,
+    "lift_ci": [
+     0.189,
+     0.442
+    ],
+    "lift_ci99": [
+     0.139,
+     0.494
+    ],
+    "days_beat": [
+     21,
+     27
+    ],
+    "days_pos": 4,
+    "without_best": -0.355,
+    "without_biggest_day": [
+     "2026-08-28",
+     -0.312
+    ],
+    "in_profit": 11.0,
+    "median": -1.891
+   }
+  },
+  "X1 no whale (largest holder under 20% of supply)": {
+   "desk": {
+    "n": 20371,
+    "share": 0.868,
+    "per_day": 754.5,
+    "avg": -1.024,
+    "ci": [
+     -1.123,
+     -0.928
+    ],
+    "base": -1.35,
+    "lift": 0.326,
+    "lift_ci": [
+     0.211,
+     0.437
+    ],
+    "lift_ci99": [
+     0.173,
+     0.477
+    ],
+    "days_beat": [
+     25,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -1.027,
+    "without_biggest_day": [
+     "2026-08-28",
+     -1.009
+    ],
+    "in_profit": 8.5,
+    "median": -2.562
+   },
+   "hold": {
+    "n": 20371,
+    "share": 0.868,
+    "per_day": 754.5,
+    "avg": -5.812,
+    "ci": [
+     -6.288,
+     -5.436
+    ],
+    "base": -5.764,
+    "lift": -0.048,
+    "lift_ci": [
+     -0.153,
+     0.059
+    ],
+    "lift_ci99": [
+     -0.191,
+     0.112
+    ],
+    "days_beat": [
+     9,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.823,
+    "without_biggest_day": [
+     "2026-08-24",
+     -5.782
+    ],
+    "in_profit": 16.2,
+    "median": -13.793
+   },
+   "jup": {
+    "n": 20371,
+    "share": 0.868,
+    "per_day": 754.5,
+    "avg": -0.332,
+    "ci": [
+     -0.433,
+     -0.235
+    ],
+    "base": -0.664,
+    "lift": 0.332,
+    "lift_ci": [
+     0.215,
+     0.445
+    ],
+    "lift_ci99": [
+     0.176,
+     0.487
+    ],
+    "days_beat": [
+     25,
+     27
+    ],
+    "days_pos": 4,
+    "without_best": -0.335,
+    "without_biggest_day": [
+     "2026-09-09",
+     -0.312
+    ],
+    "in_profit": 8.6,
+    "median": -1.898
+   }
+  },
+  "X2 small dev buy (<= 1 SOL) and creator's only coin in 24 h": {
+   "desk": {
+    "n": 5601,
+    "share": 0.239,
+    "per_day": 207.4,
+    "avg": -0.619,
+    "ci": [
+     -0.791,
+     -0.439
+    ],
+    "base": -1.35,
+    "lift": 0.731,
+    "lift_ci": [
+     0.519,
+     0.954
+    ],
+    "lift_ci99": [
+     0.452,
+     1.051
+    ],
+    "days_beat": [
+     25,
+     27
+    ],
+    "days_pos": 4,
+    "without_best": -0.644,
+    "without_biggest_day": [
+     "2026-08-21",
+     -0.589
+    ],
+    "in_profit": 11.1,
+    "median": -2.554
+   },
+   "hold": {
+    "n": 5601,
+    "share": 0.239,
+    "per_day": 207.4,
+    "avg": -5.49,
+    "ci": [
+     -6.382,
+     -4.748
+    ],
+    "base": -5.764,
+    "lift": 0.275,
+    "lift_ci": [
+     -0.343,
+     0.834
+    ],
+    "lift_ci99": [
+     -0.57,
+     1.033
+    ],
+    "days_beat": [
+     15,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.527,
+    "without_biggest_day": [
+     "2026-09-04",
+     -5.28
+    ],
+    "in_profit": 17.2,
+    "median": -13.842
+   },
+   "jup": {
+    "n": 5601,
+    "share": 0.239,
+    "per_day": 207.4,
+    "avg": 0.08,
+    "ci": [
+     -0.095,
+     0.264
+    ],
+    "base": -0.664,
+    "lift": 0.744,
+    "lift_ci": [
+     0.529,
+     0.972
+    ],
+    "lift_ci99": [
+     0.46,
+     1.07
+    ],
+    "days_beat": [
+     25,
+     27
+    ],
+    "days_pos": 14,
+    "without_best": 0.055,
+    "without_biggest_day": [
+     "2026-08-31",
+     0.045
+    ],
+    "in_profit": 11.1,
+    "median": -1.89
+   }
+  },
+  "X3 small dev buy (<= 1 SOL)": {
+   "desk": {
+    "n": 6971,
+    "share": 0.297,
+    "per_day": 258.2,
+    "avg": -0.716,
+    "ci": [
+     -0.876,
+     -0.546
+    ],
+    "base": -1.35,
+    "lift": 0.634,
+    "lift_ci": [
+     0.426,
+     0.849
+    ],
+    "lift_ci99": [
+     0.348,
+     0.936
+    ],
+    "days_beat": [
+     23,
+     27
+    ],
+    "days_pos": 2,
+    "without_best": -0.736,
+    "without_biggest_day": [
+     "2026-08-24",
+     -0.69
+    ],
+    "in_profit": 10.4,
+    "median": -2.563
+   },
+   "hold": {
+    "n": 6971,
+    "share": 0.297,
+    "per_day": 258.2,
+    "avg": -5.696,
+    "ci": [
+     -6.526,
+     -4.959
+    ],
+    "base": -5.764,
+    "lift": 0.068,
+    "lift_ci": [
+     -0.548,
+     0.644
+    ],
+    "lift_ci99": [
+     -0.786,
+     0.859
+    ],
+    "days_beat": [
+     13,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -5.726,
+    "without_biggest_day": [
+     "2026-09-04",
+     -5.519
+    ],
+    "in_profit": 16.8,
+    "median": -13.861
+   },
+   "jup": {
+    "n": 6971,
+    "share": 0.297,
+    "per_day": 258.2,
+    "avg": -0.018,
+    "ci": [
+     -0.182,
+     0.155
+    ],
+    "base": -0.664,
+    "lift": 0.646,
+    "lift_ci": [
+     0.434,
+     0.866
+    ],
+    "lift_ci99": [
+     0.355,
+     0.953
+    ],
+    "days_beat": [
+     23,
+     27
+    ],
+    "days_pos": 13,
+    "without_best": -0.039,
+    "without_biggest_day": [
+     "2026-08-30",
+     -0.053
+    ],
+    "in_profit": 10.5,
+    "median": -1.899
+   }
+  },
+  "M score (top 30% by the discovery threshold)": {
+   "desk": {
+    "n": 7044,
+    "share": 0.3,
+    "per_day": 260.9,
+    "avg": -0.957,
+    "ci": [
+     -1.218,
+     -0.695
+    ],
+    "base": -1.35,
+    "lift": 0.392,
+    "lift_ci": [
+     0.204,
+     0.585
+    ],
+    "lift_ci99": [
+     0.119,
+     0.657
+    ],
+    "days_beat": [
+     19,
+     27
+    ],
+    "days_pos": 3,
+    "without_best": -0.977,
+    "without_biggest_day": [
+     "2026-08-31",
+     -0.903
+    ],
+    "in_profit": 14.4,
+    "median": -2.619
+   },
+   "hold": {
+    "n": 7044,
+    "share": 0.3,
+    "per_day": 260.9,
+    "avg": -6.23,
+    "ci": [
+     -6.916,
+     -5.546
+    ],
+    "base": -5.764,
+    "lift": -0.466,
+    "lift_ci": [
+     -0.889,
+     0.008
+    ],
+    "lift_ci99": [
+     -1.066,
+     0.155
+    ],
+    "days_beat": [
+     8,
+     27
+    ],
+    "days_pos": 0,
+    "without_best": -6.261,
+    "without_biggest_day": [
+     "2026-08-19",
+     -6.2
+    ],
+    "in_profit": 17.5,
+    "median": -14.287
+   },
+   "jup": {
+    "n": 7044,
+    "share": 0.3,
+    "per_day": 260.9,
+    "avg": -0.266,
+    "ci": [
+     -0.532,
+     0.001
+    ],
+    "base": -0.664,
+    "lift": 0.398,
+    "lift_ci": [
+     0.207,
+     0.594
+    ],
+    "lift_ci99": [
+     0.12,
+     0.668
+    ],
+    "days_beat": [
+     19,
+     27
+    ],
+    "days_pos": 10,
+    "without_best": -0.286,
+    "without_biggest_day": [
+     "2026-08-31",
+     -0.211
+    ],
+    "in_profit": 14.5,
+    "median": -1.956
+   }
+  }
+ },
+ "holdout": {
+  "F1 no launch factory (creator <3 coins in 24 h)": {
+   "desk": {
+    "n": 22715,
+    "share": 0.816,
+    "per_day": 946.5,
+    "avg": -0.672,
+    "ci": [
+     -0.785,
+     -0.535
+    ],
+    "base": -0.801,
+    "lift": 0.13,
+    "lift_ci": [
+     0.091,
+     0.169
+    ],
+    "lift_ci99": [
+     0.077,
+     0.187
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 2,
+    "without_best": -0.675,
+    "without_biggest_day": [
+     "2026-10-03",
+     -0.646
+    ],
+    "in_profit": 11.5,
+    "median": -2.571
+   },
+   "hold": {
+    "n": 22715,
+    "share": 0.816,
+    "per_day": 946.5,
+    "avg": -4.73,
+    "ci": [
+     -5.06,
+     -4.401
+    ],
+    "base": -5.165,
+    "lift": 0.434,
+    "lift_ci": [
+     0.338,
+     0.539
+    ],
+    "lift_ci99": [
+     0.309,
+     0.585
+    ],
+    "days_beat": [
+     23,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.739,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.711
+    ],
+    "in_profit": 17.8,
+    "median": -12.839
+   },
+   "jup": {
+    "n": 22715,
+    "share": 0.816,
+    "per_day": 946.5,
+    "avg": 0.027,
+    "ci": [
+     -0.089,
+     0.166
+    ],
+    "base": -0.105,
+    "lift": 0.132,
+    "lift_ci": [
+     0.093,
+     0.172
+    ],
+    "lift_ci99": [
+     0.079,
+     0.191
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 13,
+    "without_best": 0.024,
+    "without_biggest_day": [
+     "2026-09-21",
+     -0.003
+    ],
+    "in_profit": 11.6,
+    "median": -1.907
+   },
+   "verdict": "HELPS (solid)"
+  },
+  "F2 early demand (a non-creator buyer in 10 s)": {
+   "desk": {
+    "n": 27151,
+    "share": 0.975,
+    "per_day": 1131.3,
+    "avg": -0.795,
+    "ci": [
+     -0.89,
+     -0.684
+    ],
+    "base": -0.801,
+    "lift": 0.007,
+    "lift_ci": [
+     -0.004,
+     0.016
+    ],
+    "lift_ci99": [
+     -0.008,
+     0.02
+    ],
+    "days_beat": [
+     16,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -0.797,
+    "without_biggest_day": [
+     "2026-10-03",
+     -0.768
+    ],
+    "in_profit": 10.7,
+    "median": -2.576
+   },
+   "hold": {
+    "n": 27151,
+    "share": 0.975,
+    "per_day": 1131.3,
+    "avg": -5.137,
+    "ci": [
+     -5.433,
+     -4.846
+    ],
+    "base": -5.165,
+    "lift": 0.028,
+    "lift_ci": [
+     -0.002,
+     0.061
+    ],
+    "lift_ci99": [
+     -0.013,
+     0.075
+    ],
+    "days_beat": [
+     16,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -5.145,
+    "without_biggest_day": [
+     "2026-10-06",
+     -5.125
+    ],
+    "in_profit": 16.7,
+    "median": -12.873
+   },
+   "jup": {
+    "n": 27151,
+    "share": 0.975,
+    "per_day": 1131.3,
+    "avg": -0.098,
+    "ci": [
+     -0.195,
+     0.014
+    ],
+    "base": -0.105,
+    "lift": 0.007,
+    "lift_ci": [
+     -0.004,
+     0.017
+    ],
+    "lift_ci99": [
+     -0.008,
+     0.02
+    ],
+    "days_beat": [
+     16,
+     24
+    ],
+    "days_pos": 7,
+    "without_best": -0.101,
+    "without_biggest_day": [
+     "2026-10-03",
+     -0.071
+    ],
+    "in_profit": 10.8,
+    "median": -1.913
+   },
+   "verdict": "FAIL"
+  },
+  "F3 dev did not dump (sold <90%)": {
+   "desk": {
+    "n": 17566,
+    "share": 0.631,
+    "per_day": 731.9,
+    "avg": -0.907,
+    "ci": [
+     -1.018,
+     -0.787
+    ],
+    "base": -0.801,
+    "lift": -0.106,
+    "lift_ci": [
+     -0.188,
+     -0.033
+    ],
+    "lift_ci99": [
+     -0.224,
+     -0.007
+    ],
+    "days_beat": [
+     8,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -0.911,
+    "without_biggest_day": [
+     "2026-10-04",
+     -0.891
+    ],
+    "in_profit": 10.6,
+    "median": -2.575
+   },
+   "hold": {
+    "n": 17566,
+    "share": 0.631,
+    "per_day": 731.9,
+    "avg": -4.69,
+    "ci": [
+     -5.012,
+     -4.375
+    ],
+    "base": -5.165,
+    "lift": 0.475,
+    "lift_ci": [
+     0.336,
+     0.619
+    ],
+    "lift_ci99": [
+     0.264,
+     0.685
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.7,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.661
+    ],
+    "in_profit": 17.4,
+    "median": -12.651
+   },
+   "jup": {
+    "n": 17566,
+    "share": 0.631,
+    "per_day": 731.9,
+    "avg": -0.213,
+    "ci": [
+     -0.326,
+     -0.091
+    ],
+    "base": -0.105,
+    "lift": -0.108,
+    "lift_ci": [
+     -0.191,
+     -0.033
+    ],
+    "lift_ci99": [
+     -0.228,
+     -0.007
+    ],
+    "days_beat": [
+     8,
+     24
+    ],
+    "days_pos": 7,
+    "without_best": -0.217,
+    "without_biggest_day": [
+     "2026-10-03",
+     -0.195
+    ],
+    "in_profit": 10.7,
+    "median": -1.911
+   },
+   "verdict": "FAIL"
+  },
+  "F4 none of F1-F3": {
+   "desk": {
+    "n": 15673,
+    "share": 0.563,
+    "per_day": 653.0,
+    "avg": -0.84,
+    "ci": [
+     -0.964,
+     -0.705
+    ],
+    "base": -0.801,
+    "lift": -0.039,
+    "lift_ci": [
+     -0.123,
+     0.041
+    ],
+    "lift_ci99": [
+     -0.161,
+     0.073
+    ],
+    "days_beat": [
+     11,
+     24
+    ],
+    "days_pos": 1,
+    "without_best": -0.844,
+    "without_biggest_day": [
+     "2026-10-04",
+     -0.817
+    ],
+    "in_profit": 10.8,
+    "median": -2.576
+   },
+   "hold": {
+    "n": 15673,
+    "share": 0.563,
+    "per_day": 653.0,
+    "avg": -4.45,
+    "ci": [
+     -4.776,
+     -4.122
+    ],
+    "base": -5.165,
+    "lift": 0.715,
+    "lift_ci": [
+     0.565,
+     0.879
+    ],
+    "lift_ci99": [
+     0.495,
+     0.954
+    ],
+    "days_beat": [
+     24,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.461,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.403
+    ],
+    "in_profit": 18.1,
+    "median": -12.663
+   },
+   "jup": {
+    "n": 15673,
+    "share": 0.563,
+    "per_day": 653.0,
+    "avg": -0.145,
+    "ci": [
+     -0.271,
+     -0.008
+    ],
+    "base": -0.105,
+    "lift": -0.039,
+    "lift_ci": [
+     -0.126,
+     0.041
+    ],
+    "lift_ci99": [
+     -0.164,
+     0.074
+    ],
+    "days_beat": [
+     11,
+     24
+    ],
+    "days_pos": 7,
+    "without_best": -0.149,
+    "without_biggest_day": [
+     "2026-10-04",
+     -0.122
+    ],
+    "in_profit": 10.9,
+    "median": -1.912
+   },
+   "verdict": "FAIL"
+  },
+  "F5 slow curve (SOL/min below discovery median)": {
+   "desk": {
+    "n": 15075,
+    "share": 0.541,
+    "per_day": 628.1,
+    "avg": -0.859,
+    "ci": [
+     -0.991,
+     -0.707
+    ],
+    "base": -0.801,
+    "lift": -0.058,
+    "lift_ci": [
+     -0.143,
+     0.035
+    ],
+    "lift_ci99": [
+     -0.176,
+     0.07
+    ],
+    "days_beat": [
+     11,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -0.863,
+    "without_biggest_day": [
+     "2026-10-05",
+     -0.826
+    ],
+    "in_profit": 9.9,
+    "median": -2.613
+   },
+   "hold": {
+    "n": 15075,
+    "share": 0.541,
+    "per_day": 628.1,
+    "avg": -5.877,
+    "ci": [
+     -6.208,
+     -5.56
+    ],
+    "base": -5.165,
+    "lift": -0.712,
+    "lift_ci": [
+     -0.882,
+     -0.524
+    ],
+    "lift_ci99": [
+     -0.947,
+     -0.427
+    ],
+    "days_beat": [
+     3,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -5.889,
+    "without_biggest_day": [
+     "2026-09-28",
+     -5.868
+    ],
+    "in_profit": 13.2,
+    "median": -13.085
+   },
+   "jup": {
+    "n": 15075,
+    "share": 0.541,
+    "per_day": 628.1,
+    "avg": -0.165,
+    "ci": [
+     -0.299,
+     -0.01
+    ],
+    "base": -0.105,
+    "lift": -0.06,
+    "lift_ci": [
+     -0.146,
+     0.035
+    ],
+    "lift_ci99": [
+     -0.18,
+     0.071
+    ],
+    "days_beat": [
+     11,
+     24
+    ],
+    "days_pos": 10,
+    "without_best": -0.169,
+    "without_biggest_day": [
+     "2026-10-05",
+     -0.131
+    ],
+    "in_profit": 9.9,
+    "median": -1.95
+   },
+   "verdict": "FAIL"
+  },
+  "D1 slot0_pct >= 26.46": {
+   "desk": {
+    "n": 7337,
+    "share": 0.263,
+    "per_day": 305.7,
+    "avg": -0.652,
+    "ci": [
+     -0.83,
+     -0.469
+    ],
+    "base": -0.801,
+    "lift": 0.149,
+    "lift_ci": [
+     -0.069,
+     0.361
+    ],
+    "lift_ci99": [
+     -0.138,
+     0.433
+    ],
+    "days_beat": [
+     14,
+     24
+    ],
+    "days_pos": 3,
+    "without_best": -0.66,
+    "without_biggest_day": [
+     "2026-09-29",
+     -0.606
+    ],
+    "in_profit": 11.9,
+    "median": -2.543
+   },
+   "hold": {
+    "n": 7337,
+    "share": 0.263,
+    "per_day": 305.7,
+    "avg": -4.264,
+    "ci": [
+     -4.665,
+     -3.874
+    ],
+    "base": -5.165,
+    "lift": 0.901,
+    "lift_ci": [
+     0.575,
+     1.241
+    ],
+    "lift_ci99": [
+     0.419,
+     1.395
+    ],
+    "days_beat": [
+     21,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.287,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.202
+    ],
+    "in_profit": 21.2,
+    "median": -12.334
+   },
+   "jup": {
+    "n": 7337,
+    "share": 0.263,
+    "per_day": 305.7,
+    "avg": 0.047,
+    "ci": [
+     -0.134,
+     0.233
+    ],
+    "base": -0.105,
+    "lift": 0.152,
+    "lift_ci": [
+     -0.07,
+     0.368
+    ],
+    "lift_ci99": [
+     -0.14,
+     0.442
+    ],
+    "days_beat": [
+     14,
+     24
+    ],
+    "days_pos": 13,
+    "without_best": 0.039,
+    "without_biggest_day": [
+     "2026-10-04",
+     0.005
+    ],
+    "in_profit": 12.0,
+    "median": -1.878
+   },
+   "verdict": "FAIL"
+  },
+  "D2 first60_share <= 0.5831": {
+   "desk": {
+    "n": 8713,
+    "share": 0.313,
+    "per_day": 363.0,
+    "avg": -0.841,
+    "ci": [
+     -0.981,
+     -0.688
+    ],
+    "base": -0.801,
+    "lift": -0.039,
+    "lift_ci": [
+     -0.17,
+     0.086
+    ],
+    "lift_ci99": [
+     -0.22,
+     0.153
+    ],
+    "days_beat": [
+     10,
+     24
+    ],
+    "days_pos": 2,
+    "without_best": -0.848,
+    "without_biggest_day": [
+     "2026-10-05",
+     -0.804
+    ],
+    "in_profit": 8.9,
+    "median": -2.578
+   },
+   "hold": {
+    "n": 8713,
+    "share": 0.313,
+    "per_day": 363.0,
+    "avg": -5.2,
+    "ci": [
+     -5.628,
+     -4.768
+    ],
+    "base": -5.165,
+    "lift": -0.035,
+    "lift_ci": [
+     -0.37,
+     0.309
+    ],
+    "lift_ci99": [
+     -0.486,
+     0.458
+    ],
+    "days_beat": [
+     11,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -5.221,
+    "without_biggest_day": [
+     "2026-09-25",
+     -5.119
+    ],
+    "in_profit": 14.0,
+    "median": -12.685
+   },
+   "jup": {
+    "n": 8713,
+    "share": 0.313,
+    "per_day": 363.0,
+    "avg": -0.145,
+    "ci": [
+     -0.288,
+     0.01
+    ],
+    "base": -0.105,
+    "lift": -0.04,
+    "lift_ci": [
+     -0.174,
+     0.088
+    ],
+    "lift_ci99": [
+     -0.224,
+     0.156
+    ],
+    "days_beat": [
+     10,
+     24
+    ],
+    "days_pos": 8,
+    "without_best": -0.153,
+    "without_biggest_day": [
+     "2026-10-05",
+     -0.108
+    ],
+    "in_profit": 9.0,
+    "median": -1.914
+   },
+   "verdict": "FAIL"
+  },
+  "D3 cr_24h <= 0": {
+   "desk": {
+    "n": 20528,
+    "share": 0.737,
+    "per_day": 855.3,
+    "avg": -0.65,
+    "ci": [
+     -0.771,
+     -0.506
+    ],
+    "base": -0.801,
+    "lift": 0.152,
+    "lift_ci": [
+     0.106,
+     0.202
+    ],
+    "lift_ci99": [
+     0.092,
+     0.221
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 2,
+    "without_best": -0.653,
+    "without_biggest_day": [
+     "2026-10-03",
+     -0.622
+    ],
+    "in_profit": 11.6,
+    "median": -2.571
+   },
+   "hold": {
+    "n": 20528,
+    "share": 0.737,
+    "per_day": 855.3,
+    "avg": -4.693,
+    "ci": [
+     -5.049,
+     -4.32
+    ],
+    "base": -5.165,
+    "lift": 0.472,
+    "lift_ci": [
+     0.348,
+     0.608
+    ],
+    "lift_ci99": [
+     0.299,
+     0.672
+    ],
+    "days_beat": [
+     21,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.703,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.686
+    ],
+    "in_profit": 18.0,
+    "median": -12.836
+   },
+   "jup": {
+    "n": 20528,
+    "share": 0.737,
+    "per_day": 855.3,
+    "avg": 0.049,
+    "ci": [
+     -0.074,
+     0.196
+    ],
+    "base": -0.105,
+    "lift": 0.154,
+    "lift_ci": [
+     0.108,
+     0.206
+    ],
+    "lift_ci99": [
+     0.093,
+     0.225
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 14,
+    "without_best": 0.046,
+    "without_biggest_day": [
+     "2026-09-21",
+     0.021
+    ],
+    "in_profit": 11.7,
+    "median": -1.907
+   },
+   "verdict": "HELPS (solid)"
+  },
+  "X1 no whale (largest holder under 20% of supply)": {
+   "desk": {
+    "n": 25948,
+    "share": 0.932,
+    "per_day": 1081.2,
+    "avg": -0.688,
+    "ci": [
+     -0.789,
+     -0.568
+    ],
+    "base": -0.801,
+    "lift": 0.114,
+    "lift_ci": [
+     0.086,
+     0.144
+    ],
+    "lift_ci99": [
+     0.076,
+     0.157
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 1,
+    "without_best": -0.69,
+    "without_biggest_day": [
+     "2026-10-03",
+     -0.663
+    ],
+    "in_profit": 10.4,
+    "median": -2.579
+   },
+   "hold": {
+    "n": 25948,
+    "share": 0.932,
+    "per_day": 1081.2,
+    "avg": -5.147,
+    "ci": [
+     -5.474,
+     -4.832
+    ],
+    "base": -5.165,
+    "lift": 0.018,
+    "lift_ci": [
+     -0.041,
+     0.074
+    ],
+    "lift_ci99": [
+     -0.064,
+     0.094
+    ],
+    "days_beat": [
+     14,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -5.155,
+    "without_biggest_day": [
+     "2026-09-26",
+     -5.171
+    ],
+    "in_profit": 16.6,
+    "median": -12.945
+   },
+   "jup": {
+    "n": 25948,
+    "share": 0.932,
+    "per_day": 1081.2,
+    "avg": 0.01,
+    "ci": [
+     -0.092,
+     0.133
+    ],
+    "base": -0.105,
+    "lift": 0.116,
+    "lift_ci": [
+     0.088,
+     0.147
+    ],
+    "lift_ci99": [
+     0.077,
+     0.16
+    ],
+    "days_beat": [
+     22,
+     24
+    ],
+    "days_pos": 12,
+    "without_best": 0.008,
+    "without_biggest_day": [
+     "2026-09-21",
+     -0.015
+    ],
+    "in_profit": 10.5,
+    "median": -1.916
+   },
+   "verdict": "HELPS (solid)"
+  },
+  "X2 small dev buy (<= 1 SOL) and creator's only coin in 24 h": {
+   "desk": {
+    "n": 14097,
+    "share": 0.506,
+    "per_day": 587.4,
+    "avg": -0.604,
+    "ci": [
+     -0.726,
+     -0.469
+    ],
+    "base": -0.801,
+    "lift": 0.197,
+    "lift_ci": [
+     0.092,
+     0.293
+    ],
+    "lift_ci99": [
+     0.051,
+     0.329
+    ],
+    "days_beat": [
+     20,
+     24
+    ],
+    "days_pos": 2,
+    "without_best": -0.609,
+    "without_biggest_day": [
+     "2026-10-02",
+     -0.582
+    ],
+    "in_profit": 11.2,
+    "median": -2.569
+   },
+   "hold": {
+    "n": 14097,
+    "share": 0.506,
+    "per_day": 587.4,
+    "avg": -4.709,
+    "ci": [
+     -5.115,
+     -4.301
+    ],
+    "base": -5.165,
+    "lift": 0.456,
+    "lift_ci": [
+     0.239,
+     0.654
+    ],
+    "lift_ci99": [
+     0.15,
+     0.75
+    ],
+    "days_beat": [
+     19,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.722,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.704
+    ],
+    "in_profit": 18.0,
+    "median": -12.762
+   },
+   "jup": {
+    "n": 14097,
+    "share": 0.506,
+    "per_day": 587.4,
+    "avg": 0.096,
+    "ci": [
+     -0.029,
+     0.234
+    ],
+    "base": -0.105,
+    "lift": 0.201,
+    "lift_ci": [
+     0.094,
+     0.298
+    ],
+    "lift_ci99": [
+     0.052,
+     0.335
+    ],
+    "days_beat": [
+     20,
+     24
+    ],
+    "days_pos": 16,
+    "without_best": 0.091,
+    "without_biggest_day": [
+     "2026-09-17",
+     0.068
+    ],
+    "in_profit": 11.3,
+    "median": -1.905
+   },
+   "verdict": "HELPS (solid)"
+  },
+  "X3 small dev buy (<= 1 SOL)": {
+   "desk": {
+    "n": 15801,
+    "share": 0.567,
+    "per_day": 658.4,
+    "avg": -0.643,
+    "ci": [
+     -0.747,
+     -0.529
+    ],
+    "base": -0.801,
+    "lift": 0.158,
+    "lift_ci": [
+     0.069,
+     0.237
+    ],
+    "lift_ci99": [
+     0.032,
+     0.261
+    ],
+    "days_beat": [
+     19,
+     24
+    ],
+    "days_pos": 1,
+    "without_best": -0.647,
+    "without_biggest_day": [
+     "2026-10-02",
+     -0.625
+    ],
+    "in_profit": 10.9,
+    "median": -2.569
+   },
+   "hold": {
+    "n": 15801,
+    "share": 0.567,
+    "per_day": 658.4,
+    "avg": -4.795,
+    "ci": [
+     -5.193,
+     -4.413
+    ],
+    "base": -5.165,
+    "lift": 0.37,
+    "lift_ci": [
+     0.183,
+     0.565
+    ],
+    "lift_ci99": [
+     0.099,
+     0.657
+    ],
+    "days_beat": [
+     18,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -4.807,
+    "without_biggest_day": [
+     "2026-10-06",
+     -4.772
+    ],
+    "in_profit": 17.5,
+    "median": -12.774
+   },
+   "jup": {
+    "n": 15801,
+    "share": 0.567,
+    "per_day": 658.4,
+    "avg": 0.056,
+    "ci": [
+     -0.05,
+     0.172
+    ],
+    "base": -0.105,
+    "lift": 0.161,
+    "lift_ci": [
+     0.071,
+     0.241
+    ],
+    "lift_ci99": [
+     0.033,
+     0.266
+    ],
+    "days_beat": [
+     19,
+     24
+    ],
+    "days_pos": 14,
+    "without_best": 0.052,
+    "without_biggest_day": [
+     "2026-09-17",
+     0.029
+    ],
+    "in_profit": 11.0,
+    "median": -1.905
+   },
+   "verdict": "HELPS (solid)"
+  },
+  "M score (top 30% by the discovery threshold)": {
+   "desk": {
+    "n": 6521,
+    "share": 0.234,
+    "per_day": 271.7,
+    "avg": -0.358,
+    "ci": [
+     -0.605,
+     -0.11
+    ],
+    "base": -0.801,
+    "lift": 0.443,
+    "lift_ci": [
+     0.243,
+     0.625
+    ],
+    "lift_ci99": [
+     0.145,
+     0.691
+    ],
+    "days_beat": [
+     19,
+     24
+    ],
+    "days_pos": 6,
+    "without_best": -0.367,
+    "without_biggest_day": [
+     "2026-09-23",
+     -0.314
+    ],
+    "in_profit": 15.9,
+    "median": -2.593
+   },
+   "hold": {
+    "n": 6521,
+    "share": 0.234,
+    "per_day": 271.7,
+    "avg": -5.23,
+    "ci": [
+     -5.692,
+     -4.726
+    ],
+    "base": -5.165,
+    "lift": -0.065,
+    "lift_ci": [
+     -0.39,
+     0.256
+    ],
+    "lift_ci99": [
+     -0.495,
+     0.373
+    ],
+    "days_beat": [
+     11,
+     24
+    ],
+    "days_pos": 0,
+    "without_best": -5.25,
+    "without_biggest_day": [
+     "2026-09-15",
+     -5.176
+    ],
+    "in_profit": 18.9,
+    "median": -13.524
+   },
+   "jup": {
+    "n": 6521,
+    "share": 0.234,
+    "per_day": 271.7,
+    "avg": 0.345,
+    "ci": [
+     0.094,
+     0.598
+    ],
+    "base": -0.105,
+    "lift": 0.45,
+    "lift_ci": [
+     0.247,
+     0.636
+    ],
+    "lift_ci99": [
+     0.147,
+     0.703
+    ],
+    "days_beat": [
+     19,
+     24
+    ],
+    "days_pos": 17,
+    "without_best": 0.336,
+    "without_biggest_day": [
+     "2026-09-17",
+     0.293
+    ],
+    "in_profit": 16.1,
+    "median": -1.929
+   },
+   "verdict": "FAIL"
+  }
+ }
+}

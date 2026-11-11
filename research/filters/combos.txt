@@ -1,0 +1,32 @@
+== discovery
+dev holds <20%                     kept 0.91 ( 790/day) desk -1.014 [-1.111, -0.918] lift +0.336 [0.225, 0.444] days [26, 27] w/o best -1.021 | hold -5.66 lift +0.10 [0.004, 0.207] | nofee -0.322 [-0.42, -0.224]
+no whale & only coin               kept 0.43 ( 372/day) desk -0.777 [-0.958, -0.595] lift +0.573 [0.409, 0.735] days [23, 27] w/o best -0.782 | hold -5.72 lift +0.04 [-0.233, 0.326] | nofee -0.081 [-0.265, 0.104]
+no whale & <3 coins                kept 0.52 ( 453/day) desk -0.819 [-0.976, -0.665] lift +0.531 [0.384, 0.671] days [23, 27] w/o best -0.823 | hold -5.58 lift +0.19 [-0.072, 0.449] | nofee -0.123 [-0.283, 0.033]
+dev<20 & only coin                 kept 0.46 ( 404/day) desk -0.766 [-0.94, -0.591] lift +0.584 [0.429, 0.737] days [23, 27] w/o best -0.779 | hold -5.44 lift +0.32 [0.054, 0.594] | nofee -0.070 [-0.247, 0.109]
+no whale & only coin & devbuy<=1   kept 0.21 ( 180/day) desk -0.635 [-0.839, -0.43] lift +0.715 [0.479, 0.961] days [24, 27] w/o best -0.646 | hold -5.98 lift -0.22 [-0.846, 0.354] | nofee +0.064 [-0.144, 0.272]
+dev<20 & only coin & devbuy<=1     kept 0.24 ( 207/day) desk -0.619 [-0.791, -0.439] lift +0.731 [0.519, 0.954] days [25, 27] w/o best -0.644 | hold -5.49 lift +0.28 [-0.343, 0.834] | nofee +0.080 [-0.095, 0.264]
+no whale & <3 & devbuy<=1          kept 0.23 ( 200/day) desk -0.651 [-0.846, -0.444] lift +0.699 [0.463, 0.944] days [21, 27] w/o best -0.660 | hold -5.92 lift -0.15 [-0.794, 0.464] | nofee +0.048 [-0.151, 0.258]
+cost check: mean fees+slip approx 0.685 how {'stop': 0.768, 'trail': 0.063, 'end': 0.161, '2x+end': 0.007}
+  median age_min 1.38 p90 10.95
+  median mc 10795.05 p90 27998.919999999995
+  median n_trades 247.0 p90 746.0
+  median buyers5 106.0 p90 267.0
+  median dev_buy_sol 2.963 p90 11.916509999999963
+  median cr_24h 0.0 p90 47.0
+  median top1_pct 4.406 p90 28.587599999999956
+== holdout
+dev holds <20%                     kept 0.96 (1116/day) desk -0.699 [-0.802, -0.58] lift +0.102 [0.073, 0.136] days [22, 24] w/o best -0.701 | hold -5.11 lift +0.05 [0.007, 0.094] | nofee -0.001 [-0.106, 0.121]
+no whale & only coin               kept 0.68 ( 793/day) desk -0.522 [-0.652, -0.362] lift +0.280 [0.212, 0.356] days [23, 24] w/o best -0.525 | hold -4.64 lift +0.52 [0.346, 0.702] | nofee +0.180 [0.047, 0.342]
+no whale & <3 coins                kept 0.76 ( 877/day) desk -0.535 [-0.656, -0.386] lift +0.266 [0.21, 0.329] days [23, 24] w/o best -0.538 | hold -4.67 lift +0.49 [0.348, 0.646] | nofee +0.166 [0.043, 0.318]
+dev<20 & only coin                 kept 0.71 ( 825/day) desk -0.540 [-0.672, -0.383] lift +0.261 [0.192, 0.337] days [24, 24] w/o best -0.544 | hold -4.61 lift +0.55 [0.398, 0.722] | nofee +0.161 [0.027, 0.321]
+no whale & only coin & devbuy<=1   kept 0.48 ( 558/day) desk -0.575 [-0.705, -0.431] lift +0.226 [0.113, 0.327] days [19, 24] w/o best -0.580 | hold -4.75 lift +0.42 [0.177, 0.637] | nofee +0.125 [-0.007, 0.272]
+dev<20 & only coin & devbuy<=1     kept 0.51 ( 587/day) desk -0.604 [-0.726, -0.469] lift +0.197 [0.092, 0.293] days [20, 24] w/o best -0.609 | hold -4.71 lift +0.46 [0.239, 0.654] | nofee +0.096 [-0.029, 0.234]
+no whale & <3 & devbuy<=1          kept 0.51 ( 592/day) desk -0.582 [-0.705, -0.449] lift +0.219 [0.121, 0.311] days [20, 24] w/o best -0.587 | hold -4.74 lift +0.42 [0.214, 0.634] | nofee +0.118 [-0.007, 0.253]
+cost check: mean fees+slip approx 0.696 how {'stop': 0.789, 'trail': 0.076, 'end': 0.127, '2x+end': 0.007}
+  median age_min 1.32 p90 9.18
+  median mc 10984.25 p90 27149.1
+  median n_trades 226.0 p90 570.0
+  median buyers5 106.0 p90 252.5
+  median dev_buy_sol 0.983 p90 5.0
+  median cr_24h 0.0 p90 11.0
+  median top1_pct 4.308 p90 12.624
