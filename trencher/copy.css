@@ -166,3 +166,21 @@ button.run:disabled{background:var(--card2);color:var(--up);border:1px solid rgb
 .sheetbox input{background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px;font:600 16px Inter,system-ui,sans-serif}
 @media (min-width:1000px){.sheet{place-items:center}.sheetbox{border-radius:18px}}
 .presets{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}.presets button.ghost{flex:none;padding:6px 10px}
+
+/* Video 3 look: only while body.v3 (FOMO Terminal preset) */
+.ticker,.v3rows{display:none}
+body.v3{--bg:#2a0608;--card:#3a0c10;--card2:#4a1217;--line:#5a1a20;background:linear-gradient(180deg,#5a0e12 0%,#2a0608 45%,#160304 100%) fixed}
+body.v3 header.top{background:transparent}
+body.v3 .ticker{display:flex;gap:14px;align-items:center;overflow:hidden;white-space:nowrap;padding:5px 12px;font-size:11px;background:rgba(0,0,0,.25);border-bottom:1px solid var(--line)}
+body.v3 .ticker b{color:#fff;letter-spacing:.06em;font-size:10px;flex:none}
+body.v3 .ticker #tickerList{display:flex;gap:14px;animation:tick 30s linear infinite}
+body.v3 .ticker i{font-style:normal;margin-left:3px}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+body.v3 .acards{display:none}
+body.v3 .v3rows{display:block;list-style:none;margin:0 0 8px;padding:0;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.v3rows li{display:grid;grid-template-columns:28px minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+.v3rows li:last-child{border-bottom:none}
+.v3rows .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--card2);font-size:13px}
+.v3rows b{display:block}.v3rows small{display:block;color:var(--mut);font-size:10.5px}
+.v3rows .coin{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v3rows .val{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--card2);white-space:nowrap}

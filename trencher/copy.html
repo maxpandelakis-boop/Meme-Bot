@@ -12,7 +12,7 @@
 <link rel="icon" href="icons/app-192.png">
 <link rel="apple-touch-icon" href="icons/app-180.png">
 <title>Trencher Trading Desk</title>
-<link rel="stylesheet" href="copy.css?v=0.9.11">
+<link rel="stylesheet" href="copy.css?v=0.9.12">
 </head>
 <body>
 <header class="top">
@@ -22,6 +22,7 @@
   <button id="shareBtn" class="right tiny link" title="Stand teilen">⇪ Teilen</button>
   <button id="installBtn" class="tiny link" style="display:none">⬇ Als App installieren</button>
 </header>
+<div id="ticker" class="ticker"><b>FOMO TERMINAL</b><span id="tickerList"></span></div>
 
 <main>
   <!-- HOME -->
@@ -36,6 +37,7 @@
     <div class="ranges" id="ranges"><button data-r="live" class="on">● LIVE</button><button data-r="1h">1H</button><button data-r="4h">4H</button><button data-r="1d">1D</button><button data-r="1w">1W</button><button data-r="all">ALL</button></div>
 
     <div class="sect"><b>Agents</b><span id="agentsInfo" class="tiny">–</span></div>
+    <ol id="v3rows" class="v3rows"></ol>
     <div class="acards" id="agentCards">
       <div class="acard"><div class="ah"><span class="ai s">◉</span><div><b>Scout</b><span id="aScoutSub" class="dot">–</span></div></div><ol id="aScout" class="alist"></ol></div>
       <div class="acard"><div class="ah"><span class="ai c">▲</span><div><b>Compounder</b><span id="aCompSub" class="dot y">–</span></div></div>
@@ -156,6 +158,6 @@
   <button data-p="account"><span>◉</span>Account</button>
 </nav>
 <script src="lib/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="copy.js?v=0.9.11"></script>
+<script type="module" src="copy.js?v=0.9.12"></script>
 </body>
 </html>

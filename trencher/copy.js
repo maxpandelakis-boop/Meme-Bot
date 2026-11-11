@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit, PRESET_VIDEO3 } from "./copy-engine.js?v=0.9.11";
-import { bestPair } from "./sim.js?v=0.9.11";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, FIRST, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.11";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit, PRESET_VIDEO3 } from "./copy-engine.js?v=0.9.12";
+import { bestPair } from "./sim.js?v=0.9.12";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, FIRST, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.12";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -379,7 +379,29 @@ function renderTop() {
   $("aRisk").innerHTML = `<li>Stop −${Math.round(P.hardStop * 100)}%<span class="st ${anyNot ? "on" : ""}">${anyNot ? "scharf" : "–"}</span></li>
     <li>Einsatz zurück bei ${P.halfAt}×<span class="st">${anyNot ? "wartet" : "–"}</span></li>
     <li>Trail ${Math.round(P.trail * 100)}% vom Hoch<span class="st ${anyHalf ? "ok" : ""}">${anyHalf ? "aktiv" : "–"}</span></li>`;
+  renderV3();
   if ($("coin").classList.contains("on")) renderCoin();
+}
+
+// ---------- Video 3 look (only while the "FOMO Terminal" preset is active in this browser): red theme, ticker, 4 agent rows ----------
+function renderV3() {
+  const on = !serverMode && P.look === "v3";
+  document.body.classList.toggle("v3", on);
+  if (!on) return;
+  const pos = Object.values(acc.pos), cur = pos[0];
+  const chg = m => `<i class="${m >= 1 ? "pos" : "neg"}">${m >= 1 ? "+" : ""}${((m - 1) * 100).toFixed(1)}%</i>`;
+  const items = pos.map(p => { const q = prices[p.mint]; return `<span>${esc(p.symbol)} ${chg(q ? q.price / p.entry : 1)}</span>`; })
+    .concat(acc.closed.slice(-8).reverse().map(c => `<span>${esc(c.symbol)} ${chg(c.multiple || 1)}</span>`));
+  $("tickerList").innerHTML = items.length ? items.join("") + items.join("") : `<span class="muted">noch keine Trades</span>`;
+  const scan = cur ? cur.symbol : (agent.top[0] || {}).symbol;
+  const lastBuy = acc.activity.find(a => BUY_KINDS.has(a.kind));
+  const row = (ic, name, sub, coin, val, cls = "") => `<li><span class="ic">${ic}</span><div><b>${name}</b><small>${sub}</small></div>
+    <span class="coin">${coin ? esc(coin) : "–"}</span><span class="val ${cls}">${val}</span></li>`;
+  $("v3rows").innerHTML =
+    row("🔍", "Scanner", "Coin-Suche", scan, `${(agent.checked || 0).toLocaleString("de-DE")} Coins`) +
+    row("🛡", "Analyst", "Einstiegs-Prüfung", scan, agent.top[0] ? `${agent.top[0].score} Punkte` : "–") +
+    row("◎", "Executor", "Markt-Order", cur ? cur.symbol : lastBuy && lastBuy.symbol, cur ? money(cur.book.cost) : lastBuy ? money(lastBuy.usd) : "–", "pos") +
+    row("▮", "Risk", "Ausstiegs-Regeln", cur && cur.symbol, `−${Math.round(P.hardStop * 100)}% Stop`, "neg");
 }
 
 function actRow(a) {
@@ -583,7 +605,7 @@ function preset(rules, name, note) {
   toast(name.toUpperCase());
 }
 $("rulesReset").addEventListener("click", () => preset({}, "Trading Desk", "Video 2: 40 % pro Kauf, max 2 offen, Stop −8 %, bei 2× Einsatz zurück, Rest trailt 10 %."));
-$("presetV3").addEventListener("click", () => preset(PRESET_VIDEO3, "FOMO Terminal",
+$("presetV3").addEventListener("click", () => preset({ ...PRESET_VIDEO3, look: "v3" }, "FOMO Terminal",
   "Video 3: EIN Coin, 90 % vom Geld, Stop −6 %, kein Teilverkauf, ab +15 % trailt alles 10 % unter dem Hoch. Nur Trend-Coins mit 150k bis 2,5M $ MC, mindestens 4 Stunden alt. Hohes Risiko: ein Stop kostet fast 6 % vom ganzen Konto plus Gebühren. Ungeprüft."));
 $("openPos").addEventListener("click", async e => {
   const b = e.target.closest("button[data-sell]"); if (!b) return;
@@ -886,7 +908,7 @@ function renderLog() {
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
-const VERSION = "0.9.11";      // the same number as manifest.json (test_copy.mjs checks it)
+const VERSION = "0.9.12";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {
