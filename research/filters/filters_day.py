@@ -337,7 +337,38 @@ def main():
         o.update(how=how, ghow=ghow, show=show, x10=round(float(p[max(j10, j0)] / entry), 4), x30=round(float(p[max(j30, j0)] / entry), 4),
                  xmax=round(float(p[j0:max(j24, j0) + 1].max() / entry), 4), xend=round(float(p[max(j24, j0)] / entry), 4),
                  grad=bool(r_[j0:].max() >= 80e9), later_trades=int(e - s - (j0 + 1)), slip_wait=round(float(p[j0] / pnow), 4))
-        rows.append(dict(day=day, mint=name, sym=sym[name], sig=int(m), **feat, **o))
+        # amendment 2: the desk's strict picker (trencher/scout.js STRICT, v0.9.7). First sight = the signal above at price pnow;
+        # bought at the first whole minute 10 to 40 minutes later at which the price is not below first sight, market cap
+        # $15K to $250K, 25+ buyers and buys >= 1.5 x sells in 5 minutes, 5-minute change above 0 and at most +60%.
+        strict = None
+        for ms_ in range(m + 10 * MIN, m + 40 * MIN + 1, MIN):
+            if ms_ > data_end - H:
+                break
+            kk = int(np.searchsorted(t, ms_, side="left")); kk5 = int(np.searchsorted(t, ms_ - 5 * MIN, side="left"))
+            if kk - kk5 < 25 or r_[:kk].max() >= 80e9:
+                if kk and r_[:kk].max() >= 80e9:
+                    break                              # the curve completed: the coin left the curve
+                continue
+            bb = b[kk5:kk]; nb2 = int(bb.sum()); ns2 = (kk - kk5) - nb2
+            pn = p[kk - 1]; pb = p[kk5 - 1] if kk5 > 0 else P0
+            mc2 = pn * sup * float(usd(ms_))
+            if pn < pnow or nb2 < 1.5 * ns2 or not (0 < pn / pb - 1 <= 0.60) or not (15_000 <= mc2 <= 250_000):
+                continue
+            if len(np.unique(u[kk5:kk][bb])) < 25:
+                continue
+            net2 = {}
+            for uu, x in zip(u[:kk].tolist(), np.where(b[:kk], tk[:kk], -tk[:kk]).tolist()):
+                net2[uu] = net2.get(uu, 0.0) + x
+            et = ms_ + DELAY
+            jj = int(np.searchsorted(t, et, side="left")) - 1
+            strict = dict(wait_min=int((ms_ - m) // MIN), mc=round(mc2, 1), up=round(float(pn / pnow), 4), top1_pct=round(max(max(net2.values()), 0.0) / sup * 100, 3),
+                          grad=bool(r_[jj:].max() >= 80e9))
+            for kind in ("fomo", "jup"):
+                desk, how2, hd, _, scal, _ = replay(t, p, r_, jj, et, kind)
+                strict.update({"desk_" + kind: round(desk, 4), "hold_" + kind: round(hd, 4), "scal_" + kind: round(scal, 4)})
+            strict["how"] = how2
+            break
+        rows.append(dict(day=day, mint=name, sym=sym[name], sig=int(m), **feat, **o, strict=strict))
     json.dump(dict(day=day, launches=len(launch), coins=n_coins, data_end=data_end, rows=rows),
               open(os.path.join(out, "rows_%s.json" % day), "w"))
     log("done", day, "coins", n_coins, "rows", len(rows))

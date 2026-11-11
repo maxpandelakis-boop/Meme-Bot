@@ -1,6 +1,6 @@
 # The filter study (research/filters, fake money only): started by a push of this file to the thread branch
 # claude/project-thread-by84vq. It downloads public, openly licensed pump.fun data (Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and
-# public SOL/USD candles, and force-pushes compact results to the branch "scoutfilters", which nothing else writes. Nothing is bought.
+# public SOL/USD candles (run 2: with the strict picker of amendment 2), and force-pushes compact results to the branch "scoutfilters", which nothing else writes. Nothing is bought.
 name: filters-study
 on:
   push:

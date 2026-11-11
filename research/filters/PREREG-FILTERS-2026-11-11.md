@@ -125,3 +125,21 @@ level 99.6% is approximated by the 99.4% interval already computed):
 Seen on discovery and worth saying: rug-radar's "dev dumped" sign points the other way for the desk exit here. Coins whose
 creator had already sold 90% or more did better (-1.10) than coins whose creator had sold nothing (-1.97): a creator who still
 holds is the dump that is still to come.
+
+## Amendment 2 (2026-11-11, before any outcome of it): the desk's strict picker ("watch 10 to 40 minutes")
+
+Asked by the main Trencher thread: its browser desk (trencher/scout.js `STRICT`, v0.9.7, commit c15c8c1c) no longer buys at first
+sight. It watches a coin that passed the base signal and buys it 10 to 40 minutes later only if the price is not below the
+first-sight price, market cap $15K to $250K, 25+ different buyers and buys at least 1.5 times the sells in the last 5 minutes,
+the 5-minute change above 0 and at most +60%; then the veto of this study (creator's only coin in 24 h, no holder with 20%+).
+The rule is taken from that code as it stands, nothing is tuned here.
+
+- Replay: checked at every whole minute from 10 to 40 minutes after the first signal, on trades before it; bought 30 seconds
+  later; same ticket, fees, slippage and exits. A coin whose curve completed before the buy is gone (the curve data ends there).
+  Not replayable: the $8K pool floor (GeckoTerminal's number) and RugCheck's danger risks.
+- All 51 days are used; both periods are reported side by side (the holdout was already opened for other filters, but this rule
+  was never fitted to anything).
+- Judged: S1 = the strict rule, S2 = the strict rule plus the veto. PASS (profit) if the average per 20 with the desk exits is
+  above 0 with its 95% interval by day above 0 in both periods, and above 0 without the best trade. "Better than first sight"
+  if the average is above the base signal's average of the same days with the interval of the difference above 0 in both
+  periods. Otherwise FAIL. The number of buys a day is reported (a rule that leaves the desk idle is said so).
