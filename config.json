@@ -1,0 +1,5 @@
+{
+  "rules": {},
+  "wallets": [],
+  "note": "Rules of the 24/7 desk. Edit on GitHub; the desk reads them within a minute. Keys as in trencher/copy-engine.js COPY_DEFAULTS. wallets: [{name, wallet, on}]"
+}
