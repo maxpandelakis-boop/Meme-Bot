@@ -399,3 +399,7 @@
 {"t":1794396781479,"addr":"72xtmTtKyACUtn45ikFwP6LFthGf7L5DMyq1FGXymoon","sym":"Sieturb","age":30.4,"why":"liquidity","liq":0}
 {"t":1794396901334,"addr":"Dc7BMakUmkLhxNFPzUX19Nmh8x7Yf1E1Co8bbgtzf7M5","sym":"JUMP","age":30.5,"why":"liquidity","liq":0}
 {"t":1794397021057,"addr":"7Rdi6R77Z7vASnZujkjnpDzbfhHpeKtGumj8kuu7pump","sym":"NVIDIA","age":31.0,"score":0.01533,"px":0.0001409,"liq":27474,"p0":0.00013337680516136758,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.2301,"c_peak":1.0053,"c_vol":4.6762,"c_act":1.0,"c_r5":0.1707,"c_r15":0.5632,"c_mc":5.1251}}
+{"t":1794397080717,"addr":"6sa16JRheov2xwDMcK5dJnVu9MSVJbqoRXWwMqLvaE3F","sym":"\u5927A","age":30.8,"why":"liquidity","liq":0}
+{"t":1794397200195,"addr":"EZ7jhxYEpQdHGhoa4BQJvZcQWaxKq7LjD1eqT5AKpump","sym":"MBGA","age":30.7,"why":"liquidity","liq":2438}
+{"t":1794397200195,"addr":"F24j3tjdf7dDdvws2vi194BjXSTrMQaHE4n9bczYpkiM","sym":"MBGA","age":30.5,"why":"liquidity","liq":0}
+{"t":1794397200195,"addr":"D96y66XEqMj22fczftC3tkJh9pZ7fJxKKJSF4NRmpump","sym":"FOMO","age":30.3,"why":"liquidity","liq":1541}
