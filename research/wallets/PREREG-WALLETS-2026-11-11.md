@@ -86,3 +86,10 @@ it looks; a pass on the holdout that points the other way on the dev days is noi
 Only the bonding curve: a wallet that earns its money after the graduation is not found, and a sell after the graduation is not
 seen. A copier's own buy would move the curve a little (20 $ is about 0.3% of a fresh curve); the 1% slippage a side covers it.
 FOMO's delay is taken as 30 seconds; nobody measured it.
+
+## Dev days seen (2026-11-11 13:10 UTC, before the holdout run; walletdata commit 9182ea3)
+
+Per 20 $: W1 -1.38 (47,115 trades, 0 of 14 days), W2 -0.55 (597 trades, 95% -1.46..+0.30), W3 +1.18 (125 trades, 95%
+-0.84..+3.29); random wallet -2.59. No bug found, nothing changed: the lists, the exit and the pass bar stay as written above.
+Two files had another column type and a few rows had empty fields (fixed in the reader before these numbers; the first start
+lacked 13 and 14 Aug and is replaced).
