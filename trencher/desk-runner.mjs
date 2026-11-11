@@ -160,14 +160,19 @@ async function freshScout() {
   const ok = list.filter(c => !c.why);
   fagent.top = ok.slice(0, 3).map(c => ({ mint: c.mint, symbol: c.symbol, score: c.buyers5, chg1h: c.chg5 }));
   const recent = new Set(facc.closed.filter(c => Date.now() - c.out < 30 * 60e3).map(c => c.mint));
-  const pick = ok.find(c => !facc.pos[c.mint] && !recent.has(c.mint));
+  const cands = ok.filter(c => !facc.pos[c.mint] && !recent.has(c.mint));
+  let pick = cands[0];
   fagent.scoutMsg = pick ? `${pick.symbol} · ${pick.buyers5} Käufer in 5 min` : `${list.length} neue Coins, keiner passt`;
   for (const c of ok.slice(0, 3)) say("scout", `[Frisch] $${c.symbol} ${Math.round(c.ageMin)} min alt · MC ${Math.round(c.mc / 1000)}k · ${c.buyers5} Käufer, ${c.buys5}/${c.sells5} in 5 min · +${c.chg5.toFixed(0)}% → ${facc.pos[c.mint] ? "schon drin" : "size check"}`);
   if (!pick) return;
   if (Object.keys(facc.pos).length >= P.maxOpen) { say("risk", `[Frisch] max ${P.maxOpen} offen → $${pick.symbol} skip`); return; }
-  const rug = await rugCheck(getJson, pick.mint);
-  say("risk", `[Frisch] RugCheck $${pick.symbol}: ${rug.bad ? "Gefahr: " + rug.why + " → skip" : rug.why}`);
-  if (rug.bad) return;
+  pick = null;
+  for (const c of cands.slice(0, 3)) {      // the best three in turn, the first one RugCheck lets through
+    const rug = await rugCheck(getJson, c.mint);
+    say("risk", `[Frisch] RugCheck $${c.symbol}: ${rug.bad ? "Gefahr: " + rug.why + " → skip" : rug.why}`);
+    if (!rug.bad) { pick = c; break; }
+  }
+  if (!pick) return;
   await sleep(LATENCY_MS);
   const now = (await priceMap(getJson, [pick.mint]).catch(() => ({})))[pick.mint];
   if (!now) { say("risk", `[Frisch] $${pick.symbol} nach ${LATENCY_MS / 1000}s kein Preis bei DexScreener → skip`); return; }
