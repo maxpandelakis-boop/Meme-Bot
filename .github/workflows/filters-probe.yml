@@ -1,0 +1,17 @@
+# Probe for the filter study (research/filters/probe2.py): read-only calls to free public APIs, prints to the log. Fake money only.
+name: filters-probe
+on:
+  push:
+    branches: [claude/project-thread-by84vq]
+    paths: [.github/workflows/filters-probe.yml, research/filters/probe2.py]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 research/filters/probe2.py
