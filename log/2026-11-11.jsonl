@@ -460,3 +460,4 @@
 {"t":1794401520346,"addr":"8HPUR49qXS2HTgNjepEURh1daEXaJQBR78anXwS1h74W","sym":"\u82b1","age":30.7,"why":"liquidity","liq":0}
 {"t":1794401580947,"addr":"4KxmX1PotSXPiev5egbpt65Rbpe2xxfRFhA2ozWipump","sym":"Sakaclk","age":30.9,"why":"liquidity","liq":0}
 {"t":1794401640238,"addr":"1ybTUbpo6VMRNu1ZFSa6nc6ncMwM1sNXi7dkQxgiCjq","sym":"Coinbase","age":30.7,"score":0.01441,"px":3.728e-05,"liq":43694,"p0":3.552408996420779e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":0.0,"c_ret":0.8319,"c_peak":1.0116,"c_vol":4.9839,"c_act":1.0,"c_r5":0.1119,"c_r15":0.4643,"c_mc":4.5505}}
+{"t":1794401940999,"addr":"2WveQ9fbxS9Ct3aYSath1UK2FS4C8rEEn979BfEP189b","sym":"\u82b1","age":30.0,"why":"liquidity","liq":0}
