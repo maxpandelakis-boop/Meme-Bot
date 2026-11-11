@@ -377,3 +377,7 @@
 {"t":1794393720498,"addr":"7wiLyUxJTa8f4UXGdFMZ3PSXexQfj8sUtxr7un1e6TZq","sym":"BRR","age":30.9,"why":"liquidity","liq":0}
 {"t":1794393781066,"addr":"1YH6A8VMMLWW8H7P2vmBCaZf7fPXWM5VNLpHJcCpump","sym":"Apple","age":30.7,"score":0.00877,"px":0.0001572,"liq":29122,"p0":0.00014518370901178972,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.9058,"c_peak":1.0162,"c_vol":4.6261,"c_act":1.0,"c_r5":0.1797,"c_r15":0.6409,"c_mc":5.1619}}
 {"t":1794393960691,"addr":"6kj7R72Ekkx1QouJWmRVABZArgY1gtC6DaL17beGmoon","sym":"Memkey","age":30.8,"why":"liquidity","liq":0}
+{"t":1794394020744,"addr":"6jqzobro42Ere4kLB1F4h2xnFfiNcS7vgDAGQAE4b3Xp","sym":"woohao","age":30.2,"why":"liquidity","liq":0}
+{"t":1794394140828,"addr":"4gVS985UzBuPPyH7V1SJt8aioaet2d2Cz4N6v4UpHSkC","sym":"BRR","age":30.3,"why":"liquidity","liq":0}
+{"t":1794394140828,"addr":"Bwdv8VgrViqrm55LuoqWLkbbDx9zmfAmFwK7XPnhqFvs","sym":"woohao","age":30.2,"why":"liquidity","liq":0}
+{"t":1794394140828,"addr":"7j8VdgFN1oJEjtQfKzvAUpB6DxfEbyacUgYnSD8bmoon","sym":"Deppnez","age":30.1,"why":"liquidity","liq":0}
