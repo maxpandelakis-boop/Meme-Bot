@@ -1,20 +1,49 @@
 # The scout study (research/scout, fake money only): started by a push of this file or of research/scout/* to the thread branch
 # claude/project-thread-0y2vt9. It downloads public, openly licensed pump.fun data (Slinky21/Pumpfun_v2_dataset, CC BY 4.0) and
-# public DexScreener answers, and force-pushes compact results to the branch "scoutdata", which nothing else writes. Nothing is bought.
+# public SOL/USD candles, and force-pushes compact results to the branch "scoutdata", which nothing else writes. Nothing is bought.
 name: scout-study
 on:
   push:
     branches: [claude/project-thread-0y2vt9]
-    paths: [.github/workflows/scout-study.yml, research/scout/**]
+    paths: [.github/workflows/scout-study.yml, research/scout/*.py]
 permissions:
   contents: write                    # the scoutdata branch only
 concurrency:
   group: scout-study
-  cancel-in-progress: false
+  cancel-in-progress: true
 env:
   PYTHONUTF8: '1'
 jobs:
-  probe:
+  day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 14
+      matrix:
+        day: [2026-09-24, 2026-09-25, 2026-09-26, 2026-09-27, 2026-09-28, 2026-09-29, 2026-09-30,
+              2026-10-01, 2026-10-02, 2026-10-03, 2026-10-04, 2026-10-05, 2026-10-06, 2026-10-07]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4
+      - name: The file list of the probe
+        run: git clone -q --depth 1 --branch scoutdata https://github.com/${{ github.repository }}.git sd
+      - name: Day ${{ matrix.day }}
+        run: df -h . && python3 research/scout/scout_day.py sd/probe/files.json ${{ matrix.day }} out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: day-${{ matrix.day }}
+          path: out/trades_*.json
+          retention-days: 14
+
+  report:
+    needs: day
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -24,12 +53,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3 numpy==1.26.4
-      - run: python3 research/scout/probe.py out/probe
-      - name: Push to scoutdata
+      - run: python3 -m pip install --quiet numpy==1.26.4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: day-*
+          path: days
+      - run: python3 research/scout/scout_report.py days days/report
+      - name: Push to scoutdata (the probe stays)
         env:
           URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
-          cd out && git init -q && git checkout -q -b scoutdata && git add -A \
-            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "scout probe $(date -u +%Y-%m-%dT%H:%MZ)" \
-            && git push -q --force "$URL" scoutdata
+          git clone -q --depth 1 --branch scoutdata "$URL" sd
+          mkdir -p sd/study && cp days/*/trades_*.json days/report/* sd/study/
+          cd sd && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "scout study $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q "$URL" scoutdata

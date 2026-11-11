@@ -63,3 +63,14 @@ holdout that points the other way on the dev days is noise. Nothing is re-tuned 
 
 Without the best trade; one day removed at a time (largest day); share of trades ending at -8%, at a total loss (98% down),
 at graduation; trades per day; the max-2-open portfolio of the video replayed on the holdout for information.
+
+## Amendment 1 (2026-11-11, before any outcome; written with the code)
+
+- Universe: coins launched on the 14 days (create table), mayhem-mode coins left out (other curve and supply, as in the rocket
+  study). Each launch day is one job that sees its coins' trades until the next day's end (the D+2 03:xx file); the coins of
+  7 Oct are cut at 8 Oct about 03:30 UTC (data end), which ends some windows early ("end").
+- Controls come from coins launched on the same UTC day as the bought coin (one job holds one day's coins).
+- Prices are the curve's price after each trade (virtual SOL / virtual token reserves). A coin counts as graduated when its curve
+  held 80 SOL or more after the entry. Its path ends at its last curve trade, so a graduated coin is sold at about the
+  graduation price. That cuts the biggest runners short; the share is reported.
+- Checked minutes: a minute with no trade in the last 5 minutes is skipped (no V1 or V3 signal is possible then).
