@@ -1,0 +1,52 @@
+pairs 19950348, wallets 4142820, coins 50930; S 20508, C 9283, T 21139 coins
+
+search on C (wallets from S), 126 rules, 119 eligible (>= 100 coins); the best 15:
+ N    score  K exit  wallets  coins    avg  win  hit3  zero
+20  copy>=5  1    B       85    125 -1.742 27.2  12.0   9.6
+20  copy>=2  2    B      512    224 -2.264 17.9  11.2   6.2
+10  copy>=5  1    A      164    165 -2.441 21.2  11.5   9.1
+10  copy>=5  2    B      759    250 -2.929 12.4  12.8  12.4
+20  copy>=0  2    A      320    383 -3.448 28.5   5.0   2.9
+20  copy>=2  2 hold      387    199 -3.579 39.2   7.5   4.5
+ 5  copy>=5  2    B     4572    778 -3.679 10.7  11.8   6.0
+20  copy>=0  2 hold     1153    684 -3.995 34.2   6.0   5.0
+10  copy>=2  2    B     3189    977 -4.443 10.8   9.7   6.4
+20  copy>=0  2    B     1960   1316 -4.461 13.0   8.4   6.2
+10  copy>=0  2    B     7701   1933 -4.905 12.3   8.3   7.7
+ 5  copy>=2  2    B    12681   1646 -4.952 10.0   8.6   7.4
+10  copy>=0  2    A     1683    838 -5.104 18.9   7.9   4.8
+10  copy>=5  2 hold      647    335 -5.190 38.2  10.4  19.4
+10 own>=1.5  2    B     6377   1599 -5.255  9.6  11.3  11.6
+base on C: {"C_hold": {"coins": 8214, "avg": -8.185, "win": 21.1, "hit3": 4.9, "zero": 24.3}, "C_A": {"coins": 6983, "avg": -9.257, "win": 11.2, "hit3": 6.2, "zero": 23.6}, "C_B": {"coins": 6983, "avg": -6.843, "win": 14.4, "hit3": 6.2, "zero": 23.6}}
+
+chosen: N 20, copy>=5, K 1, exit B
+T: 112 smart wallets; {"coins": 154, "avg": -3.903, "win": 7.8, "hit3": 14.9, "zero": 2.6, "ci": [-5.405, -2.156]}
+base on T: {"coins": 15497, "avg": -5.442, "win": 14.1, "hit3": 7.6, "zero": 23.2}
+conditions: coins True, average and interval above 0 False, 3x share at least the base's True -> FAIL
+
+information only:
+  fee_0.01: {"coins": 154, "avg": -3.74, "win": 7.8, "hit3": 14.9, "zero": 2.6}
+  fee_0.03: {"coins": 154, "avg": -4.065, "win": 7.1, "hit3": 14.9, "zero": 2.6}
+  unclipped: {"coins": 154, "avg": -3.903, "win": 7.8, "hit3": 14.9, "zero": 2.6}
+  delay_1: {"coins": 154, "avg": -3.001, "win": 11.0, "hit3": 16.9, "zero": 1.9}
+  delay_15: {"coins": 154, "avg": -3.441, "win": 8.4, "hit3": 14.3, "zero": 1.3}
+  delay_60: {"coins": 154, "avg": -3.116, "win": 13.0, "hit3": 3.9, "zero": 0.0}
+  wallets_trading_on_T: 20
+  with_bot_gates: {"coins": 0}
+  base_with_bot_gates: {"coins": 29, "avg": -3.71, "win": 20.7, "hit3": 0.0, "zero": 0.0}
+  the ten best C rules on T:
+ N   score  K exit  C_avg  coins    avg  win  hit3  zero               ci
+20 copy>=5  1    B -1.742    154 -3.903  7.8  14.9   2.6 [-5.405, -2.156]
+20 copy>=2  2    B -2.264    729 -2.178 18.5  15.5   2.3 [-3.023, -1.292]
+10 copy>=5  1    A -2.441    697 -6.604  7.5  15.8   6.9  [-7.327, -5.85]
+10 copy>=5  2    B -2.929    455 -3.775  8.1  14.7   3.1 [-4.728, -2.773]
+20 copy>=0  2    A -3.448    722 -2.174 29.2   9.8   2.6 [-3.019, -1.287]
+20 copy>=2  2 hold -3.579    464 -1.474 38.1  15.5   0.9  [-2.756, -0.19]
+ 5 copy>=5  2    B -3.679   1792 -3.627 10.0  15.8   6.0 [-4.168, -3.056]
+20 copy>=0  2 hold -3.995   1404 -3.447 32.2  12.5   2.4 [-4.217, -2.676]
+10 copy>=2  2    B -4.443   2087 -3.352 12.1  15.9   4.1  [-3.871, -2.82]
+20 copy>=0  2    B -4.461   2488 -3.286 13.9  15.2   5.3  [-3.76, -2.834]
+
+real	9m24.503s
+user	3m31.595s
+sys	6m9.457s

@@ -1,18 +1,19 @@
 # Long-history data build: started by hand only (Actions -> history-build -> Run workflow), never on a push or a schedule.
 # Fake money only: it downloads public, openly licensed data sets from Hugging Face, turns them into compact research rows and
 # force-pushes them as one commit to a branch that nothing else writes: part 1 (June and July 2026, research/history_build.py)
-# to "history", part 2 (10 August to 8 October 2026, research/history_build2.py) to "history2". The bot, its results branch and
+# to "history", part 2 (10 August to 8 October 2026, research/history_build2.py) to "history2", part 3 (the wallets of part 2's
+# coins, research/wallet_build.py) to "wallets". The bot, its results branch and
 # its paper accounts are not touched.
 name: history-build
 on:
   workflow_dispatch:
     inputs:
       part:
-        description: "1 = June/July (branch history), 2 = August to October (branch history2)"
+        description: "1 = June/July (branch history), 2 = August to October (branch history2), 3 = wallets of August to October (branch wallets)"
         required: true
         default: "2"
         type: choice
-        options: ["1", "2"]
+        options: ["1", "2", "3"]
 permissions:
   contents: write                    # the history branches only
 concurrency:
@@ -122,3 +123,75 @@ jobs:
           git init -q && git checkout -q -b history2 && git add -A \
             && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "history2 rows $(date -u +%Y-%m-%dT%H:%MZ)" \
             && git push -q --force "$URL" history2 && echo "history2 branch updated: $(du -sh . | cut -f1)"
+
+  # part 3: the same swaps as part 2, kept per wallet and coin with what a copy of each buy would have made
+  meta3:
+    if: inputs.part == '3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - name: Graduations, names, file list, SOL/USD
+        run: python3 research/wallet_build.py meta meta
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meta3
+          path: meta
+          retention-days: 7
+
+  shard3:
+    needs: meta3
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          name: meta3
+          path: meta
+      - name: Swap files ${{ matrix.shard }}, 20+${{ matrix.shard }}, ... as bars and wallet-coin parts
+        run: python3 research/wallet_build.py shard meta ${{ matrix.shard }} 20 shard
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wshard-${{ matrix.shard }}
+          path: shard
+          retention-days: 7
+
+  final3:
+    needs: shard3
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pyarrow==17.0.0 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          name: meta3
+          path: meta
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wshard-*
+          path: shards
+      - name: Wallet pairs and their copies
+        run: python3 research/wallet_build.py final meta shards out
+      - name: Push them to the wallets branch (one commit, replaced each build)
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cd out/wallets && ls -la && du -sh pairs
+          git init -q && git checkout -q -b wallets && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "wallet pairs $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git push -q --force "$URL" wallets && echo "wallets branch updated: $(du -sh . | cut -f1)"
