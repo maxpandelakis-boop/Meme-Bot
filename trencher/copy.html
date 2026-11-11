@@ -12,7 +12,7 @@
 <link rel="icon" href="icons/app-192.png">
 <link rel="apple-touch-icon" href="icons/app-180.png">
 <title>Trencher Trading Desk</title>
-<link rel="stylesheet" href="copy.css">
+<link rel="stylesheet" href="copy.css?v=0.9.11">
 </head>
 <body>
 <header class="top">
@@ -21,14 +21,14 @@
   <span id="ver" class="muted tiny"></span>
   <button id="shareBtn" class="right tiny link" title="Stand teilen">⇪ Teilen</button>
   <button id="installBtn" class="tiny link" style="display:none">⬇ Als App installieren</button>
-  <a id="panelLink" href="panel.html" class="right tiny link" title="Der alte Bildschirm: ein Coin, eigener Bot">Coin-Trencher ↗</a>
   <a id="liveLink" href="echtgeld.html" target="_blank" class="tiny link" title="Echtgeld-Schalter (standardmäßig AUS)">Echtgeld ↗</a>
 </header>
 
 <main>
   <!-- HOME -->
   <section id="home" class="page on">
-    <div class="modes" id="modes"><button data-m="local" class="on">Dieser Browser</button><button data-m="server">☁ Server 24/7</button></div>
+   <div class="homeL">
+    <div class="modes" id="modes"><button data-m="local" class="on">Dieser Browser</button><button data-m="server">☁ Große 24/7</button><button data-m="fresh">☁ Frisch 24/7</button></div>
     <div id="serverInfo" class="tiny"></div>
     <div id="deskSub" class="muted tiny desksub">–</div>
     <div class="balance"><span id="bal" class="bal">$0<span class="cents">.00</span></span></div>
@@ -46,10 +46,15 @@
       <div class="acard"><div class="ah"><span class="ai r">■</span><div><b>Risk</b><span id="aRiskSub" class="dot r">–</span></div></div><ol id="aRisk" class="alist"></ol></div>
     </div>
     <div class="row"><button id="runBtn" class="run">▶ Bot starten</button></div>
+   </div>
+   <div class="homeR">
 
     <div class="sect"><b>Activity</b><button id="seeAll" class="link tiny">Alle ansehen</button></div>
     <ol id="actHome" class="acts"></ol>
     <span id="actInfo" hidden></span>
+    <div class="sect"><b>Live-Log</b><span class="muted tiny">jede Entscheidung der Agents</span></div>
+    <div id="logHome" class="logbox loghome"></div>
+   </div>
   </section>
 
   <!-- COIN -->
@@ -77,10 +82,10 @@
     <p class="muted tiny">Der Knopf sucht heiße Coins (GeckoTerminal, DexScreener, Reddit) und darin die Wallets mit dem meisten Gewinn. Oder Name und Solana-Wallet selbst eintragen. Kauft ein Trader, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
     <button id="findBtn" class="find">🔍 Gute Trader finden</button>
     <div id="findMsg" class="tiny muted"></div>
-    <h2 id="hotHead" style="display:none">Heiße Coins <span class="muted tiny">GeckoTerminal · DexScreener · Reddit</span></h2>
-    <ol id="hotList" class="traders"></ol>
-    <h2>Gefundene Trader</h2>
-    <ol id="findList" class="traders"></ol>
+    <div class="sect"><h2 style="margin:0">Top Trader <span class="muted tiny">aus den heißen Coins</span></h2><button id="followTop" class="link tiny" style="display:none">Top 4 folgen</button></div>
+    <ol id="findList" class="traders"><li class="empty">Noch keine Suche. Oben „Gute Trader finden“ drücken (dauert ca. 30 Sekunden).</li></ol>
+    <details id="hotBox" style="display:none"><summary id="hotHead" class="tiny muted">Heiße Coins, in denen gesucht wurde (GeckoTerminal · DexScreener · Reddit)</summary>
+    <ol id="hotList" class="traders"></ol></details>
     <h2>Deine Trader</h2>
     <ol id="traderList" class="traders"></ol>
     <div class="addrow">
@@ -92,7 +97,10 @@
     <h2>Regeln</h2>
     <p id="rulesServer" class="tiny muted" style="display:none">Das sind die Regeln des Server-Desks (nur ansehen). Ändern: im Chat schreiben oder <a class="link" target="_blank" rel="noopener" href="https://github.com/maxpandelakis-boop/Meme-Bot/edit/desk-data/config.json">config.json auf GitHub</a>.</p>
     <div class="rules" id="rules"></div>
-    <button id="rulesReset" class="link tiny">Standard-Regeln</button>
+    <div class="presets"><span class="muted tiny">Fertige Regeln:</span>
+      <button id="rulesReset" class="ghost tiny">Trading Desk (Video 2)</button>
+      <button id="presetV3" class="ghost tiny">FOMO Terminal (Video 3)</button></div>
+    <p id="presetNote" class="muted tiny"></p>
     <h2>Reddit (optional, kostenlos)</h2>
     <p class="muted tiny">Eigene Reddit-App vom Typ „installed app“ unter reddit.com/prefs/apps anlegen und hier ihre ID eintragen. Kein Passwort, kein Geheimnis nötig.</p>
     <div class="addrow"><input id="redditId" placeholder="Reddit-App-ID" spellcheck="false" autocomplete="off"></div>
@@ -123,13 +131,24 @@
     <ol id="perTrader" class="acts"></ol>
     <h2>Offene Positionen</h2>
     <ol id="openPos" class="acts"></ol>
+    <div class="row"><button id="payInBtn" class="ghost">＋ Einzahlen</button><button id="payOutBtn" class="ghost">－ Auszahlen</button></div>
+    <div id="payInfo" class="muted tiny"></div>
     <div class="row"><button id="notifBtn" class="ghost">🔔 Benachrichtigungen an</button></div>
     <div class="row"><button id="resetAcc" class="ghost">Neu starten mit <span id="depLbl">$20</span> Spielgeld</button></div>
-    <p class="muted tiny">Nur Simulation: keine Wallet, keine Schlüssel, kein echtes Geld. Gebühren wie FOMO (0,5 %, mind. 0,50 $), Slippage nach Pool-Größe.</p>
+    <p class="muted tiny">Nur Simulation: keine Wallet, keine Schlüssel, kein echtes Geld. Gebühren wie FOMO (unter 5 $: 0,10 $ · bis 47,50 $: 2 % · bis 190 $: 0,95 $ · darüber 0,5 %, bei Kauf und Verkauf), Slippage nach Pool-Größe.</p>
   </section>
 </main>
 
 <div id="toast" class="toast"></div>
+<div id="paySheet" class="sheet" hidden>
+  <form id="payForm" class="sheetbox">
+    <b id="payTitle">Einzahlen</b><span class="muted tiny">Spielgeld. Es wird nichts echt bezahlt.</span>
+    <div class="quick" id="payQuick"><button type="button" data-a="20">$20</button><button type="button" data-a="100">$100</button><button type="button" data-a="250">$250</button><button type="button" data-a="500">$500</button></div>
+    <input id="payAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Betrag in $">
+    <div id="payMsg" class="tiny neg"></div>
+    <div class="row"><button type="button" id="payCancel" class="ghost">Abbrechen</button><button id="payOk" class="run">Einzahlen</button></div>
+  </form>
+</div>
 
 <nav class="bottom">
   <button data-p="home" class="on"><span>⌂</span>Home</button>
@@ -138,6 +157,6 @@
   <button data-p="account"><span>◉</span>Account</button>
 </nav>
 <script src="lib/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="copy.js"></script>
+<script type="module" src="copy.js?v=0.9.11"></script>
 </body>
 </html>

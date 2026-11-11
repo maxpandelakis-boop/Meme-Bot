@@ -5,21 +5,20 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats } from "./copy-engine.js";
-import { bestPair } from "./sim.js";
-import { hotCoins as scoutHot, scoutPick } from "./scout.js";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit, PRESET_VIDEO3 } from "./copy-engine.js?v=0.9.11";
+import { bestPair } from "./sim.js?v=0.9.11";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, FIRST, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.11";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
 // api.mainnet-beta.solana.com refuses extension origins with 403, so it is not used.
 const RPCS = ["https://solana-rpc.publicnode.com"];
-const DEX = mints => `https://api.dexscreener.com/latest/dex/tokens/${mints.join(",")}`;
 const WATCH_MS = 1500;      // one trader wallet checked per tick, round robin
 const COPY_MS = 1000;       // due copies executed
 const RISK_MS = 5000;       // open positions priced, take-profit / stop-loss checked
 const CURVE_MS = 10000;     // a point of the balance curve
 const SCOUT_MS = 60000;     // the Scout looks for hot coins once a minute (GeckoTerminal allows ~30 calls a minute)
-const COOLDOWN_MS = 30 * 60e3;   // a coin the desk just left is not bought again for 30 minutes
+const COOLDOWN_MS = 30 * 60e3;   // a coin the desk left less than this ago is bought again only when the Prüfer (scout.js) says yes
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 // ---------- storage (chrome.storage in the extension, localStorage on a plain web page) ----------
@@ -160,13 +159,14 @@ async function scout() {
   const list = await hotCoins(() => {});
   hot = list; agent.checked += list.length; agent.top = list.slice(0, 3);
   const pick = scoutPick(list, acc, P, COOLDOWN_MS);
-  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : `nichts über ${P.minScore} Punkten`;
-  for (const c of list.slice(0, 4)) {
-    const ok = c.score >= P.minScore && (c.chg1h || 0) > 0 && (c.buys1h || 0) > (c.sells1h || 0);
-    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${acc.pos[c.mint] ? "schon drin" : ok ? "size check" : "wait"}`);
-  }
+  agent.scoutMsg = pick ? `${pick.symbol} · Punkte ${pick.score}` : scoutNone(list, acc, P, COOLDOWN_MS);
+  for (const c of list.slice(0, 4))
+    say("scout", `$${c.symbol} Punkte ${c.score} · ${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}% 1h · ${c.buys1h}/${c.sells1h} Käufe → ${scoutVerdict(c, acc, P, COOLDOWN_MS)}`);
   if (pick && Object.keys(acc.pos).length >= P.maxOpen) say("risk", `max ${P.maxOpen} offen → $${pick.symbol} skip`);
   if (!pick || Object.keys(acc.pos).length >= P.maxOpen) { render(); return; }
+  const rug = await rugCheck(getJson, pick.mint);
+  say("risk", `RugCheck $${pick.symbol}: ${rug.bad ? "Gefahr: " + rug.why + " → skip" : rug.why}`);
+  if (rug.bad) { render(); return; }
   const p = prices[pick.mint];
   if (!p || !(p.price > 0)) return;
   const r = copyBuy(acc, { mint: pick.mint, symbol: pick.symbol, price: p.price, liq: p.liq, mc: p.mc, score: pick.score, pool: pick.pool, img: pick.img, now: Date.now() }, P);
@@ -178,11 +178,75 @@ async function scout() {
 
 // ---------- Risk: the desk rules (and the optional plain take-profit / stop-loss) on the open positions ----------
 const EXIT_TEXT = { half: "Einsatz zurück bei 2×", stop: "Hard Stop", trail: "Trailing-Stop", tp: "Take Profit", sl: "Stop-Loss" };
+// ---------- the fresh picker: new small pump.fun coins at first sight + the measured veto (rules: scout.js FRESH, FIRST, freshCheck).
+// The stricter "watch 10 minutes first" picker failed its test (see scout.js STRICT) and is not used. ----------
+const watch = new Map();
+let freshAt = 0, poolAt = 0;
+const FRESH_MS = 30000, LATENCY_MS = 3000;
+async function freshScout() {
+  if (!P.fresh || Date.now() - freshAt < FRESH_MS) return;
+  freshAt = Date.now();
+  const list = await freshCoins(gt, Date.now(), [1, 2]);
+  agent.checked += list.length;
+  watchUpdate(watch, list, Date.now(), FIRST);
+  const due = [...watch.values()];
+  agent.freshMsg = `Frisch: ${list.length} neue Coins, ${due.length} bestehen den Filter`;
+  if (!due.length) return;
+  const by = await poolPrices(gt, due.map(w => w.pool));
+  const now = Date.now(), recent = new Set(acc.closed.filter(c => now - c.out < COOLDOWN_MS).map(c => c.mint));
+  const rated = due.map(w => ({ w, c: by[w.pool], why: strictVerdict(w, by[w.pool], now, FIRST) })).sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || ((b.c || {}).buyers5 || 0) - ((a.c || {}).buyers5 || 0));
+  for (const r of rated.slice(0, 3)) say("scout", `[Frisch] $${r.w.symbol}${r.c ? ` · MC ${Math.round(r.c.mc / 1000)}k · ${r.c.buyers5} Käufer, ${r.c.buys5}/${r.c.sells5} in 5 min` : ""} → ${r.why || "size check"}`);
+  const cands = rated.filter(r => !r.why && !acc.pos[r.w.mint] && !recent.has(r.w.mint));
+  if (!cands.length) return;
+  if (Object.keys(acc.pos).length >= P.maxOpen) { say("risk", `[Frisch] max ${P.maxOpen} offen → $${cands[0].w.symbol} skip`); return; }
+  let pick = null;
+  for (const r of cands.slice(0, 3)) {
+    const rug = await freshCheck(getJson, r.w.mint);
+    const no = rug.bad || !rug.known;
+    say("risk", `[Frisch] Prüfung $${r.w.symbol}: ${rug.why}${no ? " → skip" : ""}`);
+    if (no) { if (rug.bad) watch.delete(r.w.mint); continue; }
+    pick = r; break;
+  }
+  if (!pick) return;
+  await sleep(LATENCY_MS);
+  const fill = (await poolPrices(gt, [pick.w.pool]).catch(() => ({})))[pick.w.pool];
+  const bad = freshFillCheck(pick.c, fill);
+  if (bad) { say("risk", `[Frisch] $${pick.w.symbol} nach ${LATENCY_MS / 1000}s: ${bad} → skip`); return; }
+  if (!running || serverMode) return;
+  const m = pick.w.mint;
+  prices[m] = { ...prices[m], price: fill.price, liq: fill.liq, mc: fill.mc, symbol: fill.symbol, pool: fill.pool, t: Date.now() };
+  const r = copyBuy(acc, { mint: m, symbol: pick.w.symbol, price: fill.price, liq: fill.liq, mc: fill.mc, score: fill.buyers5, pool: fill.pool, img: "", now: Date.now() }, P);
+  if (!r.ok) { say("risk", `[Frisch] $${pick.w.symbol} → ${r.skip}`); return; }
+  acc.pos[m].fresh = true;          // priced by its GeckoTerminal pool from now on, not by DexScreener
+  watch.delete(m);
+  say("exec", `[Frisch] gekauft $${pick.w.symbol} ${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC · ${pick.w.dex} · ${Math.round(fill.liq)} $ im Pool · Preis in ${LATENCY_MS / 1000}s ${fill.price >= pick.c.price ? "+" : ""}${((fill.price / pick.c.price - 1) * 100).toFixed(1)}% · Gebühr ${money(r.fill.fee)}`);
+  notify(`Gekauft (frisch): ${pick.w.symbol}`, `${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC`);
+  point(); persist(); render();
+}
+// Prices of the open positions: DexScreener, and for fresh positions their own GeckoTerminal pool (every 15 s, it wins).
+async function priceOpen(open) {
+  const freshPos = open.map(m => acc.pos[m]).filter(p => p && p.fresh && p.pool);
+  await priceCoins(open.filter(m => !(acc.pos[m] && acc.pos[m].fresh)));
+  if (!freshPos.length || Date.now() - poolAt < 15000) return;
+  poolAt = Date.now();
+  const by = await poolPrices(gt, freshPos.map(p => p.pool));
+  for (const p of freshPos) {
+    const q = by[p.pool];
+    if (q) { prices[p.mint] = { ...prices[p.mint], price: q.price, liq: q.liq, mc: q.mc, symbol: p.symbol, pool: p.pool, t: Date.now() }; p.noPrice = 0; }
+    else if ((p.noPrice = (p.noPrice || 0) + 1) >= 8) prices[p.mint] = { ...prices[p.mint], price: (prices[p.mint] || {}).price || p.entry, liq: 0, mc: 0, symbol: p.symbol, pool: p.pool, t: Date.now() };
+  }
+}
 async function riskCheck() {
   const open = Object.keys(acc.pos);
   agent.r = `${open.length} offen`;
   if (!open.length) return;
-  try { await priceCoins(open); } catch { return; }
+  try { await priceOpen(open); } catch { return; }
+  for (const p of Object.values(acc.pos)) {              // a fresh coin whose pool has no money left: out, at what it would still pay
+    const q = prices[p.mint];
+    if (!p.fresh || !q || !(q.t > p.at) || q.liq >= DEAD_LIQ) continue;
+    const r = copySell(acc, { mint: p.mint, price: q.price, liq: Math.max(q.liq, 1), mc: q.mc, frac: 1, why: "dead", now: Date.now() });
+    if (r.ok) { say("exit", `[Frisch] Pool leer (${Math.round(q.liq)} $) · $${p.symbol} ${signed(r.fill.pnl)}`); toast("POOL LEER", true); }
+  }
   const exits = deskExits(acc, prices, P);
   if (P.takeProfitX > 1 || P.stopLoss > 0) for (const x of riskExits(acc, prices, P)) if (!exits.some(e => e.mint === x.mint)) exits.push({ ...x, frac: 1 });
   for (const { mint, why, frac } of exits) {
@@ -227,6 +291,7 @@ loop(watchOne, WATCH_MS);
 loop(copyDue, COPY_MS);
 loop(riskCheck, RISK_MS);
 loop(scout, 5000);
+loop(freshScout, 5000);
 loop(async () => { point(); persist(); }, CURVE_MS);
 setInterval(() => { if (acc) renderTop(); }, 2000);
 
@@ -284,7 +349,7 @@ function drawChart() {
 // ---------- rendering ----------
 const BUY_KINDS = new Set(["buy", "copy"]), EXIT_KINDS = new Set(["sell", "tp", "sl", "half", "stop", "trail"]);
 function renderTop() {
-  const v = value(), d = v - acc.deposit, x = acc.deposit > 0 ? v / acc.deposit : 1;
+  const v = value(), d = accountProfit(acc, v), x = acc.deposit > 0 ? 1 + d / acc.deposit : 1;
   const [w, c] = money(v).split(".");
   $("bal").innerHTML = `${w}<span class="cents">.${c}</span>`;
   $("bal2").textContent = money(v);
@@ -300,6 +365,7 @@ function renderTop() {
   $("aScout").innerHTML = agent.top.map(c => `<li>${avatar(c.symbol, c.img)}<b>${esc(c.symbol)}</b> <span class="${c.chg1h >= 0 ? "pos" : "neg"}">${c.chg1h >= 0 ? "+" : ""}${(c.chg1h || 0).toFixed(0)}%</span><span class="sc">${c.score}</span></li>`).join("")
     || `<li class="muted">${running ? "erste Suche läuft …" : "Bot starten"}</li>`;
   if (agent.scoutMsg) $("aScout").insertAdjacentHTML("beforeend", `<li class="muted">→ ${esc(agent.scoutMsg)}</li>`);
+  if (agent.freshMsg && P.fresh && !serverMode) $("aScout").insertAdjacentHTML("beforeend", `<li class="muted">→ ${esc(agent.freshMsg)}</li>`);
   const ring = Math.min(1, Math.max(0, x / 10));
   $("ringFg").style.strokeDashoffset = String(169.6 * (1 - ring));
   $("aCompSub").textContent = x.toFixed(2) + "× jetzt";
@@ -322,6 +388,11 @@ function actRow(a) {
   const li = (title, sub, amt, amtSub, cls = "") => `<li data-mint="${esc(a.mint)}">${icon}<div class="mid"><b>${title}</b><span>${sub} · ${hm(a.t)}</span></div>
             <div class="amt"><b class="${cls}">${amt}</b><span>${amtSub}</span></div></li>`;
   const sym = esc(a.symbol);
+  if (a.kind === "deposit" || a.kind === "withdraw") {
+    const dep = a.kind === "deposit";
+    return `<li><span class="av" style="background:${dep ? "#16a34a" : "#475569"}">${dep ? "＋" : "－"}</span><div class="mid"><b>${dep ? "Eingezahlt" : "Ausgezahlt"}</b><span>Spielgeld · ${hm(a.t)}</span></div>
+            <div class="amt"><b>${dep ? "+" : "−"}${money(a.usd)}</b><span></span></div></li>`;
+  }
   if (a.kind === "buy") return li(`Bought ${sym}`, `${Math.round((a.pct || P.sizePct) * 100)}% of free cash · ${big(a.mc)} MC`, money(a.usd), a.score ? `score ${a.score}` : "");
   if (a.kind === "copy") return li(`Copied ${sym}`, `${a.lagSec}s after ${esc(a.trader)} · ${big(a.mc)} MC`, money(a.usd), "Wallet");
   if (a.kind === "rule") return li(`Skipped ${sym}`, `${esc(a.why)}${a.trader ? " · " + esc(a.trader) : ""}`, "", "Regel");
@@ -338,7 +409,7 @@ function actRow(a) {
 let shownTop = "";
 function renderActivity() {
   const list = acc.activity;
-  const home = list.filter(a => a.kind !== "rule").slice(0, 8).map(actRow).join("") || `<li class="empty">Noch nichts. Bot starten: der Scout sucht dann selbst.</li>`;
+  const home = list.filter(a => a.kind !== "rule").slice(0, 8).map(actRow).join("") || `<li class="empty">${serverMode ? "Noch keine Trades auf dem Server. Was der Desk gerade prüft, steht unten im Log." : "Noch nichts. Bot starten: der Scout sucht dann selbst."}</li>`;
   const top = list[0] ? list[0].t + list[0].kind : "";
   $("actHome").innerHTML = home;
   if (top && top !== shownTop && shownTop) $("actHome").firstElementChild?.classList.add("new");
@@ -401,7 +472,9 @@ function renderTraders() {
 const RULES = [
   ["deposit", "Startgeld ($)", 1], ["sizePct", "Kauf: % vom freien Geld", 100], ["maxOpen", "Max. offene Positionen", 1],
   ["hardStop", "Hard Stop (%, solange nie 2×)", 100], ["halfAt", "Einsatz zurück bei (×)", 1], ["trail", "Trailing vom Hoch (%)", 100],
-  ["minScore", "Scout: Mindest-Punkte (0–100)", 1], ["delaySec", "Wallets: Sekunden danach", 1],
+  ["trailFrom", "Ohne Teilverkauf: Trailing ab (×, 0 = aus)", 1],
+  ["minScore", "Scout: Mindest-Punkte (0–100)", 1], ["mcMin", "Scout: MC mindestens ($, 0 = egal)", 1], ["mcMax", "Scout: MC höchstens ($, 0 = egal)", 1],
+  ["minAgeH", "Scout: Coin mindestens so alt (Stunden)", 1], ["delaySec", "Wallets: Sekunden danach", 1],
   ["takeProfitX", "Extra: alles raus bei (×, 0 = aus)", 1], ["stopLoss", "Extra: Stop-Loss (%, 0 = aus)", 100],
 ];
 function renderRules() {
@@ -409,10 +482,11 @@ function renderRules() {
   $("rules").classList.toggle("ro", serverMode);
   $("rules").innerHTML = RULES.map(([k, label, f]) => `<label for="r_${k}">${label}</label><input id="r_${k}" data-k="${k}" data-f="${f}" type="number" min="0" step="any" value="${+(P[k] * f).toFixed(4)}">`).join("")
     + `<label for="r_scout">Scout kauft selbst</label><input id="r_scout" type="checkbox" ${P.scout ? "checked" : ""} style="width:auto;justify-self:end">`
+    + `<label for="r_fresh">Frische kleine Coins (pump.fun, mit Prüfung)</label><input id="r_fresh" type="checkbox" ${P.fresh ? "checked" : ""} style="width:auto;justify-self:end">`
     + `<label for="r_same">Mit der Wallet verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
 }
 
-function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); if (filter === "log") renderLog(); }
+function render() { if (!acc) return; renderTop(); renderGrid(); renderActivity(); renderAccount(); renderLog(); }
 
 function toast(text, bad = false) {
   const el = $("toast");
@@ -494,12 +568,23 @@ $("rules").addEventListener("change", e => {
   const el = e.target;
   if (el.id === "r_same") P.sameExits = el.checked;
   else if (el.id === "r_scout") P.scout = el.checked;
+  else if (el.id === "r_fresh") P.fresh = el.checked;
   else if (el.dataset.k) { const v = Number(el.value); if (v >= 0) P[el.dataset.k] = v / Number(el.dataset.f); }
   save("deskRules", P); render();
 });
 load("redditAppId", "").then(v => { $("redditId").value = v; });
 $("redditId").addEventListener("change", () => { save("redditAppId", $("redditId").value.trim()); redditTok = null; $("redditMsg").textContent = "Gespeichert. Wird bei der nächsten Suche benutzt."; });
-$("rulesReset").addEventListener("click", () => { P = { ...COPY_DEFAULTS }; save("deskRules", P); renderRules(); render(); });
+function preset(rules, name, note) {
+  if (serverMode) { alert("Das sind die Regeln des Server-Desks. Bitte erst auf „Dieser Browser“ wechseln."); return; }
+  P = { ...COPY_DEFAULTS, deposit: P.deposit, ...rules };
+  save("deskRules", P); renderRules(); render();
+  $("presetNote").textContent = note;
+  say("rules", `Regeln gesetzt: ${name}`);
+  toast(name.toUpperCase());
+}
+$("rulesReset").addEventListener("click", () => preset({}, "Trading Desk", "Video 2: 40 % pro Kauf, max 2 offen, Stop −8 %, bei 2× Einsatz zurück, Rest trailt 10 %."));
+$("presetV3").addEventListener("click", () => preset(PRESET_VIDEO3, "FOMO Terminal",
+  "Video 3: EIN Coin, 90 % vom Geld, Stop −6 %, kein Teilverkauf, ab +15 % trailt alles 10 % unter dem Hoch. Nur Trend-Coins mit 150k bis 2,5M $ MC, mindestens 4 Stunden alt. Hohes Risiko: ein Stop kostet fast 6 % vom ganzen Konto plus Gebühren. Ungeprüft."));
 $("openPos").addEventListener("click", async e => {
   const b = e.target.closest("button[data-sell]"); if (!b) return;
   const mint = b.dataset.sell;
@@ -509,6 +594,30 @@ $("openPos").addEventListener("click", async e => {
   copySell(acc, { mint, price: p.price, liq: p.liq, mc: p.mc, why: "hand", now: Date.now() });
   point(); persist(); render();
 });
+// ---------- pay in / pay out (paper money, any time, the account keeps running) ----------
+let payDir = "in";
+function openPay(dir) {
+  if (serverMode) { alert("Das Server-Konto läuft auf GitHub. Ein- und Auszahlen geht nur bei „Dieser Browser“."); return; }
+  payDir = dir;
+  $("payTitle").textContent = $("payOk").textContent = dir === "in" ? "Einzahlen" : "Auszahlen";
+  $("payAmt").value = ""; $("payMsg").textContent = dir === "out" ? `frei: ${money(acc.cash)}` : ""; $("payMsg").className = "tiny muted";
+  $("paySheet").hidden = false; $("payAmt").focus();
+}
+$("payInBtn").addEventListener("click", () => openPay("in"));
+$("payOutBtn").addEventListener("click", () => openPay("out"));
+$("payCancel").addEventListener("click", () => { $("paySheet").hidden = true; });
+$("paySheet").addEventListener("click", e => { if (e.target === $("paySheet")) $("paySheet").hidden = true; });
+$("payQuick").addEventListener("click", e => { const b = e.target.closest("button[data-a]"); if (b) $("payAmt").value = b.dataset.a; });
+$("payForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const r = (payDir === "in" ? payIn : payOut)(acc, $("payAmt").value);
+  if (!r.ok) { $("payMsg").textContent = r.skip; $("payMsg").className = "tiny neg"; return; }
+  say("report", `${payDir === "in" ? "eingezahlt" : "ausgezahlt"} ${money(r.usd)} Spielgeld · frei ${money(acc.cash)}`);
+  $("paySheet").hidden = true;
+  toast(payDir === "in" ? "EINGEZAHLT" : "AUSGEZAHLT");
+  point(); persist(); render();
+});
+
 $("resetAcc").addEventListener("click", () => {
   if (serverMode) { alert("Das Server-Konto läuft auf GitHub. Zum Neustart dort den Branch desk-data löschen."); return; }
   if (!confirm(`Konto zurücksetzen? Alle Positionen und die Activity werden gelöscht, du startest mit ${money(P.deposit)} Spielgeld.`)) return;
@@ -529,7 +638,6 @@ async function gt(path) {
   throw new Error("GeckoTerminal: zu viele Anfragen, gleich nochmal versuchen");
 }
 // Hot coins from every free source: GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions.
-const DS = "https://api.dexscreener.com";
 const SUBS = "solana+memecoins+SolanaMemeCoins+CryptoMoonShots+pumpfun";
 // Reddit blocks anonymous .json reads (403, tested 2026-11-08), so it goes through the user's own free Reddit app of type
 // "installed app": app-only OAuth with just the app's ID (no secret, no Reddit password), token cached until it expires.
@@ -562,10 +670,11 @@ async function hotCoins(msg) {
 
 async function findTraders() {
   const btn = $("findBtn"), msg = t => { $("findMsg").textContent = t; };
-  btn.disabled = true; found = []; renderFound();
+  btn.disabled = true; found = []; searching = true; renderFound();
   try {
     hot = await hotCoins(msg); renderHot();
     const pools = hot.filter(c => c.pool).slice(0, 8);
+    $("findList").innerHTML = `<li class="empty">${hot.length} heiße Coins gefunden. Jetzt werden ihre Käufer und Verkäufer geprüft …</li>`;
     const got = [];
     for (let i = 0; i < pools.length; i++) {
       msg(`Prüfe Trader von ${pools[i].symbol} (${i + 1}/${pools.length}) …`);
@@ -576,10 +685,10 @@ async function findTraders() {
     msg(found.length ? `${hot.length} heiße Coins aus 4 Quellen, ${found.length} Wallets mit Gewinn in den Top ${got.length}. Glück oder Können? Erst mit Spielgeld testen.`
                      : "Gerade keine klaren Gewinner gefunden. In ein paar Minuten nochmal versuchen.");
   } catch (e) { msg("Suche fehlgeschlagen: " + (e.message || e)); }
-  btn.disabled = false; renderFound();
+  btn.disabled = false; searching = false; renderFound();
 }
 function renderHot() {
-  $("hotHead").style.display = hot.length ? "" : "none";
+  $("hotBox").style.display = hot.length ? "" : "none";
   $("hotList").innerHTML = hot.slice(0, 10).map(c => {
     const soc = (c.links || []).map(x => x === "twitter" ? "𝕏" : x === "telegram" ? "TG" : x === "discord" ? "DC" : "").filter(Boolean).join(" ");
     return `<li>${avatar(c.symbol || "?", c.img)}<div class="mid"><b>${esc(c.symbol || short(c.mint))} <span class="score">${c.score}</span></b>
@@ -588,20 +697,31 @@ function renderHot() {
       ${c.url ? `<a class="link tiny" href="${esc(c.url)}" target="_blank" rel="noopener">↗</a>` : ""}</li>`;
   }).join("");
 }
+let searching = false;
 function renderFound() {
+  $("followTop").style.display = found.some(r => !traders.some(t => t.wallet === r.wallet)) ? "" : "none";
+  if (!found.length) { $("findList").innerHTML = `<li class="empty">${searching ? "Suche läuft, Trader erscheinen hier …" : "Noch keine Trader gefunden."}</li>`; return; }
   $("findList").innerHTML = found.map((r, i) => {
-    const have = traders.some(t => t.wallet === r.wallet);
-    return `<li>${avatar(r.wallet)}<div class="mid"><b>${short(r.wallet)}</b><code>${esc(r.coins.slice(0, 4).join(", "))} · ${r.wins}W ${r.losses}L</code></div>
-      <div class="amt"><b class="pos">${signed(r.pnl)}</b><span>Gewinn</span></div>
+    const have = traders.some(t => t.wallet === r.wallet), n = r.wins + r.losses;
+    return `<li>${avatar(r.wallet)}<div class="mid"><b>#${i + 1} ${short(r.wallet)}</b><code>${n} Trades · ${r.wins}W ${r.losses}L · ${esc(r.coins.slice(0, 3).join(", "))}</code></div>
+      <div class="amt"><b class="pos">${signed(r.pnl)}</b><span>Gewinn zuletzt</span></div>
       <a class="link tiny" href="https://solscan.io/account/${esc(r.wallet)}" target="_blank" rel="noopener">↗</a>
-      <button class="follow" data-follow="${i}" ${have ? "disabled" : ""}>${have ? "✓" : "Folgen"}</button></li>`;
+      <button class="follow" data-follow="${i}" ${have ? "disabled" : ""}>${have ? "✓ folgt" : "Folgen"}</button></li>`;
   }).join("");
 }
+function follow(r) {
+  if (!traders.some(t => t.wallet === r.wallet)) traders.push({ name: "Top-" + r.wallet.slice(0, 4), wallet: r.wallet, on: true });
+}
+$("followTop").addEventListener("click", () => {
+  for (const r of found.slice(0, 4)) follow(r);
+  save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
+  $("grid").scrollIntoView({ behavior: "smooth", block: "center" });
+});
 $("findBtn").addEventListener("click", findTraders);
 $("findList").addEventListener("click", e => {
   const b = e.target.closest("button[data-follow]"); if (!b) return;
   const r = found[+b.dataset.follow];
-  if (!traders.some(t => t.wallet === r.wallet)) traders.push({ name: "Top-" + r.wallet.slice(0, 4), wallet: r.wallet, on: true });
+  follow(r);
   save("copyTraders", traders); renderTraders(); renderGrid(); renderFound();
 });
 
@@ -722,8 +842,23 @@ async function keepAwake(on) {   // a phone stops the page when the screen goes 
   } catch {}
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running) keepAwake(true); });
+// The web page keeps itself up to date. raw.githack.com serves the branch's files from a cache that can be hours old, but a
+// link with the commit in it is always exact. So: read the newest version number from GitHub; when it is newer than this
+// page, go to the page of the newest commit (same site, so the account and the rules stay). Once per commit, never in a loop.
+const newer = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+async function selfUpdate() {
+  try {
+    if (location.hostname !== "raw.githack.com") return;
+    const m = await (await fetch(`https://raw.githubusercontent.com/${REPO}/trencher-extension/trencher/manifest.json`, { cache: "no-store" })).json();
+    if (!newer(String(m.version), VERSION)) return;
+    const c = await getJson(`https://api.github.com/repos/${REPO}/commits/trencher-extension`);
+    if (!c.sha || location.pathname.includes(c.sha) || sessionStorage.getItem("updTried") === c.sha) return;
+    sessionStorage.setItem("updTried", c.sha);
+    save("deskAcc", acc); save("deskQueue", queue);
+    location.replace(`https://raw.githack.com/${REPO}/${c.sha}/trencher/copy.html`);
+  } catch {}
+}
 function webApp() {
-  $("panelLink").style.display = "none";
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   let prompt = null;
   window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); prompt = e; $("installBtn").style.display = ""; });
@@ -742,13 +877,16 @@ function say(who, text) {
   if (acc.log.length > 300) acc.log.length = 300;
 }
 function renderLog() {
-  const lines = (serverMode ? serverDoc && serverDoc.log : acc.log) || [];
-  $("logBox").innerHTML = lines.slice(0, 200).map(l => `<div><span class="lt">${new Date(l.t).toLocaleTimeString("de-DE")}</span> <span class="lw w-${esc(l.who)}">${esc(l.who)}</span> ${esc(l.text)}</div>`).join("")
-    || `<div class="muted">Noch keine Einträge. Bot starten.</div>`;
+  const lines = ((serverMode ? serverDoc && serverDoc.log : acc.log) || []).filter(l => !serverMode || (serverKey === "fresh") === String(l.text).startsWith("[Frisch]"));
+  const row = l => `<div><span class="lt">${new Date(l.t).toLocaleTimeString("de-DE")}</span> <span class="lw w-${esc(l.who)}">${esc(l.who)}</span> ${esc(String(l.text).replace(/^\[Frisch\] /, ""))}</div>`;
+  const none = `<div class="muted">Noch keine Einträge. ${serverMode ? "Der Server-Desk schreibt jede Minute." : "Bot starten."}</div>`;
+  $("logBox").innerHTML = lines.slice(0, 200).map(row).join("") || none;
+  $("logHome").innerHTML = lines.slice(0, 14).map(row).join("") || none;
 }
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
+const VERSION = "0.9.11";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {
@@ -757,9 +895,10 @@ async function fetchServer() {
     const d = await getJson(`https://raw.githubusercontent.com/${REPO}/${c.sha}/desk.json`);
     serverDoc = d;
     if (!serverMode) return;
-    acc = d.acc; P = { ...COPY_DEFAULTS, ...(d.P || {}) };
-    Object.assign(agent, { checked: (d.agent || {}).checked || 0, top: (d.agent || {}).top || [], scoutMsg: (d.agent || {}).scoutMsg || "" });
-    for (const [m, x] of Object.entries(d.prices || {})) prices[m] = { ...prices[m], ...x };
+    const part = serverKey === "fresh" ? (d.fresh || {}) : d;
+    acc = part.acc || newAccount(P); P = { ...COPY_DEFAULTS, ...(d.P || {}) };
+    Object.assign(agent, { checked: (part.agent || {}).checked || 0, top: (part.agent || {}).top || [], scoutMsg: (part.agent || {}).scoutMsg || "" });
+    for (const [m, x] of Object.entries((serverKey === "fresh" ? part.prices : d.prices) || {})) prices[m] = { ...prices[m], ...x };
     $("serverInfo").textContent = `Stand ${hm(d.updated)} · läuft seit ${hm(d.runStarted)} auf GitHub`;
     $("serverInfo").className = "tiny " + (Date.now() - d.updated < 5 * 60e3 ? "pos" : "neg");
     if (Date.now() - d.updated >= 5 * 60e3) $("serverInfo").textContent += " · seit über 5 Minuten kein Stand (startet gerade neu?)";
@@ -770,10 +909,11 @@ async function fetchServer() {
   }
   if (serverMode) { render(); renderLog(); renderRules(); }
 }
+let serverKey = "server";
 function setMode(m) {
-  const toServer = m === "server";
-  if (toServer === serverMode) return;
-  if (toServer) { local = { acc, P }; serverMode = true; }
+  const toServer = m !== "local";
+  if (toServer === serverMode && (!toServer || m === serverKey)) return;
+  if (toServer) { if (!serverMode) local = { acc, P }; serverMode = true; serverKey = m; }
   else { serverMode = false; if (local) { acc = local.acc; P = local.P; } }
   save("deskMode", m);
   for (const b of $("modes").children) b.classList.toggle("on", b.dataset.m === m);
@@ -789,7 +929,7 @@ $("modes").addEventListener("click", e => { const b = e.target.closest("button[d
 // ---------- share (like the video's Share button) ----------
 $("shareBtn").addEventListener("click", async () => {
   const v = value(), s = stats(acc);
-  const text = `Trading Desk (Spielgeld): ${money(v)} (${pct(v / acc.deposit - 1)} seit Start mit ${money(acc.deposit)}) · ${s.copies} Trades · ${s.wins}W ${s.losses}L`
+  const text = `Trading Desk (Spielgeld): ${money(v)} (${pct(accountProfit(acc, v) / acc.deposit)} auf ${money(acc.deposit)} eingezahlt) · ${s.copies} Trades · ${s.wins}W ${s.losses}L`
              + (serverMode ? " · läuft 24/7" : "");
   const url = IS_EXT ? "" : location.href.split("#")[0];
   try {
@@ -812,7 +952,7 @@ function understand(t) {
   let m;
   if (/\b(status|wie läuft|wie geht|how)\b/.test(s)) {
     const st = stats(acc);
-    return [ch, `${money(value())} (${pct(value() / acc.deposit - 1)}) · ${Object.keys(acc.pos).length} offen · ${st.copies} Trades · ${st.wins}W ${st.losses}L · Gebühren ${money(acc.fees)}.`];
+    return [ch, `${money(value())} (${pct(accountProfit(acc, value()) / acc.deposit)}) · ${Object.keys(acc.pos).length} offen · ${st.copies} Trades · ${st.wins}W ${st.losses}L · Gebühren ${money(acc.fees)}.`];
   }
   if (/(klein|small)/.test(s)) Object.assign(ch, { sizePct: COPY_DEFAULTS.sizePct, maxOpen: COPY_DEFAULTS.maxOpen });
   if ((m = s.match(/(\d+(?:[.,]\d+)?)\s*%\s*(?:vom|von|of)\s*(?:freien|free)/)) || (m = s.match(/(?:size|einsatz|kauf)\D{0,12}(\d+(?:[.,]\d+)?)\s*%/))) ch.sizePct = num(m[1]) / 100;
@@ -861,8 +1001,8 @@ $("chatForm").addEventListener("submit", e => {
 
 // ---------- start ----------
 (async () => {
-  try { $("ver").textContent = "v" + chrome.runtime.getManifest().version; } catch { $("ver").textContent = "web"; }
-  if (!IS_EXT) webApp();
+  $("ver").textContent = (IS_EXT ? "v" : "web v") + VERSION;
+  try { if (!IS_EXT) webApp(); } catch (e) { console.warn("webApp", e); }
   P = { ...COPY_DEFAULTS, ...(await load("deskRules", {})) };
   traders = await load("copyTraders", []);
   acc = await load("deskAcc", null) || newAccount(P);   // the desk starts a fresh $20 account (the old copy account stays stored)
@@ -871,9 +1011,10 @@ $("chatForm").addEventListener("submit", e => {
   for (const x of $("ranges").children) x.classList.toggle("on", x.dataset.r === range);
   renderRules(); renderTraders();
   const open = Object.keys(acc.pos);
-  if (open.length) priceCoins(open).then(render).catch(() => {});
+  if (open.length) priceOpen(open).then(render).catch(() => {});
   try { if (Notification.permission === "granted") $("notifBtn").textContent = "🔔 Benachrichtigungen sind an"; } catch {}
   setRunning(!!(await load("deskRunning", false)));
   bubble("bot", "Hallo, ich bin dein Chief of Staff. Sag mir Regeln in Worten, z. B. „40% vom freien Geld, max 2 offen“, „stop 8%“ oder „status“.");
-  if ((await load("deskMode", "local")) === "server") setMode("server");
+  { const m = await load("deskMode", "local"); if (m !== "local") setMode(m); }
+  if (!IS_EXT) { selfUpdate(); setInterval(selfUpdate, 10 * 60e3); }
 })();

@@ -1,19 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Meme Trencher (Paper)",
-  "version": "0.8.0",
-  "description": "Paper copy-trading bot for Solana meme coins: mirrors traders you follow with fake money. Never touches a wallet.",
+  "version": "0.9.11",
+  "description": "Paper trading desk for Solana meme coins (Scout, Compounder, Risk, 24/7 view). Fake money only, never touches a wallet.",
   "permissions": [
     "sidePanel",
-    "storage",
-    "tabs",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
-    "https://fomo.family/*",
-    "https://*.fomo.family/*",
     "https://api.dexscreener.com/*",
     "https://api.geckoterminal.com/*",
+    "https://api.rugcheck.xyz/*",
     "https://solana-rpc.publicnode.com/*",
     "https://www.reddit.com/*",
     "https://oauth.reddit.com/*",
@@ -28,16 +25,5 @@
   },
   "action": {
     "default_title": "Meme Trencher öffnen"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://fomo.family/*"
-      ],
-      "js": [
-        "fomo.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }

@@ -1,7 +1,13 @@
 // Copy-trading engine of the Trencher (paper money only): turns a followed wallet's on-chain transactions into its buys and sells,
 // and keeps the copy account (cash, positions, activity, equity curve). Pure functions, no browser APIs: node tests them (test_copy.mjs).
-import { buy, sell, newBook, liquidationValue } from "./sim.js";
+import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.11";
 
+// The "FOMO Terminal" of the third video (2026-11-11, read from its frames): ONE position, almost all-in, stop -6 % under the
+// entry, no half sale, the whole position trails; coins from the trending list with 150k to 2.5M $ market cap, at least
+// 4 hours old, no fresh coins. Guessed, not shown in the video: where trailing starts (+15 %, its smallest shown win) and
+// how far it trails (10 %). Untested: the video's 13x in a day is not something this preset is known to do.
+export const PRESET_VIDEO3 = { sizePct: 0.9, maxOpen: 1, hardStop: 0.06, halfAt: 0, trailFrom: 1.15, trail: 0.10,
+                               mcMin: 150000, mcMax: 2500000, minAgeH: 4, fresh: false, scout: true };
 export const COPY_DEFAULTS = {
   // the "Trading Desk" of the second video (2026-11-09): $20, 40 % of free cash per buy, max 2 open, no adding to losers,
   // hard stop -8 % only while 2x never printed, at 2x sell enough to get the entry back, the rest trails 10 % off its high
@@ -14,8 +20,13 @@ export const COPY_DEFAULTS = {
   trail: 0.10,        // after that: sell the rest 10 % below its highest price
   minScore: 60,       // Scout: buy coins with at least this hot score (0..100; without Reddit and boosts the top is about 85)
   scout: true,        // Scout buys hot coins by itself
+  fresh: true,        // ... and the strict fresh picker buys new small coins (browser desk; scout.js STRICT)
   delaySec: 30,       // wallets you follow: copy their buys this long after them
   sameExits: false,   // ... and sell when they sell (otherwise the desk rules decide)
+  trailFrom: 0,       // optional: once the price was this multiple of the entry, the WHOLE position trails `trail` off its high (0 = off)
+  mcMin: 0,           // Scout: only coins with at least this market cap in $ (0 = any)
+  mcMax: 0,           // Scout: ... and at most this (0 = any)
+  minAgeH: 0,         // Scout: ... whose pool is at least this many hours old (0 = any)
   takeProfitX: 0,     // optional: sell all at this multiple (0 = off; the desk rules trail instead)
   stopLoss: 0,        // optional: plain stop-loss as a fraction (0 = off)
 };
@@ -56,6 +67,25 @@ export function walletTrades(tx, wallet) {
 export function newAccount(P = COPY_DEFAULTS, now = Date.now()) {
   return { cash: P.deposit, deposit: P.deposit, since: now, pos: {}, closed: [], activity: [], curve: [{ t: now, v: P.deposit }], fees: 0 };
 }
+
+// Pay paper money in or out at any time, without restarting the account. `deposit` is everything ever paid in, `out`
+// everything paid out, so the profit stays honest: profit = value + out - deposit (accountProfit).
+export function payIn(acc, usd, now = Date.now()) {
+  usd = Math.round(Number(usd) * 100) / 100;
+  if (!(usd > 0)) return { skip: "Betrag fehlt" };
+  acc.cash += usd; acc.deposit += usd;
+  log(acc, { t: now, kind: "deposit", usd });
+  return { ok: true, usd };
+}
+export function payOut(acc, usd, now = Date.now()) {
+  usd = Math.round(Number(usd) * 100) / 100;
+  if (!(usd > 0)) return { skip: "Betrag fehlt" };
+  if (usd > acc.cash + 1e-9) return { skip: `nur ${acc.cash.toFixed(2)} $ frei (der Rest steckt in Coins)` };
+  acc.cash = Math.max(acc.cash - usd, 0); acc.out = (acc.out || 0) + usd;
+  log(acc, { t: now, kind: "withdraw", usd });
+  return { ok: true, usd };
+}
+export function accountProfit(acc, value) { return value + (acc.out || 0) - acc.deposit; }
 
 // What the account is worth at the given prices ({mint: {price, liq}}), selling every position after slippage and fees.
 export function accountValue(acc, prices) {
@@ -98,7 +128,7 @@ export function copySell(acc, { mint, price, liq, mc, frac = 1, why, trader, lag
   log(acc, { t: now, kind: ["tp", "sl", "half", "stop", "trail"].includes(why) ? why : "sell", mint, symbol: p.symbol, trader: trader || p.trader,
              usd: r.fill.usd, pnl: r.fill.pnl, multiple, mc, lagSec, frac });
   if (!(p.book.tokens > 0)) {
-    acc.closed.unshift({ mint, symbol: p.symbol, trader: p.trader, pnl: p.book.realized, at: p.at, out: now, multiple, why });
+    acc.closed.unshift({ mint, symbol: p.symbol, trader: p.trader, pnl: p.book.realized, at: p.at, out: now, multiple, why, px: price });
     if (acc.closed.length > 300) acc.closed.length = 300;
     delete acc.pos[mint];
   }
@@ -119,6 +149,7 @@ export function deskExits(acc, prices, P = COPY_DEFAULTS) {
     if (!p.half) {
       if (P.halfAt > 1 && x >= P.halfAt) out.push({ mint, why: "half", frac: Math.min(1, 1 / x) });
       else if (P.hardStop > 0 && x <= 1 - P.hardStop) out.push({ mint, why: "stop", frac: 1 });
+      else if (P.trailFrom > 1 && P.trail > 0 && p.high >= p.entry * P.trailFrom && q.price <= p.high * (1 - P.trail)) out.push({ mint, why: "trail", frac: 1 });
     } else if (P.trail > 0 && q.price <= p.high * (1 - P.trail)) out.push({ mint, why: "trail", frac: 1 });
   }
   return out;
@@ -200,7 +231,7 @@ export function scoreHot(coins, { minLiq = 10000 } = {}) {
   const mv = max("vol1h"), mb = max("boost"), mr = max("reddit");
   return coins.filter(c => (c.liq || 0) >= minLiq).map(c => {
     const parts = {
-      trend: c.gtRank != null ? 1 - c.gtRank / 20 : 0,                  // GeckoTerminal trending position
+      trend: c.gtRank != null ? Math.max(0, 1 - c.gtRank / 20) : 0,      // GeckoTerminal trending position (top 20 only)
       volume: Math.sqrt((c.vol1h || 0) / mv),                            // DexScreener 1 h volume
       boost: (c.boost || 0) / mb,                                         // DexScreener paid boosts (also a hype signal)
       buyers: c.buys1h + c.sells1h > 0 ? c.buys1h / (c.buys1h + c.sells1h) : 0,
