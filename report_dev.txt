@@ -1,0 +1,38 @@
+wallet study, dev run; launch days with data: 56 used: 52 missing or skipped: ['2026-08-13', '2026-08-14', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07']
+
+== dev 2026-09-02 to 2026-09-19 ==
+random wallet (every event): events 5118169 per 20 $ -2.589 in profit % 20.7
+
+W1: picks better, still loses
+  trades 47200 | per 20 $ -1.381 95% [-1.422, -1.34] | median -1.19 | in profit % 9.0 | days in profit 0/14
+  random wallet same days -2.588 | rule minus it 1.207 95% [1.052, 1.36] | other wallets in the same coins -2.229
+  without best trade -1.385 (best 180.49) | without best wallet -1.385 (7 trades, sum 186.96) | wallets 324
+  exits % {'wallet_sold': 97.5, 'time_or_end': 1.0, 'dead': 1.2, 'graduated': 0.3, 'ten_x': 0.0} | wallet's hold median s 3.0 | sold within 30 s % 89.0
+  by market cap [n, avg] {'under_10k': [43919, -1.34], '10k_30k': [3183, -1.94], 'over_30k': [98, -1.95]} | by coin age {'under_2min': [39664, -1.41], '2_15min': [5633, -1.25], 'older': [1903, -1.26]}
+  information: desk exits -1.267 | held 24 h / graduation -3.244 | 5 s delay -1.392 | Jupiter-like fee -0.694 95% [-0.735, -0.652]
+  5 most active wallets [hash, trades, avg] [[7874377865819629798, 7605, -1.29], [15458733974781705573, 4700, -1.19], [14203343400769310565, 2643, -1.17], [13105652720977901893, 1713, -1.31], [5934497075655065048, 1648, -1.25]]
+  per day [n, avg] {'2026-09-02': [4154, -1.44], '2026-09-03': [2154, -1.56], '2026-09-08': [3852, -1.48], '2026-09-09': [3985, -1.26], '2026-09-10': [3465, -1.41], '2026-09-11': [2318, -1.33], '2026-09-12': [1991, -1.37], '2026-09-13': [2161, -1.22], '2026-09-14': [2674, -1.42], '2026-09-15': [4310, -1.43], '2026-09-16': [4236, -1.36], '2026-09-17': [5334, -1.3], '2026-09-18': [3025, -1.4], '2026-09-19': [3541, -1.38]}
+
+W2: picks better, still loses
+  trades 576 | per 20 $ -0.77 95% [-1.647, 0.054] | median -1.7 | in profit % 27.4 | days in profit 4/14
+  random wallet same days -2.562 | rule minus it 1.792 95% [0.967, 2.627] | other wallets in the same coins -1.846
+  without best trade -0.954 (best 104.62) | without best wallet -1.04 (7 trades, sum 148.37) | wallets 92
+  exits % {'wallet_sold': 79.2, 'time_or_end': 5.4, 'dead': 8.9, 'graduated': 6.6, 'ten_x': 0.0} | wallet's hold median s 86.0 | sold within 30 s % 26.2
+  by market cap [n, avg] {'under_10k': [385, -0.96], '10k_30k': [173, -0.0], 'over_30k': [18, -4.11]} | by coin age {'under_2min': [287, -0.06], '2_15min': [190, -1.03], 'older': [99, -2.34]}
+  information: desk exits 0.232 | held 24 h / graduation -2.714 | 5 s delay -0.213 | Jupiter-like fee -0.079 95% [-1.02, 0.759]
+  5 most active wallets [hash, trades, avg] [[14715020513247428251, 76, -0.28], [9443702075243552495, 39, 0.08], [4334935155914370128, 33, -4.39], [14566141183883508514, 28, -2.3], [11722475577162400283, 22, -6.37]]
+  per day [n, avg] {'2026-09-02': [73, 1.08], '2026-09-03': [21, -2.08], '2026-09-08': [63, -0.41], '2026-09-09': [40, -0.26], '2026-09-10': [16, -2.72], '2026-09-11': [18, -1.47], '2026-09-12': [14, -2.88], '2026-09-13': [16, 0.32], '2026-09-14': [34, -1.53], '2026-09-15': [78, -2.75], '2026-09-16': [46, 0.75], '2026-09-17': [84, -1.16], '2026-09-18': [22, -3.27], '2026-09-19': [51, 1.27]}
+
+W3: FAIL
+  trades 122 | per 20 $ 1.486 95% [-0.901, 4.217] | median -1.19 | in profit % 43.4 | days in profit 10/14
+  random wallet same days -2.617 | rule minus it 4.103 95% [1.678, 6.905] | other wallets in the same coins -1.86
+  without best trade 1.023 (best 57.43) | without best wallet 0.524 (6 trades, sum 120.45) | wallets 32
+  exits % {'wallet_sold': 84.4, 'time_or_end': 4.9, 'dead': 0.0, 'graduated': 10.7, 'ten_x': 0.0} | wallet's hold median s 96.0 | sold within 30 s % 26.2
+  by market cap [n, avg] {'under_10k': [57, -0.05], '10k_30k': [62, 3.62], 'over_30k': [3, -13.5]} | by coin age {'under_2min': [60, 0.82], '2_15min': [46, 3.55], 'older': [16, -1.96]}
+  information: desk exits 0.228 | held 24 h / graduation -3.448 | 5 s delay 2.329 | Jupiter-like fee 2.226 95% [-0.157, 5.017]
+  5 most active wallets [hash, trades, avg] [[9858705633980140484, 27, -1.2], [2769246960477198011, 13, 2.35], [5717203666009006254, 11, 1.06], [5167007336531093410, 9, 1.1], [11232951622662303401, 6, 20.07]]
+  per day [n, avg] {'2026-09-02': [19, 6.42], '2026-09-03': [6, -2.12], '2026-09-08': [16, -3.27], '2026-09-09': [6, -4.78], '2026-09-10': [1, 20.92], '2026-09-11': [2, 3.31], '2026-09-12': [2, 6.75], '2026-09-13': [1, 23.59], '2026-09-14': [1, 7.31], '2026-09-15': [3, 6.84], '2026-09-16': [3, 1.77], '2026-09-17': [24, -1.34], '2026-09-18': [8, 1.84], '2026-09-19': [30, 2.42]}
+W1 record: copier average in the list window -1.40 -> the same wallets on the test day -1.49 (147536 events)
+W2 record: copier average in the list window 8.29 -> the same wallets on the test day 0.63 (928 events)
+W2 wallets still on the list 7 days later: 46%
+lists per day (average): wallets seen 625518 with 10+ events 119680 W1 pool 29364 W2 pool 188
