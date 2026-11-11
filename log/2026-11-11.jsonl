@@ -733,3 +733,8 @@
 {"t":1794424440550,"addr":"uNjcrxJH5GQjw51NVgpFHi4q3m1Gxtq8xSDhbjupump","sym":"Shekel","age":30.8,"why":"liquidity","liq":1809}
 {"t":1794424560578,"addr":"8rWGxVsHyDv4LGEFQbDUkxC3GFpH9N2uJuZAJm1Qpump","sym":"GTA 6","age":30.9,"why":"liquidity","liq":1539}
 {"t":1794424560578,"addr":"D3EDwVvJgVjhv97Q4GZhNnyFZF9zs8FqEwPajzQspump","sym":"Lemon","age":30.3,"why":"liquidity","liq":1699}
+{"t":1794424633628,"addr":"D1HR9vJt94TkAP2h5EuANEk8ZZeM67wcAHysCUSLpump","sym":"LEGO","age":30.6,"score":0.01603,"px":7.657e-05,"liq":19943,"p0":6.843667313121645e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-0.6357,"c_peak":2.6363,"c_vol":4.7172,"c_act":1.0,"c_r5":-0.6133,"c_r15":-0.8886,"c_mc":4.8353}}
+{"t":1794424680606,"addr":"CYFK1DdBdeEKMkCTbV5vwS5QXUrFN92CvTPAGrkrpump","sym":"DeepSeek","age":30.4,"why":"liquidity","liq":1573}
+{"t":1794424680606,"addr":"CpVpWaZbWYXPG9uBVeouJttH9pheES1Fqiv1WrCpump","sym":"DeepSeek","age":30.0,"why":"liquidity","liq":1546}
+{"t":1794424800660,"addr":"A46QbZGMcnGmowXVvzm3ncpHEHayJ3LsetLEeTxcVgQy","sym":"VEXA","age":30.4,"why":"liquidity","liq":0}
+{"t":1794424861451,"addr":"6hDG4bhaieCmwVpXXuzNKVmctHzFf4S8c4X1wGxUbonk","sym":"TOIGIANT","age":30.7,"why":"liquidity","liq":0}
