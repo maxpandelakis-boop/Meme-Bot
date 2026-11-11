@@ -5,9 +5,9 @@
 //   Executor    fills on paper with FOMO-like fees and slippage (sim.js)
 // Optional: wallets to follow (their buys are copied `delaySec` later). Data, all free and keyless: PublicNode Solana RPC, DexScreener,
 // GeckoTerminal, Reddit (the user's own app ID).
-import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit } from "./copy-engine.js?v=0.9.8";
-import { bestPair } from "./sim.js?v=0.9.8";
-import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, STRICT, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.8";
+import { COPY_DEFAULTS, rankWallets, redditMentions, scoreHot, walletTrades, newAccount, accountValue, copyBuy, copySell, riskExits, deskExits, stats, payIn, payOut, accountProfit } from "./copy-engine.js?v=0.9.9";
+import { bestPair } from "./sim.js?v=0.9.9";
+import { hotCoins as scoutHot, scoutPick, scoutVerdict, scoutNone, rugCheck, DS, DEX, freshCoins, freshFillCheck, poolPrices, DEAD_LIQ, FIRST, strictVerdict, watchUpdate, freshCheck } from "./scout.js?v=0.9.9";
 
 const $ = id => document.getElementById(id);
 // PublicNode answers browser/extension origins (CORS *), ~150 ms, no 429 at 1 call/s (tested 2026-11-08 on the user's PC);
@@ -178,7 +178,8 @@ async function scout() {
 
 // ---------- Risk: the desk rules (and the optional plain take-profit / stop-loss) on the open positions ----------
 const EXIT_TEXT = { half: "Einsatz zurück bei 2×", stop: "Hard Stop", trail: "Trailing-Stop", tp: "Take Profit", sl: "Stop-Loss" };
-// ---------- the strict fresh picker: new small coins, watched first, bought only when still strong (rules: scout.js STRICT) ----------
+// ---------- the fresh picker: new small pump.fun coins at first sight + the measured veto (rules: scout.js FRESH, FIRST, freshCheck).
+// The stricter "watch 10 minutes first" picker failed its test (see scout.js STRICT) and is not used. ----------
 const watch = new Map();
 let freshAt = 0, poolAt = 0;
 const FRESH_MS = 30000, LATENCY_MS = 3000;
@@ -187,14 +188,14 @@ async function freshScout() {
   freshAt = Date.now();
   const list = await freshCoins(gt, Date.now(), [1, 2]);
   agent.checked += list.length;
-  watchUpdate(watch, list);
-  const due = [...watch.values()].filter(w => (Date.now() - w.seen) / 60e3 >= STRICT.waitMin);
-  agent.freshMsg = `Frisch: ${watch.size} beobachtet, ${due.length} reif`;
+  watchUpdate(watch, list, Date.now(), FIRST);
+  const due = [...watch.values()];
+  agent.freshMsg = `Frisch: ${list.length} neue Coins, ${due.length} bestehen den Filter`;
   if (!due.length) return;
   const by = await poolPrices(gt, due.map(w => w.pool));
   const now = Date.now(), recent = new Set(acc.closed.filter(c => now - c.out < COOLDOWN_MS).map(c => c.mint));
-  const rated = due.map(w => ({ w, c: by[w.pool], why: strictVerdict(w, by[w.pool], now) })).sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || ((b.c || {}).buyers5 || 0) - ((a.c || {}).buyers5 || 0));
-  for (const r of rated.slice(0, 3)) say("scout", `[Frisch] $${r.w.symbol} ${Math.round((now - r.w.seen) / 60e3)} min beobachtet${r.c ? ` · MC ${Math.round(r.c.mc / 1000)}k · ${r.c.buyers5} Käufer, ${r.c.buys5}/${r.c.sells5} in 5 min` : ""} → ${r.why || "size check"}`);
+  const rated = due.map(w => ({ w, c: by[w.pool], why: strictVerdict(w, by[w.pool], now, FIRST) })).sort((a, b) => (a.why ? 1 : 0) - (b.why ? 1 : 0) || ((b.c || {}).buyers5 || 0) - ((a.c || {}).buyers5 || 0));
+  for (const r of rated.slice(0, 3)) say("scout", `[Frisch] $${r.w.symbol}${r.c ? ` · MC ${Math.round(r.c.mc / 1000)}k · ${r.c.buyers5} Käufer, ${r.c.buys5}/${r.c.sells5} in 5 min` : ""} → ${r.why || "size check"}`);
   const cands = rated.filter(r => !r.why && !acc.pos[r.w.mint] && !recent.has(r.w.mint));
   if (!cands.length) return;
   if (Object.keys(acc.pos).length >= P.maxOpen) { say("risk", `[Frisch] max ${P.maxOpen} offen → $${cands[0].w.symbol} skip`); return; }
@@ -209,7 +210,7 @@ async function freshScout() {
   if (!pick) return;
   await sleep(LATENCY_MS);
   const fill = (await poolPrices(gt, [pick.w.pool]).catch(() => ({})))[pick.w.pool];
-  const bad = freshFillCheck(pick.c, fill, STRICT);
+  const bad = freshFillCheck(pick.c, fill);
   if (bad) { say("risk", `[Frisch] $${pick.w.symbol} nach ${LATENCY_MS / 1000}s: ${bad} → skip`); return; }
   if (!running || serverMode) return;
   const m = pick.w.mint;
@@ -218,7 +219,7 @@ async function freshScout() {
   if (!r.ok) { say("risk", `[Frisch] $${pick.w.symbol} → ${r.skip}`); return; }
   acc.pos[m].fresh = true;          // priced by its GeckoTerminal pool from now on, not by DexScreener
   watch.delete(m);
-  say("exec", `[Frisch] gekauft $${pick.w.symbol} ${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC · ${Math.round((Date.now() - pick.w.seen) / 60e3)} min beobachtet · Preis in ${LATENCY_MS / 1000}s ${fill.price >= pick.c.price ? "+" : ""}${((fill.price / pick.c.price - 1) * 100).toFixed(1)}% · Gebühr ${money(r.fill.fee)}`);
+  say("exec", `[Frisch] gekauft $${pick.w.symbol} ${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC · ${pick.w.dex} · ${Math.round(fill.liq)} $ im Pool · Preis in ${LATENCY_MS / 1000}s ${fill.price >= pick.c.price ? "+" : ""}${((fill.price / pick.c.price - 1) * 100).toFixed(1)}% · Gebühr ${money(r.fill.fee)}`);
   notify(`Gekauft (frisch): ${pick.w.symbol}`, `${money(acc.activity[0].usd)} bei ${big(fill.mc)} MC`);
   point(); persist(); render();
 }
@@ -479,7 +480,7 @@ function renderRules() {
   $("rules").classList.toggle("ro", serverMode);
   $("rules").innerHTML = RULES.map(([k, label, f]) => `<label for="r_${k}">${label}</label><input id="r_${k}" data-k="${k}" data-f="${f}" type="number" min="0" step="any" value="${+(P[k] * f).toFixed(4)}">`).join("")
     + `<label for="r_scout">Scout kauft selbst</label><input id="r_scout" type="checkbox" ${P.scout ? "checked" : ""} style="width:auto;justify-self:end">`
-    + `<label for="r_fresh">Frische kleine Coins (strenger Filter)</label><input id="r_fresh" type="checkbox" ${P.fresh ? "checked" : ""} style="width:auto;justify-self:end">`
+    + `<label for="r_fresh">Frische kleine Coins (pump.fun, mit Prüfung)</label><input id="r_fresh" type="checkbox" ${P.fresh ? "checked" : ""} style="width:auto;justify-self:end">`
     + `<label for="r_same">Mit der Wallet verkaufen</label><input id="r_same" type="checkbox" ${P.sameExits ? "checked" : ""} style="width:auto;justify-self:end">`;
 }
 
@@ -861,7 +862,7 @@ function renderLog() {
 
 // ---------- "Server 24/7": the desk that runs on GitHub (trencher/desk-runner.mjs), read from the branch desk-data ----------
 const REPO = "maxpandelakis-boop/Meme-Bot";
-const VERSION = "0.9.8";      // the same number as manifest.json (test_copy.mjs checks it)
+const VERSION = "0.9.9";      // the same number as manifest.json (test_copy.mjs checks it)
 const CONFIG_EDIT = `https://github.com/${REPO}/edit/desk-data/config.json`;
 let serverMode = false, serverDoc = null, serverTimer = 0, local = null;
 async function fetchServer() {

@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.8";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.8";
+import { bestPair } from "./sim.js?v=0.9.9";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.9";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
@@ -245,6 +245,12 @@ export const DEAD_LIQ = 500;
 //      that held on hidden days in research/filters/FILTERS-2026-11-11.md); RugCheck unreachable = no buy;
 //   6. the fill 3 s later passes freshFillCheck on the same pool.
 export const STRICT = { waitMin: 10, maxMin: 40, mcMin: 15000, mcMax: 250000, liqMin: 8000, buyersMin: 25, buySellMin: 1.5, chgMax: 60 };
+// RESULT (2026-11-11, research/filters/FILTERS-2026-11-11.md amendment 2, pre-registered, 51 days): STRICT FAILS. It buys at a
+// median 1.8 times the first-sight price about 13 minutes later and 85-87 % of those buys end at the -8 % stop: -1.20 and
+// -0.91 per 20 $, with the veto -1.18 and -0.69. Buying at first sight with the veto: -0.78 and -0.52. So the desks use
+// FIRST: the normal fresh filter at first sight (at most 2 minutes on the list, price not below the listed one) plus the
+// veto. Still a loss in the test, only the smallest one found. STRICT stays here as the record of what was tried.
+export const FIRST = { waitMin: 0, maxMin: 2, mcMin: FRESH.mcMin, mcMax: FRESH.mcMax, liqMin: FRESH.liqMin, buyersMin: FRESH.buyersMin, buySellMin: FRESH.buySellMin, chgMax: Infinity };
 // w: the watch-list entry {seen, price0}; c: the pool's numbers now (poolPrices). "" = buy candidate, else the reason.
 export function strictVerdict(w, c, now = Date.now(), S = STRICT) {
   const min = (now - w.seen) / 60e3;

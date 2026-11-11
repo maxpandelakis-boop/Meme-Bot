@@ -32,13 +32,12 @@ Eigene 20 $, gleiche Verkaufsregeln. Kauft nur Coins mit Pool höchstens 60 min 
 5 min mindestens 15 Käufer, 1,5× mehr Käufe als Verkäufe und steigendem Preis; dann die Prüfung (die besten drei der Reihe nach): RugCheck-Gefahren, Ersteller mit einem anderen Coin in den letzten 24 h, ein Wallet mit 20 % oder mehr. Die zwei letzten Regeln stammen aus `research/filters/FILTERS-2026-11-11.md`: kleinerer Verlust, kein Gewinn.
 Gekauft wird erst **3 Sekunden** nach der Entscheidung zum Preis von dann, wie bei einem echten Bot. Weichen die Preise von GeckoTerminal und DexScreener dabei um mehr als 25 % ab, oder liegt der Coin bei DexScreener außerhalb des Filters, wird nicht gekauft.
 
-## Frische Coins im Browser-Desk (strenger)
-„Dieser Browser“ kauft frische Coins nicht beim ersten Blick. Ein Coin, der den Frisch-Filter besteht, kommt auf eine
-Beobachtungsliste. Gekauft wird er erst nach 10 bis 40 Minuten, wenn er dann nicht unter dem Preis vom ersten Blick liegt,
-15k bis 250k $ Marktwert und mindestens 8k $ im Pool hat, die letzten 5 min steigen (mind. 25 Käufer, 1,5× mehr Käufe als
-Verkäufe, höchstens +60 %), und die Prüfung besteht (keine RugCheck-Gefahr, Ersteller ohne anderen Coin in 24 h, kein Wallet
-mit 20 % oder mehr; RugCheck nicht erreichbar = kein Kauf). Abschaltbar unter Agents → Regeln. Im Test auf alten Daten war
-bisher keine Frisch-Regel im Plus (`research/filters/FILTERS-2026-11-11.md`).
+## Frische Coins im Browser-Desk
+„Dieser Browser“ kauft frische Coins nach denselben Regeln wie „Frisch 24/7“: nur pump.fun-Pools, Frisch-Filter beim ersten
+Blick, dann die Prüfung (keine RugCheck-Gefahr, Ersteller ohne anderen Coin in 24 h, kein Wallet mit 20 % oder mehr; im
+Browser gilt: RugCheck nicht erreichbar = kein Kauf), Kauf 3 Sekunden später zum Preis von dann. Abschaltbar unter
+Agents → Regeln. Ein strengerer Picker („erst 10 Minuten beobachten“) wurde getestet und ist durchgefallen (−1,20 und −0,91
+pro 20 $ statt −0,78 und −0,52). Auch die beste Frisch-Regel verliert im Test (`research/filters/FILTERS-2026-11-11.md`).
 
 ## Wie gerechnet wird (damit der Gewinn nicht geschönt ist)
 - FOMO-Gebühr bei Kauf und Verkauf: unter 5 $ pauschal 0,10 $, 5 bis 47,50 $ 2 %, 47,50 bis 190 $ pauschal 0,95 $,
