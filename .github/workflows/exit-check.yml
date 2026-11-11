@@ -1,0 +1,30 @@
+# Method check of the exit study (fake money only): started by a push of this file or of research/exits/desk_replay.py to the
+# thread branch. Reads the 24/7 paper desk's own trades (branch desk-data) and public GeckoTerminal candles, and force-pushes the
+# comparison to the branch "deskcheck", which nothing else writes. Nothing is bought.
+name: exit-check
+on:
+  push:
+    branches: [claude/project-thread-b8qd8f]
+    paths: [.github/workflows/exit-check.yml, research/exits/desk_replay.py]
+permissions:
+  contents: write                    # the deskcheck branch only
+concurrency:
+  group: exit-check
+  cancel-in-progress: true
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: git clone -q --depth 1 --branch desk-data https://github.com/${{ github.repository }}.git dd
+      - run: python3 research/exits/desk_replay.py dd/desk.json out
+      - name: Push to deskcheck
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          cp dd/desk.json out/ && cd out && git init -q && git checkout -q -b deskcheck && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "desk check $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q --force "$URL" deskcheck
