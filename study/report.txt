@@ -1,0 +1,66 @@
+Scout study, fake money only. Ticket 20 $, FOMO fee 0.5% (min 0.50; pnl81 = min 0.81), 1% slippage a side.
+
+M        dev     n   752  avg  -1.40  95%  -1.43.. -1.38  profit 31.0%  days+ 0/2  zero  0.0%  w/o best  -1.45  control  -1.45  minus  +0.02 ( -0.10.. +0.13)  hold  +0.00  {'sl': 500, 'time': 31, 'tp': 221}
+M        holdout n  1613  avg  -1.47  95%  -1.68.. -1.31  profit 28.5%  days+ 0/4  zero  0.0%  w/o best  -1.49  control  -1.27  minus  -0.18 ( -0.51.. +0.03)  hold  +0.00  {'sl': 1108, 'time': 66, 'tp': 439}
+M        verdict (scal50): (secondary)   holdout avg: desk -1.391 / min 0.81 -2.033 / Jupiter -0.458 ; quick in-out -1.471 / -2.091 / -0.571
+
+M+R      dev     n   407  avg  -1.21  95%  -1.28.. -1.14  profit 33.4%  days+ 0/2  zero  0.0%  w/o best  -1.24  control  -1.37  minus  +0.19 ( -0.13.. +0.47)  hold  +0.00  {'sl': 262, 'time': 15, 'tp': 130}
+M+R      holdout n   780  avg  -1.50  95%  -1.74.. -1.28  profit 28.3%  days+ 0/4  zero  0.0%  w/o best  -1.53  control  -1.27  minus  -0.27 ( -0.54.. -0.02)  hold  +0.00  {'sl': 533, 'time': 36, 'tp': 211}
+M+R      verdict (scal50): FAIL   holdout avg: desk -1.048 / min 0.81 -1.694 / Jupiter -0.11 ; quick in-out -1.504 / -2.124 / -0.604
+
+V1       dev     n   128  avg  -1.40  95%  -1.99.. -0.89  profit 10.2%  days+ 0/2  zero  0.0%  w/o best  -1.64  control  +0.17  minus  -1.62 ( -2.12.. -1.03)  hold  -2.37  {'end': 10, 'stop': 112, 'trail': 6}
+V1       holdout n   263  avg  -1.27  95%  -1.63.. -0.45  profit 11.8%  days+ 0/4  zero  0.0%  w/o best  -1.38  control  -1.81  minus  +0.48 ( -0.71.. +2.32)  hold  +0.97  {'2x+end': 1, 'end': 11, 'stop': 230, 'trail': 21}
+V1       verdict (pnl50): FAIL   holdout avg: desk -1.266 / min 0.81 -1.912 / Jupiter -0.329 ; quick in-out -1.428 / -2.048 / -0.528
+
+V1+R     dev     n    70  avg  -1.75  95%  -2.21.. -1.18  profit 10.0%  days+ 0/2  zero  0.0%  w/o best  -2.21  control  -1.28  minus  -0.46 ( -2.09.. +1.54)  hold  -3.60  {'end': 7, 'stop': 62, 'trail': 1}
+V1+R     holdout n   128  avg  -0.73  95%  -1.29.. +0.34  profit 14.1%  days+ 2/4  zero  0.0%  w/o best  -0.94  control  -0.32  minus  -0.34 ( -1.73.. +1.83)  hold  +1.50  {'end': 4, 'stop': 109, 'trail': 15}
+V1+R     verdict (pnl50): (secondary)   holdout avg: desk -0.733 / min 0.81 -1.389 / Jupiter 0.22 ; quick in-out -1.647 / -2.267 / -0.747
+
+V1r100   dev     n    65  avg  -1.70  95%  -1.90.. -1.41  profit 12.3%  days+ 0/2  zero  0.0%  w/o best  -2.04  control  -0.51  minus  -1.00 ( -2.92.. +1.76)  hold  -0.27  {'end': 9, 'stop': 55, 'trail': 1}
+V1r100   holdout n   118  avg  -1.87  95%  -2.92.. -0.92  profit 10.2%  days+ 0/4  zero  0.0%  w/o best  -2.06  control  -0.74  minus  -1.16 ( -3.62.. +1.81)  hold  -1.31  {'end': 8, 'stop': 106, 'trail': 4}
+V1r100   verdict (pnl50): (secondary)   holdout avg: desk -1.867 / min 0.81 -2.498 / Jupiter -0.952 ; quick in-out -1.757 / -2.377 / -0.857
+
+V1r100+R dev     n    30  avg  -1.65  95%  -2.70.. -0.27  profit 13.3%  days+ 0/2  zero  0.0%  w/o best  -2.05  control  -3.38  minus  +1.37 ( +0.69.. +2.27)  hold  +0.28  {'end': 5, 'stop': 25}
+V1r100+R holdout n    55  avg  -2.52  95%  -3.76.. -1.56  profit  7.3%  days+ 0/4  zero  0.0%  w/o best  -2.95  control  -0.37  minus  -2.48 ( -3.61.. -0.91)  hold  -3.08  {'end': 2, 'stop': 51, 'trail': 2}
+V1r100+R verdict (pnl50): (secondary)   holdout avg: desk -2.519 / min 0.81 -3.15 / Jupiter -1.602 ; quick in-out -2.608 / -3.228 / -1.708
+
+V1r25    dev     n   186  avg  -1.75  95%  -1.78.. -1.72  profit  9.1%  days+ 0/2  zero  0.0%  w/o best  -2.02  control  -0.35  minus  -1.52 ( -3.32.. +0.12)  hold  -2.97  {'2x+end': 1, 'end': 12, 'stop': 166, 'trail': 7}
+V1r25    holdout n   364  avg  -0.92  95%  -1.45.. -0.17  profit 12.6%  days+ 0/4  zero  0.0%  w/o best  -0.99  control  -1.00  minus  -0.04 ( -1.31.. +1.61)  hold  +1.29  {'2x+end': 2, 'end': 15, 'stop': 314, 'trail': 33}
+V1r25    verdict (pnl50): (secondary)   holdout avg: desk -0.916 / min 0.81 -1.565 / Jupiter 0.028 ; quick in-out -1.255 / -1.875 / -0.355
+
+V1r25+R  dev     n    95  avg  -1.93  95%  -2.67.. -1.17  profit  8.4%  days+ 0/2  zero  0.0%  w/o best  -2.27  control  -1.50  minus  -0.34 ( -2.41.. +1.72)  hold  -3.88  {'end': 6, 'stop': 86, 'trail': 3}
+V1r25+R  holdout n   182  avg  -0.22  95%  -0.45.. +0.23  profit 15.4%  days+ 1/4  zero  0.0%  w/o best  -0.36  control  -1.22  minus  +1.10 ( -0.57.. +2.71)  hold  +2.03  {'end': 6, 'stop': 153, 'trail': 23}
+V1r25+R  verdict (pnl50): (secondary)   holdout avg: desk -0.221 / min 0.81 -0.88 / Jupiter 0.736 ; quick in-out -1.145 / -1.765 / -0.245
+
+V1x10    dev     n    78  avg  -1.28  95%  -1.55.. -0.99  profit 10.3%  days+ 0/2  zero  0.0%  w/o best  -1.69  control  -1.27  minus  +0.04 ( -0.49.. +0.52)  hold  -3.18  {'end': 4, 'stop': 69, 'trail': 5}
+V1x10    holdout n   172  avg  -1.45  95%  -1.99.. -0.67  profit 11.0%  days+ 0/4  zero  0.0%  w/o best  -1.61  control  -1.50  minus  +0.09 ( -2.00.. +2.38)  hold  +1.81  {'end': 7, 'stop': 151, 'trail': 14}
+V1x10    verdict (pnl50): (secondary)   holdout avg: desk -1.454 / min 0.81 -2.099 / Jupiter -0.518 ; quick in-out -1.817 / -2.437 / -0.917
+
+V1x10+R  dev     n    41  avg  -1.07  95%  -2.10.. -0.18  profit 12.2%  days+ 0/2  zero  0.0%  w/o best  -1.85  control  -1.94  minus  +0.87 ( -1.19.. +2.64)  hold  -1.69  {'end': 3, 'stop': 36, 'trail': 2}
+V1x10+R  holdout n    87  avg  -0.20  95%  -0.93.. +1.04  profit 17.2%  days+ 2/4  zero  0.0%  w/o best  -0.50  control  -1.05  minus  +0.88 ( +0.03.. +2.48)  hold  +4.27  {'end': 4, 'stop': 71, 'trail': 12}
+V1x10+R  verdict (pnl50): (secondary)   holdout avg: desk -0.204 / min 0.81 -0.867 / Jupiter 0.758 ; quick in-out -1.793 / -2.413 / -0.893
+
+V1x3     dev     n   180  avg  -1.30  95%  -1.41.. -1.20  profit 10.6%  days+ 0/2  zero  0.0%  w/o best  -1.48  control  -1.06  minus  -0.20 ( -1.90.. +1.52)  hold  -2.08  {'end': 14, 'stop': 156, 'trail': 10}
+V1x3     holdout n   349  avg  -1.48  95%  -1.79.. -1.16  profit 10.9%  days+ 0/4  zero  0.0%  w/o best  -1.57  control  -1.49  minus  +0.05 ( -0.48.. +0.73)  hold  -0.16  {'2x+end': 3, 'end': 18, 'stop': 308, 'trail': 20}
+V1x3     verdict (pnl50): (secondary)   holdout avg: desk -1.483 / min 0.81 -2.123 / Jupiter -0.553 ; quick in-out -1.318 / -1.938 / -0.418
+
+V1x3+R   dev     n    98  avg  -1.76  95%  -2.07.. -1.41  profit 10.2%  days+ 0/2  zero  0.0%  w/o best  -2.09  control  +0.89  minus  -2.60 ( -4.59.. -0.33)  hold  -2.85  {'end': 12, 'stop': 85, 'trail': 1}
+V1x3+R   holdout n   167  avg  -0.91  95%  -1.55.. -0.15  profit 12.6%  days+ 1/4  zero  0.0%  w/o best  -1.07  control  -1.67  minus  +0.89 ( -0.12.. +2.21)  hold  +0.12  {'2x+end': 1, 'end': 6, 'stop': 144, 'trail': 16}
+V1x3+R   verdict (pnl50): (secondary)   holdout avg: desk -0.912 / min 0.81 -1.564 / Jupiter 0.034 ; quick in-out -1.231 / -1.851 / -0.331
+
+V2       dev     n   927  avg  -1.66  95%  -1.68.. -1.64  profit 11.5%  days+ 0/2  zero  0.0%  w/o best  -1.69  control  -0.80  minus  -0.89 ( -1.73.. -0.01)  hold  -4.14  {'2x+end': 7, 'end': 62, 'stop': 804, 'trail': 54}
+V2       holdout n  1949  avg  -1.68  95%  -2.11.. -1.19  profit 12.8%  days+ 0/4  zero  0.0%  w/o best  -1.71  control  -1.39  minus  -0.32 ( -1.24.. +0.98)  hold  -4.12  {'2x+end': 16, 'end': 162, 'stop': 1661, 'trail': 110}
+V2       verdict (pnl50): (secondary)   holdout avg: desk -1.684 / min 0.81 -2.324 / Jupiter -0.755 ; quick in-out -1.509 / -2.129 / -0.609
+
+V2+R     dev     n   480  avg  -1.00  95%  -1.51.. -0.49  profit 14.6%  days+ 0/2  zero  0.0%  w/o best  -1.06  control  -0.80  minus  -0.25 ( -1.59.. +1.11)  hold  -1.24  {'2x+end': 4, 'end': 37, 'stop': 401, 'trail': 38}
+V2+R     holdout n   960  avg  -1.57  95%  -1.97.. -1.18  profit 12.4%  days+ 0/4  zero  0.0%  w/o best  -1.60  control  -1.66  minus  +0.17 ( -0.41.. +1.18)  hold  -2.96  {'2x+end': 8, 'end': 67, 'stop': 828, 'trail': 57}
+V2+R     verdict (pnl50): FAIL   holdout avg: desk -1.574 / min 0.81 -2.215 / Jupiter -0.644 ; quick in-out -1.503 / -2.123 / -0.603
+
+V3       dev     n   164  avg  -1.08  95%  -1.17.. -0.98  profit 11.0%  days+ 0/2  zero  0.0%  w/o best  -1.23  control  -1.35  minus  +0.24 ( -0.87.. +1.40)  hold  +4.36  {'2x+end': 1, 'end': 1, 'stop': 145, 'trail': 17}
+V3       holdout n   322  avg  -1.29  95%  -1.66.. -0.96  profit  9.3%  days+ 0/4  zero  0.0%  w/o best  -1.38  control  -0.95  minus  -0.35 ( -0.54.. -0.18)  hold  -0.47  {'end': 4, 'stop': 291, 'trail': 27}
+V3       verdict (pnl50): (secondary)   holdout avg: desk -1.294 / min 0.81 -1.94 / Jupiter -0.356 ; quick in-out -1.397 / -2.017 / -0.497
+
+V3+R     dev     n    89  avg  -1.18  95%  -1.60.. -0.80  profit 10.1%  days+ 0/2  zero  0.0%  w/o best  -1.45  control  -1.37  minus  +0.01 ( -0.36.. +0.42)  hold  +4.51  {'stop': 80, 'trail': 9}
+V3+R     holdout n   137  avg  -1.07  95%  -1.96.. -0.37  profit 10.9%  days+ 0/4  zero  0.0%  w/o best  -1.27  control  -1.12  minus  -0.06 ( -1.46.. +1.09)  hold  +2.93  {'end': 1, 'stop': 122, 'trail': 14}
+V3+R     verdict (pnl50): FAIL   holdout avg: desk -1.073 / min 0.81 -1.725 / Jupiter -0.127 ; quick in-out -1.444 / -2.064 / -0.544
+
