@@ -1,0 +1,3123 @@
+{
+ "K": 20,
+ "judged": "2026-10-28 20:14 UTC",
+ "s1": {
+  "P": {
+   "rows": 528,
+   "coins": 60
+  },
+  "U": {
+   "rows": 4902,
+   "coins": 564
+  },
+  "R": {
+   "rows": 2554,
+   "coins": 676
+  },
+  "S": {
+   "rows": 1770,
+   "coins": 1117
+  }
+ },
+ "results": [
+  {
+   "family": "P",
+   "picker": "ROBUST",
+   "ruleName": "-20% / no target / 6 h",
+   "text": "last hour's share of 24 h volume at most 0.009893 AND 5 min change at least 0 AND share of rising candles, last hour at least 0.5833",
+   "n": 11,
+   "meanAfter": -12.15,
+   "lowerBound": -33.45,
+   "pBoot": 0.9983,
+   "totalWithoutBest": -142.3,
+   "total": -133.7,
+   "inProfit": 9.1,
+   "coins": [
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 420,
+     "eur": -2.61
+    },
+    {
+     "pool": "2pbiH7b5wWn5cHwiL3CfeSrubYjp4wkyXa4r9uJ4N8PF",
+     "E": 600,
+     "eur": -1.75
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 960,
+     "eur": 8.61
+    },
+    {
+     "pool": "5dSMwksDZxWPFj496GtWDnYYUra73hhgvfjYg2ad8MHw",
+     "E": 480,
+     "eur": -6.56
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 600,
+     "eur": -10.63
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 660,
+     "eur": -13.36
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 420,
+     "eur": -1.95
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 420,
+     "eur": -3.15
+    },
+    {
+     "pool": "F22JVg2DwbmLyEJhH4CtVdgULASYX3QTp3MrEiytqSP2",
+     "E": 480,
+     "eur": -48.06
+    },
+    {
+     "pool": "H779C6jXyrE1kEGxZ37AwMuWzrSumWmwK4u8DqUKri6U",
+     "E": 480,
+     "eur": -50.21
+    },
+    {
+     "pool": "Hkv7Qenj7nYug8BtCSQ8rCZkuY5Fr2Ye8L8HbHjfDRA9",
+     "E": 1020,
+     "eur": -4.04
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "P",
+   "picker": "SHRUNK",
+   "ruleName": "no stop / 3x / 12 h",
+   "text": "6 h change at least 0.3114 AND minutes since the last trade at least 3.033 AND description length at most 0",
+   "n": 6,
+   "meanAfter": -20.61,
+   "lowerBound": -46.41,
+   "pBoot": 0.9822,
+   "totalWithoutBest": -141.5,
+   "total": -123.7,
+   "inProfit": 16.7,
+   "coins": [
+    {
+     "pool": "38Wo8aavzczzrGvgd7HkFwbLXMYmRKctgVGzQHyhAgXv",
+     "E": 480,
+     "eur": -50.62
+    },
+    {
+     "pool": "6CFZUBpujRWymB5doXuAjrweHT91Ext6TQe2pGEmzk2W",
+     "E": 720,
+     "eur": -30.21
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 900,
+     "eur": -17.04
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 660,
+     "eur": -5.68
+    },
+    {
+     "pool": "FFXScKY624ixVSvoBp3iZRLHUqcTERNwCouvNFDhgFrX",
+     "E": 900,
+     "eur": -37.99
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 420,
+     "eur": 17.85
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "P",
+   "picker": "ROBUST-FREQ",
+   "ruleName": "-10% / 1.5x / 1 h",
+   "text": "5 min change at least 0 AND SOL 1 h change at least 0 AND minutes on the bonding curve at least 0",
+   "n": 48,
+   "meanAfter": -1.88,
+   "lowerBound": -5.37,
+   "pBoot": 0.9435,
+   "totalWithoutBest": -113.2,
+   "total": -90.4,
+   "inProfit": 35.4,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 600,
+     "eur": -8.65
+    },
+    {
+     "pool": "2Fq5C7vUZGwDsTVsN92ynxzanqczep3qU87vTn2dWWJb",
+     "E": 540,
+     "eur": -1.23
+    },
+    {
+     "pool": "2X5p7bVpciv44iGmE7KrKLqNtDzyRK7muXsYVGtyz79v",
+     "E": 480,
+     "eur": -23.06
+    },
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 1020,
+     "eur": -1.86
+    },
+    {
+     "pool": "2pbiH7b5wWn5cHwiL3CfeSrubYjp4wkyXa4r9uJ4N8PF",
+     "E": 420,
+     "eur": -1.75
+    },
+    {
+     "pool": "3p3uYa9AYzV7w2nHEJeo8ANkuuwhYUonQvhHS8LyrqJY",
+     "E": 780,
+     "eur": -7.61
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 780,
+     "eur": 8.41
+    },
+    {
+     "pool": "4CBBtptL5o8gbBXENDsnxCrZ4KNyZkVMFSRP3gK32kzd",
+     "E": 540,
+     "eur": -1.5
+    },
+    {
+     "pool": "4a4VAe5qmggjqtu2TcWt5pJYq6dXi7H1a5FJxr2KaMhD",
+     "E": 480,
+     "eur": -10.6
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 540,
+     "eur": 6.38
+    },
+    {
+     "pool": "5Jf1V4aT3Y3f62Fj3wyCyVypUudAkfiFAXVbTk4s5A9A",
+     "E": 480,
+     "eur": -0.22
+    },
+    {
+     "pool": "5REAoZ4whXVuuaP5pbz71GJS8y6333JQs5ZXVJQazT47",
+     "E": 660,
+     "eur": -1.75
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 660,
+     "eur": -7.65
+    },
+    {
+     "pool": "5dSMwksDZxWPFj496GtWDnYYUra73hhgvfjYg2ad8MHw",
+     "E": 360,
+     "eur": -1.14
+    },
+    {
+     "pool": "6CFZUBpujRWymB5doXuAjrweHT91Ext6TQe2pGEmzk2W",
+     "E": 600,
+     "eur": 0.64
+    },
+    {
+     "pool": "6EaGMvH6scwgfWDPbgduwZVRyVjPehkxek4oB742W337",
+     "E": 480,
+     "eur": -1.53
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 840,
+     "eur": 15.26
+    },
+    {
+     "pool": "6JhLp4TrmQNK7XiW7qxey2aJJh7qpSmgRQ4MvKRWa9fN",
+     "E": 480,
+     "eur": -1.75
+    },
+    {
+     "pool": "6peaKFHnPtNfVtWafCDJ3K4AU9thPauUHnMfVckPKvJp",
+     "E": 480,
+     "eur": -6.76
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 480,
+     "eur": -0.01
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 540,
+     "eur": 22.76
+    },
+    {
+     "pool": "7vURUpBXG3Z5qJTCSTvG3VxumXEnQfnUPJDZ3Cgw2tkT",
+     "E": 1380,
+     "eur": 22.76
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 480,
+     "eur": -2.92
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 480,
+     "eur": -1.84
+    },
+    {
+     "pool": "8rdwPkUnVxH8cWFURB3Q4z6nM47vUBWVePguCu2gm7Vg",
+     "E": 720,
+     "eur": -0.42
+    },
+    {
+     "pool": "AU5eQdjHKeHo4E7Ub78p2DBdjUReBsKEYr9dMphwGbRh",
+     "E": 480,
+     "eur": -13.01
+    },
+    {
+     "pool": "AkMUpNvcBEjy34t6XDbtMPjkSaatpVnXmN3uCNAqBzNC",
+     "E": 1020,
+     "eur": 2.36
+    },
+    {
+     "pool": "B1LvzntvniZEFbwCqUN4q2Bc1ETFUyk6qRzXmio21G19",
+     "E": 660,
+     "eur": 0.91
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 360,
+     "eur": -1.73
+    },
+    {
+     "pool": "BHDsn1gnHe2xRtydcc5qwggz12Upa1k7rhMxtSh13skG",
+     "E": 540,
+     "eur": 7.46
+    },
+    {
+     "pool": "BZ8VGEtUU21VLvYVtQ4tsVyXh1QPn1pJfCmgNibJEvbE",
+     "E": 480,
+     "eur": 3.12
+    },
+    {
+     "pool": "Bozb9ALBQf4JBayYXKYHA7KmsRk5vKYaBPn75oZFK8mV",
+     "E": 660,
+     "eur": -11.65
+    },
+    {
+     "pool": "C73M9QWLSAY16TKQEsEjSThBVXwMpbg94ijZRzYCxbiR",
+     "E": 480,
+     "eur": -9.08
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 420,
+     "eur": -4.34
+    },
+    {
+     "pool": "DNm2wASF4PP9XivPucrwm3CV9AnAsuugEgANqUDtLgs",
+     "E": 780,
+     "eur": -10.62
+    },
+    {
+     "pool": "DxvCfzrLE4DyctHUZm5Xchmb9zuEaek56zkPbYuivfDF",
+     "E": 600,
+     "eur": -9.79
+    },
+    {
+     "pool": "EiFfooUwzLzfCwLuHL1u3WQ3yXtbwewGvmDssDcWC3YR",
+     "E": 600,
+     "eur": -0.14
+    },
+    {
+     "pool": "ExVXZWh569ievxcp5x3Ft5mFpFAx5x6WM1CgJCqE1QJm",
+     "E": 480,
+     "eur": 1.05
+    },
+    {
+     "pool": "F22JVg2DwbmLyEJhH4CtVdgULASYX3QTp3MrEiytqSP2",
+     "E": 360,
+     "eur": -6.79
+    },
+    {
+     "pool": "FQ75g9yWEK5jhyjVX3vWyXQ8AXKYJFNXaM5dYDBfqYyb",
+     "E": 900,
+     "eur": -8.31
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 840,
+     "eur": -2.55
+    },
+    {
+     "pool": "H779C6jXyrE1kEGxZ37AwMuWzrSumWmwK4u8DqUKri6U",
+     "E": 360,
+     "eur": -2.8
+    },
+    {
+     "pool": "Hfoj3dGN1C7eW68mJj7TYwRgpa3o79v7R6RjDxU52zKa",
+     "E": 660,
+     "eur": -7.07
+    },
+    {
+     "pool": "Hkv7Qenj7nYug8BtCSQ8rCZkuY5Fr2Ye8L8HbHjfDRA9",
+     "E": 1020,
+     "eur": 0.15
+    },
+    {
+     "pool": "MFsvPTXCy6eiT1qMpMGKJf6a8K8fdj7YKUFPKDeEXEX",
+     "E": 1080,
+     "eur": -5.52
+    },
+    {
+     "pool": "RTmsLPPy6vJckdZgjFFQMFhZSdn1r7e2AhhKbZHMQjR",
+     "E": 1020,
+     "eur": -8.82
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 720,
+     "eur": 5.96
+    },
+    {
+     "pool": "c4Vh5sGDamzScaWrnsDUwF7vbJYdKeDuZGg8TCm9fgo",
+     "E": 600,
+     "eur": -3.14
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "P",
+   "picker": "SHRUNK-FREQ",
+   "ruleName": "-10% / 3x / 1 h",
+   "text": "30 min change at least 0.003647 AND last hour volume / hour before at least 0.9928 AND creator's graduations in 30 days at least 0",
+   "n": 48,
+   "meanAfter": 0.57,
+   "lowerBound": -5.47,
+   "pBoot": 0.4477,
+   "totalWithoutBest": -69.1,
+   "total": 27.1,
+   "inProfit": 35.4,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 780,
+     "eur": -7.39
+    },
+    {
+     "pool": "2Fq5C7vUZGwDsTVsN92ynxzanqczep3qU87vTn2dWWJb",
+     "E": 600,
+     "eur": 0.47
+    },
+    {
+     "pool": "2X5p7bVpciv44iGmE7KrKLqNtDzyRK7muXsYVGtyz79v",
+     "E": 480,
+     "eur": -23.06
+    },
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 780,
+     "eur": -2.16
+    },
+    {
+     "pool": "2jW1oUzWsSQ14hrGowXeadeqMygcCAYvM4knpRZ3P9DJ",
+     "E": 420,
+     "eur": -3.32
+    },
+    {
+     "pool": "3p3uYa9AYzV7w2nHEJeo8ANkuuwhYUonQvhHS8LyrqJY",
+     "E": 960,
+     "eur": 4.56
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 780,
+     "eur": 8.41
+    },
+    {
+     "pool": "4CBBtptL5o8gbBXENDsnxCrZ4KNyZkVMFSRP3gK32kzd",
+     "E": 600,
+     "eur": -1.89
+    },
+    {
+     "pool": "4xzEdmqCB4E9H5G8rUfKRrnKuc8NRqBo5tr6q4br7Px1",
+     "E": 600,
+     "eur": -3.08
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 600,
+     "eur": 8.04
+    },
+    {
+     "pool": "5Jf1V4aT3Y3f62Fj3wyCyVypUudAkfiFAXVbTk4s5A9A",
+     "E": 420,
+     "eur": -0.79
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 540,
+     "eur": 14.31
+    },
+    {
+     "pool": "5dSMwksDZxWPFj496GtWDnYYUra73hhgvfjYg2ad8MHw",
+     "E": 480,
+     "eur": -1.52
+    },
+    {
+     "pool": "6CFZUBpujRWymB5doXuAjrweHT91Ext6TQe2pGEmzk2W",
+     "E": 480,
+     "eur": 1.17
+    },
+    {
+     "pool": "6EaGMvH6scwgfWDPbgduwZVRyVjPehkxek4oB742W337",
+     "E": 420,
+     "eur": -0.68
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 660,
+     "eur": -8.48
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 1260,
+     "eur": -7.92
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 540,
+     "eur": -6.56
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 600,
+     "eur": -12.02
+    },
+    {
+     "pool": "7vURUpBXG3Z5qJTCSTvG3VxumXEnQfnUPJDZ3Cgw2tkT",
+     "E": 1380,
+     "eur": 36.71
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 420,
+     "eur": -1.83
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 1440,
+     "eur": -3.72
+    },
+    {
+     "pool": "8rdwPkUnVxH8cWFURB3Q4z6nM47vUBWVePguCu2gm7Vg",
+     "E": 540,
+     "eur": -2.16
+    },
+    {
+     "pool": "9NpHzpd3rjJhRdFi2Xm5by22YPhDTkEBQHAC2YmVXAKX",
+     "E": 660,
+     "eur": -7.6
+    },
+    {
+     "pool": "AkMUpNvcBEjy34t6XDbtMPjkSaatpVnXmN3uCNAqBzNC",
+     "E": 960,
+     "eur": 2.61
+    },
+    {
+     "pool": "Ang7vjh7KoSScfbuE1ZWW6gAoXf7EcAZLPJzmMdcgwZj",
+     "E": 720,
+     "eur": -8.32
+    },
+    {
+     "pool": "B1LvzntvniZEFbwCqUN4q2Bc1ETFUyk6qRzXmio21G19",
+     "E": 720,
+     "eur": -2.1
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 780,
+     "eur": -1.99
+    },
+    {
+     "pool": "BHDsn1gnHe2xRtydcc5qwggz12Upa1k7rhMxtSh13skG",
+     "E": 480,
+     "eur": 11.54
+    },
+    {
+     "pool": "BZ8VGEtUU21VLvYVtQ4tsVyXh1QPn1pJfCmgNibJEvbE",
+     "E": 360,
+     "eur": -16.06
+    },
+    {
+     "pool": "Bozb9ALBQf4JBayYXKYHA7KmsRk5vKYaBPn75oZFK8mV",
+     "E": 480,
+     "eur": -13.58
+    },
+    {
+     "pool": "CfV6zhmdGybAxiihr4id6QQgZETXPPHedZ5XjeMxjnvv",
+     "E": 420,
+     "eur": -1.32
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 780,
+     "eur": -2.53
+    },
+    {
+     "pool": "DNm2wASF4PP9XivPucrwm3CV9AnAsuugEgANqUDtLgs",
+     "E": 780,
+     "eur": -10.62
+    },
+    {
+     "pool": "DxvCfzrLE4DyctHUZm5Xchmb9zuEaek56zkPbYuivfDF",
+     "E": 540,
+     "eur": 27.33
+    },
+    {
+     "pool": "EiFfooUwzLzfCwLuHL1u3WQ3yXtbwewGvmDssDcWC3YR",
+     "E": 540,
+     "eur": -0.26
+    },
+    {
+     "pool": "ExVXZWh569ievxcp5x3Ft5mFpFAx5x6WM1CgJCqE1QJm",
+     "E": 540,
+     "eur": 2.09
+    },
+    {
+     "pool": "F22JVg2DwbmLyEJhH4CtVdgULASYX3QTp3MrEiytqSP2",
+     "E": 480,
+     "eur": -8.62
+    },
+    {
+     "pool": "FQ75g9yWEK5jhyjVX3vWyXQ8AXKYJFNXaM5dYDBfqYyb",
+     "E": 900,
+     "eur": -8.31
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 840,
+     "eur": -2.55
+    },
+    {
+     "pool": "H2hyLzX9VnjhamfXUkd1c8Q9B8GMSxsdoEuuMSjTcVjf",
+     "E": 1140,
+     "eur": -17.89
+    },
+    {
+     "pool": "H779C6jXyrE1kEGxZ37AwMuWzrSumWmwK4u8DqUKri6U",
+     "E": 360,
+     "eur": -2.8
+    },
+    {
+     "pool": "Hfoj3dGN1C7eW68mJj7TYwRgpa3o79v7R6RjDxU52zKa",
+     "E": 660,
+     "eur": -7.07
+    },
+    {
+     "pool": "Hkv7Qenj7nYug8BtCSQ8rCZkuY5Fr2Ye8L8HbHjfDRA9",
+     "E": 1020,
+     "eur": 0.15
+    },
+    {
+     "pool": "MFsvPTXCy6eiT1qMpMGKJf6a8K8fdj7YKUFPKDeEXEX",
+     "E": 540,
+     "eur": -0.07
+    },
+    {
+     "pool": "RTmsLPPy6vJckdZgjFFQMFhZSdn1r7e2AhhKbZHMQjR",
+     "E": 900,
+     "eur": -1.5
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 420,
+     "eur": 13.27
+    },
+    {
+     "pool": "z9DvRYdunSrx2AhJ9dhYQ7UBaqtHvZG2ozVCYyRXKun",
+     "E": 480,
+     "eur": 96.26
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "P",
+   "picker": "ML",
+   "ruleName": "-30% / 5x / 1 h",
+   "text": "LightGBM top 10%",
+   "n": 25,
+   "meanAfter": 0.12,
+   "lowerBound": -14.23,
+   "pBoot": 0.5259,
+   "totalWithoutBest": -111.6,
+   "total": 2.9,
+   "inProfit": 44.0,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 600,
+     "eur": -19.18
+    },
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 840,
+     "eur": -1.76
+    },
+    {
+     "pool": "2pbiH7b5wWn5cHwiL3CfeSrubYjp4wkyXa4r9uJ4N8PF",
+     "E": 600,
+     "eur": -1.75
+    },
+    {
+     "pool": "38Wo8aavzczzrGvgd7HkFwbLXMYmRKctgVGzQHyhAgXv",
+     "E": 480,
+     "eur": -50.58
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 480,
+     "eur": 6.01
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 1080,
+     "eur": -1.82
+    },
+    {
+     "pool": "5Jf1V4aT3Y3f62Fj3wyCyVypUudAkfiFAXVbTk4s5A9A",
+     "E": 1080,
+     "eur": -1.39
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 1200,
+     "eur": 9.58
+    },
+    {
+     "pool": "6CFZUBpujRWymB5doXuAjrweHT91Ext6TQe2pGEmzk2W",
+     "E": 960,
+     "eur": -37.37
+    },
+    {
+     "pool": "6EaGMvH6scwgfWDPbgduwZVRyVjPehkxek4oB742W337",
+     "E": 900,
+     "eur": -0.1
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 1080,
+     "eur": -12.75
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 540,
+     "eur": -6.56
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 360,
+     "eur": -9.29
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 600,
+     "eur": 1.77
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 600,
+     "eur": -0.57
+    },
+    {
+     "pool": "9nc82YaQaGPHDeUmA1JgERbqCQz69HvCkn2gzEC43Rua",
+     "E": 660,
+     "eur": -12.92
+    },
+    {
+     "pool": "B1LvzntvniZEFbwCqUN4q2Bc1ETFUyk6qRzXmio21G19",
+     "E": 660,
+     "eur": 0.91
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 540,
+     "eur": -2.48
+    },
+    {
+     "pool": "BHDsn1gnHe2xRtydcc5qwggz12Upa1k7rhMxtSh13skG",
+     "E": 600,
+     "eur": 11.71
+    },
+    {
+     "pool": "C73M9QWLSAY16TKQEsEjSThBVXwMpbg94ijZRzYCxbiR",
+     "E": 480,
+     "eur": 114.51
+    },
+    {
+     "pool": "CfV6zhmdGybAxiihr4id6QQgZETXPPHedZ5XjeMxjnvv",
+     "E": 420,
+     "eur": -1.32
+    },
+    {
+     "pool": "ExVXZWh569ievxcp5x3Ft5mFpFAx5x6WM1CgJCqE1QJm",
+     "E": 660,
+     "eur": 0.73
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 900,
+     "eur": -1.97
+    },
+    {
+     "pool": "Hfoj3dGN1C7eW68mJj7TYwRgpa3o79v7R6RjDxU52zKa",
+     "E": 600,
+     "eur": 13.55
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 720,
+     "eur": 5.96
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "U",
+   "picker": "ROBUST",
+   "ruleName": "no stop / 11x / 6 h",
+   "text": "24 h change at least 3.764 AND log10 last hour volume at most 4.077 AND 30 min change at most -0.0159",
+   "n": 7,
+   "meanAfter": -0.32,
+   "lowerBound": -7.95,
+   "pBoot": 0.5484,
+   "totalWithoutBest": -11.0,
+   "total": -2.2,
+   "inProfit": 57.1,
+   "coins": [
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 240,
+     "eur": 2.29
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 600,
+     "eur": -9.65
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 180,
+     "eur": 5.49
+    },
+    {
+     "pool": "8XpvC3bz2CUHB8qm2qirAXuCYxgZnbQmoWe9MhBGcZgN",
+     "E": 1140,
+     "eur": -1.11
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 120,
+     "eur": -7.96
+    },
+    {
+     "pool": "F6YBtrTQfK5V9rmALYhK9kMPEo8iv7HJEbuakYRfmibD",
+     "E": 240,
+     "eur": -0.08
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 1440,
+     "eur": 8.78
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "U",
+   "picker": "SHRUNK",
+   "ruleName": "no stop / 3x / 24 h",
+   "text": "5 min change at most -0.009749 AND log10 last hour volume at most 3.749 AND rise from the low at least 6.206",
+   "n": 2,
+   "meanAfter": 23.03,
+   "lowerBound": -50.2,
+   "pBoot": 0.2465,
+   "totalWithoutBest": -50.2,
+   "total": 46.1,
+   "inProfit": 50.0,
+   "coins": [
+    {
+     "pool": "5Jf1V4aT3Y3f62Fj3wyCyVypUudAkfiFAXVbTk4s5A9A",
+     "E": 840,
+     "eur": -50.2
+    },
+    {
+     "pool": "Ang7vjh7KoSScfbuE1ZWW6gAoXf7EcAZLPJzmMdcgwZj",
+     "E": 1020,
+     "eur": 96.26
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "U",
+   "picker": "ROBUST-FREQ",
+   "ruleName": "-50% / no target / 2 h",
+   "text": "last hour's share of 24 h volume at most 0.0309 AND 1 h change at most -0.1426 AND rise from the low at least 0.7228",
+   "n": 38,
+   "meanAfter": -0.71,
+   "lowerBound": -9.17,
+   "pBoot": 0.6179,
+   "totalWithoutBest": -99.7,
+   "total": -26.8,
+   "inProfit": 39.5,
+   "coins": [
+    {
+     "pool": "2cWWmt2C4E8kjPdR6bJ8bcQTBYoimMniBJsRXHHwCs69",
+     "E": 360,
+     "eur": 5.39
+    },
+    {
+     "pool": "3p3uYa9AYzV7w2nHEJeo8ANkuuwhYUonQvhHS8LyrqJY",
+     "E": 840,
+     "eur": 4.45
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 1200,
+     "eur": -16.95
+    },
+    {
+     "pool": "4a4VAe5qmggjqtu2TcWt5pJYq6dXi7H1a5FJxr2KaMhD",
+     "E": 360,
+     "eur": 19.52
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 1080,
+     "eur": -0.47
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 540,
+     "eur": 10.99
+    },
+    {
+     "pool": "6YUTVnzEnopXFEN9UFXddsEDkn1tqEon3jLzAH4cQyES",
+     "E": 360,
+     "eur": -2.4
+    },
+    {
+     "pool": "78TxeedEi2hCvcdd6Aqi2ZeMUscQ7MWnsXvUBUixJaTo",
+     "E": 1020,
+     "eur": -20.24
+    },
+    {
+     "pool": "7BdVCwUrbB8wvnLdj4FZ1w5cynb78Sz1H87UU64znhsY",
+     "E": 600,
+     "eur": -7.28
+    },
+    {
+     "pool": "7F5PZ3MgwTV9Pkp6J7vNBnrW374LdrTJdy9NQMZ7NqTm",
+     "E": 600,
+     "eur": -20.79
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 540,
+     "eur": -7.12
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 1020,
+     "eur": -2.63
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 780,
+     "eur": -27.56
+    },
+    {
+     "pool": "7sQcC11sheno53ksNSRDivaiu36t3BKQbccLM5vEFzrm",
+     "E": 480,
+     "eur": -11.39
+    },
+    {
+     "pool": "92KgVDBs9TSRBX5XxYJRczFRsawA4sLTaKWnMDAJfWA1",
+     "E": 420,
+     "eur": -16.55
+    },
+    {
+     "pool": "9ek7USTgXu1w3cgHYJ5UWUHgFYmT4MbYp1Hgg2LWgB5c",
+     "E": 1320,
+     "eur": -20.51
+    },
+    {
+     "pool": "9i7SZrZCDM1wAqNVAtyDUfg5hd7G31jhsWBg7D2J2p2N",
+     "E": 1200,
+     "eur": -10.32
+    },
+    {
+     "pool": "9sY4Amm2RFpsBQ1qgCQTxcjfvhmfJ9K4d2J5xfM1k75M",
+     "E": 1440,
+     "eur": 18.21
+    },
+    {
+     "pool": "Ang7vjh7KoSScfbuE1ZWW6gAoXf7EcAZLPJzmMdcgwZj",
+     "E": 540,
+     "eur": 72.92
+    },
+    {
+     "pool": "ArHTG4Wt6s7sv15xcMreJwMPabGXQzthJs7NSJVdjjZn",
+     "E": 780,
+     "eur": -6.84
+    },
+    {
+     "pool": "AwiPCFN5P83P2HHS7f7SaqWfC3jrvqu6tGnsDsgNgzxT",
+     "E": 540,
+     "eur": -1.9
+    },
+    {
+     "pool": "BDFCdXTi8JfCkioHtytKCBfy2axEMmQoUV6j9BoLj2KJ",
+     "E": 660,
+     "eur": 11.91
+    },
+    {
+     "pool": "BSeENMUc2FgLdcgkG4B1uvfPpcCQXtGszJf9oX5vUce1",
+     "E": 420,
+     "eur": -3.68
+    },
+    {
+     "pool": "C73M9QWLSAY16TKQEsEjSThBVXwMpbg94ijZRzYCxbiR",
+     "E": 1080,
+     "eur": 33.22
+    },
+    {
+     "pool": "D2BAvsqGSwxBZj1SknYYuxK9RDNigbX3ZDA9PoV7TVCr",
+     "E": 900,
+     "eur": 14.57
+    },
+    {
+     "pool": "DNm2wASF4PP9XivPucrwm3CV9AnAsuugEgANqUDtLgs",
+     "E": 600,
+     "eur": -22.22
+    },
+    {
+     "pool": "EFzEstEuWEiGtJ1fu6sgQfeQGcmFq5jRfu7DmfmD46S9",
+     "E": 840,
+     "eur": -4.56
+    },
+    {
+     "pool": "FFXScKY624ixVSvoBp3iZRLHUqcTERNwCouvNFDhgFrX",
+     "E": 960,
+     "eur": -13.67
+    },
+    {
+     "pool": "FQ75g9yWEK5jhyjVX3vWyXQ8AXKYJFNXaM5dYDBfqYyb",
+     "E": 840,
+     "eur": -0.34
+    },
+    {
+     "pool": "FYLA8ej1X6n4nBiEKCZ3zmvACeH5MhdPRkkgPqtWsm1n",
+     "E": 420,
+     "eur": -7.25
+    },
+    {
+     "pool": "FbyWbN3UgbgJkhi5APg7DmnA7ZuiWJHqGpaC9oX182jn",
+     "E": 360,
+     "eur": -11.17
+    },
+    {
+     "pool": "GUkDEvSyoJJ5yFHUYKuePjwTTAZYLBmWsHQ2fYaCMKYm",
+     "E": 240,
+     "eur": -5.17
+    },
+    {
+     "pool": "GrB9cnVmUqmGdGdaUckd9KEuVMZuu1duV8t7z4K7xhXr",
+     "E": 1020,
+     "eur": 5.82
+    },
+    {
+     "pool": "HfT2fJjb1SmDsdjHbCkJuvnVdzDSY1525j4rhYXwdTDt",
+     "E": 960,
+     "eur": -1.02
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 660,
+     "eur": 9.14
+    },
+    {
+     "pool": "c4Vh5sGDamzScaWrnsDUwF7vbJYdKeDuZGg8TCm9fgo",
+     "E": 900,
+     "eur": -19.95
+    },
+    {
+     "pool": "d1W78piEkDwXidegvmEGWe3ndbF1QwYR49v6hoHEALh",
+     "E": 780,
+     "eur": 0.22
+    },
+    {
+     "pool": "z9DvRYdunSrx2AhJ9dhYQ7UBaqtHvZG2ozVCYyRXKun",
+     "E": 600,
+     "eur": 28.79
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "U",
+   "picker": "SHRUNK-FREQ",
+   "ruleName": "-30% / 5x / 1 h",
+   "text": "last hour's share of 24 h volume at most 0.0309 AND 5 min change at most -0.009749 AND 6-hour block (UTC) = 1",
+   "n": 51,
+   "meanAfter": -1.88,
+   "lowerBound": -7.68,
+   "pBoot": 0.8519,
+   "totalWithoutBest": -144.2,
+   "total": -96.0,
+   "inProfit": 37.3,
+   "coins": [
+    {
+     "pool": "14aGhs5Q11tPt2Yer2BgpXAE9w5AkU5Z6u6MioK5oX1W",
+     "E": 840,
+     "eur": -5.48
+    },
+    {
+     "pool": "2X5p7bVpciv44iGmE7KrKLqNtDzyRK7muXsYVGtyz79v",
+     "E": 600,
+     "eur": -42.6
+    },
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 1320,
+     "eur": 0.14
+    },
+    {
+     "pool": "2cWWmt2C4E8kjPdR6bJ8bcQTBYoimMniBJsRXHHwCs69",
+     "E": 600,
+     "eur": -7.68
+    },
+    {
+     "pool": "3p3uYa9AYzV7w2nHEJeo8ANkuuwhYUonQvhHS8LyrqJY",
+     "E": 840,
+     "eur": -3.6
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 660,
+     "eur": -8.45
+    },
+    {
+     "pool": "4CnX9xktKXKckBHGwiNjCXhpVcf2F4xXcaE5CrA7MuiQ",
+     "E": 360,
+     "eur": -11.59
+    },
+    {
+     "pool": "4a4VAe5qmggjqtu2TcWt5pJYq6dXi7H1a5FJxr2KaMhD",
+     "E": 600,
+     "eur": -5.35
+    },
+    {
+     "pool": "4xzEdmqCB4E9H5G8rUfKRrnKuc8NRqBo5tr6q4br7Px1",
+     "E": 900,
+     "eur": -6.67
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 900,
+     "eur": -5.33
+    },
+    {
+     "pool": "5991THFJ2QDEXkPSUP6bq4s7hiwCJo9pj4h2EG4hWCEc",
+     "E": 660,
+     "eur": 2.13
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 1440,
+     "eur": 2.99
+    },
+    {
+     "pool": "6DVtcoCyvNzLJHJVX2gCghzE8gmpVdeNBjJ5Uw1LHmWk",
+     "E": 1320,
+     "eur": -0.52
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 840,
+     "eur": 5.77
+    },
+    {
+     "pool": "78TxeedEi2hCvcdd6Aqi2ZeMUscQ7MWnsXvUBUixJaTo",
+     "E": 420,
+     "eur": -11.47
+    },
+    {
+     "pool": "7BdVCwUrbB8wvnLdj4FZ1w5cynb78Sz1H87UU64znhsY",
+     "E": 600,
+     "eur": -11.47
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 660,
+     "eur": -3.9
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 900,
+     "eur": -5.83
+    },
+    {
+     "pool": "7sQcC11sheno53ksNSRDivaiu36t3BKQbccLM5vEFzrm",
+     "E": 480,
+     "eur": 0.51
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 780,
+     "eur": -6.32
+    },
+    {
+     "pool": "92KgVDBs9TSRBX5XxYJRczFRsawA4sLTaKWnMDAJfWA1",
+     "E": 1020,
+     "eur": 1.64
+    },
+    {
+     "pool": "9NpHzpd3rjJhRdFi2Xm5by22YPhDTkEBQHAC2YmVXAKX",
+     "E": 720,
+     "eur": -15.34
+    },
+    {
+     "pool": "9ek7USTgXu1w3cgHYJ5UWUHgFYmT4MbYp1Hgg2LWgB5c",
+     "E": 660,
+     "eur": 12.89
+    },
+    {
+     "pool": "9i7SZrZCDM1wAqNVAtyDUfg5hd7G31jhsWBg7D2J2p2N",
+     "E": 1200,
+     "eur": 5.54
+    },
+    {
+     "pool": "9sY4Amm2RFpsBQ1qgCQTxcjfvhmfJ9K4d2J5xfM1k75M",
+     "E": 480,
+     "eur": 48.19
+    },
+    {
+     "pool": "AhVwe5r8RBMsRoNaQoNoxCFPgyC7YEWQcK2UXDhodxVr",
+     "E": 780,
+     "eur": -8.01
+    },
+    {
+     "pool": "ArHTG4Wt6s7sv15xcMreJwMPabGXQzthJs7NSJVdjjZn",
+     "E": 780,
+     "eur": -10.82
+    },
+    {
+     "pool": "AwiPCFN5P83P2HHS7f7SaqWfC3jrvqu6tGnsDsgNgzxT",
+     "E": 300,
+     "eur": 27.74
+    },
+    {
+     "pool": "B1LvzntvniZEFbwCqUN4q2Bc1ETFUyk6qRzXmio21G19",
+     "E": 1140,
+     "eur": 2.07
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 240,
+     "eur": -1.84
+    },
+    {
+     "pool": "BF5jg5EWZ7Hc6kxYWke63PPEUHCthCQaRWyBF9s5fWj6",
+     "E": 1020,
+     "eur": -5.45
+    },
+    {
+     "pool": "BSeENMUc2FgLdcgkG4B1uvfPpcCQXtGszJf9oX5vUce1",
+     "E": 420,
+     "eur": -2.9
+    },
+    {
+     "pool": "CWuyFDVxFs8a3rQsFxs3fX2mGvaA1eeyzBvDBvPU2hzq",
+     "E": 1080,
+     "eur": -0.92
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 480,
+     "eur": -1.73
+    },
+    {
+     "pool": "D2BAvsqGSwxBZj1SknYYuxK9RDNigbX3ZDA9PoV7TVCr",
+     "E": 900,
+     "eur": -1.14
+    },
+    {
+     "pool": "DNm2wASF4PP9XivPucrwm3CV9AnAsuugEgANqUDtLgs",
+     "E": 1020,
+     "eur": 13.75
+    },
+    {
+     "pool": "DYRFvuAixNjaGWxACmKGxWvArcNRvQq3ewgPEaHcv9fv",
+     "E": 840,
+     "eur": -3.36
+    },
+    {
+     "pool": "EFzEstEuWEiGtJ1fu6sgQfeQGcmFq5jRfu7DmfmD46S9",
+     "E": 600,
+     "eur": -2.03
+    },
+    {
+     "pool": "FFXScKY624ixVSvoBp3iZRLHUqcTERNwCouvNFDhgFrX",
+     "E": 540,
+     "eur": 7.09
+    },
+    {
+     "pool": "FYLA8ej1X6n4nBiEKCZ3zmvACeH5MhdPRkkgPqtWsm1n",
+     "E": 240,
+     "eur": -6.81
+    },
+    {
+     "pool": "FbyWbN3UgbgJkhi5APg7DmnA7ZuiWJHqGpaC9oX182jn",
+     "E": 360,
+     "eur": -11.36
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 1260,
+     "eur": -4.53
+    },
+    {
+     "pool": "FsLoDCGRx52zCSSRRtbyHBpDiPUvrn9p84iqPXCYYdU9",
+     "E": 900,
+     "eur": -6.72
+    },
+    {
+     "pool": "GUkDEvSyoJJ5yFHUYKuePjwTTAZYLBmWsHQ2fYaCMKYm",
+     "E": 660,
+     "eur": 3.44
+    },
+    {
+     "pool": "HchM41tYxTJMFwMDaK4iFMVKASr7Uq13UPPxj5G6v3hC",
+     "E": 1440,
+     "eur": -14.03
+    },
+    {
+     "pool": "HfT2fJjb1SmDsdjHbCkJuvnVdzDSY1525j4rhYXwdTDt",
+     "E": 1140,
+     "eur": -29.4
+    },
+    {
+     "pool": "J6EK9Fv4ksNh87VTU42wagCuHmPTuFErFfTjzG3jfE5M",
+     "E": 420,
+     "eur": 3.28
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 840,
+     "eur": -2.48
+    },
+    {
+     "pool": "c4Vh5sGDamzScaWrnsDUwF7vbJYdKeDuZGg8TCm9fgo",
+     "E": 660,
+     "eur": 32.37
+    },
+    {
+     "pool": "d1W78piEkDwXidegvmEGWe3ndbF1QwYR49v6hoHEALh",
+     "E": 780,
+     "eur": 0.3
+    },
+    {
+     "pool": "z9DvRYdunSrx2AhJ9dhYQ7UBaqtHvZG2ozVCYyRXKun",
+     "E": 600,
+     "eur": -0.67
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "U",
+   "picker": "ML",
+   "ruleName": "-20% / 3x / 6 h",
+   "text": "LightGBM top 2%",
+   "n": 4,
+   "meanAfter": 11.78,
+   "lowerBound": -50.85,
+   "pBoot": 0.3799,
+   "totalWithoutBest": -49.1,
+   "total": 47.1,
+   "inProfit": 50.0,
+   "coins": [
+    {
+     "pool": "7vn3983WnyR1PmpVYbR57HwABTr2erQV2DTXEZYzKbag",
+     "E": 120,
+     "eur": 4.71
+    },
+    {
+     "pool": "9FMNrETJ2pi1nKCWXb3cyyr37GRMXmbN1X8eU2YNawdw",
+     "E": 360,
+     "eur": -50.85
+    },
+    {
+     "pool": "DBFD4YE8Y6U6ipmaoH3s9jKQJwcK61Gsxgiss1bBuLUB",
+     "E": 60,
+     "eur": 96.26
+    },
+    {
+     "pool": "HfT2fJjb1SmDsdjHbCkJuvnVdzDSY1525j4rhYXwdTDt",
+     "E": 540,
+     "eur": -2.99
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "R",
+   "picker": "ROBUST",
+   "ruleName": "-20% / no target / 12 h",
+   "text": "share of rising candles, last hour at most 0.4167 AND rise from the low at least 3.937 AND same-theme graduations 24 h at least 1",
+   "n": 18,
+   "meanAfter": -6.6,
+   "lowerBound": -11.74,
+   "pBoot": 0.9999,
+   "totalWithoutBest": -126.2,
+   "total": -118.7,
+   "inProfit": 22.2,
+   "coins": [
+    {
+     "pool": "2PowDQNwdS3D6bUxRrMPZucSDAkPPnotACDE64Wzp7uH",
+     "E": 180,
+     "eur": -7.23
+    },
+    {
+     "pool": "2jW1oUzWsSQ14hrGowXeadeqMygcCAYvM4knpRZ3P9DJ",
+     "E": 120,
+     "eur": -8.14
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 240,
+     "eur": -7.45
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 330,
+     "eur": 0.97
+    },
+    {
+     "pool": "5Jf1V4aT3Y3f62Fj3wyCyVypUudAkfiFAXVbTk4s5A9A",
+     "E": 60,
+     "eur": 7.49
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 390,
+     "eur": -6.65
+    },
+    {
+     "pool": "7F5PZ3MgwTV9Pkp6J7vNBnrW374LdrTJdy9NQMZ7NqTm",
+     "E": 330,
+     "eur": -6.45
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 360,
+     "eur": -7.33
+    },
+    {
+     "pool": "9nc82YaQaGPHDeUmA1JgERbqCQz69HvCkn2gzEC43Rua",
+     "E": 270,
+     "eur": -7.63
+    },
+    {
+     "pool": "AU5eQdjHKeHo4E7Ub78p2DBdjUReBsKEYr9dMphwGbRh",
+     "E": 390,
+     "eur": -7.06
+    },
+    {
+     "pool": "C73M9QWLSAY16TKQEsEjSThBVXwMpbg94ijZRzYCxbiR",
+     "E": 510,
+     "eur": 4.73
+    },
+    {
+     "pool": "DX4UvKjp3x432gxWyiwv866dWU51PvTbX18B6pkTjj3f",
+     "E": 90,
+     "eur": -17.3
+    },
+    {
+     "pool": "FYLA8ej1X6n4nBiEKCZ3zmvACeH5MhdPRkkgPqtWsm1n",
+     "E": 270,
+     "eur": -7.12
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 510,
+     "eur": 0.35
+    },
+    {
+     "pool": "GUPFU34b2msSwPkuBvefUETs8rgwmUX25oN95GXbaBhB",
+     "E": 210,
+     "eur": -11.84
+    },
+    {
+     "pool": "HfT2fJjb1SmDsdjHbCkJuvnVdzDSY1525j4rhYXwdTDt",
+     "E": 300,
+     "eur": -9.25
+    },
+    {
+     "pool": "Hfoj3dGN1C7eW68mJj7TYwRgpa3o79v7R6RjDxU52zKa",
+     "E": 210,
+     "eur": -21.33
+    },
+    {
+     "pool": "d1W78piEkDwXidegvmEGWe3ndbF1QwYR49v6hoHEALh",
+     "E": 210,
+     "eur": -7.51
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "R",
+   "picker": "SHRUNK",
+   "ruleName": "-50% / 5x / 6 h",
+   "text": "24 h change at most 0.3773 AND log10 last hour volume at least 5.028 AND number of links = 0",
+   "n": 7,
+   "meanAfter": -0.5,
+   "lowerBound": -21.23,
+   "pBoot": 0.583,
+   "totalWithoutBest": -78.0,
+   "total": -3.5,
+   "inProfit": 28.6,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 30,
+     "eur": 74.54
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 30,
+     "eur": 12.14
+    },
+    {
+     "pool": "B4t3vRww8Ztw7isNCA621iuwxBXXkqm4gbmy6e9FMXog",
+     "E": 60,
+     "eur": -21.23
+    },
+    {
+     "pool": "DBFD4YE8Y6U6ipmaoH3s9jKQJwcK61Gsxgiss1bBuLUB",
+     "E": 60,
+     "eur": -21.23
+    },
+    {
+     "pool": "ERswRUX3PsPrnywt6YSfgXNWuDz8PPLH6YHAjUiATEzo",
+     "E": 30,
+     "eur": -21.22
+    },
+    {
+     "pool": "Eh5uNuXxjGCgyAA9ABUUE9GymdHkxh8vhJqDdUzgtLea",
+     "E": 60,
+     "eur": -21.17
+    },
+    {
+     "pool": "F22JVg2DwbmLyEJhH4CtVdgULASYX3QTp3MrEiytqSP2",
+     "E": 60,
+     "eur": -5.34
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "R",
+   "picker": "ROBUST-FREQ",
+   "ruleName": "-10% / no target / 1 h",
+   "text": "1 h change at most -0.009544 AND last hour volume / hour before at most 1.02 AND hour (UTC) at most 11",
+   "n": 45,
+   "meanAfter": -3.6,
+   "lowerBound": -6.37,
+   "pBoot": 1.0,
+   "totalWithoutBest": -175.8,
+   "total": -162.0,
+   "inProfit": 24.4,
+   "coins": [
+    {
+     "pool": "2X5p7bVpciv44iGmE7KrKLqNtDzyRK7muXsYVGtyz79v",
+     "E": 300,
+     "eur": -0.45
+    },
+    {
+     "pool": "38Wo8aavzczzrGvgd7HkFwbLXMYmRKctgVGzQHyhAgXv",
+     "E": 360,
+     "eur": -0.6
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 390,
+     "eur": -5.25
+    },
+    {
+     "pool": "4CnX9xktKXKckBHGwiNjCXhpVcf2F4xXcaE5CrA7MuiQ",
+     "E": 90,
+     "eur": -10.24
+    },
+    {
+     "pool": "4a4VAe5qmggjqtu2TcWt5pJYq6dXi7H1a5FJxr2KaMhD",
+     "E": 600,
+     "eur": -4.53
+    },
+    {
+     "pool": "4xzEdmqCB4E9H5G8rUfKRrnKuc8NRqBo5tr6q4br7Px1",
+     "E": 720,
+     "eur": 0.46
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 630,
+     "eur": 2.59
+    },
+    {
+     "pool": "5dSMwksDZxWPFj496GtWDnYYUra73hhgvfjYg2ad8MHw",
+     "E": 240,
+     "eur": -2.16
+    },
+    {
+     "pool": "6EaGMvH6scwgfWDPbgduwZVRyVjPehkxek4oB742W337",
+     "E": 570,
+     "eur": -3.06
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 120,
+     "eur": 0.76
+    },
+    {
+     "pool": "6KGbV6LxuATyk32jUaRuujgW63jmEJLezgyUxMqFWER7",
+     "E": 480,
+     "eur": -5.66
+    },
+    {
+     "pool": "6WmJoqodq22jFLyno5pKys3ksgzvLS4oyRFwNNjmz8FD",
+     "E": 270,
+     "eur": -2.13
+    },
+    {
+     "pool": "6peaKFHnPtNfVtWafCDJ3K4AU9thPauUHnMfVckPKvJp",
+     "E": 240,
+     "eur": -5.4
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 570,
+     "eur": -4.19
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 450,
+     "eur": -3.52
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 210,
+     "eur": -4.19
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 540,
+     "eur": 0.31
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 570,
+     "eur": -2.12
+    },
+    {
+     "pool": "9XQyVNcE5y4dYSFmTj7oFdHQHqqGZ7UhsW18A75Fw6NK",
+     "E": 150,
+     "eur": -11.1
+    },
+    {
+     "pool": "9nc82YaQaGPHDeUmA1JgERbqCQz69HvCkn2gzEC43Rua",
+     "E": 540,
+     "eur": -1.94
+    },
+    {
+     "pool": "AcdTJhVegj1U2grUErutEdKP1pN9NLb7dDMWQZJk7mjG",
+     "E": 510,
+     "eur": -1.99
+    },
+    {
+     "pool": "AkqzimYA78uaQvUb5dXQMZeoTsEboKB5N73U9MKUBdZZ",
+     "E": 150,
+     "eur": -18.5
+    },
+    {
+     "pool": "AwiPCFN5P83P2HHS7f7SaqWfC3jrvqu6tGnsDsgNgzxT",
+     "E": 420,
+     "eur": -5.17
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 90,
+     "eur": -2.0
+    },
+    {
+     "pool": "BDFCdXTi8JfCkioHtytKCBfy2axEMmQoUV6j9BoLj2KJ",
+     "E": 210,
+     "eur": -4.52
+    },
+    {
+     "pool": "BHDsn1gnHe2xRtydcc5qwggz12Upa1k7rhMxtSh13skG",
+     "E": 720,
+     "eur": -4.38
+    },
+    {
+     "pool": "BSeENMUc2FgLdcgkG4B1uvfPpcCQXtGszJf9oX5vUce1",
+     "E": 180,
+     "eur": -6.81
+    },
+    {
+     "pool": "Bozb9ALBQf4JBayYXKYHA7KmsRk5vKYaBPn75oZFK8mV",
+     "E": 210,
+     "eur": -0.39
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 150,
+     "eur": -2.33
+    },
+    {
+     "pool": "DX4UvKjp3x432gxWyiwv866dWU51PvTbX18B6pkTjj3f",
+     "E": 90,
+     "eur": 3.08
+    },
+    {
+     "pool": "DxvCfzrLE4DyctHUZm5Xchmb9zuEaek56zkPbYuivfDF",
+     "E": 120,
+     "eur": -5.89
+    },
+    {
+     "pool": "FFXScKY624ixVSvoBp3iZRLHUqcTERNwCouvNFDhgFrX",
+     "E": 270,
+     "eur": -4.8
+    },
+    {
+     "pool": "FQ75g9yWEK5jhyjVX3vWyXQ8AXKYJFNXaM5dYDBfqYyb",
+     "E": 360,
+     "eur": 13.8
+    },
+    {
+     "pool": "FYLA8ej1X6n4nBiEKCZ3zmvACeH5MhdPRkkgPqtWsm1n",
+     "E": 360,
+     "eur": -5.37
+    },
+    {
+     "pool": "GUPFU34b2msSwPkuBvefUETs8rgwmUX25oN95GXbaBhB",
+     "E": 210,
+     "eur": -11.84
+    },
+    {
+     "pool": "H779C6jXyrE1kEGxZ37AwMuWzrSumWmwK4u8DqUKri6U",
+     "E": 150,
+     "eur": -2.3
+    },
+    {
+     "pool": "HQxwqV7ubzdj2fppxVvRoKw8Bykcg5rpJe1Aa1t5npEm",
+     "E": 480,
+     "eur": -20.8
+    },
+    {
+     "pool": "HY6tXeV7ZefucL8hs3hjqgWnDYeYtj4gG58iTP2WNhta",
+     "E": 150,
+     "eur": -7.51
+    },
+    {
+     "pool": "HchM41tYxTJMFwMDaK4iFMVKASr7Uq13UPPxj5G6v3hC",
+     "E": 120,
+     "eur": -5.71
+    },
+    {
+     "pool": "Hfoj3dGN1C7eW68mJj7TYwRgpa3o79v7R6RjDxU52zKa",
+     "E": 150,
+     "eur": 2.96
+    },
+    {
+     "pool": "Hkv7Qenj7nYug8BtCSQ8rCZkuY5Fr2Ye8L8HbHjfDRA9",
+     "E": 240,
+     "eur": -3.22
+    },
+    {
+     "pool": "J6EK9Fv4ksNh87VTU42wagCuHmPTuFErFfTjzG3jfE5M",
+     "E": 630,
+     "eur": -4.21
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 630,
+     "eur": -1.36
+    },
+    {
+     "pool": "c4Vh5sGDamzScaWrnsDUwF7vbJYdKeDuZGg8TCm9fgo",
+     "E": 210,
+     "eur": 3.92
+    },
+    {
+     "pool": "z9DvRYdunSrx2AhJ9dhYQ7UBaqtHvZG2ozVCYyRXKun",
+     "E": 300,
+     "eur": -4.28
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "R",
+   "picker": "SHRUNK-FREQ",
+   "ruleName": "-10% / 3x / 1 h",
+   "text": "hours since graduation at least 4.5 AND 1 h change at most 0.01458 AND SOL 1 h change at most 0",
+   "n": 74,
+   "meanAfter": -3.3,
+   "lowerBound": -4.96,
+   "pBoot": 1.0,
+   "totalWithoutBest": -248.0,
+   "total": -244.4,
+   "inProfit": 9.5,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 300,
+     "eur": -4.87
+    },
+    {
+     "pool": "2Fq5C7vUZGwDsTVsN92ynxzanqczep3qU87vTn2dWWJb",
+     "E": 450,
+     "eur": -0.58
+    },
+    {
+     "pool": "2X5p7bVpciv44iGmE7KrKLqNtDzyRK7muXsYVGtyz79v",
+     "E": 330,
+     "eur": -2.03
+    },
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 390,
+     "eur": -3.18
+    },
+    {
+     "pool": "2jW1oUzWsSQ14hrGowXeadeqMygcCAYvM4knpRZ3P9DJ",
+     "E": 450,
+     "eur": -3.12
+    },
+    {
+     "pool": "2pbiH7b5wWn5cHwiL3CfeSrubYjp4wkyXa4r9uJ4N8PF",
+     "E": 450,
+     "eur": -2.22
+    },
+    {
+     "pool": "38Wo8aavzczzrGvgd7HkFwbLXMYmRKctgVGzQHyhAgXv",
+     "E": 360,
+     "eur": -0.6
+    },
+    {
+     "pool": "3p3uYa9AYzV7w2nHEJeo8ANkuuwhYUonQvhHS8LyrqJY",
+     "E": 510,
+     "eur": -0.9
+    },
+    {
+     "pool": "3tXP9X2W1aL9jtZF1tuAwEZMuX4w3PWNvVAHPJjd3MAq",
+     "E": 480,
+     "eur": 0.82
+    },
+    {
+     "pool": "3w9a8czUdAPgMrDMXVzWNpNV51UjB6pgUeXJojHXif2V",
+     "E": 330,
+     "eur": -2.2
+    },
+    {
+     "pool": "4BUR7jf5UQgc5dP6Y9X6obCC8m1Qq7AmXTdwkfh639QJ",
+     "E": 570,
+     "eur": -1.33
+    },
+    {
+     "pool": "4CBBtptL5o8gbBXENDsnxCrZ4KNyZkVMFSRP3gK32kzd",
+     "E": 270,
+     "eur": -2.06
+    },
+    {
+     "pool": "4a4VAe5qmggjqtu2TcWt5pJYq6dXi7H1a5FJxr2KaMhD",
+     "E": 600,
+     "eur": -4.53
+    },
+    {
+     "pool": "4qvkjtnuqkyAmYHPhQ2LNKc7XAi6NixW5hCDVD4qV7GY",
+     "E": 690,
+     "eur": -2.22
+    },
+    {
+     "pool": "4xzEdmqCB4E9H5G8rUfKRrnKuc8NRqBo5tr6q4br7Px1",
+     "E": 660,
+     "eur": -4.33
+    },
+    {
+     "pool": "51oRdGg8fF1RYyYHzQdVabby46ank1Wu9wPFUZ11Nbh3",
+     "E": 390,
+     "eur": 0.74
+    },
+    {
+     "pool": "5REAoZ4whXVuuaP5pbz71GJS8y6333JQs5ZXVJQazT47",
+     "E": 360,
+     "eur": -2.22
+    },
+    {
+     "pool": "5ZpWSsVCwcRteF9ThqZEt8wFwtMxPt1C6Ey9EybT4rC5",
+     "E": 270,
+     "eur": -2.2
+    },
+    {
+     "pool": "5dSMwksDZxWPFj496GtWDnYYUra73hhgvfjYg2ad8MHw",
+     "E": 390,
+     "eur": -2.63
+    },
+    {
+     "pool": "6CFZUBpujRWymB5doXuAjrweHT91Ext6TQe2pGEmzk2W",
+     "E": 360,
+     "eur": -1.41
+    },
+    {
+     "pool": "6EaGMvH6scwgfWDPbgduwZVRyVjPehkxek4oB742W337",
+     "E": 600,
+     "eur": -2.4
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 690,
+     "eur": -4.98
+    },
+    {
+     "pool": "6JhLp4TrmQNK7XiW7qxey2aJJh7qpSmgRQ4MvKRWa9fN",
+     "E": 330,
+     "eur": -2.22
+    },
+    {
+     "pool": "6WmJoqodq22jFLyno5pKys3ksgzvLS4oyRFwNNjmz8FD",
+     "E": 300,
+     "eur": -2.19
+    },
+    {
+     "pool": "6peaKFHnPtNfVtWafCDJ3K4AU9thPauUHnMfVckPKvJp",
+     "E": 420,
+     "eur": -4.79
+    },
+    {
+     "pool": "7F5PZ3MgwTV9Pkp6J7vNBnrW374LdrTJdy9NQMZ7NqTm",
+     "E": 360,
+     "eur": -5.09
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 570,
+     "eur": -4.19
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 270,
+     "eur": 3.66
+    },
+    {
+     "pool": "7Yk7UAsViEvP5wkyfapAFS7KySmCnJtpvamxmCMKiavU",
+     "E": 300,
+     "eur": -3.66
+    },
+    {
+     "pool": "7bEHppnRxZBT3A2jgyEaRuqU7rSnDkSDZPJjtV6CviWA",
+     "E": 270,
+     "eur": -2.11
+    },
+    {
+     "pool": "7sQcC11sheno53ksNSRDivaiu36t3BKQbccLM5vEFzrm",
+     "E": 330,
+     "eur": -4.4
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 390,
+     "eur": -1.08
+    },
+    {
+     "pool": "8L3igRfrvKYRJnU9hZf7Sk5NJA62S8GA54DKatBf6qH2",
+     "E": 510,
+     "eur": -2.72
+    },
+    {
+     "pool": "8XpvC3bz2CUHB8qm2qirAXuCYxgZnbQmoWe9MhBGcZgN",
+     "E": 300,
+     "eur": -2.22
+    },
+    {
+     "pool": "8ir1sadrctBkiwzwMELyAD5B8kGzjYgE6s2eRom5tfcx",
+     "E": 330,
+     "eur": 1.08
+    },
+    {
+     "pool": "8rdwPkUnVxH8cWFURB3Q4z6nM47vUBWVePguCu2gm7Vg",
+     "E": 360,
+     "eur": -1.86
+    },
+    {
+     "pool": "9XQyVNcE5y4dYSFmTj7oFdHQHqqGZ7UhsW18A75Fw6NK",
+     "E": 270,
+     "eur": -21.06
+    },
+    {
+     "pool": "9dEaCnsw3uhKDT1vkxwbv6Z3zpbj2ggi5qDuukRBEFLH",
+     "E": 270,
+     "eur": -1.71
+    },
+    {
+     "pool": "9nc82YaQaGPHDeUmA1JgERbqCQz69HvCkn2gzEC43Rua",
+     "E": 270,
+     "eur": -1.73
+    },
+    {
+     "pool": "AU5eQdjHKeHo4E7Ub78p2DBdjUReBsKEYr9dMphwGbRh",
+     "E": 390,
+     "eur": -7.06
+    },
+    {
+     "pool": "AcdTJhVegj1U2grUErutEdKP1pN9NLb7dDMWQZJk7mjG",
+     "E": 300,
+     "eur": -2.06
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 270,
+     "eur": -2.21
+    },
+    {
+     "pool": "BHDsn1gnHe2xRtydcc5qwggz12Upa1k7rhMxtSh13skG",
+     "E": 270,
+     "eur": -4.49
+    },
+    {
+     "pool": "BSeENMUc2FgLdcgkG4B1uvfPpcCQXtGszJf9oX5vUce1",
+     "E": 480,
+     "eur": -2.53
+    },
+    {
+     "pool": "Bozb9ALBQf4JBayYXKYHA7KmsRk5vKYaBPn75oZFK8mV",
+     "E": 300,
+     "eur": -4.54
+    },
+    {
+     "pool": "BsVqu3x1jZFTp9t5SH1S2Je2XmYxC361jnwnTKRiAVCB",
+     "E": 600,
+     "eur": -1.6
+    },
+    {
+     "pool": "C73M9QWLSAY16TKQEsEjSThBVXwMpbg94ijZRzYCxbiR",
+     "E": 720,
+     "eur": -4.38
+    },
+    {
+     "pool": "CfV6zhmdGybAxiihr4id6QQgZETXPPHedZ5XjeMxjnvv",
+     "E": 420,
+     "eur": -2.05
+    },
+    {
+     "pool": "CgDvbNJVUbYAcUmeP2rxYF25Hgx921icFuiU1UcpwF6n",
+     "E": 270,
+     "eur": -3.24
+    },
+    {
+     "pool": "D2krLXfaRYqiD8oWT2KUtynnXAUWYPC3GtZFcghqLfjg",
+     "E": 300,
+     "eur": -6.01
+    },
+    {
+     "pool": "DNm2wASF4PP9XivPucrwm3CV9AnAsuugEgANqUDtLgs",
+     "E": 270,
+     "eur": -4.47
+    },
+    {
+     "pool": "DS4HutcWzM14aAoCJ15yedyXpPdqmd32PKmUGPL9ojim",
+     "E": 480,
+     "eur": -4.96
+    },
+    {
+     "pool": "DxvCfzrLE4DyctHUZm5Xchmb9zuEaek56zkPbYuivfDF",
+     "E": 270,
+     "eur": -8.62
+    },
+    {
+     "pool": "E1H3zhuQq3im8TfR8PpHuxs8Q6L7XkL9FzcGjEKJseih",
+     "E": 270,
+     "eur": -1.66
+    },
+    {
+     "pool": "E5EzZ6nKUXvmE9B57vAvM9G7xczEBEmNHr1b2b3q2voD",
+     "E": 270,
+     "eur": -1.9
+    },
+    {
+     "pool": "EiFfooUwzLzfCwLuHL1u3WQ3yXtbwewGvmDssDcWC3YR",
+     "E": 450,
+     "eur": -1.62
+    },
+    {
+     "pool": "F6YBtrTQfK5V9rmALYhK9kMPEo8iv7HJEbuakYRfmibD",
+     "E": 360,
+     "eur": -2.15
+    },
+    {
+     "pool": "FFXScKY624ixVSvoBp3iZRLHUqcTERNwCouvNFDhgFrX",
+     "E": 510,
+     "eur": 1.02
+    },
+    {
+     "pool": "FYLA8ej1X6n4nBiEKCZ3zmvACeH5MhdPRkkgPqtWsm1n",
+     "E": 270,
+     "eur": -4.18
+    },
+    {
+     "pool": "FjAPDePFHnuSNykqWL8T38DfT1w4JaVMieKyjHvaN3rJ",
+     "E": 300,
+     "eur": -2.13
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 720,
+     "eur": -0.83
+    },
+    {
+     "pool": "G1JWAMQN1CwB2iKeaNQXswLpDGAGYohi6yRxe9KRZM7w",
+     "E": 330,
+     "eur": -2.0
+    },
+    {
+     "pool": "H779C6jXyrE1kEGxZ37AwMuWzrSumWmwK4u8DqUKri6U",
+     "E": 270,
+     "eur": -1.97
+    },
+    {
+     "pool": "HQxwqV7ubzdj2fppxVvRoKw8Bykcg5rpJe1Aa1t5npEm",
+     "E": 480,
+     "eur": -20.8
+    },
+    {
+     "pool": "HchM41tYxTJMFwMDaK4iFMVKASr7Uq13UPPxj5G6v3hC",
+     "E": 330,
+     "eur": -6.52
+    },
+    {
+     "pool": "HfT2fJjb1SmDsdjHbCkJuvnVdzDSY1525j4rhYXwdTDt",
+     "E": 300,
+     "eur": -9.25
+    },
+    {
+     "pool": "Hfoj3dGN1C7eW68mJj7TYwRgpa3o79v7R6RjDxU52zKa",
+     "E": 540,
+     "eur": -1.67
+    },
+    {
+     "pool": "Hkv7Qenj7nYug8BtCSQ8rCZkuY5Fr2Ye8L8HbHjfDRA9",
+     "E": 270,
+     "eur": -2.67
+    },
+    {
+     "pool": "J6EK9Fv4ksNh87VTU42wagCuHmPTuFErFfTjzG3jfE5M",
+     "E": 630,
+     "eur": -4.21
+    },
+    {
+     "pool": "MFsvPTXCy6eiT1qMpMGKJf6a8K8fdj7YKUFPKDeEXEX",
+     "E": 630,
+     "eur": -2.13
+    },
+    {
+     "pool": "VAzfgUPHpLNnDq5hFzAMeTcHhM3aB7MDqPquJ3Xb8xW",
+     "E": 630,
+     "eur": -1.36
+    },
+    {
+     "pool": "c4Vh5sGDamzScaWrnsDUwF7vbJYdKeDuZGg8TCm9fgo",
+     "E": 300,
+     "eur": -7.08
+    },
+    {
+     "pool": "d1W78piEkDwXidegvmEGWe3ndbF1QwYR49v6hoHEALh",
+     "E": 300,
+     "eur": -4.05
+    },
+    {
+     "pool": "z9DvRYdunSrx2AhJ9dhYQ7UBaqtHvZG2ozVCYyRXKun",
+     "E": 300,
+     "eur": -4.28
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "R",
+   "picker": "ML",
+   "ruleName": "-30% / 11x / 6 h",
+   "text": "LightGBM top 5%",
+   "n": 16,
+   "meanAfter": -1.11,
+   "lowerBound": -6.26,
+   "pBoot": 0.7371,
+   "totalWithoutBest": -37.3,
+   "total": -17.8,
+   "inProfit": 43.8,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 60,
+     "eur": 19.59
+    },
+    {
+     "pool": "2jW1oUzWsSQ14hrGowXeadeqMygcCAYvM4knpRZ3P9DJ",
+     "E": 60,
+     "eur": -8.61
+    },
+    {
+     "pool": "5Jf1V4aT3Y3f62Fj3wyCyVypUudAkfiFAXVbTk4s5A9A",
+     "E": 540,
+     "eur": 0.28
+    },
+    {
+     "pool": "6CFZUBpujRWymB5doXuAjrweHT91Ext6TQe2pGEmzk2W",
+     "E": 90,
+     "eur": -2.41
+    },
+    {
+     "pool": "6JhLp4TrmQNK7XiW7qxey2aJJh7qpSmgRQ4MvKRWa9fN",
+     "E": 270,
+     "eur": -2.22
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 180,
+     "eur": 6.2
+    },
+    {
+     "pool": "7YCpK3JYMK89EgWpJPJAh1TaZ8iwiVyLv8j9Hy9Rajmd",
+     "E": 120,
+     "eur": 0.75
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 600,
+     "eur": -5.7
+    },
+    {
+     "pool": "9nc82YaQaGPHDeUmA1JgERbqCQz69HvCkn2gzEC43Rua",
+     "E": 270,
+     "eur": 6.79
+    },
+    {
+     "pool": "BsVqu3x1jZFTp9t5SH1S2Je2XmYxC361jnwnTKRiAVCB",
+     "E": 600,
+     "eur": 0.11
+    },
+    {
+     "pool": "DBFD4YE8Y6U6ipmaoH3s9jKQJwcK61Gsxgiss1bBuLUB",
+     "E": 90,
+     "eur": -8.24
+    },
+    {
+     "pool": "DS4HutcWzM14aAoCJ15yedyXpPdqmd32PKmUGPL9ojim",
+     "E": 60,
+     "eur": -8.09
+    },
+    {
+     "pool": "FQ75g9yWEK5jhyjVX3vWyXQ8AXKYJFNXaM5dYDBfqYyb",
+     "E": 150,
+     "eur": -8.31
+    },
+    {
+     "pool": "Gu2DAc4CvhyZz7VREz4nxXpbXhMefxacAgjaQ6V8nZuG",
+     "E": 150,
+     "eur": 5.22
+    },
+    {
+     "pool": "H779C6jXyrE1kEGxZ37AwMuWzrSumWmwK4u8DqUKri6U",
+     "E": 90,
+     "eur": -3.99
+    },
+    {
+     "pool": "HQhU7Cytc1Nqi6CnGRNjUauYhEE6JgC569ijEYSWvYpS",
+     "E": 120,
+     "eur": -9.14
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "S",
+   "picker": "ROBUST",
+   "ruleName": "trailing 30% / 24 h",
+   "text": "24 h volume / market cap at least 0.7622 AND 1 h volatility at most 0.1342 AND number of links = 0",
+   "n": 15,
+   "meanAfter": 7.44,
+   "lowerBound": -13.05,
+   "pBoot": 0.2104,
+   "totalWithoutBest": -4.4,
+   "total": 111.6,
+   "inProfit": 46.7,
+   "coins": [
+    {
+     "pool": "2MC6ENfKLgMigi7ytT32RyiGNpwoddFL5Xb1rP7kSfM8",
+     "E": 30,
+     "eur": -11.83
+    },
+    {
+     "pool": "2jW1oUzWsSQ14hrGowXeadeqMygcCAYvM4knpRZ3P9DJ",
+     "E": 30,
+     "eur": 115.94
+    },
+    {
+     "pool": "2pbiH7b5wWn5cHwiL3CfeSrubYjp4wkyXa4r9uJ4N8PF",
+     "E": 30,
+     "eur": -1.98
+    },
+    {
+     "pool": "38Wo8aavzczzrGvgd7HkFwbLXMYmRKctgVGzQHyhAgXv",
+     "E": 30,
+     "eur": 49.18
+    },
+    {
+     "pool": "39MVzJZwKPcaHTkeTa84ycN9aba9mtBex2mKqp93DcFi",
+     "E": 30,
+     "eur": 2.84
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 30,
+     "eur": 15.05
+    },
+    {
+     "pool": "6ecYd1gGtjtZDHMGp4mU1h2khdTnhTSvTHArVvXfi5tJ",
+     "E": 30,
+     "eur": -12.8
+    },
+    {
+     "pool": "85ecH8QXkoiDmcNw2YXLgAHz1TWhAHFMEQYaruWVWBiM",
+     "E": 30,
+     "eur": -21.18
+    },
+    {
+     "pool": "9KXGaUzCBaGaqJpnXTfYhZdZqYSNedNDc6cDXEAcANMU",
+     "E": 30,
+     "eur": -21.0
+    },
+    {
+     "pool": "A7hb4z5tTpwusbx9T35memEzUrujTejEDiQ7M1ArhJfP",
+     "E": 30,
+     "eur": 4.28
+    },
+    {
+     "pool": "CVjuyhWukVdoXm1KxdQNtDkXmQnBW9M8pKtXE3Wh2NM4",
+     "E": 30,
+     "eur": -10.25
+    },
+    {
+     "pool": "DBFD4YE8Y6U6ipmaoH3s9jKQJwcK61Gsxgiss1bBuLUB",
+     "E": 30,
+     "eur": 28.37
+    },
+    {
+     "pool": "En1wG9kC24x9Yctq8iiuQJRd7zZxUsVeTrf2T7ag3mF8",
+     "E": 30,
+     "eur": -20.63
+    },
+    {
+     "pool": "F22JVg2DwbmLyEJhH4CtVdgULASYX3QTp3MrEiytqSP2",
+     "E": 30,
+     "eur": -4.88
+    },
+    {
+     "pool": "H2hyLzX9VnjhamfXUkd1c8Q9B8GMSxsdoEuuMSjTcVjf",
+     "E": 30,
+     "eur": 0.46
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "S",
+   "picker": "SHRUNK",
+   "ruleName": "-70% / 2x / 6 h",
+   "text": "24 h volume / market cap at most 0.001038 AND 5 min change at least 0.01042 AND number of links = 1",
+   "n": 0,
+   "holds": false,
+   "pBoot": 1.0,
+   "holm5": false
+  },
+  {
+   "family": "S",
+   "picker": "ROBUST-FREQ",
+   "ruleName": "trailing 20% / 24 h",
+   "text": "24 h volume / market cap at least 0.7622 AND creator's graduations in 30 days at most 0 AND number of links = 0",
+   "n": 55,
+   "meanAfter": -7.28,
+   "lowerBound": -15.53,
+   "pBoot": 0.9689,
+   "totalWithoutBest": -537.6,
+   "total": -400.3,
+   "inProfit": 20.0,
+   "coins": [
+    {
+     "pool": "2CV1er9JYn1dC6Z2dMuKSTYmNPnUJZ9Pb91v4zzAejf2",
+     "E": 30,
+     "eur": 54.67
+    },
+    {
+     "pool": "2MC6ENfKLgMigi7ytT32RyiGNpwoddFL5Xb1rP7kSfM8",
+     "E": 30,
+     "eur": -11.83
+    },
+    {
+     "pool": "2jW1oUzWsSQ14hrGowXeadeqMygcCAYvM4knpRZ3P9DJ",
+     "E": 30,
+     "eur": 137.3
+    },
+    {
+     "pool": "2pbiH7b5wWn5cHwiL3CfeSrubYjp4wkyXa4r9uJ4N8PF",
+     "E": 30,
+     "eur": -1.98
+    },
+    {
+     "pool": "2qP6VeaQFeB5yahreafWLxutvVfE5xW8UxuxHRUcsZPD",
+     "E": 30,
+     "eur": -20.88
+    },
+    {
+     "pool": "38Wo8aavzczzrGvgd7HkFwbLXMYmRKctgVGzQHyhAgXv",
+     "E": 30,
+     "eur": 6.11
+    },
+    {
+     "pool": "39MVzJZwKPcaHTkeTa84ycN9aba9mtBex2mKqp93DcFi",
+     "E": 30,
+     "eur": 4.68
+    },
+    {
+     "pool": "3CeDtCUMTVfx8759BJxxUsx3ibTNeWrES4tcQ4AFaoYr",
+     "E": 30,
+     "eur": -2.74
+    },
+    {
+     "pool": "3Qg7cCHRaxA6LavuzyM5ENCjPd8iiXDVKVevziZewfyW",
+     "E": 30,
+     "eur": -21.09
+    },
+    {
+     "pool": "3i1qk3eVvjeqANB9dMRfLjYBg2BaDFE2tccULcZgW3jZ",
+     "E": 30,
+     "eur": -20.83
+    },
+    {
+     "pool": "3vuU9zTK3cA1kEKr2aJhbV5Yw5YdvCE9xG9o6VDTRLmM",
+     "E": 30,
+     "eur": -20.58
+    },
+    {
+     "pool": "4SLeK78j99FntS8fRBovbLaA2idweHrEqm8sqojDu6dS",
+     "E": 60,
+     "eur": -21.08
+    },
+    {
+     "pool": "4YnybQFKKQg9iZLfF65AkLxgNtEEa5YGj6hyvnFhcGfs",
+     "E": 30,
+     "eur": -20.74
+    },
+    {
+     "pool": "4a4VAe5qmggjqtu2TcWt5pJYq6dXi7H1a5FJxr2KaMhD",
+     "E": 30,
+     "eur": -0.27
+    },
+    {
+     "pool": "54jcZyTCiJ2WZfDXd7KzjxqLKGFu3HNzVC3FTBH4ardf",
+     "E": 60,
+     "eur": -20.91
+    },
+    {
+     "pool": "5sqNxUTbhRGyd7aekRXhvpuaBn4Dpu6nYcRKFpUoTH8e",
+     "E": 60,
+     "eur": -21.02
+    },
+    {
+     "pool": "63a95CsxH63T2849ezBuLiJMU9qnN21wgnL1XSmR4nen",
+     "E": 30,
+     "eur": -20.65
+    },
+    {
+     "pool": "6AnzRvu8mRC6Rs1qdXjkn3npH8fuNtyYSgkt6Mf1ZGLx",
+     "E": 30,
+     "eur": -20.84
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 30,
+     "eur": 8.92
+    },
+    {
+     "pool": "6WCWwos5K6KmNzrgKtmjEKtBhoEMuWrBGneczbKuTKN3",
+     "E": 30,
+     "eur": -21.06
+    },
+    {
+     "pool": "6ecYd1gGtjtZDHMGp4mU1h2khdTnhTSvTHArVvXfi5tJ",
+     "E": 30,
+     "eur": -12.8
+    },
+    {
+     "pool": "7G9PKRtZq4cH1XduER4Gtn9aJzHgDRXbxBfEG2FaA22A",
+     "E": 30,
+     "eur": -11.27
+    },
+    {
+     "pool": "7XarT3gRATfP1KFRaRqwuJyJicBXNKUiS6BGi225ga5g",
+     "E": 60,
+     "eur": -6.81
+    },
+    {
+     "pool": "7vURUpBXG3Z5qJTCSTvG3VxumXEnQfnUPJDZ3Cgw2tkT",
+     "E": 60,
+     "eur": -6.12
+    },
+    {
+     "pool": "85ecH8QXkoiDmcNw2YXLgAHz1TWhAHFMEQYaruWVWBiM",
+     "E": 30,
+     "eur": 6.05
+    },
+    {
+     "pool": "88Jxy6WUYurL7WhZSNYwJvjQwvtDoxT3RUrac1PRgLwu",
+     "E": 30,
+     "eur": 10.95
+    },
+    {
+     "pool": "8nQoUud1tHsEK8h3JQHRpjgzR9CAdQnEz8g8L7ZUBV6J",
+     "E": 30,
+     "eur": -20.68
+    },
+    {
+     "pool": "8rZT1aam19LMp14X1XBwCWpQUzG8L2T2w2V5AoeF9yth",
+     "E": 60,
+     "eur": -21.03
+    },
+    {
+     "pool": "8sNkV9yTVyv3JTp9Nb276X7Q7Ld2VHsn4HGQLWeXNsvy",
+     "E": 30,
+     "eur": -20.99
+    },
+    {
+     "pool": "9KXGaUzCBaGaqJpnXTfYhZdZqYSNedNDc6cDXEAcANMU",
+     "E": 30,
+     "eur": -21.0
+    },
+    {
+     "pool": "9b68MER5dDCefTgTnSFJTdcbTndzFZRszGR2nheVsmLf",
+     "E": 30,
+     "eur": 6.97
+    },
+    {
+     "pool": "A6N3ECugwPD2Xxsu1ozykFqrUSAWnnYw6VU7zg71jDsN",
+     "E": 30,
+     "eur": -20.8
+    },
+    {
+     "pool": "A7hb4z5tTpwusbx9T35memEzUrujTejEDiQ7M1ArhJfP",
+     "E": 30,
+     "eur": -1.84
+    },
+    {
+     "pool": "ABKQDiB7r7FSpYRJXXxxdsaTnt2At4ReX5faBsY7AqLk",
+     "E": 60,
+     "eur": -21.0
+    },
+    {
+     "pool": "AU5eQdjHKeHo4E7Ub78p2DBdjUReBsKEYr9dMphwGbRh",
+     "E": 30,
+     "eur": -12.19
+    },
+    {
+     "pool": "B2LVBpFY6cYsTeVjprkbDDGwquX9R9FrTLb941sEMpiM",
+     "E": 30,
+     "eur": 9.59
+    },
+    {
+     "pool": "B4t3vRww8Ztw7isNCA621iuwxBXXkqm4gbmy6e9FMXog",
+     "E": 30,
+     "eur": -7.22
+    },
+    {
+     "pool": "BHhBzG9oWd1strekp6KZoKHdKvJW9hZwkvTLUTLQRqKE",
+     "E": 30,
+     "eur": -20.91
+    },
+    {
+     "pool": "CDCeQShdGNMbzvDCyHWvcnxgXThxwyXnF5V9fLr51Y3n",
+     "E": 30,
+     "eur": -20.86
+    },
+    {
+     "pool": "CVCPYDEf2BgswaKHVsXpDtbKqe1wVgCnAUXdXUAzRHzB",
+     "E": 60,
+     "eur": -20.91
+    },
+    {
+     "pool": "CVjuyhWukVdoXm1KxdQNtDkXmQnBW9M8pKtXE3Wh2NM4",
+     "E": 30,
+     "eur": -4.95
+    },
+    {
+     "pool": "D2krLXfaRYqiD8oWT2KUtynnXAUWYPC3GtZFcghqLfjg",
+     "E": 30,
+     "eur": -6.5
+    },
+    {
+     "pool": "DBFD4YE8Y6U6ipmaoH3s9jKQJwcK61Gsxgiss1bBuLUB",
+     "E": 30,
+     "eur": 53.31
+    },
+    {
+     "pool": "ERswRUX3PsPrnywt6YSfgXNWuDz8PPLH6YHAjUiATEzo",
+     "E": 30,
+     "eur": -21.22
+    },
+    {
+     "pool": "EToFf1Gvj33esGoSCrtZ4NZttBtnyNKSyMcAUU962NHw",
+     "E": 30,
+     "eur": -20.91
+    },
+    {
+     "pool": "En1wG9kC24x9Yctq8iiuQJRd7zZxUsVeTrf2T7ag3mF8",
+     "E": 30,
+     "eur": -20.63
+    },
+    {
+     "pool": "F22JVg2DwbmLyEJhH4CtVdgULASYX3QTp3MrEiytqSP2",
+     "E": 30,
+     "eur": -4.61
+    },
+    {
+     "pool": "F8u846gUyqzYr9ojrNv7YsQ6ggXzMP1X2Cmne8fCDmEF",
+     "E": 60,
+     "eur": -20.99
+    },
+    {
+     "pool": "FGzzxqZVUyNEyMLNAZ7aQkhnS1MAFApEhGrAnR45Z2pC",
+     "E": 30,
+     "eur": -20.94
+    },
+    {
+     "pool": "FimCYFwogfVVzysVkYLdDfGtKG2EvjZGG3gyoX1vBxEq",
+     "E": 30,
+     "eur": -13.32
+    },
+    {
+     "pool": "Ga6zf24cwwfUH23QDE3nTwTTK71r29p6Qx4GqHjKUDBq",
+     "E": 30,
+     "eur": -21.16
+    },
+    {
+     "pool": "GoHFcCwNz6omiWLaAUkDS8by3phDyQcXzXwKUwdb6Uk8",
+     "E": 30,
+     "eur": -20.95
+    },
+    {
+     "pool": "GrgWZbWyFvteoJGkCMdoGXZWrH2B81iTN42eb9wZHprz",
+     "E": 30,
+     "eur": -3.85
+    },
+    {
+     "pool": "H2hyLzX9VnjhamfXUkd1c8Q9B8GMSxsdoEuuMSjTcVjf",
+     "E": 30,
+     "eur": -4.85
+    },
+    {
+     "pool": "HWusuRyXuJzuWPFYsGCZ2Zt4mettG9AaWez6DgSE8f2o",
+     "E": 30,
+     "eur": -21.03
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "S",
+   "picker": "SHRUNK-FREQ",
+   "ruleName": "-10% / 5x / 1 h",
+   "text": "distance from the high at least -0.1361 AND share of rising candles, last hour at most 0.6667 AND hour (UTC) at most 12",
+   "n": 68,
+   "meanAfter": -4.67,
+   "lowerBound": -7.97,
+   "pBoot": 1.0,
+   "totalWithoutBest": -351.6,
+   "total": -317.4,
+   "inProfit": 5.9,
+   "coins": [
+    {
+     "pool": "2qpf2PyrZAyxG9CDCYtGmaR6GH5wxSkATm8aL96esofx",
+     "E": 30,
+     "eur": -2.15
+    },
+    {
+     "pool": "2qtveANF28TRXf4qiDLrnzVrRccFb16fxa7UuXJA59QN",
+     "E": 60,
+     "eur": -6.84
+    },
+    {
+     "pool": "3bF5Dj3sJ3DbTuFwhGb6pn37qnGUg83VSGyqZBSNLDAw",
+     "E": 60,
+     "eur": -2.2
+    },
+    {
+     "pool": "3g6rjPi6FJ3kRDRPz8sS2pdNawuUGJWFU7AQvSEhoyMC",
+     "E": 30,
+     "eur": -4.27
+    },
+    {
+     "pool": "3gmtgk3oZJ5DQE6shr1coKef9pgRxjkKxg1QnUCYMn3D",
+     "E": 30,
+     "eur": -5.49
+    },
+    {
+     "pool": "4FcFUFTKXzB862D9W4vpAT4jxiEBGgMcuUGCEvKAN183",
+     "E": 30,
+     "eur": -2.21
+    },
+    {
+     "pool": "4FkQbQi1YtxqFP3gr5kMqKEPZSx6fr2n5px2jPLDxdub",
+     "E": 30,
+     "eur": -21.33
+    },
+    {
+     "pool": "4zmiQseFZHaFWzK9uom2mxp1RvEqoKDQrYbLbYQY8J8f",
+     "E": 30,
+     "eur": -21.21
+    },
+    {
+     "pool": "5SpztG8hdXCG3YWx7hWjHGHF8CYGNRSWZ1smmfQQkAMX",
+     "E": 30,
+     "eur": 3.43
+    },
+    {
+     "pool": "5ZpWSsVCwcRteF9ThqZEt8wFwtMxPt1C6Ey9EybT4rC5",
+     "E": 60,
+     "eur": -2.31
+    },
+    {
+     "pool": "5xMhB52cvC5yaGUGW6cpYZ13eih9gRxVKDAQCEwZ13W8",
+     "E": 60,
+     "eur": -2.03
+    },
+    {
+     "pool": "67MS2ke7F1ULi3BxqcMTCWerzKQtRgypFrb9vDSBYtw1",
+     "E": 30,
+     "eur": -1.55
+    },
+    {
+     "pool": "68bNE8v3SR3QHHwhzgHynVSKZscw137gCS2qLHVwduPE",
+     "E": 30,
+     "eur": -1.46
+    },
+    {
+     "pool": "6DVtcoCyvNzLJHJVX2gCghzE8gmpVdeNBjJ5Uw1LHmWk",
+     "E": 30,
+     "eur": -0.82
+    },
+    {
+     "pool": "6EaGMvH6scwgfWDPbgduwZVRyVjPehkxek4oB742W337",
+     "E": 30,
+     "eur": -1.75
+    },
+    {
+     "pool": "6JDiSPsWBwcSN8xBa4LNBzMZRikxksbxcto8J3ELR4cG",
+     "E": 60,
+     "eur": -3.2
+    },
+    {
+     "pool": "6WmJoqodq22jFLyno5pKys3ksgzvLS4oyRFwNNjmz8FD",
+     "E": 30,
+     "eur": -2.22
+    },
+    {
+     "pool": "6peaKFHnPtNfVtWafCDJ3K4AU9thPauUHnMfVckPKvJp",
+     "E": 30,
+     "eur": 34.2
+    },
+    {
+     "pool": "6zWzXaQBDyfAoFhdh1qsBAngcJHHcwZLzLmq2e4xJcZA",
+     "E": 30,
+     "eur": -2.01
+    },
+    {
+     "pool": "7F5PZ3MgwTV9Pkp6J7vNBnrW374LdrTJdy9NQMZ7NqTm",
+     "E": 30,
+     "eur": -6.6
+    },
+    {
+     "pool": "7dNbXscUvUS8ZTNxZaTKz6JwBSEoaVeXg2zRmKhPTdDP",
+     "E": 30,
+     "eur": -20.63
+    },
+    {
+     "pool": "7o1YArZREZQrJh9RhussLcWYVFzP6k7zDeyD7qn7azoz",
+     "E": 30,
+     "eur": -5.14
+    },
+    {
+     "pool": "7sQcC11sheno53ksNSRDivaiu36t3BKQbccLM5vEFzrm",
+     "E": 30,
+     "eur": 31.21
+    },
+    {
+     "pool": "85ecH8QXkoiDmcNw2YXLgAHz1TWhAHFMEQYaruWVWBiM",
+     "E": 60,
+     "eur": -4.63
+    },
+    {
+     "pool": "92fDFbQSRNxgZnxJMr8DAbCK4NSSw3jGtEqiCNxS8imG",
+     "E": 60,
+     "eur": -20.41
+    },
+    {
+     "pool": "93geFiLdVijzwiXMeKftoPKaA4BEYAaqycyvVbFYU78v",
+     "E": 30,
+     "eur": -2.21
+    },
+    {
+     "pool": "9YUZEG3vknGzredb4GVJo22s3dGXzpAohhoEQSPHVzyG",
+     "E": 30,
+     "eur": -20.63
+    },
+    {
+     "pool": "9b68MER5dDCefTgTnSFJTdcbTndzFZRszGR2nheVsmLf",
+     "E": 60,
+     "eur": -6.07
+    },
+    {
+     "pool": "9jdhCsJVCG4WK7NR89vHAuRwUjmTEbSMimr1Wf3Zwfq1",
+     "E": 30,
+     "eur": -2.06
+    },
+    {
+     "pool": "9rRAfraejGbWB9RH5r46jKTXuKMW48Hb6HufQqJHUCJA",
+     "E": 60,
+     "eur": -8.16
+    },
+    {
+     "pool": "AceAf32h4V8CWJjB9V7sBN3cCNtVGFLJTp9MDXcuRcQV",
+     "E": 30,
+     "eur": -1.77
+    },
+    {
+     "pool": "Ap94DoHBXwGxiuVMN7KYHSKDhsw3sg2XH9VKD9uWiqeG",
+     "E": 30,
+     "eur": -2.1
+    },
+    {
+     "pool": "AyuHjLUWqY5Y9ebLeoebBWvQPKjxrp1U58wLr6qQhLAq",
+     "E": 30,
+     "eur": -1.48
+    },
+    {
+     "pool": "B399UeZ6B8n5dNbVWuYgqzS4tAsK8HLu9LmfUyTKNBQc",
+     "E": 30,
+     "eur": -2.82
+    },
+    {
+     "pool": "BSeENMUc2FgLdcgkG4B1uvfPpcCQXtGszJf9oX5vUce1",
+     "E": 60,
+     "eur": -8.33
+    },
+    {
+     "pool": "BgVENZS6L4uA9WwGYjYLTihTf3nKeZkRFVU1htQbxupQ",
+     "E": 30,
+     "eur": -1.5
+    },
+    {
+     "pool": "BhJBmWREbST9DV9tPkTFo6RXAeTUiQihYALXXbUNYbxE",
+     "E": 30,
+     "eur": -16.0
+    },
+    {
+     "pool": "BjrsKjAzLGTgcguvFcaueKL2wbSJ52HoSTNstzgDraYp",
+     "E": 30,
+     "eur": -5.49
+    },
+    {
+     "pool": "Bozb9ALBQf4JBayYXKYHA7KmsRk5vKYaBPn75oZFK8mV",
+     "E": 60,
+     "eur": -4.27
+    },
+    {
+     "pool": "BuiAs7bzKc8dMivEBpzuM7QHgmemSmtiD4MG1zUsfj14",
+     "E": 30,
+     "eur": -5.65
+    },
+    {
+     "pool": "BxJ861SckWo9TbgpozCVKiKWffx219M8HCbTm5VEJvgo",
+     "E": 30,
+     "eur": -2.05
+    },
+    {
+     "pool": "C3GCRjw5d2g6yzV5NMrZGWuQw4L2vw7fGGmJPqkpg9f9",
+     "E": 30,
+     "eur": -4.4
+    },
+    {
+     "pool": "CBkc1NNNsiB32tQZrVeaSibnuWoVtPRVVBFxqPAEdExs",
+     "E": 30,
+     "eur": -1.79
+    },
+    {
+     "pool": "CaTzir56eQ7Qc8oEVDvSAKt9wySv1PcJHgH2Abr7WTzj",
+     "E": 60,
+     "eur": -2.06
+    },
+    {
+     "pool": "D2krLXfaRYqiD8oWT2KUtynnXAUWYPC3GtZFcghqLfjg",
+     "E": 30,
+     "eur": -6.5
+    },
+    {
+     "pool": "DYcbDKX2TF6Mkrg55wVnzkuzPhPxzrSuX96RPhyQ1rpJ",
+     "E": 30,
+     "eur": -20.73
+    },
+    {
+     "pool": "E2RgRTc9EuSNuDWsFetsaY1Z6akHt3nzqP9XnuxM9gh8",
+     "E": 30,
+     "eur": -1.7
+    },
+    {
+     "pool": "E36YjDhnpWUcv9YHcixxkULWUg9ojvtqN41aKRSSxako",
+     "E": 30,
+     "eur": -6.1
+    },
+    {
+     "pool": "E5EzZ6nKUXvmE9B57vAvM9G7xczEBEmNHr1b2b3q2voD",
+     "E": 30,
+     "eur": -1.8
+    },
+    {
+     "pool": "E5i52wDHBuzCUryfh2aZmwDRFAnv7pLAVvuWcypQukce",
+     "E": 30,
+     "eur": -6.08
+    },
+    {
+     "pool": "E9iieFpHoPtdzNB9FM5vMGkmSLh8btF3m5Ug74cFymzh",
+     "E": 30,
+     "eur": -2.07
+    },
+    {
+     "pool": "ERswRUX3PsPrnywt6YSfgXNWuDz8PPLH6YHAjUiATEzo",
+     "E": 60,
+     "eur": -21.32
+    },
+    {
+     "pool": "Ed6BTcczcAuijmPmFiCPvdhBtkVPYLZwHNEn99Tr4gjF",
+     "E": 30,
+     "eur": -4.59
+    },
+    {
+     "pool": "F6YBtrTQfK5V9rmALYhK9kMPEo8iv7HJEbuakYRfmibD",
+     "E": 60,
+     "eur": -1.79
+    },
+    {
+     "pool": "FWwUVwZ78XV8DdLAbG3WK9YYXWnuZdZnqhcp2G3VsiY2",
+     "E": 30,
+     "eur": -2.11
+    },
+    {
+     "pool": "FWyUM25eQRQ9YZCZYRi152WjLvrNQ6JRTj3GYFSiLfux",
+     "E": 30,
+     "eur": -2.14
+    },
+    {
+     "pool": "FbRwG2FNuTbzsjJcB5Qv5SZFckxqVgRycqcywFVLZskG",
+     "E": 30,
+     "eur": -4.71
+    },
+    {
+     "pool": "FgU6woqLFxe7uX5NsYTGWcNPMyA2VfFBRKNqtwXMrFEg",
+     "E": 30,
+     "eur": -2.04
+    },
+    {
+     "pool": "FjirF8j2vLxKF1uN2ex4odSRDUFcYY1LtoY6SJHQtxfz",
+     "E": 60,
+     "eur": -6.41
+    },
+    {
+     "pool": "Fo8EVDB3qphm944An9KKWRJi7U1Ft9JurtWd688dFmce",
+     "E": 30,
+     "eur": -5.12
+    },
+    {
+     "pool": "Fw8s91CqwTAG1GjnSob51sQygjzBMhJy74urewgCwo9c",
+     "E": 30,
+     "eur": -21.22
+    },
+    {
+     "pool": "Gc9FeGUUU1qwbpTyS3RJWAJ2Vr58YMs2LcQ7ZzLgjRmJ",
+     "E": 30,
+     "eur": -6.12
+    },
+    {
+     "pool": "Giv6Uq1dZox7SQjtVKuMrrrPAHcaQffyQyJLM4beDuF8",
+     "E": 30,
+     "eur": -4.33
+    },
+    {
+     "pool": "HCdfN45pfJ2VeRRerJSyg4BwfK5Li5WjC11Fsj8H1GAt",
+     "E": 30,
+     "eur": -2.18
+    },
+    {
+     "pool": "HaEqwNQrjVuaEuU55Qax8pJMAPrHDiSgTssj4Pp3MhZQ",
+     "E": 60,
+     "eur": -11.33
+    },
+    {
+     "pool": "HchM41tYxTJMFwMDaK4iFMVKASr7Uq13UPPxj5G6v3hC",
+     "E": 60,
+     "eur": -4.31
+    },
+    {
+     "pool": "RJjkrNWAjnRCZ8FvcJMBjXu4v5cA3HuLFiquyM4rPLP",
+     "E": 30,
+     "eur": -0.13
+    },
+    {
+     "pool": "poGNRmLG833L11zqXQQe1P7BcbdkckFz6vf1Er1tthx",
+     "E": 30,
+     "eur": -2.12
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  },
+  {
+   "family": "S",
+   "picker": "ML",
+   "ruleName": "-30% / 11x / 6 h",
+   "text": "LightGBM top 5%",
+   "n": 15,
+   "meanAfter": -5.03,
+   "lowerBound": -15.0,
+   "pBoot": 0.9261,
+   "totalWithoutBest": -103.3,
+   "total": -75.4,
+   "inProfit": 40.0,
+   "coins": [
+    {
+     "pool": "2XXqAKzdx4ELq6eyVNSeurYFJEN5Q1Zd1oMpoEq1QzDt",
+     "E": 30,
+     "eur": 8.12
+    },
+    {
+     "pool": "2ouUbdTw81sHRyhW6YYn1zuQZX28exXi8S6F7BXvcBnq",
+     "E": 60,
+     "eur": 27.85
+    },
+    {
+     "pool": "6CzsA5RWFKxwCaWKXgTSf5QCN57my33uK2QRB3vGWns5",
+     "E": 30,
+     "eur": -21.37
+    },
+    {
+     "pool": "9NpHzpd3rjJhRdFi2Xm5by22YPhDTkEBQHAC2YmVXAKX",
+     "E": 60,
+     "eur": -9.52
+    },
+    {
+     "pool": "DBFD4YE8Y6U6ipmaoH3s9jKQJwcK61Gsxgiss1bBuLUB",
+     "E": 60,
+     "eur": -21.23
+    },
+    {
+     "pool": "FHKhAcS7JTA15VRsAZVaWQthJjKDiutS8Hpd2D4LNka4",
+     "E": 60,
+     "eur": -21.41
+    },
+    {
+     "pool": "FJoKgbfy9DeJssiTdHywws7bV4YackkLuiorfeLyJQJo",
+     "E": 30,
+     "eur": -21.41
+    },
+    {
+     "pool": "Fso2JKNXC8n3bgg3BK9mogapp3rKg7jCH2deZh7Pr3iL",
+     "E": 30,
+     "eur": -12.07
+    },
+    {
+     "pool": "G695T22L4HkuuyjtD3dH3nHGsH4cQCoqw4ZG5NP2QXzx",
+     "E": 60,
+     "eur": 1.59
+    },
+    {
+     "pool": "Gp22DmWMZmWaPsUnydcruVwWR8AWTGCLEJsDkwX4L3DM",
+     "E": 60,
+     "eur": -0.57
+    },
+    {
+     "pool": "Gu2DAc4CvhyZz7VREz4nxXpbXhMefxacAgjaQ6V8nZuG",
+     "E": 60,
+     "eur": 5.64
+    },
+    {
+     "pool": "H26YziB5GqYkSKCoQfutsU41hL1Q5AKyaUS7Uzv7fgVX",
+     "E": 30,
+     "eur": -4.57
+    },
+    {
+     "pool": "HQhU7Cytc1Nqi6CnGRNjUauYhEE6JgC569ijEYSWvYpS",
+     "E": 30,
+     "eur": -2.4
+    },
+    {
+     "pool": "Hkv7Qenj7nYug8BtCSQ8rCZkuY5Fr2Ye8L8HbHjfDRA9",
+     "E": 60,
+     "eur": -3.48
+    },
+    {
+     "pool": "J8HYdNqhuEjPu7ZtCZt84vNiaWvpFSXzJADFmNEVMXcr",
+     "E": 60,
+     "eur": -0.59
+    }
+   ],
+   "holds": false,
+   "holm5": false
+  }
+ ],
+ "anyHolds": false
+}
