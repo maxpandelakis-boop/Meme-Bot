@@ -1,0 +1,18 @@
+
+==== discovery: 27 days, first-sight signals 23478 (870 a day), per 20: desk -1.350, without FOMO fee -0.664
+first sight with the veto: kept 43% desk -0.777
+S1 strict (watch 10-40 min)
+    buys 1977 (73 a day, 8.4% of first-sight signals) | desk -1.198 [-1.568, -0.847] | vs first sight +0.152 [-0.251, 0.501] | days in profit 2/27, better than first sight 12/27 | without best -1.212 | in profit 11.3% | exits {'stop': 87.1, 'trail': 2.3, 'end': 8.3, '2x+end': 2.3}
+    hold -5.235 | without FOMO fee -0.508 [-0.885, -0.151] | median wait 13 min, median price vs first sight 1.79x, median MC 18669 | the same coins bought at first sight: +2.440
+S2 strict + veto
+    buys 1150 (43 a day, 4.9% of first-sight signals) | desk -1.175 [-1.647, -0.734] | vs first sight +0.174 [-0.314, 0.611] | days in profit 3/27, better than first sight 12/27 | without best -1.199 | in profit 11.1% | exits {'stop': 86.7, 'trail': 2.4, 'end': 8.9, '2x+end': 2.0}
+    hold -5.198 | without FOMO fee -0.485 [-0.965, -0.034] | median wait 13 min, median price vs first sight 1.85x, median MC 18795 | the same coins bought at first sight: +3.237
+
+==== holdout: 24 days, first-sight signals 27846 (1160 a day), per 20: desk -0.801, without FOMO fee -0.105
+first sight with the veto: kept 68% desk -0.522
+S1 strict (watch 10-40 min)
+    buys 2125 (89 a day, 7.6% of first-sight signals) | desk -0.905 [-1.181, -0.628] | vs first sight -0.104 [-0.403, 0.191] | days in profit 2/24, better than first sight 9/24 | without best -0.923 | in profit 12.9% | exits {'stop': 85.6, 'trail': 4.2, 'end': 8.8, '2x+end': 1.5}
+    hold -3.485 | without FOMO fee -0.210 [-0.491, 0.073] | median wait 14 min, median price vs first sight 1.80x, median MC 20658 | the same coins bought at first sight: +2.697
+S2 strict + veto
+    buys 1615 (67 a day, 5.8% of first-sight signals) | desk -0.686 [-1.002, -0.363] | vs first sight +0.116 [-0.224, 0.451] | days in profit 7/24, better than first sight 11/24 | without best -0.704 | in profit 13.4% | exits {'stop': 85.0, 'trail': 4.5, 'end': 9.1, '2x+end': 1.4}
+    hold -3.020 | without FOMO fee +0.014 [-0.308, 0.343] | median wait 13 min, median price vs first sight 1.82x, median MC 20722 | the same coins bought at first sight: +3.173
