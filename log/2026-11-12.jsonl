@@ -307,3 +307,4 @@
 {"t":1794474781153,"addr":"uhm1TuY2griAwCeuoXemY4wGCJRPfKFCy51CbJ7BVq5","sym":"LuckyCoin","age":30.7,"why":"liquidity","liq":0}
 {"t":1794474781153,"addr":"B29gYL4HQhLbXY8eWSJuJ2kcaH54K9ch3jEwAD9LoETQ","sym":"Green cat","age":30.5,"why":"liquidity","liq":0}
 {"t":1794474900902,"addr":"2f9BJsv72suxqmRhwnTaC4djeoN8rB883hmPxoRd6YVB","sym":"Fly Cat","age":30.5,"score":0.01059,"px":3.658e-05,"liq":40922,"p0":3.0230863482844604e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.6928,"c_peak":1.0081,"c_vol":4.8421,"c_act":1.0,"c_r5":0.1639,"c_r15":0.5737,"c_mc":4.4805}}
+{"t":1794475200896,"addr":"FhWqgehYjP2x66ZbFwoknwjhUobJYgx8oPcAGDemmoon","sym":"Mscix","age":30.2,"why":"liquidity","liq":0}
