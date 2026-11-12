@@ -752,3 +752,6 @@
 {"t":1794514320827,"addr":"4Wtf1j4E2QBpTecdhasAmFwcghZRJDSi6NGuU2oMF4jd","sym":"GIRAFF","age":30.8,"why":"liquidity","liq":0}
 {"t":1794514380455,"addr":"6pBSa8riV9pXLnV6r1pqxoUZkHFTj1g6cHHBKZ3imoon","sym":"AFRCOMP","age":30.4,"why":"liquidity","liq":0}
 {"t":1794514620792,"addr":"Hq3ThGHDjfQkCve6iMn8VBbbBWuF2yBqAdwfPLNppump","sym":"DID","age":30.7,"why":"liquidity","liq":1667}
+{"t":1794514981039,"addr":"GDDPv4mMs6oXSgDjQyiZgSF2LkXg7cTEafiADFzhmoon","sym":"IRNLAMP","age":30.2,"why":"liquidity","liq":0}
+{"t":1794515040322,"addr":"ak5kfaNGNyJGrudqgwhfFJzCzVCro98xEKUBYwGpump","sym":"Robinhood","age":30.8,"score":0.00991,"px":5.244e-05,"liq":16043,"p0":7.881898695485956e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":-0.2796,"c_peak":5.2645,"c_vol":4.9194,"c_act":1.0,"c_r5":-1.6078,"c_r15":-1.0218,"c_mc":4.8966}}
+{"t":1794515160425,"addr":"ES47e1PsYBWQQ4vzGssx8Bx9LTVkpkWmy6tZGnLppump","sym":"JENSON","age":30.6,"why":"liquidity","liq":1766}
