@@ -476,3 +476,5 @@
 {"t":1794491340553,"addr":"8tUEnjVWo5DiKaQKRenCZZaVLDGkzvwsJvDY3wNwpump","sym":"GTA 6","age":31.0,"why":"liquidity","liq":1505}
 {"t":1794491340553,"addr":"2Abjfk5itU5sgjDUrqCu3ebwn7Ge6bTKtYiA3VLMpump","sym":"mitardo","age":30.3,"why":"liquidity","liq":1567}
 {"t":1794491400432,"addr":"9RJ5cqUA29zr1BoS98uSLvsY7FT22UFjRBhjAhuzpump","sym":"Torghost","age":30.6,"why":"liquidity","liq":0}
+{"t":1794491460573,"addr":"Bd9WHu5qtbxzsCuxH5omFQb6XmSSeEVsPKn8erTCpump","sym":"PAUL","age":43.8,"why":"no candles"}
+{"t":1794491640132,"addr":"6BucbgqbTDpUfWiN8Zrc5Lsf7ru6uUEzEPLPhb5ppump","sym":"nihaomax","age":43.0,"why":"no candles"}
