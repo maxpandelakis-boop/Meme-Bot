@@ -747,3 +747,5 @@
 {"t":1794513600299,"addr":"E19KsBsmkqWFL1k7byEF2rxrYn2Rn3bs8EVHKCF2pump","sym":"AMC","age":30.2,"why":"liquidity","liq":1692}
 {"t":1794513660826,"addr":"31ZFcFYYDMg9fBeeZ2LBmys7zKsTqCEF3BKipdLFpump","sym":"3","age":30.4,"why":"liquidity","liq":1609}
 {"t":1794513720087,"addr":"3n1c99PWHx1b6A8Y8qw6qrEYQxnSbFMUBrpuhPGepump","sym":"3","age":30.1,"why":"liquidity","liq":1737}
+{"t":1794513840153,"addr":"9hox9Kq1HuysXwTs7G2vG9W3yei96AybYrAcu6atpump","sym":"Dubkey","age":30.9,"why":"liquidity","liq":0}
+{"t":1794513840153,"addr":"HEq3rgQoPJ9nfBoAe974N9TM71VKP7YSoe69PrMfpump","sym":"Rockstar","age":30.7,"why":"liquidity","liq":1520}
