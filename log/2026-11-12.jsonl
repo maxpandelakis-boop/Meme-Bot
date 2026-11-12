@@ -301,3 +301,6 @@
 {"t":1794474000846,"addr":"3auaN7TN43S36gfja6XwdvEZp9ZPa1TzByjpHqWqkmRR","sym":"GTA 6","age":30.6,"why":"liquidity","liq":0}
 {"t":1794474181239,"addr":"FeEtLSZGU7MWHrf9kkAYyKz1F6j6yUQ5LkVAzPYdmvi7","sym":"\u5927A","age":30.4,"score":0.0235,"px":1.165e-05,"liq":15888,"p0":2.836048680411923e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":19.0,"f_cjk":1.0,"c_ret":0.8738,"c_peak":1.0916,"c_vol":5.3248,"c_act":1.0,"c_r5":0.9694,"c_r15":0.4525,"c_mc":4.4527}}
 {"t":1794474300573,"addr":"5E5H59TyXEAKpYbrz1bWaVXec57GoBRGdsy7mGmu7EHN","sym":"ANTPE","age":30.8,"why":"liquidity","liq":0}
+{"t":1794474480803,"addr":"6GBo7tn9ozinQG7pLVhc4YUSNxMpbKSahtBG6GCe8Hun","sym":"LuckyCoin","age":30.0,"why":"liquidity","liq":0}
+{"t":1794474540358,"addr":"B7WHo4LCojCTU7YXnsB9PyK4Py4f5nVKUeoXhGQCpump","sym":"Perpg","age":30.7,"why":"liquidity","liq":0}
+{"t":1794474600599,"addr":"pb6DzXwafqPakPLUJiw6FrixdBfKyVw5LUjx6XHpump","sym":"BUGLES","age":30.4,"why":"liquidity","liq":1536}
