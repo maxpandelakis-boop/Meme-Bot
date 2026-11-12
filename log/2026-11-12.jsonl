@@ -706,3 +706,8 @@
 {"t":1794510360247,"addr":"2EJrm5poztNdpNH8KPGVx6uufSe1CMsZ8wTyV212Xnfv","sym":"Green cat","age":30.1,"score":0.05799,"px":3.702e-05,"liq":46912,"p0":3.477008252957676e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":21.0,"f_cjk":0.0,"c_ret":0.8095,"c_peak":1.0362,"c_vol":5.2702,"c_act":1.0,"c_r5":0.0371,"c_r15":0.2563,"c_mc":4.5412}}
 {"t":1794510421190,"addr":"AWxAApqJVdrAvrweX9di5jz1cYx9wcUPSn3VmL1vpump","sym":"MEMECARDS","age":30.5,"why":"liquidity","liq":1615}
 {"t":1794510541201,"addr":"99hVefYN8p8suhZNshzh9FuAsrh4ezsZTo3XtFyepump","sym":"Robinhood","age":30.7,"why":"liquidity","liq":1497}
+{"t":1794510781851,"addr":"AiBDHp4ryJg3SVn16HwZScT8zE7GjeA9A65UuCn1bonk","sym":"Nvexit","age":30.8,"why":"liquidity","liq":0}
+{"t":1794510781851,"addr":"9tLMyqD68XicGPRb3BhWecvVFcGMsSzjVqSmykpQpump","sym":"Alice","age":30.8,"why":"liquidity","liq":6556}
+{"t":1794510840253,"addr":"J5xM4e1FXnZmvToFsPrZi47uyxKCaQu7k7KSreh8sXFd","sym":"CAPY","age":30.8,"score":0.02828,"px":4.462e-05,"liq":15637,"p0":5.380015963212469e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":2.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.3099,"c_peak":1.7272,"c_vol":5.041,"c_act":1.0,"c_r5":-0.1965,"c_r15":0.693,"c_mc":4.7308}}
+{"t":1794510901639,"addr":"5bGiBRposZYweoAy2A5BzhwM18wAvjLPrDWweHrDpump","sym":"USP","age":30.5,"why":"liquidity","liq":5836}
+{"t":1794510960984,"addr":"Fch3ReN9Zq9b7QGesnwuWiDEuNqS7Fz51DWmpppMpump","sym":"FATINU","age":30.2,"why":"liquidity","liq":1709}
