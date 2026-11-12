@@ -1,6 +1,6 @@
 // Copy-trading engine of the Trencher (paper money only): turns a followed wallet's on-chain transactions into its buys and sells,
 // and keeps the copy account (cash, positions, activity, equity curve). Pure functions, no browser APIs: node tests them (test_copy.mjs).
-import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.11";
+import { buy, sell, newBook, liquidationValue } from "./sim.js?v=0.9.12";
 
 // The "FOMO Terminal" of the third video (2026-11-11, read from its frames): ONE position, almost all-in, stop -6 % under the
 // entry, no half sale, the whole position trails; coins from the trending list with 150k to 2.5M $ market cap, at least

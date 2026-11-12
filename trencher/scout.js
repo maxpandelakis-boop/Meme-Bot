@@ -1,8 +1,8 @@
 // The desk's Scout data, shared by the page (copy.js) and the 24/7 runner (desk-runner.mjs): hot coins from every free source
 // (GeckoTerminal trending, DexScreener boosts + new profiles + pair stats, Reddit mentions when a Reddit app ID is set) -> scored.
 // No browser APIs: `getJson(url)`, `gt(path)` and `reddit()` are passed in.
-import { bestPair } from "./sim.js?v=0.9.11";
-import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.11";
+import { bestPair } from "./sim.js?v=0.9.12";
+import { redditMentions, scoreHot } from "./copy-engine.js?v=0.9.12";
 
 export const DS = "https://api.dexscreener.com";
 export const DEX = mints => `${DS}/latest/dex/tokens/${mints.join(",")}`;
