@@ -122,3 +122,5 @@
 {"t":1794454440961,"addr":"FdF1UjXLvSLoUyAVnGFUrnbzJviaY6gKcwktFzF4C7Gh","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":0}
 {"t":1794454621139,"addr":"BcqtcKE8vXXdmdgTRpCfMcSD8LQ4GfNm48M1Kxvupump","sym":"Osaru","age":31.0,"score":0.01698,"px":5.313e-05,"liq":16506,"p0":5.787872649675071e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":1.0832,"c_peak":2.0638,"c_vol":5.2795,"c_act":1.0,"c_r5":0.0516,"c_r15":-0.004,"c_mc":4.7625}}
 {"t":1794454740934,"addr":"EVJaV5GaPqaG3ynzgsD68CRX9sLJ1iKJrvqVGeJKhGgW","sym":"WORM","age":31.0,"why":"liquidity","liq":0}
+{"t":1794454800785,"addr":"FvdtAMi8GQjkRhzb9KXVPFPHMqsHP8Z7EERDRPdHmoon","sym":"Ukrnew","age":30.8,"why":"liquidity","liq":0}
+{"t":1794454800785,"addr":"C5Jnxa1WT4EGouKzq2U8MbUyPddLYGBC79HczqWSpump","sym":"GABOON","age":30.4,"why":"liquidity","liq":1603}
