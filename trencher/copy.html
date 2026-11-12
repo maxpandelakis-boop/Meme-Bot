@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07080b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trencher">
+<link rel="manifest" href="app-manifest.json">
+<link rel="icon" href="icons/app-192.png">
+<link rel="apple-touch-icon" href="icons/app-180.png">
+<title>Trencher Trading Desk</title>
+<link rel="stylesheet" href="copy.css?v=0.9.12">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Trading Desk</span>
+  <span id="live" class="pill">● PAPER</span>
+  <span id="ver" class="muted tiny"></span>
+  <button id="shareBtn" class="right tiny link" title="Stand teilen">⇪ Teilen</button>
+  <button id="installBtn" class="tiny link" style="display:none">⬇ Als App installieren</button>
+  <a id="liveLink" href="echtgeld.html" target="_blank" class="tiny link" title="Echtgeld-Schalter (standardmäßig AUS)">Echtgeld ↗</a>
+</header>
+<div id="ticker" class="ticker"><b>FOMO TERMINAL</b><span id="tickerList"></span></div>
+
+<main>
+  <!-- HOME -->
+  <section id="home" class="page on">
+   <div class="homeL">
+    <div class="modes" id="modes"><button data-m="local" class="on">Dieser Browser</button><button data-m="server">☁ Große 24/7</button><button data-m="fresh">☁ Frisch 24/7</button></div>
+    <div id="serverInfo" class="tiny"></div>
+    <div id="deskSub" class="muted tiny desksub">–</div>
+    <div class="balance"><span id="bal" class="bal">$0<span class="cents">.00</span></span></div>
+    <div class="since"><span id="since">–</span> <span id="mult" class="mult">1.00×</span></div>
+    <div class="chartwrap"><div id="chart"></div></div>
+    <div class="ranges" id="ranges"><button data-r="live" class="on">● LIVE</button><button data-r="1h">1H</button><button data-r="4h">4H</button><button data-r="1d">1D</button><button data-r="1w">1W</button><button data-r="all">ALL</button></div>
+
+    <div class="sect"><b>Agents</b><span id="agentsInfo" class="tiny">–</span></div>
+    <ol id="v3rows" class="v3rows"></ol>
+    <div class="acards" id="agentCards">
+      <div class="acard"><div class="ah"><span class="ai s">◉</span><div><b>Scout</b><span id="aScoutSub" class="dot">–</span></div></div><ol id="aScout" class="alist"></ol></div>
+      <div class="acard"><div class="ah"><span class="ai c">▲</span><div><b>Compounder</b><span id="aCompSub" class="dot y">–</span></div></div>
+        <div class="comp"><svg viewBox="0 0 64 64" class="ring"><circle cx="32" cy="32" r="27" class="rbg"/><circle id="ringFg" cx="32" cy="32" r="27" class="rfg"/><text x="32" y="37" text-anchor="middle">10×</text></svg>
+        <div><span class="muted tiny">nächstes Ziel</span><b id="aGoal">$200</b><span id="aNext" class="pos tiny">–</span></div></div></div>
+      <div class="acard"><div class="ah"><span class="ai e">◆</span><div><b>Executor</b><span id="aExecSub" class="dot">Spielgeld-Fills</span></div></div><ol id="aExec" class="alist"></ol></div>
+      <div class="acard"><div class="ah"><span class="ai r">■</span><div><b>Risk</b><span id="aRiskSub" class="dot r">–</span></div></div><ol id="aRisk" class="alist"></ol></div>
+    </div>
+    <div class="row"><button id="runBtn" class="run">▶ Bot starten</button></div>
+   </div>
+   <div class="homeR">
+
+    <div class="sect"><b>Activity</b><button id="seeAll" class="link tiny">Alle ansehen</button></div>
+    <ol id="actHome" class="acts"></ol>
+    <span id="actInfo" hidden></span>
+    <div class="sect"><b>Live-Log</b><span class="muted tiny">jede Entscheidung der Agents</span></div>
+    <div id="logHome" class="logbox loghome"></div>
+   </div>
+  </section>
+
+  <!-- COIN -->
+  <section id="coin" class="page">
+    <button id="coinBack" class="link tiny">‹ Home</button>
+    <div class="who coinhead"><span id="cAv"></span><div><b id="cName">–</b><span id="cMeta" class="muted tiny">–</span></div><a id="cLink" class="right link tiny" target="_blank" rel="noopener">DexScreener ↗</a></div>
+    <div id="cMc" class="bal">–</div>
+    <div id="cSince" class="since">–</div>
+    <div class="chartwrap"><div id="cChart"></div></div>
+    <div class="sect"><b id="cRulesHead">Desk rules</b><span id="cRulesInfo" class="tiny muted">–</span></div>
+    <ol id="cRules" class="rules2"></ol>
+    <div class="posbox"><div class="row"><b>Position</b><b id="cPosVal" class="right">–</b></div><div id="cPosSub" class="muted tiny">–</div>
+      <div class="row"><button id="cSell" class="ghost">Jetzt verkaufen</button></div></div>
+  </section>
+
+  <!-- AGENTS -->
+  <section id="agents" class="page">
+    <h2>Chief of Staff</h2>
+    <div id="chatBox" class="chatbox"></div>
+    <form id="chatForm" class="chatform"><input id="chatIn" placeholder="z. B. halte den Desk klein · stop 8% · status" autocomplete="off"><button>↑</button></form>
+    <a id="chatLink" class="link tiny" target="_blank" rel="noopener" style="display:none">config.json auf GitHub öffnen ↗</a>
+    <h2>Wallets folgen (optional)</h2>
+    <div class="sect"><span class="muted tiny">Kauft eine Wallet, kauft der Desk nach (die Desk-Regeln gelten auch hier).</span><span id="gridInfo" class="muted tiny">–</span></div>
+    <div id="grid" class="grid"></div>
+    <p class="muted tiny">Der Knopf sucht heiße Coins (GeckoTerminal, DexScreener, Reddit) und darin die Wallets mit dem meisten Gewinn. Oder Name und Solana-Wallet selbst eintragen. Kauft ein Trader, kauft der Bot nach; verkauft er, verkauft der Bot.</p>
+    <button id="findBtn" class="find">🔍 Gute Trader finden</button>
+    <div id="findMsg" class="tiny muted"></div>
+    <div class="sect"><h2 style="margin:0">Top Trader <span class="muted tiny">aus den heißen Coins</span></h2><button id="followTop" class="link tiny" style="display:none">Top 4 folgen</button></div>
+    <ol id="findList" class="traders"><li class="empty">Noch keine Suche. Oben „Gute Trader finden“ drücken (dauert ca. 30 Sekunden).</li></ol>
+    <details id="hotBox" style="display:none"><summary id="hotHead" class="tiny muted">Heiße Coins, in denen gesucht wurde (GeckoTerminal · DexScreener · Reddit)</summary>
+    <ol id="hotList" class="traders"></ol></details>
+    <h2>Deine Trader</h2>
+    <ol id="traderList" class="traders"></ol>
+    <div class="addrow">
+      <input id="tName" placeholder="Name (z. B. aiwass)">
+      <input id="tWallet" placeholder="Wallet-Adresse" spellcheck="false">
+      <button id="tAdd">+ Hinzufügen</button>
+    </div>
+    <div id="tMsg" class="tiny muted"></div>
+    <h2>Regeln</h2>
+    <p id="rulesServer" class="tiny muted" style="display:none">Das sind die Regeln des Server-Desks (nur ansehen). Ändern: im Chat schreiben oder <a class="link" target="_blank" rel="noopener" href="https://github.com/maxpandelakis-boop/Meme-Bot/edit/desk-data/config.json">config.json auf GitHub</a>.</p>
+    <div class="rules" id="rules"></div>
+    <div class="presets"><span class="muted tiny">Fertige Regeln:</span>
+      <button id="rulesReset" class="ghost tiny">Trading Desk (Video 2)</button>
+      <button id="presetV3" class="ghost tiny">FOMO Terminal (Video 3)</button></div>
+    <p id="presetNote" class="muted tiny"></p>
+    <h2>Reddit (optional, kostenlos)</h2>
+    <p class="muted tiny">Eigene Reddit-App vom Typ „installed app“ unter reddit.com/prefs/apps anlegen und hier ihre ID eintragen. Kein Passwort, kein Geheimnis nötig.</p>
+    <div class="addrow"><input id="redditId" placeholder="Reddit-App-ID" spellcheck="false" autocomplete="off"></div>
+    <div id="redditMsg" class="tiny muted"></div>
+  </section>
+
+  <!-- ACTIVITY -->
+  <section id="activity" class="page">
+    <div class="sect"><b>Activity</b><span id="actInfo2" class="muted tiny"></span></div>
+    <div class="filters" id="filters"><button data-f="all" class="on">All</button><button data-f="copy">Käufe</button><button data-f="exit">Verkäufe</button><button data-f="rule">Regeln</button><button data-f="log">Log</button></div>
+    <ol id="actAll" class="acts"></ol>
+    <div id="logBox" class="logbox" style="display:none"></div>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section id="account" class="page">
+    <div class="balance"><span id="bal2" class="bal">$0</span></div>
+    <div id="since2" class="since">–</div>
+    <div class="tiles">
+      <div><span>Trades</span><b id="sCopies">–</b></div>
+      <div><span>Profit</span><b id="sProfit">–</b></div>
+      <div><span>Best exit</span><b id="sBest">–</b></div>
+      <div><span>Regeln</span><b id="sBehind">–</b></div>
+      <div><span>Bargeld</span><b id="sCash">–</b></div>
+      <div><span>Gebühren bezahlt</span><b id="sFees">–</b></div>
+    </div>
+    <h2>Pro Quelle</h2>
+    <ol id="perTrader" class="acts"></ol>
+    <h2>Offene Positionen</h2>
+    <ol id="openPos" class="acts"></ol>
+    <div class="row"><button id="payInBtn" class="ghost">＋ Einzahlen</button><button id="payOutBtn" class="ghost">－ Auszahlen</button></div>
+    <div id="payInfo" class="muted tiny"></div>
+    <div class="row"><button id="notifBtn" class="ghost">🔔 Benachrichtigungen an</button></div>
+    <div class="row"><button id="resetAcc" class="ghost">Neu starten mit <span id="depLbl">$20</span> Spielgeld</button></div>
+    <p class="muted tiny">Nur Simulation: keine Wallet, keine Schlüssel, kein echtes Geld. Gebühren wie FOMO (unter 5 $: 0,10 $ · bis 47,50 $: 2 % · bis 190 $: 0,95 $ · darüber 0,5 %, bei Kauf und Verkauf), Slippage nach Pool-Größe.</p>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+<div id="paySheet" class="sheet" hidden>
+  <form id="payForm" class="sheetbox">
+    <b id="payTitle">Einzahlen</b><span class="muted tiny">Spielgeld. Es wird nichts echt bezahlt.</span>
+    <div class="quick" id="payQuick"><button type="button" data-a="20">$20</button><button type="button" data-a="100">$100</button><button type="button" data-a="250">$250</button><button type="button" data-a="500">$500</button></div>
+    <input id="payAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Betrag in $">
+    <div id="payMsg" class="tiny neg"></div>
+    <div class="row"><button type="button" id="payCancel" class="ghost">Abbrechen</button><button id="payOk" class="run">Einzahlen</button></div>
+  </form>
+</div>
+
+<nav class="bottom">
+  <button data-p="home" class="on"><span>⌂</span>Home</button>
+  <button data-p="agents"><span>☺</span>Agents</button>
+  <button data-p="activity"><span>∿</span>Activity</button>
+  <button data-p="account"><span>◉</span>Account</button>
+</nav>
+<script src="lib/lightweight-charts.standalone.production.js"></script>
+<script type="module" src="copy.js?v=0.9.12"></script>
+</body>
+</html>
