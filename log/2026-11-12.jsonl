@@ -760,3 +760,4 @@
 {"t":1794515520933,"addr":"141wvsbdoS3aBR4wj6xxoE7Qf34dMkwPqDNXKAeSbonk","sym":"Melsiren","age":30.8,"why":"liquidity","liq":0}
 {"t":1794515580669,"addr":"FiobQJe9nAnEGvWxVpY2nWovpGgQrxTFWi7fjep8FjLJ","sym":"FLOW","age":30.7,"why":"liquidity","liq":7667}
 {"t":1794515580669,"addr":"6bAvuX7xQv5qGAa2jXnputoF1hKEzrPPZ9vQ44HpPqAq","sym":"\u9ed1\u5929\u9e45","age":30.4,"score":0.04154,"px":3.269e-05,"liq":45122,"p0":3.1429432707821675e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.5096,"c_peak":1.0046,"c_vol":5.0858,"c_act":1.0,"c_r5":0.0957,"c_r15":0.3409,"c_mc":4.4973}}
+{"t":1794515700777,"addr":"3cEXSrHj7J6XTPq3iCnHRDXFEBMaHZTvYq2sf88spump","sym":"Rockstar","age":31.0,"why":"liquidity","liq":1504}
