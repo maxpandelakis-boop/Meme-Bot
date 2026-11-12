@@ -323,3 +323,5 @@
 {"t":1794476761016,"addr":"G1y9dTXKpLUX7g7xd2NPs2rtCET5uJrX47D2ZQZ3BAGS","sym":"Ejaw","age":30.2,"why":"liquidity","liq":0}
 {"t":1794476821339,"addr":"3nbyewWBZaQi1h9bwtevyChrXjvnCQuiKRkSce7Bv9hB","sym":"\u725b\u903c\u732b","age":30.1,"why":"liquidity","liq":0}
 {"t":1794476880605,"addr":"AWnL4tdbpSvqDcVM8qa2DCxjjjwPLR6FYjEZKyLAxLZN","sym":"Flying Cat","age":30.5,"score":0.01409,"px":5.961e-05,"liq":63479,"p0":5.637543070676174e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9828,"c_peak":1.0,"c_vol":5.2103,"c_act":1.0,"c_r5":0.1538,"c_r15":0.6063,"c_mc":4.7511}}
+{"t":1794477300614,"addr":"4QAUBTCPR19zhb4rBTShsogBpVpwt5bMhjoEo77fR1Jt","sym":"Green cat","age":31.0,"why":"liquidity","liq":0}
+{"t":1794477300614,"addr":"EfTiN4EUei9vezmhae3zdK3jQ6Px1NUWwUTzMb2Zmoon","sym":"NVOWL","age":30.0,"why":"liquidity","liq":0}
