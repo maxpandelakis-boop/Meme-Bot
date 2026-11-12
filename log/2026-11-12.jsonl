@@ -11,3 +11,4 @@
 {"t":1794443400893,"addr":"CRaU9rGWnAUNAyewMiKQLnpUurwEkykxSY3YYdyCpump","sym":"LORI","age":30.3,"why":"liquidity","liq":8741}
 {"t":1794443460502,"addr":"57nZpz83mLBPRUaaE3NwPhDTDwJcAXXB8dA8pNk5pump","sym":"Megchair","age":30.2,"why":"liquidity","liq":0}
 {"t":1794443761022,"addr":"6u58h83PkULmrCuaSUhcxsnCZK1TcfVyGAChQ1aQpump","sym":"Rockstar","age":30.1,"why":"liquidity","liq":1554}
+{"t":1794443940617,"addr":"4r3M7v8nG8i7ttVt8xrNYhzR4hCZAZVZCZSTiCWopYRp","sym":"CALLSCOUT","age":30.8,"score":0.02529,"px":4.068e-05,"liq":52667,"p0":4.008333860100194e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.7235,"c_peak":1.0359,"c_vol":5.218,"c_act":1.0,"c_r5":0.1581,"c_r15":0.4002,"c_mc":4.603}}
