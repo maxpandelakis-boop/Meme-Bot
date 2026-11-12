@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Meme Trencher (Paper)",
   "version": "0.9.12",
-  "description": "Paper trading desk for Solana meme coins (Scout, Compounder, Risk, 24/7 view). Fake money only, never touches a wallet.",
+  "description": "Paper trading desk for Solana meme coins (Scout, Compounder, Risk, 24/7 view). Fake money by default. The optional Echtgeld switch uses its own small wallet and is off until you turn it on.",
   "permissions": [
     "sidePanel",
     "storage"
@@ -13,7 +13,9 @@
     "https://api.rugcheck.xyz/*",
     "https://solana-rpc.publicnode.com/*",
     "https://www.reddit.com/*",
-    "https://oauth.reddit.com/*"
+    "https://oauth.reddit.com/*",
+    "https://lite-api.jup.ag/*",
+    "https://api.jup.ag/*"
   ],
   "background": {
     "service_worker": "background.js"
