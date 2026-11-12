@@ -389,3 +389,5 @@
 {"t":1794483960068,"addr":"6RwrrJMapN5YzMJbLyN2LHxdHrnYisAWzxinQs3rpump","sym":"HEIRLOOM","age":30.7,"why":"liquidity","liq":2441}
 {"t":1794483960068,"addr":"3Yoj6vQYTHfFVVBwHGNDbxBhh6R7iw41BSrNSGJ4pump","sym":"Parrot","age":30.5,"score":0.0268,"px":5.23e-05,"liq":16772,"p0":5.509133932960628e-05,"bars":6,"buy":false,"f":{"f_curve_min":64.3833,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":3.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4179,"c_peak":2.0264,"c_vol":5.3052,"c_act":1.0,"c_r5":-0.2978,"c_r15":-0.4975,"c_mc":4.7411}}
 {"t":1794484020926,"addr":"EXHKDuu4hqwLYfxEEqE66Y8AiZkyztAMF13cVKXpump","sym":"NASLAMP","age":30.1,"why":"liquidity","liq":0}
+{"t":1794484200803,"addr":"8sBvfS3sGABZb1wb24a3D2c9zfd83dDTTzzkZhMebeQz","sym":"FISH DOG","age":30.7,"why":"liquidity","liq":0}
+{"t":1794484381059,"addr":"GmLRxL5447e81LDbbJUpz8xNSNXmWjovczpXM5APs1EQ","sym":"Green cat","age":30.7,"why":"liquidity","liq":0}
