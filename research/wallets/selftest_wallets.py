@@ -103,7 +103,41 @@ def hand():
     assert abs(d - (v - 20 - 0.40 - 0.02 * v)) < 1e-6, d
 
 
+def round2():
+    """kernel2: the mirror exit equals round 1's kernel; take profit and stop by hand."""
+    import wallet_day2 as w2
+    t = np.array([100, 110, 131, 190, 200, 229, 240, 300], np.int64)
+    p = np.array([1.0, 1.1, 1.2, 2.0, 1.9, 1.8, 0.9, 0.5]) * 1e-7
+    u = np.array([7, 2, 3, 4, 2, 5, 6, 7], np.int64)
+    buy = np.array([1, 1, 1, 1, 0, 0, 0, 0], bool)
+    z = np.zeros(8, np.int64)
+    ev = wd.events(z, t, u, buy, z + 10 ** 8, np.ones(8) * 1e9, p, np.zeros(8), np.array([99], np.int64), 10 ** 9)
+    r, how, ent = w2.kernel2(ev["i"], ev["sell_i"], z, t, p, np.array([8]), np.array([-1]), 10 ** 9, 30, np.array([1.5, 2.0]), np.array([0.8, 0.7]))
+    e = list(ev["u"]).index(7)                     # wallet 7 buys at 100 and sells at 300: entry 1.2, mirror exit at 0.5
+    en = 1.2 * 1.01
+    assert ent[e] == 2 and abs(r[e, 0] - 0.5 * 0.99 / en) < 1e-6 and how[e, 0] == 2
+    assert abs(r[e, 1] - 2.0 * 0.99 / en) < 1e-6 and how[e, 1] == 5          # +50% reached at 2.0
+    assert abs(r[e, 2] - 0.5 * 0.99 / en) < 1e-6 and how[e, 2] == 6          # 2.0 is not +100% after slippage; 0.9 is above -30%; 0.5 stops
+    assert abs(r[e, 3] - 0.5 * 0.99 / en) < 1e-6 and how[e, 3] == 1
+    rng = np.random.default_rng(5)
+    for seed in range(20):
+        n = 400
+        m = np.sort(rng.integers(0, 5, n)).astype(np.int64); tt = np.zeros(n, np.int64)
+        for c in range(5):
+            k = m == c; tt[k] = 1000 + np.cumsum(rng.integers(0, 30, k.sum()))
+        pp = 3e-8 * np.exp(np.cumsum(rng.normal(0, 0.3, n))); uu = rng.integers(0, 15, n).astype(np.int64); bb = rng.random(n) < 0.6
+        rs = np.where(rng.random(n) < 0.01, 9e10, 0.0)
+        ev = wd.events(m, tt, uu, bb, np.full(n, 10 ** 8, np.int64), np.ones(n) * 1e9, pp, rs, np.full(5, -1, np.int64), int(tt.max()) - 300)
+        ends = np.array([np.flatnonzero(m == c)[-1] + 1 for c in range(5)], np.int64)
+        gi = np.array([next((i for i in np.flatnonzero(m == c) if rs[i] >= wd.GRAD), -1) for c in range(5)], np.int64)
+        r, how, ent = w2.kernel2(ev["i"], ev["sell_i"], m, tt, pp, ends, gi, int(tt.max()) - 300, 30, np.array([1.5, 2.0]), np.array([0.8, 0.7]))
+        ok = ent >= 0
+        assert np.array_equal(ent, ev["ent"]) and np.allclose(r[ok, 0], ev["r"][ok], rtol=1e-5) and np.array_equal(how[ok, 0], ev["how"][ok])
+        assert np.allclose(r[ok, 3], ev["rh"][ok], rtol=1e-5)
+
+
 if __name__ == "__main__":
     hand()
+    round2()
     n = sum(case(s) for s in range(60))
     print("selftest_wallets ok,", n, "events checked")

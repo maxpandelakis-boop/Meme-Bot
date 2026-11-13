@@ -222,7 +222,7 @@ def events(m, t, u, buy, sol, tok, price, rs, cr, data_end):
         gi[gm] = ig[gf]
     order = np.argsort(ev_i, kind="stable")
     ev_i, ev_pid, ev_sell = ev_i[order], ev_pid[order], ev_sell[order]
-    out = dict(i=ev_i, m=m[ev_i].astype(np.int32), u=u[ev_i], t=t[ev_i], buy_sol=(sol[ev_i] / 1e9).astype(np.float32),
+    out = dict(i=ev_i, sell_i=ev_sell, m=m[ev_i].astype(np.int32), u=u[ev_i], t=t[ev_i], buy_sol=(sol[ev_i] / 1e9).astype(np.float32),
                hold=np.where(ev_sell >= 0, t[np.maximum(ev_sell, 0)] - t[ev_i], -1).astype(np.int32),
                own_in=own_in[ev_pid].astype(np.float32),
                own_pnl=(own_out[ev_pid] - own_in[ev_pid] + np.maximum(net[ev_pid], 0) * p_last[m[ev_i]]).astype(np.float32),
