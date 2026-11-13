@@ -102,3 +102,4 @@
 {"t":1794540000603,"addr":"9xxn4jNw5Rt2uSs3FgjTKLscQMBASPzt4MpRi1HKpump","sym":"DOOMSDAY","age":30.6,"why":"liquidity","liq":3512}
 {"t":1794540240869,"addr":"5wDZUstBipUFYhJ3GU2qt4qgrp4niv3ud1i4wXZKhAvp","sym":"PICO","age":30.4,"why":"liquidity","liq":0}
 {"t":1794540301365,"addr":"31xhLn3ffHCVEYKm2S43jc32LUhGy9msm5QPVmG8a1T6","sym":"Intel AI","age":30.0,"why":"liquidity","liq":0}
+{"t":1794540600076,"addr":"HCNhQCu5nrmWhSE3mo7fRU9eGiGLmi2fnE8omgLpump","sym":"DCI","age":43.5,"why":"no candles"}
