@@ -411,3 +411,5 @@
 {"t":1794575101229,"addr":"68GiamdPcYB22MSvCCt4wFmvw9mBsVJ3ewLFBLVnAEwd","sym":"Gang Cat","age":31.0,"why":"liquidity","liq":0}
 {"t":1794575760114,"addr":"FyRxSG5tMQ9unGPJhv6eGUYT4QspRwVotq4AjWD6nYSD","sym":"JENSEN","age":30.0,"why":"liquidity","liq":0}
 {"t":1794575880628,"addr":"5GsrC4yo323ypmjFZDaGh3YhaEhyyDVLDbVRVyvkbonk","sym":"Hormuz","age":30.8,"why":"liquidity","liq":0}
+{"t":1794576300462,"addr":"58WWXkJcEwVmz7pJ2AL18JZqP5G9KeurSCu5h3FCpump","sym":"short","age":30.7,"why":"liquidity","liq":1847}
+{"t":1794576300462,"addr":"H2Krkwtt1gtTNN9HtZygWHUZ7yNJQFGyv7EE1vPmpmSt","sym":"Intel AI","age":30.7,"why":"liquidity","liq":0}
