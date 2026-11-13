@@ -1,0 +1,68 @@
+pairs with a qualifying buy: 19950348 wallets 4142820 coins 50930
+
+== dev days (per 20 $ ticket) ==
+  S1   1 min exit a all fomo n     658 avg   2.78 95%  -1.90.. 11.23 in profit 32.5%
+  S1   1 min exit a all jup  n     658 avg   3.48 95%  -1.15.. 11.40 in profit 42.4%
+  S1   1 min exit a two fomo n     160 avg  -2.45 95%  -6.30..  3.01 in profit 34.4%
+  S1   1 min exit a two jup  n     160 avg  -1.79 95%  -5.77..  3.54 in profit 45.0%
+  S1   1 min exit b all fomo n     740 avg  -0.45 95%  -1.83..  1.16 in profit 32.2%
+  S1   1 min exit b all jup  n     740 avg   0.26 95%  -1.23..  1.91 in profit 42.4%
+  S1   1 min exit b two fomo n     222 avg  -2.30 95%  -3.90.. -0.34 in profit 35.1%
+  S1   1 min exit b two jup  n     222 avg  -1.61 95%  -3.23..  0.24 in profit 45.9%
+  S1   1 min exit h all fomo n     460 avg  -1.09 95%  -2.66..  1.18 in profit 59.8%
+  S1   1 min exit h all jup  n     460 avg  -0.40 95%  -2.01..  1.90 in profit 67.2%
+  S1   1 min exit h two fomo n     290 avg  -1.63 95%  -3.46..  0.43 in profit 62.1%
+  S1   1 min exit h two jup  n     290 avg  -0.93 95%  -2.83..  1.32 in profit 70.3%
+  S1   5 min exit a all fomo n     592 avg   2.17 95%  -2.73.. 10.55 in profit 26.7%
+  S1   5 min exit a all jup  n     592 avg   2.86 95%  -2.03.. 11.67 in profit 34.6%
+  S1   5 min exit a two fomo n     156 avg  -2.58 95%  -6.55..  2.49 in profit 33.3%
+  S1   5 min exit a two jup  n     156 avg  -1.93 95%  -5.91..  3.05 in profit 42.9%
+  S1   5 min exit b all fomo n     506 avg  -1.76 95%  -2.94.. -0.34 in profit 30.2%
+  S1   5 min exit b all jup  n     506 avg  -1.07 95%  -2.28..  0.33 in profit 37.4%
+  S1   5 min exit b two fomo n     136 avg  -4.77 95%  -7.11.. -1.64 in profit 37.5%
+  S1   5 min exit b two jup  n     136 avg  -4.13 95%  -6.49.. -0.78 in profit 43.4%
+  S1   5 min exit h all fomo n     391 avg  -1.69 95%  -3.08.. -0.15 in profit 50.4%
+  S1   5 min exit h all jup  n     391 avg  -1.01 95%  -2.54..  0.62 in profit 60.1%
+  S1   5 min exit h two fomo n     175 avg  -3.04 95%  -5.47.. -0.54 in profit 46.9%
+  S1   5 min exit h two jup  n     175 avg  -2.36 95%  -4.76..  0.17 in profit 68.6%
+  S2   1 min exit a all fomo n     246 avg  -0.57 95%  -3.62..  2.61 in profit 27.6%
+  S2   1 min exit a all jup  n     246 avg   0.11 95%  -3.12..  3.54 in profit 41.5%
+  S2   1 min exit a two fomo n      33 avg  -7.57 95% -14.13.. -1.33 in profit 24.2%
+  S2   1 min exit a two jup  n      33 avg  -6.97 95% -13.63.. -0.26 in profit 39.4%
+  S2   1 min exit b all fomo n     418 avg  -1.00 95%  -2.73..  0.80 in profit 28.5%
+  S2   1 min exit b all jup  n     418 avg  -0.30 95%  -1.97..  1.57 in profit 41.6%
+  S2   1 min exit b two fomo n      56 avg  -6.28 95% -10.62.. -1.03 in profit 30.4%
+  S2   1 min exit b two jup  n      56 avg  -5.65 95% -10.36.. -0.27 in profit 41.1%
+  S2   1 min exit h all fomo n      53 avg  -6.61 95% -13.01.. -1.25 in profit 41.5%
+  S2   1 min exit h all jup  n      53 avg  -5.99 95% -11.98.. -0.69 in profit 49.1%
+  S2   1 min exit h two fomo n      19 avg  -2.74 95% -13.62..  3.13 in profit 57.9%
+  S2   1 min exit h two jup  n      19 avg  -2.05 95% -13.12..  3.91 in profit 63.2%
+  S2   5 min exit a all fomo n     138 avg  -3.55 95%  -6.56.. -1.42 in profit 21.7%
+  S2   5 min exit a all jup  n     138 avg  -2.90 95%  -5.95.. -0.67 in profit 27.5%
+  S2   5 min exit a two fomo n      11 avg  -9.40 95% -13.29.. -4.73 in profit 18.2%
+  S2   5 min exit a two jup  n      11 avg  -8.83 95% -12.78.. -4.09 in profit 36.4%
+  S2   5 min exit b all fomo n     150 avg  -3.49 95%  -6.29.. -0.30 in profit 22.7%
+  S2   5 min exit b all jup  n     150 avg  -2.83 95%  -5.66..  0.49 in profit 32.7%
+  S2   5 min exit b two fomo n      35 avg  -9.75 95% -14.97.. -3.20 in profit 22.9%
+  S2   5 min exit b two jup  n      35 avg  -9.18 95% -14.49.. -2.50 in profit 37.1%
+  S2   5 min exit h all fomo n      37 avg  -7.45 95% -13.91..  0.49 in profit 35.1%
+  S2   5 min exit h all jup  n      37 avg  -6.85 95% -13.25..  1.13 in profit 43.2%
+  S2   5 min exit h two fomo n       7 avg   2.76 95%  -1.10..  3.40 in profit 42.9%
+  S2   5 min exit h two jup  n       7 avg   3.53 95%  -0.41..  4.18 in profit 71.4%
+  base 1 min exit a all fomo n 3930837 avg  -8.37 95%    nan..   nan in profit  5.6%
+  base 1 min exit a all jup  n 3930837 avg  -7.84 95%    nan..   nan in profit  5.9%
+  base 1 min exit b all fomo n 3930837 avg  -5.92 95%    nan..   nan in profit  9.0%
+  base 1 min exit b all jup  n 3930837 avg  -5.32 95%    nan..   nan in profit  9.3%
+  base 1 min exit h all fomo n 3930837 avg  -8.64 95%    nan..   nan in profit 13.9%
+  base 1 min exit h all jup  n 3930837 avg  -8.11 95%    nan..   nan in profit 14.9%
+  base 5 min exit a all fomo n 3930837 avg  -7.29 95%    nan..   nan in profit  5.7%
+  base 5 min exit a all jup  n 3930837 avg  -6.74 95%    nan..   nan in profit  6.2%
+  base 5 min exit b all fomo n 3930837 avg  -5.46 95%    nan..   nan in profit  8.5%
+  base 5 min exit b all jup  n 3930837 avg  -4.86 95%    nan..   nan in profit  9.0%
+  base 5 min exit h all fomo n 3930837 avg  -3.30 95%    nan..   nan in profit 13.5%
+  base 5 min exit h all jup  n 3930837 avg  -2.73 95%    nan..   nan in profit 14.9%
+
+== hidden days: the three dev-best cells ==
+  S1   1 min exit a all jup  -> FAIL | dev n 658 avg 3.48 | hidden n 500 avg 2.21 95% -1.05..5.87 99% -1.86..6.90 in profit 46.0% | without best trade 1.82, without best wallet 1.46 | random wallet -6.92 | days in profit 10/17
+  S1   1 min exit b all jup  -> FAIL | dev n 740 avg 0.26 | hidden n 1058 avg -0.01 95% -1.75..1.94 99% -2.21..2.59 in profit 39.0% | without best trade -0.05, without best wallet -0.48 | random wallet -4.36 | days in profit 10/17
+  S1   1 min exit b all fomo -> FAIL | dev n 740 avg -0.45 | hidden n 1058 avg -0.70 95% -2.44..1.19 99% -2.86..1.80 in profit 35.3% | without best trade -0.74, without best wallet -1.17 | random wallet -4.97 | days in profit 8/17
