@@ -6,7 +6,7 @@
 # How it keeps going: a run lasts about 5 h 40 min and its last step starts the next one (only from the default branch); the
 # cron is a safety net that does nothing while a run is going. A push of this file to the thread branch starts one run.
 # Stop it: Actions -> "Wallet live" -> ... -> Disable workflow, or the repository variable WALLET_LIVE=0.
-# Run 1 (13 Nov 12:29 to 18:09 UTC) heard only 64% of its time; from run 2 the recorder listens on two connections at once.
+# Run 1 (13 Nov 12:29 to 18:09 UTC) heard only 64% of its time; from run 2 the recorder listens on two connections at once (run 2: 98%).
 name: Wallet live
 run-name: "Wallet live · ${{ inputs.source || github.event_name }}"
 on:
