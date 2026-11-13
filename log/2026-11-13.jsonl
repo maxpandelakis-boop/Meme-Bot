@@ -409,3 +409,4 @@
 {"t":1794574920667,"addr":"5YrGXjEy7Pv6enymNiGjMUdepjuxeFcqrunjzSZWpump","sym":"Anthropic","age":30.9,"score":0.00486,"px":0.003472,"liq":139076,"p0":0.003473353505397222,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0602,"c_peak":1.0004,"c_vol":4.8972,"c_act":1.0,"c_r5":0.0063,"c_r15":0.0371,"c_mc":6.5407}}
 {"t":1794574920667,"addr":"CU1N3Dd6RQWK2h8X7zNeh6cjbdaiipw7gFXVvkoCmoon","sym":"CLMEET","age":30.7,"why":"liquidity","liq":0}
 {"t":1794575101229,"addr":"68GiamdPcYB22MSvCCt4wFmvw9mBsVJ3ewLFBLVnAEwd","sym":"Gang Cat","age":31.0,"why":"liquidity","liq":0}
+{"t":1794575760114,"addr":"FyRxSG5tMQ9unGPJhv6eGUYT4QspRwVotq4AjWD6nYSD","sym":"JENSEN","age":30.0,"why":"liquidity","liq":0}
