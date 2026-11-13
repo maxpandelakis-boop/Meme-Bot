@@ -241,3 +241,6 @@
 {"t":1794556380630,"addr":"7QfsTgjmcUt8m2HQebAwcXb3saJ6EeAkd9WNTUj9bonk","sym":"MSCLD","age":30.5,"why":"liquidity","liq":0}
 {"t":1794556380630,"addr":"LzEfyzGT9bHWqqCFiN3gpqFqPMQhUuAZSHPSEPBU5RD","sym":"Jacket","age":30.5,"why":"liquidity","liq":0}
 {"t":1794556500737,"addr":"NQpbNEtkYUJy185XjpyvAymKrVjYdx6aaFhXhPLYvoc","sym":"Jacket","age":30.7,"why":"liquidity","liq":0}
+{"t":1794556621342,"addr":"AQYgj12DRwSU2WHfumbDbQWreGrxGXF6J5AzZBdmpump","sym":"Goldfish","age":30.3,"why":"liquidity","liq":2182}
+{"t":1794556680562,"addr":"7By4nMjyfbFHsWMqQikpcd4P1MZQMaRFo2Z3L6jZpump","sym":"ROCKY","age":30.2,"why":"liquidity","liq":2862}
+{"t":1794556741152,"addr":"GDCHQ2QM5eBPWUFydvTXHwDt18Ax2KpwihXZw4kYbonk","sym":"Itboot","age":30.5,"why":"liquidity","liq":0}
