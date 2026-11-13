@@ -250,3 +250,5 @@
 {"t":1794557041020,"addr":"3AETZKQs6HUaf7XDZfDDZJ6Yo7Pcv7kf3z2Df9KApump","sym":"Cole","age":30.6,"why":"liquidity","liq":3131}
 {"t":1794557041020,"addr":"HzqbGjdb6tGx32KqVz93pRAz6YawtpVpS3K6n5sbL4UJ","sym":"FOMOCAT","age":30.6,"score":0.0117,"px":4.579e-05,"liq":50182,"p0":3.8513378154070966e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.6974,"c_peak":1.0144,"c_vol":4.9529,"c_act":1.0,"c_r5":0.1832,"c_r15":0.3794,"c_mc":4.5856}}
 {"t":1794557041020,"addr":"4ajXajrKgRcbWKXqPbQtMkFe3p6HAW5ySMZuSnBjYgkG","sym":"Gang Cat","age":30.3,"why":"liquidity","liq":0}
+{"t":1794557400827,"addr":"Ld1Qu32iGhgTQ56WyMyoFcjVAmitUL1MaLwdWchAWLX","sym":"Jacket","age":30.4,"why":"liquidity","liq":0}
+{"t":1794557400827,"addr":"6KduDRadmEzexchTny7c1TUtoKpZpeA2SGkhARstCjm","sym":"Jacket","age":30.1,"why":"liquidity","liq":0}
