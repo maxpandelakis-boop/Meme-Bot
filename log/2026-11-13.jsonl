@@ -745,3 +745,4 @@
 {"t":1794608280287,"addr":"5fyGXDmWEVUCBWdhncGGxPUt9HaUybxgkYi9rJHAkMYo","sym":"CSI","age":30.5,"why":"liquidity","liq":0}
 {"t":1794608460782,"addr":"6DN9qkg45N7GWvS46zYvUf6ADDYLc9FWYyWim28ut49X","sym":"CWW","age":30.9,"score":0.00959,"px":2.592e-05,"liq":10758,"p0":2.9551122080560185e-05,"bars":6,"buy":false,"f":{"f_curve_min":23.2833,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.1947,"c_peak":2.1078,"c_vol":5.2705,"c_act":1.0,"c_r5":0.3997,"c_r15":0.2014,"c_mc":4.4706}}
 {"t":1794608460782,"addr":"4Z1HZqBwToghsFWHVB4LnF45w4VwbxLLKf71cZMopump","sym":"Almost","age":30.1,"why":"liquidity","liq":8632}
+{"t":1794608820725,"addr":"Cb57pQLzdXtyViHnhnwHvu1e3hMxryH8X2nQvowjXQG","sym":"WISHMAS","age":30.4,"why":"liquidity","liq":0}
