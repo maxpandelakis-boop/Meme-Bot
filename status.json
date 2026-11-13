@@ -1,0 +1,85 @@
+{
+ "rule": "S1 / 1 min / exit A (-30%, 11x, 6 h), round 3 of research/wallets/COPY2-2026-11-13.md",
+ "fake_money_only": true,
+ "updated": "2026-11-14 11:14 UTC",
+ "recording_since": "2026-11-13 12:29 UTC",
+ "recorded_days_in_list_window": 0,
+ "list_days_needed": 21,
+ "listed_wallets": 0,
+ "this_run": {
+  "minutes": 340,
+  "messages_per_s": 324.8,
+  "buys": 1470243,
+  "sells": 1849149,
+  "creates": 716,
+  "pump_creates": 98,
+  "tracked_trades": 368241,
+  "pairs": 23960,
+  "reconnects": 153,
+  "silent_s": 114
+ },
+ "pools_tracked": 444,
+ "pairs_waiting": 25633,
+ "pairs_scored_today": 32574,
+ "pair_days": 2,
+ "paper": {
+  "ticket": 20.0,
+  "open": 0,
+  "waiting": 0,
+  "counted": {
+   "trades": 0,
+   "fomo_fee": 0,
+   "jupiter_fee": 0,
+   "in_profit": 0
+  },
+  "warm_up": {
+   "trades": 0,
+   "fomo_fee": 0,
+   "jupiter_fee": 0
+  }
+ },
+ "open": [],
+ "closed": [],
+ "gaps_last": [
+  [
+   1794622928,
+   1794622960
+  ],
+  [
+   1794623960,
+   1794623990
+  ],
+  [
+   1794625462,
+   1794625509
+  ],
+  [
+   1794626508,
+   1794626557
+  ],
+  [
+   1794628005,
+   1794628049
+  ],
+  [
+   1794633308,
+   1794633363
+  ],
+  [
+   1794633931,
+   1794633978
+  ],
+  [
+   1794635456,
+   1794635486
+  ],
+  [
+   1794638087,
+   1794638130
+  ],
+  [
+   1794642312,
+   1794642355
+  ]
+ ]
+}
