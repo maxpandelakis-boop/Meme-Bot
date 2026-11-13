@@ -405,3 +405,4 @@
 {"t":1794573840663,"addr":"FRRW68z7YSytQtrxWp6fmDtXhGTbcCk7k3bxrGG9vsMw","sym":"Intel AI","age":30.5,"score":0.02004,"px":8.823e-05,"liq":66096,"p0":6.541771373963471e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":26.0,"f_cjk":0.0,"c_ret":1.2859,"c_peak":1.144,"c_vol":5.2999,"c_act":1.0,"c_r5":0.2568,"c_r15":1.0126,"c_mc":4.8157}}
 {"t":1794574080311,"addr":"3BZQXLVHMWtNRQbbFAKZ6NEZNNHVUv8p52k9DT9jHwea","sym":"MORNING","age":30.6,"why":"liquidity","liq":0}
 {"t":1794574140767,"addr":"ZW3dw9bPxTEMRjrNSoM1ic5KeWbkuV8DFS8Q67x4Xrn","sym":"gone","age":30.9,"why":"liquidity","liq":0}
+{"t":1794574260526,"addr":"J5eFeG3dtihdvwFiXLmTgfa6fghFNEqvNLaKkNyppump","sym":"STEP","age":30.4,"why":"liquidity","liq":1891}
