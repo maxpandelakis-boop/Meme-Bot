@@ -320,47 +320,79 @@ class Recorder:
         self.open = left
 
 
+SIG_RE = re.compile(r'"signature":"([1-9A-HJ-NP-Za-km-z]{60,90})"')
+
+
 async def listen(rec, until, push):
+    """Two connections at once (the first run lost 36% of its time: the public node closed the socket every
+    1 to 5 minutes and the spare node was silent). A transaction that both deliver is taken once (by its signature).
+    A stretch of 20 s or more in which neither delivered is written down as a gap."""
     import websockets
-    k = 0; last_save = time.time(); last_tick = 0
-    while time.time() < until:
-        url = WSS[k % len(WSS)]
-        try:
-            async with websockets.connect(url, max_size=None, ping_interval=20, open_timeout=30) as ws:
-                await ws.send(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "logsSubscribe",
-                                          "params": [{"mentions": [AMM]}, {"commitment": "confirmed"}]}))
-                print("listening on", url, flush=True)
-                quiet = 0
-                while time.time() < until:
+    from collections import deque
+    seen = set(); order = deque()
+    sh = dict(last_save=time.time(), last_tick=0, last_msg=time.time())
+
+    def handle(raw):
+        now = time.time()
+        m = SIG_RE.search(raw)
+        if m:
+            sig = m.group(1)
+            if sig in seen:
+                return
+            seen.add(sig); order.append(sig)
+            if len(order) > 200000:
+                seen.discard(order.popleft())
+        if now - sh["last_msg"] >= 20:
+            rec.stat["silent_s"] += int(now - sh["last_msg"])
+            rec.stat["gaps"].append([int(sh["last_msg"]), int(now)])
+        sh["last_msg"] = now
+        rec.stat["msgs"] += 1
+        if '"err":null' not in raw:
+            rec.stat["failed"] += 1
+        else:
+            for mm in DATA_RE.finditer(raw):
+                kind = PREFIX.get(mm.group(1)[:10])
+                if kind:
                     try:
-                        raw = await asyncio.wait_for(ws.recv(), 15)
-                    except asyncio.TimeoutError:
-                        quiet += 15; rec.stat["silent_s"] += 15
-                        if quiet >= 45:
-                            raise RuntimeError("silent for 45 s")
-                        continue
+                        rec.on_event(kind, base64.b64decode(mm.group(1)), now)
+                    except Exception as e:
+                        print("event error", type(e).__name__, str(e)[:100], flush=True)
+        if now - sh["last_tick"] >= 5:
+            sh["last_tick"] = now; rec.tick(now)
+            if now - sh["last_save"] >= 600:
+                sh["last_save"] = now; rec.save(); commit(rec.data, push)
+
+    async def one(name, compression, wait):
+        await asyncio.sleep(wait)
+        n = 0
+        while time.time() < until:
+            try:
+                async with websockets.connect(WSS[0], max_size=None, ping_interval=20, open_timeout=30,
+                                              compression=compression) as ws:
+                    await ws.send(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "logsSubscribe",
+                                              "params": [{"mentions": [AMM]}, {"commitment": "confirmed"}]}))
                     quiet = 0
-                    now = time.time()
-                    rec.stat["msgs"] += 1
-                    if '"err":null' not in raw:
-                        rec.stat["failed"] += 1
-                    else:
-                        for mm in DATA_RE.finditer(raw):
-                            kind = PREFIX.get(mm.group(1)[:10])
-                            if kind:
-                                try:
-                                    rec.on_event(kind, base64.b64decode(mm.group(1)), now)
-                                except Exception as e:
-                                    print("event error", type(e).__name__, str(e)[:100], flush=True)
-                    if now - last_tick >= 5:
-                        last_tick = now; rec.tick(now)
-                        if now - last_save >= 600:
-                            last_save = now; rec.save(); commit(rec.data, push)
-        except Exception as e:
-            rec.stat["reconnects"] += 1
-            print("websocket %s: %s %s; again in 3 s" % (url, type(e).__name__, str(e)[:120]), flush=True)
-            k += 1
-            await asyncio.sleep(3)
+                    while time.time() < until:
+                        try:
+                            raw = await asyncio.wait_for(ws.recv(), 15)
+                        except asyncio.TimeoutError:
+                            quiet += 15
+                            if quiet >= 30:
+                                raise RuntimeError("silent for 30 s")
+                            continue
+                        quiet = 0
+                        handle(raw)
+            except Exception as e:
+                rec.stat["reconnects"] += 1; n += 1
+                if n <= 20 or n % 20 == 0:
+                    print("websocket %s (%d): %s %s; again in 2 s" % (name, n, type(e).__name__, str(e)[:120]), flush=True)
+                await asyncio.sleep(2)
+        print("connection %s: %d reconnects" % (name, n), flush=True)
+
+    await asyncio.gather(one("A plain", None, 0), one("B deflate", "deflate", 20))
+    now = time.time()
+    if now - sh["last_msg"] >= 20:
+        rec.stat["silent_s"] += int(now - sh["last_msg"]); rec.stat["gaps"].append([int(sh["last_msg"]), int(now)])
 
 
 def commit(data, push):
