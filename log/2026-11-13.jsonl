@@ -369,3 +369,5 @@
 {"t":1794569112119,"addr":"4M9B2HdUfc81eY9w96nuGLAA15amLyeiCY5QcUX27iRj","sym":"FOOD","age":30.7,"score":0.03016,"px":0.001511,"liq":21852,"p0":0.0027425677780215855,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.1927,"c_peak":1.5127,"c_vol":5.1669,"c_act":1.0,"c_r5":0.2097,"c_r15":-0.3945,"c_mc":6.4382}}
 {"t":1794569112119,"addr":"C1DMs2pULCT3j2m19Fx4u139GwmzsMgBqUJVzPFtbonk","sym":"FRBASK","age":30.0,"why":"liquidity","liq":0}
 {"t":1794569280788,"addr":"E6uhMESr7vfGUmmQEiZApbiGTDVP7GEVLFUnsXp5hUMn","sym":"Intel AI","age":30.8,"why":"liquidity","liq":0}
+{"t":1794569520146,"addr":"8ycHHzyR8fQ9fU82WPQw9egQc6eCvfseoKupx8Dzpump","sym":"40X","age":30.8,"why":"liquidity","liq":2100}
+{"t":1794569640866,"addr":"FTBV1u1ypiaHR4FFyyz31ZcAajAJY1hNiphaGAYpDzhR","sym":"JK","age":30.1,"why":"liquidity","liq":0}
