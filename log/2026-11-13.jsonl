@@ -117,3 +117,7 @@
 {"t":1794541920250,"addr":"72Qb9tqRfGu2p5Dnwo4LpyGGVx132zWfywYRNZJNpump","sym":"UODF","age":30.6,"score":0.0115,"px":0.02544,"liq":375202,"p0":0.026649626389207443,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.3084,"c_peak":1.5988,"c_vol":5.5591,"c_act":1.0,"c_r5":0.0733,"c_r15":0.0716,"c_mc":7.4257}}
 {"t":1794542040690,"addr":"3Am2jQTooY3v9RwbqkDQJx1cTi33En7YGtg29sgtpump","sym":"LAST","age":30.7,"why":"liquidity","liq":4944}
 {"t":1794542160936,"addr":"4dEXifmDAsNunAogY4KxCKNjW1piS2kuoZN5w6NDoD6g","sym":"FOODCAT","age":30.2,"why":"liquidity","liq":0}
+{"t":1794542341055,"addr":"J5A2VqWfRAbbHrhN3kWbqoScPKdWRoWr3iBWuMB4N7iW","sym":"SHARKBUX","age":30.3,"why":"liquidity","liq":0}
+{"t":1794542400440,"addr":"9mNF6mf2ytemyAN1nUjvLF5dmRcAhgtGndatUvVbouTd","sym":"JENSEN","age":30.4,"score":0.00906,"px":0.005292,"liq":44130,"p0":0.003895464879908515,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":32.0,"f_cjk":0.0,"c_ret":0.8529,"c_peak":1.0045,"c_vol":5.0549,"c_act":1.0,"c_r5":0.4086,"c_r15":0.2165,"c_mc":6.5906}}
+{"t":1794542400440,"addr":"HXCp1687SMxQf5tRE2kznGG6kP1hpi3BdfKyP5B4pump","sym":"gg","age":30.4,"why":"liquidity","liq":8361}
+{"t":1794542400440,"addr":"HwVjFZcTTp1eg86ENPhMBjeR22x24o3qWhBR3Uzgmoon","sym":"Itcann","age":30.0,"why":"liquidity","liq":0}
