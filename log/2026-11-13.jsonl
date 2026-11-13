@@ -71,3 +71,4 @@
 {"t":1794537240218,"addr":"7vNH3WADPRnp8rvf6fMtWiC4NQC3SFQATmMh9x35pump","sym":"WOHAIHAO","age":30.6,"why":"liquidity","liq":2039}
 {"t":1794537480542,"addr":"BaKz91DUVUXq6auSzBKr8npj9TE5GhToHb5FHit3pump","sym":"X","age":30.9,"why":"liquidity","liq":4248}
 {"t":1794537480542,"addr":"4KSqnhrLMUeAHRLiBfzGfje2GynXYFAeyvc9DoGsmoon","sym":"Outowl","age":30.2,"why":"liquidity","liq":0}
+{"t":1794537720240,"addr":"ENp6xidf8r3e5tD9DvEAQSZxJmQMciufqepAxq3R5DYJ","sym":"KAI","age":30.0,"score":0.01842,"px":5.22e-05,"liq":56156,"p0":5.016391991487418e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.8428,"c_peak":1.006,"c_vol":4.9212,"c_act":1.0,"c_r5":0.1808,"c_r15":0.4628,"c_mc":4.7004}}
