@@ -60,3 +60,9 @@ cell's trades (40% of the cash per trade, at most 2 open, as in the videos), for
 
 Bonding curve only. A 2 s copy needs an own program listening to the chain, not FOMO's copy button. The price impact model is
 the curve's own formula; it ignores other traders reacting to our trade.
+
+## Dev grid seen (2026-11-13 11:52 UTC, walletdata commit b4bf2cd), before the hidden days
+
+6,288 of the 7,680 cells have 150 or more dev trades; 369 have an average above 0 and 38 an interval above 0 (0.6%; chance
+alone would give about 2.5% if every cell were worth exactly 0). The five finalists by the rule above are frozen in
+research/wallets/finalists.json (plus two 1 s cells for information). Nothing else is changed.
