@@ -393,3 +393,5 @@
 {"t":1794572469349,"addr":"ErHnqbcsdnkWbg8pjgEPfaRCn3a7jebZoXdnM5K5Hd7t","sym":"Intel AI","age":30.2,"why":"liquidity","liq":9}
 {"t":1794572700650,"addr":"BwzyCxiBgHwDTimo8384iyYL8WE7xAnumhXK8bNiDLVZ","sym":"COLLECT","age":30.2,"score":0.0117,"px":3.895e-05,"liq":42016,"p0":3.529317011268315e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.7017,"c_peak":1.0221,"c_vol":6.427,"c_act":1.0,"c_r5":0.127,"c_r15":0.3304,"c_mc":4.5477}}
 {"t":1794572940855,"addr":"H9LY4qt8vnPmztfc9cx1fsAKMEsCZMX2P5qUZ89kpump","sym":"Eupact","age":30.6,"why":"liquidity","liq":0}
+{"t":1794573060541,"addr":"FnfPnnznjy62fWU9opvRpzaqv5Cwqc47wiL98tUtmoon","sym":"NVTHR","age":30.1,"why":"liquidity","liq":0}
+{"t":1794573120772,"addr":"8gC8funNRBnjFk2TQaiUFq5WDEVdSg4qXuF1ACkbsaHj","sym":"Nearest","age":30.8,"why":"liquidity","liq":0}
