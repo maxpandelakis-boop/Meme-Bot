@@ -66,3 +66,17 @@ the curve's own formula; it ignores other traders reacting to our trade.
 6,288 of the 7,680 cells have 150 or more dev trades; 369 have an average above 0 and 38 an interval above 0 (0.6%; chance
 alone would give about 2.5% if every cell were worth exactly 0). The five finalists by the rule above are frozen in
 research/wallets/finalists.json (plus two 1 s cells for information). Nothing else is changed.
+
+## Round 3 (written 2026-11-13 12:05 UTC, before any number of it): after the graduation
+
+Round 2 failed on the curve (COPY2-2026-11-13.md). The named FOMO traders trade mostly graduated coins. The repository already
+holds every wallet's first PumpSwap buy (0.1 SOL or more, within 48 h after the graduation) of the coins graduated 10 Aug to
+8 Oct 2026 with what a copy 1, 5, 15 or 60 minutes later would have made (branch "wallets", research/wallet_build.py). The
+earlier test on it (WALLETS-2026-10-21.md) used one fixed wallet list and 126 rules: all lost. New here: lists rebuilt every day
+(the 21 days before, one day lag), FOMO's real fee, and the same finalist rule as round 2.
+
+Cells (48): delay 1 or 5 minutes; exit hold 1.7 h, A (-30%, 11x, 6 h) or B (-20%, 3x, 6 h); list S1 (10+ copies, average above
+0, t at least 2, top 300) or S2 (20+ copies, t at least 3, top 100), scored on the same delay and exit; filter none or "two
+agree"; fee FOMO or Jupiter-like, 20 $ ticket, 1% a side. Days by the wallet's buy: dev 2 to 19 Sep, hidden 20 Sep to 6 Oct.
+The three dev-best cells with 100+ trades (by the 95% interval's lower bound) are judged on the hidden days; pass bar as in
+round 2 (99% interval above 0). A second-level copy after the graduation is not in these data (minutes only).
