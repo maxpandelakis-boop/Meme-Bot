@@ -707,3 +707,7 @@
 {"t":1794604260999,"addr":"FDUa625RYGPEGPEe1v9bJVwY2smi6U1FT7RUzgUThezb","sym":"MICRODUCK","age":30.1,"why":"liquidity","liq":0}
 {"t":1794604380723,"addr":"35w3sS3QzTdL42xaLgW7aHjfoBPaei3G5hhoy31DSiVk","sym":"SQUE","age":30.3,"why":"liquidity","liq":0}
 {"t":1794604440508,"addr":"AVHbD2rgkESZ3QoiKQgr19KH4FaY5MMvLCPr1ni3pump","sym":"GTAMAS","age":41.1,"why":"liquidity","liq":8246}
+{"t":1794604500656,"addr":"8YUjNT9Had6PoMvDBMNz9Rnbp9ksH5JRH4UnuMXtpump","sym":"NASDAQ","age":30.7,"why":"liquidity","liq":1640}
+{"t":1794604560947,"addr":"24qK4EKqcga8p99SViKcgbgmS3UPWqfDamqxvzLVpump","sym":"MBX","age":30.8,"why":"liquidity","liq":3759}
+{"t":1794604620605,"addr":"9YZ8D7jApheHXLbXinm9kxLghu5L2fF7r5xGLyR2acT","sym":"BRACKET","age":30.4,"why":"liquidity","liq":0}
+{"t":1794604741403,"addr":"BwYeG8FHPfJGK7KwFGnUf5sDgKTZzXp8RRNJL1jrGHAL","sym":"JENSEN","age":30.0,"why":"liquidity","liq":0}
