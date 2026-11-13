@@ -187,3 +187,7 @@
 {"t":1794549300783,"addr":"GVDFcLHd3CiyNxWcty2exyZQ9eMby7uPGrTo4pgSmoon","sym":"EULENS","age":30.0,"why":"liquidity","liq":0}
 {"t":1794549780742,"addr":"wrj8VdZa9QMpWD673iXLwEyB8BRWgYHMF8C5dVp5M4F","sym":"MORNING","age":30.9,"score":0.0157,"px":4.873e-05,"liq":56099,"p0":7.222516110488179e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":17.0,"f_cjk":0.0,"c_ret":1.4172,"c_peak":1.0837,"c_vol":5.3703,"c_act":1.0,"c_r5":0.3185,"c_r15":1.0002,"c_mc":4.8587}}
 {"t":1794549780742,"addr":"HB7kTetxSjikN3ivG9KHf4qfAcgZYbi1uTNsg78Tawxz","sym":"\ud83d\udc31Greencat","age":30.4,"why":"liquidity","liq":0}
+{"t":1794549840173,"addr":"BCr3wN3uSrirdvab6Fm9anrR9ZE1xs4oWhsaimHXbonk","sym":"TARCA","age":30.1,"why":"liquidity","liq":0}
+{"t":1794549960750,"addr":"9TfwJiXtcJkWzAVcT4ejPg76E1VuRGALonMMpjbypgN","sym":"JENSEN","age":30.2,"why":"liquidity","liq":0}
+{"t":1794550021337,"addr":"4UT7UQWx9uLdqYk82geX5jpkpBDXNcygv6hGUoyEJgFd","sym":"Intel AI","age":31.0,"why":"liquidity","liq":0}
+{"t":1794550021337,"addr":"3ikSGFqvxat42oRLo3LvuxfFNPgvPLhDP1jQhHs1hGyt","sym":"\ud83d\udc31Greencat","age":30.3,"score":0.01712,"px":6.337e-05,"liq":63958,"p0":5.473374200680529e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":24.0,"f_cjk":0.0,"c_ret":1.1827,"c_peak":1.0066,"c_vol":5.3624,"c_act":1.0,"c_r5":0.6731,"c_r15":0.8788,"c_mc":4.7383}}
