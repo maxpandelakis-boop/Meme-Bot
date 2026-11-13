@@ -1,0 +1,163 @@
+[
+ {
+  "cell": [
+   5,
+   "S4",
+   21,
+   "mc10-30k",
+   "tp100sl30",
+   [
+    "fomo",
+    20
+   ]
+  ],
+  "key": "5s|S4|w21|mc10-30k|tp100sl30|fomo20",
+  "n": 159,
+  "avg": 1.221,
+  "pct": 6.1,
+  "lo": 0.313,
+  "hi": 2.233,
+  "win": 37.1,
+  "days_pos": "8/14",
+  "qualified": true,
+  "info_1s": false
+ },
+ {
+  "cell": [
+   5,
+   "S4",
+   21,
+   "mc10-30k",
+   "tp100sl30",
+   [
+    "jup",
+    20
+   ]
+  ],
+  "key": "5s|S4|w21|mc10-30k|tp100sl30|jup20",
+  "n": 159,
+  "avg": 1.962,
+  "pct": 9.81,
+  "lo": 1.036,
+  "hi": 2.995,
+  "win": 40.3,
+  "days_pos": "13/14",
+  "qualified": true,
+  "info_1s": false
+ },
+ {
+  "cell": [
+   2,
+   "S4",
+   21,
+   "mc10-30k",
+   "mirror",
+   [
+    "jup",
+    20
+   ]
+  ],
+  "key": "2s|S4|w21|mc10-30k|mirror|jup20",
+  "n": 157,
+  "avg": 2.035,
+  "pct": 10.17,
+  "lo": 0.538,
+  "hi": 4.046,
+  "win": 37.6,
+  "days_pos": "10/14",
+  "qualified": true,
+  "info_1s": false
+ },
+ {
+  "cell": [
+   30,
+   "S1",
+   21,
+   "two",
+   "tp100sl30",
+   [
+    "jup",
+    20
+   ]
+  ],
+  "key": "30s|S1|w21|two|tp100sl30|jup20",
+  "n": 378,
+  "avg": 1.167,
+  "pct": 5.84,
+  "lo": 0.455,
+  "hi": 1.863,
+  "win": 37.8,
+  "days_pos": "10/14",
+  "qualified": true,
+  "info_1s": false
+ },
+ {
+  "cell": [
+   5,
+   "S1",
+   21,
+   "two",
+   "tp50sl20",
+   [
+    "jup",
+    20
+   ]
+  ],
+  "key": "5s|S1|w21|two|tp50sl20|jup20",
+  "n": 2865,
+  "avg": 0.425,
+  "pct": 2.13,
+  "lo": 0.264,
+  "hi": 0.58,
+  "win": 40.1,
+  "days_pos": "12/14",
+  "qualified": true,
+  "info_1s": false
+ },
+ {
+  "cell": [
+   1,
+   "S4",
+   21,
+   "mc10-30k",
+   "tp100sl30",
+   [
+    "jup",
+    20
+   ]
+  ],
+  "key": "1s|S4|w21|mc10-30k|tp100sl30|jup20",
+  "n": 160,
+  "avg": 1.44,
+  "pct": 7.2,
+  "lo": 0.489,
+  "hi": 2.242,
+  "win": 36.9,
+  "days_pos": "11/13",
+  "qualified": false,
+  "info_1s": true
+ },
+ {
+  "cell": [
+   1,
+   "S3",
+   21,
+   "mc10-30k",
+   "tp100sl30",
+   [
+    "jup",
+    20
+   ]
+  ],
+  "key": "1s|S3|w21|mc10-30k|tp100sl30|jup20",
+  "n": 160,
+  "avg": 1.549,
+  "pct": 7.75,
+  "lo": 0.205,
+  "hi": 3.102,
+  "win": 36.9,
+  "days_pos": "9/14",
+  "qualified": false,
+  "info_1s": true
+ }
+]
