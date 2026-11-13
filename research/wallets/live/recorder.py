@@ -17,7 +17,7 @@ import argparse, asyncio, base64, gzip, hashlib, json, os, re, subprocess, sys, 
 import numpy as np
 
 AMM = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"
-WSS = ["wss://api.mainnet-beta.solana.com", "wss://solana-rpc.publicnode.com"]
+WSS = ["wss://api.mainnet-beta.solana.com", "wss://api.mainnet-beta.solana.com", "wss://solana-rpc.publicnode.com"]   # the second was silent in the probe
 B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 MIN_BUY = 0.1                      # SOL
 BUY_H, PATH_MIN, DELAY = 48, 360, 60
