@@ -742,3 +742,4 @@
 {"t":1794608040810,"addr":"9UyvkF4J5gTRynxLJ582rP2jqfHwuXcteLLPKHrspump","sym":"PUMPMAS","age":30.7,"why":"liquidity","liq":1862}
 {"t":1794608040810,"addr":"9cmXfuC26anZtH9AUWVzpUxU1UJ7PPogYxftYTepump","sym":"WISHMAS","age":30.6,"score":0.02506,"px":0.0001321,"liq":28099,"p0":0.00014058692562035751,"bars":6,"buy":false,"f":{"f_curve_min":1.815,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":1.8479,"c_peak":1.7225,"c_vol":5.8239,"c_act":1.0,"c_r5":-0.4078,"c_r15":0.6786,"c_mc":5.1479}}
 {"t":1794608100987,"addr":"5bTMiagkhhwAAac4i28x3P6DUyNkdMZpdWEQ5Ujzpump","sym":"RI","age":30.3,"why":"liquidity","liq":1634}
+{"t":1794608280287,"addr":"5fyGXDmWEVUCBWdhncGGxPUt9HaUybxgkYi9rJHAkMYo","sym":"CSI","age":30.5,"why":"liquidity","liq":0}
