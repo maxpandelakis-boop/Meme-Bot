@@ -1,0 +1,79 @@
+# Live paper run of the wallet lead, around the clock (fake money only: nothing is bought anywhere, no wallet, no key).
+# research/wallets/live/recorder.py (on the branch claude/project-thread-412hq7, repository variable WALLET_LIVE_REF for another)
+# listens to public Solana websocket logs of PumpSwap, records every wallet's first buy of freshly graduated pump.fun coins,
+# scores the wallets each day and paper-trades the listed ones (20 $ of fake money per copy; rule and test:
+# research/wallets/COPY2-2026-11-13.md, round 3). State and status.json live on the one-commit branch "walletlive".
+# How it keeps going: a run lasts about 5 h 40 min and its last step starts the next one (only from the default branch); the
+# cron is a safety net that does nothing while a run is going. A push of this file to the thread branch starts one run.
+# Stop it: Actions -> "Wallet live" -> ... -> Disable workflow, or the repository variable WALLET_LIVE=0.
+name: Wallet live
+run-name: "Wallet live · ${{ inputs.source || github.event_name }}"
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'manual (Run workflow) or auto (the run before)'
+        type: choice
+        options: ['manual', 'auto']
+        default: 'manual'
+  schedule:
+    - cron: '23 */2 * * *'           # safety net only
+  push:
+    branches: [claude/project-thread-412hq7]
+    paths: [.github/workflows/wallet-live.yml]
+permissions:
+  contents: write                    # the one-commit branch walletlive
+  actions: write                     # start the next run
+jobs:
+  live:
+    if: (vars.WALLET_LIVE || '1') != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUTF8: '1'
+    steps:
+      - name: Is a run already going? (the safety net then does nothing)
+        id: busy
+        run: |
+          n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow wallet-live.yml --json databaseId,status \
+               --jq "[.[] | select(.status != \"completed\" and (.databaseId|tostring) != \"$GITHUB_RUN_ID\")] | length" || echo 0)
+          echo "others=$n" >> "$GITHUB_OUTPUT"
+          echo "other runs running or waiting: $n"
+      - uses: actions/checkout@v4
+        if: steps.busy.outputs.others == '0'
+        with:
+          ref: ${{ vars.WALLET_LIVE_REF || 'claude/project-thread-412hq7' }}
+          path: code
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        if: steps.busy.outputs.others == '0'
+        with:
+          python-version: '3.12'
+      - name: Packages and selftest
+        if: steps.busy.outputs.others == '0'
+        run: python3 -m pip install --quiet websockets==13.1 numpy==1.26.4 && python3 code/research/wallets/live/selftest_live.py
+      - name: The state (branch walletlive)
+        if: steps.busy.outputs.others == '0'
+        env:
+          URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          if git clone -q --depth 1 --branch walletlive "$URL" data 2>/dev/null; then
+            echo "walletlive: $(git -C data log -1 --format='%h %ci')"
+          else
+            git init -q -b walletlive data && git -C data remote add origin "$URL"
+            printf '%s\n' "# Wallet live run (fake money only)" "" "Written by research/wallets/live/recorder.py: status.json (what the paper account did), pairs/ (wallet buys with their scored copies, wallets as hashes), state.json.gz. Derived from public Solana logs. Nothing is bought." > data/README.md
+            git -C data add -A && git -C data -c user.name=wallet-live -c user.email=wallet-live@users.noreply.github.com commit -q -m "wallet live start"
+            echo "walletlive: new"
+          fi
+      - name: Record and paper-trade (about 5 h 40 min, a save every 10 minutes)
+        id: loop
+        if: steps.busy.outputs.others == '0'
+        run: python3 code/research/wallets/live/recorder.py --data data --minutes 340 --push
+      - name: Start the next run
+        if: steps.loop.outcome == 'success' && github.ref_name == github.event.repository.default_branch
+        continue-on-error: true
+        run: |
+          state=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/wallet-live.yml" --jq .state || echo unknown)
+          if [ "$state" != "active" ]; then echo "workflow $state: no start"; exit 0; fi
+          gh workflow run wallet-live.yml -R "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f source=auto && echo "next run started"
