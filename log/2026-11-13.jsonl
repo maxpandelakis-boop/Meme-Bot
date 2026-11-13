@@ -244,3 +244,9 @@
 {"t":1794556621342,"addr":"AQYgj12DRwSU2WHfumbDbQWreGrxGXF6J5AzZBdmpump","sym":"Goldfish","age":30.3,"why":"liquidity","liq":2182}
 {"t":1794556680562,"addr":"7By4nMjyfbFHsWMqQikpcd4P1MZQMaRFo2Z3L6jZpump","sym":"ROCKY","age":30.2,"why":"liquidity","liq":2862}
 {"t":1794556741152,"addr":"GDCHQ2QM5eBPWUFydvTXHwDt18Ax2KpwihXZw4kYbonk","sym":"Itboot","age":30.5,"why":"liquidity","liq":0}
+{"t":1794556920202,"addr":"EQVHqWcxMQ66s6Cm6Cj6Q8AKYixZiBxEPC5m3qm6pump","sym":"JENOVA","age":30.5,"why":"liquidity","liq":1592}
+{"t":1794556980785,"addr":"2yZFce8YWRU6yB5SqqZQJEyKJKjUKXNinmn6ceFrunJN","sym":"NEX Ai","age":30.5,"why":"liquidity","liq":0}
+{"t":1794556980785,"addr":"EjBU6ZMFTiYN4pxrzLgTTqxyANGbbTRQLUZAnikRBAGS","sym":"Eumom","age":30.3,"why":"liquidity","liq":0}
+{"t":1794557041020,"addr":"3AETZKQs6HUaf7XDZfDDZJ6Yo7Pcv7kf3z2Df9KApump","sym":"Cole","age":30.6,"why":"liquidity","liq":3131}
+{"t":1794557041020,"addr":"HzqbGjdb6tGx32KqVz93pRAz6YawtpVpS3K6n5sbL4UJ","sym":"FOMOCAT","age":30.6,"score":0.0117,"px":4.579e-05,"liq":50182,"p0":3.8513378154070966e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.6974,"c_peak":1.0144,"c_vol":4.9529,"c_act":1.0,"c_r5":0.1832,"c_r15":0.3794,"c_mc":4.5856}}
+{"t":1794557041020,"addr":"4ajXajrKgRcbWKXqPbQtMkFe3p6HAW5ySMZuSnBjYgkG","sym":"Gang Cat","age":30.3,"why":"liquidity","liq":0}
