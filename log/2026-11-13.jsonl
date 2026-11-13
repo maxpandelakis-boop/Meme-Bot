@@ -664,3 +664,10 @@
 {"t":1794600180535,"addr":"BALLFiNPXRhugiUXxstiegkpPeE4oWZhzHVohAxWbG2v","sym":"Ballfin","age":30.6,"score":0.04777,"px":4.05e-05,"liq":17233,"p0":3.799864104444661e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-1.3317,"c_peak":4.0874,"c_vol":5.34,"c_act":0.8333,"c_r5":-0.7209,"c_r15":-0.7983,"c_mc":4.5798}}
 {"t":1794600240685,"addr":"2dgWEzR9owPH4dK5QqcpfSsMJuNM5GN6h8DaaNViKpZa","sym":"Jen-Hsun","age":30.9,"score":0.03395,"px":3.773e-05,"liq":49185,"p0":3.6165775891274295e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":31.0,"f_cjk":0.0,"c_ret":0.663,"c_peak":1.0032,"c_vol":4.9085,"c_act":1.0,"c_r5":0.1013,"c_r15":0.3664,"c_mc":4.5583}}
 {"t":1794600300715,"addr":"CgQMW5Hz4q9sfH5UQCcvcbu7rrtTnzsNLHr1XZHPM7Ls","sym":"MAXR","age":30.1,"why":"liquidity","liq":0}
+{"t":1794600540936,"addr":"AuxbMmh9657Rzk8Kx9QDR48MZFnswwriQkcKqxg32dRU","sym":"COPI","age":31.0,"why":"liquidity","liq":0}
+{"t":1794600540936,"addr":"AgkptBdVa3VjQZMEdQC7HRegRYMtoBfYayqSXRPGpump","sym":"Theranoses","age":30.1,"why":"liquidity","liq":1675}
+{"t":1794600660970,"addr":"Cs2oq9xvGPxsXhYdJXaphoHiYeDucH12mW8TCXw7moon","sym":"INTCROWN","age":30.0,"why":"liquidity","liq":0}
+{"t":1794600660970,"addr":"E5iF4P6SEZVcyntYYcynXjS6Yzmc3oz7Hvp7ontpump","sym":"YouTube","age":30.0,"why":"liquidity","liq":1489}
+{"t":1794600720416,"addr":"3WkwY11BecS19A99fsN7u9Zf6LUxmUUpWfxqTFazysdB","sym":"Elon Musk","age":31.0,"score":0.0214,"px":3.313e-05,"liq":48575,"p0":3.4206605959601314e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.379,"c_peak":1.0049,"c_vol":4.9761,"c_act":1.0,"c_r5":0.122,"c_r15":0.2738,"c_mc":4.5341}}
+{"t":1794600720416,"addr":"GXbhJB9Vx1n5JZ74ghk18UT59oNqKJKfLNPzKmhzpump","sym":"ZELDA","age":30.6,"why":"liquidity","liq":1819}
+{"t":1794600780673,"addr":"3qcrirKEAHharxefiGXZ5Tg4MTiRXhVyUpcdmJTyQVwc","sym":"MORNING","age":30.2,"why":"liquidity","liq":0}
