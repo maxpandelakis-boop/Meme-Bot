@@ -618,3 +618,4 @@
 {"t":1794595560387,"addr":"KQCaYUdTNeGPceXo26ubNHQsWtQ5AezKzn7xMNqpump","sym":"Oilham","age":30.3,"why":"liquidity","liq":0}
 {"t":1794595680881,"addr":"DRpLvcga3qEMUwVLipZ8fwNN4hPewU2KCimumtWGpump","sym":"@bot","age":30.5,"why":"liquidity","liq":1719}
 {"t":1794595861088,"addr":"6wXYeNbeQS84szCxy8xbZHBPH8aqLywde6WDKFkXu8Qb","sym":"Milo","age":30.8,"score":0.03507,"px":3.342e-05,"liq":48609,"p0":3.371451018736718e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.3344,"c_peak":1.0033,"c_vol":4.9769,"c_act":1.0,"c_r5":0.0552,"c_r15":0.1599,"c_mc":4.5278}}
+{"t":1794595920994,"addr":"4vYiE2L1JGpoYxM6xMG43UnoHc81Sz4v34ADditXpump","sym":"DOA","age":30.8,"why":"liquidity","liq":1925}
