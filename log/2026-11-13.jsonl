@@ -49,3 +49,4 @@
 {"t":1794534181090,"addr":"9yYFFKHiHmcYJdr299o8eJo79s7dLFTYzBfhCVGvpump","sym":"HODLDAYS","age":30.4,"why":"liquidity","liq":9323}
 {"t":1794534360160,"addr":"fhPu9F8dGpDtZLH4ApyTgHGC5DSFBrJTv5h7AZEpump","sym":"OIF","age":30.6,"score":0.01104,"px":0.02654,"liq":514849,"p0":0.026561782506669476,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.0094,"c_peak":1.0001,"c_vol":5.3901,"c_act":1.0,"c_r5":0.0017,"c_r15":0.0044,"c_mc":7.4243}}
 {"t":1794534360160,"addr":"EKDbeucEaThg3eYszy3ZTWKKghkuY31DEJ3wwpDBpump","sym":"Outduck","age":30.5,"why":"liquidity","liq":0}
+{"t":1794534540777,"addr":"Ee22wrmzUPH254tuYZ41NiejuHxV65vY8ske779Gpump","sym":"Panda","age":30.0,"why":"liquidity","liq":2557}
