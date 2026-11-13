@@ -296,3 +296,4 @@
 {"t":1794561360248,"addr":"4f3nVki5Fyqndy1coVyV6WHsb1Fv61eyJAVPJVsApump","sym":"Ailock","age":30.3,"why":"liquidity","liq":0}
 {"t":1794561540860,"addr":"74c3oSNNdReR2rqUuxB54Q9JNAc1mUL9LiFeNy2cTZD3","sym":"FOOD","age":31.3,"why":"liquidity","liq":0}
 {"t":1794561540860,"addr":"7XNUvjiU35dqEzUcYkRAWKexmUsnYmxeQftkzQ3UVkp4","sym":"NEX Ai","age":30.8,"score":0.03033,"px":3.586e-05,"liq":47673,"p0":3.251009081546789e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":33.0,"f_cjk":0.0,"c_ret":0.5405,"c_peak":1.0016,"c_vol":4.9001,"c_act":1.0,"c_r5":0.1131,"c_r15":0.2991,"c_mc":4.512}}
+{"t":1794561960103,"addr":"QvHqoC3sQFZM8sd2xr226U6RuHg6fd1Dbs4CxkLoKZC","sym":"Sakura","age":30.0,"why":"liquidity","liq":0}
