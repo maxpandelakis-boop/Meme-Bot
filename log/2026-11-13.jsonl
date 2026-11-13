@@ -432,3 +432,7 @@
 {"t":1794577920433,"addr":"9X4kXCmWLaas9Kppk3CQj3j9SisLzgoyW8UXYAivdbEj","sym":"\u5229\u4ed6\u4e3b\u4e49\u8005","age":30.2,"score":0.02862,"px":2.906e-05,"liq":42974,"p0":2.849542140199648e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":1.0,"c_ret":0.5161,"c_peak":1.0462,"c_vol":5.1898,"c_act":1.0,"c_r5":0.1827,"c_r15":0.2975,"c_mc":4.4548}}
 {"t":1794577980563,"addr":"9rgX9JZxyiH5zXhGy3oVN4ikDaqYjfFUh5cZsD6Pm8iP","sym":"Intel AI","age":30.4,"why":"liquidity","liq":0}
 {"t":1794577980563,"addr":"HFEzHGFh6ADtK9NRQEuxsW45omsudYKPPywDY15j4jCh","sym":"Foodcoin","age":30.0,"why":"liquidity","liq":0}
+{"t":1794578280378,"addr":"9QM25AVnxi13N8LxdC63B91TXEDWLvGswwK6CiRUpump","sym":"Memelord","age":30.1,"why":"liquidity","liq":4073}
+{"t":1794578340926,"addr":"68SME3AYFsugDkyqeyoMRPV4zEf146LUun8FZkcGpump","sym":"CHEWIE","age":30.7,"why":"liquidity","liq":9004}
+{"t":1794578400206,"addr":"4qEyn85dhH2DQ4XBxHssf2iuUjeX77CchQV31Gv6bonk","sym":"Indgold","age":30.1,"why":"liquidity","liq":0}
+{"t":1794578460766,"addr":"5ub3FDtCSSU1GCf5UCrWKNYCnRSdYYZdHQcHCLZ1Rkto","sym":"Nearest","age":30.8,"why":"liquidity","liq":0}
