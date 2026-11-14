@@ -755,3 +755,6 @@
 {"t":1794692700617,"addr":"4qAVD2sCZmWTTiezULF8NB8z7j887ZeJUEEyqL2Epump","sym":"4SKINNERS","age":30.7,"why":"liquidity","liq":3885}
 {"t":1794692880844,"addr":"FyWYRJgXrgNvzhpRkCMtyY77ZMzFYGp3M6wiT2wkpump","sym":"TIKI","age":30.5,"why":"liquidity","liq":1469}
 {"t":1794692880844,"addr":"AjPoaVhU5WdZhZzR6jbxjHD3CUZMqic51BDiVmXHpump","sym":"Mikol","age":30.0,"score":0.01226,"px":3.355e-05,"liq":11735,"p0":3.074170938702322e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.1452,"c_peak":1.5199,"c_vol":4.6648,"c_act":1.0,"c_r5":-0.0336,"c_r15":0.1479,"c_mc":4.4877}}
+{"t":1794693120082,"addr":"6YAmtpT9ZCECvJyUDcujQQmLMB1DSuvk2Po9pKa8pump","sym":"Survive","age":30.6,"why":"liquidity","liq":1422}
+{"t":1794693180738,"addr":"5ktihcNkA9uWjYwWrTnMA1yBHRFyozVFBzgzpbYwpump","sym":"PENIS","age":30.6,"why":"liquidity","liq":1425}
+{"t":1794693300654,"addr":"6HHWtH3kjtaRLUbbXXfxBah3Jup8Ct6GuNQrFMeKpump","sym":"COALGOB","age":30.3,"why":"liquidity","liq":0}
