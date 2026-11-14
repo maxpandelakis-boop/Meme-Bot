@@ -701,3 +701,6 @@
 {"t":1794688200435,"addr":"4Y2HTuH9uRfGg6v2QxQ7CJuXWi6sb8GQXwLtzCzFpump","sym":"mimic","age":30.1,"why":"liquidity","liq":1421}
 {"t":1794688441000,"addr":"8ZdDr36gbgGZycrmrPR2K68S5RG3vBcdYLYFN5SXjSqj","sym":"JUMP","age":30.9,"score":0.0267,"px":4.504e-05,"liq":51219,"p0":4.193176182456907e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.9722,"c_peak":1.022,"c_vol":4.9574,"c_act":1.0,"c_r5":0.0978,"c_r15":0.4759,"c_mc":4.6225}}
 {"t":1794688441000,"addr":"BMhaBWe4pqGNs1NmBB4bNmmH1wiM949ZZK9F3xNbpump","sym":"STOCKCOIN","age":30.1,"why":"liquidity","liq":4347}
+{"t":1794688560116,"addr":"ECtBQ3Hmmct5mgh1gpHT2RfNwCtiP2bTTwTLPJejpump","sym":"TCH","age":30.7,"why":"liquidity","liq":3815}
+{"t":1794688680999,"addr":"8bDGkt7dyBSDFKyAutc3oERtubzE6ebcnxna6QGhpump","sym":"BCR","age":30.8,"why":"liquidity","liq":6037}
+{"t":1794688680999,"addr":"5gwdCV7294m4dsqvN43d3G5idgMKXyAwro7kDQPTmoon","sym":"Elcent","age":30.5,"why":"liquidity","liq":0}
