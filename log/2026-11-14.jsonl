@@ -563,3 +563,6 @@
 {"t":1794675420843,"addr":"2A5tQ2vpA2yrYW51Gqz4zGYdj6iVLNfHTda3U37cpump","sym":"TARDGUIN","age":30.4,"why":"liquidity","liq":3999}
 {"t":1794675540669,"addr":"1TmSa4uhtRZr7AnwF6cxZQS7FUFFJKKVyPDY3Hvpump","sym":"PLATYPUS","age":30.5,"why":"liquidity","liq":1480}
 {"t":1794675720071,"addr":"5bzT7x5nYZx3grnRaL6cDRQuSKxEWDVwh2WUxd91pump","sym":"Angel","age":30.9,"score":0.02324,"px":0.0001352,"liq":27038,"p0":0.0001498199672554575,"bars":6,"buy":false,"f":{"f_curve_min":160.2167,"f_creator_prior":null,"f_xtype":2.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.4662,"c_peak":1.222,"c_vol":5.7214,"c_act":1.0,"c_r5":0.1357,"c_r15":0.4596,"c_mc":5.1756}}
+{"t":1794675960683,"addr":"7ikXXm3xVXU6PSiSPAgvSDrSM76o7LJvjK4x2nXzbonk","sym":"Francor","age":30.7,"why":"liquidity","liq":0}
+{"t":1794675960683,"addr":"5t8va7yeh72z5Qv4nUwdgwpxz9vQdd8HhR4jf9d4pump","sym":"FORK","age":30.6,"why":"liquidity","liq":6882}
+{"t":1794676080455,"addr":"94ZkRU9e2VrgpNtkAXNJgBBb4Qi86nB1nDyVF3KApump","sym":"ST Joseph","age":30.9,"why":"liquidity","liq":3773}
