@@ -112,3 +112,4 @@
 {"t":1794627540582,"addr":"Hfd2Hjz5VeCguYssdfor9k2pg6eGqbEfzkeaTsX1ai6w","sym":"Microduck","age":30.1,"why":"liquidity","liq":0}
 {"t":1794627660531,"addr":"CgwGf5EjivsWMxut2zHdi4RXkdeEXgZQkAAdmeCnpump","sym":"turd","age":30.6,"why":"liquidity","liq":5422}
 {"t":1794627660531,"addr":"2xsTyXKLxdCvkwcNAwmem8Mp2w3NwCvshcf8Msbfpump","sym":"idgaf","age":30.4,"why":"liquidity","liq":3495}
+{"t":1794628260602,"addr":"scVbnx34QN6jZWGmJyPCuWj8qwQVAHfG6EaNrHGXVjz","sym":"ChinaFoods","age":30.7,"score":0.0194,"px":3.55e-05,"liq":46594,"p0":3.5603205503895366e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":10.0,"f_cjk":0.0,"c_ret":0.5296,"c_peak":1.0328,"c_vol":5.111,"c_act":1.0,"c_r5":0.0685,"c_r15":0.2401,"c_mc":4.5515}}
