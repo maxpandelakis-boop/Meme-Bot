@@ -698,3 +698,6 @@
 {"t":1794687960317,"addr":"Adhd9J5SjzN4QLpsJZfpc69GDTJEjwMJ2TkL9W9ntuLu","sym":"Jeni","age":30.1,"why":"liquidity","liq":0}
 {"t":1794688021060,"addr":"iD1MgPGU7a2cgAhajPC75hmbJrS6VX6QagQ9ZsRpump","sym":"AOC2028","age":30.4,"why":"liquidity","liq":6168}
 {"t":1794688140911,"addr":"BSpqBsHcaJ5MvGbmvDoWFmy7MbB6dW3JpQvv8rAzpump","sym":"MGUSD","age":30.3,"why":"liquidity","liq":3941}
+{"t":1794688200435,"addr":"4Y2HTuH9uRfGg6v2QxQ7CJuXWi6sb8GQXwLtzCzFpump","sym":"mimic","age":30.1,"why":"liquidity","liq":1421}
+{"t":1794688441000,"addr":"8ZdDr36gbgGZycrmrPR2K68S5RG3vBcdYLYFN5SXjSqj","sym":"JUMP","age":30.9,"score":0.0267,"px":4.504e-05,"liq":51219,"p0":4.193176182456907e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.9722,"c_peak":1.022,"c_vol":4.9574,"c_act":1.0,"c_r5":0.0978,"c_r15":0.4759,"c_mc":4.6225}}
+{"t":1794688441000,"addr":"BMhaBWe4pqGNs1NmBB4bNmmH1wiM949ZZK9F3xNbpump","sym":"STOCKCOIN","age":30.1,"why":"liquidity","liq":4347}
