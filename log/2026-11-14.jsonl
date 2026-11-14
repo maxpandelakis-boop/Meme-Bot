@@ -571,3 +571,7 @@
 {"t":1794676320979,"addr":"BvUMUwoB6howxDLgEBaPqfkEfLykTwJz3NLRjC7Lpump","sym":"FORK","age":30.2,"why":"liquidity","liq":4874}
 {"t":1794676381330,"addr":"8UTm8os2b3tkVimEXT8RZfSUb8qKoSH5XFk6buXLVMmN","sym":"NEX Ai","age":30.6,"why":"liquidity","liq":0}
 {"t":1794676381330,"addr":"Fg2w9AcrHnWy8u8HTFb9bncZ78wHq4TtK3r991PEpump","sym":"PLATYPUS","age":30.2,"why":"liquidity","liq":5066}
+{"t":1794676631637,"addr":"BNTpYFWnyhWVMbPHyMCnN2VsY4U65KRgejAHeZt3hahu","sym":"NEX Ai","age":31.1,"why":"liquidity","liq":0}
+{"t":1794676800785,"addr":"6bYMEsNWWtioQtBqEDqdvnxnHNTNcxdnftsVHhxUTYfj","sym":"TRAIN","age":43.2,"why":"no candles"}
+{"t":1794676800785,"addr":"A8VpjTWmyAPbgSS9GawvvBktdGkRtPWPJNEtGKoemoon","sym":"DELFIRE","age":31.0,"why":"liquidity","liq":0}
+{"t":1794676800785,"addr":"D5KB2Q2Sqf7jWcmcChykdNiifTwH1QtkeXjAzxXKpump","sym":"$STONK","age":30.0,"why":"liquidity","liq":3277}
