@@ -773,3 +773,6 @@
 {"t":1794694261315,"addr":"A3JUqWEvV93RfUMBYvj6vV181P5BAGqsBCQAZoEfpump","sym":"TORN","age":30.3,"why":"liquidity","liq":1431}
 {"t":1794694381045,"addr":"DoxPhTrWWBLFecQNew1dqLNgzrbA1mLFg9cG7aMVpump","sym":"TORNADO","age":30.3,"why":"liquidity","liq":2094}
 {"t":1794694680974,"addr":"DFev755KT1b6nkfAFNj1fyRQMwoVzNywsSBEBamepump","sym":"USPR","age":30.8,"score":0.00769,"px":0.1002,"liq":700139,"p0":0.1002682632946483,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":14.0,"f_cjk":0.0,"c_ret":-0.0061,"c_peak":1.0063,"c_vol":5.5404,"c_act":0.5,"c_r5":0.0,"c_r15":-0.0021,"c_mc":8.0012}}
+{"t":1794694920269,"addr":"VPX6Jju2J2v5mCsYKZ5nnAb3hKMLxpFVFcKpgXMpump","sym":"$BROKEAF","age":30.2,"why":"liquidity","liq":3916}
+{"t":1794695040357,"addr":"B654aCqf5Gdx8iEhtinUAJV2WNAhnDWw2wbVfySKpump","sym":"SINGULARITY","age":30.8,"why":"liquidity","liq":1466}
+{"t":1794695160243,"addr":"BGRnpwzgawGBvSLbWvs3vURHg61LWwZt8eBx8Pb6dLxf","sym":"Anne","age":30.2,"why":"liquidity","liq":0}
