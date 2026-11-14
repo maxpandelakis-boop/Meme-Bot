@@ -566,3 +566,8 @@
 {"t":1794675960683,"addr":"7ikXXm3xVXU6PSiSPAgvSDrSM76o7LJvjK4x2nXzbonk","sym":"Francor","age":30.7,"why":"liquidity","liq":0}
 {"t":1794675960683,"addr":"5t8va7yeh72z5Qv4nUwdgwpxz9vQdd8HhR4jf9d4pump","sym":"FORK","age":30.6,"why":"liquidity","liq":6882}
 {"t":1794676080455,"addr":"94ZkRU9e2VrgpNtkAXNJgBBb4Qi86nB1nDyVF3KApump","sym":"ST Joseph","age":30.9,"why":"liquidity","liq":3773}
+{"t":1794676320979,"addr":"C4dGXCfT69HbbSddE6goGRfUwNVa7Mbx5Edats8ZUzWu","sym":"Worlds","age":30.9,"score":0.02086,"px":2.674e-05,"liq":39537,"p0":2.6063442791177233e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.4148,"c_peak":1.0594,"c_vol":4.9078,"c_act":1.0,"c_r5":0.0395,"c_r15":0.3043,"c_mc":4.416}}
+{"t":1794676320979,"addr":"D6oCQ9zbtzURUcrJeTUc4b9nZpxXco2o5RDnvth5pump","sym":"CARDANO","age":30.8,"why":"liquidity","liq":1453}
+{"t":1794676320979,"addr":"BvUMUwoB6howxDLgEBaPqfkEfLykTwJz3NLRjC7Lpump","sym":"FORK","age":30.2,"why":"liquidity","liq":4874}
+{"t":1794676381330,"addr":"8UTm8os2b3tkVimEXT8RZfSUb8qKoSH5XFk6buXLVMmN","sym":"NEX Ai","age":30.6,"why":"liquidity","liq":0}
+{"t":1794676381330,"addr":"Fg2w9AcrHnWy8u8HTFb9bncZ78wHq4TtK3r991PEpump","sym":"PLATYPUS","age":30.2,"why":"liquidity","liq":5066}
