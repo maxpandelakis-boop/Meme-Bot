@@ -385,3 +385,5 @@
 {"t":1794659101074,"addr":"GvQsQyGAzFUxpfeiAKq2Sz3AHE29U7s32gw6yFBnmoon","sym":"ROBTRO","age":30.9,"why":"liquidity","liq":0}
 {"t":1794659101074,"addr":"69JZwVPfL2CzxVGUMtxSTe16mELpAau45kbyxK7uWiqs","sym":"USPR","age":30.4,"score":0.02232,"px":2.074e-05,"liq":34570,"p0":2.0183903518118463e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":23.0,"f_cjk":0.0,"c_ret":0.3173,"c_peak":1.3674,"c_vol":4.8139,"c_act":1.0,"c_r5":-0.2981,"c_r15":0.0679,"c_mc":4.305}}
 {"t":1794659160132,"addr":"5gCauyC9b1eVKqDGHZ8ix5Tkrm5SDiMWoHgvqiAcpump","sym":"1M X","age":30.4,"why":"liquidity","liq":4396}
+{"t":1794659520496,"addr":"AGXMCKjGRgTzhdXbjxsVv3VErz6p5jg2BP93AqPypump","sym":"SARCON","age":30.7,"why":"liquidity","liq":0}
+{"t":1794659580315,"addr":"HT8FxAX2PH4XR2UfX22n8t7zE1savBZZUqvF3kGFgNaY","sym":"GTA6 Coin","age":30.4,"why":"liquidity","liq":0}
