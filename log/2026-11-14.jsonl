@@ -17,3 +17,5 @@
 {"t":1794616381393,"addr":"DMvhbmFMo1MQnSEaqgzMCoASTnb632MHp7sVhBRypump","sym":"bullish","age":43.7,"why":"no candles"}
 {"t":1794616381393,"addr":"HEfH9FaC2q5uMmqVLWqcqxjTUdoSZohJx5uhKHPHpump","sym":"BOOBILLIONS","age":30.2,"why":"liquidity","liq":1503}
 {"t":1794616920990,"addr":"BVHcDt6WRJB6rBwTjbfk95NUniHtNoeb9oP7zY27kc6","sym":"SWJ","age":30.2,"score":0.01741,"px":9.571e-07,"liq":142228,"p0":9.396930529944647e-07,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":27.0,"f_cjk":0.0,"c_ret":0.39,"c_peak":1.0371,"c_vol":6.3424,"c_act":1.0,"c_r5":0.017,"c_r15":0.1549,"c_mc":2.973}}
+{"t":1794617160140,"addr":"EnXT7SXxXb9MYt3RJzDTXA9FxCaEzf9erDQbmcTQpump","sym":"MANE","age":43.6,"why":"no candles"}
+{"t":1794617280490,"addr":"4tXXXy5LysuU8SHhdvoHBj9TYhXC1z2B5eS91EoXpump","sym":"CARD","age":30.8,"why":"liquidity","liq":1942}
