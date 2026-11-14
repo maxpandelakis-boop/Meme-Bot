@@ -410,3 +410,5 @@
 {"t":1794662101103,"addr":"DBjAVowhaAck5ikm2JEvymWcmJf7Sryxz4uSbYNPjCSM","sym":"GTA6 Coin","age":30.1,"why":"liquidity","liq":0}
 {"t":1794662400200,"addr":"6sZUjgnHTdezsZoMdbTcxsi58bXqnsz6mkj49Wgxpump","sym":"SHIT","age":43.3,"why":"no candles"}
 {"t":1794662580512,"addr":"137tw4HcpFrDkq5PMgvtmRnZspbebLMGiU112BtsosGe","sym":"ZNR","age":30.4,"score":0.01026,"px":3.697e-05,"liq":39594,"p0":3.4284459412266414e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.6033,"c_peak":1.0391,"c_vol":6.4341,"c_act":1.0,"c_r5":0.1083,"c_r15":0.3493,"c_mc":4.5351}}
+{"t":1794662820600,"addr":"6yAEvwTY7s2thJ2Ju1iRZQDCKsD4aZHG7wiXM4Srpump","sym":"SAI","age":30.8,"why":"liquidity","liq":4508}
+{"t":1794663000667,"addr":"9EEu7k6A2LqFMw5hTnYThZMiGicbSL2iSpr2unevSNxD","sym":"JUMP","age":30.4,"score":0.01075,"px":4.385e-05,"liq":51715,"p0":3.8385543136487736e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.9138,"c_peak":1.0151,"c_vol":4.9579,"c_act":1.0,"c_r5":0.1238,"c_r15":0.4191,"c_mc":4.5842}}
