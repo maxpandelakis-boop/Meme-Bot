@@ -486,3 +486,5 @@
 {"t":1794669780546,"addr":"8zQ7c5FyoK12GBppVDnvsMrzH7yLSTSnRc1WmJxXpkK6","sym":"ZORPO","age":30.2,"why":"liquidity","liq":0}
 {"t":1794669780546,"addr":"5eBEgYzvxyHP8dVtSoBVogjjHF2KfFwAwT7itLFZpump","sym":"ALM2","age":30.1,"why":"liquidity","liq":2848}
 {"t":1794669780546,"addr":"31oc4hJWoStpF5eadXeZnLLXdkBZPncJUYyWsFX9dMXU","sym":"BATON","age":30.1,"why":"liquidity","liq":0}
+{"t":1794669840595,"addr":"C4H3m4UddYipAYU7F1i1h7fqhhr2qdZmsDPqW8kYpump","sym":"RUBIUS","age":44.0,"why":"no candles"}
+{"t":1794669840595,"addr":"8qzfTuRJtJ9kLXvaMVZaMzTWQ6mARR21CyYroPMLmoon","sym":"STARCK","age":30.2,"why":"liquidity","liq":0}
