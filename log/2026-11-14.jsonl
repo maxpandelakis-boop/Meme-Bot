@@ -651,3 +651,5 @@
 {"t":1794684480174,"addr":"AR4enFoN6aaCdrhAkA1gL7kWXckRhbPFPpRmk89xpump","sym":"omenala","age":30.7,"why":"liquidity","liq":4294}
 {"t":1794684541070,"addr":"FEWuxmJD2Dv586YhW5qmxZC3crdqmWVqUxH81rSApump","sym":"ETHKILLERS","age":30.0,"why":"liquidity","liq":4150}
 {"t":1794684721019,"addr":"GEppMmnXswv1cqJBMUU2t8QkB2FCRrQUQb1v7K3xpump","sym":"PROMETHEUS","age":33.8,"why":"liquidity","liq":9270}
+{"t":1794684841059,"addr":"7aDArKPnnNe9YfcvKpPh3hpURmtrWXiPtgy2h9wEpump","sym":"Callcat","age":30.5,"why":"liquidity","liq":1523}
+{"t":1794685021118,"addr":"oiY9Atp8Q7NqW5JoxHB5Mw98cctgxLCLHih6CskYFDB","sym":"Jeni","age":31.0,"score":0.01577,"px":2.022e-05,"liq":35339,"p0":2.0084556123235468e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.1337,"c_peak":1.1166,"c_vol":5.1211,"c_act":1.0,"c_r5":0.024,"c_r15":0.0295,"c_mc":4.3029}}
