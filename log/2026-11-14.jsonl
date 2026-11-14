@@ -72,3 +72,5 @@
 {"t":1794622080198,"addr":"DsHnM38vAh8GxVRyEcG5fRJ6zSK15fxPYE43toxDETx","sym":"\u5750\u4ee5\u5f85\u5e01","age":30.5,"why":"liquidity","liq":0}
 {"t":1794622260867,"addr":"9eJYXDRRXTsbDvH85qqNkJMKKnaD6n7jmCwGdL9xpump","sym":"Bottom","age":30.7,"why":"liquidity","liq":2237}
 {"t":1794622500620,"addr":"2q33nHFNvbNM6D8MaGP9UEfwdvy6otMct6PWynMipump","sym":"AODT","age":30.7,"score":0.0027,"px":0.001091,"liq":75404,"p0":0.0010922001228266132,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.0559,"c_peak":1.0042,"c_vol":4.491,"c_act":1.0,"c_r5":-0.003,"c_r15":-0.0007,"c_mc":6.0383}}
+{"t":1794622872235,"addr":"GTQEDy8vaBLboTtSZEabkd9oefqmwaKBgzbXFv5syjCt","sym":"ChinaFoods","age":30.2,"why":"liquidity","liq":0}
+{"t":1794622920981,"addr":"GLQgYoK9MiVaY4iYfntqKPX7YT2widA2Pw16CKJCpump","sym":"Nutella","age":30.4,"why":"liquidity","liq":1656}
