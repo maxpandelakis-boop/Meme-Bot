@@ -546,3 +546,6 @@
 {"t":1794673741106,"addr":"FXZtboHrZnF1L5fdTp5GZtcpkUCByjHAFLQNhcjQLAM2","sym":"YoungBull","age":31.0,"why":"liquidity","liq":0}
 {"t":1794673741106,"addr":"GgzzMhN9KBywMjv1WqZGU6uq9hwAmKRooMHcGj4Jpump","sym":"Pat","age":30.6,"why":"liquidity","liq":3118}
 {"t":1794673800458,"addr":"EHqtzxanY5pYNM8nnoSv2rpKRDiarH382vG6TP3Lpump","sym":"PFTerminal","age":30.7,"why":"liquidity","liq":3151}
+{"t":1794673981138,"addr":"1FFb5Ds5pGi7FAxj3b4e398rtnepyht5MxwKjRpGbym","sym":"YoungBull","age":30.9,"score":0.01854,"px":7.664e-07,"liq":105494,"p0":7.275742152755915e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.4333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.4442,"c_peak":1.0263,"c_vol":6.2889,"c_act":1.0,"c_r5":0.0684,"c_r15":0.2266,"c_mc":2.8619}}
+{"t":1794674040075,"addr":"wYXwL85jEgsUr4xqBzQEEsZPmbD6ciYsH17UY6ebonk","sym":"Szchess","age":30.7,"why":"liquidity","liq":0}
+{"t":1794674100819,"addr":"CuisqqEyjzDkbEBqJaj3JjyhQFVSyxbAyvf825HqcW7X","sym":"Worlds","age":30.8,"why":"liquidity","liq":0}
