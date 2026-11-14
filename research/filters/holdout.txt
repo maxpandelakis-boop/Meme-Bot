@@ -1,0 +1,62 @@
+
+==== discovery: 27 days 2026-08-17 to 2026-09-12, base signals 23478 (870 a day)
+base (every Scout signal): desk -1.350 [-1.485, -1.204] | hold -5.764 | quick -1.384 | desk without FOMO fee -0.664 | in profit 9.1% | days in profit 0/27 | completes 25.6%
+F1 no launch factory (creator <3 coins in 24 h)
+    kept 62% (14549, 539 a day) | desk -1.109 [-1.258, -0.956] | lift +0.240 [0.141, 0.331] (99.4%: [0.106, 0.371]) | days better 20/27 | without best -1.119 | in profit 10.5% | hold -5.391 lift +0.373 [0.144, 0.604] | no FOMO fee -0.420
+F2 early demand (a non-creator buyer in 10 s)
+    kept 98% (23041, 853 a day) | desk -1.318 [-1.449, -1.178] | lift +0.031 [0.015, 0.048] (99.4%: [0.01, 0.054]) | days better 21/27 | without best -1.324 | in profit 9.1% | hold -5.731 lift +0.033 [-0.0, 0.064] | no FOMO fee -0.632
+F3 dev did not dump (sold <90%)
+    kept 37% (8609, 319 a day) | desk -1.778 [-2.094, -1.439] | lift -0.428 [-0.652, -0.198] (99.4%: [-0.744, -0.132]) | days better 9/27 | without best -1.786 | in profit 10.6% | hold -4.822 lift +0.942 [0.494, 1.445] | no FOMO fee -1.101
+F4 none of F1-F3
+    kept 28% (6637, 246 a day) | desk -1.350 [-1.562, -1.132] | lift -0.001 [-0.153, 0.145] (99.4%: [-0.208, 0.202]) | days better 16/27 | without best -1.361 | in profit 11.6% | hold -4.078 lift +1.686 [1.255, 2.174] | no FOMO fee -0.665
+F5 slow curve (SOL/min below discovery median)
+    kept 50% (11739, 435 a day) | desk -1.415 [-1.68, -1.135] | lift -0.065 [-0.228, 0.1] (99.4%: [-0.303, 0.16]) | days better 15/27 | without best -1.421 | in profit 9.5% | hold -6.203 lift -0.439 [-0.669, -0.211] | no FOMO fee -0.731
+D1 slot0_pct >= 26.46
+    kept 25% (5870, 217 a day) | desk -0.903 [-1.14, -0.682] | lift +0.447 [0.196, 0.693] (99.4%: [0.081, 0.79]) | days better 18/27 | without best -0.927 | in profit 9.9% | hold -4.405 lift +1.359 [0.832, 1.918] | no FOMO fee -0.209
+D2 first60_share <= 0.5831
+    kept 30% (7046, 261 a day) | desk -0.960 [-1.095, -0.812] | lift +0.390 [0.269, 0.505] (99.4%: [0.224, 0.552]) | days better 23/27 | without best -0.968 | in profit 8.7% | hold -5.083 lift +0.681 [0.394, 0.974] | no FOMO fee -0.267
+D3 cr_24h <= 0
+    kept 51% (12050, 446 a day) | desk -1.034 [-1.2, -0.869] | lift +0.315 [0.186, 0.434] (99.4%: [0.137, 0.485]) | days better 21/27 | without best -1.046 | in profit 10.9% | hold -5.478 lift +0.286 [0.049, 0.523] | no FOMO fee -0.343
+X1 no whale (largest holder under 20% of supply)
+    kept 87% (20371, 754 a day) | desk -1.024 [-1.123, -0.928] | lift +0.326 [0.211, 0.437] (99.4%: [0.173, 0.477]) | days better 25/27 | without best -1.027 | in profit 8.5% | hold -5.812 lift -0.048 [-0.153, 0.059] | no FOMO fee -0.332
+X2 small dev buy (<= 1 SOL) and creator's only coin in 24 h
+    kept 24% (5601, 207 a day) | desk -0.619 [-0.791, -0.439] | lift +0.731 [0.519, 0.954] (99.4%: [0.452, 1.051]) | days better 25/27 | without best -0.644 | in profit 11.1% | hold -5.490 lift +0.275 [-0.343, 0.834] | no FOMO fee +0.080
+X3 small dev buy (<= 1 SOL)
+    kept 30% (6971, 258 a day) | desk -0.716 [-0.876, -0.546] | lift +0.634 [0.426, 0.849] (99.4%: [0.348, 0.936]) | days better 23/27 | without best -0.736 | in profit 10.4% | hold -5.696 lift +0.068 [-0.548, 0.644] | no FOMO fee -0.018
+M score (top 30% by the discovery threshold)
+    kept 30% (7044, 261 a day) | desk -0.957 [-1.218, -0.695] | lift +0.392 [0.204, 0.585] (99.4%: [0.119, 0.657]) | days better 19/27 | without best -0.977 | in profit 14.4% | hold -6.230 lift -0.466 [-0.889, 0.008] | no FOMO fee -0.266
+
+==== holdout: 24 days 2026-09-13 to 2026-10-06, base signals 27846 (1160 a day)
+base (every Scout signal): desk -0.801 [-0.894, -0.69] | hold -5.165 | quick -1.157 | desk without FOMO fee -0.105 | in profit 10.7% | days in profit 0/24 | completes 22.7%
+F1 no launch factory (creator <3 coins in 24 h)
+    kept 82% (22715, 946 a day) | desk -0.672 [-0.785, -0.535] | lift +0.130 [0.091, 0.169] (99.4%: [0.077, 0.187]) | days better 22/24 | without best -0.675 | in profit 11.5% | hold -4.730 lift +0.434 [0.338, 0.539] | no FOMO fee +0.027 => HELPS (solid)
+F2 early demand (a non-creator buyer in 10 s)
+    kept 98% (27151, 1131 a day) | desk -0.795 [-0.89, -0.684] | lift +0.007 [-0.004, 0.016] (99.4%: [-0.008, 0.02]) | days better 16/24 | without best -0.797 | in profit 10.7% | hold -5.137 lift +0.028 [-0.002, 0.061] | no FOMO fee -0.098 => FAIL
+F3 dev did not dump (sold <90%)
+    kept 63% (17566, 732 a day) | desk -0.907 [-1.018, -0.787] | lift -0.106 [-0.188, -0.033] (99.4%: [-0.224, -0.007]) | days better 8/24 | without best -0.911 | in profit 10.6% | hold -4.690 lift +0.475 [0.336, 0.619] | no FOMO fee -0.213 => FAIL
+F4 none of F1-F3
+    kept 56% (15673, 653 a day) | desk -0.840 [-0.964, -0.705] | lift -0.039 [-0.123, 0.041] (99.4%: [-0.161, 0.073]) | days better 11/24 | without best -0.844 | in profit 10.8% | hold -4.450 lift +0.715 [0.565, 0.879] | no FOMO fee -0.145 => FAIL
+F5 slow curve (SOL/min below discovery median)
+    kept 54% (15075, 628 a day) | desk -0.859 [-0.991, -0.707] | lift -0.058 [-0.143, 0.035] (99.4%: [-0.176, 0.07]) | days better 11/24 | without best -0.863 | in profit 9.9% | hold -5.877 lift -0.712 [-0.882, -0.524] | no FOMO fee -0.165 => FAIL
+D1 slot0_pct >= 26.46
+    kept 26% (7337, 306 a day) | desk -0.652 [-0.83, -0.469] | lift +0.149 [-0.069, 0.361] (99.4%: [-0.138, 0.433]) | days better 14/24 | without best -0.660 | in profit 11.9% | hold -4.264 lift +0.901 [0.575, 1.241] | no FOMO fee +0.047 => FAIL
+D2 first60_share <= 0.5831
+    kept 31% (8713, 363 a day) | desk -0.841 [-0.981, -0.688] | lift -0.039 [-0.17, 0.086] (99.4%: [-0.22, 0.153]) | days better 10/24 | without best -0.848 | in profit 8.9% | hold -5.200 lift -0.035 [-0.37, 0.309] | no FOMO fee -0.145 => FAIL
+D3 cr_24h <= 0
+    kept 74% (20528, 855 a day) | desk -0.650 [-0.771, -0.506] | lift +0.152 [0.106, 0.202] (99.4%: [0.092, 0.221]) | days better 22/24 | without best -0.653 | in profit 11.6% | hold -4.693 lift +0.472 [0.348, 0.608] | no FOMO fee +0.049 => HELPS (solid)
+X1 no whale (largest holder under 20% of supply)
+    kept 93% (25948, 1081 a day) | desk -0.688 [-0.789, -0.568] | lift +0.114 [0.086, 0.144] (99.4%: [0.076, 0.157]) | days better 22/24 | without best -0.690 | in profit 10.4% | hold -5.147 lift +0.018 [-0.041, 0.074] | no FOMO fee +0.010 => HELPS (solid)
+X2 small dev buy (<= 1 SOL) and creator's only coin in 24 h
+    kept 51% (14097, 587 a day) | desk -0.604 [-0.726, -0.469] | lift +0.197 [0.092, 0.293] (99.4%: [0.051, 0.329]) | days better 20/24 | without best -0.609 | in profit 11.2% | hold -4.709 lift +0.456 [0.239, 0.654] | no FOMO fee +0.096 => HELPS (solid)
+X3 small dev buy (<= 1 SOL)
+    kept 57% (15801, 658 a day) | desk -0.643 [-0.747, -0.529] | lift +0.158 [0.069, 0.237] (99.4%: [0.032, 0.261]) | days better 19/24 | without best -0.647 | in profit 10.9% | hold -4.795 lift +0.370 [0.183, 0.565] | no FOMO fee +0.056 => HELPS (solid)
+M score (top 30% by the discovery threshold)
+    kept 23% (6521, 272 a day) | desk -0.358 [-0.605, -0.11] | lift +0.443 [0.243, 0.625] (99.4%: [0.145, 0.691]) | days better 19/24 | without best -0.367 | in profit 15.9% | hold -5.230 lift -0.065 [-0.39, 0.256] | no FOMO fee +0.345 => FAIL
+
+score M by band (holdout):
+  pct 0-30: n 8354 desk -1.162 hold -5.378 in profit 7.4% completes 23.9%
+  pct 30-50: n 5569 desk -0.899 hold -4.988 in profit 9.0% completes 21.6%
+  pct 50-70: n 5569 desk -0.758 hold -4.985 in profit 10.6% completes 21.8%
+  pct 70-90: n 5569 desk -0.460 hold -5.292 in profit 13.3% completes 21.5%
+  pct 90-100: n 2785 desk -0.291 hold -4.986 in profit 18.9% completes 24.9%
+  pct 97-100: n 836 desk -1.155 hold -4.798 in profit 21.9% completes 29.3%
