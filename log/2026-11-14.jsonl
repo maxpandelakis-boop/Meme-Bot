@@ -584,3 +584,6 @@
 {"t":1794677701326,"addr":"AmXNDntHLqNcFxtVL2iiwGAMKgxbK6CJcLqo229qpump","sym":"Dungeon","age":30.9,"why":"liquidity","liq":3891}
 {"t":1794677701326,"addr":"EvPg98YtG1yJwnYxYAQd6JhWMLtNGY2UFqj7WiomBAGS","sym":"VOYDISC","age":30.7,"why":"liquidity","liq":0}
 {"t":1794677760677,"addr":"DttHX3P9MA8aXE8qSEvFzGmAsn6r4YmkdVmzAYk3pump","sym":"SIA","age":30.4,"why":"liquidity","liq":1622}
+{"t":1794678360991,"addr":"BCoqiUVJXzxH22fBq24wGLeFxxsHhTooAoJaL5RTbbsc","sym":"NEX Ai","age":31.0,"score":0.02252,"px":4.714e-05,"liq":52463,"p0":4.665162752772222e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":26.0,"f_cjk":0.0,"c_ret":0.9679,"c_peak":1.0077,"c_vol":5.0821,"c_act":1.0,"c_r5":0.0526,"c_r15":0.4314,"c_mc":4.6689}}
+{"t":1794678360991,"addr":"GFcX7GS3ot8ipNUjVYdLCJ2jQzuF1pfKJK3t7PxewDNk","sym":"LoL","age":31.0,"why":"liquidity","liq":0}
+{"t":1794678360991,"addr":"J7rNhDLbfB4DCh8mVrmf6ZURvSQjooD1JAjbYAPapump","sym":"thumbsup","age":30.2,"why":"liquidity","liq":3838}
