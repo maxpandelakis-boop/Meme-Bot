@@ -100,3 +100,6 @@
 {"t":1794625800835,"addr":"5LeaEFcpCWjy6jB7zibq5FS91sy6codswpDX39U6nvAp","sym":"\u4ed9\u732b","age":30.9,"why":"liquidity","liq":0}
 {"t":1794625800835,"addr":"5Lemnv4mb4VPRAjyEfhEjzsnTr1qDmr8esV8m3V9pump","sym":"ASTRALIS","age":30.4,"why":"liquidity","liq":1508}
 {"t":1794625800835,"addr":"9xufmE8T42LyLeAZXA2Af4orec8Nm1ytkPBjY198w29Z","sym":"\u4ed9\u732b","age":30.1,"score":0.01244,"px":2.995e-05,"liq":42879,"p0":2.9824977469180616e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.4076,"c_peak":1.0327,"c_vol":4.818,"c_act":0.8333,"c_r5":0.0793,"c_r15":0.2606,"c_mc":4.4746}}
+{"t":1794625860566,"addr":"Dg44yA2wBxhNV9KtEHQCrv8rTaiFrhipoKPMUATPmoon","sym":"Hormine","age":30.8,"why":"liquidity","liq":0}
+{"t":1794625860566,"addr":"GNXrWwLyw3WqD4mBEjvWhKFMvbjgcsEL21uwjaFmpump","sym":"breadcat","age":30.3,"why":"liquidity","liq":3314}
+{"t":1794626100904,"addr":"8rwuSwYYHmUno9ABDWRctHtRn5B6HM7QLB9WJUtNpump","sym":"CI","age":30.1,"why":"liquidity","liq":2231}
