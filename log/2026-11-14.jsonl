@@ -293,3 +293,6 @@
 {"t":1794650160106,"addr":"EutLDuTw8JQqewkaNamhASKrUK4VBjEQoiNjiE7Qpump","sym":"SPARTIME","age":30.6,"why":"liquidity","liq":0}
 {"t":1794650280941,"addr":"ARw3xcaVbxk9yRoSmVCZHYus1mbkekM12z7uSFrCw7pD","sym":"LIA","age":30.6,"score":0.01161,"px":3.633e-05,"liq":39215,"p0":3.457490681783412e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.6316,"c_peak":1.0393,"c_vol":6.4239,"c_act":1.0,"c_r5":0.0719,"c_r15":0.3605,"c_mc":4.5388}}
 {"t":1794650280941,"addr":"Gz6c9XhExaq6B4edsSDJvb6aifA6aM4Arz7LYwXGiuJV","sym":"USPR","age":30.5,"why":"liquidity","liq":0}
+{"t":1794650400107,"addr":"CmPNgWMEenSscMVJBoGxWme2yr8ToH6UubJMCbs3QLrH","sym":"USPR","age":30.6,"why":"liquidity","liq":54}
+{"t":1794650400107,"addr":"2NLgoNU5CjXX2yugNu9N4JPEtqdX1xCXUQkHiwPjs1it","sym":"POOSTANK","age":30.0,"why":"liquidity","liq":0}
+{"t":1794650520862,"addr":"6kthkJdXRyGkVULfswXfSdGWWhUsAFvFMfuFymi5H3r8","sym":"POOSTANK","age":31.0,"why":"liquidity","liq":0}
