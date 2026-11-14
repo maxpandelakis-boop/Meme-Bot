@@ -627,3 +627,4 @@
 {"t":1794682021009,"addr":"EXjFG1E7AZNEATK5iiyg7uKc1mNyBPEjTdcTKPwpump","sym":"poorcat","age":31.0,"why":"liquidity","liq":1453}
 {"t":1794682021009,"addr":"3fe7rwJjycTuAwVhPuYuy3828sPkc4pZNdViFuHpbonk","sym":"Dprkwc","age":30.6,"why":"liquidity","liq":0}
 {"t":1794682021009,"addr":"fX9dKa1DVdjSvYk3f2GAcj2RjQ5DFa54QTWAsXBpump","sym":"capy","age":30.4,"score":0.01728,"px":5.884e-05,"liq":16271,"p0":6.0149689893762746e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.4307,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.2097,"c_peak":1.0793,"c_vol":4.9157,"c_act":1.0,"c_r5":0.2445,"c_r15":0.3369,"c_mc":4.7792}}
+{"t":1794682320145,"addr":"9ACVtzSP2zCyxfz7a9AjpcmLLp5v5pGWSVHEKzjmW56w","sym":"XRPN","age":30.2,"why":"liquidity","liq":4640}
