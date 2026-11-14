@@ -1,0 +1,33 @@
+# Probe for the live paper run of the wallet lead (research/wallets/live, fake money only, read-only): started by a push of this
+# file to the thread branch. It listens to public Solana websockets for one minute and writes what it saw to the branch
+# "walletdata" (folder live). Nothing is bought, no wallet and no key is used.
+name: wallet-liveprobe
+on:
+  push:
+    branches: [claude/project-thread-412hq7]
+    paths: [.github/workflows/wallet-liveprobe.yml]
+permissions:
+  contents: write                    # the walletdata branch only
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet websockets==13.1
+      - run: python3 research/wallets/live/probe_live.py rep
+      - name: Push to walletdata
+        if: always()
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch walletdata "$URL" wd
+          mkdir -p wd/live && cp rep/* wd/live/
+          cd wd && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "live probe $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q "$URL" walletdata

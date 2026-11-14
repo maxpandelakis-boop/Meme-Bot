@@ -1,0 +1,45 @@
+# Copy trading round 2, step 2 (research/wallets/PREREG-COPY2-2026-11-13.md, fake money only): started by a push of this file.
+# Reads the event files of the wallet-events2 run named below and judges the finalists (research/wallets/finalists.json, fixed
+# from the dev days) once on the hidden days. Report to the branch "walletdata", folder round2.
+name: wallet-final
+on:
+  push:
+    branches: [claude/project-thread-412hq7]
+    paths: [.github/workflows/wallet-final.yml]
+permissions:
+  contents: write                    # the walletdata branch only
+  actions: read                      # the event files of the other run
+concurrency:
+  group: wallet-final
+  cancel-in-progress: true
+env:
+  EVENTS_RUN: '43419319968'
+  MODE: final
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install --quiet numpy==1.26.4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: day-*
+          path: days
+          run-id: ${{ env.EVENTS_RUN }}
+          github-token: ${{ github.token }}
+      - run: python3 research/wallets/wallet_grid.py days rep final research/wallets/finalists.json
+      - name: Push to walletdata
+        env:
+          URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch walletdata "$URL" wd || (mkdir wd && cd wd && git init -q -b walletdata)
+          mkdir -p wd/round2 && cp rep/* wd/round2/
+          cd wd && git add -A \
+            && git -c user.name=memebot -c user.email=memebot@users.noreply.github.com commit -q -m "wallet study $MODE $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::8}" \
+            && git push -q "$URL" walletdata
