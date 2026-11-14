@@ -474,3 +474,15 @@
 {"t":1794669360462,"addr":"3MSRsZnkR7Y4cSaXj4qgs1oZtzf7ABL8jvDPhd9npYJY","sym":"JPMCoin","age":30.2,"why":"liquidity","liq":2737}
 {"t":1794669420604,"addr":"69FoXi16fz3tUf3LErVrFUakbQCrXG4WiXN5ksVjpump","sym":"BOOSTY","age":30.3,"why":"liquidity","liq":7759}
 {"t":1794669480298,"addr":"5jSmJ6qPPYZgxbMdLJoSxNPXeQKzs6E6WN9zZoCPvC3g","sym":"DC","age":30.4,"why":"liquidity","liq":0}
+{"t":1794669540804,"addr":"J7wWKtfdftjpuMz4FtX7LQLZrWb8QM6HRonbXPVgVqro","sym":"JUMP","age":30.2,"why":"liquidity","liq":0}
+{"t":1794669600635,"addr":"Gd2zDCfXzK3AkecirJHny8y3wAmYK8857NYvjRqnpump","sym":"MMM","age":30.7,"why":"liquidity","liq":1521}
+{"t":1794669720747,"addr":"7sPKhCur9fBSq9CqSUKopw6e1SqQdn7m5DQ4a2DvK59H","sym":"BOOSTY","age":31.0,"why":"liquidity","liq":0}
+{"t":1794669720747,"addr":"5JhhZ8YwFJU3vV48nrLKVHUJ34HCthewo1dCNksde4E8","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":0}
+{"t":1794669720747,"addr":"CKKj3NkMzw8N7PaCnWYP48QpeWqZPrTzLDm3LNqusJsJ","sym":"JUMP","age":30.8,"score":0.01209,"px":3.123e-05,"liq":43327,"p0":3.138485473202633e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.6013,"c_peak":1.0235,"c_vol":4.9672,"c_act":1.0,"c_r5":0.0209,"c_r15":0.1472,"c_mc":4.4967}}
+{"t":1794669720747,"addr":"2eCjZuTboFLfF963Az1gHAyHosmhx584pswGZQQTpump","sym":"GROOVE","age":30.5,"why":"liquidity","liq":2721}
+{"t":1794669780546,"addr":"GNjSzwxokfdKTe41co9zkmPLFG1SLgkX4XXcQYk52j93","sym":"DC","age":30.8,"why":"liquidity","liq":0}
+{"t":1794669780546,"addr":"9s72iSTfmvensKR1PZvDrdZdtyFXxVhpFYMoyR91GiF5","sym":"BRACKET","age":30.8,"why":"liquidity","liq":2616}
+{"t":1794669780546,"addr":"oLGjjDrYygE2Drc3MiDbpLm52EFuMJYhYqfCUDhpump","sym":"Houser","age":30.7,"why":"liquidity","liq":0}
+{"t":1794669780546,"addr":"8zQ7c5FyoK12GBppVDnvsMrzH7yLSTSnRc1WmJxXpkK6","sym":"ZORPO","age":30.2,"why":"liquidity","liq":0}
+{"t":1794669780546,"addr":"5eBEgYzvxyHP8dVtSoBVogjjHF2KfFwAwT7itLFZpump","sym":"ALM2","age":30.1,"why":"liquidity","liq":2848}
+{"t":1794669780546,"addr":"31oc4hJWoStpF5eadXeZnLLXdkBZPncJUYyWsFX9dMXU","sym":"BATON","age":30.1,"why":"liquidity","liq":0}
