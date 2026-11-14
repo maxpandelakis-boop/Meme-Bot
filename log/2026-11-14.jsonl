@@ -313,3 +313,4 @@
 {"t":1794651840324,"addr":"GyymNgK4F4PEAdVa3xYLYUwfB9CpQqp9cCytWsUWjHRK","sym":"Frog Gugu","age":30.6,"score":0.01402,"px":3.64e-05,"liq":48365,"p0":3.6587070145735026e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.6931,"c_peak":1.0089,"c_vol":5.0436,"c_act":1.0,"c_r5":0.1795,"c_r15":0.4338,"c_mc":4.5633}}
 {"t":1794651900564,"addr":"7qA5wxvhKiKiwe6a9bu9TK3WXiskZARiczgtfDv6Wb56","sym":"JUMP","age":30.3,"why":"liquidity","liq":0}
 {"t":1794651960909,"addr":"Bg6G434Wi5b91KD8EWHjkNeS7LaADowGRYbaqRxX6uUg","sym":"CYPC","age":30.4,"why":"liquidity","liq":0}
+{"t":1794652261013,"addr":"GFtDfMzdZbzfawE7XBMGiVQVGB5xbN6VCgY4T2yDQjKd","sym":"Takes","age":30.0,"why":"liquidity","liq":0}
