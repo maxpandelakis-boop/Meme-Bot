@@ -151,3 +151,4 @@
 {"t":1794716760198,"addr":"8zyD1DDw9FQmL7pnzjcJhsJTP4F3MbpUd27dRkzMrFM","sym":"penny","age":30.4,"score":0.01488,"px":8.398e-07,"liq":123843,"p0":8.330199055930453e-07,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.3636,"c_peak":1.0135,"c_vol":6.4,"c_act":1.0,"c_r5":0.0386,"c_r15":0.1342,"c_mc":2.9207}}
 {"t":1794716820699,"addr":"HzKRbV9uw2TDuhi7qNXsgCBdjRJkVLoc7stCojapj8hg","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":0}
 {"t":1794716820699,"addr":"9wfzdNN2yvgXazyXkPBGv7yBJq4NcxU6GUtGB5yFpump","sym":"QRCODE","age":30.8,"why":"liquidity","liq":3017}
+{"t":1794717120580,"addr":"Fpy9qMnQKo6ubM8yW6MneyB3GAdrofWKc8xjzWPBpump","sym":"LOOM","age":30.4,"why":"liquidity","liq":1398}
