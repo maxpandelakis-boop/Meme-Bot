@@ -404,3 +404,4 @@
 {"t":1794742621167,"addr":"4ek4WoLFzRKz18JsM23AG2kJvYKTMLf2cDu56F23gQXy","sym":"MORNING","age":30.7,"score":0.03325,"px":3.93e-05,"liq":48410,"p0":4.394873337600407e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":22.0,"f_cjk":0.0,"c_ret":0.992,"c_peak":1.2668,"c_vol":5.394,"c_act":1.0,"c_r5":-0.0642,"c_r15":0.3388,"c_mc":4.6429}}
 {"t":1794743040616,"addr":"9HFUEab7sompLDPTAaTGkryMNGbtBaFMhHMVpJEBpump","sym":"rockstar","age":43.7,"why":"no candles"}
 {"t":1794743040616,"addr":"DMHpt4FaCsiuifUgSNoy3dcsHj4KGJNsJYVsM2jkVCwG","sym":"JUMP","age":30.2,"why":"liquidity","liq":0}
+{"t":1794743400339,"addr":"3dAnEJu1MwKJBkTWecZyd7V8wkk2Eo5f94SwJYJ5qCku","sym":"JUMP","age":30.9,"why":"liquidity","liq":0}
