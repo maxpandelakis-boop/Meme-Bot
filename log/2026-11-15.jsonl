@@ -732,3 +732,6 @@
 {"t":1794779040947,"addr":"HXzs36B21z339yGvVGtoyr5WSv9k9yegSjyDQxiTpump","sym":"TTP","age":30.2,"why":"liquidity","liq":6494}
 {"t":1794779161066,"addr":"FgmX3JbxCrwaDYg3AzcWDC2CFEWBSb2cUhdirNPZpump","sym":"JENSEN","age":30.3,"why":"liquidity","liq":1423}
 {"t":1794779460913,"addr":"4tciQkhVHJ6PXcJeSFFZE4wpvgdLgmUL7ZwJQqNaij26","sym":"ASSTER","age":30.4,"why":"liquidity","liq":5629}
+{"t":1794779520608,"addr":"HeiE8a2rczhoiqEGu8v6HM35SFyaqcaaLZZTMsSdbonk","sym":"LEVAULT","age":30.9,"why":"liquidity","liq":0}
+{"t":1794779520608,"addr":"Anw7pNWsHR4oRT5Mb5fYDghjhBD4wNtJ9xqT8uvopump","sym":"UTYAN","age":30.7,"why":"liquidity","liq":7500}
+{"t":1794779580551,"addr":"5GFewjqaHQXAu9AuGzqTE1T4r3JcgmxTWz2Rq4AUpump","sym":"4","age":30.4,"why":"liquidity","liq":2425}
