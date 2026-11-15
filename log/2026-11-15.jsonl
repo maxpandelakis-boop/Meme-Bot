@@ -141,3 +141,4 @@
 {"t":1794715620835,"addr":"4QnfN5VK897oKe5XoSYPmuhmcd1Y6kxBmfcgN9fGFnbE","sym":"JUMP","age":30.3,"score":0.01108,"px":2.561e-05,"liq":38479,"p0":2.5646593714967057e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":13.0,"f_cjk":0.0,"c_ret":0.3745,"c_peak":1.0321,"c_vol":4.8615,"c_act":1.0,"c_r5":-0.0247,"c_r15":0.1402,"c_mc":4.409}}
 {"t":1794715740626,"addr":"FX2RJho9xoxYCyoUim1PWzf97CAn4J7EQUewNA3Cp5N9","sym":"BLG","age":30.6,"why":"liquidity","liq":0}
 {"t":1794715800985,"addr":"3b22tGdmvk872BuAHKv3MznFrH9i1a59mfBwyAE9pump","sym":"JENSEN","age":30.7,"why":"liquidity","liq":1344}
+{"t":1794715980739,"addr":"4dLEmrzM6LSrdm3j7cJ1Tr9zCjK8JHQR5JaeGnZDxwr1","sym":"BLG","age":30.4,"why":"liquidity","liq":0}
