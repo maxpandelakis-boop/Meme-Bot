@@ -549,3 +549,5 @@
 {"t":1794756960201,"addr":"DzW19dXz186Mgw4EBMzDbWhGaNmH1yd5SsNn8hC7QEwZ","sym":"BLG","age":30.3,"score":0.02134,"px":3.582e-05,"liq":45488,"p0":3.48383900023443e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.6033,"c_peak":1.0134,"c_vol":5.017,"c_act":1.0,"c_r5":0.1398,"c_r15":0.3251,"c_mc":4.5421}}
 {"t":1794756960201,"addr":"9g118P9KivirHE6f9TCbzNxUMuBoZR1M7piytrNh3nAZ","sym":"LEND","age":30.2,"why":"liquidity","liq":0}
 {"t":1794757140820,"addr":"DpMvZhbFRenPPqa8ee2B2sAThbKRoGM9rrUjfFMe5VeW","sym":"UODF","age":30.3,"why":"liquidity","liq":0}
+{"t":1794757200115,"addr":"2D6CbwtKRqnnDDN6JQ8XLpNz3HDC8BxKujnxxUWmgFgm","sym":"Democat","age":30.6,"why":"liquidity","liq":27}
+{"t":1794757200115,"addr":"6S85RpNDzsANeC9e339VnNZEbDT4WdwG2oEnczmHbonk","sym":"Bahbel","age":30.4,"why":"liquidity","liq":0}
