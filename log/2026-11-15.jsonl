@@ -152,3 +152,6 @@
 {"t":1794716820699,"addr":"HzKRbV9uw2TDuhi7qNXsgCBdjRJkVLoc7stCojapj8hg","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":0}
 {"t":1794716820699,"addr":"9wfzdNN2yvgXazyXkPBGv7yBJq4NcxU6GUtGB5yFpump","sym":"QRCODE","age":30.8,"why":"liquidity","liq":3017}
 {"t":1794717120580,"addr":"Fpy9qMnQKo6ubM8yW6MneyB3GAdrofWKc8xjzWPBpump","sym":"LOOM","age":30.4,"why":"liquidity","liq":1398}
+{"t":1794717301135,"addr":"84vpX9qjmbvnrTw1HTcmjowBoziKw7nFtByRSTnGpump","sym":"RF","age":30.5,"why":"liquidity","liq":3048}
+{"t":1794717360160,"addr":"HD27inL7JTzE9hdSYyzKqv21pb596PtCm2jxE9uepump","sym":"Larper","age":43.3,"why":"no candles"}
+{"t":1794717420915,"addr":"BY59Qbw9iTb9Z5gsRL8qEnQJQzZRJ9BNxj9T1VEXMVQP","sym":"BLG","age":30.5,"why":"liquidity","liq":0}
