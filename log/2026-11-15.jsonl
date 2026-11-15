@@ -557,3 +557,7 @@
 {"t":1794742651975.095,"addr":"82Z6CcE5g3o1jW3vgtcqr95jP4XFx8jg1SJe8ikepump","sym":"PANICSELL","pool":"78Y5n1wPDoj254zUod1C72p8cn66BDXZqeP4EV91jgiZ","age":485,"score":0.00036,"mc":106969,"px":0.0001109,"reach":232,"buy":false}
 {"t":1794742651975.095,"addr":"zE8C857EbGT6ibnhAxwS1u9Xj64CKTqmscJUP7Mpump","sym":"EXEN","pool":"G5cwG32s8vTZsEMVBtnpPAv1YRS5E7ejXcH3YfdRVQuF","age":649,"score":6e-05,"mc":3784845,"px":0.003787,"reach":59,"buy":false}
 {"t":1794742651975.095,"addr":"i2WJaBfYE4jnrKXqaKyjNNmUkZq9Cea3DBAsPKTpump","sym":"NADF","pool":"29riar8jSbjtvJoeqfGxRPpgKkXtpBBudiDRRAJRcWLR","age":801,"score":5e-05,"mc":1386493,"px":0.001389,"reach":62,"buy":false}
+{"t":1794743512171.8977,"addr":"FS1pBmZKp2Qw1atC64GoLamHstECAos9ot8bGPgDpump","sym":"Socks","pool":"AgqoLMPxk7ETjY74TnyePqKSQQYTTsCrmMVgyQRkaJK3","age":126,"score":0.00527,"mc":304551,"px":0.0003149,"reach":2,"buy":false}
+{"t":1794743512171.8977,"addr":"G69C53wwbhRDCpAkkoqBGWjeBfPoUsRMbNg3jmU8pump","sym":"Busted","pool":"9RLEfEQgGXEKnmxvnhgFcvzCYRCPiXRJBSehB1MP1YGk","age":119,"score":0.00527,"mc":522197,"px":0.0005238,"reach":16,"buy":false}
+{"t":1794743512171.8977,"addr":"zE8C857EbGT6ibnhAxwS1u9Xj64CKTqmscJUP7Mpump","sym":"EXEN","pool":"G5cwG32s8vTZsEMVBtnpPAv1YRS5E7ejXcH3YfdRVQuF","age":663,"score":6e-05,"mc":3749758,"px":0.003752,"reach":61,"buy":false}
+{"t":1794743512171.8977,"addr":"i2WJaBfYE4jnrKXqaKyjNNmUkZq9Cea3DBAsPKTpump","sym":"NADF","pool":"29riar8jSbjtvJoeqfGxRPpgKkXtpBBudiDRRAJRcWLR","age":816,"score":5e-05,"mc":1406205,"px":0.001409,"reach":61,"buy":false}
