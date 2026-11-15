@@ -27,3 +27,4 @@
 {"t":1794704221059,"addr":"6nnm9pxzNQeXaiAt1YpEigi8cJhujnTrqKHBAe35wKeD","sym":"FAA","age":30.5,"why":"liquidity","liq":0}
 {"t":1794704221059,"addr":"G5hMH7UgZBer4v4Z4dmqAC96AS3BrX8WP9MV7vshBAGS","sym":"UMAF","age":30.0,"why":"liquidity","liq":0}
 {"t":1794704341063,"addr":"53J4ckVEPvXsndiJJCkY3wweoHa5Ct21jLpLi8Strc7m","sym":"GEN","age":30.5,"score":0.01849,"px":2.914e-05,"liq":40583,"p0":2.4818838888483857e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.4269,"c_peak":1.0793,"c_vol":4.9827,"c_act":1.0,"c_r5":0.0152,"c_r15":0.1064,"c_mc":4.3948}}
+{"t":1794704580875,"addr":"5bzpALdbCXy5zmwMBhJ1EAGJnS7tEzV1cpqxmHKbpump","sym":"WAU","age":30.2,"why":"liquidity","liq":3330}
