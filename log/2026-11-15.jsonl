@@ -109,3 +109,7 @@
 {"t":1794711360479,"addr":"EZEhJ15eSVGmmTJk7Gvd9rBPbZFrWboQHYFYvwHGUQtV","sym":"\u82b1","age":30.1,"score":0.03786,"px":1.315e-05,"liq":15739,"p0":1.1304278410818514e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":1.0,"c_ret":-0.041,"c_peak":7.3481,"c_vol":5.5487,"c_act":1.0,"c_r5":-1.5793,"c_r15":-0.453,"c_mc":4.0532}}
 {"t":1794711480649,"addr":"4C4hRD3KkteP1BKi7HTfSLWEW9XfkZtwwNGt6DTypump","sym":"STARFALL","age":30.1,"why":"liquidity","liq":4490}
 {"t":1794711541152,"addr":"EzZSaeryUBE3KRQFFinTDYYZW7KNngSdPUsrynq39J1X","sym":"BLG","age":30.5,"why":"liquidity","liq":31}
+{"t":1794711840787,"addr":"5gyRWCVN7YV7H96XNgQGQ9GTdAweQDanFTCx6n3Gpump","sym":"Amazon","age":30.7,"why":"liquidity","liq":1331}
+{"t":1794711840787,"addr":"8UoGTkKbicJUsZXanq81ZNxgtcBNPB96e5wJpVCLNUSD","sym":"USD","age":30.3,"why":"liquidity","liq":2199}
+{"t":1794711900344,"addr":"24VZpchZQi268msSjNaRHZvcqSaiz6BeBVrB8wFZpump","sym":"Ninodrg","age":30.3,"why":"liquidity","liq":0}
+{"t":1794711900344,"addr":"BDYC3k2sHoneQhjM5FQ8hQjN3aD4xQfqU9bqvKXvv1qP","sym":"BLG","age":30.0,"why":"liquidity","liq":0}
