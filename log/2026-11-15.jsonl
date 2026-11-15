@@ -117,3 +117,4 @@
 {"t":1794712320838,"addr":"9zFjj3ZPv6TCeAjudJRBZkKLLrh6ZVyLAuzLkTAJyJep","sym":"Snoopy","age":30.9,"score":0.00714,"px":0.002467,"liq":28802,"p0":0.0023334730916678716,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.2245,"c_peak":1.0097,"c_vol":5.1597,"c_act":1.0,"c_r5":0.0638,"c_r15":0.2156,"c_mc":6.368}}
 {"t":1794712320838,"addr":"FCTMcxxFfiNSigjL43diEBxZ7kajwir9hEDfSDLx2gHa","sym":"BLG","age":30.5,"why":"liquidity","liq":0}
 {"t":1794713040994,"addr":"46cufofdMPXghrrxGa4vCJbK5ctiodKxYdKbsNy6pump","sym":"PERDOVE","age":30.9,"why":"liquidity","liq":0}
+{"t":1794713280451,"addr":"27Hprr6Adob7dRHQ8pbZJ4bq1fcyuAyYrNQoJoCZpump","sym":"BTX","age":30.1,"why":"liquidity","liq":3248}
