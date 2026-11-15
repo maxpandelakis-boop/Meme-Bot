@@ -669,3 +669,5 @@
 {"t":1794769620918,"addr":"FU9UBuFGpsb7Kr81yiYhQ4pHxKok8yuvPDgCL13TvfSC","sym":"BLG-Bin","age":30.8,"score":0.03734,"px":4.317e-05,"liq":50037,"p0":4.283565472576768e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":41.0,"f_cjk":0.0,"c_ret":0.908,"c_peak":1.0044,"c_vol":4.8974,"c_act":1.0,"c_r5":0.1337,"c_r15":0.4565,"c_mc":4.6318}}
 {"t":1794769800791,"addr":"9TwvQXa2H3xVUUQ821cc16F5e4yCZG9iKUMup2YMBAGS","sym":"LEAVA","age":30.9,"why":"liquidity","liq":0}
 {"t":1794769800791,"addr":"9Kovhfpr8KBbgk3Atd9SddTUMSEmyFSgGjYtSfZw6na","sym":"Banana","age":30.7,"why":"liquidity","liq":0}
+{"t":1794770400878,"addr":"5wDQKsQPCjZnFSA3TbG3rT2STfkKZkF3MUzidrDCwLDU","sym":"GTAVICAT","age":30.5,"why":"liquidity","liq":0}
+{"t":1794770580967,"addr":"GWrwFJBtgPm7xq322MR7KqCzmuct1GMCqV5PYmU5Xw2X","sym":"Banana","age":30.3,"why":"liquidity","liq":0}
