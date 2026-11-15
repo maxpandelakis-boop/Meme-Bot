@@ -285,3 +285,8 @@
 {"t":1794728880532,"addr":"E4SJLCM4sJcLirabd1EpdzChPMmSvpUkb3NvcqLHJ2tH","sym":"MORNING","age":30.3,"why":"liquidity","liq":0}
 {"t":1794729060975,"addr":"7gTE1v8jevt1RKNYs3uenhAyFw25D3r24Ve4eY3iMu9h","sym":"GTA6 Coin","age":30.8,"why":"liquidity","liq":0}
 {"t":1794729060975,"addr":"9zSu268xuqrKMauJamHjXmKrBjsMTGLqBTRfQSmbonk","sym":"WMTTUR","age":30.1,"why":"liquidity","liq":0}
+{"t":1794729480494,"addr":"8vaVhDx9XwUtNRfWRiTmSpBx7CexcRoKTWKxeoaZpump","sym":"WASTEDBTS","age":30.4,"why":"liquidity","liq":1359}
+{"t":1794729480494,"addr":"RGPx1JRMCgtZsBznSqnLuQDbDzB1tAcQQMDqVUneh54","sym":"HOGE","age":30.4,"why":"liquidity","liq":0}
+{"t":1794729480494,"addr":"G1KuEMuLrxWynFddQVnpdkQAhYFBwNJiuz1Lv7d9pump","sym":"TaoTao","age":30.0,"why":"liquidity","liq":6077}
+{"t":1794729661070,"addr":"49zqWjuePzJgZN28J6GSamF3Xj6gp1LUL7xnVVA9bonk","sym":"ZAGBEL","age":30.8,"why":"liquidity","liq":0}
+{"t":1794729661070,"addr":"A9y78jg7xKinC9jX5WRtc62C6xDJnNuxuiUzyjX79HAi","sym":"GTA6 Coin","age":30.7,"score":0.01909,"px":3.259e-05,"liq":43210,"p0":3.59995072191509e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.5811,"c_peak":1.2053,"c_vol":5.2918,"c_act":1.0,"c_r5":0.1922,"c_r15":0.4014,"c_mc":4.5563}}
