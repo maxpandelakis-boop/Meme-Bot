@@ -363,3 +363,7 @@
 {"t":1794736680563,"addr":"2tmGUPp5Nru4huFzBMxWUGAJdVnxPg98DbYk87FnMSSQ","sym":"Democat","age":30.0,"why":"liquidity","liq":0}
 {"t":1794737119440,"addr":"HupVCH3FwmwdpGqc2tykfSaTocknqQMfyELwuAXCBAGS","sym":"ZACSIR","age":30.5,"why":"liquidity","liq":0}
 {"t":1794737280520,"addr":"Guxa3YqXRYocQ3TVZMftQoGwEBncXuhniyxnBfcsNdZi","sym":"Lucky","age":30.6,"why":"liquidity","liq":0}
+{"t":1794737400481,"addr":"FtgfNBTH7PXzY2LYQwunNxx7TRfM6uQ1NM8J2dqATXMF","sym":"Lucky","age":30.8,"why":"liquidity","liq":0}
+{"t":1794737520665,"addr":"5gZCr3uagFCiQe3ombMEFuSSfLPsRz5ay1Ct1LJMpump","sym":"mate","age":30.4,"why":"liquidity","liq":2315}
+{"t":1794737520665,"addr":"3nbHBkEDdbPiF5zJMhsxucm25V6UHKv9BVQuTKJVpump","sym":"dragoncat","age":30.3,"why":"liquidity","liq":5003}
+{"t":1794737640524,"addr":"DgbGJ5bnLaFZRgazonvmBQbcL1FViz7hVq8pWtartM2v","sym":"NCAT","age":30.3,"score":0.01302,"px":4.059e-05,"liq":55308,"p0":3.8989613354863544e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.6637,"c_peak":1.0038,"c_vol":4.8132,"c_act":1.0,"c_r5":0.1638,"c_r15":0.3419,"c_mc":4.5909}}
