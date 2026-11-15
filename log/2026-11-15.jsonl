@@ -186,3 +186,4 @@
 {"t":1794719880472,"addr":"1bm9LsqJSMNJnphGBZgVgLgHbSkKCE1G8aJd8evHeEE","sym":"\u55b5\u5409\u62c9","age":30.7,"score":0.01658,"px":8.372e-07,"liq":123077,"p0":8.155450170152569e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.3833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":1.0,"c_ret":0.3547,"c_peak":1.0268,"c_vol":6.367,"c_act":1.0,"c_r5":0.0352,"c_r15":0.1286,"c_mc":2.9114}}
 {"t":1794720120224,"addr":"8Zn234dVR4aKuJWPs9i4fxaqup2HLx7CcnTfN38GXPzJ","sym":"BLG","age":30.4,"why":"liquidity","liq":0}
 {"t":1794720120224,"addr":"C7msx2vEsXiidjmZfJAkMdm732uR7sBtUop19LfMnPKC","sym":"NEX Ai","age":30.2,"why":"liquidity","liq":0}
+{"t":1794720360290,"addr":"BbwNaAZbwXfLMgFCDZ4AR7ygaDZN1d89AGZXBbrtBAGS","sym":"Nursal","age":30.6,"why":"liquidity","liq":0}
