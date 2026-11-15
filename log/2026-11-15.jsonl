@@ -142,3 +142,6 @@
 {"t":1794715740626,"addr":"FX2RJho9xoxYCyoUim1PWzf97CAn4J7EQUewNA3Cp5N9","sym":"BLG","age":30.6,"why":"liquidity","liq":0}
 {"t":1794715800985,"addr":"3b22tGdmvk872BuAHKv3MznFrH9i1a59mfBwyAE9pump","sym":"JENSEN","age":30.7,"why":"liquidity","liq":1344}
 {"t":1794715980739,"addr":"4dLEmrzM6LSrdm3j7cJ1Tr9zCjK8JHQR5JaeGnZDxwr1","sym":"BLG","age":30.4,"why":"liquidity","liq":0}
+{"t":1794716340641,"addr":"9d9DkyBeD6uAtYyLRGhdJnnttzDTP3wCozH3eJ3WR3ip","sym":"\u82b1","age":30.7,"score":0.01814,"px":2.889e-05,"liq":23457,"p0":1.8184719605324568e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":5.0,"f_cjk":1.0,"c_ret":0.8816,"c_peak":3.3803,"c_vol":5.5229,"c_act":1.0,"c_r5":-0.8129,"c_r15":0.6696,"c_mc":4.2597}}
+{"t":1794716400274,"addr":"8Hv4erhvWEbYjanNUWmD13ZaPR4BcZsgaoJNU9J8bonk","sym":"Sobra","age":30.7,"why":"liquidity","liq":0}
+{"t":1794716400274,"addr":"2oCuPBYFjYy4Xpx7zLbPM2bY1J1U3w8rdZfMtpkcihKh","sym":"VND","age":30.3,"why":"liquidity","liq":2940}
