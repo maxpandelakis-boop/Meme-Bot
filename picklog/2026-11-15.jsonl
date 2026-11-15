@@ -1,3 +1,4 @@
 {"at":1794720345560,"why":"time","mult":1.1296262695666976,"rule":"chart","sym":"CLOCKED","t":1794720397895,"eur":55.36,"pnl":5.36,"entryAt":1794698745560,"id":"2026-11-14T230926-h-CLOCKED-5r6uX8"}
 {"at":1794731352008,"why":"time","mult":0.7140447068747364,"rule":"chart","sym":"VICECITY","t":1794731352008,"eur":34.99,"pnl":-15.01,"entryAt":1794709550863,"id":"2026-11-15T020732-h-VICECITY-2afcRh"}
 {"at":1794732240000,"why":"drop","mult":1.0072276083251683,"late":true,"hitAt":1794732180000,"rule":"chart","sym":"CLOCKED","t":1794732327809,"eur":49.36,"pnl":-0.64,"entryAt":1794723189973,"id":"2026-11-15T055105-h-CLOCKED-5r6uX8"}
+{"at":1794735720000,"why":"drop","mult":0.8453798529971308,"rule":"chart","sym":"CLOCKED","t":1794735828422,"eur":41.43,"pnl":-8.57,"entryAt":1794733282394,"id":"2026-11-15T083903-h-CLOCKED-5r6uX8"}
