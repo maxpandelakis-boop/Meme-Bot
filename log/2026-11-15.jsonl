@@ -779,3 +779,4 @@
 {"t":1794786240404,"addr":"6evZj9hiaC6kStZqA5enV9x4ShVLo5ua78fv9EHraUnQ","sym":"\u5976\u9f99","age":30.5,"score":0.00914,"px":3.037e-05,"liq":43246,"p0":2.9743749576947603e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.4564,"c_peak":1.0317,"c_vol":4.7691,"c_act":1.0,"c_r5":0.076,"c_r15":0.2251,"c_mc":4.4734}}
 {"t":1794786420633,"addr":"8uwWqV6a8HDmqGjhgY2WewRTKG2zJtznUL5hgTfHpump","sym":"Rally","age":30.4,"why":"liquidity","liq":3043}
 {"t":1794786541150,"addr":"GZAgpUDauAZ9ktvtjRGwzw86YdsEdTMEiU4NCz9XBAGS","sym":"SKYHOOB","age":30.2,"why":"liquidity","liq":0}
+{"t":1794787140697,"addr":"DN6JKwQhPy538eE9UZcDkKSt4sd7UbMrVtze7RETpump","sym":"Evault","age":30.7,"why":"liquidity","liq":0}
