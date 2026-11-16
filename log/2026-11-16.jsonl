@@ -112,3 +112,5 @@
 {"t":1794801480902,"addr":"Bk4AocogooRSHQWCASiBEN9ZG18RGTwvVv97eJSh9aFM","sym":"HCC","age":30.8,"score":0.03368,"px":2.881e-05,"liq":41170,"p0":2.9179520994959193e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":14.0,"f_cjk":0.0,"c_ret":0.4802,"c_peak":1.0248,"c_vol":5.165,"c_act":1.0,"c_r5":0.133,"c_r15":0.2577,"c_mc":4.4651}}
 {"t":1794801541266,"addr":"H1qYD41rvovLNu1ToiDmQACsxFNZfheYagVsCdYTpump","sym":"\ud83d\udc40","age":30.4,"why":"liquidity","liq":2250}
 {"t":1794801781374,"addr":"ALQcEuRV8QXUiQNGDnpgj7TSqFsvTbXBmJa5J2hwg7r","sym":"LMAO","age":30.3,"why":"liquidity","liq":0}
+{"t":1794801841001,"addr":"ERksv2BQ4yAWEkiVFQR3qifKd1gznDucbbzWvKiRbonk","sym":"Libh","age":30.7,"why":"liquidity","liq":0}
+{"t":1794802080225,"addr":"3d6JiisUR9Mibc7LsdNXAsc3Mvf2JGdDFgU4j6AwSZoc","sym":"Dinosaur\ud83e\udd95","age":31.0,"why":"liquidity","liq":0}
