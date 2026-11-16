@@ -484,3 +484,4 @@
 {"t":1794846541278,"addr":"9cNYSbg5YpHE4wYBqWDFDj6tnf46TyUo5XDFyDRpump","sym":"BELLA","age":30.4,"why":"liquidity","liq":1572}
 {"t":1794846660942,"addr":"3rUHPTYKuqgbHk5JWGXpqRTEr3P9MTqHNECzHnAsZdZv","sym":"\u4e2d\u56fd\u725b\u80fd\u903c","age":30.6,"score":0.01819,"px":2.992e-05,"liq":41590,"p0":2.853931912659809e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.6192,"c_peak":1.07,"c_vol":4.9846,"c_act":1.0,"c_r5":0.2211,"c_r15":0.592,"c_mc":4.4554}}
 {"t":1794846781240,"addr":"1367MRBkGxa1DMoffud5JiFtiXKLY9irf9jJfyUno9DM","sym":"\u614c\u5565\u5b50\u561b","age":30.8,"why":"liquidity","liq":0}
+{"t":1794847020963,"addr":"3x2KXaQ9iZWaTY1ZVo1sgEQuj88dXZGLBRuSmms9pump","sym":"QI","age":30.4,"why":"liquidity","liq":3205}
