@@ -347,3 +347,4 @@
 {"t":1794829440399,"addr":"CLYmkWTusnG1xRtjgACoDKKUWmj9ot4gY9CYEddb5gWL","sym":"Stallions","age":30.2,"why":"liquidity","liq":0}
 {"t":1794829560503,"addr":"7jr8ECqGdWEjdmLPeqvbxob4EkA1gvKL8E8L3JBRTBkV","sym":"\u5927A","age":30.2,"why":"liquidity","liq":0}
 {"t":1794829680321,"addr":"8cZnXEV6c8QwQ47SsfDwmgauzbatnt9x4pQ8LCiHVUnk","sym":"\u73b0\u8d27\u4e0d\u6015","age":30.8,"score":0.04514,"px":3.504e-05,"liq":44973,"p0":3.358204308342371e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.7184,"c_peak":1.0,"c_vol":4.8382,"c_act":1.0,"c_r5":0.2584,"c_r15":0.3554,"c_mc":4.5261}}
+{"t":1794829920134,"addr":"AjBbqYm3GVFNQ129K7GceViqAKWvqnoETvtpLRfSbonk","sym":"Aheal","age":30.4,"why":"liquidity","liq":0}
