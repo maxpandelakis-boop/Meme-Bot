@@ -333,3 +333,4 @@
 {"t":1794828000999,"addr":"G569daWj4hBCMJDXg26YgfiDij3wBkBfXswPwRMFpump","sym":"1NU","age":30.5,"why":"liquidity","liq":4069}
 {"t":1794828060493,"addr":"AMDjaSbxjiB4aixRe8ermPzo9F6UJfkfASui1eoz17b2","sym":"\u5927A","age":30.3,"why":"liquidity","liq":0}
 {"t":1794828060493,"addr":"EK3fe41Hs8ETfcVtdnSojahwMVmEdf8whsfeK4oZfmBR","sym":"PAYOUT","age":30.3,"score":0.00923,"px":6.397e-08,"liq":11275,"p0":6.214962185658363e-08,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.1951,"c_peak":1.0188,"c_vol":4.5912,"c_act":1.0,"c_r5":0.0196,"c_r15":0.1338,"c_mc":1.7934}}
+{"t":1794828240273,"addr":"HqHLNQyMYYGZaWPTEhHzwB1of1yoPdKqEdtMWQ9cpump","sym":"Amman","age":30.2,"why":"liquidity","liq":0}
