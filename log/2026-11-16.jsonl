@@ -255,3 +255,4 @@
 {"t":1794818160080,"addr":"Hn4NPpbEq4ypjpo7ejptTEVgwDANSsQ8aJsKF67iept","sym":"capytrade","age":30.6,"why":"liquidity","liq":0}
 {"t":1794818400902,"addr":"FjP5neMpTJvchMEZzUCM68tJ9Pd16PPuecVCc1wg7A8","sym":"capytrade","age":30.2,"score":0.01662,"px":7.529e-07,"liq":109224,"p0":7.41459504146473e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.2333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.6527,"c_peak":1.0387,"c_vol":6.2565,"c_act":1.0,"c_r5":0.04,"c_r15":0.2109,"c_mc":2.8701}}
 {"t":1794818460864,"addr":"GZCLRGkf4adpeNxsCmee9R8bd269FpHkfvhmBHwhBAGS","sym":"Stelboot","age":30.2,"why":"liquidity","liq":0}
+{"t":1794818760879,"addr":"UzaX6R6NqajdjoqXyQEXvxPmomGXddAxsVtJPys4Bgh","sym":"MORNING","age":30.9,"why":"liquidity","liq":19}
