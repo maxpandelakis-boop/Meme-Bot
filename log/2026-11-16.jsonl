@@ -239,3 +239,5 @@
 {"t":1794816120435,"addr":"AcTveURXBPF2nYCw4XyWAG3VuPMBVwVZADgERZEv5hX","sym":"\u73b0\u8d27\u4e0d\u6015","age":30.1,"why":"liquidity","liq":0}
 {"t":1794816120435,"addr":"8k8b99CdD4JnxbktEq4b4Dspe7ejRmqwD1FRNFvepump","sym":"Artex","age":30.0,"why":"liquidity","liq":0}
 {"t":1794816360611,"addr":"Eo68DCMYpCnJLEBoD4R86zGDsjUyMAe9zJXtqMiCoXic","sym":"\u5927A","age":30.6,"why":"liquidity","liq":0}
+{"t":1794816480311,"addr":"6W8waBuMe4HaH2ohZ29spDThWV71qn361nv1kXQyG6io","sym":"TITS","age":30.2,"why":"liquidity","liq":0}
+{"t":1794816541092,"addr":"6ZBfHKe1ZSEh5H4VRFEZEKdXeT67hqvWeQSrYMAxpump","sym":"bop","age":43.5,"why":"no candles"}
