@@ -660,3 +660,5 @@
 {"t":1794866280961,"addr":"Cj6Ecf12pAz8B74rK2yehipLewrAa9ndawik4PAopump","sym":"OPTIMJACK","age":30.5,"why":"liquidity","liq":1739}
 {"t":1794866400623,"addr":"Byepzy6JPMqNADb9LwRE5nQ5WxAb154tTbegH3TUpump","sym":"GROYPERS","age":30.7,"why":"liquidity","liq":1497}
 {"t":1794866400623,"addr":"9LcTwEqhLBzc1Ht2miTbPCxhxJuU9bo1kiHuof5Nu8dY","sym":"JENSEN","age":30.2,"score":0.02739,"px":3.66e-05,"liq":45797,"p0":3.1839595359300974e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":17.0,"f_cjk":0.0,"c_ret":0.7868,"c_peak":1.187,"c_vol":5.032,"c_act":1.0,"c_r5":0.3001,"c_r15":0.3083,"c_mc":4.503}}
+{"t":1794866820737,"addr":"HcFEXj7s5hbsMpNfE6eNTDEDCgq9spRAbnEBiRs4pump","sym":"GAVIN","age":31.0,"why":"liquidity","liq":1489}
+{"t":1794866820737,"addr":"CUSWDTCrZpHUoNnZAA2PVsJqyBVuBhbWppEq8nPGbonk","sym":"RAYECROWN","age":30.9,"why":"liquidity","liq":0}
