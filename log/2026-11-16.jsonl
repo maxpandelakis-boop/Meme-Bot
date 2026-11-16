@@ -238,3 +238,4 @@
 {"t":1794816120435,"addr":"7t5iAccDd13ZryovHvNJ75d4J48uvrcfLyN7rBwLb4Rq","sym":"Dinosaur\ud83e\udd95","age":30.6,"score":0.0226,"px":6.393e-05,"liq":61812,"p0":5.769522479370077e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.9588,"c_peak":1.0738,"c_vol":5.6188,"c_act":1.0,"c_r5":-0.0098,"c_r15":0.5335,"c_mc":4.7611}}
 {"t":1794816120435,"addr":"AcTveURXBPF2nYCw4XyWAG3VuPMBVwVZADgERZEv5hX","sym":"\u73b0\u8d27\u4e0d\u6015","age":30.1,"why":"liquidity","liq":0}
 {"t":1794816120435,"addr":"8k8b99CdD4JnxbktEq4b4Dspe7ejRmqwD1FRNFvepump","sym":"Artex","age":30.0,"why":"liquidity","liq":0}
+{"t":1794816360611,"addr":"Eo68DCMYpCnJLEBoD4R86zGDsjUyMAe9zJXtqMiCoXic","sym":"\u5927A","age":30.6,"why":"liquidity","liq":0}
