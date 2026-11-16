@@ -2,3 +2,4 @@
 {"at":1794800940000,"why":"drop","mult":0.8272346267667925,"late":true,"hitAt":1794800820000,"rule":"chart","sym":"Anthropig","t":1794800966004,"eur":40.54,"pnl":-9.46,"entryAt":1794799139233,"id":"2026-11-16T025612-h-Anthropig-2NUaS6"}
 {"at":1794806160000,"why":"drop","mult":0.8279452835362408,"late":true,"hitAt":1794806100000,"rule":"chart","sym":"rockstar","t":1794806216665,"eur":40.57,"pnl":-9.43,"entryAt":1794805710680,"id":"2026-11-16T045128-h-rockstar-9HFUEa"}
 {"at":1794807660000,"why":"drop","mult":0.8791429731479059,"late":true,"hitAt":1794807480000,"rule":"chart","sym":"BJB","t":1794807672196,"eur":43.08,"pnl":-6.92,"entryAt":1794802454486,"id":"2026-11-16T035537-h-BJB-CHuLmJ"}
+{"at":1794816995102,"why":"trail","mult":1.3699148533585621,"rule":"chart","sym":"DOUG","t":1794816995102,"eur":67.13,"pnl":17.13,"entryAt":1794795347854,"id":"2026-11-16T015807-h-DOUG-8UqE9m"}
