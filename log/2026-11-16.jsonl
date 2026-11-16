@@ -184,3 +184,5 @@
 {"t":1794811440606,"addr":"CGQ8GYqXCMFTSR5qgUxgg1WvmD2BX2Db5CGYrU5w9bWA","sym":"Mentats","age":30.3,"score":0.02103,"px":3.84e-05,"liq":46850,"p0":3.6495417298553584e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":35.0,"f_cjk":0.0,"c_ret":0.8956,"c_peak":1.0378,"c_vol":4.8059,"c_act":1.0,"c_r5":0.1466,"c_r15":0.4409,"c_mc":4.5622}}
 {"t":1794811560678,"addr":"6MUDGbRdi9Jgx3awxvb1VQpywXVvrSwpm5aDSQwPpump","sym":"NOODLE","age":30.2,"why":"liquidity","liq":3027}
 {"t":1794811560678,"addr":"EaWwVatjJzLhaFdBs9pV7W5dRrmT8UkV6K2eRfd54axE","sym":"\u5927A","age":30.2,"why":"liquidity","liq":0}
+{"t":1794811741097,"addr":"DZt1Ke7trvwBnLTcp7xhXqatAR2z1jW3iRXdFKyvVmdm","sym":"\u5927A","age":30.6,"why":"liquidity","liq":0}
+{"t":1794811860841,"addr":"BFZWjQFVKWouYDh5znm4g9BZ6cUmgEWcBqScPCsvyPgG","sym":"JUMP","age":30.9,"why":"liquidity","liq":0}
