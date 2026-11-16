@@ -531,3 +531,7 @@
 {"t":1794852420669,"addr":"7ZjZzrbsbahEbqSmTE6qzyUqR8aYMvtpsxUATM4zpump","sym":"COGE","age":30.7,"why":"liquidity","liq":1567}
 {"t":1794852420669,"addr":"ERZS2Nyt3b321u7Q8TMz7mVcQyRPGiWxPZZgmd4tpump","sym":"ISAAC","age":30.1,"why":"liquidity","liq":8384}
 {"t":1794852480269,"addr":"2hg559PqkbnfaprUE3V5dSFAaDNjURnmvGs79kqepump","sym":"GTAHUB","age":30.2,"why":"liquidity","liq":2341}
+{"t":1794852661301,"addr":"21ka5CAfvMU7PuzcAgwj7pQtpNM7D48oLf1D1kkdpump","sym":"CoinGecko","age":30.6,"score":0.01645,"px":3.74e-05,"liq":12496,"p0":5.254417644793273e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9489,"c_peak":2.2775,"c_vol":4.4908,"c_act":1.0,"c_r5":-0.7288,"c_r15":-0.1309,"c_mc":4.7205}}
+{"t":1794852720502,"addr":"37FNxrDjvaazJQSXDUBZtS5D5fc9wGYxgaSA9PRdpump","sym":"ZELLE","age":30.5,"why":"liquidity","liq":4363}
+{"t":1794852780571,"addr":"GvpfwBcjHniULFHMgzVQ6F1jBbSfchuM33MbJa98mZnd","sym":"VC","age":30.7,"why":"liquidity","liq":4138}
+{"t":1794852780571,"addr":"4HKEC7hDeaERb7ttFLsoU2D2wGRoiNcCShkqUv8npump","sym":"VC","age":30.4,"why":"liquidity","liq":3457}
