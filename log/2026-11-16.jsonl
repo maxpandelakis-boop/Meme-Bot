@@ -153,3 +153,4 @@
 {"t":1794807300616,"addr":"9A1UT5M2tvszLqHvtVk7vBc4JL2dqodp5vEFjAeCVyBB","sym":"Dinosaur\ud83e\udd95","age":31.0,"why":"liquidity","liq":0}
 {"t":1794807540988,"addr":"HnNTiEwkmHezJBnvUa3QMZ97uS4jXf67NCXSAV8bpump","sym":"equity","age":30.9,"why":"liquidity","liq":2055}
 {"t":1794807600315,"addr":"8cU9kePuqwvYqxS7X4KEYjVBSVhpiEjNUcb99cj3pump","sym":"USOI","age":30.4,"score":0.00371,"px":0.001002,"liq":69781,"p0":0.001004885000571293,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":19.0,"f_cjk":0.0,"c_ret":0.0504,"c_peak":1.0041,"c_vol":4.4558,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":6.0021}}
+{"t":1794807720202,"addr":"6FGBUjBLxPLA9mFkY6nBsmf824PaPLWUyVgF53Zzpump","sym":"Hynix","age":30.7,"why":"liquidity","liq":0}
