@@ -277,3 +277,6 @@
 {"t":1794820500378,"addr":"8e9tVgscwmfXEAJTAmjg5JZmX26UXBjNYEQaX6UrToei","sym":"\u5927A","age":30.8,"why":"liquidity","liq":0}
 {"t":1794820560691,"addr":"Fakq8N13faqnVEdjWJs81rzBNm7dCMZBjq43YCfpump","sym":"VTC","age":30.6,"score":0.00255,"px":0.004772,"liq":153250,"p0":0.004767639836654167,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":10.0,"f_cjk":0.0,"c_ret":0.0176,"c_peak":1.0025,"c_vol":4.8473,"c_act":0.5,"c_r5":0.0,"c_r15":0.0,"c_mc":6.6783}}
 {"t":1794820620553,"addr":"DjxuNuNYpv4CatdJ3BdS6qkYBsUPrgBQmixpK7QFyoJb","sym":"\u5927A","age":30.6,"why":"liquidity","liq":0}
+{"t":1794820800976,"addr":"2zsjcNfBxAXM9NL6synWShNPC1f5DLQYwau2SLkABAGS","sym":"CARMIC","age":30.6,"why":"liquidity","liq":0}
+{"t":1794820860432,"addr":"84QpPVHRLfvk3tpw8jmXC9BneXL11ZxGfrKorQo1heGx","sym":"\u5927A","age":30.7,"why":"liquidity","liq":0}
+{"t":1794820920739,"addr":"AoxUPAXxmuxs5Hbn8MhSbMB9DF7qF6cbUduFzeJZ8G9H","sym":"bop","age":30.9,"why":"liquidity","liq":0}
