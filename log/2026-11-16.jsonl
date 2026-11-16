@@ -213,3 +213,10 @@
 {"t":1794814621008,"addr":"JChmXZZymZ63RgxaHHD3MdqRuLcnJL4XpZFW8Pn5BNy1","sym":"\u5927A","age":30.5,"why":"liquidity","liq":0}
 {"t":1794814681017,"addr":"BN4Bhiprx4yCjY8Gofzr5Ym8skHcjJPk7W8hfcNLG1L3","sym":"SuperJense","age":30.9,"why":"liquidity","liq":0}
 {"t":1794814861236,"addr":"6JRQCFCJwkrtjYkLZJCvLjz9JbCKecA9FXAZaQhoP2D8","sym":"Dinosaur\ud83e\udd95","age":30.8,"why":"liquidity","liq":0}
+{"t":1794814980701,"addr":"139DirFsbWwrU2JJGNzXfjQ4EnMDWHrvSUweNFx2tAFn","sym":"WIGGLES","age":30.9,"score":0.0178,"px":8.295e-07,"liq":123458,"p0":8.346123190818046e-07,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4085,"c_peak":1.0183,"c_vol":6.3314,"c_act":1.0,"c_r5":0.0521,"c_r15":0.1495,"c_mc":2.9215}}
+{"t":1794814980701,"addr":"8mMpnjoQ7ng3rZur5S9z2AUfCeJUEuak92i9L38eEGf3","sym":"SuperJense","age":30.4,"why":"liquidity","liq":0}
+{"t":1794815040564,"addr":"F6rwU7P6YjwbsvE7iRCye1N8RkrHuDL2g2N5VcMwmoon","sym":"HYFORGE","age":30.9,"why":"liquidity","liq":0}
+{"t":1794815101382,"addr":"GQ68t9unc9YK92ZwG1ZqKCh4bfKrSJHKASzyLKtkdgcD","sym":"MORNING","age":30.9,"score":0.03042,"px":6.157e-05,"liq":59888,"p0":5.410951391323346e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":20.0,"f_cjk":0.0,"c_ret":1.2802,"c_peak":1.0058,"c_vol":5.0392,"c_act":1.0,"c_r5":0.6168,"c_r15":0.9187,"c_mc":4.7333}}
+{"t":1794815101382,"addr":"DcWGij5ozkUBGN85geQg6a7oVLDBeir73gZCMDjohFGm","sym":"JUMP","age":30.7,"score":0.06431,"px":4.12e-05,"liq":48881,"p0":3.4370247062091385e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":16.0,"f_cjk":0.0,"c_ret":0.8175,"c_peak":1.0,"c_vol":4.938,"c_act":1.0,"c_r5":0.3702,"c_r15":0.3809,"c_mc":4.5362}}
+{"t":1794815160416,"addr":"5ycXkPs5GE6uuDWPzL2oBaW4L3ZQTdWYHj8kReRhiY92","sym":"\u5927A","age":31.0,"why":"liquidity","liq":0}
+{"t":1794815160416,"addr":"Abgjkeft7k3huiHDiigdpKihuXLqGKc2JxrQncbM9cRv","sym":"SuperJense","age":30.9,"why":"liquidity","liq":0}
