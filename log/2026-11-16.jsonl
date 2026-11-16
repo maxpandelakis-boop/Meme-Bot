@@ -562,3 +562,12 @@
 {"t":1794855720191,"addr":"EcVKznh4T4mfSLggp7QWbvXiKicy3Ev9f3nk3kqHpump","sym":"BANKLESS","age":30.4,"score":0.02384,"px":2.939e-05,"liq":11475,"p0":2.857514538028984e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.9165,"c_peak":3.2456,"c_vol":5.3815,"c_act":1.0,"c_r5":-0.4535,"c_r15":-0.3223,"c_mc":4.456}}
 {"t":1794855720191,"addr":"EdZWk9VSeqtfiFJBcyZgycbaTWwWU6Qu1N4a6YUmpump","sym":"Zelleinu","age":30.2,"why":"liquidity","liq":1690}
 {"t":1794855781194,"addr":"FS174V1XfEBAtgF9SBQe3e6NYAoFc5T1c7wKAUjzpump","sym":"11/17","age":30.5,"why":"liquidity","liq":8936}
+{"t":1794855901171,"addr":"EbvDi2DcoyeAK3pfcRa6zp5UkvYjsPCBhdeH17aCpump","sym":"DIDN'T","age":30.1,"why":"liquidity","liq":7384}
+{"t":1794855960491,"addr":"3qYST7M1C5f47mdZST4DZzRVq4n7AaewWSYFqj1PoeH2","sym":"EPSTEIN","age":30.8,"why":"liquidity","liq":2016}
+{"t":1794855960491,"addr":"3PJAConxWszjHFLkybuDBpqY5kDb6TG35qD3qtqbpump","sym":"EPSTEIN","age":30.6,"why":"liquidity","liq":1486}
+{"t":1794855960491,"addr":"AAiGaG7BQfiJwwy3VAyZMWFTeQXYhZ1APZsMVY15bonk","sym":"ETHTOLL","age":30.2,"why":"liquidity","liq":0}
+{"t":1794856021136,"addr":"HJvNcWt57y1yMEcUYhdbayWSsEz3xqyW3s6rSAtb5Cnz","sym":"COGE","age":30.7,"why":"liquidity","liq":0}
+{"t":1794856080436,"addr":"HqQc2Yo16V3gh6rC5B5pfkvrEqbAjb4RWgv75bKvpump","sym":"gmgn","age":30.9,"why":"liquidity","liq":1424}
+{"t":1794856080436,"addr":"27wf8Mh7PFdy4Vr1VqUCc5K6DCp23H3FyqsK3Ymjpump","sym":"mINUte","age":30.8,"why":"liquidity","liq":2838}
+{"t":1794856080436,"addr":"6GRGFkf7sQD7KeVghSkqDhVUYj8GYytw9iNbyX3mZuYg","sym":"CS1","age":30.7,"score":0.0098,"px":3.838e-05,"liq":46636,"p0":3.8994757747306666e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.7204,"c_peak":1.0237,"c_vol":5.0201,"c_act":1.0,"c_r5":0.194,"c_r15":0.4187,"c_mc":4.591}}
+{"t":1794856140423,"addr":"4RuCrwRgGAE1x39PkwC2o8BwCfSYPmoLK3yCaEFRhj2Z","sym":"EPSTEIN","age":30.8,"why":"liquidity","liq":2231}
