@@ -684,3 +684,6 @@
 {"t":1794870421042,"addr":"9h5GtbAbB7LfuM8bQfgj2kHzRYoJttDgKyaJtiKNpump","sym":"Zoo","age":30.5,"why":"liquidity","liq":1442}
 {"t":1794870421042,"addr":"Ej5v1E5AAwqY8bLLMfMUApPHj9T1yBo1WYti2q3Upump","sym":"mimic","age":30.4,"score":0.01551,"px":6.305e-05,"liq":17147,"p0":6.222579479219048e-05,"bars":6,"buy":false,"f":{"f_curve_min":1.1167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.6822,"c_peak":2.4355,"c_vol":5.5126,"c_act":1.0,"c_r5":0.0906,"c_r15":-0.5653,"c_mc":4.794}}
 {"t":1794870480778,"addr":"ASf3cb8NBeFMt98NLqTath3JVY5ZiuzFn2gjHFappump","sym":"JENSENATOR","age":30.7,"why":"liquidity","liq":1484}
+{"t":1794870661086,"addr":"31t4wNbBPzHo7meaUyGb68qMfYkWkyLsscy8KsD8bonk","sym":"QWENSH","age":30.1,"why":"liquidity","liq":0}
+{"t":1794870720318,"addr":"9jUmQAGfizUwjpdWCEfFFp8W34DH5zrcd1Zi5Fo9xFHy","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":0}
+{"t":1794870720318,"addr":"DqSRkX7GyYY23A7Y4Rdvr1Wjwbt1Xk25c1mVRQnspump","sym":"Pat","age":30.1,"why":"liquidity","liq":1378}
