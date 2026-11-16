@@ -203,3 +203,4 @@
 {"t":1794813240217,"addr":"DgKqbFhCN4vdjj4fWCDnxr9t7KtoqPhyx6Hge62fsRMb","sym":"SAFU","age":30.9,"score":0.00888,"px":2.33e-05,"liq":36493,"p0":2.21279676125794e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.3591,"c_peak":1.0313,"c_vol":4.8085,"c_act":1.0,"c_r5":0.0056,"c_r15":0.1258,"c_mc":4.3449}}
 {"t":1794813301104,"addr":"3Snrwg84cggdmhNUprp99tZ2Qmv6r1aDDXY2jQrFBAGS","sym":"COLEFW","age":31.0,"why":"liquidity","liq":0}
 {"t":1794813360359,"addr":"AfgoxLJGTSBwtPr1Lr9YWD2cPecSy95SbUNP3vBnXjUA","sym":"SuperJense","age":30.6,"why":"liquidity","liq":10}
+{"t":1794813840740,"addr":"FqTSohG1b8hanZkSKFoK4FFkXkaSZaXdh7BrZZJdBAGS","sym":"MEDBEAC","age":30.2,"why":"liquidity","liq":0}
