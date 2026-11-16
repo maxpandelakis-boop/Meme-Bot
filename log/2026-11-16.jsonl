@@ -395,3 +395,8 @@
 {"t":1794837780613,"addr":"B1278eTdn8B5Ark6bvQYC9vGyqdGt2VSVbdADx1Spump","sym":"GTA 6 Coin","age":30.9,"why":"liquidity","liq":1393}
 {"t":1794837780613,"addr":"GgfwWX87Bo6edJpuhQkuZd8FkhRxZkfg2367MmMfk9jY","sym":"JUMP COIN","age":30.4,"score":0.01156,"px":2.608e-05,"liq":36606,"p0":2.5287708583354454e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":14.0,"f_cjk":0.0,"c_ret":0.5222,"c_peak":1.0,"c_vol":4.6387,"c_act":1.0,"c_r5":0.1621,"c_r15":0.4377,"c_mc":4.4029}}
 {"t":1794837780613,"addr":"HJB7wrMMgakSbBeCoHrw3fyVtR3j7ummQt5CbSJVpump","sym":"Stumpy","age":30.3,"why":"liquidity","liq":4388}
+{"t":1794838200559,"addr":"5GHrtCK4t2rs7b9mLsN7shWJEtcJ5jTYHqpozr75BAGS","sym":"AKATOM","age":30.5,"why":"liquidity","liq":0}
+{"t":1794838261052,"addr":"HfN58oqaqToL41bpkrDCtNPRZmwvkqAvvhXBCdDKoK6v","sym":"APEC","age":30.4,"why":"liquidity","liq":0}
+{"t":1794838320427,"addr":"BeTvVZwQPh7zAHYSqVgK3HJ2Xfz5YqGPwrv6WrCWpump","sym":"MOOTUN","age":30.3,"why":"liquidity","liq":1550}
+{"t":1794838440426,"addr":"KbkWrLH7tS5bEoRBNJa1xKYe2G32FWYCRutXbyp9LVr","sym":"Stumpy","age":30.8,"why":"liquidity","liq":135}
+{"t":1794838440426,"addr":"Hqbzn4VN2ovXXrw1CQNCQViNshvUv3bRv29Z2bMQBAGS","sym":"Xcube","age":30.6,"why":"liquidity","liq":0}
