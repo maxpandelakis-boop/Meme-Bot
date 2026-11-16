@@ -504,3 +504,4 @@
 {"t":1794849300823,"addr":"7rrwjWkUw47jnoHW4efqNWFyxntmjzZEELKEPYHhicXp","sym":"Godzilla","age":30.0,"score":0.01095,"px":6.307e-05,"liq":53887,"p0":5.905739244567591e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":10.0,"f_cjk":0.0,"c_ret":1.2453,"c_peak":1.1726,"c_vol":5.1254,"c_act":1.0,"c_r5":-0.0319,"c_r15":0.7524,"c_mc":4.7713}}
 {"t":1794849360559,"addr":"9XDeUTx6f7XDWuDyboYurwmvD2VEkr9uY66Vwk5xpump","sym":"PassLoot","age":30.3,"why":"liquidity","liq":1444}
 {"t":1794849421044,"addr":"BRCxwHaTtvtHCX7PL2XYEBhy7r9AFzwHPBc9mWHYMmpN","sym":"GTAMAS","age":30.4,"why":"liquidity","liq":9544}
+{"t":1794849661168,"addr":"FYfivEkXbvJEbr4g2CFedHqsW5hLBBYz5w9tLRyLpump","sym":"j*bcoin","age":30.4,"why":"liquidity","liq":1749}
