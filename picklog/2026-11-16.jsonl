@@ -8,3 +8,4 @@
 {"at":1794835440000,"why":"drop","mult":0.7887692687741189,"rule":"chart","sym":"Anthropig","t":1794835493833,"eur":38.65,"pnl":-11.35,"entryAt":1794832651402,"id":"2026-11-16T121936-h-Anthropig-2NUaS6"}
 {"at":1794839820000,"why":"drop","mult":0.0020008990474239567,"late":true,"hitAt":1794839640000,"rule":"chart","sym":"Anthropig","t":1794839946142,"eur":0.0,"pnl":-50.0,"entryAt":1794839450593,"id":"2026-11-16T141151-h-Anthropig-2NUaS6"}
 {"at":1794847500000,"why":"drop","mult":0.8704829891236647,"late":true,"hitAt":1794847140000,"rule":"chart","sym":"XRL","t":1794847502441,"eur":42.66,"pnl":-7.34,"entryAt":1794845971250,"id":"2026-11-16T160326-h-XRL-Fww6za"}
+{"at":1794850826919,"why":"time","mult":1.3205752831058513,"rule":"chart","sym":"TTWO","t":1794850989269,"eur":64.71,"pnl":14.71,"entryAt":1794829226919,"id":"2026-11-16T112315-h-TTWO-BqWr2H"}
