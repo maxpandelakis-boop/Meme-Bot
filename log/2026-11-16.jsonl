@@ -487,3 +487,4 @@
 {"t":1794847020963,"addr":"3x2KXaQ9iZWaTY1ZVo1sgEQuj88dXZGLBRuSmms9pump","sym":"QI","age":30.4,"why":"liquidity","liq":3205}
 {"t":1794847440065,"addr":"3a3mgAKAeDeUAKVc5tFUvM2ZwC5DKfFidzkW8tmWpump","sym":"mert","age":30.3,"why":"liquidity","liq":1614}
 {"t":1794847500882,"addr":"5S8fU1rw7UatonZhvoRAcoE69cjQBCHoba7SNyuKBAGS","sym":"Nvthr","age":30.1,"why":"liquidity","liq":0}
+{"t":1794847920764,"addr":"FYtY5KpMRBHSiCMAqkWWrY2GtNVXs1h8jubbnno7pump","sym":"\ud83d\udc60","age":43.6,"why":"no candles"}
