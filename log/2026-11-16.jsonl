@@ -592,3 +592,7 @@
 {"t":1794858421155,"addr":"p8nDohoNjAZCXriH4MacnD8BYZ8Njqj1nMDHQXcpump","sym":"POTS","age":31.0,"why":"liquidity","liq":5138}
 {"t":1794858661026,"addr":"HnFmyGWVkeChVe4FnG69wVshYv65TwGpPefGiTSLpump","sym":"FOMOFUN","age":30.4,"why":"liquidity","liq":2524}
 {"t":1794858840087,"addr":"8q74mAMERS7PrychaRch2p1MK3JKoy4Y7BjJ7ucppump","sym":"VICEDORD","age":30.1,"score":0.07625,"px":0.00017,"liq":28334,"p0":0.00018885037636639696,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":16.0,"f_cjk":0.0,"c_ret":0.3299,"c_peak":1.2612,"c_vol":5.2368,"c_act":1.0,"c_r5":-0.1182,"c_r15":-0.0455,"c_mc":5.2761}}
+{"t":1794859020765,"addr":"BuREWmGm5Twp1SJzZ6QVEFU2AZyE2LUGzh5bcdjezGB8","sym":"APEC","age":30.9,"why":"liquidity","liq":0}
+{"t":1794859200704,"addr":"Hi7UtFSyoQHdFScUmgZQq6GDedbhxyKUxU5Djt8Mpump","sym":"M1","age":30.5,"why":"liquidity","liq":1374}
+{"t":1794859200704,"addr":"7JJUe3KyJw4mcstV7sJARQR4dhDb4cTCwGUsYKqQCwbn","sym":"C1","age":30.2,"why":"liquidity","liq":0}
+{"t":1794859200704,"addr":"HsrEvGVsm8CPXMT55LTGDDycvn6LiYC9UYKoo2o3pump","sym":"GOON","age":30.1,"why":"liquidity","liq":1980}
