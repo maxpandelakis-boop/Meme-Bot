@@ -104,3 +104,5 @@
 {"t":1794799800802,"addr":"AaBt5bHNvrM5aLR8gfDEHwBTtTHZiPbre251UVGwpump","sym":"PSYOP","age":30.0,"why":"liquidity","liq":9371}
 {"t":1794799861242,"addr":"FvQ2Ld7m6pV4e5m7jymJtgKEvjp8S7n6L3WTANDvpump","sym":"LMAO","age":30.6,"score":0.02527,"px":5.961e-05,"liq":17182,"p0":6.13689276795709e-05,"bars":6,"buy":false,"f":{"f_curve_min":2.1833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9065,"c_peak":1.6217,"c_vol":5.4936,"c_act":1.0,"c_r5":-0.1919,"c_r15":-0.0954,"c_mc":4.7879}}
 {"t":1794800100990,"addr":"2Ga2EGVD6mzi6VrqMUv1NSR4WQzWDPY8hRCwuv2xpump","sym":"bul","age":30.4,"why":"liquidity","liq":5523}
+{"t":1794800280951,"addr":"8xQsvVNHKjEeuE6S9kQBhEQqNcLoYFbFak8Ccc2upump","sym":"NHI","age":30.5,"why":"liquidity","liq":3301}
+{"t":1794800520304,"addr":"A4yE9sCXjsR7MmkD2J3JJzk1okPvt9vriknbewVdBAGS","sym":"FAASNAIL","age":31.0,"why":"liquidity","liq":0}
