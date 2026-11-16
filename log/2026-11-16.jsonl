@@ -51,3 +51,5 @@
 {"t":1794793680149,"addr":"C7yStig7vv4wFRyfh5XWS9vprfBpXQCCHyqaeYw5QhBP","sym":"BLG","age":30.8,"score":0.03576,"px":4.47e-05,"liq":50843,"p0":4.38370955959315e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":41.0,"f_cjk":0.0,"c_ret":0.8741,"c_peak":1.0176,"c_vol":5.0667,"c_act":1.0,"c_r5":0.0943,"c_r15":0.3593,"c_mc":4.6418}}
 {"t":1794793800991,"addr":"DNGV2haHJq2WEZpTjgeC7twzthnDm7csgPdZkWHDrVq5","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":0}
 {"t":1794794040837,"addr":"HsLyiS1FDY5iVQmCs2iqE1qRjX5oZmNXrJxtW2VDpump","sym":"CLARITY","age":30.1,"why":"liquidity","liq":0}
+{"t":1794794340946,"addr":"DsDubeXWpyHeFwv7LieLY9aSpfYLfZrJYccwgVNrhP6F","sym":"rockstar","age":30.1,"why":"liquidity","liq":6}
+{"t":1794794460982,"addr":"4Ka8Jy45t5wbb6WPwpiZH8fMjDdRrGhYHpjnMSrQpump","sym":"Buddy","age":30.7,"why":"liquidity","liq":3389}
