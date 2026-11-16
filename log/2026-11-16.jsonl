@@ -222,3 +222,12 @@
 {"t":1794815160416,"addr":"Abgjkeft7k3huiHDiigdpKihuXLqGKc2JxrQncbM9cRv","sym":"SuperJense","age":30.9,"why":"liquidity","liq":0}
 {"t":1794815400093,"addr":"Kmq29ncyyPmfuvtqKu1JXEG77ZcFjooYyWVto4Rte9Z","sym":"Percy","age":30.6,"why":"liquidity","liq":0}
 {"t":1794815400093,"addr":"FbZcATuYtoEjhbQ6mdGo54BCFEmV3FgnxYmjEmNxC7AX","sym":"Dinosaur\ud83e\udd95","age":30.4,"why":"liquidity","liq":0}
+{"t":1794815581578,"addr":"4juTiHPyysYuVx6ajy98FRnn1CY2JXPN9SMNhePamoon","sym":"Ollin","age":30.6,"why":"liquidity","liq":0}
+{"t":1794815581578,"addr":"AqwW1uiYfiuSWVALJVFKsm2Nc6BdaxrYziqtaCXB5Dqd","sym":"APEC","age":30.5,"score":0.01961,"px":4.136e-05,"liq":48813,"p0":3.9413671910289685e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":3.0,"f_cjk":0.0,"c_ret":0.8999,"c_peak":1.0,"c_vol":4.8874,"c_act":1.0,"c_r5":0.1653,"c_r15":0.5374,"c_mc":4.5956}}
+{"t":1794815581578,"addr":"4uY684ytFviL97EC51Le38KF9YaHQtisBHsRx43CwwEJ","sym":"capytrade","age":30.2,"score":0.00805,"px":0.002652,"liq":27913,"p0":0.0024244635696334346,"bars":6,"buy":false,"f":{"f_curve_min":1.0833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.8696,"c_peak":1.0273,"c_vol":5.1375,"c_act":1.0,"c_r5":0.1642,"c_r15":0.4641,"c_mc":6.3846}}
+{"t":1794815581578,"addr":"2ZdJ7CqUf1R9G6ZHJVfB5ihewACYMmmocTX7TPXHSWy9","sym":"\u73b0\u8d27\u4e0d\u6015","age":30.1,"why":"liquidity","liq":0}
+{"t":1794815640920,"addr":"2NDewmBjRTybQ8QwCVVSW4qByUpxCYBnfmAvFQBwHUnY","sym":"TITS","age":31.0,"why":"liquidity","liq":0}
+{"t":1794815640920,"addr":"BCkMg581JyBf2WfamWSgDQTFgSMHtvTmGhbRtwPJfXZ","sym":"Percy","age":30.7,"score":0.01757,"px":8.247e-07,"liq":116606,"p0":8.270965822028223e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.3333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.5416,"c_peak":1.011,"c_vol":6.2841,"c_act":1.0,"c_r5":0.0603,"c_r15":0.2268,"c_mc":2.9176}}
+{"t":1794815640920,"addr":"GGLFQBu6YF8vJcvkBCq8LKmScA3BukrskK9RZA617vTv","sym":"\u5927A","age":30.5,"why":"liquidity","liq":0}
+{"t":1794815760799,"addr":"9kTVDDsWAF4F791stbgXhbmoV54F6teC6Qg3DNe7ihnd","sym":"\u73b0\u8d27\u4e0d\u6015","age":30.5,"why":"liquidity","liq":0}
+{"t":1794815821204,"addr":"26dGb689cTWmU8PLPwYHgo3oexK49JuZt3J18geGpump","sym":"Shrimp","age":30.7,"why":"liquidity","liq":2228}
