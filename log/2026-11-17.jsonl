@@ -753,3 +753,5 @@
 {"t":1794954301342,"addr":"3cq2SCXfd8WVDwdmiQs1tQ8vdfCSkBci1HeKMZR1pump","sym":"DHAMMER","age":30.3,"why":"liquidity","liq":0}
 {"t":1794954360714,"addr":"5je4cs1ihqrkcAjEasAY2mP7u81wX6XGDkREgCTzpump","sym":"INU","age":30.2,"why":"liquidity","liq":4845}
 {"t":1794954480656,"addr":"8nUH7dwgagpMvtQnsRRMzRtUrHdv2sJiuQXABQpUpump","sym":"GTAMAS","age":30.5,"why":"liquidity","liq":6314}
+{"t":1794954600874,"addr":"2UjpfvDDNU3sFiE728pAauiWqTVUGnr4wQQzxpCGysgE","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.9,"why":"liquidity","liq":0}
+{"t":1794954720858,"addr":"FwYLBzHA8UWdNvQs54SyPWBnjLBTvSzXVy48mg2Qpump","sym":"Autopilot","age":30.9,"why":"liquidity","liq":1476}
