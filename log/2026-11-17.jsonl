@@ -18,3 +18,6 @@
 {"t":1794876661346,"addr":"ANt31zPFtdqb327BxLcvPnSUSTMzm5Rf7xfKN5kbpump","sym":"Mikol","age":31.0,"score":0.02578,"px":3.022e-05,"liq":11222,"p0":2.7924929451366968e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.3386,"c_peak":2.6962,"c_vol":5.0673,"c_act":1.0,"c_r5":-0.1247,"c_r15":-0.2478,"c_mc":4.446}}
 {"t":1794876661346,"addr":"7iPy7VqXimHWz9aQAmjRLMQvzvJ1HtnWZGoMYiVXd6ab","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.1,"why":"liquidity","liq":0}
 {"t":1794876900898,"addr":"9b2nHiJXTj2nAAGb45g3MnHnYtmxZ2Et1MCup8dPLvHY","sym":"VicePug","age":30.1,"why":"liquidity","liq":0}
+{"t":1794877021355,"addr":"52xfqSEmupr2MsKFwoVrPNhSnQtLc9CXw9YD5gQMLcaX","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.2,"why":"liquidity","liq":0}
+{"t":1794877080705,"addr":"EP5ooZepqiwXJaCXQ9gJ5SqG3RHGKaEkr3ALQcTWbonk","sym":"VOYDAY","age":30.3,"why":"liquidity","liq":0}
+{"t":1794877080705,"addr":"8RFrvtxhYdXR2iNWtBT19mVLZF7zWw4yxr7aZMhytABF","sym":"\u4e2d\u56fd\u4eba\u725b\u903c","age":30.1,"why":"liquidity","liq":0}
