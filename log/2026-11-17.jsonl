@@ -492,3 +492,5 @@
 {"t":1794925020501,"addr":"3K8KgxKAfe4iWcgD2D3wNuyGmet6RsNeusmLkVGRpump","sym":"SUPERPLUMB","age":30.7,"score":0.01523,"px":4.238e-05,"liq":13737,"p0":4.579611245421776e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.2996,"c_peak":1.0,"c_vol":4.9345,"c_act":1.0,"c_r5":0.1575,"c_r15":0.2733,"c_mc":4.6608}}
 {"t":1794925200681,"addr":"94Bk98YfBNf9YrKLBsvrvod17ckT4zTbLTZtY7YJpump","sym":"SWIPE","age":30.3,"why":"liquidity","liq":1530}
 {"t":1794925440530,"addr":"EkrLyCAt7aBegRuKh6rg6AWgYC5cCvUNBqWoNFaBpump","sym":"Amazon","age":30.4,"why":"liquidity","liq":1402}
+{"t":1794925560631,"addr":"87Lp624WHxihfBaUY2SqeBFwJ9EuohQK5AvKEuaRbonk","sym":"HIMYETI","age":30.2,"why":"liquidity","liq":0}
+{"t":1794925740511,"addr":"2jvYEfamtwTB7NGjxxcLzsUX3bNbYXMi1Gwd7uYhpump","sym":"FUNGI","age":30.5,"why":"liquidity","liq":2131}
