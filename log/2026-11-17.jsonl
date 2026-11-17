@@ -376,3 +376,4 @@
 {"t":1794914160265,"addr":"HdSQT3Mbi9QPhMoWG9AY23iASzpgPHdCdeWktdyi92KG","sym":"\ud83d\udcb2CASHCAT","age":30.4,"why":"liquidity","liq":0}
 {"t":1794914580875,"addr":"9pkBcuV1ngxE8eYw2ZiT8yzb4dTeywjUDWSZTLnbpedH","sym":"Cowboy Cat","age":31.4,"why":"liquidity","liq":0}
 {"t":1794914941374,"addr":"ATWR4SqMvGaj1tz94DuK2fWDtdf4nEHS6XPkxDmpump","sym":"COGE","age":31.0,"score":0.00201,"px":0.003198,"liq":126769,"p0":0.0032082470064348644,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":5.0,"f_cjk":0.0,"c_ret":0.0425,"c_peak":1.0,"c_vol":4.7493,"c_act":0.6667,"c_r5":0.0,"c_r15":0.0164,"c_mc":6.5063}}
+{"t":1794915120277,"addr":"HD5y4e1JrDaJ7KMbCuNjys4tfjeoaZCbh8Ls41kWyiA4","sym":"GCAT","age":30.5,"why":"liquidity","liq":0}
