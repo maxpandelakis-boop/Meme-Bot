@@ -569,3 +569,6 @@
 {"t":1794932460395,"addr":"Hph8V5xKdvNUYLMGJ7FXcVi31ggBW2523Aabq53pump","sym":"BACKPACKNAMI","age":30.1,"why":"liquidity","liq":1485}
 {"t":1794932580665,"addr":"B8ShAnvBeZSpN9gmnEx4T1wqGnMyzCnZD4Wo21rYpump","sym":"Simpsons","age":30.3,"why":"liquidity","liq":4577}
 {"t":1794932640947,"addr":"GPHYkVzPBjqt3yDaB1SeLgi2mX21WzccPvGJa76cpump","sym":"YouTube","age":30.8,"score":0.0246,"px":6.97e-05,"liq":17649,"p0":6.540750308070269e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.4884,"c_peak":1.5624,"c_vol":4.371,"c_act":1.0,"c_r5":0.1587,"c_r15":0.2998,"c_mc":4.8156}}
+{"t":1794932940522,"addr":"7Bmjaz6uVaizR4VHdeXSctroEPuGHhEP3LkA3jH2pump","sym":"KATIA","age":30.5,"why":"liquidity","liq":1444}
+{"t":1794933120628,"addr":"HroHe2khhWRZaPMhsEcE36NxuCu1izbydPoMUexdpump","sym":"PEMPUS","age":30.7,"why":"liquidity","liq":1444}
+{"t":1794933120628,"addr":"G65YjhbgbPUk2baqpq1CGkzfQrZogC8CzYDAQRfgpump","sym":"Leonids","age":30.4,"why":"liquidity","liq":1717}
