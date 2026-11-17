@@ -61,3 +61,5 @@
 {"t":1794882360494,"addr":"EdKkbgeDm4QWEhiVjPVzYgQdaSVTjH9aDjWxcauQpump","sym":"XDOGE","age":30.8,"why":"liquidity","liq":1409}
 {"t":1794882600787,"addr":"3ieLrZtDfVsLokzBcVZLv3Fw6vxUnZB7C5yZ3Zdj4MwN","sym":"CHAR","age":30.9,"why":"liquidity","liq":0}
 {"t":1794882781126,"addr":"AJkNZcpjtoMpPE8YAVaNCMk9NgifPMqDFuhUisCVpump","sym":"BTCPICK","age":30.0,"why":"liquidity","liq":0}
+{"t":1794883261200,"addr":"9k2nqjUrSh9p2ZBnWxNE3QRWYiLocrWZfoDm3Vdxpump","sym":"CHAR","age":30.0,"score":0.01219,"px":8.955e-05,"liq":21195,"p0":9.055869059369472e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.2134,"c_peak":2.0477,"c_vol":5.7538,"c_act":1.0,"c_r5":0.0526,"c_r15":-0.0903,"c_mc":4.9569}}
+{"t":1794883321006,"addr":"97iUmqCA1uZ8PDVxDMjexvkiWj8aLdytizoQwPq98oQu","sym":"\u82b1","age":30.4,"why":"liquidity","liq":0}
