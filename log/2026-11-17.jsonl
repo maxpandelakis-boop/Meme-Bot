@@ -495,3 +495,6 @@
 {"t":1794925560631,"addr":"87Lp624WHxihfBaUY2SqeBFwJ9EuohQK5AvKEuaRbonk","sym":"HIMYETI","age":30.2,"why":"liquidity","liq":0}
 {"t":1794925740511,"addr":"2jvYEfamtwTB7NGjxxcLzsUX3bNbYXMi1Gwd7uYhpump","sym":"FUNGI","age":30.5,"why":"liquidity","liq":2131}
 {"t":1794926040375,"addr":"7iVMS5MY4viVJRhvMMzHRUhmbc6QsVSh8sXsdLCC7UNj","sym":"GCAT","age":30.9,"why":"liquidity","liq":0}
+{"t":1794926220661,"addr":"hgTBks53gWWP9CwBEJiJByuhKCsDrMe3uwHyJj2pump","sym":"ALMOND","age":30.6,"why":"liquidity","liq":1520}
+{"t":1794926341158,"addr":"F132W6T48Coh3yw6LW6buw6TWnnJ6bNADbRA3x41pump","sym":"solmoney","age":30.3,"why":"liquidity","liq":1454}
+{"t":1794926400853,"addr":"3SxSqQMg9D42RA9qCKeRCHCUPZMeF6SiU6VV387MNTFc","sym":"NEX Ai","age":30.8,"score":0.01121,"px":2.764e-05,"liq":34461,"p0":2.1421583392918725e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":12.0,"f_cjk":0.0,"c_ret":0.3122,"c_peak":1.004,"c_vol":4.7815,"c_act":1.0,"c_r5":0.1945,"c_r15":0.2032,"c_mc":4.3309}}
