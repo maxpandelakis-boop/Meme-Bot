@@ -3,3 +3,4 @@
 {"at":1794897480000,"why":"drop","mult":0.8178236549209446,"rule":"chart","sym":"COGE","t":1794897570452,"eur":40.08,"pnl":-9.92,"entryAt":1794892943481,"id":"2026-11-17T050136-h-COGE-BRf3SX"}
 {"at":1794919860000,"why":"trail","mult":1.3838329959476847,"late":true,"hitAt":1794919800000,"rule":"chart","sym":"LEOSTAR","t":1794919867142,"eur":67.81,"pnl":17.81,"entryAt":1794899446536,"id":"2026-11-17T065317-h-LEOSTAR-2cMcME"}
 {"at":1794939180000,"why":"drop","mult":0.8611368608366393,"late":true,"hitAt":1794938460000,"rule":"chart","sym":"MEOWL","t":1794939194004,"eur":42.2,"pnl":-7.8,"entryAt":1794937945019,"id":"2026-11-17T173536-h-MEOWL-3Xiwhh"}
+{"at":1794949020000,"why":"drop","mult":0.8265880939742696,"rule":"chart","sym":"BRAVO","t":1794949072638,"eur":40.51,"pnl":-9.49,"entryAt":1794948293067,"id":"2026-11-17T202305-h-BRAVO-BjFcaS"}
