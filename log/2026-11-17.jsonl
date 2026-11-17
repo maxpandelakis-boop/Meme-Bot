@@ -104,3 +104,6 @@
 {"t":1794886981216,"addr":"3dSzv7jTXFJusjBKZHpgieVLv3149anjqLTf92Q1pump","sym":"RizzGivin","age":31.0,"why":"liquidity","liq":6140}
 {"t":1794886981216,"addr":"mRUqQqd2ypqZT1JkcLAhGcvzooApuHtcqTBqXJ5Te5j","sym":"\u82b1","age":30.5,"score":0.02173,"px":1.409e-05,"liq":16665,"p0":1.4347490837189886e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":1.0,"c_ret":0.4913,"c_peak":3.1733,"c_vol":5.5343,"c_act":1.0,"c_r5":-0.7924,"c_r15":-0.0556,"c_mc":4.1568}}
 {"t":1794886981216,"addr":"Xd3556VT6Uc1swBCooUJicqMQHtTXewTvVi7Zb9bonk","sym":"Kimtea","age":30.4,"why":"liquidity","liq":0}
+{"t":1794887100976,"addr":"QYvLKa9T7dwEesSr8wsaMZ7672DBJihoNMVyXNi44kh","sym":"FLYWHEEL","age":30.7,"why":"liquidity","liq":0}
+{"t":1794887100976,"addr":"DGgU36TNQnj386kcx1JUy9YChSYnx3zY2droXFeGBAGS","sym":"Silvy","age":30.1,"why":"liquidity","liq":0}
+{"t":1794887280950,"addr":"3rs8xTMMczkUJQGt9YPhuF7QckkJyDVmuPDfpwehFYGg","sym":"GOYMAS","age":30.6,"why":"liquidity","liq":0}
