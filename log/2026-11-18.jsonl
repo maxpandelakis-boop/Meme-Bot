@@ -157,3 +157,10 @@
 {"t":1794978300692,"addr":"85osSLFjprTGWRkrXMTGjsmaWR2pjUb38AiJzr16pump","sym":"clawd","age":30.8,"why":"liquidity","liq":6493}
 {"t":1794978300692,"addr":"ECG9eH7kUpXNvjYZqq1oqzzFPN8HSLhyhknM6gHFkgkK","sym":"\u5927A","age":30.3,"score":0.0132,"px":1.893e-05,"liq":19875,"p0":1.772177288943282e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":8.0,"f_cjk":1.0,"c_ret":1.193,"c_peak":1.1485,"c_vol":5.5307,"c_act":1.0,"c_r5":0.3772,"c_r15":0.5087,"c_mc":4.2485}}
 {"t":1794978600616,"addr":"J947GfZdh2PxjHdE3pJXybLbGyfxeiL48T7rFTcauRr3","sym":"PK","age":30.4,"why":"liquidity","liq":0}
+{"t":1794978660636,"addr":"6mdxmEejEYQYgVtZGJJiQHuW8Uzmm7wfnubuQovJH1rK","sym":"DUBALL","age":30.0,"why":"liquidity","liq":0}
+{"t":1794978720966,"addr":"HhK2oXdZYkTUQCy93dakSkX1ksf6oSEo6LuwW3tFrz1c","sym":"Speed","age":30.6,"score":0.00323,"px":0.001216,"liq":42726,"p0":0.0011793006398307636,"bars":6,"buy":false,"f":{"f_curve_min":1.3667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.5933,"c_peak":1.0002,"c_vol":4.2968,"c_act":1.0,"c_r5":0.0971,"c_r15":0.3326,"c_mc":6.0716}}
+{"t":1794978720966,"addr":"B5SofmhbM2LQzjrS8DNv2pWr8mLDkmFi11bKT5FyNMuB","sym":"Tradercat","age":30.1,"why":"liquidity","liq":0}
+{"t":1794978781331,"addr":"489soSRMRCJHNYtDUVUAwrMrvnkug6Ma6zacMXJ8zE2D","sym":"vensa","age":30.2,"score":0.01444,"px":6.004e-05,"liq":60709,"p0":6.89853649197495e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":13.0,"f_cjk":0.0,"c_ret":0.9925,"c_peak":1.0081,"c_vol":5.3711,"c_act":1.0,"c_r5":0.4102,"c_r15":0.7265,"c_mc":4.8388}}
+{"t":1794978841060,"addr":"2ywHP6Yy9FjofqqX2an83C8G8seA59te7PdQ4xeSGYT7","sym":"Green Cat","age":30.6,"why":"liquidity","liq":0}
+{"t":1794978841060,"addr":"5xdSQNt2eCjsRjoG6Qi6FqWLdY2zjrTvTKXEvuBEes46","sym":"PUTEN","age":30.4,"why":"liquidity","liq":0}
+{"t":1794978900935,"addr":"782ZW3FyAC4TcWACwUyBssjYXe3RpsVGHH53tuo1tXef","sym":"PUTEN","age":31.0,"why":"liquidity","liq":0}
