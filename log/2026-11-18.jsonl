@@ -224,3 +224,4 @@
 {"t":1794984000492,"addr":"3aUKrG3qXnQ5Fu12fSgAk44hpEuqQyybLM8pmJShENaR","sym":"Tradercat","age":30.4,"score":0.01818,"px":2.341e-05,"liq":38222,"p0":3.2203033647225586e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":6.0,"f_cjk":0.0,"c_ret":0.7379,"c_peak":1.0601,"c_vol":4.9419,"c_act":1.0,"c_r5":0.2577,"c_r15":0.5284,"c_mc":4.5079}}
 {"t":1794984120187,"addr":"EpQrCsPC8AFgmTL3SDDkcM7CU1pCCpzuYqaNJZnRTR2F","sym":"FI","age":30.3,"why":"liquidity","liq":0}
 {"t":1794984120187,"addr":"GJLfifbLGFiEuRTBY2YsfagB8xTBwBM1jm9BjicTpump","sym":"UBSFORT","age":30.3,"why":"liquidity","liq":0}
+{"t":1794984420965,"addr":"Bygm5ULo9xBRdvzp5TAqtvxd5FLHf6wt8T1tBNo5pump","sym":"SLOPAGANDA","age":30.9,"why":"liquidity","liq":6856}
