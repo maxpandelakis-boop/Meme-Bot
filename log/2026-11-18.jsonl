@@ -199,3 +199,4 @@
 {"t":1794981840236,"addr":"AVWfCzrAs9TVuaqdN5C5omi4hLcPEAiex1T59vE6824c","sym":"vensa","age":30.6,"why":"liquidity","liq":0}
 {"t":1794981901092,"addr":"6bh56Sfd2Kw7pQ66jyRtE4JCjovoxRjkrLrUepayVbVL","sym":"SESAMECOIN","age":30.6,"why":"liquidity","liq":0}
 {"t":1794981960533,"addr":"7yFhNh3UyDKSKumt1J2ssQfnkm6z5rhfrENS9c2Tpump","sym":"JENSEN","age":30.4,"score":0.02972,"px":5.285e-05,"liq":15440,"p0":5.098728848182718e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.7333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":22.0,"f_cjk":0.0,"c_ret":0.202,"c_peak":2.2442,"c_vol":4.4662,"c_act":1.0,"c_r5":-0.6042,"c_r15":0.0879,"c_mc":4.7075}}
+{"t":1794982080851,"addr":"3vbwuYSkMM5p4FQ11ikzo8DxkTpN9mdMmf9xYSkunnoc","sym":"JALU","age":30.4,"why":"liquidity","liq":0}
