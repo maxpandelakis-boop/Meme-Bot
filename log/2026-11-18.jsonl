@@ -659,3 +659,5 @@
 {"t":1795035360644,"addr":"HyLnt315TPdhXL3BSdBqWXXxfwzNMa9Q2FkxcLpApump","sym":"Lettuce","age":30.8,"why":"liquidity","liq":9277}
 {"t":1795035720185,"addr":"pJpoAbMHdNrYgsvLyn3f2ZurvZomqRTtjZs7poaybWX","sym":"Green Cat","age":30.5,"score":0.00674,"px":1.824e-05,"liq":32805,"p0":1.750581537761209e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.1259,"c_peak":1.0234,"c_vol":4.7459,"c_act":1.0,"c_r5":0.0457,"c_r15":0.0406,"c_mc":4.2432}}
 {"t":1795035720185,"addr":"8VpF5FToHRo4WWP6nYvEvJvpg85JGCYwcSAcPVFppump","sym":"APY","age":30.3,"why":"liquidity","liq":7534}
+{"t":1795035900936,"addr":"8ryYEFySsfXfQskxYmykyyA6pbNKjB4s9CfcffpQpump","sym":"Buncoin","age":43.1,"why":"no candles"}
+{"t":1795035960478,"addr":"HWqyVJee2XWGRwpA78XAdf4yhttSSGfHgcmaB3espump","sym":"AudaBros","age":43.4,"why":"no candles"}
