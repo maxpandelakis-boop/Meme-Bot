@@ -120,3 +120,6 @@
 {"t":1794972780805,"addr":"8fTWDgYhzk8eqCiQ3PHh85eKUWEfLXqB8LdHnyHRbthD","sym":"GTA$","age":30.5,"why":"liquidity","liq":0}
 {"t":1794972840231,"addr":"E3rsQyKo464r9rc3PnNk3k8aXippfQHzxY1DgK3jpump","sym":"HEIST","age":44.0,"why":"no candles"}
 {"t":1794973380412,"addr":"2jHiYMtZdXtrNBzmY6xxEZYXmLXBQ2UUqGxvXGU1pump","sym":"11/19","age":44.0,"why":"no candles"}
+{"t":1794973560814,"addr":"9vAjJNJB3ZX2sgtTm4VaXFsb5cLxdaLYvyjvL5SCyLZ3","sym":"vensa","age":30.6,"score":0.04165,"px":3.304e-05,"liq":44739,"p0":3.3035719515873624e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":12.0,"f_cjk":0.0,"c_ret":0.5738,"c_peak":1.0005,"c_vol":4.8794,"c_act":1.0,"c_r5":0.1375,"c_r15":0.3559,"c_mc":4.519}}
+{"t":1794973680553,"addr":"JAFfQWfT4dyVCKqTq5Wrtw7SVAy2FQKDcKEM8t4pitLA","sym":"NADJA","age":30.6,"why":"liquidity","liq":0}
+{"t":1794973740492,"addr":"EYQTW2e2R94v7dzw6ZSfPtt7q5CcoLxSXLm1dwVhpump","sym":"NADJA","age":30.3,"why":"liquidity","liq":1516}
