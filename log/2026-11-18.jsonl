@@ -392,3 +392,4 @@
 {"t":1795002560866,"addr":"6D1U2dU4jv1tX57vSayhK82CzZ8XkHnymZTqV1Dopump","sym":"ADC","age":41.5,"why":"liquidity","liq":9602}
 {"t":1795002600533,"addr":"51srvN4Vu29V4AHrAggCFiYjqbSMEGSe4atUmNNjpump","sym":"DACT","age":43.4,"why":"no candles"}
 {"t":1795002720645,"addr":"DxSf3AEQSfoQc4NygHdCXH3iUGb4UasqYKQ8f6Zppump","sym":"VGTC","age":30.3,"why":"liquidity","liq":0}
+{"t":1795002901442,"addr":"6J7R5WLwbeUeAGXVodhZ2YTbRiezg3Xw7nbgVFT452TK","sym":"Christmas","age":30.2,"score":0.02091,"px":3.205e-05,"liq":43980,"p0":2.9850853454958117e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":16.0,"f_cjk":0.0,"c_ret":0.633,"c_peak":1.0678,"c_vol":4.9473,"c_act":1.0,"c_r5":-0.0275,"c_r15":0.3264,"c_mc":4.475}}
