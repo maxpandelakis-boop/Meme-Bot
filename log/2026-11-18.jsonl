@@ -310,3 +310,4 @@
 {"t":1794993300495,"addr":"LkZpi4rm123JYV3gScsSWnsGd5g14bFHvammYe1VS72","sym":"Jacket","age":30.5,"why":"liquidity","liq":0}
 {"t":1794993300495,"addr":"2LC7ytG7PkqwPBMQgmZYvDioEMAekuHgKPBbbsrfhejF","sym":"Intel","age":30.1,"why":"liquidity","liq":0}
 {"t":1794993300495,"addr":"BnBDgvxGTvUQExJsdzfcKgLb3C2Py7mLpM4Ng1K6fnp2","sym":"\u7a57\u7a57\u4e0e\u7f8a","age":30.1,"why":"liquidity","liq":0}
+{"t":1794993480358,"addr":"6ejqpVp85uzYcyDdiddBos85gCVrPaP9o3eZgoeNhMze","sym":"FOMOCAT","age":30.0,"score":0.00957,"px":6.569e-05,"liq":63241,"p0":5.6775153833408595e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":1.114,"c_peak":1.0213,"c_vol":5.1646,"c_act":1.0,"c_r5":0.2091,"c_r15":0.5072,"c_mc":4.7542}}
