@@ -312,3 +312,10 @@
 {"t":1794993300495,"addr":"BnBDgvxGTvUQExJsdzfcKgLb3C2Py7mLpM4Ng1K6fnp2","sym":"\u7a57\u7a57\u4e0e\u7f8a","age":30.1,"why":"liquidity","liq":0}
 {"t":1794993480358,"addr":"6ejqpVp85uzYcyDdiddBos85gCVrPaP9o3eZgoeNhMze","sym":"FOMOCAT","age":30.0,"score":0.00957,"px":6.569e-05,"liq":63241,"p0":5.6775153833408595e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":1.114,"c_peak":1.0213,"c_vol":5.1646,"c_act":1.0,"c_r5":0.2091,"c_r15":0.5072,"c_mc":4.7542}}
 {"t":1794993720876,"addr":"DiZUhQJEYgadbPqx4NQB7ue8h2Vi8KXPQcS6er86bdAe","sym":"IDRENT","age":30.0,"why":"liquidity","liq":0}
+{"t":1794993961055,"addr":"3yxsNufZSWNrvMXw8gwCJFCuUkuTDsb1a55aR7evpump","sym":"SHARK","age":43.2,"why":"no candles"}
+{"t":1794993961055,"addr":"GoZAkWyWbuBN3nhu2HpnaSagtNiCpmENrNoTHoZR1j83","sym":"$GOAT","age":30.1,"score":0.02501,"px":3.814e-05,"liq":48239,"p0":3.9256132880451845e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.6867,"c_peak":1.0054,"c_vol":5.2149,"c_act":1.0,"c_r5":0.0846,"c_r15":0.3199,"c_mc":4.5939}}
+{"t":1794993961055,"addr":"F7hWL8txTKfnf1nPWCY2bx3WGKVZARkT1rkZk81Ft178","sym":"Intel","age":30.1,"why":"liquidity","liq":0}
+{"t":1794994021161,"addr":"9kRhsUBFz56qZzheSXQCkL1V51oxRuf9w4J7kMt6srL","sym":"IDRENT","age":30.4,"why":"liquidity","liq":0}
+{"t":1794994141061,"addr":"4FAvLPPLsSBQQdG61bJyXiCuC7UkWwcm582gEZF1pump","sym":"MELON","age":30.5,"why":"liquidity","liq":32}
+{"t":1794994141061,"addr":"EzBxc9PdaS6HHVA7ejhWTu2wqsAg2WWJqwmqi143B7Qn","sym":"RP","age":30.1,"why":"liquidity","liq":0}
+{"t":1794994200413,"addr":"Qb1zoFULALgqNA7U41cLYcdsoJJRmJcbr6p14Wv78C4","sym":"IDRENT","age":30.9,"score":0.01305,"px":8.598e-07,"liq":120362,"p0":8.203989045456264e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.1667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.5307,"c_peak":1.0167,"c_vol":6.3332,"c_act":1.0,"c_r5":0.0347,"c_r15":0.241,"c_mc":2.914}}
