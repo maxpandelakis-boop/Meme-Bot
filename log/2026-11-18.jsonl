@@ -636,3 +636,4 @@
 {"t":1795032600910,"addr":"CFhwumXsTfxniMpvo5F3EyiwaUk2sE3xDdRpFf38f1yM","sym":"vensa","age":30.8,"why":"liquidity","liq":0}
 {"t":1795032840831,"addr":"Gss1gTh6n3Aq4FhNdpRcYSLmv3wspjyFFwgi6X28moon","sym":"Chmpex","age":30.3,"why":"liquidity","liq":0}
 {"t":1795033021288,"addr":"89GFxMWQ1r8cwTwRSgeQ9RaGPtUdmDLQgCsQZcrWpump","sym":"CALICO","age":43.3,"why":"no candles"}
+{"t":1795033080412,"addr":"o4rt4V4goRd8fsqhiXf88gdtHCZnxGKS28awZRjpump","sym":"Mabel","age":30.0,"score":0.02465,"px":2.278e-05,"liq":12292,"p0":4.207865603785457e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":-1.4578,"c_peak":6.3958,"c_vol":5.8714,"c_act":0.8333,"c_r5":-0.5447,"c_r15":-1.3928,"c_mc":4.6241}}
