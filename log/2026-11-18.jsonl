@@ -533,3 +533,6 @@
 {"t":1795020840420,"addr":"6NZx1nyZ5bu8haaVtp3CLybcvKQ77JJpiUou6Faypump","sym":"GTASZN","age":30.9,"why":"liquidity","liq":1600}
 {"t":1795020900925,"addr":"Dnh7LiMm4RFDJ61oRme88Ud3XanDtN3GJBCNJmRbZ9Nr","sym":"BABYDOG","age":30.7,"score":0.01362,"px":2.895e-05,"liq":31421,"p0":2.554179248291651e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.1833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.4407,"c_peak":1.0259,"c_vol":6.0857,"c_act":1.0,"c_r5":0.1297,"c_r15":0.3628,"c_mc":4.4073}}
 {"t":1795021020283,"addr":"8rjgC1GsBo4fwuXjq7Hy12SAFxgFxbtSJJSFBYkVpump","sym":"WW","age":30.7,"why":"liquidity","liq":9889}
+{"t":1795021140961,"addr":"3RmVjn7u6ecwah8cwmYqWthcRTXoDj2aiy1NvJeapump","sym":"AUDAMANOS","age":30.0,"why":"liquidity","liq":1519}
+{"t":1795021200189,"addr":"2KMXQuYJxcLwGjXXUx16ALcamPC6VGyt1WnhSeMhpump","sym":"EWIND","age":30.7,"why":"liquidity","liq":0}
+{"t":1795021260671,"addr":"J9v41ZKUSZmjBWYb7dPAhaHyXPWJD2o4CaVqdHXS3wCY","sym":"Black Nika","age":30.3,"why":"liquidity","liq":0}
