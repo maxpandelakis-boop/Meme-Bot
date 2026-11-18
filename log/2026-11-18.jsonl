@@ -81,3 +81,7 @@
 {"t":1794968160336,"addr":"Ewc1FkDVFQcJ2rB1qzgkdGrnFvdzxeFVWy2QKDsuVU6Q","sym":"ELF","age":30.6,"why":"liquidity","liq":0}
 {"t":1794968160336,"addr":"GunA4qp5wxt8ZAbWVMVC9KaswiL2ncQqaFsa27Pgpump","sym":"JINX","age":30.6,"why":"liquidity","liq":0}
 {"t":1794968221013,"addr":"8EysKK9UnqHow8ojnPramtGqs41T5BmZScdxa4uvzk36","sym":"Tesla","age":30.4,"score":0.01723,"px":1.153e-05,"liq":13863,"p0":1.0164709893930506e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.5218,"c_peak":1.4633,"c_vol":4.5833,"c_act":1.0,"c_r5":0.0008,"c_r15":-0.0976,"c_mc":4.0071}}
+{"t":1794968400237,"addr":"BzKGwA4ypZ65yrxXzeEiQ9D9CnvEQSUtpKku9YkkUyUw","sym":"MSG","age":30.3,"why":"liquidity","liq":0}
+{"t":1794968460813,"addr":"DbYHDCU9u2RoL2iWVHfoPyCzud6XUA9MxDG1NXguQrBV","sym":"MSG","age":31.0,"why":"liquidity","liq":0}
+{"t":1794968460813,"addr":"FMUvK9tHCxyYQAzogtvxCM4Kmgpaje17Ch6DBeaCU9Dh","sym":"MSG","age":30.9,"why":"liquidity","liq":0}
+{"t":1794968520189,"addr":"7zcQW7berpS6ECKmZZqSdc1VTVuGBKugs8u5Qk6Bpump","sym":"GenM","age":30.4,"why":"liquidity","liq":2250}
