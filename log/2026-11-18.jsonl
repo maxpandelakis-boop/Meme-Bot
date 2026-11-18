@@ -733,3 +733,5 @@
 {"t":1795044240977,"addr":"ChgNJMqb5hTzKThbbTVd5iyH9SvsPRESfkKX51dKpump","sym":"NASDUCK","age":30.6,"why":"liquidity","liq":3733}
 {"t":1795044300625,"addr":"FJisPcDGLYhwKoj7aKRKzxSZ7d5YaCLNCc6fhLCgpump","sym":"VTC","age":30.6,"why":"liquidity","liq":1598}
 {"t":1795044480588,"addr":"5a4KfzA3k3kGVKDcJtLP8StCeNctTVauprvz6Va7pump","sym":"vicestream","age":30.8,"why":"liquidity","liq":8135}
+{"t":1795044661041,"addr":"23D2iUN6294WHDjebsvua6fgGDnEvV4mzSr6VjRNbonk","sym":"Isowiz","age":30.9,"why":"liquidity","liq":0}
+{"t":1795044661041,"addr":"DLVsyjQp5pfkXzDWDva6KTkhRbM7h1LsoeTYqz1bpump","sym":"Mandy","age":30.1,"why":"liquidity","liq":1395}
