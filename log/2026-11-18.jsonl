@@ -110,3 +110,7 @@
 {"t":1794971880269,"addr":"8XrEE61VAm1iT4nAK6ZFQaoFb941PKYHQ4LXYTF3bonk","sym":"Solgek","age":30.8,"why":"liquidity","liq":0}
 {"t":1794972120497,"addr":"F4PiSysMpzVpeueRNyFrn6VUN7VuDieYMKY6PJFtpump","sym":"TEMPLE3","age":30.9,"score":0.00836,"px":4.289e-05,"liq":13848,"p0":4.431483827270118e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.215,"c_peak":1.0,"c_vol":4.8221,"c_act":1.0,"c_r5":0.1006,"c_r15":0.2284,"c_mc":4.6465}}
 {"t":1794972181017,"addr":"DFvewDdkqkv2otNra2eN1v4QAXnpnU8NF71YzkDHkL29","sym":"vensa","age":30.9,"why":"liquidity","liq":0}
+{"t":1794972313110,"addr":"Gm8jXDPMqrRcKTXfjGAL7R4jytuab5eyytmMwKYvG1Gi","sym":"NADJA","age":30.8,"why":"liquidity","liq":0}
+{"t":1794972313110,"addr":"2BAKBhZR9WmW6kEmV2cup1WiNjcqwf2KU6k4p9VRsmR6","sym":"\u8c46\u57fa\u7c73","age":30.4,"why":"liquidity","liq":0}
+{"t":1794972360749,"addr":"rizF5PvLP9pTBT9L1pHJwLEip1BZTG5Q6wzYeWGpump","sym":"PATTINSON","age":30.2,"why":"liquidity","liq":8074}
+{"t":1794972420809,"addr":"Hcr92yNtfEFkXHcj7KpDBWuEWwYzquaedsUrPCVvmoon","sym":"DENTWIZ","age":30.4,"why":"liquidity","liq":0}
