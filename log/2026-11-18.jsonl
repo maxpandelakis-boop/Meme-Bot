@@ -14,3 +14,4 @@
 {"t":1794961200671,"addr":"8XouE2Ef3Y4REuKRDRLwWbNj5F845K2CLbPePSYAbqqJ","sym":"MORNING","age":30.1,"why":"liquidity","liq":0}
 {"t":1794961261150,"addr":"FmxLURazKtujG1Vidw788gb5XewMasU47TZqBTxSxKEt","sym":"BALLFIN","age":30.8,"score":0.04441,"px":3.047e-05,"liq":42970,"p0":3.049564191613436e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.568,"c_peak":1.0657,"c_vol":5.0773,"c_act":1.0,"c_r5":0.163,"c_r15":0.4541,"c_mc":4.4842}}
 {"t":1794961440299,"addr":"41x7UvFWKo6o4die9kHkjZQzWbe7JYnfHZBXh1WwY7gg","sym":"vensa","age":30.1,"why":"liquidity","liq":0}
+{"t":1794961620608,"addr":"8n9eeAW3cH1MWzXu7GHZeWSpKTNwqM5RSczi4EsMTzgG","sym":"vensa","age":30.3,"why":"liquidity","liq":0}
