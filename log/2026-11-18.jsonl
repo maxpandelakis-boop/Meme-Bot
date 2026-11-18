@@ -693,3 +693,7 @@
 {"t":1795040221073,"addr":"Bd2L5Fs8mbLMJ3PBkH1Z1FoAa6zMNNi3Q56cJSKXpump","sym":"gte7","age":30.8,"score":0.01378,"px":4.484e-05,"liq":15845,"p0":4.164428940932591e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.6,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.27,"c_peak":1.7523,"c_vol":5.451,"c_act":1.0,"c_r5":0.15,"c_r15":0.3002,"c_mc":4.6196}}
 {"t":1795040221073,"addr":"CwsjDcGL8f1pAxKrLGu5sQ9Re2kcFvMYiKw2Mz7Ypump","sym":"JDOG","age":30.4,"why":"liquidity","liq":1564}
 {"t":1795040341207,"addr":"o5aiRiDFNZgXoFcw5kbCvnSbBneVkCR4RVnEtUimoon","sym":"Ramabow","age":30.3,"why":"liquidity","liq":0}
+{"t":1795041000444,"addr":"5bg3xW3HZ6sq7tDgSYfxHV2V5FRrtWzqk2sMGcFmpump","sym":"Harry","age":30.1,"why":"liquidity","liq":3722}
+{"t":1795041120971,"addr":"ERWEzZGZv1wk2QihbtEUUURVLrJJiQMjRCYzrV3Fpump","sym":"NAP","age":30.5,"why":"liquidity","liq":9680}
+{"t":1795041240628,"addr":"DjCKtNRb7CmrTFmMRciJdv7ta3yFFfj6Rv96QLaApump","sym":"IPO","age":30.7,"why":"liquidity","liq":1641}
+{"t":1795041240628,"addr":"ABFNfo5gCANKMBg6V6aLgDpSNrz97nJ2JbFvPN7npump","sym":"GFOMO","age":30.0,"why":"liquidity","liq":1470}
