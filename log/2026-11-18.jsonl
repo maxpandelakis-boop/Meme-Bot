@@ -672,3 +672,4 @@
 {"t":1795037400718,"addr":"HH5WLJtvPc6peQaNKR5AE88rXmRpbrMdV6VrFKswmoon","sym":"ATFROG","age":30.8,"why":"liquidity","liq":0}
 {"t":1795037460463,"addr":"FML39mAXYiThEb7z5drPi56J3tE8Ck6WRhspETGomqWB","sym":"STM","age":30.6,"score":0.02007,"px":2.601e-05,"liq":10878,"p0":2.4373346404177626e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.6861,"c_peak":3.2741,"c_vol":5.5314,"c_act":1.0,"c_r5":-0.6415,"c_r15":-0.3967,"c_mc":4.3869}}
 {"t":1795037580634,"addr":"DdBcYpsGLdzB7GMhg9JfaDwNZ179RFWVQEiMFuz8pump","sym":"Manatees","age":30.6,"why":"liquidity","liq":1633}
+{"t":1795037760964,"addr":"8xEQe5NVYYH47Dti4ttShhnQiSAy7XVcPsYfcmqEpump","sym":"$WISHES","age":30.4,"why":"liquidity","liq":8180}
