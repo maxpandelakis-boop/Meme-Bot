@@ -601,3 +601,8 @@
 {"t":1795029180634,"addr":"CMZZRWm4ncFWzG3HVGC6XEJTubEVYGWzQPK48NUHbonk","sym":"JAVAC","age":30.8,"why":"liquidity","liq":0}
 {"t":1795029301241,"addr":"B89hetCMLgyEVDoNPv93EZBHPqXJZjfWkStLrGipiqMe","sym":"APEC","age":30.8,"why":"liquidity","liq":0}
 {"t":1795029480828,"addr":"CY9emnXCHt6bcHSKBm86LF1CMDo4gQ1pAFxMfA5Xpump","sym":"LUCIA","age":30.5,"why":"liquidity","liq":1357}
+{"t":1795029720153,"addr":"ET7HdVnFXdZCzTRL1jAFZ4doWUhF4JWBZmvVSeRQpump","sym":"SULLY","age":30.4,"why":"liquidity","liq":1897}
+{"t":1795029720153,"addr":"58MHfySPcXbmBjeY9bapfRorXAfiQMUqgcmDrChFvAQJ","sym":"AudaCity","age":30.2,"why":"liquidity","liq":0}
+{"t":1795029720153,"addr":"7jqSBmTgt1CNG5Ja5eQFRtF1tP5yNRNgtPsp13aXmoon","sym":"EQSHLD","age":30.1,"why":"liquidity","liq":0}
+{"t":1795029960662,"addr":"ByzYZsTkGFovSRc6L25QCNuieQy4uHh522R4pz83pump","sym":"SULLY","age":30.8,"why":"liquidity","liq":1664}
+{"t":1795029960662,"addr":"DmV1nJ5TZiAShGdgheE7TtwAmzRtHY3HE2p8MjuLtajT","sym":"\u4e91\u7cef\u7cef","age":30.3,"score":0.01007,"px":3.937e-05,"liq":49560,"p0":3.9783469734398936e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":1.0,"c_ret":0.5606,"c_peak":1.0231,"c_vol":5.1448,"c_act":1.0,"c_r5":0.0229,"c_r15":0.2697,"c_mc":4.5997}}
