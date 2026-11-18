@@ -732,3 +732,4 @@
 {"t":1795044121034,"addr":"4zGJRZMC4aUWh1FkoJj9qvRsyuGWrUBQJcF5fa9kpump","sym":"NASDUCK","age":30.1,"score":0.03852,"px":1.765e-05,"liq":14124,"p0":1.8293779829206116e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.9247,"c_peak":9.7984,"c_vol":5.8451,"c_act":1.0,"c_r5":-1.2313,"c_r15":-1.5111,"c_mc":4.2623}}
 {"t":1795044240977,"addr":"ChgNJMqb5hTzKThbbTVd5iyH9SvsPRESfkKX51dKpump","sym":"NASDUCK","age":30.6,"why":"liquidity","liq":3733}
 {"t":1795044300625,"addr":"FJisPcDGLYhwKoj7aKRKzxSZ7d5YaCLNCc6fhLCgpump","sym":"VTC","age":30.6,"why":"liquidity","liq":1598}
+{"t":1795044480588,"addr":"5a4KfzA3k3kGVKDcJtLP8StCeNctTVauprvz6Va7pump","sym":"vicestream","age":30.8,"why":"liquidity","liq":8135}
