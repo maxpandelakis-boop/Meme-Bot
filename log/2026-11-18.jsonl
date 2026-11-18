@@ -632,3 +632,5 @@
 {"t":1795032180564,"addr":"EamKUccsfTiDM9448CxPxVdBgSDyBKNoK6R4jBWfpump","sym":"JIGGLE","age":43.2,"why":"no candles"}
 {"t":1795032180564,"addr":"5B45K9pgmMxvcrsJcBAVTEN3gqCkE24qSCqz7yTmpump","sym":"HUMAN","age":30.6,"why":"liquidity","liq":6543}
 {"t":1795032180564,"addr":"C5yL4htB6y6d9ANtaDzhdiu6xSLUNwCTUPEuGZGWbonk","sym":"ETHICE","age":30.2,"why":"liquidity","liq":0}
+{"t":1795032600910,"addr":"GgkY5YH3WsjujpKU5ZwAeY1cWr7qS5EWCCBqmtkEBzMx","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":0}
+{"t":1795032600910,"addr":"CFhwumXsTfxniMpvo5F3EyiwaUk2sE3xDdRpFf38f1yM","sym":"vensa","age":30.8,"why":"liquidity","liq":0}
