@@ -172,3 +172,8 @@
 {"t":1794979320503,"addr":"HzUdYKdemBWpgTv7PXeWPqhCrrDg8ZQHpokz8E7zKkLb","sym":"\u54c8\u5409\u54aa","age":30.6,"score":0.02854,"px":7.172e-05,"liq":43813,"p0":7.156346717659737e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":19.0,"f_cjk":1.0,"c_ret":1.7635,"c_peak":1.004,"c_vol":5.3543,"c_act":1.0,"c_r5":0.0513,"c_r15":0.7447,"c_mc":4.8547}}
 {"t":1794979381041,"addr":"8qHpNFu6o6JDx8rmdjik6k3si8QRLBgMuuRmGQ21pump","sym":"67coin","age":30.2,"why":"liquidity","liq":9585}
 {"t":1794979501195,"addr":"D6REawj58gC8K6rVHR5YRTtFRQU7roKXpJFwt9g7Q9C2","sym":"Elmo","age":30.3,"score":0.04005,"px":2.639e-05,"liq":10647,"p0":3.085996783083308e-05,"bars":6,"buy":false,"f":{"f_curve_min":8.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0954,"c_peak":1.4547,"c_vol":5.1654,"c_act":1.0,"c_r5":-0.0524,"c_r15":0.8551,"c_mc":4.4894}}
+{"t":1794979620757,"addr":"4sqx2PWcFC8UMBwBM2p7SM5peNcRgcFXgqX19mzbmoon","sym":"ASEBR","age":30.6,"why":"liquidity","liq":0}
+{"t":1794979620757,"addr":"BQcUxVU86EUBFvjfqrj5TG4pACxcey3xWHcGG8e4rBHb","sym":"COPYTRADO","age":30.4,"why":"liquidity","liq":0}
+{"t":1794979680143,"addr":"FA8Kv79xtzSQFnxW5HJz8pBN1x7eJChjxi4gqptMMNno","sym":"Cool Cat\ud83d\udc31","age":30.1,"why":"liquidity","liq":0}
+{"t":1794979740882,"addr":"Fm5zGFtuqaumjSDZ2JSDhg5Dqu8kDriZmrUZLMf86PTk","sym":"Elmo","age":30.3,"why":"liquidity","liq":0}
+{"t":1794979860928,"addr":"B9zVQJNSFjFkxW84P5CZuQpiwtTCCcc87CuG6zeu9hyp","sym":"SESAMECOIN","age":31.0,"why":"liquidity","liq":0}
