@@ -666,3 +666,6 @@
 {"t":1795036200287,"addr":"4w7aK1FBJojz222ayheFUcrZzNi5g99Sd8e6sEZLYUY","sym":"Mabel","age":30.1,"score":0.01982,"px":9.569e-07,"liq":144093,"p0":9.056290042255989e-07,"bars":6,"buy":false,"f":{"f_curve_min":0.2333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.5382,"c_peak":1.0558,"c_vol":6.2746,"c_act":1.0,"c_r5":-0.0063,"c_r15":0.206,"c_mc":2.957}}
 {"t":1795036320678,"addr":"2Kbb7CjeXgvzXwxBvioAyhKYdfYfuK9CELaxb12PUYDP","sym":"AudaCity","age":30.9,"why":"liquidity","liq":3577}
 {"t":1795036620996,"addr":"gdy2e1wQtqbQxynaz6v3kqrfUttKrHyFotdG9fYpump","sym":"AMAZON","age":30.4,"why":"liquidity","liq":1430}
+{"t":1795036920892,"addr":"E4d9fSArqBDkqUQGByyCJwkS5MTTtqvjSuRBudLbcEjj","sym":"NEX Ai","age":30.9,"why":"liquidity","liq":0}
+{"t":1795036920892,"addr":"891cZa8Z62mZp9MCNzw3NGuD9MS5Dzq79jg1CCFjpump","sym":"MOON","age":30.7,"why":"liquidity","liq":1650}
+{"t":1795036920892,"addr":"FRA6hWoJGo2dLpm8fKHwfyTeSfci2N2ifJT9fPXnpump","sym":"TTWO","age":30.2,"why":"liquidity","liq":3075}
