@@ -589,3 +589,6 @@
 {"t":1795028280842,"addr":"6pned2S1Q6cPeh3r9aVVFx6P6FKsrMam1SU9Vm5uNTto","sym":"APEC","age":30.7,"why":"liquidity","liq":0}
 {"t":1795028340348,"addr":"G95Q7d9uoYjKBgPobjLzb7VeEWQdsJe2Wd7FZM7FDfUw","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":0}
 {"t":1795028400609,"addr":"kYW6FzCWvMLTsoEhfG4Kto9dJQ7NDUb9ShTyHz9Q8Rz","sym":"\u4e91\u7cef\u7cef","age":30.5,"why":"liquidity","liq":0}
+{"t":1795028581036,"addr":"4wehgrN8bC8HL7buDgdtALNL6KFbwAcgVungFnnibonk","sym":"Cldst","age":30.7,"why":"liquidity","liq":0}
+{"t":1795028581036,"addr":"9n4AEbVdv9LvYcEwBiYbd2QeLm3YAaKDpVHDwvm1BJT","sym":"Founder","age":30.2,"why":"liquidity","liq":0}
+{"t":1795028640323,"addr":"EzRA2bmKBGt2tKU7rAPKoKC4z6NBLgmD2EFrRh2Tpump","sym":"VTC","age":30.4,"score":0.0055,"px":0.341,"liq":1329793,"p0":0.34158047038285705,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":24.0,"f_cjk":0.0,"c_ret":0.01,"c_peak":1.0006,"c_vol":5.8183,"c_act":0.5,"c_r5":0.0035,"c_r15":0.0035,"c_mc":8.5335}}
