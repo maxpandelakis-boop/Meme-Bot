@@ -431,3 +431,6 @@
 {"t":1795008240903,"addr":"Hnpys7W5Sj8J7fCuYH2BrtFiUSB33ob6WrcqAMpAdmZ3","sym":"Tradercat","age":30.8,"score":0.03858,"px":3.414e-05,"liq":45376,"p0":2.5718732696762217e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":17.0,"f_cjk":0.0,"c_ret":0.4849,"c_peak":1.4704,"c_vol":4.974,"c_act":1.0,"c_r5":-0.1722,"c_r15":0.0162,"c_mc":4.4102}}
 {"t":1795008240903,"addr":"CnJ7JGzMYte9Ke2pkXeQjt5g8ujznUgBFhVGerSTCLsP","sym":"APEC","age":30.6,"why":"liquidity","liq":0}
 {"t":1795008360662,"addr":"6qUZSGD8yrQSjK5iXngydYMDBpWhCcFuisqJWjXJJfR8","sym":"IFRUIT","age":30.4,"why":"liquidity","liq":0}
+{"t":1795008661381,"addr":"2VtK4EdBFXWYbdxymxcpbFSZAr5zJBbhXQ75Yi2Wmoon","sym":"LISDRAG","age":30.0,"why":"liquidity","liq":0}
+{"t":1795008840592,"addr":"6TQmsU3XkLBPaFTRRML183Kd3J7NtxcGGtGLE7WKpump","sym":"BOGE","age":30.8,"why":"liquidity","liq":1731}
+{"t":1795008840592,"addr":"GRh3qyx1JXWRgSZMJ6MUt2S1U3QhWrTet19n3yTNpump","sym":"Boobie","age":30.5,"why":"liquidity","liq":2470}
