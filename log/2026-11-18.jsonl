@@ -301,3 +301,7 @@
 {"t":1794992640540,"addr":"HxrsBU7EQb6z9X3ifi8EwFF7TDF3tB8iro13ERa8pump","sym":"KATIA","age":30.9,"why":"liquidity","liq":6849}
 {"t":1794992640540,"addr":"C5zEB5LfSjPVXN3ZxEGdwxaPmSUkbhUj8ZqQh6qq3Rsn","sym":"Tradercat","age":30.5,"why":"liquidity","liq":0}
 {"t":1794992640540,"addr":"6jTtSEquvb5e82YPg1Tq72JGNQ2Xbovi7PcwPiCZ8Ruf","sym":"DAPUSSY","age":30.4,"why":"liquidity","liq":0}
+{"t":1794992760697,"addr":"HUUKPJ5LGWovd67iB4owXPL6B8pjB1d3qLGsqX7KX7v4","sym":"Breast","age":30.8,"score":0.00926,"px":7.116e-05,"liq":65865,"p0":6.873263606461364e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":1.3453,"c_peak":1.0595,"c_vol":5.1989,"c_act":1.0,"c_r5":0.3789,"c_r15":1.0543,"c_mc":4.8372}}
+{"t":1794992760697,"addr":"GR8BXVbTCgmbStjxnG4C7GUcigKjSJu8oyCZBWtQWSzx","sym":"Tradercat","age":30.0,"why":"liquidity","liq":0}
+{"t":1794992880267,"addr":"7TpHN3dMcvXXDwcjFkyrGMyaP81QTtbnFBeBgqtzpump","sym":"GTA7","age":43.9,"why":"no candles"}
+{"t":1794992880267,"addr":"od8vbv2DRtUpJKEkfRcRdkNgjQ5HJgGWqGk7P1UDEEw","sym":"MAKENZI","age":30.7,"why":"liquidity","liq":0}
