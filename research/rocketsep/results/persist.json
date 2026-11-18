@@ -1,0 +1,1379 @@
+{
+ "AP": {
+  "rules": 2139,
+  "rulePlanPairs": 17112,
+  "posInSample": 466,
+  "posW4_given_posIns": 44,
+  "posW4_all": 937,
+  "shareW4pos_given_posIns": 0.0944,
+  "shareW4pos_all": 0.0548,
+  "w5pos_all": [
+   1864,
+   16856
+  ],
+  "w5pos_given_posIns": [
+   101,
+   454
+  ],
+  "w5pos_given_posIns_posW4": [
+   12,
+   43
+  ],
+  "bothPositive_top": [
+   {
+    "rule": "f_name_fit quintile 1 AND turnover quintile 2",
+    "plan": "R24",
+    "ins": [
+     47,
+     6.68
+    ],
+    "w4": [
+     21,
+     27.59
+    ],
+    "w5": [
+     9,
+     21.76
+    ]
+   },
+   {
+    "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+    "plan": "R6",
+    "ins": [
+     83,
+     5.82
+    ],
+    "w4": [
+     22,
+     7.37
+    ],
+    "w5": [
+     10,
+     13.81
+    ]
+   },
+   {
+    "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+    "plan": "R24",
+    "ins": [
+     83,
+     4.44
+    ],
+    "w4": [
+     22,
+     13.64
+    ],
+    "w5": [
+     10,
+     1.91
+    ]
+   },
+   {
+    "rule": "f_desc_len = 0 AND vol60 quintile 2",
+    "plan": "R6",
+    "ins": [
+     71,
+     4.21
+    ],
+    "w4": [
+     29,
+     10.6
+    ],
+    "w5": [
+     8,
+     -14.35
+    ]
+   },
+   {
+    "rule": "f_desc_len = 0 AND turnover quintile 2",
+    "plan": "K",
+    "ins": [
+     76,
+     5.38
+    ],
+    "w4": [
+     25,
+     4.15
+    ],
+    "w5": [
+     14,
+     0.41
+    ]
+   },
+   {
+    "rule": "f_name_fit quintile 1 AND turnover quintile 2",
+    "plan": "R6",
+    "ins": [
+     47,
+     5.47
+    ],
+    "w4": [
+     21,
+     4.13
+    ],
+    "w5": [
+     9,
+     -4.51
+    ]
+   },
+   {
+    "rule": "f_desc_len = 0 AND turnover quintile 2",
+    "plan": "R6",
+    "ins": [
+     76,
+     5.17
+    ],
+    "w4": [
+     25,
+     4.1
+    ],
+    "w5": [
+     14,
+     0.04
+    ]
+   },
+   {
+    "rule": "f_post_age = up to 1 h AND f_launch_other = other",
+    "plan": "K",
+    "ins": [
+     88,
+     4.6
+    ],
+    "w4": [
+     25,
+     4.04
+    ],
+    "w5": [
+     10,
+     -4.58
+    ]
+   },
+   {
+    "rule": "f_name_fit quintile 1 AND turnover quintile 2",
+    "plan": "TR2",
+    "ins": [
+     47,
+     5.81
+    ],
+    "w4": [
+     21,
+     3.79
+    ],
+    "w5": [
+     9,
+     -14.31
+    ]
+   },
+   {
+    "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+    "plan": "K",
+    "ins": [
+     83,
+     3.77
+    ],
+    "w4": [
+     22,
+     8.11
+    ],
+    "w5": [
+     10,
+     -3.72
+    ]
+   },
+   {
+    "rule": "f_desc_len = 0 AND vol60 quintile 2",
+    "plan": "K",
+    "ins": [
+     71,
+     3.07
+    ],
+    "w4": [
+     29,
+     7.62
+    ],
+    "w5": [
+     8,
+     -13.71
+    ]
+   },
+   {
+    "rule": "lr360 quintile 4 AND turnover quintile 2",
+    "plan": "K",
+    "ins": [
+     71,
+     2.35
+    ],
+    "w4": [
+     21,
+     12.6
+    ],
+    "w5": [
+     14,
+     3.76
+    ]
+   },
+   {
+    "rule": "f_nlinks = 2 AND f_post_age = up to 1 h",
+    "plan": "K",
+    "ins": [
+     81,
+     5.25
+    ],
+    "w4": [
+     26,
+     2.31
+    ],
+    "w5": [
+     13,
+     -1.48
+    ]
+   },
+   {
+    "rule": "f_curve_min = 1-10 min AND liqmc quintile 2",
+    "plan": "R6",
+    "ins": [
+     55,
+     4.99
+    ],
+    "w4": [
+     23,
+     2.21
+    ],
+    "w5": [
+     7,
+     7.09
+    ]
+   },
+   {
+    "rule": "turnover quintile 2 AND lliq quintile 5",
+    "plan": "K",
+    "ins": [
+     51,
+     2.16
+    ],
+    "w4": [
+     45,
+     2.51
+    ],
+    "w5": [
+     11,
+     -3.59
+    ]
+   }
+  ],
+  "bothPos_w5": {
+   "n": 44,
+   "w5pos": 12,
+   "w5known": 43
+  }
+ },
+ "AL": {
+  "rules": 3956,
+  "rulePlanPairs": 31648,
+  "posInSample": 792,
+  "posW4_given_posIns": 55,
+  "posW4_all": 853,
+  "shareW4pos_given_posIns": 0.0694,
+  "shareW4pos_all": 0.027,
+  "w5pos_all": [
+   1284,
+   30784
+  ],
+  "w5pos_given_posIns": [
+   54,
+   687
+  ],
+  "w5pos_given_posIns_posW4": [
+   2,
+   42
+  ],
+  "bothPositive_top": [
+   {
+    "rule": "vol60 quintile 3 AND lliq quintile 4",
+    "plan": "TR2",
+    "ins": [
+     49,
+     37.8
+    ],
+    "w4": [
+     48,
+     47.68
+    ],
+    "w5": [
+     4,
+     -40.51
+    ]
+   },
+   {
+    "rule": "f_dup7 = 1-2 AND vol60 quintile 3",
+    "plan": "TR2",
+    "ins": [
+     57,
+     34.49
+    ],
+    "w4": [
+     32,
+     53.3
+    ],
+    "w5": [
+     2,
+     -18.37
+    ]
+   },
+   {
+    "rule": "vol60 quintile 3 AND liqmc quintile 2",
+    "plan": "TR2",
+    "ins": [
+     50,
+     29.17
+    ],
+    "w4": [
+     42,
+     26.93
+    ],
+    "w5": [
+     5,
+     -38.06
+    ]
+   },
+   {
+    "rule": "f_xtype = profile/community AND f_group = object_scene",
+    "plan": "HN",
+    "ins": [
+     76,
+     25.1
+    ],
+    "w4": [
+     39,
+     35.51
+    ],
+    "w5": [
+     19,
+     -31.78
+    ]
+   },
+   {
+    "rule": "f_desc_len = 1-50 AND f_group = object_scene",
+    "plan": "HN",
+    "ins": [
+     75,
+     24.45
+    ],
+    "w4": [
+     22,
+     45.57
+    ],
+    "w5": [
+     12,
+     -12.24
+    ]
+   },
+   {
+    "rule": "vol60 quintile 3 AND lmc quintile 4",
+    "plan": "TR2",
+    "ins": [
+     46,
+     38.52
+    ],
+    "w4": [
+     51,
+     18.91
+    ],
+    "w5": [
+     4,
+     -40.51
+    ]
+   },
+   {
+    "rule": "f_desc_len = 51-200 AND vol60 quintile 3",
+    "plan": "TR2",
+    "ins": [
+     105,
+     17.56
+    ],
+    "w4": [
+     34,
+     80.05
+    ],
+    "w5": [
+     11,
+     -24.96
+    ]
+   },
+   {
+    "rule": "f_group = object_scene AND liqmc quintile 3",
+    "plan": "HN",
+    "ins": [
+     78,
+     15.3
+    ],
+    "w4": [
+     29,
+     25.54
+    ],
+    "w5": [
+     18,
+     -36.37
+    ]
+   },
+   {
+    "rule": "f_group = object_scene AND lliq quintile 3",
+    "plan": "HN",
+    "ins": [
+     80,
+     14.73
+    ],
+    "w4": [
+     35,
+     19.06
+    ],
+    "w5": [
+     15,
+     -43.36
+    ]
+   },
+   {
+    "rule": "f_group = object_scene AND lmc quintile 3",
+    "plan": "HN",
+    "ins": [
+     79,
+     14.53
+    ],
+    "w4": [
+     25,
+     32.51
+    ],
+    "w5": [
+     16,
+     -39.32
+    ]
+   },
+   {
+    "rule": "f_group = object_scene AND atl quintile 4",
+    "plan": "HN",
+    "ins": [
+     71,
+     22.34
+    ],
+    "w4": [
+     24,
+     11.75
+    ],
+    "w5": [
+     17,
+     -39.27
+    ]
+   },
+   {
+    "rule": "f_curve_min = <=1 min AND vol60 quintile 3",
+    "plan": "TR2",
+    "ins": [
+     107,
+     11.33
+    ],
+    "w4": [
+     64,
+     25.34
+    ],
+    "w5": [
+     15,
+     -37.08
+    ]
+   },
+   {
+    "rule": "f_grads24 quintile 5 AND vol60 quintile 3",
+    "plan": "TR2",
+    "ins": [
+     50,
+     28.44
+    ],
+    "w4": [
+     101,
+     10.48
+    ],
+    "w5": [
+     4,
+     -31.11
+    ]
+   },
+   {
+    "rule": "lr60 quintile 2 AND ath quintile 3",
+    "plan": "K",
+    "ins": [
+     44,
+     8.9
+    ],
+    "w4": [
+     28,
+     12.03
+    ],
+    "w5": [
+     4,
+     -41.62
+    ]
+   },
+   {
+    "rule": "lr60 quintile 2 AND ath quintile 3",
+    "plan": "R6",
+    "ins": [
+     44,
+     5.3
+    ],
+    "w4": [
+     28,
+     12.53
+    ],
+    "w5": [
+     4,
+     -49.83
+    ]
+   }
+  ],
+  "bothPos_w5": {
+   "n": 55,
+   "w5pos": 2,
+   "w5known": 42
+  }
+ },
+ "AA": {
+  "rules": 4870,
+  "rulePlanPairs": 38960,
+  "posInSample": 573,
+  "posW4_given_posIns": 21,
+  "posW4_all": 623,
+  "shareW4pos_given_posIns": 0.0366,
+  "shareW4pos_all": 0.016,
+  "w5pos_all": [
+   1779,
+   37608
+  ],
+  "w5pos_given_posIns": [
+   25,
+   554
+  ],
+  "w5pos_given_posIns_posW4": [
+   4,
+   21
+  ],
+  "bothPositive_top": [
+   {
+    "rule": "vol60 quintile 3 AND turnover quintile 5",
+    "plan": "TR2",
+    "ins": [
+     101,
+     31.83
+    ],
+    "w4": [
+     40,
+     75.13
+    ],
+    "w5": [
+     10,
+     -29.67
+    ]
+   },
+   {
+    "rule": "f_xtype = profile/community AND f_group = object_scene",
+    "plan": "HN",
+    "ins": [
+     108,
+     136.34
+    ],
+    "w4": [
+     51,
+     16.84
+    ],
+    "w5": [
+     23,
+     -32.58
+    ]
+   },
+   {
+    "rule": "f_desc_len = 1-50 AND f_group = object_scene",
+    "plan": "HN",
+    "ins": [
+     113,
+     123.58
+    ],
+    "w4": [
+     33,
+     16.51
+    ],
+    "w5": [
+     14,
+     2.79
+    ]
+   },
+   {
+    "rule": "lr360 quintile 3 AND atl quintile 5",
+    "plan": "HN",
+    "ins": [
+     62,
+     11.79
+    ],
+    "w4": [
+     27,
+     63.15
+    ],
+    "w5": [
+     7,
+     -37.78
+    ]
+   },
+   {
+    "rule": "f_curve_min = 1-6 h AND liqmc quintile 3",
+    "plan": "HN",
+    "ins": [
+     91,
+     61.92
+    ],
+    "w4": [
+     20,
+     10.29
+    ],
+    "w5": [
+     11,
+     -37.91
+    ]
+   },
+   {
+    "rule": "f_dup7 = 1-2 AND vol60 quintile 3",
+    "plan": "TR2",
+    "ins": [
+     99,
+     8.43
+    ],
+    "w4": [
+     55,
+     12.83
+    ],
+    "w5": [
+     13,
+     -40.53
+    ]
+   },
+   {
+    "rule": "f_curve_min = 1-6 h AND f_theme24 = 5-19",
+    "plan": "K",
+    "ins": [
+     48,
+     3.74
+    ],
+    "w4": [
+     20,
+     10.01
+    ],
+    "w5": [
+     6,
+     -13.69
+    ]
+   },
+   {
+    "rule": "f_launch_other = pump.fun AND f_group = object_scene",
+    "plan": "HN",
+    "ins": [
+     243,
+     40.67
+    ],
+    "w4": [
+     72,
+     3.47
+    ],
+    "w5": [
+     40,
+     -21.78
+    ]
+   },
+   {
+    "rule": "vol60 quintile 3 AND lliq quintile 4",
+    "plan": "TR2",
+    "ins": [
+     84,
+     2.91
+    ],
+    "w4": [
+     68,
+     21.47
+    ],
+    "w5": [
+     44,
+     -43.97
+    ]
+   },
+   {
+    "rule": "vol60 quintile 3 AND turnover quintile 5",
+    "plan": "HN",
+    "ins": [
+     101,
+     40.1
+    ],
+    "w4": [
+     40,
+     2.75
+    ],
+    "w5": [
+     10,
+     -44.49
+    ]
+   },
+   {
+    "rule": "f_theme24 = 0 AND age quintile 4",
+    "plan": "R6",
+    "ins": [
+     116,
+     2.43
+    ],
+    "w4": [
+     36,
+     13.72
+    ],
+    "w5": [
+     15,
+     23.0
+    ]
+   },
+   {
+    "rule": "f_dup7 = 0 AND age quintile 4",
+    "plan": "R6",
+    "ins": [
+     130,
+     2.34
+    ],
+    "w4": [
+     35,
+     4.94
+    ],
+    "w5": [
+     12,
+     26.36
+    ]
+   },
+   {
+    "rule": "f_curve_min = 10-60 min AND vol60 quintile 3",
+    "plan": "V3",
+    "ins": [
+     65,
+     6.33
+    ],
+    "w4": [
+     25,
+     2.24
+    ],
+    "w5": [
+     9,
+     -6.99
+    ]
+   },
+   {
+    "rule": "lr360 quintile 2 AND turnover quintile 3",
+    "plan": "R24",
+    "ins": [
+     107,
+     9.55
+    ],
+    "w4": [
+     21,
+     1.84
+    ],
+    "w5": [
+     6,
+     -26.53
+    ]
+   },
+   {
+    "rule": "f_lookalike = no AND vol60 quintile 3",
+    "plan": "TR2",
+    "ins": [
+     316,
+     1.62
+    ],
+    "w4": [
+     89,
+     3.17
+    ],
+    "w5": [
+     34,
+     -13.39
+    ]
+   }
+  ],
+  "bothPos_w5": {
+   "n": 21,
+   "w5pos": 4,
+   "w5known": 21
+  }
+ },
+ "BP": {
+  "rules": 4686,
+  "rulePlanPairs": 37488,
+  "posInSample": 1558,
+  "posW4_given_posIns": 84,
+  "posW4_all": 1519,
+  "shareW4pos_given_posIns": 0.0539,
+  "shareW4pos_all": 0.0405,
+  "bothPositive_top": [
+   {
+    "rule": "turnover quintile 3 AND h_top_buyer_share_1h quintile 4",
+    "plan": "R24",
+    "ins": [
+     51,
+     6.84
+    ],
+    "w4": [
+     20,
+     7.84
+    ]
+   },
+   {
+    "rule": "turnover quintile 3 AND h_buys_1h quintile 1",
+    "plan": "R24",
+    "ins": [
+     55,
+     6.53
+    ],
+    "w4": [
+     30,
+     12.67
+    ]
+   },
+   {
+    "rule": "f_theme24 = 1-4 AND h_sells_24h quintile 4",
+    "plan": "R6",
+    "ins": [
+     45,
+     5.44
+    ],
+    "w4": [
+     30,
+     8.6
+    ]
+   },
+   {
+    "rule": "f_theme24 = 1-4 AND h_sells_24h quintile 4",
+    "plan": "K",
+    "ins": [
+     45,
+     5.34
+    ],
+    "w4": [
+     30,
+     6.49
+    ]
+   },
+   {
+    "rule": "f_theme24 = 1-4 AND lmc quintile 4",
+    "plan": "R6",
+    "ins": [
+     40,
+     2.97
+    ],
+    "w4": [
+     26,
+     7.64
+    ]
+   },
+   {
+    "rule": "f_name_fit quintile 1 AND h_buys_1h quintile 1",
+    "plan": "R6",
+    "ins": [
+     40,
+     3.49
+    ],
+    "w4": [
+     30,
+     2.85
+    ]
+   },
+   {
+    "rule": "f_xtype = post AND f_desc_len = 0",
+    "plan": "R6",
+    "ins": [
+     41,
+     2.45
+    ],
+    "w4": [
+     27,
+     7.41
+    ]
+   },
+   {
+    "rule": "lr360 quintile 4 AND age quintile 4",
+    "plan": "K",
+    "ins": [
+     61,
+     2.41
+    ],
+    "w4": [
+     38,
+     2.66
+    ]
+   },
+   {
+    "rule": "lliq quintile 4 AND w_win_share quintile 5",
+    "plan": "V3",
+    "ins": [
+     43,
+     1.94
+    ],
+    "w4": [
+     35,
+     3.31
+    ]
+   },
+   {
+    "rule": "lliq quintile 4 AND w_win_share quintile 5",
+    "plan": "K",
+    "ins": [
+     43,
+     1.94
+    ],
+    "w4": [
+     35,
+     6.0
+    ]
+   },
+   {
+    "rule": "lliq quintile 4 AND w_win_share quintile 5",
+    "plan": "R6",
+    "ins": [
+     43,
+     1.94
+    ],
+    "w4": [
+     35,
+     7.04
+    ]
+   },
+   {
+    "rule": "turnover quintile 3 AND age quintile 3",
+    "plan": "R6",
+    "ins": [
+     78,
+     1.9
+    ],
+    "w4": [
+     28,
+     2.33
+    ]
+   },
+   {
+    "rule": "f_theme24 = 1-4 AND lr360 quintile 4",
+    "plan": "K",
+    "ins": [
+     43,
+     9.79
+    ],
+    "w4": [
+     28,
+     1.63
+    ]
+   },
+   {
+    "rule": "f_name_fit quintile 5 AND vol60 quintile 2",
+    "plan": "V3",
+    "ins": [
+     78,
+     1.41
+    ],
+    "w4": [
+     34,
+     1.59
+    ]
+   },
+   {
+    "rule": "f_name_fit quintile 5 AND vol60 quintile 2",
+    "plan": "K",
+    "ins": [
+     78,
+     1.41
+    ],
+    "w4": [
+     34,
+     1.67
+    ]
+   }
+  ]
+ },
+ "BL": {
+  "rules": 11895,
+  "rulePlanPairs": 95160,
+  "posInSample": 2039,
+  "posW4_given_posIns": 176,
+  "posW4_all": 2668,
+  "shareW4pos_given_posIns": 0.0863,
+  "shareW4pos_all": 0.028,
+  "bothPositive_top": [
+   {
+    "rule": "w_exp_share quintile 1 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     40,
+     47.75
+    ],
+    "w4": [
+     27,
+     91.49
+    ]
+   },
+   {
+    "rule": "w_win_share quintile 1 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     45,
+     44.27
+    ],
+    "w4": [
+     21,
+     117.6
+    ]
+   },
+   {
+    "rule": "lr360 quintile 3 AND lliq quintile 1",
+    "plan": "HN",
+    "ins": [
+     74,
+     43.01
+    ],
+    "w4": [
+     36,
+     48.83
+    ]
+   },
+   {
+    "rule": "lr60 quintile 4 AND lliq quintile 1",
+    "plan": "HN",
+    "ins": [
+     100,
+     61.65
+    ],
+    "w4": [
+     40,
+     38.36
+    ]
+   },
+   {
+    "rule": "vol60 quintile 4 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     60,
+     31.76
+    ],
+    "w4": [
+     48,
+     59.06
+    ]
+   },
+   {
+    "rule": "f_theme24 = 1-4 AND lr360 quintile 3",
+    "plan": "HN",
+    "ins": [
+     49,
+     62.97
+    ],
+    "w4": [
+     47,
+     28.56
+    ]
+   },
+   {
+    "rule": "h_buys_24h quintile 2 AND h_bs_ratio quintile 5",
+    "plan": "TR2",
+    "ins": [
+     53,
+     24.66
+    ],
+    "w4": [
+     67,
+     25.89
+    ]
+   },
+   {
+    "rule": "lliq quintile 3 AND h_buys_24h quintile 2",
+    "plan": "TR2",
+    "ins": [
+     61,
+     21.19
+    ],
+    "w4": [
+     70,
+     27.92
+    ]
+   },
+   {
+    "rule": "h_buys_24h quintile 2 AND w_win_share quintile 1",
+    "plan": "TR2",
+    "ins": [
+     62,
+     21.19
+    ],
+    "w4": [
+     32,
+     93.62
+    ]
+   },
+   {
+    "rule": "lr60 quintile 1 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     51,
+     19.78
+    ],
+    "w4": [
+     29,
+     19.54
+    ]
+   },
+   {
+    "rule": "h_sellers_1h quintile 3 AND w_win_share60 quintile 2",
+    "plan": "TR2",
+    "ins": [
+     54,
+     18.51
+    ],
+    "w4": [
+     26,
+     23.67
+    ]
+   },
+   {
+    "rule": "w_win_share60 quintile 2 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     73,
+     18.47
+    ],
+    "w4": [
+     34,
+     67.75
+    ]
+   },
+   {
+    "rule": "vol60 quintile 4 AND lliq quintile 3",
+    "plan": "TR2",
+    "ins": [
+     58,
+     21.44
+    ],
+    "w4": [
+     98,
+     18.44
+    ]
+   },
+   {
+    "rule": "h_sellers_1h quintile 3 AND h_sells_1h quintile 4",
+    "plan": "TR2",
+    "ins": [
+     47,
+     17.39
+    ],
+    "w4": [
+     25,
+     27.59
+    ]
+   },
+   {
+    "rule": "lr360 quintile 1 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     52,
+     17.65
+    ],
+    "w4": [
+     37,
+     17.33
+    ]
+   }
+  ]
+ },
+ "BA": {
+  "rules": 16758,
+  "rulePlanPairs": 134064,
+  "posInSample": 1213,
+  "posW4_given_posIns": 69,
+  "posW4_all": 1586,
+  "shareW4pos_given_posIns": 0.0569,
+  "shareW4pos_all": 0.0118,
+  "bothPositive_top": [
+   {
+    "rule": "w_exp_share quintile 1 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     52,
+     30.54
+    ],
+    "w4": [
+     41,
+     47.27
+    ]
+   },
+   {
+    "rule": "w_win_share quintile 1 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     66,
+     21.41
+    ],
+    "w4": [
+     49,
+     29.87
+    ]
+   },
+   {
+    "rule": "lr360 quintile 5 AND age quintile 4",
+    "plan": "R6",
+    "ins": [
+     41,
+     16.69
+    ],
+    "w4": [
+     27,
+     23.19
+    ]
+   },
+   {
+    "rule": "lr360 quintile 5 AND age quintile 4",
+    "plan": "K",
+    "ins": [
+     41,
+     16.24
+    ],
+    "w4": [
+     27,
+     26.03
+    ]
+   },
+   {
+    "rule": "lr60 quintile 4 AND w_n quintile 5",
+    "plan": "HN",
+    "ins": [
+     42,
+     73.97
+    ],
+    "w4": [
+     42,
+     15.86
+    ]
+   },
+   {
+    "rule": "lr360 quintile 5 AND age quintile 4",
+    "plan": "R24",
+    "ins": [
+     41,
+     13.28
+    ],
+    "w4": [
+     27,
+     9.74
+    ]
+   },
+   {
+    "rule": "vol60 quintile 4 AND w_prior_lr60 quintile 4",
+    "plan": "TR2",
+    "ins": [
+     95,
+     9.18
+    ],
+    "w4": [
+     78,
+     24.95
+    ]
+   },
+   {
+    "rule": "atl quintile 4 AND h_sells_1h quintile 3",
+    "plan": "HN",
+    "ins": [
+     69,
+     8.67
+    ],
+    "w4": [
+     39,
+     9.15
+    ]
+   },
+   {
+    "rule": "vol60 quintile 4 AND h_buys_24h quintile 2",
+    "plan": "TR2",
+    "ins": [
+     63,
+     8.52
+    ],
+    "w4": [
+     63,
+     35.1
+    ]
+   },
+   {
+    "rule": "f_post_age = older AND turnover quintile 5",
+    "plan": "R24",
+    "ins": [
+     67,
+     8.05
+    ],
+    "w4": [
+     32,
+     9.39
+    ]
+   },
+   {
+    "rule": "f_post_age = older AND w_new15 quintile 5",
+    "plan": "R24",
+    "ins": [
+     61,
+     23.39
+    ],
+    "w4": [
+     23,
+     7.73
+    ]
+   },
+   {
+    "rule": "h_sellers_1h quintile 3 AND w_new60 quintile 5",
+    "plan": "R6",
+    "ins": [
+     45,
+     15.83
+    ],
+    "w4": [
+     63,
+     6.59
+    ]
+   },
+   {
+    "rule": "lr60 quintile 5 AND age quintile 4",
+    "plan": "R6",
+    "ins": [
+     43,
+     6.16
+    ],
+    "w4": [
+     33,
+     15.54
+    ]
+   },
+   {
+    "rule": "h_sellers_1h quintile 3 AND w_sol60 quintile 5",
+    "plan": "TR2",
+    "ins": [
+     86,
+     5.4
+    ],
+    "w4": [
+     49,
+     9.53
+    ]
+   },
+   {
+    "rule": "f_post_age = older AND w_new60 quintile 5",
+    "plan": "R24",
+    "ins": [
+     74,
+     12.87
+    ],
+    "w4": [
+     36,
+     5.06
+    ]
+   }
+  ]
+ }
+}

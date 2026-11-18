@@ -1,0 +1,24 @@
+[   21s] A A choose sR {'w3': 0.581} {'w3': 0.558} trees 5
+[   22s] A A choose sRZ {'w3': 0.695} {'w3': 0.577} trees 134
+[   22s] A A chosen {'model': 'sR', 'q': 0.05, 'plan': 'H12', 'win': 'w3', 'buys': 569, 'holds': 15, 'diff': 0.775, 'rocketsHeld': 1, 'rocketsAll': 3}
+[   26s] A A test sR {'w4': 0.84, 'w5': 0.757} {'w4': 0.728, 'w5': 0.56} trees 65
+[   28s] A A test sRZ {'w4': 0.707, 'w5': 0.72} {'w4': 0.772, 'w5': 0.664} trees 27
+[   28s] A A TEST sR 0.05 H12 {'w4': (7, -0.936, -2.041, False), 'w5': (5, 0.581, -1.263, False)} fails
+[   30s] A B choose sR {'w3late': 0.751} {'w3late': None} trees 187
+[   31s] A B choose sRZ {'w3late': 0.758} {'w3late': None} trees 62
+[   31s] A B chosen {'model': 'sRZ', 'q': 0.1, 'plan': 'RS', 'win': 'w3late', 'buys': 119, 'holds': 8, 'diff': -0.613, 'rocketsHeld': 0, 'rocketsAll': 0}
+[   34s] A B test sR {'w4': 0.807} {'w4': 0.784} trees 1
+[   34s] A B test sRZ {'w4': 0.693} {'w4': 0.702} trees 3
+[   34s] A B TEST sRZ 0.1 RS {'w4': (0, 0.0, 0.0, False)} fails
+[   43s] B A choose sR {'w3': 0.541} {'w3': 0.78} trees 23
+[   44s] B A choose sRZ {'w3': 0.609} {'w3': 0.761} trees 31
+[   44s] B A chosen {'model': 'sR', 'q': 0.01, 'plan': 'RS', 'win': 'w3', 'buys': 2280, 'holds': 264, 'diff': -1.318, 'rocketsHeld': 23, 'rocketsAll': 47}
+[   48s] B A test sR {'w4': 0.825, 'w5': 0.665} {'w4': 0.728, 'w5': 0.744} trees 276
+[   51s] B A test sRZ {'w4': 0.744, 'w5': 0.658} {'w4': 0.709, 'w5': 0.714} trees 435
+[   52s] B A TEST sR 0.01 RS {'w4': (41, -0.188, -0.774, False), 'w5': (37, -0.967, -1.879, False)} fails
+[   54s] B B choose sR {'w3late': 0.854} {'w3late': 0.701} trees 1
+[   55s] B B choose sRZ {'w3late': 0.794} {'w3late': 0.923} trees 65
+[   55s] B B chosen {'model': 'sRZ', 'q': 0.05, 'plan': 'HE', 'win': 'w3late', 'buys': 491, 'holds': 25, 'diff': -0.195, 'rocketsHeld': 2, 'rocketsAll': 3}
+[   59s] B B test sR {'w4': 0.818} {'w4': 0.705} trees 23
+[   60s] B B test sRZ {'w4': 0.626} {'w4': 0.666} trees 7
+[   60s] B B TEST sRZ 0.05 HE {'w4': (315, -3.864, -5.461, False)} fails

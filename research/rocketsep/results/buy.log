@@ -1,0 +1,19 @@
+[   20s] A choose bR {'w3': 0.417} oof 0.579 trees 2
+[   22s] A choose bRZ {'w3': 0.466} oof 0.534 trees 6
+[   22s] A chosen P {'model': 'bR', 'q': 0.2, 'plan': 'K', 'win': 'w3', 'n': 192, 'mean': 2.64, 'rockets': 2, 'base_n': 569, 'base_rocketPct': np.float64(0.44)}
+[   22s] A chosen L {'model': 'bRZ', 'q': 0.2, 'plan': 'V3', 'win': 'w3', 'n': 516, 'mean': -7.461, 'rockets': 13, 'base_n': 2280, 'base_rocketPct': np.float64(2.02)}
+[   22s] A chosen A {'model': 'bRZ', 'q': 0.2, 'plan': 'K', 'win': 'w3', 'n': 56, 'mean': 4.506, 'rockets': 2, 'base_n': 5644, 'base_rocketPct': np.float64(0.91)}
+[   26s] A test bR {'w4': 0.772, 'w5': 0.604} oof 0.606 trees 234
+[   28s] A test bRZ {'w4': 0.748, 'w5': 0.588} oof 0.618 trees 104
+[   28s] A TEST P bR 0.2 K {'w4': (30, 3.58, -12.4, False), 'w5': (8, -3.5, -16.94, False)} fails
+[   28s] A TEST L bRZ 0.2 V3 {'w4': (372, -4.86, -7.58, False), 'w5': (177, -6.25, -10.15, False)} fails
+[   28s] A TEST A bRZ 0.2 K {'w4': (648, -10.41, -15.18, False), 'w5': (313, -13.19, -17.72, False)} fails
+[   30s] B choose bR {'w3late': 0.747} oof 0.698 trees 122
+[   31s] B choose bRZ {'w3late': 0.725} oof 0.715 trees 1
+[   31s] B chosen P None
+[   31s] B chosen L {'model': 'bR', 'q': 0.05, 'plan': 'V3', 'win': 'w3late', 'n': 31, 'mean': -6.107, 'rockets': 0, 'base_n': 491, 'base_rocketPct': np.float64(0.83)}
+[   31s] B chosen A {'model': 'bR', 'q': 0.02, 'plan': 'V3', 'win': 'w3late', 'n': 30, 'mean': -4.949, 'rockets': 0, 'base_n': 1523, 'base_rocketPct': np.float64(0.35)}
+[   35s] B test bR {'w4': 0.739} oof 0.692 trees 47
+[   37s] B test bRZ {'w4': 0.74} oof 0.714 trees 113
+[   37s] B TEST L bR 0.05 V3 {'w4': (138, -5.42, -10.68, False)} fails
+[   37s] B TEST A bR 0.02 V3 {'w4': (166, -6.84, -11.41, False)} fails

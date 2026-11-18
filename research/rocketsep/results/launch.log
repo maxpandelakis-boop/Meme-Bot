@@ -1,0 +1,42 @@
+{'launches': {'w3': 821715, 'w4': 739407}, 'graduated': {'w3': 20324, 'w4': 22244}, 'graduated_with_path': {'w3': 17795, 'w4': 17478}, 'full_rockets': {'w3': 210, 'w4': 197}, 'metadata_read': {'w3': 195811, 'w4': 222307}, 'pictures_read': {'w3': 68383, 'w4': 78518}, 'facts': {}}
+{
+"auc_w4": 0.681,
+"trees": 93,
+"base_per10k_w4": 2.66,
+"top": {
+"top0.1%": {
+"launches": 739,
+"fullRockets": 3,
+"per10k": 40.6,
+"graduatedPct": 29.23
+},
+"top1.0%": {
+"launches": 7394,
+"fullRockets": 11,
+"per10k": 14.9,
+"graduatedPct": 13.39
+},
+"top5.0%": {
+"launches": 36970,
+"fullRockets": 24,
+"per10k": 6.5,
+"graduatedPct": 7.04
+}
+},
+"gain": {
+"creator_launches30": 1103.0,
+"creator_grads30": 791.0,
+"name_len": 585.1,
+"launches_1h": 517.2,
+"hour": 258.3,
+"sym_len": 257.9,
+"m_desc_len": 126.2,
+"m_links": 67.6,
+"i_group": 43.3,
+"weekend": 22.9,
+"m_xtype": 22.8,
+"i_animated": 20.1,
+"cjk": 2.4,
+"m_video": 0.0
+}
+}

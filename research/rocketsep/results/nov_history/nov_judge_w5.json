@@ -1,0 +1,186 @@
+{
+ "window": "w5",
+ "buys": 185,
+ "rules": [
+  {
+   "rule": "f_name_fit quintile 1 AND turnover quintile 2",
+   "plan": "R24",
+   "trades": 9,
+   "profit": {
+    "n": 9,
+    "meanAfterCost": 21.76,
+    "total": 195.8,
+    "lo1": -40.06,
+    "p": 0.3373,
+    "totalWithoutBest": -243.5,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+   "plan": "R6",
+   "trades": 10,
+   "profit": {
+    "n": 10,
+    "meanAfterCost": 13.81,
+    "total": 138.09,
+    "lo1": -8.25,
+    "p": 0.1577,
+    "totalWithoutBest": 7.42,
+    "holds": false
+   }
+  },
+  {
+   "rule": "lr360 quintile 4 AND turnover quintile 2",
+   "plan": "K",
+   "trades": 14,
+   "profit": {
+    "n": 14,
+    "meanAfterCost": 3.76,
+    "total": 52.65,
+    "lo1": -10.12,
+    "p": 0.2251,
+    "totalWithoutBest": 21.13,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_curve_min = 1-10 min AND liqmc quintile 2",
+   "plan": "R6",
+   "trades": 7,
+   "profit": {
+    "n": 7,
+    "meanAfterCost": 7.09,
+    "total": 49.66,
+    "lo1": -10.03,
+    "p": 0.1998,
+    "totalWithoutBest": 18.14,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+   "plan": "R24",
+   "trades": 10,
+   "profit": {
+    "n": 10,
+    "meanAfterCost": 1.91,
+    "total": 19.1,
+    "lo1": -25.08,
+    "p": 0.4729,
+    "totalWithoutBest": -81.15,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_post_age = up to 1 h AND f_launch_other = other",
+   "plan": "R6",
+   "trades": 10,
+   "profit": {
+    "n": 10,
+    "meanAfterCost": 11.16,
+    "total": 111.57,
+    "lo1": -12.5,
+    "p": 0.231,
+    "totalWithoutBest": -19.1,
+    "holds": false
+   }
+  },
+  {
+   "rule": "lr360 quintile 4 AND turnover quintile 2",
+   "plan": "R6",
+   "trades": 14,
+   "profit": {
+    "n": 14,
+    "meanAfterCost": 3.15,
+    "total": 44.12,
+    "lo1": -11.21,
+    "p": 0.2701,
+    "totalWithoutBest": 12.61,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_grads24 quintile 4 AND lr360 quintile 4",
+   "plan": "K",
+   "trades": 9,
+   "profit": {
+    "n": 9,
+    "meanAfterCost": 17.73,
+    "total": 159.6,
+    "lo1": -1.52,
+    "p": 0.0176,
+    "totalWithoutBest": 89.26,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_desc_len = 0 AND turnover quintile 2",
+   "plan": "K",
+   "trades": 14,
+   "profit": {
+    "n": 14,
+    "meanAfterCost": 0.41,
+    "total": 5.68,
+    "lo1": -12.1,
+    "p": 0.4462,
+    "totalWithoutBest": -21.12,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_grads24 quintile 4 AND lr360 quintile 4",
+   "plan": "R6",
+   "trades": 9,
+   "profit": {
+    "n": 9,
+    "meanAfterCost": 16.9,
+    "total": 152.11,
+    "lo1": -3.85,
+    "p": 0.0312,
+    "totalWithoutBest": 81.77,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_desc_len = 0 AND lr360 quintile 4",
+   "plan": "R6",
+   "trades": 12,
+   "profit": {
+    "n": 12,
+    "meanAfterCost": 2.85,
+    "total": 34.24,
+    "lo1": -18.54,
+    "p": 0.4462,
+    "totalWithoutBest": -96.42,
+    "holds": false
+   }
+  },
+  {
+   "rule": "f_desc_len = 0 AND turnover quintile 2",
+   "plan": "R6",
+   "trades": 14,
+   "profit": {
+    "n": 14,
+    "meanAfterCost": 0.04,
+    "total": 0.58,
+    "lo1": -12.81,
+    "p": 0.4759,
+    "totalWithoutBest": -26.22,
+    "holds": false
+   }
+  }
+ ],
+ "together": {
+  "trades": 55,
+  "profit": {
+   "n": 55,
+   "meanAfterCost": 6.25,
+   "total": 343.58,
+   "lo1": -8.87,
+   "p": 0.2712,
+   "totalWithoutBest": -95.72,
+   "holds": false
+  }
+ }
+}

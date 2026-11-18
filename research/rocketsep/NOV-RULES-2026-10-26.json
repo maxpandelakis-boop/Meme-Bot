@@ -1,0 +1,522 @@
+{
+ "frozen": "2026-10-26",
+ "role": "P",
+ "allowanceEUR": 0.75,
+ "cost": "per 50-EUR buy, after paper fees and the allowance",
+ "searched": "all single conditions and pairs of check_rs.py best (family A), 8 plans",
+ "rules": [
+  {
+   "rule": "f_name_fit quintile 1 AND turnover quintile 2",
+   "plan": "R24",
+   "conditions": [
+    {
+     "label": "f_name_fit quintile 1",
+     "feature": "f_name_fit",
+     "edges": [
+      0.8500000238418579,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "k": 0,
+     "kind": "quintile"
+    },
+    {
+     "label": "turnover quintile 2",
+     "feature": "turnover",
+     "edges": [
+      -5.5814595222473145,
+      -3.0852705955505355,
+      -1.509782385826111,
+      -0.09167971462011229
+     ],
+     "k": 1,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    47,
+    6.68
+   ],
+   "w4": [
+    21,
+    27.59
+   ],
+   "w5": [
+    9,
+    21.76
+   ]
+  },
+  {
+   "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "f_post_age = up to 1 h",
+     "feature": "f_post_age",
+     "edges": [
+      -0.5,
+      0.5,
+      1.5,
+      2.5,
+      3.5
+     ],
+     "k": 1,
+     "kind": "bucket"
+    },
+    {
+     "label": "f_desc_len = 0",
+     "feature": "f_desc_len",
+     "edges": [
+      -0.5,
+      0.5,
+      50.5,
+      200.5,
+      Infinity
+     ],
+     "k": 0,
+     "kind": "bucket"
+    }
+   ],
+   "w1-w3": [
+    83,
+    5.82
+   ],
+   "w4": [
+    22,
+    7.37
+   ],
+   "w5": [
+    10,
+    13.81
+   ]
+  },
+  {
+   "rule": "lr360 quintile 4 AND turnover quintile 2",
+   "plan": "K",
+   "conditions": [
+    {
+     "label": "lr360 quintile 4",
+     "feature": "lr360",
+     "edges": [
+      -0.05392164736986158,
+      0.10173712521791463,
+      0.36861388087272645,
+      0.8637886404991154
+     ],
+     "k": 3,
+     "kind": "quintile"
+    },
+    {
+     "label": "turnover quintile 2",
+     "feature": "turnover",
+     "edges": [
+      -5.5814595222473145,
+      -3.0852705955505355,
+      -1.509782385826111,
+      -0.09167971462011229
+     ],
+     "k": 1,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    71,
+    2.35
+   ],
+   "w4": [
+    21,
+    12.6
+   ],
+   "w5": [
+    14,
+    3.76
+   ]
+  },
+  {
+   "rule": "f_curve_min = 1-10 min AND liqmc quintile 2",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "f_curve_min = 1-10 min",
+     "feature": "f_curve_min",
+     "edges": [
+      -Infinity,
+      1.0,
+      10.0,
+      60.0,
+      360.0,
+      Infinity
+     ],
+     "k": 1,
+     "kind": "bucket"
+    },
+    {
+     "label": "liqmc quintile 2",
+     "feature": "liqmc",
+     "edges": [
+      0.06355028599500658,
+      0.16094296872615815,
+      0.2522700607776642,
+      0.34305983781814575
+     ],
+     "k": 1,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    55,
+    4.99
+   ],
+   "w4": [
+    23,
+    2.21
+   ],
+   "w5": [
+    7,
+    7.09
+   ]
+  },
+  {
+   "rule": "f_post_age = up to 1 h AND f_desc_len = 0",
+   "plan": "R24",
+   "conditions": [
+    {
+     "label": "f_post_age = up to 1 h",
+     "feature": "f_post_age",
+     "edges": [
+      -0.5,
+      0.5,
+      1.5,
+      2.5,
+      3.5
+     ],
+     "k": 1,
+     "kind": "bucket"
+    },
+    {
+     "label": "f_desc_len = 0",
+     "feature": "f_desc_len",
+     "edges": [
+      -0.5,
+      0.5,
+      50.5,
+      200.5,
+      Infinity
+     ],
+     "k": 0,
+     "kind": "bucket"
+    }
+   ],
+   "w1-w3": [
+    83,
+    4.44
+   ],
+   "w4": [
+    22,
+    13.64
+   ],
+   "w5": [
+    10,
+    1.91
+   ]
+  },
+  {
+   "rule": "f_post_age = up to 1 h AND f_launch_other = other",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "f_post_age = up to 1 h",
+     "feature": "f_post_age",
+     "edges": [
+      -0.5,
+      0.5,
+      1.5,
+      2.5,
+      3.5
+     ],
+     "k": 1,
+     "kind": "bucket"
+    },
+    {
+     "label": "f_launch_other = other",
+     "feature": "f_launch_other",
+     "edges": [
+      -0.5,
+      0.5,
+      1.5
+     ],
+     "k": 1,
+     "kind": "bucket"
+    }
+   ],
+   "w1-w3": [
+    88,
+    3.71
+   ],
+   "w4": [
+    25,
+    1.85
+   ],
+   "w5": [
+    10,
+    11.16
+   ]
+  },
+  {
+   "rule": "lr360 quintile 4 AND turnover quintile 2",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "lr360 quintile 4",
+     "feature": "lr360",
+     "edges": [
+      -0.05392164736986158,
+      0.10173712521791463,
+      0.36861388087272645,
+      0.8637886404991154
+     ],
+     "k": 3,
+     "kind": "quintile"
+    },
+    {
+     "label": "turnover quintile 2",
+     "feature": "turnover",
+     "edges": [
+      -5.5814595222473145,
+      -3.0852705955505355,
+      -1.509782385826111,
+      -0.09167971462011229
+     ],
+     "k": 1,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    71,
+    1.81
+   ],
+   "w4": [
+    21,
+    11.99
+   ],
+   "w5": [
+    14,
+    3.15
+   ]
+  },
+  {
+   "rule": "f_grads24 quintile 4 AND lr360 quintile 4",
+   "plan": "K",
+   "conditions": [
+    {
+     "label": "f_grads24 quintile 4",
+     "feature": "f_grads24",
+     "edges": [
+      233.0,
+      328.0,
+      707.0,
+      805.0
+     ],
+     "k": 3,
+     "kind": "quintile"
+    },
+    {
+     "label": "lr360 quintile 4",
+     "feature": "lr360",
+     "edges": [
+      -0.05392164736986158,
+      0.10173712521791463,
+      0.36861388087272645,
+      0.8637886404991154
+     ],
+     "k": 3,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    62,
+    1.33
+   ],
+   "w4": [
+    21,
+    7.9
+   ],
+   "w5": [
+    9,
+    17.73
+   ]
+  },
+  {
+   "rule": "f_desc_len = 0 AND turnover quintile 2",
+   "plan": "K",
+   "conditions": [
+    {
+     "label": "f_desc_len = 0",
+     "feature": "f_desc_len",
+     "edges": [
+      -0.5,
+      0.5,
+      50.5,
+      200.5,
+      Infinity
+     ],
+     "k": 0,
+     "kind": "bucket"
+    },
+    {
+     "label": "turnover quintile 2",
+     "feature": "turnover",
+     "edges": [
+      -5.5814595222473145,
+      -3.0852705955505355,
+      -1.509782385826111,
+      -0.09167971462011229
+     ],
+     "k": 1,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    76,
+    5.38
+   ],
+   "w4": [
+    25,
+    4.15
+   ],
+   "w5": [
+    14,
+    0.41
+   ]
+  },
+  {
+   "rule": "f_grads24 quintile 4 AND lr360 quintile 4",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "f_grads24 quintile 4",
+     "feature": "f_grads24",
+     "edges": [
+      233.0,
+      328.0,
+      707.0,
+      805.0
+     ],
+     "k": 3,
+     "kind": "quintile"
+    },
+    {
+     "label": "lr360 quintile 4",
+     "feature": "lr360",
+     "edges": [
+      -0.05392164736986158,
+      0.10173712521791463,
+      0.36861388087272645,
+      0.8637886404991154
+     ],
+     "k": 3,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    62,
+    0.28
+   ],
+   "w4": [
+    21,
+    7.61
+   ],
+   "w5": [
+    9,
+    16.9
+   ]
+  },
+  {
+   "rule": "f_desc_len = 0 AND lr360 quintile 4",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "f_desc_len = 0",
+     "feature": "f_desc_len",
+     "edges": [
+      -0.5,
+      0.5,
+      50.5,
+      200.5,
+      Infinity
+     ],
+     "k": 0,
+     "kind": "bucket"
+    },
+    {
+     "label": "lr360 quintile 4",
+     "feature": "lr360",
+     "edges": [
+      -0.05392164736986158,
+      0.10173712521791463,
+      0.36861388087272645,
+      0.8637886404991154
+     ],
+     "k": 3,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    91,
+    0.22
+   ],
+   "w4": [
+    30,
+    0.56
+   ],
+   "w5": [
+    12,
+    2.85
+   ]
+  },
+  {
+   "rule": "f_desc_len = 0 AND turnover quintile 2",
+   "plan": "R6",
+   "conditions": [
+    {
+     "label": "f_desc_len = 0",
+     "feature": "f_desc_len",
+     "edges": [
+      -0.5,
+      0.5,
+      50.5,
+      200.5,
+      Infinity
+     ],
+     "k": 0,
+     "kind": "bucket"
+    },
+    {
+     "label": "turnover quintile 2",
+     "feature": "turnover",
+     "edges": [
+      -5.5814595222473145,
+      -3.0852705955505355,
+      -1.509782385826111,
+      -0.09167971462011229
+     ],
+     "k": 1,
+     "kind": "quintile"
+    }
+   ],
+   "w1-w3": [
+    76,
+    5.17
+   ],
+   "w4": [
+    25,
+    4.1
+   ],
+   "w5": [
+    14,
+    0.04
+   ]
+  }
+ ]
+}

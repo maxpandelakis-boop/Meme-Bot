@@ -1,0 +1,1439 @@
+CASE 1 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Vertical last candle, chasing spike top
+  reviewer 2 (volume and flow reader): BUY, p 0.4, Organic inflow, rising price, dispersed wallets
+  reviewer 3 (sceptic): SKIP, p 0.3, Bought on a spike candle
+  reviewer 4 (risk manager): SKIP, p 0.35, Strong flow but buying a spike bar
+  reviewer 5 (momentum trader): BUY, p 0.33, Breakout candle, rising volume, wallet inflow
+  reviewer 6 (dip buyer): SKIP, p 0.32, chasing spike candle, no dip entry
+  reviewer 7 (rocket hunter): BUY, p 0.33, Fresh creator, 187 new wallets last 15m
+  reviewer 8 (clock and age analyst): BUY, p 0.38, Early, fresh high, steady broad inflow
+  reviewer 9 (statistician): SKIP, p 0.33, Organic flow but bought right after spike
+  reviewer 10 (devil's advocate): SKIP, p 0.33, Bought on +78% candle; pullback likely
+
+CASE 2 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Spike to 1.9x already halved
+  reviewer 2 (volume and flow reader): SKIP, p 0.25, Revival spike already halving, thin base
+  reviewer 3 (sceptic): SKIP, p 0.22, Already retracing from 1.9 spike
+  reviewer 4 (risk manager): SKIP, p 0.25, Revived dead coin, spike already halved
+  reviewer 5 (momentum trader): SKIP, p 0.22, Spike reversed, half off peak
+  reviewer 6 (dip buyer): SKIP, p 0.27, late revival spike already retraced
+  reviewer 7 (rocket hunter): SKIP, p 0.22, Late revival spike fading, serial launcher
+  reviewer 8 (clock and age analyst): SKIP, p 0.22, Late 10h spike, already halved off top
+  reviewer 9 (statistician): SKIP, p 0.15, Late revival, last bar halved
+  reviewer 10 (devil's advocate): SKIP, p 0.28, Post-spike retrace, 10h old, unstable
+
+CASE 3 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.4, Clean uptrend but deep pullbacks between bars
+  reviewer 2 (volume and flow reader): BUY, p 0.45, Buys 4x sells, rising, strong SOL inflow
+  reviewer 3 (sceptic): SKIP, p 0.35, Strong flow, but fresh-wallet crowd unclear
+  reviewer 4 (risk manager): BUY, p 0.39, Uptrend, heavy net buying, low concentration
+  reviewer 5 (momentum trader): BUY, p 0.36, Steady climb at highs, buys 4:1
+  reviewer 6 (dip buyer): BUY, p 0.4, strong fresh buyers, steady climb
+  reviewer 7 (rocket hunter): BUY, p 0.36, Fresh creator, 1876 SOL inflow, buyers dominate
+  reviewer 8 (clock and age analyst): BUY, p 0.35, Early, near high, heavy buy pressure
+  reviewer 9 (statistician): SKIP, p 0.34, Uptrend, but instant curve plus fresh wallets
+  reviewer 10 (devil's advocate): SKIP, p 0.46, Fresh-wallet inflow strong, but choppy uptrend
+
+CASE 4 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Dead-cat bounce inside downtrend
+  reviewer 2 (volume and flow reader): SKIP, p 0.18, Downtrend bounce, new wallets drying up
+  reviewer 3 (sceptic): SKIP, p 0.2, Dumped from 2x, weak inflow
+  reviewer 4 (risk manager): SKIP, p 0.18, Downtrend from peak, inflow dried up
+  reviewer 5 (momentum trader): SKIP, p 0.12, Downtrend, weak dead-cat bounce
+  reviewer 6 (dip buyer): SKIP, p 0.27, bounce but few new wallets
+  reviewer 7 (rocket hunter): SKIP, p 0.18, Downtrend from 2x, wallet inflow dried up
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Early dump, inflow dried up
+  reviewer 9 (statistician): SKIP, p 0.18, Dumped coin, weak rebound, few new wallets
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Dead-cat bounce after 75% dump
+
+CASE 5 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Faded from high, volume drying up
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Volume dead, flat price
+  reviewer 3 (sceptic): SKIP, p 0.14, Fading, volume drying up
+  reviewer 4 (risk manager): SKIP, p 0.14, Fading price, volume nearly gone
+  reviewer 5 (momentum trader): SKIP, p 0.07, Fading price, volume drying up
+  reviewer 6 (dip buyer): SKIP, p 0.15, fading, volume dried up
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Fading volume, few new wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Fading volume, no fresh wallets
+  reviewer 9 (statistician): SKIP, p 0.15, Volume dying, no inflow
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Fading volume, no new buyers
+
+CASE 6 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.02, Crashed 95%, zero volume, dead
+  reviewer 2 (volume and flow reader): SKIP, p 0.02, Rugged, zero volume, one buyer
+  reviewer 3 (sceptic): SKIP, p 0.03, Rugged, no trading
+  reviewer 4 (risk manager): SKIP, p 0.03, Crashed 95 %, one wallet dominates buying
+  reviewer 5 (momentum trader): SKIP, p 0.02, Rugged, no buyers left
+  reviewer 6 (dip buyer): SKIP, p 0.03, collapsed, no trading at all
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Collapsed 95%, one wallet dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Collapsed 95%, dead chart
+  reviewer 9 (statistician): SKIP, p 0.03, Rugged, zero volume
+  reviewer 10 (devil's advocate): SKIP, p 0.03, Rugged, zero volume
+
+CASE 7 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Artificial smooth grind, single-wallet buying
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Single-wallet grind, no real buyers
+  reviewer 3 (sceptic): SKIP, p 0.15, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.07, Huge cap, tiny volume, single buyer dominates
+  reviewer 5 (momentum trader): SKIP, p 0.03, Single wallet dominates, fake ramp
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, single wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Fake cap, one buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.04, Fake cap, one wallet dominates
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer creeping price
+  reviewer 10 (devil's advocate): SKIP, p 0.42, Slow ramp may survive; slope tiny
+
+CASE 8 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Dumped two-thirds from peak, serial creator
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Price bleeding, volume collapsing, serial creator
+  reviewer 3 (sceptic): SKIP, p 0.12, Collapsing, serial creator
+  reviewer 4 (risk manager): SKIP, p 0.15, Dumping from peak, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.08, Falling from peak, volume dying
+  reviewer 6 (dip buyer): SKIP, p 0.15, still dumping, serial creator
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Serial creator, dumping from peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Dumping from peak, serial creator
+  reviewer 9 (statistician): SKIP, p 0.12, Falling knife, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Serial launcher, falling from 2.9x
+
+CASE 9 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.03, Already rugged, near-zero bounce
+  reviewer 2 (volume and flow reader): SKIP, p 0.04, Rug dump, flow artificial
+  reviewer 3 (sceptic): SKIP, p 0.05, Crashed 99 percent
+  reviewer 4 (risk manager): SKIP, p 0.03, Price collapsed, rugged
+  reviewer 5 (momentum trader): SKIP, p 0.02, Price collapse, broken chart
+  reviewer 6 (dip buyer): SKIP, p 0.04, rugged, dead after crash
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Price collapsed 100%, broken chart
+  reviewer 8 (clock and age analyst): SKIP, p 0.02, Late rug, price wiped out
+  reviewer 9 (statistician): SKIP, p 0.03, Price collapsed, rugged
+  reviewer 10 (devil's advocate): SKIP, p 0.04, Post-rug ramp token
+
+CASE 10 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Wild swings, down from 2.4x
+  reviewer 2 (volume and flow reader): SKIP, p 0.3, Heavy churn, off peak, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.25, Choppy, falling from peak
+  reviewer 4 (risk manager): SKIP, p 0.3, High churn, fell 60 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.22, Lower highs, volume fading
+  reviewer 6 (dip buyer): BUY, p 0.34, deep dip bounce, huge volume
+  reviewer 7 (rocket hunter): BUY, p 0.32, Fresh creator, 3970 SOL, huge sustained volume
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Hot but falling from peak, SOL weak
+  reviewer 9 (statistician): SKIP, p 0.27, Big flow but very choppy, below peak
+  reviewer 10 (devil's advocate): SKIP, p 0.3, Huge churn but lower highs
+
+CASE 11 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Bot grind, one wallet buying
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, One wallet drives buying, fake grind
+  reviewer 3 (sceptic): SKIP, p 0.12, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.06, Artificial cap, one buyer, no real wallets
+  reviewer 5 (momentum trader): SKIP, p 0.02, Top buyer 89 percent, fake
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Fake cap, single buyer, no wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.04, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, single wallet buying
+  reviewer 10 (devil's advocate): BUY, p 0.52, Steady ramp, few sellers; rule rewards smoothness
+
+CASE 12 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Flat bot grind, rug risk
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying, tiny volume
+  reviewer 3 (sceptic): SKIP, p 0.1, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.05, Artificial cap, one buyer, no real wallets
+  reviewer 5 (momentum trader): SKIP, p 0.02, Top buyer dominates, no flow
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer, no wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, single wallet buying
+  reviewer 10 (devil's advocate): SKIP, p 0.22, Ramp stalled flat; fees eat it
+
+CASE 13 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Bot grind, copycat ticker, rug risk
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Bot trades, top buyer dominates
+  reviewer 3 (sceptic): SKIP, p 0.14, Bot-driven climb, few real wallets
+  reviewer 4 (risk manager): SKIP, p 0.06, Wash trading, top buyer 77 %
+  reviewer 5 (momentum trader): SKIP, p 0.03, Wash-traded smooth ramp
+  reviewer 6 (dip buyer): SKIP, p 0.18, bot driven slow climb, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Copycat, top buyer dominates, few wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.04, Fake cap, wash trading, copycat
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, copycat, bot creep
+  reviewer 10 (devil's advocate): SKIP, p 0.44, Steady ramp, but makers-bot marketing, rug risk
+
+CASE 14 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.32, Parabolic 4x in fifteen minutes
+  reviewer 2 (volume and flow reader): BUY, p 0.42, Volume accelerating, 420 new wallets breakout
+  reviewer 3 (sceptic): SKIP, p 0.35, Parabolic top, dump risk high
+  reviewer 4 (risk manager): BUY, p 0.4, Accelerating inflow, rising volume, low concentration
+  reviewer 5 (momentum trader): BUY, p 0.4, Accelerating price and volume, 420 new wallets
+  reviewer 6 (dip buyer): BUY, p 0.36, parabolic with surging new wallets
+  reviewer 7 (rocket hunter): BUY, p 0.35, Parabolic, 420 new wallets in 15m
+  reviewer 8 (clock and age analyst): BUY, p 0.42, Early breakout, accelerating inflow, market up
+  reviewer 9 (statistician): BUY, p 0.4, Fresh breakout, accelerating wallets and volume
+  reviewer 10 (devil's advocate): SKIP, p 0.38, Parabolic top; 15% drop stop likely
+
+CASE 15 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Single 5x candle after hours flat
+  reviewer 2 (volume and flow reader): SKIP, p 0.28, Single-candle revival spike, retrace likely
+  reviewer 3 (sceptic): SKIP, p 0.24, One-candle spike after dead hours
+  reviewer 4 (risk manager): SKIP, p 0.28, Single-bar revival spike, chasing top
+  reviewer 5 (momentum trader): BUY, p 0.28, Explosive breakout, heavy fresh wallet inflow
+  reviewer 6 (dip buyer): SKIP, p 0.25, buying top of single spike
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Dead coin single spike candle, risky
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Late 10h one-candle spike, chase risk
+  reviewer 9 (statistician): SKIP, p 0.25, Late revival, bought after 5x candle
+  reviewer 10 (devil's advocate): SKIP, p 0.25, Single-candle revival spike, chasing top
+
+CASE 16 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Fading lower, volume gone
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, No volume, no new wallets
+  reviewer 3 (sceptic): SKIP, p 0.1, Dead volume, drifting down
+  reviewer 4 (risk manager): SKIP, p 0.12, No volume, fading
+  reviewer 5 (momentum trader): SKIP, p 0.06, Flat, volume gone
+  reviewer 6 (dip buyer): SKIP, p 0.12, no volume, drifting down
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Fading, volume gone
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Fading, volume gone
+  reviewer 9 (statistician): SKIP, p 0.12, Fading, volume gone
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Dying volume, drifting down
+
+CASE 17 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Flat bot chart, one-wallet flow
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, One wallet controls, thin real flow
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 93 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Top buyer 94 percent, fake
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, single wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one dominant buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.22, Ramp flat after insane jump
+
+CASE 18 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.33, Choppy breakout, fresh-wallet crowd
+  reviewer 2 (volume and flow reader): BUY, p 0.4, Buyers 2.4x sellers, strong fresh inflow
+  reviewer 3 (sceptic): SKIP, p 0.33, Good flow, choppy, unclear wallets
+  reviewer 4 (risk manager): SKIP, p 0.35, Choppy price, fresh-wallet cohort risk
+  reviewer 5 (momentum trader): BUY, p 0.32, New high, strong buyer dominance
+  reviewer 6 (dip buyer): BUY, p 0.4, dip recovered, strong fresh demand
+  reviewer 7 (rocket hunter): BUY, p 0.36, Fresh creator, buyers 2.4x sellers, 279 wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.32, Early, strong flow but choppy
+  reviewer 9 (statistician): SKIP, p 0.32, Strong flow, instant curve fresh wallets
+  reviewer 10 (devil's advocate): SKIP, p 0.4, Fresh buyers, but choppy, bought +23% bar
+
+CASE 19 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Bot grind, one wallet dominates
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Bot buys, few real wallets
+  reviewer 3 (sceptic): SKIP, p 0.12, Bot-driven climb, few wallets
+  reviewer 4 (risk manager): SKIP, p 0.05, Artificial cap, few wallets, top buyer 77 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, One wallet controls buying
+  reviewer 6 (dip buyer): SKIP, p 0.18, bot driven slow climb, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Fake cap, few wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.04, Fake cap, wash trading
+  reviewer 9 (statistician): SKIP, p 0.15, Bot buys, fake cap
+  reviewer 10 (devil's advocate): BUY, p 0.52, Smooth 1.7%/bar ramp, sellers nearly absent
+
+CASE 20 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Flat artificial chart, no real buyers
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Top buyer 93 percent, fake
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.05, Artificial cap, top buyer 93 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, One wallet controls buying
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Flat fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Flat ramp, top buyer 93%
+
+CASE 21 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Stalling below high, volume fading
+  reviewer 2 (volume and flow reader): SKIP, p 0.28, Volume faded after spike
+  reviewer 3 (sceptic): SKIP, p 0.2, Pump done, volume fading
+  reviewer 4 (risk manager): SKIP, p 0.28, Momentum fading, volume dried up
+  reviewer 5 (momentum trader): SKIP, p 0.2, Run stalled, volume collapsing
+  reviewer 6 (dip buyer): SKIP, p 0.28, volume fading after run
+  reviewer 7 (rocket hunter): SKIP, p 0.28, Decent launch but volume fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Rally stalling, volume dropping
+  reviewer 9 (statistician): SKIP, p 0.3, Decent uptrend, slight pullback, moderate flow
+  reviewer 10 (devil's advocate): SKIP, p 0.25, Volume collapsing after the run
+
+CASE 22 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Flat bot grind
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Single-wallet grind, copycat
+  reviewer 3 (sceptic): SKIP, p 0.1, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.05, Artificial cap, top buyer 90 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake ramp, one buyer
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, copycat, single buyer
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, copycat, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Flat ramp, copycat name
+
+CASE 23 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Bot grind, copycat, rug risk
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Single-wallet grind, copycat
+  reviewer 3 (sceptic): SKIP, p 0.12, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.05, Artificial cap, top buyer 89 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake ramp, one buyer
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, copycat, single buyer
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, copycat, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.45, Slow ramp; survival is a coin-flip
+
+CASE 24 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.3, Steep bot grind, one huge buyer
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, One first buy 91 percent of SOL
+  reviewer 3 (sceptic): SKIP, p 0.14, One whale holds 91 percent buys
+  reviewer 4 (risk manager): SKIP, p 0.05, One wallet holds 91 % of first buys
+  reviewer 5 (momentum trader): SKIP, p 0.03, Single wallet 91 percent of SOL
+  reviewer 6 (dip buyer): SKIP, p 0.18, one buyer dominates, artificial climb
+  reviewer 7 (rocket hunter): SKIP, p 0.03, One wallet holds 91% of first buys
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, One wallet holds most first buys
+  reviewer 9 (statistician): SKIP, p 0.2, Bot ramp, one wallet 91 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.36, One whale 91% of first buys; dump risk
+
+CASE 25 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Lower highs, fading volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Off peak, volume declining
+  reviewer 3 (sceptic): SKIP, p 0.14, Fading, low inflow
+  reviewer 4 (risk manager): SKIP, p 0.15, Fading, little new inflow
+  reviewer 5 (momentum trader): SKIP, p 0.07, Faded from peak, volume declining
+  reviewer 6 (dip buyer): SKIP, p 0.18, fading, few new wallets
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Choppy, fading, few new wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Choppy, inflow faded
+  reviewer 9 (statistician): SKIP, p 0.15, Fading after spike, weak inflow
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Faded chop, low inflow
+
+CASE 26 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Drifting lower, dead volume, weak market
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Dead volume, weak market
+  reviewer 3 (sceptic): SKIP, p 0.08, Dead coin, falling
+  reviewer 4 (risk manager): SKIP, p 0.08, Falling, almost no activity
+  reviewer 5 (momentum trader): SKIP, p 0.04, Dead volume, weak market
+  reviewer 6 (dip buyer): SKIP, p 0.1, dead volume, falling
+  reviewer 7 (rocket hunter): SKIP, p 0.08, Dead launch, no new wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.08, Fading, weak market mood
+  reviewer 9 (statistician): SKIP, p 0.08, Dead, no new wallets
+  reviewer 10 (devil's advocate): SKIP, p 0.07, Dead coin, market falling
+
+CASE 27 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Erratic swings, off highs
+  reviewer 2 (volume and flow reader): SKIP, p 0.28, Choppy, off high, serial creator
+  reviewer 3 (sceptic): SKIP, p 0.24, Two red candles, choppy
+  reviewer 4 (risk manager): SKIP, p 0.27, Dropping from peak, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.2, Falling off peak, serial creator
+  reviewer 6 (dip buyer): SKIP, p 0.28, serial creator, choppy pullback
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Serial launcher, price rolling over
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Choppy, off peak, serial creator
+  reviewer 9 (statistician): SKIP, p 0.25, Choppy, buying a pullback, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.25, Serial launcher, wild chop
+
+CASE 28 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Crashed from 3.7x, thin recovery
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Sellers exceed buyers, volume dried
+  reviewer 3 (sceptic): SKIP, p 0.14, Dumped, inflow gone
+  reviewer 4 (risk manager): SKIP, p 0.08, Long downtrend, inflow gone
+  reviewer 5 (momentum trader): SKIP, p 0.07, Long downtrend, no new wallets
+  reviewer 6 (dip buyer): SKIP, p 0.2, bounce on dying volume
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Dumped from 3.7x, inflow gone
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Crashed from top, volume dying
+  reviewer 9 (statistician): SKIP, p 0.12, Dumped, inflow dried up
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Dumped, no new wallets
+
+CASE 29 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Flat bot grind
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Top buyer 90 percent, wash trades
+  reviewer 3 (sceptic): SKIP, p 0.1, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 90 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Top buyer 90 percent, fake
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, wash trading
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, single wallet buying
+  reviewer 10 (devil's advocate): SKIP, p 0.38, Slow ramp, stalling at top
+
+CASE 30 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Just dropped 40% off spike
+  reviewer 2 (volume and flow reader): SKIP, p 0.22, Spike reversed, serial creator
+  reviewer 3 (sceptic): SKIP, p 0.18, Spike rejected, serial creator
+  reviewer 4 (risk manager): SKIP, p 0.24, Serial creator, last bar dropped 40 %
+  reviewer 5 (momentum trader): SKIP, p 0.17, Sharp rejection from peak
+  reviewer 6 (dip buyer): SKIP, p 0.25, serial creator, spike retraced
+  reviewer 7 (rocket hunter): SKIP, p 0.2, Serial creator 464 launches, spike faded
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Spike reversed, serial creator
+  reviewer 9 (statistician): SKIP, p 0.15, Last bar minus 40, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Serial launcher, -40% last bar
+
+CASE 31 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Choppy, well below 1.75x top
+  reviewer 2 (volume and flow reader): SKIP, p 0.3, Volume fading, price off peak
+  reviewer 3 (sceptic): SKIP, p 0.28, Huge chop, no clear trend
+  reviewer 4 (risk manager): SKIP, p 0.31, Violent chop, stop-out likely
+  reviewer 5 (momentum trader): SKIP, p 0.22, Choppy, volume fading fast
+  reviewer 6 (dip buyer): BUY, p 0.34, dip bounce, massive participation
+  reviewer 7 (rocket hunter): BUY, p 0.33, Fresh creator, 2757 wallets, 2310 SOL
+  reviewer 8 (clock and age analyst): SKIP, p 0.28, Hot but whipsawing, stop likely
+  reviewer 9 (statistician): SKIP, p 0.27, Huge flow but whipsaw price
+  reviewer 10 (devil's advocate): SKIP, p 0.3, Violent chop, stop triggers likely
+
+CASE 32 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Collapsed from 3.75x peak
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Collapse from 3.75x, volume decaying
+  reviewer 3 (sceptic): SKIP, p 0.14, Dumped from 3.7x
+  reviewer 4 (risk manager): SKIP, p 0.14, Dumped from 3.75x, sellers in control
+  reviewer 5 (momentum trader): SKIP, p 0.07, Dumped from 3.75x
+  reviewer 6 (dip buyer): SKIP, p 0.22, dumped, volume dying
+  reviewer 7 (rocket hunter): SKIP, p 0.18, Crashed from 3.75x, distribution phase
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Dumped from 3.7x peak
+  reviewer 9 (statistician): SKIP, p 0.12, Dumped from 3.7x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Dumped from 3.75x
+
+CASE 33 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Pulling back hard from top
+  reviewer 2 (volume and flow reader): SKIP, p 0.34, Strong flow but sharp last-bar drop
+  reviewer 3 (sceptic): SKIP, p 0.25, Topping, lower highs
+  reviewer 4 (risk manager): SKIP, p 0.3, Off peak, bot-like micro buys
+  reviewer 5 (momentum trader): SKIP, p 0.22, Rolling over, lower closes
+  reviewer 6 (dip buyer): SKIP, p 0.3, still falling, no bounce yet
+  reviewer 7 (rocket hunter): BUY, p 0.33, Fresh creator, 2508 SOL, price holding
+  reviewer 8 (clock and age analyst): SKIP, p 0.28, Strong flow but rolling over
+  reviewer 9 (statistician): SKIP, p 0.27, Large cap, falling off local peak
+  reviewer 10 (devil's advocate): SKIP, p 0.3, Rolling over, -30% in 10 minutes
+
+CASE 34 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.03, Rugged grinder, total collapse
+  reviewer 2 (volume and flow reader): SKIP, p 0.02, Rugged, no inflow
+  reviewer 3 (sceptic): SKIP, p 0.03, Rugged
+  reviewer 4 (risk manager): SKIP, p 0.02, Rugged, price collapsed
+  reviewer 5 (momentum trader): SKIP, p 0.02, Price collapse, broken chart
+  reviewer 6 (dip buyer): SKIP, p 0.03, rugged, dead after crash
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Price collapsed 100%, broken
+  reviewer 8 (clock and age analyst): SKIP, p 0.02, Late rug, price wiped out
+  reviewer 9 (statistician): SKIP, p 0.02, Collapsed, rugged
+  reviewer 10 (devil's advocate): SKIP, p 0.03, Post-rug ramp token
+
+CASE 35 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Crashed from 5x, volume dead
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Crashed, volume gone
+  reviewer 3 (sceptic): SKIP, p 0.1, Dumped from 5x, volume dead
+  reviewer 4 (risk manager): SKIP, p 0.08, Dumped 80 %, volume dead
+  reviewer 5 (momentum trader): SKIP, p 0.05, Crashed, volume dead
+  reviewer 6 (dip buyer): SKIP, p 0.15, crashed, volume gone
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Crashed from 5x, inflow dried
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Crashed from 5x, volume dead
+  reviewer 9 (statistician): SKIP, p 0.1, Dumped from 5x, inflow gone
+  reviewer 10 (devil's advocate): SKIP, p 0.08, Dumped 80%, volume dead
+
+CASE 36 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Dead-cat spike in chop
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Sellers outnumber buyers, erratic
+  reviewer 3 (sceptic): SKIP, p 0.15, Down 56 percent, spike buy
+  reviewer 4 (risk manager): SKIP, p 0.12, Down 56 %, sellers equal buyers
+  reviewer 5 (momentum trader): SKIP, p 0.09, Choppy dump, serial creator
+  reviewer 6 (dip buyer): SKIP, p 0.22, erratic, serial creator
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Serial launcher, choppy
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Down 56%, erratic bounce
+  reviewer 9 (statistician): SKIP, p 0.15, Choppy downtrend, thin bounce
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Bounce inside a downtrend
+
+CASE 37 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Steady downtrend
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Steady decline, volume drying
+  reviewer 3 (sceptic): SKIP, p 0.15, Steady downtrend
+  reviewer 4 (risk manager): SKIP, p 0.12, Steady decline, weak inflow
+  reviewer 5 (momentum trader): SKIP, p 0.06, Steady bleed, volume fading
+  reviewer 6 (dip buyer): SKIP, p 0.15, steady bleed, low volume
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Steady downtrend from 2.2x
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Steady downtrend, fading
+  reviewer 9 (statistician): SKIP, p 0.12, Steady decline from peak
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Steady decline, fading
+
+CASE 38 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Sideways range, no trend
+  reviewer 2 (volume and flow reader): SKIP, p 0.28, Sideways, volume spike absorbed
+  reviewer 3 (sceptic): SKIP, p 0.3, Range-bound, decent inflow
+  reviewer 4 (risk manager): SKIP, p 0.27, Choppy, modest inflow, no trend
+  reviewer 5 (momentum trader): SKIP, p 0.24, Rangebound, no breakout yet
+  reviewer 6 (dip buyer): SKIP, p 0.3, sideways, unclear direction
+  reviewer 7 (rocket hunter): SKIP, p 0.27, Fresh but modest inflow, no links
+  reviewer 8 (clock and age analyst): SKIP, p 0.28, Range-bound, no clear breakout
+  reviewer 9 (statistician): SKIP, p 0.25, Sideways, volume rising, average flow
+  reviewer 10 (devil's advocate): SKIP, p 0.3, Flat chop, modest inflow
+
+CASE 39 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Flat bot chart
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 93 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, One wallet controls buying
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.22, Flat ramp, no slope
+
+CASE 40 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Faded, volume vanished
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Volume collapsed
+  reviewer 3 (sceptic): SKIP, p 0.12, Volume dried up
+  reviewer 4 (risk manager): SKIP, p 0.1, Volume vanished, drifting down
+  reviewer 5 (momentum trader): SKIP, p 0.05, Fading, volume dried up
+  reviewer 6 (dip buyer): SKIP, p 0.12, volume dried up
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Volume dead, fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Fading, volume gone
+  reviewer 9 (statistician): SKIP, p 0.1, Volume died, fading
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Fading, no volume
+
+CASE 41 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Choppy decline, serial creator
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Serial creator, fading volume
+  reviewer 3 (sceptic): SKIP, p 0.15, Serial creator, falling
+  reviewer 4 (risk manager): SKIP, p 0.12, Downtrend, serial creator 604 launches
+  reviewer 5 (momentum trader): SKIP, p 0.08, Downtrend, serial creator
+  reviewer 6 (dip buyer): SKIP, p 0.2, serial creator, fading volume
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Serial creator 604 launches, fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Declining, serial creator
+  reviewer 9 (statistician): SKIP, p 0.15, Choppy decline, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Serial launcher, declining
+
+CASE 42 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Flatlined after dump, no volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Dead volume
+  reviewer 3 (sceptic): SKIP, p 0.09, Dead, declining
+  reviewer 4 (risk manager): SKIP, p 0.06, Dead volume, falling
+  reviewer 5 (momentum trader): SKIP, p 0.04, Dead after spike
+  reviewer 6 (dip buyer): SKIP, p 0.1, dead volume
+  reviewer 7 (rocket hunter): SKIP, p 0.08, Slow curve, volume dead
+  reviewer 8 (clock and age analyst): SKIP, p 0.08, Fading, volume gone
+  reviewer 9 (statistician): SKIP, p 0.08, Dead volume, fading
+  reviewer 10 (devil's advocate): SKIP, p 0.08, Dead after early spike
+
+CASE 43 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Bounce after 75% crash
+  reviewer 2 (volume and flow reader): SKIP, p 0.22, Dead-cat bounce after crash
+  reviewer 3 (sceptic): SKIP, p 0.22, Dead-cat bounce after dump
+  reviewer 4 (risk manager): SKIP, p 0.24, Dead-cat bounce after 75 % dump
+  reviewer 5 (momentum trader): SKIP, p 0.18, Bounce on weak volume
+  reviewer 6 (dip buyer): BUY, p 0.34, deep dip, recovery with rising volume
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Bounce after 75% crash
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Recovering after dump, weak market
+  reviewer 9 (statistician): SKIP, p 0.2, Recovering after crash, below peak
+  reviewer 10 (devil's advocate): SKIP, p 0.22, Dead-cat bounce after 75% dump
+
+CASE 44 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Steady bleed despite buy count
+  reviewer 2 (volume and flow reader): SKIP, p 0.2, Few sellers dumping on many buyers
+  reviewer 3 (sceptic): SKIP, p 0.18, Falling, odd buyer-seller ratio
+  reviewer 4 (risk manager): SKIP, p 0.2, Few big sellers dumping into fresh buyers
+  reviewer 5 (momentum trader): SKIP, p 0.15, Price falling despite buyer count
+  reviewer 6 (dip buyer): SKIP, p 0.22, suspicious buyer ratio, falling
+  reviewer 7 (rocket hunter): SKIP, p 0.2, Price falling despite buyers, insiders selling
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Buyers many but price falling
+  reviewer 9 (statistician): SKIP, p 0.2, Fresh buyers, price falling, insiders selling
+  reviewer 10 (devil's advocate): SKIP, p 0.22, Fresh buyers absorbed by insider selling
+
+CASE 45 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Stalling range under 1.23x
+  reviewer 2 (volume and flow reader): BUY, p 0.4, Heavy SOL inflow, holding near highs
+  reviewer 3 (sceptic): SKIP, p 0.3, Big but stalling, bot trade counts
+  reviewer 4 (risk manager): SKIP, p 0.33, Thin liquidity for cap, bot micro buys
+  reviewer 5 (momentum trader): SKIP, p 0.22, Sideways, bot-like micro buys
+  reviewer 6 (dip buyer): SKIP, p 0.32, big mcap, sideways after run
+  reviewer 7 (rocket hunter): BUY, p 0.35, Fresh creator, 3478 SOL, price stable
+  reviewer 8 (clock and age analyst): SKIP, p 0.3, Big cap consolidation, bot buy spam
+  reviewer 9 (statistician): SKIP, p 0.28, Big cap, flat, micro-buy spam
+  reviewer 10 (devil's advocate): SKIP, p 0.32, Big but stalled, bot buy counts
+
+CASE 46 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Bot grind, copycat, rug risk
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Top buyer 67 percent, bot grind
+  reviewer 3 (sceptic): SKIP, p 0.12, Bot-driven linear climb
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 68 %
+  reviewer 5 (momentum trader): SKIP, p 0.03, Fake ramp, dominant buyer
+  reviewer 6 (dip buyer): SKIP, p 0.18, bot climb, few real wallets
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Fake cap, top buyer dominates, copycat
+  reviewer 8 (clock and age analyst): SKIP, p 0.05, Fake cap, manipulated
+  reviewer 9 (statistician): SKIP, p 0.18, Bot ramp, copycat, dominant buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.46, Steady ramp, but recycled copycat
+
+CASE 47 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.37, Uptrend but buying breakout candle top
+  reviewer 2 (volume and flow reader): BUY, p 0.44, Buyers 2.5x sellers, steady uptrend
+  reviewer 3 (sceptic): SKIP, p 0.35, Uptrend, but fresh wallets suspicious
+  reviewer 4 (risk manager): SKIP, p 0.38, Good trend but copied picture, thin last bar
+  reviewer 5 (momentum trader): BUY, p 0.4, Steady uptrend, new high, broad buyers
+  reviewer 6 (dip buyer): BUY, p 0.4, steady climb, strong fresh buyers
+  reviewer 7 (rocket hunter): BUY, p 0.38, Fresh creator, steady uptrend, 221 wallets 15m
+  reviewer 8 (clock and age analyst): BUY, p 0.36, Early steady uptrend, fresh high
+  reviewer 9 (statistician): SKIP, p 0.35, Steady uptrend, but fresh-wallet instant curve
+  reviewer 10 (devil's advocate): BUY, p 0.5, Fresh retail inflow, orderly uptrend
+
+CASE 48 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.3, Exponential bot grind, wash trading
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, One first buy 63 percent, wash
+  reviewer 3 (sceptic): SKIP, p 0.12, Whale-made linear climb
+  reviewer 4 (risk manager): SKIP, p 0.05, One wallet 63 % of first buys, wash
+  reviewer 5 (momentum trader): SKIP, p 0.04, Bot ramp, one huge first buy
+  reviewer 6 (dip buyer): SKIP, p 0.18, one wallet pump, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.04, One wallet 63% of buys, bot volume
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, Wash trading, whale first buy
+  reviewer 9 (statistician): SKIP, p 0.15, Linear bot ramp, one wallet 63 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.36, Mechanical fast ramp, whale 63%
+
+CASE 49 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Weak low-volume recovery
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, No new wallets, thin volume
+  reviewer 3 (sceptic): SKIP, p 0.15, Thin volume, no inflow
+  reviewer 4 (risk manager): SKIP, p 0.1, Old coin, no new wallets
+  reviewer 5 (momentum trader): SKIP, p 0.06, Thin volume, no inflow
+  reviewer 6 (dip buyer): SKIP, p 0.15, no new wallets, thin volume
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Late, inflow gone
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, 5h, inflow dried up
+  reviewer 9 (statistician): SKIP, p 0.18, Late, thin activity
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Old, thin, no inflow
+
+CASE 50 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Flat, volume died
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Volume died, zero new wallets
+  reviewer 3 (sceptic): SKIP, p 0.1, Volume vanished
+  reviewer 4 (risk manager): SKIP, p 0.12, Whale-bought, volume now zero
+  reviewer 5 (momentum trader): SKIP, p 0.05, No new wallets, volume dead
+  reviewer 6 (dip buyer): SKIP, p 0.12, volume vanished
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Volume dried to zero
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Volume died, no new wallets
+  reviewer 9 (statistician): SKIP, p 0.15, Volume vanished, no new wallets
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Volume vanished, zero new wallets
+
+CASE 51 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Just dropped 36%, erratic
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Sellers exceed buyers, serial creator
+  reviewer 3 (sceptic): SKIP, p 0.15, Spike rejected, serial creator
+  reviewer 4 (risk manager): SKIP, p 0.14, Spike reversed, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.07, Rejection candle, serial creator
+  reviewer 6 (dip buyer): SKIP, p 0.18, serial creator, sharp drop
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Serial creator, choppy decline
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Erratic, serial creator, off peak
+  reviewer 9 (statistician): SKIP, p 0.15, Whipsaw, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Serial launcher, wild drop
+
+CASE 52 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Halved from peak, still falling
+  reviewer 2 (volume and flow reader): SKIP, p 0.18, Rolling over from peak
+  reviewer 3 (sceptic): SKIP, p 0.18, Falling from 2x top
+  reviewer 4 (risk manager): SKIP, p 0.18, Fell 50 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.12, Falling from 2x peak
+  reviewer 6 (dip buyer): SKIP, p 0.25, falling knife, no bounce
+  reviewer 7 (rocket hunter): SKIP, p 0.22, Sharp drop from 2x peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Falling from 2x peak
+  reviewer 9 (statistician): SKIP, p 0.15, Last bar minus 32 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Falling from 2x top
+
+CASE 53 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.02, Rugged, zero volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.02, Rugged, sellers only
+  reviewer 3 (sceptic): SKIP, p 0.03, Rugged
+  reviewer 4 (risk manager): SKIP, p 0.02, Rugged, sellers only
+  reviewer 5 (momentum trader): SKIP, p 0.01, Collapsed, sellers only
+  reviewer 6 (dip buyer): SKIP, p 0.02, rugged, zero volume
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Price collapsed 99%
+  reviewer 8 (clock and age analyst): SKIP, p 0.02, Late rug, sellers only
+  reviewer 9 (statistician): SKIP, p 0.02, Collapsed, rugged
+  reviewer 10 (devil's advocate): SKIP, p 0.02, Rugged, zero volume
+
+CASE 54 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Faded after brief spike
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Revival fading, zero new wallets
+  reviewer 3 (sceptic): SKIP, p 0.15, Spike fading, no new wallets
+  reviewer 4 (risk manager): SKIP, p 0.1, Revival spike fading, no new wallets
+  reviewer 5 (momentum trader): SKIP, p 0.06, Spike fading, no inflow
+  reviewer 6 (dip buyer): SKIP, p 0.12, spike faded, no wallets
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Revival spike fading, no wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, 3h spike faded, no inflow
+  reviewer 9 (statistician): SKIP, p 0.1, Pump faded, no new wallets
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Revival faded, no new wallets
+
+CASE 55 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Collapsing from 4x
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Crashing, last bar halved
+  reviewer 3 (sceptic): SKIP, p 0.14, Crashing hard
+  reviewer 4 (risk manager): SKIP, p 0.1, Dumped from 4x, last bar -48 %
+  reviewer 5 (momentum trader): SKIP, p 0.06, Dumped from 4x
+  reviewer 6 (dip buyer): SKIP, p 0.22, capitulation candle, no bounce
+  reviewer 7 (rocket hunter): SKIP, p 0.18, Crashed from 4.3x, dumping
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Dumped from 4x peak
+  reviewer 9 (statistician): SKIP, p 0.1, Last bar halved, dumping
+  reviewer 10 (devil's advocate): SKIP, p 0.1, -48% last bar, dumping
+
+CASE 56 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Off high after spike, serial creator
+  reviewer 2 (volume and flow reader): SKIP, p 0.32, Breakout but volume decaying fast
+  reviewer 3 (sceptic): SKIP, p 0.3, Hot spike, serial creator risk
+  reviewer 4 (risk manager): SKIP, p 0.28, Serial creator, spike may be dumped
+  reviewer 5 (momentum trader): BUY, p 0.28, Fresh breakout holding near highs
+  reviewer 6 (dip buyer): SKIP, p 0.28, serial creator spike
+  reviewer 7 (rocket hunter): SKIP, p 0.26, Serial creator, single spike candle
+  reviewer 8 (clock and age analyst): SKIP, p 0.32, Fresh breakout but serial creator
+  reviewer 9 (statistician): SKIP, p 0.28, Sudden spike, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.28, One-candle spike from serial creator
+
+CASE 57 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.07, Downtrend, heavy selling
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Sells nearly 4x buys
+  reviewer 3 (sceptic): SKIP, p 0.1, Sells dominate, fading
+  reviewer 4 (risk manager): SKIP, p 0.07, Sells far exceed buys, falling
+  reviewer 5 (momentum trader): SKIP, p 0.05, Sells dominate, downtrend
+  reviewer 6 (dip buyer): SKIP, p 0.12, heavy selling, steady decline
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Sells far exceed buys, falling
+  reviewer 8 (clock and age analyst): SKIP, p 0.1, Sells dominate, dumping
+  reviewer 9 (statistician): SKIP, p 0.1, Sells dominate, declining
+  reviewer 10 (devil's advocate): SKIP, p 0.08, Sells 3.7x buys, fading
+
+CASE 58 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Flat bot grind
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.1, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 90 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Top buyer 90 percent, fake
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, copycat, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.38, Slow ramp, copycat, weak slope
+
+CASE 59 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.42, Clean higher lows, but near high
+  reviewer 2 (volume and flow reader): BUY, p 0.42, Higher lows, steady volume, healthy inflow
+  reviewer 3 (sceptic): SKIP, p 0.35, Healthy uptrend, still below base bar
+  reviewer 4 (risk manager): SKIP, p 0.37, Steady climb but top buyer 10 %
+  reviewer 5 (momentum trader): BUY, p 0.32, Persistent uptrend, steady inflow
+  reviewer 6 (dip buyer): BUY, p 0.34, uptrend holding, steady inflows
+  reviewer 7 (rocket hunter): BUY, p 0.35, Fresh creator, steady climb, strong inflow
+  reviewer 8 (clock and age analyst): BUY, p 0.36, Early steady climb, near high
+  reviewer 9 (statistician): SKIP, p 0.33, Smooth uptrend, moderate acceleration
+  reviewer 10 (devil's advocate): SKIP, p 0.38, Orderly climb, but base rate dominates
+
+CASE 60 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Dead-cat bounce after crash
+  reviewer 2 (volume and flow reader): SKIP, p 0.22, Bounce after crash, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.24, Violent chop, crash risk
+  reviewer 4 (risk manager): SKIP, p 0.24, Bounce after 75 % dump
+  reviewer 5 (momentum trader): SKIP, p 0.15, Bounce after crash, fading volume
+  reviewer 6 (dip buyer): SKIP, p 0.3, bounce on fading volume
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Volatile, volume declining after peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.22, Off peak, volume decaying
+  reviewer 9 (statistician): SKIP, p 0.2, Dead cat bounce after dump
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Bounce after crash
+
+CASE 61 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Halved from top, serial creator
+  reviewer 2 (volume and flow reader): SKIP, p 0.36, Huge flow but decaying, serial creator
+  reviewer 3 (sceptic): SKIP, p 0.32, Hot but choppy, serial creator
+  reviewer 4 (risk manager): SKIP, p 0.31, Serial creator, down 54 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.25, Off peak, volume declining
+  reviewer 6 (dip buyer): BUY, p 0.38, huge demand, dip holding
+  reviewer 7 (rocket hunter): BUY, p 0.3, Massive 5300 SOL inflow, 523 wallets 15m
+  reviewer 8 (clock and age analyst): SKIP, p 0.3, Very hot but halved off peak
+  reviewer 9 (statistician): SKIP, p 0.3, Massive flow, but whipsaw and serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.33, Huge hype, already rolled over
+
+CASE 62 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Thin spike, no volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Dead coin, tiny volume
+  reviewer 3 (sceptic): SKIP, p 0.14, Thin spike after dead hours
+  reviewer 4 (risk manager): SKIP, p 0.1, Old coin, thin spike, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.05, Illiquid, tiny volume jump
+  reviewer 6 (dip buyer): SKIP, p 0.15, late, thin, serial creator
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Late, serial creator, no inflow
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, 7h, illiquid jump
+  reviewer 9 (statistician): SKIP, p 0.12, Late, thin-volume jump
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Thin, old, single spike
+
+CASE 63 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, V-recovery on weak volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.2, Thin volume bounce
+  reviewer 3 (sceptic): SKIP, p 0.24, Bought on spike candle
+  reviewer 4 (risk manager): SKIP, p 0.24, Last-bar jump on small volume
+  reviewer 5 (momentum trader): SKIP, p 0.15, Recovery on thin volume
+  reviewer 6 (dip buyer): SKIP, p 0.27, bounce on low volume
+  reviewer 7 (rocket hunter): SKIP, p 0.22, Modest inflow, mediocre structure
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Bounce, thin volume, good market
+  reviewer 9 (statistician): SKIP, p 0.22, Recovery bounce, average flow
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Bought on +47% bounce candle
+
+CASE 64 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Collapsed from 3x spike
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Crashed from 3x, volume dying
+  reviewer 3 (sceptic): SKIP, p 0.18, Dumped from 3x
+  reviewer 4 (risk manager): SKIP, p 0.17, Down 70 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.09, Spike faded, volume falling
+  reviewer 6 (dip buyer): SKIP, p 0.2, dumped, volume dying
+  reviewer 7 (rocket hunter): SKIP, p 0.2, Dumped from 3x, volume fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Spike reversed, volume decaying
+  reviewer 9 (statistician): SKIP, p 0.15, Dumped from 3x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Dumped from 3x
+
+CASE 65 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Bot grind, sells outweigh buys
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Sells exceed buys, one wallet
+  reviewer 3 (sceptic): SKIP, p 0.08, Fake chart, sells dominate
+  reviewer 4 (risk manager): SKIP, p 0.03, Artificial cap, sells dominate
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake, sells dominate
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, sells exceed buys
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, sellers dominate
+  reviewer 9 (statistician): SKIP, p 0.12, Fake cap, sells exceed buys
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Ramp with sells 3x buys
+
+CASE 66 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Post-pump bleed
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Revival spike fully faded
+  reviewer 3 (sceptic): SKIP, p 0.15, Spike already dumped
+  reviewer 4 (risk manager): SKIP, p 0.12, Revival spike already reversed 75 %
+  reviewer 5 (momentum trader): SKIP, p 0.07, Spike faded
+  reviewer 6 (dip buyer): SKIP, p 0.15, spike faded, volume gone
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Late revival spike already bled
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, 14h revival spike fading
+  reviewer 9 (statistician): SKIP, p 0.15, Late revival fading
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Spike faded, inflow gone
+
+CASE 67 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Just crashed 48%
+  reviewer 2 (volume and flow reader): SKIP, p 0.18, Last bar dumped nearly half
+  reviewer 3 (sceptic): SKIP, p 0.18, Last candle halved
+  reviewer 4 (risk manager): SKIP, p 0.14, Last bar crashed 48 %
+  reviewer 5 (momentum trader): SKIP, p 0.1, Halved last candle
+  reviewer 6 (dip buyer): SKIP, p 0.25, sharp drop in progress
+  reviewer 7 (rocket hunter): SKIP, p 0.27, Strong inflow but 48% dump candle
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Last candle crashed 48%
+  reviewer 9 (statistician): SKIP, p 0.12, Last bar halved from peak
+  reviewer 10 (devil's advocate): SKIP, p 0.15, -48% last bar, top is in
+
+CASE 68 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Flat to down, sellers dominate
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Sells exceed buys
+  reviewer 3 (sceptic): SKIP, p 0.12, Weak, sells dominate
+  reviewer 4 (risk manager): SKIP, p 0.1, Sells exceed buys, flat
+  reviewer 5 (momentum trader): SKIP, p 0.05, Sells exceed buys, flat
+  reviewer 6 (dip buyer): SKIP, p 0.12, sells dominate, weak
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Sells exceed buys, fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.1, Sells dominate, fading
+  reviewer 9 (statistician): SKIP, p 0.1, Sells dominate, fading
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Sells exceed buys, fading
+
+CASE 69 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Choppy, single bounce candle
+  reviewer 2 (volume and flow reader): SKIP, p 0.22, Volume declining, choppy
+  reviewer 3 (sceptic): SKIP, p 0.2, Fading volume, choppy
+  reviewer 4 (risk manager): SKIP, p 0.27, Choppy, volume declining
+  reviewer 5 (momentum trader): SKIP, p 0.2, Bounce, volume still falling
+  reviewer 6 (dip buyer): SKIP, p 0.31, bounce okay, volume shrinking
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Repeat creator, volume declining
+  reviewer 8 (clock and age analyst): SKIP, p 0.27, Choppy, volume declining
+  reviewer 9 (statistician): SKIP, p 0.25, Choppy, bounce, declining volume
+  reviewer 10 (devil's advocate): SKIP, p 0.22, Choppy, volume decaying
+
+CASE 70 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Down 64% from peak
+  reviewer 2 (volume and flow reader): SKIP, p 0.22, Dumped from 2.7x, momentum gone
+  reviewer 3 (sceptic): SKIP, p 0.22, Peak broke, lower highs
+  reviewer 4 (risk manager): SKIP, p 0.22, Fell from 2.7x peak
+  reviewer 5 (momentum trader): SKIP, p 0.15, Crashed off peak
+  reviewer 6 (dip buyer): SKIP, p 0.3, pullback after peak, mixed
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Repeat creator, reused picture, off peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Crashed off peak, choppy
+  reviewer 9 (statistician): SKIP, p 0.2, Collapsed from 2.7x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Broke down from 2.7x
+
+CASE 71 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Flat bot chart
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 93 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, One wallet controls buying
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Flat ramp, no slope
+
+CASE 72 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Crashed from 2.5x
+  reviewer 2 (volume and flow reader): SKIP, p 0.18, Post-crash bounce, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.2, Dumped, weak recovery
+  reviewer 4 (risk manager): SKIP, p 0.2, Bounce after 68 % dump
+  reviewer 5 (momentum trader): SKIP, p 0.14, Off peak, fading volume
+  reviewer 6 (dip buyer): BUY, p 0.35, deep dip, steady recovery, organic
+  reviewer 7 (rocket hunter): SKIP, p 0.26, Spike faded, volume declining
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Spike reversed, partial recovery
+  reviewer 9 (statistician): SKIP, p 0.15, Dumped from 2.5x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Post-spike fade, volume shrinking
+
+CASE 73 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Wild V-swings, unstable
+  reviewer 2 (volume and flow reader): SKIP, p 0.2, Choppy, modest volume
+  reviewer 3 (sceptic): SKIP, p 0.22, Choppy recovery, modest inflow
+  reviewer 4 (risk manager): SKIP, p 0.25, Choppy, no clear trend
+  reviewer 5 (momentum trader): SKIP, p 0.15, Choppy, low volume
+  reviewer 6 (dip buyer): SKIP, p 0.3, choppy recovery, modest flow
+  reviewer 7 (rocket hunter): SKIP, p 0.22, Choppy, moderate inflow
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Choppy recovery, no trend
+  reviewer 9 (statistician): SKIP, p 0.22, Choppy recovery, average flow
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Chop, no trend
+
+CASE 74 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Strong flow but choppy off peak
+  reviewer 2 (volume and flow reader): BUY, p 0.4, Massive new-wallet inflow, higher lows
+  reviewer 3 (sceptic): SKIP, p 0.33, Strong inflow, but volatile chop
+  reviewer 4 (risk manager): SKIP, p 0.35, Huge demand but thin liquidity, volatile
+  reviewer 5 (momentum trader): BUY, p 0.33, Massive volume, 525 new wallets
+  reviewer 6 (dip buyer): BUY, p 0.4, huge inflows, dip bought quickly
+  reviewer 7 (rocket hunter): BUY, p 0.38, Fresh creator, 1008% up, 525 wallets 15m
+  reviewer 8 (clock and age analyst): SKIP, p 0.34, Very hot, but off peak
+  reviewer 9 (statistician): SKIP, p 0.34, Huge attention but consolidating below peak
+  reviewer 10 (devil's advocate): SKIP, p 0.35, Massive hype but 15% stop likely
+
+CASE 75 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Collapsed from 4.8x
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Crashed from 4.8x
+  reviewer 3 (sceptic): SKIP, p 0.12, Dumping from 4.8x
+  reviewer 4 (risk manager): SKIP, p 0.1, Dumped 80 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.06, Dumped from 4.8x
+  reviewer 6 (dip buyer): SKIP, p 0.2, lower highs, dumping
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Crashed from 4.8x
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Dumped from 4.8x, weak market
+  reviewer 9 (statistician): SKIP, p 0.12, Dumped from 4.8x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Dumped from 4.8x
+
+CASE 76 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Erratic, far below peak
+  reviewer 2 (volume and flow reader): SKIP, p 0.22, Volume decaying, chop
+  reviewer 3 (sceptic): SKIP, p 0.22, Choppy, fading volume
+  reviewer 4 (risk manager): SKIP, p 0.24, Lower highs, fading volume
+  reviewer 5 (momentum trader): SKIP, p 0.15, Off peak, fading volume
+  reviewer 6 (dip buyer): SKIP, p 0.3, volatile, fading volume
+  reviewer 7 (rocket hunter): SKIP, p 0.27, Big inflow but volume fading off peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.22, Whipsaw, volume fading
+  reviewer 9 (statistician): SKIP, p 0.22, Whipsaw, below peak
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Lower highs, decaying volume
+
+CASE 77 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.05, Crashed 92% from peak
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Collapsed 82 percent last bar
+  reviewer 3 (sceptic): SKIP, p 0.08, Crashed 80 percent last candle
+  reviewer 4 (risk manager): SKIP, p 0.06, Crashed 82 % in last bar
+  reviewer 5 (momentum trader): SKIP, p 0.03, Crashed 90 percent from peak
+  reviewer 6 (dip buyer): SKIP, p 0.22, collapse candle, knife catch
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Already crashed 92% from top
+  reviewer 8 (clock and age analyst): SKIP, p 0.1, Crashed from 12x, weak market
+  reviewer 9 (statistician): SKIP, p 0.05, Last bar minus 82 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.08, -82% candle, looks like rug
+
+CASE 78 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Lower highs after peak
+  reviewer 2 (volume and flow reader): SKIP, p 0.18, Off peak, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.2, Fading from 2.3x
+  reviewer 4 (risk manager): SKIP, p 0.2, Down 60 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.12, Off peak, volume dying
+  reviewer 6 (dip buyer): SKIP, p 0.27, faded peak, low volume
+  reviewer 7 (rocket hunter): SKIP, p 0.24, Off peak, volume fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.22, Off peak, volume fading
+  reviewer 9 (statistician): SKIP, p 0.18, Fell from 2.3x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Faded from 2.3x
+
+CASE 79 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Flat bot chart
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 90 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake ramp, one buyer
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Flat ramp, stalled
+
+CASE 80 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Flat bot chart
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 88 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake ramp, one buyer
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Flat ramp, stalled
+
+CASE 81 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.3, Parabolic bot grind, one huge buyer
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, One first buy 74 percent, bot grind
+  reviewer 3 (sceptic): SKIP, p 0.12, Whale-made linear climb
+  reviewer 4 (risk manager): SKIP, p 0.05, One wallet 74 % of first buys
+  reviewer 5 (momentum trader): SKIP, p 0.04, Bot ramp, 74 percent one buy
+  reviewer 6 (dip buyer): SKIP, p 0.18, one wallet pump, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.04, One wallet 74% of buys
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, Whale first buy, manipulated climb
+  reviewer 9 (statistician): SKIP, p 0.18, Bot ramp, one wallet 74 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.34, Parabolic mechanical ramp, whale 74%
+
+CASE 82 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Dumped from 3x
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Dropping from 3x peak
+  reviewer 3 (sceptic): SKIP, p 0.18, Dumped from 3x
+  reviewer 4 (risk manager): SKIP, p 0.17, Down 68 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.1, Falling hard from 3x
+  reviewer 6 (dip buyer): SKIP, p 0.27, falling after peak
+  reviewer 7 (rocket hunter): SKIP, p 0.22, Dropping from 3x, last candle dump
+  reviewer 8 (clock and age analyst): SKIP, p 0.18, Dumping from 3x peak
+  reviewer 9 (statistician): SKIP, p 0.12, Dumping from 3x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.12, Broke down -32% last bar
+
+CASE 83 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Dumped from 3.3x
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Dropping from 3.3x peak
+  reviewer 3 (sceptic): SKIP, p 0.12, Dumped from 3.3x
+  reviewer 4 (risk manager): SKIP, p 0.14, Dumped from 3.3x
+  reviewer 5 (momentum trader): SKIP, p 0.08, Falling from 3x
+  reviewer 6 (dip buyer): SKIP, p 0.22, dropping, lower highs
+  reviewer 7 (rocket hunter): SKIP, p 0.17, Down from 3.3x, distribution
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Dumping from 3x peak
+  reviewer 9 (statistician): SKIP, p 0.12, Dumped from 3.3x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Dumped 70%
+
+CASE 84 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Dead after spike, serial creator
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Serial creator, volume dead
+  reviewer 3 (sceptic): SKIP, p 0.12, Dead after spike, serial creator
+  reviewer 4 (risk manager): SKIP, p 0.08, Dead volume, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.05, Spike faded, mass launcher
+  reviewer 6 (dip buyer): SKIP, p 0.1, serial creator, dead volume
+  reviewer 7 (rocket hunter): SKIP, p 0.08, Serial creator 1037 launches, dead volume
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Spike faded, serial creator
+  reviewer 9 (statistician): SKIP, p 0.1, Dying volume, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Serial launcher, dead volume
+
+CASE 85 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Bot grind, wash trades
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, One first buy 58 percent, bot
+  reviewer 3 (sceptic): SKIP, p 0.12, Whale-made linear climb
+  reviewer 4 (risk manager): SKIP, p 0.05, One wallet 58 % of first buys
+  reviewer 5 (momentum trader): SKIP, p 0.03, Bot ramp, concentrated buying
+  reviewer 6 (dip buyer): SKIP, p 0.18, one wallet pump, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.04, One wallet 58% of buys, bot
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, Whale first buy, manipulated climb
+  reviewer 9 (statistician): SKIP, p 0.18, Bot ramp, one wallet 58 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.36, Fast ramp, whale 58%
+
+CASE 86 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Fading after thin spike
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Revival fading, thin volume
+  reviewer 3 (sceptic): SKIP, p 0.15, Thin spike, fading
+  reviewer 4 (risk manager): SKIP, p 0.14, Revival fading, few new wallets
+  reviewer 5 (momentum trader): SKIP, p 0.08, Spike fading, thin volume
+  reviewer 6 (dip buyer): SKIP, p 0.18, late revival fading
+  reviewer 7 (rocket hunter): SKIP, p 0.14, Late revival fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, 7h revival fading
+  reviewer 9 (statistician): SKIP, p 0.15, Late revival fading
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Old revival fading
+
+CASE 87 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Erratic chop
+  reviewer 2 (volume and flow reader): SKIP, p 0.2, Choppy, no clear flow edge
+  reviewer 3 (sceptic): SKIP, p 0.2, Choppy, no trend
+  reviewer 4 (risk manager): SKIP, p 0.22, Choppy, no trend
+  reviewer 5 (momentum trader): SKIP, p 0.12, Choppy, falling volume
+  reviewer 6 (dip buyer): SKIP, p 0.3, dip bounce, average flow
+  reviewer 7 (rocket hunter): SKIP, p 0.23, Choppy, no trend
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Choppy, downward drift
+  reviewer 9 (statistician): SKIP, p 0.18, Choppy decline
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Chop, no momentum
+
+CASE 88 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.05, Crashed from 7.8x, mass launcher
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Crashed, serial launcher
+  reviewer 3 (sceptic): SKIP, p 0.08, Crashed from 7.8x, serial launcher
+  reviewer 4 (risk manager): SKIP, p 0.05, Mass-launch creator, crashed 87 %
+  reviewer 5 (momentum trader): SKIP, p 0.05, Crashed, mass launcher dev
+  reviewer 6 (dip buyer): SKIP, p 0.15, mass launcher creator, crashed
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Mega-serial creator, crashed from 7.8x
+  reviewer 8 (clock and age analyst): SKIP, p 0.1, Crashed from 7.8x, serial creator
+  reviewer 9 (statistician): SKIP, p 0.06, Crashing from 7.8x, mega serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.08, Mega-serial launcher, crashed 87%
+
+CASE 89 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Range after spike, no trend
+  reviewer 2 (volume and flow reader): SKIP, p 0.25, Sideways, balanced buyers and sellers
+  reviewer 3 (sceptic): SKIP, p 0.22, Sideways chop
+  reviewer 4 (risk manager): SKIP, p 0.25, Chop below earlier peak
+  reviewer 5 (momentum trader): SKIP, p 0.15, Rangebound, rejected
+  reviewer 6 (dip buyer): SKIP, p 0.3, sideways after pullback
+  reviewer 7 (rocket hunter): SKIP, p 0.24, Choppy, moderate inflow
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Consolidating below peak
+  reviewer 9 (statistician): SKIP, p 0.22, Sideways below early peak
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Faded spike
+
+CASE 90 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Falling despite inflated buyer count
+  reviewer 2 (volume and flow reader): SKIP, p 0.18, Price falling despite buyer flood
+  reviewer 3 (sceptic): SKIP, p 0.18, Falling, sybil-like buyer ratio
+  reviewer 4 (risk manager): SKIP, p 0.2, Few sellers dumping on fresh buyers
+  reviewer 5 (momentum trader): SKIP, p 0.15, Downtrend despite buyer count
+  reviewer 6 (dip buyer): SKIP, p 0.22, suspicious buyer ratio, falling
+  reviewer 7 (rocket hunter): SKIP, p 0.28, Fresh wallets but price bleeding from peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Sybil-like buyers, price falling
+  reviewer 9 (statistician): SKIP, p 0.2, Fresh buyers, price halving, insiders selling
+  reviewer 10 (devil's advocate): SKIP, p 0.28, Fresh buyers but insiders dumping
+
+CASE 91 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Slow fade
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Thin volume, drifting down
+  reviewer 3 (sceptic): SKIP, p 0.12, Fading
+  reviewer 4 (risk manager): SKIP, p 0.14, Drifting down, weak inflow
+  reviewer 5 (momentum trader): SKIP, p 0.06, Bleeding, low volume
+  reviewer 6 (dip buyer): SKIP, p 0.15, drifting, thin volume
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Fading, small inflow
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Fading, slight downtrend
+  reviewer 9 (statistician): SKIP, p 0.12, Fading, weak inflow
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Fading
+
+CASE 92 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Bot grind, one dominant buyer
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, One first buy 73 percent
+  reviewer 3 (sceptic): SKIP, p 0.1, Whale-made linear climb
+  reviewer 4 (risk manager): SKIP, p 0.05, One wallet 73 % of first buys
+  reviewer 5 (momentum trader): SKIP, p 0.03, Bot ramp, 73 percent one buy
+  reviewer 6 (dip buyer): SKIP, p 0.18, one wallet pump, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.04, One wallet 73% of buys
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, Whale first buy, manipulated climb
+  reviewer 9 (statistician): SKIP, p 0.18, Bot ramp, one wallet 73 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.35, Fast ramp, whale 73%
+
+CASE 93 round-1 votes:
+  reviewer 1 (chart reader): BUY, p 0.52, Relentless trend, exploding volume, broad buyers
+  reviewer 2 (volume and flow reader): BUY, p 0.5, Volume and new wallets accelerating hard
+  reviewer 3 (sceptic): BUY, p 0.48, Massive organic inflow, accelerating volume
+  reviewer 4 (risk manager): BUY, p 0.46, Massive accelerating inflow, very dispersed buyers
+  reviewer 5 (momentum trader): BUY, p 0.45, Parabolic volume, 993 new wallets
+  reviewer 6 (dip buyer): BUY, p 0.45, explosive inflows, accelerating volume
+  reviewer 7 (rocket hunter): BUY, p 0.45, 993 new wallets 15m, 11600 SOL, accelerating
+  reviewer 8 (clock and age analyst): BUY, p 0.45, Early, accelerating inflow, at high
+  reviewer 9 (statistician): BUY, p 0.42, Rocket underway, accelerating wallets, holding highs
+  reviewer 10 (devil's advocate): SKIP, p 0.43, 20x in an hour; blow-off, stops
+
+CASE 94 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Recovering chop, no trend
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Choppy, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.15, Choppy, fading
+  reviewer 4 (risk manager): SKIP, p 0.17, Choppy, top buyer 18 %
+  reviewer 5 (momentum trader): SKIP, p 0.1, Choppy, fading
+  reviewer 6 (dip buyer): SKIP, p 0.25, bounce on low volume
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Small, choppy, weak inflow
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Choppy, fading
+  reviewer 9 (statistician): SKIP, p 0.15, Choppy, fading
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Chop, fading
+
+CASE 95 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Flat bot chart
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.03, Artificial cap, 9 wallets
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake, one buyer
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Flat ramp, slight decline
+
+CASE 96 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Flat, faded
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Flat, low volume
+  reviewer 3 (sceptic): SKIP, p 0.1, Dead, sideways
+  reviewer 4 (risk manager): SKIP, p 0.12, Flat, low inflow
+  reviewer 5 (momentum trader): SKIP, p 0.05, Flat, no interest
+  reviewer 6 (dip buyer): SKIP, p 0.15, flat, low interest
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Very slow curve, low activity
+  reviewer 8 (clock and age analyst): SKIP, p 0.08, Flat, weak market
+  reviewer 9 (statistician): SKIP, p 0.12, Flat, thin volume
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Flat, tiny inflow
+
+CASE 97 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.33, Higher lows, rising volume, still choppy
+  reviewer 2 (volume and flow reader): BUY, p 0.42, Volume rising each bar, at highs
+  reviewer 3 (sceptic): SKIP, p 0.33, Recovering, rising inflow, still choppy
+  reviewer 4 (risk manager): BUY, p 0.39, Rising volume, accelerating wallets, healthy liquidity
+  reviewer 5 (momentum trader): BUY, p 0.38, Higher highs, rising volume each bar
+  reviewer 6 (dip buyer): BUY, p 0.36, dip recovered, rising volume, wallets
+  reviewer 7 (rocket hunter): BUY, p 0.33, Fresh creator, rising volume, 165 wallets 15m
+  reviewer 8 (clock and age analyst): BUY, p 0.35, Early recovery, rising volume, new wallets
+  reviewer 9 (statistician): BUY, p 0.38, New high, rising volume, wallets accelerating
+  reviewer 10 (devil's advocate): SKIP, p 0.33, Breakout buy, but volatile history
+
+CASE 98 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Bounce after crash
+  reviewer 2 (volume and flow reader): SKIP, p 0.2, Off peak, volume declining
+  reviewer 3 (sceptic): SKIP, p 0.22, Bounce after dump, fading volume
+  reviewer 4 (risk manager): SKIP, p 0.22, Bounce after dump, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.15, Bounce on fading volume
+  reviewer 6 (dip buyer): SKIP, p 0.28, bounce on shrinking volume
+  reviewer 7 (rocket hunter): SKIP, p 0.22, Repeat creator, off peak, fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.22, Off peak, volume decaying
+  reviewer 9 (statistician): SKIP, p 0.18, Bounce after dump, volume falling
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Faded from 2.2x
+
+CASE 99 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Bot grind, one huge buyer
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, One first buy 64 percent
+  reviewer 3 (sceptic): SKIP, p 0.1, Whale-made linear climb
+  reviewer 4 (risk manager): SKIP, p 0.05, One wallet 64 % of first buys
+  reviewer 5 (momentum trader): SKIP, p 0.03, Bot ramp, concentrated buying
+  reviewer 6 (dip buyer): SKIP, p 0.18, one wallet pump, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.04, One wallet 64% of buys
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, Whale first buy, manipulated climb
+  reviewer 9 (statistician): SKIP, p 0.18, Bot ramp, one wallet 64 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.36, Fast ramp, whale 64%
+
+CASE 100 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Flat bot grind
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 90 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake, top buyer 90 percent
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.43, Slow ramp, few sellers, weak slope
+
+CASE 101 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Choppy, fading
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Low volume chop
+  reviewer 3 (sceptic): SKIP, p 0.15, Choppy, weak inflow
+  reviewer 4 (risk manager): SKIP, p 0.18, Choppy, weak inflow
+  reviewer 5 (momentum trader): SKIP, p 0.08, Choppy, volume dying
+  reviewer 6 (dip buyer): SKIP, p 0.18, choppy, thin volume
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Very slow curve, weak inflow
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Choppy, weak market
+  reviewer 9 (statistician): SKIP, p 0.15, Choppy, fading volume
+  reviewer 10 (devil's advocate): SKIP, p 0.15, Chop, fading
+
+CASE 102 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Flat bot chart
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, One wallet drives buying
+  reviewer 3 (sceptic): SKIP, p 0.08, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.03, Artificial cap, top buyer 92 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake, one buyer
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.12, Fake cap, copycat, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.25, Flat ramp
+
+CASE 103 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Faded, volume gone
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Volume dead, falling
+  reviewer 3 (sceptic): SKIP, p 0.1, Down 49 percent, dead
+  reviewer 4 (risk manager): SKIP, p 0.1, Falling, volume dead
+  reviewer 5 (momentum trader): SKIP, p 0.05, Downtrend, volume gone
+  reviewer 6 (dip buyer): SKIP, p 0.12, declining, volume dead
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Down 49%, volume dead
+  reviewer 8 (clock and age analyst): SKIP, p 0.1, Fading, down 49%
+  reviewer 9 (statistician): SKIP, p 0.1, Fading, volume gone
+  reviewer 10 (devil's advocate): SKIP, p 0.08, Fading
+
+CASE 104 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.25, Bot grind, one wallet
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Top buyer 67 percent, bot grind
+  reviewer 3 (sceptic): SKIP, p 0.12, Bot-driven linear climb
+  reviewer 4 (risk manager): SKIP, p 0.04, Artificial cap, top buyer 67 %
+  reviewer 5 (momentum trader): SKIP, p 0.03, Bot ramp, dominant buyer
+  reviewer 6 (dip buyer): SKIP, p 0.18, bot driven climb, rug risk
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Fake cap, few wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.04, Fake cap, manipulated climb
+  reviewer 9 (statistician): SKIP, p 0.18, Bot ramp, fake cap
+  reviewer 10 (devil's advocate): BUY, p 0.52, Smooth 2.8%/bar ramp, little selling
+
+CASE 105 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Dead volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.05, No volume
+  reviewer 3 (sceptic): SKIP, p 0.08, Dead volume
+  reviewer 4 (risk manager): SKIP, p 0.06, Dead, concentrated buyers
+  reviewer 5 (momentum trader): SKIP, p 0.03, Dead, concentrated buyer
+  reviewer 6 (dip buyer): SKIP, p 0.08, dead, no trading
+  reviewer 7 (rocket hunter): SKIP, p 0.05, Dead, one wallet dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.06, Dead volume, whale dominated
+  reviewer 9 (statistician): SKIP, p 0.08, Dead, concentrated
+  reviewer 10 (devil's advocate): SKIP, p 0.05, Dead
+
+CASE 106 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Dropped 46% off peak
+  reviewer 2 (volume and flow reader): SKIP, p 0.25, Rolling over, serial creator
+  reviewer 3 (sceptic): SKIP, p 0.25, Peak rejected, serial creator
+  reviewer 4 (risk manager): SKIP, p 0.25, Serial creator, dropped 46 % from top
+  reviewer 5 (momentum trader): SKIP, p 0.18, Rejected from peak, serial creator
+  reviewer 6 (dip buyer): SKIP, p 0.28, serial creator, pullback
+  reviewer 7 (rocket hunter): SKIP, p 0.25, Serial creator, dump candle at buy
+  reviewer 8 (clock and age analyst): SKIP, p 0.25, Dropped off peak, serial creator
+  reviewer 9 (statistician): SKIP, p 0.25, Pulled back from peak, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.2, Serial launcher, rolled over
+
+CASE 107 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Crashed, serial creator
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Crashed, low volume
+  reviewer 3 (sceptic): SKIP, p 0.15, Fading from 2.7x
+  reviewer 4 (risk manager): SKIP, p 0.14, Downtrend, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.07, Dumped, serial creator
+  reviewer 6 (dip buyer): SKIP, p 0.18, serial creator, fading
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Serial creator, falling, inflow gone
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Dumped from peak, serial creator
+  reviewer 9 (statistician): SKIP, p 0.12, Dumped from peak, serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Dumped from 2.7x
+
+CASE 108 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Violent swings will trigger stop
+  reviewer 2 (volume and flow reader): BUY, p 0.42, Sustained heavy volume, big wallets, highs
+  reviewer 3 (sceptic): SKIP, p 0.33, Strong volume, but wide chop
+  reviewer 4 (risk manager): SKIP, p 0.34, Sideways at highs, thin liquidity ratio
+  reviewer 5 (momentum trader): BUY, p 0.3, Sustained heavy volume at range top
+  reviewer 6 (dip buyer): BUY, p 0.38, sustained huge volume, dip support
+  reviewer 7 (rocket hunter): BUY, p 0.37, Fresh creator, 3724 SOL, sustained volume
+  reviewer 8 (clock and age analyst): SKIP, p 0.3, Hot, but choppy, SOL weak
+  reviewer 9 (statistician): SKIP, p 0.3, Big flow, choppy range
+  reviewer 10 (devil's advocate): SKIP, p 0.33, Heavy volume, sideways chop
+
+CASE 109 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.22, Bot grind, copycat
+  reviewer 2 (volume and flow reader): SKIP, p 0.1, Top buyer 74 percent, fake
+  reviewer 3 (sceptic): SKIP, p 0.1, Bot-driven climb, copycat
+  reviewer 4 (risk manager): SKIP, p 0.05, Few wallets, top buyer 74 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake ramp, dominant buyer
+  reviewer 6 (dip buyer): SKIP, p 0.18, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.03, Copycat, top buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.04, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.15, Fake cap, copycat, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.44, Steady ramp, copycat, makers bots
+
+CASE 110 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Dead chop, mass launcher
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Dead, serial launcher
+  reviewer 3 (sceptic): SKIP, p 0.1, Dead, serial launcher
+  reviewer 4 (risk manager): SKIP, p 0.06, Old coin, serial creator, no inflow
+  reviewer 5 (momentum trader): SKIP, p 0.04, Dead, mass launcher
+  reviewer 6 (dip buyer): SKIP, p 0.1, mass launcher, dead flow
+  reviewer 7 (rocket hunter): SKIP, p 0.06, Late, mega-serial creator, dead
+  reviewer 8 (clock and age analyst): SKIP, p 0.1, 9h, dead, serial creator
+  reviewer 9 (statistician): SKIP, p 0.08, Late, dead, mega serial creator
+  reviewer 10 (devil's advocate): SKIP, p 0.06, Dead, serial launcher
+
+CASE 111 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.2, Bot-like volume, breakout fizzling
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Volume vanished last bar, copycat
+  reviewer 3 (sceptic): SKIP, p 0.15, Volume vanished on jump, copycat
+  reviewer 4 (risk manager): SKIP, p 0.14, Volume vanished, copycat name
+  reviewer 5 (momentum trader): SKIP, p 0.12, Volume vanished on last bar
+  reviewer 6 (dip buyer): SKIP, p 0.28, volume vanished last candle
+  reviewer 7 (rocket hunter): SKIP, p 0.12, Copycat, volume vanished, botted pattern
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Volume vanished last candle
+  reviewer 9 (statistician): SKIP, p 0.2, Bot volume, copycat, last bar empty
+  reviewer 10 (devil's advocate): SKIP, p 0.25, Late jump, last bar volume died
+
+CASE 112 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.28, Decelerating bot grind, copycat
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Bot grind, copycat ticker
+  reviewer 3 (sceptic): SKIP, p 0.12, Bot-driven climb, copycat
+  reviewer 4 (risk manager): SKIP, p 0.05, Few wallets, bot-driven climb
+  reviewer 5 (momentum trader): SKIP, p 0.03, Bot ramp, few real wallets
+  reviewer 6 (dip buyer): SKIP, p 0.18, bot pump, few real wallets
+  reviewer 7 (rocket hunter): SKIP, p 0.05, Copycat, few wallets, bot climb
+  reviewer 8 (clock and age analyst): SKIP, p 0.05, Few wallets, manipulated climb
+  reviewer 9 (statistician): SKIP, p 0.15, Bot ramp, copycat
+  reviewer 10 (devil's advocate): SKIP, p 0.35, Fast ramp decelerating
+
+CASE 113 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Flat bot grind
+  reviewer 2 (volume and flow reader): SKIP, p 0.08, Top buyer 95 percent
+  reviewer 3 (sceptic): SKIP, p 0.06, Single-buyer fake chart
+  reviewer 4 (risk manager): SKIP, p 0.03, Artificial cap, top buyer 96 %
+  reviewer 5 (momentum trader): SKIP, p 0.02, Fake, top buyer 95 percent
+  reviewer 6 (dip buyer): SKIP, p 0.15, fake mcap, one wallet buying
+  reviewer 7 (rocket hunter): SKIP, p 0.02, Fake cap, single buyer dominates
+  reviewer 8 (clock and age analyst): SKIP, p 0.03, Fake cap, single buyer controls
+  reviewer 9 (statistician): SKIP, p 0.12, Fake cap, one buyer
+  reviewer 10 (devil's advocate): SKIP, p 0.4, Repeat ramp operator; rug timing unknown
+
+CASE 114 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.08, Downtrend from 2.8x
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Breaking down from highs
+  reviewer 3 (sceptic): SKIP, p 0.12, Breaking down from 2.8x
+  reviewer 4 (risk manager): SKIP, p 0.14, Down 65 % from peak
+  reviewer 5 (momentum trader): SKIP, p 0.06, Dumped from 2.8x
+  reviewer 6 (dip buyer): SKIP, p 0.22, breaking down from range
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Falling from 2.8x
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Dumped from 2.8x peak
+  reviewer 9 (statistician): SKIP, p 0.12, Dumped from 2.8x peak
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Dumped from 2.8x
+
+CASE 115 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.12, Just dropped 28%, choppy
+  reviewer 2 (volume and flow reader): SKIP, p 0.2, Dropped last bar, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.2, Red candle, choppy
+  reviewer 4 (risk manager): SKIP, p 0.22, Last bar fell 28 %
+  reviewer 5 (momentum trader): SKIP, p 0.12, Rejected, volume falling
+  reviewer 6 (dip buyer): SKIP, p 0.28, second drop, volume fading
+  reviewer 7 (rocket hunter): SKIP, p 0.23, Choppy, dump candle at buy
+  reviewer 8 (clock and age analyst): SKIP, p 0.22, Whipsaw, last candle drop
+  reviewer 9 (statistician): SKIP, p 0.18, Last bar minus 28 percent
+  reviewer 10 (devil's advocate): SKIP, p 0.2, -28% last bar
+
+CASE 116 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Lower highs, suspicious fresh buyers
+  reviewer 2 (volume and flow reader): SKIP, p 0.25, Price falling despite buyer dominance
+  reviewer 3 (sceptic): SKIP, p 0.22, Falling, sybil-like wallets
+  reviewer 4 (risk manager): SKIP, p 0.25, Falling despite many fresh buyers
+  reviewer 5 (momentum trader): SKIP, p 0.18, Downtrend despite inflow
+  reviewer 6 (dip buyer): BUY, p 0.34, dip with fresh buyers flooding in
+  reviewer 7 (rocket hunter): SKIP, p 0.29, Fresh wallets inflow but price off peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Sybil-like buyers, price falling
+  reviewer 9 (statistician): SKIP, p 0.25, Fresh-wallet cluster, below peak
+  reviewer 10 (devil's advocate): SKIP, p 0.28, Fresh buyers, price still bleeding
+
+CASE 117 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Choppy decline
+  reviewer 2 (volume and flow reader): SKIP, p 0.06, Sellers dominate, volume gone
+  reviewer 3 (sceptic): SKIP, p 0.12, Weak, sells exceed buys
+  reviewer 4 (risk manager): SKIP, p 0.11, Sellers outnumber buyers
+  reviewer 5 (momentum trader): SKIP, p 0.06, Choppy, fading
+  reviewer 6 (dip buyer): SKIP, p 0.12, volume dying, sells dominate
+  reviewer 7 (rocket hunter): SKIP, p 0.1, Sellers exceed buyers, fading
+  reviewer 8 (clock and age analyst): SKIP, p 0.12, Choppy, fading
+  reviewer 9 (statistician): SKIP, p 0.12, Sells exceed buys, fading
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Fading
+
+CASE 118 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.1, Lower highs, fading volume
+  reviewer 2 (volume and flow reader): SKIP, p 0.12, Declining, volume drying
+  reviewer 3 (sceptic): SKIP, p 0.14, Fading volume, lower highs
+  reviewer 4 (risk manager): SKIP, p 0.14, Steady decline from peak
+  reviewer 5 (momentum trader): SKIP, p 0.07, Fading, volume dying
+  reviewer 6 (dip buyer): SKIP, p 0.15, steady decline, low volume
+  reviewer 7 (rocket hunter): SKIP, p 0.15, Fading from peak, few wallets
+  reviewer 8 (clock and age analyst): SKIP, p 0.15, Fading from peak
+  reviewer 9 (statistician): SKIP, p 0.12, Fading, volume falling
+  reviewer 10 (devil's advocate): SKIP, p 0.1, Fading
+
+CASE 119 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.15, Bounce after crash
+  reviewer 2 (volume and flow reader): SKIP, p 0.15, Crashed, volume fading
+  reviewer 3 (sceptic): SKIP, p 0.2, Dumped, partial bounce
+  reviewer 4 (risk manager): SKIP, p 0.2, Dumped from peak, serial creator
+  reviewer 5 (momentum trader): SKIP, p 0.12, Recovery on fading volume
+  reviewer 6 (dip buyer): SKIP, p 0.27, bounce weak, serial creator
+  reviewer 7 (rocket hunter): SKIP, p 0.18, Repeat creator, off peak
+  reviewer 8 (clock and age analyst): SKIP, p 0.2, Dumped, partial recovery
+  reviewer 9 (statistician): SKIP, p 0.18, Bounce after dump from 2.3x
+  reviewer 10 (devil's advocate): SKIP, p 0.18, Post-dump bounce
+
+CASE 120 round-1 votes:
+  reviewer 1 (chart reader): SKIP, p 0.18, Just dropped 33% off high
+  reviewer 2 (volume and flow reader): SKIP, p 0.33, Strong flow but last bar broke down
+  reviewer 3 (sceptic): SKIP, p 0.27, Hot, but last candle -33 percent
+  reviewer 4 (risk manager): SKIP, p 0.28, Last bar dropped 33 %
+  reviewer 5 (momentum trader): SKIP, p 0.22, Sharp drop at entry
+  reviewer 6 (dip buyer): BUY, p 0.34, strong coin, fresh pullback, big inflows
+  reviewer 7 (rocket hunter): BUY, p 0.33, Fresh creator, 329 wallets 15m, 631% up
+  reviewer 8 (clock and age analyst): SKIP, p 0.3, Hot inflow, but last candle drop
+  reviewer 9 (statistician): SKIP, p 0.25, Strong flow but last bar minus 33
+  reviewer 10 (devil's advocate): SKIP, p 0.25, Bought after -33% candle
