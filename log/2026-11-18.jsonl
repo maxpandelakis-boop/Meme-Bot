@@ -292,3 +292,5 @@
 {"t":1794991440445,"addr":"3h5BJdK5iWreMEdJFYi3kqJ1v3yg8hjaHHsBtf1J1Vnr","sym":"\u7a57\u7a57\u4e0e\u7f8a","age":30.1,"why":"liquidity","liq":0}
 {"t":1794991500923,"addr":"8m6YmC1dDW5iF3Kc7rEsay2ZbKcZ133KSoyj3ASFpump","sym":"Sharkcards","age":30.1,"score":0.02678,"px":4.169e-05,"liq":14155,"p0":3.8372508655307955e-05,"bars":6,"buy":false,"f":{"f_curve_min":2.1333,"f_creator_prior":null,"f_xtype":1.0,"f_post_age":1.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.1131,"c_peak":2.321,"c_vol":5.4264,"c_act":1.0,"c_r5":-0.2722,"c_r15":-0.2481,"c_mc":4.584}}
 {"t":1794991740514,"addr":"6Lzzc8GqxywyJcQj22LN4j4Xk6RMTZQmgcpA8Z2yiweN","sym":"Intel AI","age":30.5,"why":"liquidity","liq":0}
+{"t":1794991981036,"addr":"52nE8srNp2tMEKxVLmTqGTFt2GriSSkXdJ3cy4PBzwwF","sym":"Green Cat","age":30.2,"why":"liquidity","liq":0}
+{"t":1794991981036,"addr":"ASnBvTA7f1gjMUPmWGdky8LbcNXY62mMMwevK1NYmoon","sym":"COSPNG","age":30.1,"why":"liquidity","liq":0}
