@@ -712,3 +712,4 @@
 {"t":1795127820940,"addr":"Gk1WHA7dAwhRrFm4wDzoZVJhm9CN35dkTpwmLFE9pump","sym":"FIONA","age":30.3,"why":"liquidity","liq":6470}
 {"t":1795127880218,"addr":"5h3K9sRWnYcWheNVco71tTRio3pKr5i9B9pEb4ebA95T","sym":"NEX Ai","age":30.5,"score":0.03497,"px":4.313e-05,"liq":50131,"p0":4.1817840147767284e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":15.0,"f_cjk":0.0,"c_ret":0.8268,"c_peak":1.0286,"c_vol":5.1306,"c_act":1.0,"c_r5":0.1248,"c_r15":0.3812,"c_mc":4.6214}}
 {"t":1795128000277,"addr":"FAa88Jzd69VcMV8uSYAnKrgafYEppTFSKGJ8SiEVpump","sym":"Fiona","age":30.3,"why":"liquidity","liq":1547}
+{"t":1795128300517,"addr":"4TXWUjKbq1SVauCRF2JNgJw7ity2E1V9jdhrErJZaQ2i","sym":"NAIVES","age":30.9,"why":"liquidity","liq":0}
