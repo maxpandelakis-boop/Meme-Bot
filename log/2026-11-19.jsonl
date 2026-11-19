@@ -9,3 +9,4 @@
 {"t":1795047241031,"addr":"A4jXnWk1rDRDth6HmDASi45c89n1AguTHivAQPTVpump","sym":"GTASZN","age":30.7,"score":0.03978,"px":0.001906,"liq":103520,"p0":0.0016157393325545025,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":3.0,"f_cjk":0.0,"c_ret":1.5545,"c_peak":1.4374,"c_vol":6.1497,"c_act":1.0,"c_r5":-0.1375,"c_r15":0.4378,"c_mc":6.2084}}
 {"t":1795047300869,"addr":"74o4J3zTLzv7qf1XddYDEN5aib6jSCrAAuDy2WoFpump","sym":"AudaCity","age":30.6,"why":"liquidity","liq":3013}
 {"t":1795047600582,"addr":"4j8WoXhjcjokNPnnfbjNBHn72gt9Z3Z2q3ZCmwxupump","sym":"Moses","age":30.8,"why":"liquidity","liq":2704}
+{"t":1795047720714,"addr":"9riVprPN9oZCxpQeT7JHvSxxxruqAGCDCbRZw4yrpump","sym":"DUMBGTA6","age":30.8,"why":"liquidity","liq":1546}
