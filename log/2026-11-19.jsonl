@@ -385,3 +385,7 @@
 {"t":1795091880276,"addr":"5wmwNoHaA3cQRDxTiTShCj2W2vKMn8EZaJoSz87STsyE","sym":"Christmas","age":30.4,"why":"liquidity","liq":0}
 {"t":1795091941203,"addr":"EU7Wb2YD4h3CsTJdMr3dPdzdAAj46UCvUnNEQucVYZhE","sym":"JUMP COIN","age":30.5,"why":"liquidity","liq":0}
 {"t":1795091941203,"addr":"5mRGiEMCBPTDUppBCMckPvSHF65Kr2AQnjMvYywFzD3b","sym":"GTAVI","age":30.4,"why":"liquidity","liq":0}
+{"t":1795092000727,"addr":"75vFa2WcLqVZTmeojJBgniypn9unEJFnC64SpJJpump","sym":"VICEJOY","age":30.9,"why":"liquidity","liq":0}
+{"t":1795092240536,"addr":"J8oUq4fevdJXyKirtJJ4D1RGMeqtLXF5PgTwihE4D7qg","sym":"BRR","age":30.9,"why":"liquidity","liq":0}
+{"t":1795092240536,"addr":"5dvs1YtmtybrUw9o3SMteJhWrEVoJbKUpHtt8KhHaV5y","sym":"GTAVI","age":30.9,"why":"liquidity","liq":0}
+{"t":1795092240536,"addr":"E449zX57oMyt6eEQ4NDA9Rtrgn5EwtviQqmJ9o1eeBeG","sym":"Green Cat","age":30.5,"score":0.02707,"px":3.446e-05,"liq":45779,"p0":3.792545436412557e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":14.0,"f_cjk":0.0,"c_ret":0.8228,"c_peak":1.0572,"c_vol":5.1671,"c_act":1.0,"c_r5":0.1323,"c_r15":0.5276,"c_mc":4.5789}}
