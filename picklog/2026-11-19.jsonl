@@ -8,3 +8,5 @@
 {"at":1795087710933,"why":"stop","mult":0.4838983050847458,"rule":"chart","sym":"AudaCity","t":1795087710933,"eur":23.71,"pnl":-26.29,"entryAt":1795071823560,"id":"2026-11-19T064533-h-AudaCity-ERDrma"}
 {"at":1795089900000,"why":"drop","mult":0.8257461873761301,"late":true,"hitAt":1795089120000,"rule":"chart","sym":"GTASZN","t":1795089906284,"eur":40.47,"pnl":-9.53,"entryAt":1795088995071,"id":"2026-11-19T112516-h-GTASZN-A4jXnW"}
 {"at":1795093560000,"why":"drop","mult":0.8068982967437863,"late":true,"hitAt":1795093440000,"rule":"chart","sym":"Mandy","t":1795093611339,"eur":39.54,"pnl":-10.46,"entryAt":1795078430561,"id":"2026-11-19T083731-h-Mandy-2xCd5q"}
+{"at":1795102500000,"why":"trail","mult":1.297457382892659,"rule":"chart","sym":"GTA6IRL","t":1795102588938,"eur":63.58,"pnl":13.58,"entryAt":1795095378440,"id":"2026-11-19T131730-h-GTA6IRL-4NShmh"}
+{"at":1795102740000,"why":"drop","mult":0.5682790406370464,"late":true,"hitAt":1795102680000,"rule":"chart","sym":"GTASZN","t":1795102774573,"eur":27.85,"pnl":-22.15,"entryAt":1795100254782,"id":"2026-11-19T143836-h-GTASZN-A4jXnW"}
