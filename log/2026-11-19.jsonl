@@ -458,3 +458,4 @@
 {"t":1795098960162,"addr":"E8cD35HiDVmAXEvyLTBLLrEhvKV6QuA39y3cuUyepump","sym":"VTC","age":30.8,"why":"liquidity","liq":1367}
 {"t":1795098960162,"addr":"ExcouhcQ1kbfrCvj2cnw7H9dgaXWYVfjKm6wSyqppump","sym":"ASAMI","age":30.4,"why":"liquidity","liq":1631}
 {"t":1795098960162,"addr":"bPfok9YJuPUy2x1AhdjBaZBD1VNzihMEnfLzzmkpump","sym":"SWJ","age":30.0,"score":0.02361,"px":8.517e-05,"liq":19992,"p0":9.699256024133779e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":21.0,"f_cjk":0.0,"c_ret":-0.3382,"c_peak":2.0008,"c_vol":4.6348,"c_act":1.0,"c_r5":-0.6674,"c_r15":-0.4816,"c_mc":4.9867}}
+{"t":1795099200854,"addr":"586XUJx426jqf73ZZPFUfdqLkrdqzNwiB7Y61nZxpump","sym":"CHANGE","age":30.7,"why":"liquidity","liq":1933}
