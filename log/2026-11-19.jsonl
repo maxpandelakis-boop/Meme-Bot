@@ -454,3 +454,7 @@
 {"t":1795098360764,"addr":"24t8WMFsJGprhoNCfrTD9ETWt8MND12oHrwrDL1Z96vZ","sym":"GTA 6","age":30.7,"score":0.00353,"px":1.333e-05,"liq":26559,"p0":1.3351330271202525e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0065,"c_peak":1.0,"c_vol":1.7414,"c_act":0.6667,"c_r5":0.0,"c_r15":0.0068,"c_mc":4.1255}}
 {"t":1795098360764,"addr":"1QootyGhgybn8ivDpjLPRfGZ9yAckS6nUBoPjaYpump","sym":"SWJ","age":30.6,"why":"liquidity","liq":1381}
 {"t":1795098360764,"addr":"7o2MYN2YnMuiADrCgbnGRqcbXVrWWyJ9NXyHc7gupW1V","sym":"NEX Ai","age":30.3,"why":"liquidity","liq":0}
+{"t":1795098840439,"addr":"ARoENjt4pmeWEi2NRhhiRJ6icN75ecagFbkUc5STmoon","sym":"Whib","age":30.2,"why":"liquidity","liq":0}
+{"t":1795098960162,"addr":"E8cD35HiDVmAXEvyLTBLLrEhvKV6QuA39y3cuUyepump","sym":"VTC","age":30.8,"why":"liquidity","liq":1367}
+{"t":1795098960162,"addr":"ExcouhcQ1kbfrCvj2cnw7H9dgaXWYVfjKm6wSyqppump","sym":"ASAMI","age":30.4,"why":"liquidity","liq":1631}
+{"t":1795098960162,"addr":"bPfok9YJuPUy2x1AhdjBaZBD1VNzihMEnfLzzmkpump","sym":"SWJ","age":30.0,"score":0.02361,"px":8.517e-05,"liq":19992,"p0":9.699256024133779e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":21.0,"f_cjk":0.0,"c_ret":-0.3382,"c_peak":2.0008,"c_vol":4.6348,"c_act":1.0,"c_r5":-0.6674,"c_r15":-0.4816,"c_mc":4.9867}}
