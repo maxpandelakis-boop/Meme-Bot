@@ -430,3 +430,5 @@
 {"t":1795095720753,"addr":"HsoWJbXNAfaXRSRKaqHYtMzwsUK9io6jkND2zq4uV5tN","sym":"NEX Ai","age":30.5,"score":0.05208,"px":4.468e-05,"liq":52205,"p0":4.241326918414499e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":17.0,"f_cjk":0.0,"c_ret":0.8421,"c_peak":1.0121,"c_vol":5.1632,"c_act":1.0,"c_r5":0.1683,"c_r15":0.394,"c_mc":4.6275}}
 {"t":1795095841033,"addr":"GjrE8jXDLDhPEqUa31iNpwMB5jyNEiCKd2HPZB4dNXph","sym":"2030Moon","age":30.2,"why":"liquidity","liq":0}
 {"t":1795095901238,"addr":"3ZYZK1ScDKUpZE4pSzdBoD8XADt5ozpEk2kXVEmXNtAe","sym":"Microsoft","age":30.7,"why":"liquidity","liq":0}
+{"t":1795096080319,"addr":"Aus5brnjh6ek8dxnxk2xgQUHGsb5HqnKosTb8SxenLH2","sym":"VICEPAD","age":30.5,"why":"liquidity","liq":0}
+{"t":1795096200259,"addr":"DnxrFm5s6phaic1WWrHYgyMZoA72Q5qV97p9x8RpUGTA","sym":"gtacat","age":30.3,"why":"liquidity","liq":4798}
