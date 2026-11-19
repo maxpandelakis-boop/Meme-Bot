@@ -149,3 +149,6 @@
 {"t":1795063440605,"addr":"Exhw13WbiE7S11kvu4VRf39yPQ9gpcjePrP7y3depump","sym":"CHROME","age":30.4,"why":"liquidity","liq":0}
 {"t":1795063500443,"addr":"Gyt5Dfm35A8hvGGL7kAK3omz439qTXNDPssMLMyNpump","sym":"CASHPARROT","age":39.9,"why":"liquidity","liq":9830}
 {"t":1795063500443,"addr":"95ru6HAqzbuNaiYSKCT3YLw87Kmyom3Unz3jwaqbeyZo","sym":"JENSEN","age":30.7,"score":0.01195,"px":2.666e-05,"liq":40224,"p0":2.627416420212203e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":11.0,"f_cjk":0.0,"c_ret":0.437,"c_peak":1.0708,"c_vol":5.0391,"c_act":1.0,"c_r5":-0.0368,"c_r15":0.0652,"c_mc":4.4195}}
+{"t":1795063680084,"addr":"AToJTVdKZ5be2zEwHJoJRCu5SHCbR4AyMiDEsaHgohK8","sym":"Intel AI","age":30.9,"why":"liquidity","liq":0}
+{"t":1795063680084,"addr":"4UFZSNZpweWymgQZoNG2N2FN8Vng15t2oDVLUeTTbonk","sym":"Vosnail","age":30.8,"why":"liquidity","liq":0}
+{"t":1795063800761,"addr":"49ju9adcyPogocCtZecRARX7CZa8pmzTebSrFzzV3FvZ","sym":"Green Cat","age":30.4,"why":"liquidity","liq":0}
