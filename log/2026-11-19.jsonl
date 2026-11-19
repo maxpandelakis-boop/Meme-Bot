@@ -320,3 +320,7 @@
 {"t":1795084980660,"addr":"8ccNVTphnPx6ZBDNdhmYBV9EWjFPfefytJszq8g62LN5","sym":"APEC","age":30.3,"score":0.02807,"px":3.59e-05,"liq":46635,"p0":3.345998854440361e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":35.0,"f_cjk":0.0,"c_ret":0.7104,"c_peak":1.1387,"c_vol":5.0754,"c_act":1.0,"c_r5":-0.0209,"c_r15":0.5269,"c_mc":4.5245}}
 {"t":1795085100838,"addr":"E9qBPrrMt9AyA6wcBaTsdoHgmYKswYPgcrUcLYKUBAGS","sym":"Voytur","age":30.2,"why":"liquidity","liq":0}
 {"t":1795085100838,"addr":"HthxeWWeqMmmZuGhN4drwBU5sANwoRzD6jsvi8vccLBo","sym":"GTA$","age":30.1,"why":"liquidity","liq":0}
+{"t":1795085280147,"addr":"HfZb1VRKXLuyKwXkyT33k8dg7MinoXesnfrDhHs2Uz4i","sym":"BRR","age":30.9,"why":"liquidity","liq":0}
+{"t":1795085280147,"addr":"4U7MyvMevsRgcz2NCWP8mcAFpCe9Xkfd4yrF3kDu8sfS","sym":"2030Moon","age":30.6,"why":"liquidity","liq":0}
+{"t":1795085341079,"addr":"GsYPcRM3MfkXfh13BUbRbAaEZrz5Tk3nqT7W15goSiBp","sym":"Green Cat","age":30.1,"why":"liquidity","liq":0}
+{"t":1795085400361,"addr":"EiPGjrkVQWj8Bxz7RUx2V7S5nnyQTzZcfEq6FnQo8MpQ","sym":"GTA$","age":30.8,"why":"liquidity","liq":0}
