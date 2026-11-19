@@ -475,3 +475,7 @@
 {"t":1795100940900,"addr":"BFiCYjxYtQMkuvaqgAEYjejNo3bqZXXgdvJGxhhBmg3t","sym":"BBFS","age":30.4,"score":0.01125,"px":4.506e-05,"liq":53729,"p0":3.6840751810728174e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":14.0,"f_cjk":0.0,"c_ret":0.6567,"c_peak":1.0363,"c_vol":5.1246,"c_act":1.0,"c_r5":0.3726,"c_r15":0.5599,"c_mc":4.5663}}
 {"t":1795100940900,"addr":"s3kVdxJizCjDF8HE9RBkj5TTP5TWf9VGLMenEjWpump","sym":"SWJ","age":30.1,"why":"liquidity","liq":1368}
 {"t":1795101120112,"addr":"AUq9Fo5tXzx9ovoPofyyh6FYmco42o4DtL6EWYQSpump","sym":"WokeStar","age":30.9,"why":"liquidity","liq":2841}
+{"t":1795101180708,"addr":"DKYBQmb6NgyWqxrCrE2rHK5kMN8tzdviVej71jVC2Gbx","sym":"NEX Ai","age":30.2,"why":"liquidity","liq":0}
+{"t":1795101360497,"addr":"Q5tW2PDJk4Eub4jUZwEcUKS47k68fokeAPoqsRDpump","sym":"SWJ","age":30.6,"why":"liquidity","liq":1365}
+{"t":1795101360497,"addr":"yAjKVdDqHWRLcLHtuNcYBrsaoYLNgY2k3BHZ71apump","sym":"SWJ","age":30.4,"why":"liquidity","liq":1367}
+{"t":1795101420940,"addr":"wKMvAVG9XwZz2XgV6vqXZudx8sjHtmfgLBoCA4Epump","sym":"MEVS","age":30.4,"score":0.0173,"px":7.62e-05,"liq":19062,"p0":0.00010456218141347964,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.1195,"c_peak":1.8966,"c_vol":5.2091,"c_act":1.0,"c_r5":0.367,"c_r15":0.8027,"c_mc":5.0194}}
