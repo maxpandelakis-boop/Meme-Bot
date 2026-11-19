@@ -652,3 +652,4 @@
 {"t":1795119540936,"addr":"AJhcwPL99rqiR5zjMQ1RVV2jk7AQXxb1H64zeTz7Fds4","sym":"AudaCity","age":30.7,"score":0.01247,"px":2.306e-05,"liq":24524,"p0":1.5368397985652486e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":9.0,"f_cjk":0.0,"c_ret":0.4133,"c_peak":2.0231,"c_vol":5.5845,"c_act":1.0,"c_r5":-0.2685,"c_r15":0.0818,"c_mc":4.1866}}
 {"t":1795119661268,"addr":"GM6WF5xtGqSz6nQSosHMDcc7BNWjPS6MvLHVv8w9pump","sym":"BLUB","age":30.2,"why":"liquidity","liq":3631}
 {"t":1795119720501,"addr":"6J23NDnc2NuAhTN3HEw1GbtYHbZ58ciAmAMtFR7Npump","sym":"ANTBELL","age":30.9,"why":"liquidity","liq":0}
+{"t":1795120020952,"addr":"HymfNir6bcgN8KmBX1eLvKk4zrj6S5ChviYom3EeJWa","sym":"\\nu","age":30.7,"why":"liquidity","liq":0}
