@@ -5,3 +5,4 @@
 {"at":1795076880000,"why":"drop","mult":0.8371832935503455,"rule":"chart","sym":"GTASZN","t":1795076933979,"eur":41.03,"pnl":-8.97,"entryAt":1795075246156,"id":"2026-11-19T074139-h-GTASZN-A4jXnW"}
 {"at":1795080301695,"why":"time","mult":0.597815362931642,"rule":"chart","sym":"HUGH","t":1795080301695,"eur":29.3,"pnl":-20.7,"entryAt":1795058639014,"id":"2026-11-19T030023-h-HUGH-Fpzcd2"}
 {"at":1795086360000,"why":"drop","mult":0.7972822306145971,"late":true,"hitAt":1795086300000,"rule":"chart","sym":"GTASZN","t":1795086362335,"eur":39.07,"pnl":-10.93,"entryAt":1795082216285,"id":"2026-11-19T093303-h-GTASZN-A4jXnW"}
+{"at":1795087710933,"why":"stop","mult":0.4838983050847458,"rule":"chart","sym":"AudaCity","t":1795087710933,"eur":23.71,"pnl":-26.29,"entryAt":1795071823560,"id":"2026-11-19T064533-h-AudaCity-ERDrma"}
