@@ -718,3 +718,4 @@
 {"t":1795129081039,"addr":"CZyJbRFByu9iQSTvGheafzb2bhVEYUyg5sCmg8npump","sym":"JENSEN","age":30.9,"score":0.02277,"px":5.974e-05,"liq":16362,"p0":5.480170513562003e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":23.0,"f_cjk":0.0,"c_ret":0.3669,"c_peak":1.6831,"c_vol":4.4238,"c_act":1.0,"c_r5":-0.4956,"c_r15":0.0892,"c_mc":4.7388}}
 {"t":1795129081039,"addr":"23PYUoUBzcmMgzfoPP3M3t5Le9m3aw8wsYJXpewCpump","sym":"WTA6","age":30.4,"why":"liquidity","liq":2063}
 {"t":1795129200159,"addr":"4Q4f1Nre4WNzrh5ziTNFGcgPT3YsGJHPaHtUdQ2wmoon","sym":"Vcgator","age":30.8,"why":"liquidity","liq":0}
+{"t":1795129320167,"addr":"XPPPZjeKSVMNokA5R799yEfu4rJL2aQptoA8W7dpump","sym":"3B","age":30.5,"why":"liquidity","liq":1471}
