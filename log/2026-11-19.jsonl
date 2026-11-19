@@ -721,3 +721,5 @@
 {"t":1795129320167,"addr":"XPPPZjeKSVMNokA5R799yEfu4rJL2aQptoA8W7dpump","sym":"3B","age":30.5,"why":"liquidity","liq":1471}
 {"t":1795129620620,"addr":"HXkKTpB6Ad1Azgxqgj7bHuJhNhiAHZNLxurZJ9uCvnKk","sym":"NEX Ai","age":30.7,"score":0.02039,"px":3.787e-05,"liq":48430,"p0":3.890838388551308e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":16.0,"f_cjk":0.0,"c_ret":0.7795,"c_peak":1.0122,"c_vol":4.988,"c_act":1.0,"c_r5":0.0771,"c_r15":0.4455,"c_mc":4.59}}
 {"t":1795129620620,"addr":"H2VBfvSGAV98cu5b4ZVwtcQXAFGUAEN7jGD19Bmvpump","sym":"CHOMEL","age":30.6,"why":"liquidity","liq":2079}
+{"t":1795129921002,"addr":"7m2PBd3AxBaNC5q49Gy5Di6qf5mWofNtj491i9iFpump","sym":"HIPPO","age":30.4,"why":"liquidity","liq":3490}
+{"t":1795129980511,"addr":"81paga7QPHmkUSmaCRPU5TdhhYrdwPLVgye1qpm2BAGS","sym":"PARPOP","age":30.6,"why":"liquidity","liq":0}
