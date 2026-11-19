@@ -502,3 +502,8 @@
 {"t":1795102740419,"addr":"rCSgMtqti9628nvpfF6MMqx8C5Zwee3Wrb8nHFspump","sym":"MMA","age":30.0,"why":"liquidity","liq":1618}
 {"t":1795102980980,"addr":"DSwiaa7YeQ59eWz67UNYf2QdBUkqhKKUmLRSygipmoon","sym":"METHOUR","age":30.6,"why":"liquidity","liq":0}
 {"t":1795103461065,"addr":"5HRsYWpb5NRE3wnDqYAp2tAjCQkLWkf5ZQJzjFgKpump","sym":"J4F","age":30.9,"why":"liquidity","liq":1621}
+{"t":1795103701355,"addr":"8gLC8oF7eirSHfiqfSHp1TWttTM6cufoyEiej9pgpump","sym":"Social","age":30.3,"why":"liquidity","liq":1466}
+{"t":1795103760632,"addr":"D7P7cyJT4LRFP3X5932HFkbb7hcJkZXPjsSLNqQZpump","sym":"HOLM","age":30.2,"why":"liquidity","liq":8805}
+{"t":1795103821407,"addr":"6Uxxqws32WV5NvSawzuapKdkdxBPNzd5q3N1reEntXgH","sym":"Christmas","age":30.6,"why":"liquidity","liq":0}
+{"t":1795103880767,"addr":"6yGtFNLNX9ULgXv1VSva6ZdYq7JdBEXNH3CuRt2Apump","sym":"KFCat","age":30.7,"why":"liquidity","liq":3554}
+{"t":1795103880767,"addr":"ARXMRwp7jtzx4fxhWar2TdKTDokAGuX2RnqKXXy8pump","sym":"KFC","age":30.3,"score":0.00808,"px":0.0001981,"liq":36594,"p0":0.00023860114537829693,"bars":6,"buy":false,"f":{"f_curve_min":1.7833,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.0407,"c_peak":1.1178,"c_vol":4.9562,"c_act":0.3333,"c_r5":0.0407,"c_r15":null,"c_mc":5.3777}}
