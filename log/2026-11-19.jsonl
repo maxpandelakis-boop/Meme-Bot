@@ -653,3 +653,5 @@
 {"t":1795119661268,"addr":"GM6WF5xtGqSz6nQSosHMDcc7BNWjPS6MvLHVv8w9pump","sym":"BLUB","age":30.2,"why":"liquidity","liq":3631}
 {"t":1795119720501,"addr":"6J23NDnc2NuAhTN3HEw1GbtYHbZ58ciAmAMtFR7Npump","sym":"ANTBELL","age":30.9,"why":"liquidity","liq":0}
 {"t":1795120020952,"addr":"HymfNir6bcgN8KmBX1eLvKk4zrj6S5ChviYom3EeJWa","sym":"\\nu","age":30.7,"why":"liquidity","liq":0}
+{"t":1795120320610,"addr":"FLYaY9sS9ox5xUKpf3xt9fKhPg9vA5iS4dkydx4FbBCD","sym":"vensa","age":30.8,"score":0.01489,"px":2.824e-05,"liq":40945,"p0":2.4850456492182018e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.4737,"c_peak":1.0387,"c_vol":4.9556,"c_act":1.0,"c_r5":0.1504,"c_r15":0.4472,"c_mc":4.3953}}
+{"t":1795120380841,"addr":"M5PSMDyoagHDS7vZgfHfcSMkCkCz4pCbTSPCA3ppump","sym":"LOOSY","age":30.6,"why":"liquidity","liq":1461}
