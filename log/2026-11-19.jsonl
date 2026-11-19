@@ -694,3 +694,4 @@
 {"t":1795124821505,"addr":"9Fksh8br6B4VwqmEvgm1bgpQBtrcCnNkWbJordrYgnxC","sym":"VICEPAD","age":30.8,"why":"liquidity","liq":0}
 {"t":1795125480800,"addr":"wMU6PkXx8RHHzFuXSPWy8eZMmQSKQBFwQZq4Ej7pump","sym":"Rockstar","age":30.9,"score":0.01676,"px":5.29e-05,"liq":15318,"p0":4.796868004845131e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.264,"c_peak":1.1054,"c_vol":4.3916,"c_act":1.0,"c_r5":0.0452,"c_r15":0.1819,"c_mc":4.681}}
 {"t":1795125541034,"addr":"F2WDARive6KV3NWkmptudRDMGBs429LeRCU1DiLipump","sym":"\\nu","age":30.1,"why":"liquidity","liq":1558}
+{"t":1795125781056,"addr":"8BQPJaSAkSVo3P7P3bSVRA6MPxQeuWQfaKCBHAUfpump","sym":"FIONA","age":31.0,"why":"liquidity","liq":3036}
