@@ -418,3 +418,6 @@
 {"t":1795179660954,"addr":"BPq25wLGoWr4tmMKmRhz7eDuA5jPmH9koEpdaX9vbonk","sym":"Javfix","age":30.7,"why":"liquidity","liq":0}
 {"t":1795179660954,"addr":"DaGYxPyVpQuqJ1Zj1LJJLgARFc7Wt7cuLznvQB76ZapH","sym":"Christmas","age":30.5,"why":"liquidity","liq":0}
 {"t":1795179720626,"addr":"Gf4ZkkpqewXo8mJ2iXERXd4w3xZt1xxUPfGTAVU5hJJH","sym":"CCat","age":30.7,"score":0.02897,"px":3.312e-05,"liq":43552,"p0":3.320063182290841e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":53.0,"f_cjk":0.0,"c_ret":0.6459,"c_peak":1.0029,"c_vol":4.8426,"c_act":1.0,"c_r5":0.2338,"c_r15":0.46,"c_mc":4.5211}}
+{"t":1795180020558,"addr":"CMAnuHcqHgMSUuQd7fHC7dkBs5QUzUmTYV7kGNz5aprh","sym":"GTACAT","age":30.9,"why":"liquidity","liq":0}
+{"t":1795180020558,"addr":"6Ng4MHjMbNAUySLKXQDsRpCrvKdCeTUb2cePRXCSpump","sym":"Alouatta","age":30.7,"why":"liquidity","liq":5434}
+{"t":1795180200831,"addr":"3q4Dm384YNEB6gSTkR4kG1Lr6AJhj6VzRGcsHvGwRbBR","sym":"SNAPMATIC","age":30.5,"why":"liquidity","liq":0}
