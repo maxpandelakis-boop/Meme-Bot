@@ -382,3 +382,5 @@
 {"t":1795175220848,"addr":"8r6bN2X7BtTa5YQuWaBBn9o5F3dpDNZWQLm1Ns9N2QkR","sym":"CCat","age":30.2,"score":0.02868,"px":4.071e-05,"liq":48579,"p0":3.944944899209496e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.05,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":49.0,"f_cjk":0.0,"c_ret":0.8455,"c_peak":1.0063,"c_vol":4.949,"c_act":1.0,"c_r5":0.1904,"c_r15":0.524,"c_mc":4.596}}
 {"t":1795175340686,"addr":"FQ4Fjc2zcAQsfecfKgPdiBvPJN5q919hZaviLYnLAPgp","sym":"GTACAT","age":30.7,"why":"liquidity","liq":0}
 {"t":1795175460434,"addr":"ANGXGnmmKWis6DCWexxnMDM4Fw2qKtap8TWLdFBLuQKB","sym":"NEX Ai","age":30.8,"why":"liquidity","liq":0}
+{"t":1795175880967,"addr":"3MeZc2Ac2D43Y87DFnwd5QHApQQjvsUAbwsga6D7Dm21","sym":"NEX Ai","age":30.1,"why":"liquidity","liq":0}
+{"t":1795175940587,"addr":"54bWFr3n8PE4R39g6yBByC6cMnBaBW9uERHdHMzUKn6K","sym":"Tradercat","age":30.6,"why":"liquidity","liq":0}
