@@ -702,3 +702,11 @@
 {"t":1795212720469,"addr":"DxAnu12yrrj3ug3XerazVK1DM8yTPHtcChNkD5Fpump","sym":"survive","age":30.1,"why":"liquidity","liq":2869}
 {"t":1795212780923,"addr":"29P6EsshgU6kpmuyPpNaRdFWfJhPWtGe9ncEecoGpump","sym":"GOGE","age":30.3,"why":"liquidity","liq":1585}
 {"t":1795213140623,"addr":"9nu4yZwbrYd7K89qfFgJBu1LbGV6K6jety7hH3RUpump","sym":"KUBB","age":30.1,"why":"liquidity","liq":5909}
+{"t":1795213260501,"addr":"Gu8uV1ZgVKrBajhPm9iXUGhpsJjihkmQU16NmfSVASMX","sym":"AudaCity","age":31.0,"why":"liquidity","liq":0}
+{"t":1795213260501,"addr":"7gBXwQsgbckySwGra8cwrdZ9knBYu5RNWbmbcvkfb5Mk","sym":"Christmas","age":30.0,"score":0.03238,"px":4.045e-05,"liq":47553,"p0":4.034626790521973e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":47.0,"f_cjk":0.0,"c_ret":0.8645,"c_peak":1.0,"c_vol":4.9389,"c_act":1.0,"c_r5":0.1565,"c_r15":0.4218,"c_mc":4.6058}}
+{"t":1795213320504,"addr":"SPHFHU7sz2EZQYqyxMrZjgFdiYSCXJxRBE4giAjpump","sym":"shep","age":30.8,"score":0.02975,"px":4.782e-05,"liq":15300,"p0":3.6790814835965864e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.0403,"c_peak":2.0596,"c_vol":5.197,"c_act":1.0,"c_r5":0.2982,"c_r15":0.2778,"c_mc":4.5657}}
+{"t":1795213381213,"addr":"5v3Gg7ou2bfpARm1viGcwg64HwDohdeV8wU3dHty1Cjb","sym":"James","age":30.7,"score":0.0119,"px":4.989e-05,"liq":52952,"p0":4.634713584315149e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0167,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.9216,"c_peak":1.0305,"c_vol":4.897,"c_act":1.0,"c_r5":0.0343,"c_r15":0.4384,"c_mc":4.666}}
+{"t":1795213381213,"addr":"JBWmerM6nxqSuLwBVwE46yj4NxjMBppGVEbHoG2Spump","sym":"GEEG","age":30.4,"why":"liquidity","liq":1478}
+{"t":1795213440871,"addr":"5u872GoxzGobAL3Fm5CLXbFNAPc1vadAc15rAD4v1UHf","sym":"Singularit","age":30.2,"why":"liquidity","liq":0}
+{"t":1795213500343,"addr":"6NcdukgrJwHs3925EFaxCWA8T9tMNT9iXa4Xt6oUe6dK","sym":"AQRX","age":30.4,"why":"liquidity","liq":4365}
+{"t":1795213500343,"addr":"AyXZnt8HTppoxyLYARhsSAurzz4ZDgecrabGCRRyULS2","sym":"AudaCity","age":30.3,"why":"liquidity","liq":0}
