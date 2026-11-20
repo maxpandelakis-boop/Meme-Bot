@@ -153,3 +153,5 @@
 {"t":1795151220393,"addr":"HVxXzEt87QszpC95kMKAfrHdboj4K1TVxYNMzwmbpump","sym":"apocry","age":43.2,"why":"no candles"}
 {"t":1795151280426,"addr":"B2dUgAq4pkih6EA9pxSCMjdAUTUiWkERWucGvtTxpump","sym":"Icevol","age":30.3,"why":"liquidity","liq":0}
 {"t":1795151341080,"addr":"7cMKFcNxWTAqbKuDsx8i88GyZCw83xdKkP7Q7hQbAhrs","sym":"PAPA","age":30.8,"score":0.06526,"px":3.614e-05,"liq":45922,"p0":3.541123025129461e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":7.0,"f_cjk":0.0,"c_ret":0.7885,"c_peak":1.0,"c_vol":4.8867,"c_act":1.0,"c_r5":0.1974,"c_r15":0.3433,"c_mc":4.5491}}
+{"t":1795151581271,"addr":"63TjAHqcCepkQ1MuZaTo5bBSYALg57nY5L81KBYRpump","sym":"Vampoor","age":30.8,"why":"liquidity","liq":3421}
+{"t":1795151700540,"addr":"APo4qwRnjvUY24FnnijRG3Z89fbBXkQH91SBUrvc8CRY","sym":"Apocry","age":31.2,"why":"liquidity","liq":8582}
