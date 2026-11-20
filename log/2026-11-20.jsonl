@@ -589,3 +589,4 @@
 {"t":1795199461095,"addr":"3Rdf1scJAhxEP3sfxApCKfGLHo8HxAu2JTyTa3pfpump","sym":"REVINU","age":30.1,"why":"liquidity","liq":1392}
 {"t":1795199520506,"addr":"RV45eERt7baE3aDhgJGZSRwVh3EUeXERRvvYqfGJjiU","sym":"RIEMANN","age":30.6,"why":"liquidity","liq":0}
 {"t":1795199520506,"addr":"4MXzvR9PX8kVQNQuYQn7inJoGMiWbgPLNgoxyjprpump","sym":"MAYA","age":30.4,"score":0.03726,"px":0.000125,"liq":24064,"p0":0.00012849993490580706,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":0.2856,"c_peak":4.3021,"c_vol":5.5496,"c_act":1.0,"c_r5":-1.2031,"c_r15":-0.6158,"c_mc":5.1089}}
+{"t":1795199880872,"addr":"BMunynAcG6ABGzn2LSufnR1mKmVDdMtafy662t4wpump","sym":"NORA","age":30.2,"why":"liquidity","liq":7541}
