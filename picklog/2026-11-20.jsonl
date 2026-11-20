@@ -8,3 +8,4 @@
 {"at":1795173540000,"why":"drop","mult":0.8528041693014745,"late":true,"hitAt":1795173480000,"rule":"chart","sym":"MANDY","t":1795173591200,"eur":41.79,"pnl":-8.21,"entryAt":1795171856383,"id":"2026-11-20T102938-h-MANDY-GQngHP"}
 {"at":1795174200000,"why":"trail","mult":1.4378898113725687,"rule":"chart","sym":"LOOSY","t":1795174232127,"eur":70.46,"pnl":20.46,"entryAt":1795168541365,"id":"2026-11-20T093307-h-LOOSY-HF2RBP"}
 {"at":1795187340000,"why":"drop","mult":0.8218176670847706,"late":true,"hitAt":1795187220000,"rule":"chart","sym":"ZOL","t":1795187351742,"eur":40.27,"pnl":-9.73,"entryAt":1795185985802,"id":"2026-11-20T142734-h-ZOL-UQLWvk"}
+{"at":1795189800000,"why":"drop","mult":0.9147902414437339,"rule":"chart","sym":"MACCA","t":1795189838542,"eur":44.83,"pnl":-5.17,"entryAt":1795182060231,"id":"2026-11-20T131714-h-MACCA-C5eGEX"}
