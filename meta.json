@@ -1,0 +1,26 @@
+{
+ "days": 14,
+ "files": {
+  "symmc.json.gz": {
+   "bytes": 38085,
+   "syms": 4686
+  },
+  "walletmem.json.gz": {
+   "bytes": 71255,
+   "common": 28,
+   "nCoins": 1019,
+   "rug": 442,
+   "sw": 1563
+  },
+  "xlinks.json.gz": {
+   "before": 36321,
+   "bytes": 3171531,
+   "links": 36185
+  }
+ },
+ "secs": 24.32,
+ "snapFiles": 18252,
+ "snapSkipped": 42009,
+ "t": 1795258301478,
+ "v": 1
+}
