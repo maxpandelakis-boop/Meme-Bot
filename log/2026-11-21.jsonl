@@ -242,3 +242,9 @@
 {"t":1795253400605,"addr":"4n7gZmmCqW4PZEsSHhj4LC9PSMqar27V4ETi8Z6cPF76","sym":"APEC","age":30.7,"why":"liquidity","liq":0}
 {"t":1795253520500,"addr":"JkL1GEz7rsfqepCDPoeGUTsquL7DLkKWVvWA7R5GNm4","sym":"GTAVI","age":30.7,"why":"liquidity","liq":0}
 {"t":1795253520500,"addr":"53DzwArXGL4wAqxCraDEUZSN9AgnuWwxKSmtFeu6pump","sym":"FLIK","age":30.4,"why":"liquidity","liq":6117}
+{"t":1795253640490,"addr":"6NquBnJBjZ3eiWkEzanS853z1jyXon8tbcP7Kt4hmoon","sym":"BTICE","age":30.8,"why":"liquidity","liq":0}
+{"t":1795253640490,"addr":"5GxcNNGpuTD8YCPpw1JNR65cbNTzf6iz5rcsogDG5p9H","sym":"GTACAT","age":30.4,"why":"liquidity","liq":0}
+{"t":1795253640490,"addr":"DP8sNXPCUdyaGnY8Z2osHp3QJizdTxB8LtN5nXeX9RRC","sym":"CCat","age":30.1,"why":"liquidity","liq":0}
+{"t":1795253701048,"addr":"9EWpk7CkYLfScBkTig59R63vZvBsEkpKUpZmMM3va8PY","sym":"CYBERCAT","age":30.2,"why":"liquidity","liq":0}
+{"t":1795253760390,"addr":"8bGA7uQRGURruJLacPopiTSJtzS49VvLL7C5yDBpump","sym":"NOTAI","age":30.1,"score":0.01923,"px":4.931e-05,"liq":14283,"p0":4.983732628750406e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":0.0,"f_cjk":0.0,"c_ret":-0.9239,"c_peak":2.7008,"c_vol":4.8946,"c_act":1.0,"c_r5":-0.0193,"c_r15":-0.0699,"c_mc":4.6976}}
+{"t":1795253821225,"addr":"78g2qqHVJCAhEpPCUoaoHmYVakzXevd5ELJt1bi5Gov2","sym":"cracken","age":31.0,"why":"liquidity","liq":4351}
