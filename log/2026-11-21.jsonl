@@ -341,3 +341,8 @@
 {"t":1795254702671.9329,"addr":"4mE8dPH1RTqQBT5EPim5Ubt2v2wXZ9zgEDDWmL1o1EYu","sym":"SBS","pool":"AszTn7GufCoDMJNFkCqGarc2BB6QniUP9hzy4j2pkkL2","age":603,"score":0.00016,"mc":189326,"px":0.0001893,"reach":602,"buy":false}
 {"t":1795254702671.9329,"addr":"2wh7dPQV4w1tgVQzYzJB683fqxcTkU4A8WeaoNZJpump","sym":"AODT","pool":"72P6tPqSQzUdQcsQjMYGyTzfVFNshtWvAksLVFZRRifZ","age":507,"score":8e-05,"mc":1138007,"px":0.001139,"reach":5,"buy":false}
 {"t":1795254702671.9329,"addr":"7i8AXjBdKGjGpRo4Ex5aDKUaX55xed5Hrgoww1G9pump","sym":"LRS","pool":"37Kvdt6rkoxVXKbfrd4wU4rbikTPsSekLxhsXd8kggyR","age":638,"score":6e-05,"mc":212144,"px":0.0002172,"reach":614,"buy":false}
+{"t":1795255565506.7188,"addr":"BYKQkHKMWHidNBLQXgt7NX4PLUtJZRYGLWQYkJzPGenX","sym":"Trader","pool":"65eyzrLgqEjqZ5NMoFntrE6XE6SvxS9zggzaBiew4n8n","age":796,"score":0.00067,"mc":208320,"px":0.0002083,"reach":36,"buy":false}
+{"t":1795255565506.7188,"addr":"FJKt1LxbWBpTRt9BaDEB6Wr2qL5LZzjFF5sx8rXnpump","sym":"MAYA","pool":"51edMriYsoN7MWtgQxAYsoG4z9nnVhVUUpbuyY1EPCbo","age":299,"score":0.00036,"mc":3110839,"px":0.003122,"reach":0,"buy":false}
+{"t":1795255565506.7188,"addr":"4mE8dPH1RTqQBT5EPim5Ubt2v2wXZ9zgEDDWmL1o1EYu","sym":"SBS","pool":"AszTn7GufCoDMJNFkCqGarc2BB6QniUP9hzy4j2pkkL2","age":617,"score":0.00015,"mc":198843,"px":0.0001988,"reach":41,"buy":false}
+{"t":1795255565506.7188,"addr":"7i8AXjBdKGjGpRo4Ex5aDKUaX55xed5Hrgoww1G9pump","sym":"LRS","pool":"37Kvdt6rkoxVXKbfrd4wU4rbikTPsSekLxhsXd8kggyR","age":653,"score":5e-05,"mc":212144,"px":0.0002172,"reach":628,"buy":false}
+{"t":1795255565506.7188,"addr":"2wh7dPQV4w1tgVQzYzJB683fqxcTkU4A8WeaoNZJpump","sym":"AODT","pool":"72P6tPqSQzUdQcsQjMYGyTzfVFNshtWvAksLVFZRRifZ","age":521,"score":5e-05,"mc":1144246,"px":0.001145,"reach":3,"buy":false}
