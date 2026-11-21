@@ -175,3 +175,5 @@
 {"t":1795243560673,"addr":"ARQwiXap6xe55NHbCQu8EcaF2i1qmgoL95ydjPoLpump","sym":"\ud83d\ude2d","age":30.9,"why":"liquidity","liq":8016}
 {"t":1795243740678,"addr":"xt9JrEvcqu7FoKyoJLS8arMa69g4k3HoB9Dh5PQpump","sym":"Rockstar","age":30.6,"why":"liquidity","liq":1333}
 {"t":1795243740678,"addr":"JBH6LtgfC8iCfBVnpAgJP7iS78epexjJUtf5KHRedyeq","sym":"rape","age":30.5,"score":0.01601,"px":9.065e-05,"liq":167855,"p0":9.01784864552181e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0667,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":1.0,"f_cjk":0.0,"c_ret":0.1205,"c_peak":1.0093,"c_vol":6.1446,"c_act":1.0,"c_r5":0.032,"c_r15":0.0775,"c_mc":4.9551}}
+{"t":1795243800318,"addr":"8ZF2r4GYdQz8z5hemovjPPe4WAsAW5diurpXz5vRLdHQ","sym":"Intel AI","age":30.2,"why":"liquidity","liq":0}
+{"t":1795243860536,"addr":"E8AvQKCgwgqP8h98iGibNMNTxwf81Lj1EXU4xPvxJsMh","sym":"\u8682\u8681ANT","age":30.0,"why":"liquidity","liq":0}
