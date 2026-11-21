@@ -313,3 +313,4 @@
 {"t":1795259760642,"addr":"422KyBt4HAQKaDmb6HnR87namfYjL8uZKTQw9n5imoon","sym":"BEPI","age":30.2,"why":"liquidity","liq":0}
 {"t":1795259880441,"addr":"8bSwBq7iiA6kibfxHRxZEKGJCcKVMm1MrKszBCAfLTYe","sym":"NEX Ai","age":30.5,"why":"liquidity","liq":0}
 {"t":1795259880441,"addr":"A6TWABoLe4MeAhyzfN3nf8S44JHzHzXwsbNsasa5xj32","sym":"CCat","age":30.1,"score":0.01639,"px":3.253e-05,"liq":42317,"p0":3.06892654671461e-05,"bars":6,"buy":false,"f":{"f_curve_min":0.0333,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":0.0,"f_theme24":30.0,"f_cjk":0.0,"c_ret":0.5932,"c_peak":1.0,"c_vol":4.8059,"c_act":1.0,"c_r5":0.0918,"c_r15":0.3804,"c_mc":4.487}}
+{"t":1795260180449,"addr":"AJnaFi9YKgNWzi3aEqJXVbH6puHdNi4FuTr6to7Tpump","sym":"pointless","age":30.3,"why":"liquidity","liq":5867}
