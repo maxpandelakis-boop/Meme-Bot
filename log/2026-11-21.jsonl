@@ -21,3 +21,4 @@
 {"t":1795222861109,"addr":"EJn9bZuhEqhqiTh289yYbpCaDXn8gKinuqJqg2YCpump","sym":"STBL","age":30.5,"score":0.00706,"px":4.251e-05,"liq":13166,"p0":4.219387057051611e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":2.0,"f_cjk":0.0,"c_ret":0.9593,"c_peak":1.0095,"c_vol":4.2436,"c_act":1.0,"c_r5":0.0119,"c_r15":0.0883,"c_mc":4.6252}}
 {"t":1795222920366,"addr":"BiAKfeU5TnGNcAHtqWqfTJka6GHzT1EsXT6A2KWebonk","sym":"WAPNINJA","age":30.2,"why":"liquidity","liq":0}
 {"t":1795222981045,"addr":"8zCzUnHMRv3jfFQbkvZywDHSzgMaK7fyoLT4VcphFXh3","sym":"GPU","age":30.7,"why":"liquidity","liq":0}
+{"t":1795223280491,"addr":"Hv4ZF1XAdezZBs75nhG8pNjCdXPJzZ8ATnhaGjGGpump","sym":"Gestalt","age":43.9,"why":"no candles"}
