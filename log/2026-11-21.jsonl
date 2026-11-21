@@ -182,3 +182,5 @@
 {"t":1795244280739,"addr":"5K5UnNbFabEiFH5Cr2kD8LXsnPA7r1gMAqLdGQ5R38Z","sym":"rape","age":30.8,"why":"liquidity","liq":0}
 {"t":1795244280739,"addr":"3YTLrV6KhwqG55N2X6dDKK8PGkhaodn4z3oEWpkcmoon","sym":"Fbighost","age":30.8,"why":"liquidity","liq":0}
 {"t":1795244280739,"addr":"3HF33aL1eKRcqjLBB7SCWYAt6sUKFGtC4dRa99PFKPDL","sym":"Intel AI","age":30.4,"score":0.01856,"px":2.957e-05,"liq":40355,"p0":2.636192838088165e-05,"bars":6,"buy":false,"f":{"f_curve_min":null,"f_creator_prior":null,"f_xtype":0.0,"f_post_age":null,"f_theme24":4.0,"f_cjk":0.0,"c_ret":0.4863,"c_peak":1.0294,"c_vol":4.7879,"c_act":1.0,"c_r5":0.1383,"c_r15":0.3219,"c_mc":4.421}}
+{"t":1795244471092,"addr":"gJ2vweFfeLhrpUXmCmY87Vf6ZFqK8VTFKuehXit85YM","sym":"Democat","age":30.9,"why":"liquidity","liq":0}
+{"t":1795244520469,"addr":"HGvwwcqPZSgvA5eVGY1NgLpfMVp9KytcuAY9GkuQdpvB","sym":"GTAVI","age":30.6,"why":"liquidity","liq":0}
